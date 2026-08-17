@@ -1,0 +1,16 @@
+# Copia este archivo como .dev.vars para desarrollo local (npm run dev).
+# .dev.vars está en .gitignore: NUNCA subas credenciales al repo.
+
+# --- Google Sheets (service account) ---
+GOOGLE_SHEET_ID="1AbC...id_de_la_url_de_tu_hoja"
+GOOGLE_SHEET_NAME="Pedidos"
+GOOGLE_CLIENT_EMAIL="pedidos-bot@tu-proyecto.iam.gserviceaccount.com"
+# Pega la clave completa. Los \n literales del JSON se convierten solos.
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN...\n-----END PRIVATE KEY-----\n"
+
+# --- Evolution API (WhatsApp) ---
+EVO_API_URL="https://tu-evolution.midominio.com"
+EVO_INSTANCE="tarotclaude"
+EVO_API_KEY="tu_apikey_de_evolution"
+# Opcional: número interno que recibe el aviso de cada pedido nuevo (sin +)
+EVO_NOTIFY_NUMBER="51999888777"

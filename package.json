@@ -1,0 +1,14 @@
+{
+  "name": "tarot-claude-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Product page COD con backend en Cloudflare Pages Functions, Google Sheets y Evolution API",
+  "scripts": {
+    "dev": "wrangler pages dev . --compatibility-date=2026-01-01",
+    "check": "node scripts/check.mjs",
+    "deploy": "wrangler pages deploy ."
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}
