@@ -12,6 +12,7 @@ wrangler.jsonc          Config del Worker: assets, rutas y variables de texto
 src/index.js            Router: /api/* al Worker, todo lo demás a los archivos
 src/api/order.js        POST /api/order  — guarda el pedido y confirma por WhatsApp
 src/api/upsell.js       POST /api/upsell — suma el upsell a la fila del pedido
+src/api/diag.js         GET  /api/diag   — diagnóstico de la cadena con Sheets
 src/lib/pedido.js       Precios, variantes y utilidades compartidas
 src/lib/hoja.js         Esquema de columnas de la hoja (A–U)
 src/lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
@@ -172,6 +173,52 @@ que son los del navegador y no los del Worker.
 Si el pixel no registra nada, revisa la CSP en `public/_headers`: necesita
 `connect.facebook.net` en `script-src` y `www.facebook.com` en `img-src` y
 `connect-src`, o el navegador lo bloquea entero.
+
+## Diagnóstico — `/api/diag`
+
+Cuando el formulario responde *"No pudimos registrar tu pedido"*, el Worker
+devolvió un **502**: llegó a Google Sheets y Google lo rechazó. El 502 no dice
+por qué, así que hay un endpoint que recorre la cadena eslabón por eslabón.
+
+Está **apagado por defecto**. Para encenderlo:
+
+```bash
+npx wrangler secret put DIAG_TOKEN     # inventa una cadena larga
+```
+
+Luego, en el navegador:
+
+```
+https://tu-dominio/api/diag?token=TU_TOKEN            # solo lectura
+https://tu-dominio/api/diag?token=TU_TOKEN&write=1    # además escribe una fila de prueba
+```
+
+Comprueba, en orden: las variables, la **forma** de la clave privada, que
+WebCrypto la acepte, el OAuth con Google, el acceso a la hoja, que exista la
+pestaña, y que los encabezados sean los correctos. Se detiene en el primer
+eslabón roto y devuelve un veredicto accionable.
+
+Nunca devuelve credenciales: de la clave privada solo informa su largo, si
+tiene los delimitadores `BEGIN`/`END`, si los saltos de línea son reales o
+`\n` literales, y **si viene envuelta en comillas** — que es la causa más
+frecuente del 502, porque al copiarla del JSON se arrastran las comillas.
+
+Los fallos más comunes y su arreglo:
+
+| Veredicto | Arreglo |
+|---|---|
+| La clave privada está corrupta | Vuelve a pegarla: de `-----BEGIN` a `-----END`, sin comillas |
+| Google rechazó la firma del JWT | La clave no corresponde a ese `client_email` |
+| La Sheets API no está habilitada | Habilítala en Google Cloud → APIs y servicios |
+| La cuenta de servicio no tiene acceso | Comparte la hoja con ella como **Editor** |
+| No existe una hoja con ese ID | Revisa `GOOGLE_SHEET_ID` |
+| No hay ninguna pestaña "Pedidos" | Renombra la pestaña o cambia `GOOGLE_SHEET_NAME` |
+| Puede leer pero no escribir | La compartiste como Lector, no como Editor |
+
+> Los logs del Worker (**Workers & Pages → claudetarot → Observability**) traen
+> el error crudo de Google en la línea `Sheets: …`, por si necesitas más.
+
+Apágalo cuando termines: borra el secret `DIAG_TOKEN` y vuelve a desplegar.
 
 ## Página de gracias
 

@@ -131,5 +131,19 @@ check("la IP es la del cliente", dato("IP") === "190.0.0.1", String(dato("IP")))
 check("Upsells sigue en K y Total en L",
   COLUMNAS[10] === "Upsells" && COLUMNAS[11] === "Total");
 
+/* 6. Endpoint de diagnóstico: apagado por defecto y sin filtrar credenciales */
+const diag = readFileSync(join(root, "src/api/diag.js"), "utf8");
+const router = readFileSync(join(root, "src/index.js"), "utf8");
+
+check("/api/diag está enrutado como GET", router.includes('"/api/diag": { GET: diag }'));
+check("el diagnóstico exige DIAG_TOKEN", diag.includes("if (!env.DIAG_TOKEN)"));
+check("compara el token en tiempo constante", diag.includes("function mismoToken"));
+// Nunca debe devolver el valor de una credencial, solo su forma.
+for (const fuga of ["env.GOOGLE_PRIVATE_KEY }", "detalle: pk", "clave: pk"]) {
+  check(`el diagnóstico no filtra la clave (${fuga})`, !diag.includes(fuga));
+}
+check("solo reporta la forma de la clave, no su contenido",
+  diag.includes("largo: pk.length") && !/detalle:\s*pk\b/.test(diag));
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

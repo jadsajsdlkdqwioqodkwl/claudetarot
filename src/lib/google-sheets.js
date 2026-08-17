@@ -22,7 +22,7 @@ function encodeJson(value) {
   return base64UrlEncode(new TextEncoder().encode(JSON.stringify(value)));
 }
 
-function pemToArrayBuffer(pem) {
+export function pemToArrayBuffer(pem) {
   const body = pem
     .replace(/\\n/g, "\n")
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
@@ -34,7 +34,7 @@ function pemToArrayBuffer(pem) {
   return bytes.buffer;
 }
 
-async function getAccessToken(env) {
+export async function getAccessToken(env) {
   const now = Math.floor(Date.now() / 1000);
   if (cachedToken && cachedToken.expiresAt > now + 60) return cachedToken.value;
 

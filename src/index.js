@@ -11,10 +11,12 @@
 
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
+import { onRequestGet as diag } from "./api/diag.js";
 
 const ROUTES = {
-  "/api/order": order,
-  "/api/upsell": upsell
+  "/api/order": { POST: order },
+  "/api/upsell": { POST: upsell },
+  "/api/diag": { GET: diag }
 };
 
 const json = (data, status) =>
@@ -26,10 +28,12 @@ const json = (data, status) =>
 export default {
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
-    const handler = ROUTES[pathname];
+    const metodos = ROUTES[pathname];
 
-    if (!handler) return env.ASSETS.fetch(request);
-    if (request.method !== "POST") {
+    if (!metodos) return env.ASSETS.fetch(request);
+
+    const handler = metodos[request.method];
+    if (!handler) {
       return json({ error: "Método no permitido." }, 405);
     }
 
