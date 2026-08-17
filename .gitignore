@@ -4,3 +4,9 @@ node_modules/
 *.local
 .DS_Store
 npm-debug.log*
+
+# Credenciales de service account: NUNCA al repo
+*.json.key
+*service-account*.json
+*-sa.json
+tarot-product-page*.json

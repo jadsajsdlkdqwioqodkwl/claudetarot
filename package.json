@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler pages dev . --compatibility-date=2026-01-01",
     "check": "node scripts/check.mjs",
+    "setup:sheet": "NODE_USE_ENV_PROXY=1 node scripts/setup-sheet.mjs",
     "deploy": "wrangler pages deploy ."
   },
   "devDependencies": {
