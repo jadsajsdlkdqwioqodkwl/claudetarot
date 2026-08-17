@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit de Tarot para Principiantes — Tarot Store Perú</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  
+  :root {
+    var(--bg):#f5f5f7; 
+    --card:#ffffff; 
+    --brand-teal:#068988;
+    --plum:#111111; 
+    --purple-soft:#007BFF; 
+    --gold:#FFD700; 
+    --gold-deep:#111111; 
+    --gold-soft:#E0E0E0; 
+    --ink:#111111; 
+    --muted:#666666; 
+    --line:#E0E0E0;
+    --green:#28A745; 
+    --cta1:#FF2A00; 
+    --cta2:#FF6A00; 
+    --price-old:#E53935; 
+    --blue-accent:#2D9CDB; 
+    --blue-dark:#1E3A8A; 
+    --body-bg: #f2f2f4;
+    --soft-tint: #F4F9FF;
+  }
+  
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--body-bg); color: var(--ink); line-height: 1.4; overflow-x: hidden; }
+  .wrap { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); padding-bottom: 96px; }
+  img { max-width: 100%; display: block; }
+  .ico { width: 1em; height: 1em; display: inline-block; vertical-align: -.125em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  
+  .ph { background: repeating-linear-gradient(45deg, #f4f4f9, #f4f4f9 12px, #eef0f5 12px, #eef0f5 24px); border: 1.5px dashed var(--purple-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--purple-soft); font-size: 12px; font-weight: 600; padding: 8px; min-height: 60px; }
+  .pad { padding: 0 20px; }
+  
+  .fullimg { width: 100%; display: block; }
+  .fullimg img { width: 100%; height: auto; display: block; }
+  .fullimg .ph { width: 100%; min-height: 340px; border-radius: 0; border-left: none; border-right: none; }
+  
+  .rating-row { padding: 16px 20px 4px; display: flex; align-items: center; gap: 8px; }
+  .stars { color: var(--gold); display: inline-flex; gap: 1px; font-size: 17px; }
+  .rating-txt { color: var(--purple-soft); font-weight: 600; font-size: 14px; }
+  
+  .badge-free { display: inline-flex; align-items: center; background: #e6f3ef; color: var(--green); padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; margin: 8px 20px 0; }
+  
+  h1.title { padding: 8px 20px; font-size: 24px; font-weight: 800; line-height: 1.2; color: var(--plum); }
+  h1.title .chk { color: var(--green); display: inline-flex; vertical-align: -2px; }
+  
+  .viewing { padding: 0 20px 12px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--muted); }
+  .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--price-old); display: inline-block; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+  
+  .price-block { padding: 0 20px 10px; }
+  .antes { color: var(--price-old); font-weight: 700; font-size: 16px; text-decoration: line-through; }
+  .ahora { font-size: 38px; font-weight: 800; color: var(--ink); margin-top: -4px; }
+  
+  .stock { padding: 10px 20px 4px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .stock .gdot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+  .stock-bar { margin: 0 20px 18px; height: 8px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+  .stock-bar span { display: block; height: 100%; width: 46%; background: var(--green); }
+  
+  .cta { display: block; width: calc(100% - 40px); margin: 0 20px 22px; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #ffffff; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 6px 18px rgba(255,42,0,.3); transition: transform 0.2s; }
+  .cta:active { transform: scale(0.98); }
+  .buzz { animation: buzz 2s ease-in-out infinite; transform-origin: center; }
+  @keyframes buzz {
+    0%,82%,100%{transform:translateX(0) rotate(0)}
+    84%{transform:translateX(-3px) rotate(-.8deg)}86%{transform:translateX(3px) rotate(.8deg)}
+    88%{transform:translateX(-3px) rotate(-.8deg)}90%{transform:translateX(3px) rotate(.8deg)}
+    92%{transform:translateX(-2px) rotate(-.5deg)}94%{transform:translateX(2px) rotate(.5deg)}
+    96%{transform:translateX(-1px)}98%{transform:translateX(1px)}
+  }
+  .cta .l1 { font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .cta .l2 { font-size: 13px; font-weight: 600; margin-top: 4px; opacity: 0.9; }
+  
+  .rev-wrap { margin: 0 20px 22px; }
+  .rev-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; scrollbar-width: none; }
+  .rev-track::-webkit-scrollbar { display: none; }
+  .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; display: flex; gap: 12px; background: var(--card); }
+  .rev-card .ph { width: 64px; height: 64px; min-width: 64px; border-radius: 8px; }
+  .rev-card .name { font-weight: 700; font-size: 15px; color: var(--plum); }
+  .rev-card .rs { color: var(--gold); font-size: 13px; margin: 2px 0; }
+  .rev-card .rt { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .rev-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .rev-arrow { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .rev-dots { display: flex; gap: 6px; }
+  .rev-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: .2s; }
+  .rev-dots i.on { background: var(--purple-soft); width: 18px; border-radius: 4px; }
+  
+  .clientes { text-align: center; padding: 24px 20px 8px; }
+  .clientes h2 { font-size: 22px; font-weight: 800; color: var(--plum); line-height: 1.2; }
+  .clientes .big { font-size: 44px; font-weight: 800; color: var(--ink); margin-top: 4px; }
+  .clientes .cstars { color: var(--gold); font-size: 20px; }
+  .clientes small { color: var(--muted); font-size: 13px; display: block; margin-top: 4px; }
+  
+  .rlist { padding: 6px 20px 22px; }
+  .rlist .item { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+  .rlist .top { display: flex; justify-content: space-between; align-items: center; }
+  .rlist .who { font-weight: 700; font-size: 15px; color: var(--plum); }
+  .rlist .date { font-size: 12px; color: var(--muted); }
+  .rlist .verif { display: flex; align-items: center; gap: 5px; color: var(--green); font-size: 12px; font-weight: 600; margin: 6px 0; }
+  .rlist .rs { color: var(--gold); font-size: 14px; }
+  .rlist .rtitle { font-weight: 700; font-size: 15px; margin: 6px 0 4px; color: var(--ink); }
+  .rlist .rtext { font-size: 13px; color: var(--muted); }
+  .rlist .rimg { margin-top: 10px; width: 100%; border-radius: 8px; overflow: hidden; background: #f0f0f0; }
+  
+  /* Meta Footer */
+  .meta-footer { text-align: center; padding: 20px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  
+  /* Sticky CTA Container */
+  .sticky-cta-wrap {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(0); width: 100%; max-width: 480px; background: var(--bg); padding: 12px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); z-index: 45; transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
+  .sticky-cta-wrap.hidden { transform: translateX(-50%) translateY(120%); opacity: 0; pointer-events: none; }
+  .sticky-cta-wrap .cta { margin: 0; width: 100%; }
+
+  /* Toast Notification */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(200%); width: calc(100% - 32px); max-width: 448px; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.15); padding: 12px 14px; display: flex; gap: 12px; align-items: center; z-index: 50; border: 1px solid var(--line); transition: transform .55s cubic-bezier(.16,1,.3,1), bottom 0.3s ease; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  body.sticky-visible .toast { bottom: 95px; } 
+
+  .toast .ph { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; }
+  .toast .tname { font-weight: 700; font-size: 13px; color: var(--plum); }
+  .toast .tprod { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toast .tx { margin-left: auto; color: var(--muted); cursor: pointer; padding: 4px; }
+  
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: none; overflow-y: auto; padding: 14px 0; }
+  .overlay.on { display: block; }
+  .modal { background: #fff; width: calc(100% - 24px); max-width: 456px; margin: 0 auto; border-radius: 16px; position: relative; padding: 22px 20px 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  .mclose { position: absolute; top: 16px; right: 16px; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px; z-index: 10; }
+  
+  .logo-circle { width: 100px; height: 100px; margin: 0 auto 12px; }
+  .logo-circle img { width: 100%; height: 100%; object-fit: contain; }
+  
+  .garantia { text-align: center; color: var(--price-old); font-size: 20px; font-weight: 800; margin: 10px 0 20px; line-height: 1.2; }
+  
+  .variants { display: flex; gap: 10px; margin-bottom: 20px; }
+  .vcard { flex: 1; border: 2px solid var(--line); border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; position: relative; background: #fff; transition: 0.2s; }
+  .vcard.sel { border-color: var(--purple-soft); background: var(--soft-tint); }
+  .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+  .vcard.sel .radio { border-color: var(--purple-soft); }
+  .vcard.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--purple-soft); }
+  .vcard .ph { width: 100%; height: 80px; margin-bottom: 10px; border-radius: 8px; }
+  .vcard .vname { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--plum); }
+  .vcard .vprice { font-size: 18px; font-weight: 800; margin-top: 6px; color: var(--ink); }
+  .vcard .vold { font-size: 12px; color: var(--muted); text-decoration: line-through; margin-top: 2px; }
+  .vbadge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--price-old); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 8px rgba(0,0,0,.15); }
+  
+  .sect-title { font-size: 16px; font-weight: 800; margin: 12px 0 10px; color: var(--plum); }
+  .ship-opts { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #fff; }
+  .ship-opt { display: flex; align-items: center; gap: 12px; padding: 16px 14px; cursor: pointer; border-bottom: 1px solid var(--line); transition: background 0.2s; }
+  .ship-opt:last-child { border-bottom: none; }
+  .ship-opt.sel { background: var(--soft-tint); }
+  .ship-opt .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .ship-opt.sel .radio { border-color: var(--ink); }
+  .ship-opt.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
+  .ship-opt .txt { flex: 1; }
+  .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
+  .ship-opt .txt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
+  
+  .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
+  .fg { margin-bottom: 16px; }
+  .fg label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--ink); }
+  .fg label .req { color: var(--price-old); }
+  .fg .hint { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.3; font-style: italic; }
+  .fg .input-icon { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; transition: border 0.2s; }
+  .fg .input-icon:focus-within { border-color: var(--purple-soft); }
+  .fg .input-icon .ic { background: #F0F0F0; padding: 0 14px; display: flex; align-items: center; color: var(--muted); font-size: 18px; border-right: 1px solid var(--line); }
+  .fg .input-icon input { border: none; outline: none; flex: 1; padding: 14px; font-size: 14px; }
+  select, .sel-input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; background: #fff; outline: none; color: var(--ink); transition: border 0.2s; }
+  select:focus, .sel-input:focus { border-color: var(--purple-soft); }
+  
+  .entrega-note { text-align: center; color: var(--blue-dark); font-size: 15px; font-weight: 800; margin: 20px 0 16px; line-height: 1.4; }
+  
+  .btn-pedido { width: 100%; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #fff; border-radius: 12px; padding: 18px; margin-top: 6px; box-shadow: 0 6px 16px rgba(255,42,0,.3); transition: transform 0.2s; }
+  .btn-pedido:active { transform: scale(0.98); }
+  .btn-pedido .l1 { font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-pedido .l2 { font-size: 13px; font-weight: 600; margin-top: 4px; opacity: 0.9; }
+  
+  .wa-note { text-align: center; color: var(--green); font-size: 14px; font-weight: 700; margin: 16px 0; line-height: 1.4; display: flex; justify-content: center; align-items: center; gap: 6px; }
+  
+  .seals { display: flex; justify-content: center; gap: 16px; padding: 10px 0; }
+  .seals img { width: 70px; height: 70px; object-fit: contain; }
+  
+  .upsell-head { text-align: center; margin-bottom: 16px; }
+  .upsell-head .l1 { color: var(--cta1); font-size: 22px; font-weight: 800; }
+  .upsell-head .l2 { color: var(--plum); font-size: 16px; font-weight: 800; margin-top: 4px; }
+  .upsell-timer { background: #fff9f9; border: 1px solid rgba(255,42,0,0.3); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 16px; }
+  .upsell-timer .cd { color: var(--cta1); font-size: 32px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  
+  /* Upsell Square Carousel */
+  .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; margin-bottom: 16px; scrollbar-width: none; background: var(--soft-tint); }
+  .u-carousel::-webkit-scrollbar { display: none; }
+  .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .u-carousel img { width: 100%; height: 100%; object-fit: cover; }
+  
+  .upsell-list { font-size: 14px; margin: 16px 0; background: var(--soft-tint); padding: 14px; border-radius: 12px; }
+  .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
+  .upsell-list .ck { color: var(--green); flex-shrink: 0; }
+  
+  .upsell-price { text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+  .upsell-price s { color: var(--price-old); font-size: 18px; font-weight: 500; }
+  .upsell-price b { color: var(--ink); font-size: 32px; font-weight: 800; }
+  
+  /* Botón Upsell mejorado y shaky */
+  @keyframes shaky {
+    0% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-1deg); }
+    20%, 40%, 60%, 80% { transform: translateX(4px) rotate(1deg); }
+    100% { transform: translateX(0); }
+  }
+  .btn-add { width: 100%; border: none; background: var(--green); color: #fff; font-size: 18px; font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 18px; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(40,167,69,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-add.shaky { animation: shaky 3s infinite ease-in-out; }
+  
+  /* Botón Upsell No más visible */
+  .btn-no { width: 100%; border: 1.5px solid var(--line); background: #f9f9f9; color: var(--plum); font-size: 16px; font-weight: 700; padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+  .btn-no:active { background: #eeeeee; }
+</style>
+</head>
+<body class="sticky-visible">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24"><path d="M12 2l2.4 1.8 3-.2.9 2.9 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-.9 2.9-3-.2L12 22l-2.4-1.8-3 .2-.9-2.9L3.3 15l.9-2.9-.9-2.9 2.4-1.8.9-2.9 3 .2z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 100-4 2 2 0 000 4zM18 18a2 2 0 100-4 2 2 0 000 4z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M4 4h5l2 5-3 2a12 12 0 006 6l2-3 5 2v5a2 2 0 01-2 2A17 17 0 014 6a2 2 0 010-2z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8"/></symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-d" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c3 4 5 6 5 9a5 5 0 01-10 0c0-1 .5-2 1.5-3C9 11 12 9 12 3z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><path d="M9 20a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2zm-9.8-2h11.6L21 7H6M3 3h2l.4 2M6 7l1.3 11"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="fullimg"><img src="1.png" alt="Kit de Tarot para Principiantes" onerror="this.parentNode.innerHTML='<div class=ph>Banner principal (1.png)</div>'"></div>
+  
+  <div class="rating-row">
+    <span class="stars"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></span>
+    <span class="rating-txt">(4.9/5) en +1286 Reseñas</span>
+  </div>
+  
+  <div class="badge-free">Envío gratis a todo Perú</div>
+  
+  <h1 class="title">Kit de tarot para principiantes</h1>
+  <div class="viewing"><span class="rdot"></span> 12 Personas viendo este producto AHORA!</div>
+  
+  <div class="price-block">
+    <div class="antes">Antes S/ 129.00</div>
+    <div class="ahora">Ahora S/ 79.00</div>
+  </div>
+  
+  <div class="stock"><span class="gdot"></span> Solo quedan 23 kits en stock</div>
+  <div class="stock-bar"><span></span></div>
+  
+  <!-- Main CTA 1 -->
+  <button class="cta buzz" onclick="openCOD()">
+    <div class="l1">Quiero aprender tarot</div>
+  </button>
+
+  <div class="rev-wrap">
+    <div class="rev-track" id="revTrack">
+      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
+      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
+      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
+    </div>
+    <div class="rev-nav">
+      <div class="rev-arrow" onclick="revMove(-1)"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
+      <div class="rev-dots" id="revDots"></div>
+      <div class="rev-arrow" onclick="revMove(1)"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
+    </div>
+  </div>
+
+  <div class="fullimg"><img src="2.png" alt="Ahora puedes aprender paso a paso" onerror="this.parentNode.innerHTML='<div class=ph>2.png (Problema)</div>'"></div>
+  <div class="fullimg"><img src="3.png" alt="Todo lo que puedes aprender" onerror="this.parentNode.innerHTML='<div class=ph>3.png (Aprende)</div>'"></div>
+
+  <!-- Main CTA 2 -->
+  <button class="cta buzz" style="margin-top:24px" onclick="openCOD()">
+    <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> EMPIEZA TU CAMINO EN EL TAROT</div>
+    <div class="l2">Pago contra entrega disponible</div>
+  </button>
+
+  <div class="clientes">
+    <h2>Lo que nuestros clientes dicen de nosotros</h2>
+    <div class="big">4.8</div>
+    <div class="cstars"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
+    <small>+546 Reseñas verificadas</small>
+  </div>
+
+  <!-- Añadidas las 3 reseñas adicionales con foto -->
+  <div class="rlist">
+    <div class="item">
+      <div class="top"><span class="who">Johana D.</span><span class="date">Febrero 2026</span></div>
+      <div class="verif"><svg class="ico"><use href="#i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
+      <div class="rtitle">Excelente Kit</div>
+      <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
+      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
+    </div>
+    
+    <div class="item">
+      <div class="top"><span class="who">Mariana V.</span><span class="date">Enero 2026</span></div>
+      <div class="verif"><svg class="ico"><use href="#i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
+      <div class="rtitle">Muy recomendable</div>
+      <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
+      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
+    </div>
+    
+    <div class="item">
+      <div class="top"><span class="who">Silvia P.</span><span class="date">Diciembre 2025</span></div>
+      <div class="verif"><svg class="ico"><use href="#i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
+      <div class="rtitle">El mejor regalo</div>
+      <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
+      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
+    </div>
+
+    <div class="item">
+      <div class="top"><span class="who">Fernanda L.</span><span class="date">Noviembre 2025</span></div>
+      <div class="verif"><svg class="ico"><use href="#i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
+      <div class="rtitle">Práctico y bonito</div>
+      <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
+      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
+    </div>
+  </div>
+
+  <!-- Footer amigable para Meta Inc -->
+  <footer class="meta-footer">
+    <p>This site is not a part of the Facebook website or Facebook Inc. Additionally, This site is NOT endorsed by Facebook in any way. FACEBOOK is a trademark of FACEBOOK, Inc.</p>
+  </footer>
+
+</div>
+
+<!-- Sticky CTA Container -->
+<div class="sticky-cta-wrap">
+  <button class="cta buzz" onclick="openCOD()">
+    <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
+    <div class="l2">Envío gratis a todo el Perú</div>
+  </button>
+</div>
+
+<!-- Toast Floating Notification -->
+<div class="toast" id="toast"><div class="ph">f</div><div><div class="tname" id="toastName">Maria Garcia de Piura compró:</div><div class="tprod">Kit de Tarot para Principiantes &middot; hace 42 min</div></div><div class="tx" onclick="hideToast(true)"><svg class="ico"><use href="#i-x"/></svg></div></div>
+
+<!-- Modal COD -->
+<div class="overlay" id="codOverlay">
+  <div class="modal">
+    <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
+    
+    <div class="logo-circle">
+      <!-- Se requiere que el logo sea SVG -->
+      <img src="logo.svg" alt="Logo de la tienda" onerror="this.outerHTML='<div class=ph style=\'border-radius:50%\'>LOGO SVG</div>'">
+    </div>
+    <div class="garantia">Garantía de 90 días por tu pedido</div>
+    
+    <div class="variants">
+      <div class="vcard sel" data-var="1kit" onclick="selVar(this)">
+        <div class="radio"></div>
+        <div class="ph">1 Kit</div>
+        <div class="vname">1 Kit de Tarot Completo</div>
+        <div class="vprice">S/. 79.00</div>
+        <div class="vold">S/. 129.00</div>
+      </div>
+      <div class="vcard" data-var="2kit" onclick="selVar(this)">
+        <div class="vbadge"><svg class="ico"><use href="#i-flame"/></svg> Más Vendido</div>
+        <div class="radio"></div>
+        <div class="ph">2 Kits</div>
+        <div class="vname">2 Kits de Tarot Completo</div>
+        <div class="vprice">S/. 139.00</div>
+        <div class="vold">S/. 258.00</div>
+      </div>
+    </div>
+    
+    <div class="sect-title">Método de Envío</div>
+    <div class="ship-opts">
+      <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><small>Lima. Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+      <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><small>Provincia. Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+    </div>
+    
+    <div class="form-head">Completa tu información</div>
+    
+    <!-- Shared Questions -->
+    <div class="fg">
+      <label>Nombres<span class="req">*</span></label>
+      <div class="input-icon">
+        <span class="ic"><svg class="ico"><use href="#i-user"/></svg></span>
+        <input type="text" id="fName" placeholder="Coloca tu nombre">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Whatsapp <span class="req">*</span></label>
+      <div class="input-icon">
+        <span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span>
+        <input type="tel" id="fPhone" placeholder="Coloca tu Whatsapp">
+      </div>
+      <!-- Respuestas de las FAQ sutilmente integradas aquí -->
+      <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega en empaque discreto y embalado.</span>
+    </div>
+
+    <!-- PAGO EN CASA (LIMA) -> Simplificado -->
+    <div id="boxCasa">
+      <div class="fg">
+        <label>Dirección de Entrega <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Coloca tu dirección" id="fDir">
+        <!-- Respuestas de las FAQ sutilmente integradas aquí -->
+        <span class="hint">Entregas en horario de la tarde, el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
+      </div>
+    </div>
+
+    <!-- AGENCIA (PROVINCIA) -> Simplificado -->
+    <div id="boxAg" style="display:none">
+      <div class="fg">
+        <label>Agencia de Destino <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="fSucursal">
+        <!-- Respuestas de las FAQ sutilmente integradas aquí -->
+        <span class="hint">Envíos por Shalom y Olva. Te enviaremos por WhatsApp la foto de tu comprobante con el número de seguimiento.</span>
+      </div>
+    </div>
+
+    <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan -->
+    <input type="text" id="fWebsite" tabindex="-1" autocomplete="off" aria-hidden="true"
+           style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
+    <div class="entrega-note" id="noteEntrega">Entrega para Lima al día siguiente y provincia 2-3 días</div>
+
+    <button class="btn-pedido buzz" id="btnPedido" onclick="submitCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> REALIZAR PEDIDO</div>
+      <div class="l2">Pedir Ahora</div>
+    </button>
+    
+    <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
+    
+    <!-- Badges actualizados a webp (placeholder para las imágenes en el entorno web) -->
+    <div class="seals">
+      <img src="garantia.webp" alt="Garantía" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Garantía .webp</div>'">
+      <img src="tienda-segura.webp" alt="Tienda Segura" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Tienda Segura .webp</div>'">
+      <img src="compra-segura.webp" alt="Compra Segura" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Compra Segura .webp</div>'">
+    </div>
+  </div>
+</div>
+
+<!-- Modal Upsell -->
+<div class="overlay" id="upsellOverlay">
+  <div class="modal">
+    <span class="mclose" onclick="closeAll()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
+    
+    <div id="u1">
+      <div class="upsell-head">
+        <div class="l1">¡SUPER OFERTA!</div>
+        <div class="l2">¡Solo por tiempo limitado!</div>
+      </div>
+      <div class="upsell-timer">
+        <div>¡Llévate un <b>Péndulo de Amatista + Mapa</b> a un super precio!</div>
+        <div class="cd" id="cd">09:58</div>
+      </div>
+      
+      <!-- Carrusel cuadrado y deslizable para el péndulo -->
+      <div class="u-carousel">
+        <div class="slide">[Foto Péndulo 1]</div>
+        <div class="slide">[Foto Péndulo 2]</div>
+        <div class="slide">[Foto Péndulo 3]</div>
+      </div>
+      
+      <div class="upsell-list">
+        <b>Incluye:</b>
+        <div><svg class="ico ck"><use href="#i-check"/></svg> Péndulo de amatista natural</div>
+        <div><svg class="ico ck"><use href="#i-check"/></svg> Mapa de respuestas Sí / No</div>
+      </div>
+      <div class="upsell-price"><s>S/. 79.00</s><b>S/. 30.00</b></div>
+      
+      <!-- Botón con icono, shaky y mejor tipografía -->
+      <button class="btn-add shaky" onclick="addUpsell('pendulo'); nextUpsell()">
+        <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR AL PEDIDO
+      </button>
+      
+      <!-- Botón de rechazo más visible -->
+      <button class="btn-no" onclick="nextUpsell()">No, gracias</button>
+    </div>
+
+    <div id="u2" style="display:none;">
+      <div class="upsell-head">
+        <div class="l1">ÚLTIMA OPORTUNIDAD</div>
+        <div class="l2">Protege y limpia tus cartas</div>
+      </div>
+      <div class="ph" style="height:220px;margin-bottom:16px;background:var(--soft-tint);">Imagen (Set Velas)</div>
+      <div class="upsell-list">
+        <b>El Set Incluye:</b>
+        <div><svg class="ico ck"><use href="#i-check"/></svg> Velas intencionadas</div>
+        <div><svg class="ico ck"><use href="#i-check"/></svg> Incienso purificador</div>
+      </div>
+      <div class="upsell-price"><s>S/. 60.00</s><b>S/. 30.00</b></div>
+      
+      <!-- Botón con icono, shaky y mejor tipografía -->
+      <button class="btn-add shaky" onclick="addUpsell('velas'); closeAll()">
+        <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR Y FINALIZAR
+      </button>
+      
+      <button class="btn-no" onclick="closeAll()">No, terminar pedido sin añadir</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function openCOD() {
+    document.getElementById('codOverlay').classList.add('on');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCOD() {
+    document.getElementById('codOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+  
+  function selVar(el) {
+    document.querySelectorAll('.vcard').forEach(function(c){ c.classList.remove('sel'); });
+    el.classList.add('sel');
+  }
+  
+  function selShip(mode) {
+    document.getElementById('shipCasa').classList.toggle('sel', mode === 'casa');
+    document.getElementById('shipAg').classList.toggle('sel', mode === 'agencia');
+    
+    document.getElementById('boxCasa').style.display = mode === 'casa' ? 'block' : 'none';
+    document.getElementById('boxAg').style.display = mode === 'agencia' ? 'block' : 'none';
+    
+    document.getElementById('noteEntrega').innerHTML = mode === 'casa' 
+        ? "Entrega para Lima al día siguiente" 
+        : "Provincia de 2 a 3 días hábiles por agencia";
+  }
+  
+  // Código del pedido devuelto por /api/order; lo usan los upsells.
+  var pedidoId = null;
+
+  function submitCOD() {
+    var n = document.getElementById('fName').value.trim();
+    var p = document.getElementById('fPhone').value.trim();
+    var esCasa = document.getElementById('shipCasa').classList.contains('sel');
+    var dir = document.getElementById('fDir').value.trim();
+    var suc = document.getElementById('fSucursal').value.trim();
+
+    if(!n) { alert('Ingresa tus nombres y apellidos'); return; }
+    if(p.replace(/\D/g,'').length < 9) { alert('Ingresa un WhatsApp válido de 9 dígitos'); return; }
+    if(esCasa && dir.length < 6) { alert('Ingresa tu dirección de entrega'); return; }
+    if(!esCasa && suc.length < 3) { alert('Indica la agencia de destino'); return; }
+
+    var btn = document.getElementById('btnPedido');
+    btn.disabled = true;
+    btn.querySelector('.l2').textContent = 'Enviando…';
+
+    // El upsell se muestra de inmediato: el pedido viaja en paralelo para no
+    // hacer esperar al cliente ni perder el momento de compra.
+    document.getElementById('upsellOverlay').classList.add('on');
+    startCD();
+
+    var sel = document.querySelector('.vcard.sel');
+
+    fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: n,
+        telefono: p,
+        envio: esCasa ? 'casa' : 'agencia',
+        direccion: dir,
+        agencia: suc,
+        variante: sel ? sel.getAttribute('data-var') : '1kit',
+        website: document.getElementById('fWebsite').value,
+        origen: document.referrer || 'directo',
+        utm: location.search || ''
+      })
+    })
+    .then(function(r){ return r.json().then(function(b){ return { ok: r.ok, body: b }; }); })
+    .then(function(res){
+      if(!res.ok) throw new Error(res.body.error || 'Error al registrar');
+      pedidoId = res.body.orderId;
+      // Reintenta los upsells que el cliente aceptó antes de tener el código.
+      upsellsPendientes.forEach(addUpsell);
+      upsellsPendientes = [];
+    })
+    .catch(function(err){
+      console.error(err);
+      alert('No pudimos registrar tu pedido. Escríbenos por WhatsApp y lo tomamos manualmente.');
+    })
+    .finally(function(){
+      btn.disabled = false;
+      btn.querySelector('.l2').textContent = 'Pedir Ahora';
+    });
+  }
+
+  // Si el cliente acepta un upsell antes de que responda /api/order, lo
+  // guardamos aquí y se envía apenas llegue el código del pedido.
+  var upsellsPendientes = [];
+
+  function addUpsell(item) {
+    if(!pedidoId) { upsellsPendientes.push(item); return; }
+    fetch('/api/upsell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: pedidoId, item: item })
+    }).catch(function(err){ console.error('upsell', err); });
+  }
+  
+  function nextUpsell() {
+    document.getElementById('u1').style.display = 'none';
+    document.getElementById('u2').style.display = 'block';
+  }
+  
+  function closeAll() {
+    document.getElementById('upsellOverlay').classList.remove('on');
+    document.getElementById('codOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+    setTimeout(function(){
+       document.getElementById('u1').style.display = 'block';
+       document.getElementById('u2').style.display = 'none';
+    }, 400);
+  }
+  
+  var cdInt, s = 598;
+  function startCD() {
+    clearInterval(cdInt);
+    s = 598;
+    document.getElementById('cd').textContent = '09:58';
+    cdInt = setInterval(function(){
+      s--;
+      var m = Math.floor(s/60), x = s%60;
+      document.getElementById('cd').textContent = String(m).padStart(2,'0') + ':' + String(x).padStart(2,'0');
+      if(s <= 0) clearInterval(cdInt);
+    }, 1000);
+  }
+  
+  // Slider Reseñas
+  var track = document.getElementById('revTrack'), cards = track.children.length, cur = 0, dots = document.getElementById('revDots');
+  for(var i=0; i<cards; i++) {
+    var d = document.createElement('i');
+    if(i===0) d.className = 'on';
+    dots.appendChild(d);
+  }
+  function revRender() {
+    track.scrollTo({left: cur * track.clientWidth, behavior: 'smooth'});
+    [].forEach.call(dots.children, function(d, i){ d.className = i===cur ? 'on' : ''; });
+  }
+  function revMove(dir) {
+    cur = (cur + dir + cards) % cards;
+    revRender();
+  }
+  track.addEventListener('scroll', function(){
+    var i = Math.round(track.scrollLeft / track.clientWidth);
+    if(i !== cur) {
+      cur = i;
+      [].forEach.call(dots.children, function(d, j){ d.className = j===cur ? 'on' : ''; });
+    }
+  });
+  
+  // Toast flotante
+  var toast = document.getElementById('toast'), toastName = document.getElementById('toastName');
+  var buyers = ['Maria Garcia de Piura','Jose Ramirez de Trujillo','Rosa Flores de Arequipa','Luis Torres de Lima','Ana Quispe de Cusco'];
+  var bi = 0, toastTimer;
+  function showToast() {
+    toastName.textContent = buyers[bi % buyers.length] + ' compró:';
+    bi++;
+    toast.classList.add('show');
+    toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast(manual) {
+    toast.classList.remove('show');
+    clearTimeout(toastTimer);
+    if(manual !== true) setTimeout(showToast, 8000);
+  }
+  setTimeout(showToast, 3000);
+
+  // INTERSECTION OBSERVER
+  document.addEventListener("DOMContentLoaded", function() {
+    const stickyWrap = document.querySelector('.sticky-cta-wrap');
+    const inlineCTAs = document.querySelectorAll('.cta:not(.sticky-cta-wrap .cta)');
+    const bodyClass = document.body.classList;
+    
+    let visibleCTAs = new Map();
+
+    const ctaObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        visibleCTAs.set(entry.target, entry.isIntersecting);
+      });
+      
+      const isAnyVisible = Array.from(visibleCTAs.values()).some(isVisible => isVisible);
+      
+      if (isAnyVisible) {
+        stickyWrap.classList.add('hidden');
+        bodyClass.remove('sticky-visible');
+      } else {
+        stickyWrap.classList.remove('hidden');
+        bodyClass.add('sticky-visible');
+      }
+    }, { root: null, threshold: 0.1 });
+    
+    inlineCTAs.forEach(cta => ctaObserver.observe(cta));
+  });
+</script>
+</body>
+</html>
