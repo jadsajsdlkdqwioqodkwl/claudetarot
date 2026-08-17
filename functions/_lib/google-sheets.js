@@ -115,3 +115,52 @@ export async function appendRow(env, row) {
 
   return res.json();
 }
+
+/**
+ * Lee un rango en formato A1 (ej. "Pedidos!B:B").
+ * @returns {Promise<string[][]>} filas con sus valores
+ */
+export async function getValues(env, rangeA1) {
+  const accessToken = await getAccessToken(env);
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
+    `/values/${encodeURIComponent(rangeA1)}`;
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) {
+    if (res.status === 401) cachedToken = null;
+    throw new Error(`Google Sheets no pudo leer ${rangeA1} (${res.status}): ${await res.text()}`);
+  }
+  const body = await res.json();
+  return body.values || [];
+}
+
+/** Escribe valores en un rango concreto (ej. "Pedidos!K7:L7"). */
+export async function updateValues(env, rangeA1, values) {
+  const accessToken = await getAccessToken(env);
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
+    `/values/${encodeURIComponent(rangeA1)}?valueInputOption=USER_ENTERED`;
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ values })
+  });
+  if (!res.ok) {
+    if (res.status === 401) cachedToken = null;
+    throw new Error(`Google Sheets no pudo escribir ${rangeA1} (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
+}
+
+/**
+ * Busca el número de fila (1-indexado, como lo muestra Sheets) de un pedido
+ * por su código en la columna B. Devuelve null si no existe.
+ */
+export async function findRowByOrderId(env, orderId) {
+  const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
+  const columna = await getValues(env, `${sheetName}!B:B`);
+  const index = columna.findIndex((fila) => fila[0] === orderId);
+  return index === -1 ? null : index + 1;
+}

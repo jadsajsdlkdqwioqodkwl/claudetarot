@@ -1,6 +1,6 @@
 /**
- * POST /api/order — recibe el formulario COD, lo guarda en Google Sheets
- * y dispara la confirmación por WhatsApp (Evolution API).
+ * POST /api/order — recibe el formulario COD del modal, lo guarda en Google
+ * Sheets y dispara la confirmación por WhatsApp (Evolution API).
  *
  * Se ejecuta como Cloudflare Pages Function: las credenciales viven en
  * variables de entorno del proyecto, nunca en el bundle del navegador.
@@ -8,9 +8,8 @@
 
 import { appendRow } from "../_lib/google-sheets.js";
 import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../_lib/evolution.js";
+import { VARIANTES, clean, toE164Peru, makeOrderId } from "../_lib/pedido.js";
 
-const PRICES = { 1: 89, 2: 160, 3: 225 };
-const UNIT_PRICE = 89;
 const MAX_BODY_BYTES = 8 * 1024;
 
 const json = (data, status = 200) =>
@@ -22,69 +21,37 @@ const json = (data, status = 200) =>
     }
   });
 
-/** Recorta y normaliza texto libre para que no rompa la hoja ni el mensaje. */
-function clean(value, maxLength) {
-  return String(value ?? "")
-    .replace(/[\u0000-\u001F\u007F]/g, " ")
-    .trim()
-    .slice(0, maxLength);
-}
-
-/** 987654321 -> 51987654321 ; acepta también +51... o 51... */
-function toE164Peru(raw) {
-  const digits = String(raw ?? "").replace(/\D/g, "");
-  if (digits.length === 9 && digits.startsWith("9")) return `51${digits}`;
-  if (digits.length === 11 && digits.startsWith("51")) return digits;
-  if (digits.length >= 10 && digits.length <= 15) return digits; // otro país
-  return null;
-}
-
-/** TC-8F3K2Q — corto, legible por teléfono y suficientemente único. */
-function makeOrderId() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  let code = "";
-  for (const byte of bytes) code += alphabet[byte % alphabet.length];
-  return `TC-${code}`;
-}
-
-function validate(payload) {
+export function validate(payload) {
   const errors = [];
 
   const nombre = clean(payload.nombre, 80);
   const telefono = toE164Peru(payload.telefono);
-  const email = clean(payload.email, 120);
-  const departamento = clean(payload.departamento, 40);
-  const distrito = clean(payload.distrito, 60);
-  const direccion = clean(payload.direccion, 140);
-  const referencia = clean(payload.referencia, 140);
-  const notas = clean(payload.notas, 300);
-  const horario = clean(payload.horario, 20) || "Cualquiera";
+  const envio = payload.envio === "agencia" ? "agencia" : "casa";
+  const direccion = clean(payload.direccion, 160);
+  const agencia = clean(payload.agencia, 160);
 
-  let cantidad = parseInt(payload.cantidad, 10);
-  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 10) cantidad = 1;
+  // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
+  const variante = VARIANTES[payload.variante] ? payload.variante : "1kit";
+  const { etiqueta, cantidad, precio } = VARIANTES[variante];
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.push("email");
-  if (!departamento) errors.push("departamento");
-  if (distrito.length < 3) errors.push("distrito");
-  if (direccion.length < 6) errors.push("direccion");
+  if (envio === "casa" && direccion.length < 6) errors.push("direccion");
+  if (envio === "agencia" && agencia.length < 3) errors.push("agencia");
 
   return {
     errors,
     order: {
       nombre,
       telefono,
-      email,
-      departamento,
-      distrito,
+      envio,
       direccion,
-      referencia,
-      notas,
-      horario,
+      agencia,
+      variante,
+      etiqueta,
       cantidad,
-      total: PRICES[cantidad] ?? cantidad * UNIT_PRICE,
+      subtotal: precio,
+      total: precio,
       origen: clean(payload.origen, 200),
       utm: clean(payload.utm, 200)
     }
@@ -94,7 +61,6 @@ function validate(payload) {
 export async function onRequestPost(context) {
   const { request, env, waitUntil } = context;
 
-  // --- Cuerpo ---
   let payload;
   try {
     const raw = await request.text();
@@ -104,12 +70,11 @@ export async function onRequestPost(context) {
     return json({ error: "No pudimos leer el formulario." }, 400);
   }
 
-  // --- Honeypot: si un bot llenó el campo oculto, respondemos 200 sin guardar ---
+  // Honeypot: si un bot llenó el campo oculto, respondemos 200 sin guardar.
   if (clean(payload.website, 50)) {
     return json({ ok: true, orderId: makeOrderId(), whatsappSent: true });
   }
 
-  // --- Validación ---
   const { errors, order } = validate(payload);
   if (errors.length) {
     return json({ error: "Revisa los datos del formulario.", fields: errors }, 422);
@@ -118,21 +83,20 @@ export async function onRequestPost(context) {
   order.orderId = makeOrderId();
   order.fecha = new Date().toISOString();
 
-  // --- 1) Guardar en Google Sheets (fuente de verdad: si esto falla, el pedido falla) ---
+  // 1) Sheets es la fuente de verdad: si falla, el pedido falla.
   const fila = [
     order.fecha,
     order.orderId,
     order.nombre,
     `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
-    order.email,
-    order.departamento,
-    order.distrito,
+    order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
     order.direccion,
-    order.referencia,
+    order.agencia,
+    order.etiqueta,
     order.cantidad,
+    order.subtotal,
+    "", // Upsells — lo completa /api/upsell si el cliente acepta
     order.total,
-    order.horario,
-    order.notas,
     "Pendiente",
     order.origen,
     order.utm,
@@ -149,7 +113,7 @@ export async function onRequestPost(context) {
     );
   }
 
-  // --- 2) Confirmación por WhatsApp (no bloquea: el pedido ya está guardado) ---
+  // 2) WhatsApp: el pedido ya está guardado, así que un fallo aquí no lo tumba.
   let whatsappSent = true;
   try {
     await sendWhatsAppText(env, order.telefono, buildCustomerMessage(order));
@@ -158,7 +122,6 @@ export async function onRequestPost(context) {
     whatsappSent = false;
   }
 
-  // Aviso al equipo, en segundo plano: nunca debe retrasar la respuesta al cliente.
   if (env.EVO_NOTIFY_NUMBER) {
     waitUntil(
       sendWhatsAppText(env, env.EVO_NOTIFY_NUMBER, buildInternalMessage(order)).catch((err) =>
@@ -169,7 +132,3 @@ export async function onRequestPost(context) {
 
   return json({ ok: true, orderId: order.orderId, total: order.total, whatsappSent });
 }
-
-// Exportado solo para las pruebas de `npm run check`.
-// Pages únicamente enruta los exports onRequest*, así que esto no crea otra ruta.
-export const __test = { toE164Peru, validate, makeOrderId, clean };

@@ -5,7 +5,7 @@
 
 /**
  * @param {object} env  Debe traer EVO_API_URL, EVO_INSTANCE y EVO_API_KEY
- * @param {string} phoneE164  Número en formato internacional sin "+" (ej. 51987654321)
+ * @param {string} phoneE164  Número internacional sin "+" (ej. 51987654321)
  * @param {string} text  Mensaje a enviar
  */
 export async function sendWhatsAppText(env, phoneE164, text) {
@@ -19,16 +19,8 @@ export async function sendWhatsAppText(env, phoneE164, text) {
 
   const res = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: apiKey
-    },
-    body: JSON.stringify({
-      number: phoneE164,
-      text,
-      delay: 0,
-      linkPreview: false
-    }),
+    headers: { "Content-Type": "application/json", apikey: apiKey },
+    body: JSON.stringify({ number: phoneE164, text, delay: 0, linkPreview: false }),
     // Si la instancia está caída no queremos colgar la respuesta al cliente.
     signal: AbortSignal.timeout(8000)
   });
@@ -40,38 +32,41 @@ export async function sendWhatsAppText(env, phoneE164, text) {
   return res.json();
 }
 
-/**
- * Mensaje de confirmación que recibe el cliente.
- */
+/** Confirmación que recibe el cliente apenas envía el formulario. */
 export function buildCustomerMessage(order) {
-  const lineas = [
+  const entrega =
+    order.envio === "casa"
+      ? [
+          `📍 Entrega a domicilio: ${order.direccion}`,
+          "Entregamos en Lima al día siguiente, en horario de tarde.",
+          "Pagas al recibir con *Yape, efectivo o POS*."
+        ]
+      : [
+          `📦 Recojo en agencia: ${order.agencia}`,
+          "Llega a provincia en 2 a 3 días hábiles por Shalom u Olva.",
+          "Se coordina un adelanto de *S/ 10* y el resto lo pagas al recoger.",
+          "Te enviamos por aquí la foto del comprobante con el número de seguimiento."
+        ];
+
+  return [
     `*¡Gracias por tu pedido, ${order.nombre.split(" ")[0]}!* 🔮`,
     "",
     `Pedido: *${order.orderId}*`,
-    `Producto: Mazo Tarot Claude — Edición Luna`,
-    `Cantidad: ${order.cantidad}`,
-    `Total a pagar al recibir: *S/ ${order.total}*`,
+    `Producto: ${order.etiqueta}`,
+    `Total: *S/ ${order.total}*`,
     "",
-    `Entrega en: ${order.direccion}, ${order.distrito}, ${order.departamento}`,
-    `Horario preferido: ${order.horario}`,
+    ...entrega,
     "",
-    "Tu pedido es *pago contra entrega*: pagas en efectivo o Yape cuando el repartidor llegue.",
-    "Te escribimos de nuevo cuando salga a ruta. ¿Alguna duda? Respóndenos por aquí."
-  ];
-  return lineas.join("\n");
+    "Cualquier duda respóndenos por este mismo chat."
+  ].join("\n");
 }
 
-/**
- * Aviso interno al equipo de ventas (opcional, si EVO_NOTIFY_NUMBER está definido).
- */
+/** Aviso interno al equipo de ventas (si EVO_NOTIFY_NUMBER está definido). */
 export function buildInternalMessage(order) {
   return [
-    `🆕 Pedido COD ${order.orderId}`,
+    `🆕 Pedido ${order.orderId}`,
     `${order.nombre} · +${order.telefono}`,
-    `${order.direccion}, ${order.distrito}, ${order.departamento}`,
-    `${order.cantidad} u. · S/ ${order.total} · ${order.horario}`,
-    order.notas ? `Nota: ${order.notas}` : null
-  ]
-    .filter(Boolean)
-    .join("\n");
+    order.envio === "casa" ? `Lima · ${order.direccion}` : `Provincia · ${order.agencia}`,
+    `${order.etiqueta} · S/ ${order.total}`
+  ].join("\n");
 }
