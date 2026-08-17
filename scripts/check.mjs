@@ -17,9 +17,9 @@ function check(name, condition, detail = "") {
   console.log(`${ok ? "✓" : "✗"} ${name}${ok || !detail ? "" : ` — ${detail}`}`);
 }
 
-const html = readFileSync(join(root, "index.html"), "utf8");
-const { VARIANTES, toE164Peru, makeOrderId } = await import(join(root, "functions/_lib/pedido.js"));
-const { validate } = await import(join(root, "functions/api/order.js"));
+const html = readFileSync(join(root, "public/index.html"), "utf8");
+const { VARIANTES, toE164Peru, makeOrderId } = await import(join(root, "src/lib/pedido.js"));
+const { validate } = await import(join(root, "src/api/order.js"));
 
 /* 1. Enganches del formulario */
 for (const id of ["fName", "fPhone", "fDir", "fSucursal", "fWebsite", "shipCasa", "btnPedido"]) {

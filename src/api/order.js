@@ -6,9 +6,9 @@
  * variables de entorno del proyecto, nunca en el bundle del navegador.
  */
 
-import { appendRow } from "../_lib/google-sheets.js";
-import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../_lib/evolution.js";
-import { VARIANTES, clean, toE164Peru, makeOrderId } from "../_lib/pedido.js";
+import { appendRow } from "../lib/google-sheets.js";
+import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../lib/evolution.js";
+import { VARIANTES, clean, toE164Peru, makeOrderId } from "../lib/pedido.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 

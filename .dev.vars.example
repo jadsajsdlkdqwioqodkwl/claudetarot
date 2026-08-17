@@ -1,0 +1,21 @@
+# Copia este archivo a `.dev.vars` y completa los valores reales.
+# `.dev.vars` está en .gitignore: nunca se sube al repositorio.
+#
+# En producción las variables de texto salen de wrangler.jsonc y los dos
+# secretos se cargan con `npx wrangler secret put <NOMBRE>`.
+
+GOOGLE_SHEET_ID="1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc"
+GOOGLE_SHEET_NAME="Pedidos"
+GOOGLE_CLIENT_EMAIL="crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com"
+
+# El private_key del JSON de la service account, completo y en una sola línea,
+# con los \n literales tal como vienen en el archivo.
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+
+# Evolution API — sin barra final en la URL.
+EVO_API_URL="https://evo.tudominio.com"
+EVO_INSTANCE="mi-instancia"
+EVO_API_KEY="tu-api-key"
+
+# Opcional: número propio (51987654321) para el aviso interno de cada pedido.
+EVO_NOTIFY_NUMBER=""

@@ -7,9 +7,9 @@
  * el lead ya está en la hoja.
  */
 
-import { findRowByOrderId, getValues, updateValues } from "../_lib/google-sheets.js";
-import { sendWhatsAppText } from "../_lib/evolution.js";
-import { UPSELLS, clean } from "../_lib/pedido.js";
+import { findRowByOrderId, getValues, updateValues } from "../lib/google-sheets.js";
+import { sendWhatsAppText } from "../lib/evolution.js";
+import { UPSELLS, clean } from "../lib/pedido.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
