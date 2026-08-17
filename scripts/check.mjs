@@ -68,8 +68,8 @@ const headers = readFileSync(join(root, "public/_headers"), "utf8");
 
 check("el pixel está inicializado", html.includes("fbq('init', '1598655637922566')"));
 check("PageView se dispara al cargar", html.includes("fbq('track', 'PageView')"));
-for (const evento of ["ViewContent", "AddToCart", "InitiateCheckout", "Lead", "Purchase"]) {
-  check(`el embudo dispara ${evento}`, html.includes(`'${evento}'`));
+for (const evento of ["ViewContent", "AddToCart", "InitiateCheckout"]) {
+  check(`la product page dispara ${evento}`, html.includes(`'${evento}'`));
 }
 
 // Los precios del pixel viven en el HTML; los de verdad, en el servidor.
@@ -89,6 +89,47 @@ const csp = headers.match(/Content-Security-Policy:.*/)?.[0] ?? "";
 check("la CSP permite el script del pixel", csp.includes("https://connect.facebook.net"));
 check("la CSP permite el pixel de imagen", /img-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
 check("la CSP permite las llamadas del pixel", /connect-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
+
+/* 5. Página de gracias y captura de identificadores para la Conversions API */
+const gracias = readFileSync(join(root, "public/gracias.html"), "utf8");
+const { COLUMNAS } = await import(join(root, "src/lib/hoja.js"));
+const { filaDePedido } = await import(join(root, "src/api/order.js"));
+
+check("el embudo termina en /gracias", html.includes("'/gracias?p='"));
+check("el Lead ya NO se dispara en la product page", !html.includes("'Lead'"));
+check("Purchase ya NO se dispara en el navegador", !html.includes("'Purchase'"));
+check("/gracias dispara Lead", gracias.includes("'Lead'"));
+check("/gracias usa el pedido como eventID",
+  gracias.includes("eventID: pedido + '-lead'"));
+check("/gracias enlaza al WhatsApp correcto", gracias.includes("wa.me/51928529656"));
+check("/gracias no se indexa", gracias.includes('name="robots" content="noindex"'));
+
+check("la página captura _fbp y _fbc", html.includes("fbCookie('_fbp')") && html.includes("fbCookie('_fbc')"));
+check("construye _fbc desde fbclid", html.includes("'fb.1.' + Date.now()"));
+check("el pedido envía fbp y fbc", html.includes("fbp: ident.fbp") && html.includes("fbc: ident.fbc"));
+
+// La fila que arma order.js tiene que encajar exactamente en los encabezados.
+const conIds = validate({ ...lima, fbp: "fb.1.9.1", fbc: "fb.1.9.abc" }).order;
+check("order.js acepta fbp y fbc", conIds.fbp === "fb.1.9.1" && conIds.fbc === "fb.1.9.abc");
+
+conIds.orderId = "TK-ABC234";
+conIds.fecha = new Date().toISOString();
+const fila = filaDePedido(conIds, new Headers({
+  "User-Agent": "Mozilla/5.0 (prueba)", "CF-IPCountry": "PE", "CF-Connecting-IP": "190.0.0.1"
+}));
+check("la fila encaja con los encabezados", fila.length === COLUMNAS.length,
+  `fila ${fila.length} vs ${COLUMNAS.length} columnas`);
+for (const col of ["FBP", "FBC", "Event ID Lead", "User Agent", "IP"]) {
+  check(`la hoja tiene la columna ${col}`, COLUMNAS.includes(col));
+}
+const dato = (col) => fila[COLUMNAS.indexOf(col)];
+check("FBP cae en su columna", dato("FBP") === "fb.1.9.1", String(dato("FBP")));
+check("FBC cae en su columna", dato("FBC") === "fb.1.9.abc", String(dato("FBC")));
+check("el Event ID coincide con el que dispara /gracias",
+  dato("Event ID Lead") === "TK-ABC234-lead", String(dato("Event ID Lead")));
+check("la IP es la del cliente", dato("IP") === "190.0.0.1", String(dato("IP")));
+check("Upsells sigue en K y Total en L",
+  COLUMNAS[10] === "Upsells" && COLUMNAS[11] === "Total");
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

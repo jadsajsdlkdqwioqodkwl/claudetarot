@@ -13,9 +13,11 @@ src/index.js            Router: /api/* al Worker, todo lo demás a los archivos
 src/api/order.js        POST /api/order  — guarda el pedido y confirma por WhatsApp
 src/api/upsell.js       POST /api/upsell — suma el upsell a la fila del pedido
 src/lib/pedido.js       Precios, variantes y utilidades compartidas
+src/lib/hoja.js         Esquema de columnas de la hoja (A–U)
 src/lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
 src/lib/evolution.js    Envío de WhatsApp y plantillas de mensaje
 public/index.html       Tu página (diseño original, sin cambios de estilo)
+public/gracias.html     /gracias — confirmación, CTA de WhatsApp y evento Lead
 public/kittarotcod/     Imágenes del producto
 public/_headers         Cabeceras de seguridad y caché
 scripts/check.mjs       Chequeos sin red: `npm run check`
@@ -42,7 +44,18 @@ Crea la hoja, nombra la pestaña **`Pedidos`** y pega estos encabezados en la fi
 |---|---|---|---|---|---|---|---|
 | Cantidad | Subtotal | Upsells | Total | Estado | Origen | UTM | País |
 
+| Q | R | S | T | U |
+|---|---|---|---|---|
+| FBP | FBC | Event ID Lead | User Agent | IP |
+
+`npm run setup:sheet` las escribe solas. **Q–U** son para la Conversions API:
+sin `FBP`/`FBC` Meta no puede casar el pedido con el clic del anuncio, y sin
+`User Agent`/`IP` baja mucho la calidad de coincidencia. El `Event ID Lead`
+es el mismo que dispara el pixel en `/gracias`, así que Meta deduplica.
+
 > El orden importa: `/api/upsell` escribe en **K** y **L** buscando el pedido por la columna **B**.
+> El esquema vive en `src/lib/hoja.js` y `npm run check` verifica que la fila
+> que arma `order.js` siga encajando con los encabezados.
 
 El **ID de la hoja** está en su URL: `docs.google.com/spreadsheets/d/`**`<ID>`**`/edit`.
 
@@ -122,28 +135,36 @@ npm run check                    # chequeos sin red ni credenciales
 
 Pixel `1598655637922566`, instalado en `public/index.html`. El embudo:
 
-| Evento | Cuándo | Valor |
-|---|---|---|
-| `PageView` | al cargar | — |
-| `ViewContent` | al cargar | 79 |
-| `AddToCart` | clic en el CTA, y otra vez si sube a 2 kits | 79 / 139 |
-| `InitiateCheckout` | primer campo del formulario que toca | según variante |
-| `Lead` | `/api/order` confirmó el pedido | total real |
-| `Purchase` | igual que `Lead` | total real |
-| `AddToCart` | order bump aceptado | 30 |
+| Evento | Dónde | Cuándo | Valor |
+|---|---|---|---|
+| `PageView` | product page | al cargar | — |
+| `ViewContent` | product page | al cargar | 79 |
+| `AddToCart` | product page | clic en el CTA | 79 |
+| `AddToCart` | product page | si sube a 2 kits | 139 |
+| `InitiateCheckout` | product page | primer campo que toca | según variante |
+| `AddToCart` | product page | order bump aceptado | 30 |
+| `PageView` | `/gracias` | al cargar | — |
+| `Lead` | `/gracias` | al cargar, con código de pedido | total real |
 
 `InitiateCheckout` va en el primer campo tocado, no al abrir el modal, para no
-contar clics accidentales. `Lead`, `Purchase` e `InitiateCheckout` se disparan
-una sola vez por sesión.
+contar clics accidentales. `InitiateCheckout` y `Lead` se disparan una sola vez.
 
-**`Lead` y `Purchase` juntos** es a propósito: `Lead` marca *pedido tomado* y
-`Purchase` es el evento por el que se optimizan las campañas COD. Si prefieres
-registrar `Purchase` recién al confirmar la entrega, pon `purchase: false` en el
-objeto `FB` de `public/index.html`.
+**El `Lead` vive en `/gracias`**, no en la respuesta de `/api/order`: así solo
+cuenta a quien de verdad terminó el embudo. Su `eventID` es `<pedido>-lead`, el
+mismo valor que queda guardado en la columna **S** de la hoja.
 
-Cada evento lleva `eventID` derivado del código de pedido, así que si más
-adelante se envían los mismos eventos desde el servidor con la Conversions API,
-Meta los deduplica solo.
+**`Purchase` no se dispara en el navegador.** Sale desde la hoja por Conversions
+API, usando el código de pedido como `event_id`.
+
+### Lo que se captura para la Conversions API
+
+`public/index.html` lee las cookies `_fbp` y `_fbc` y las manda con el pedido.
+`_fbc` solo existe si el visitante llegó con `?fbclid=…`, y el pixel puede
+tardar o estar bloqueado, así que la página la construye y la guarda ella misma
+con el formato de Meta: `fb.1.<timestamp>.<fbclid>`, con 90 días de vida.
+
+El Worker añade el `User-Agent` y la IP real del cliente (`CF-Connecting-IP`),
+que son los del navegador y no los del Worker.
 
 > Los precios del pixel viven en el HTML y los reales en `src/lib/pedido.js`.
 > `npm run check` falla si dejan de coincidir.
@@ -151,6 +172,17 @@ Meta los deduplica solo.
 Si el pixel no registra nada, revisa la CSP en `public/_headers`: necesita
 `connect.facebook.net` en `script-src` y `www.facebook.com` en `img-src` y
 `connect-src`, o el navegador lo bloquea entero.
+
+## Página de gracias
+
+`public/gracias.html`, servida en **`/gracias`**. El embudo termina ahí: al
+cerrar los upsells, `closeAll()` redirige con `?p=<pedido>&v=<total>`.
+
+Muestra el código de pedido, el total a pagar al recibir y un botón grande de
+WhatsApp a **+51 928 529 656** con el mensaje ya escrito. Lleva `noindex`.
+
+Si `/api/order` falló, no redirige: el cliente ve el aviso de error y no se
+cuenta un Lead que no existe.
 
 ## Cómo funciona el flujo
 
