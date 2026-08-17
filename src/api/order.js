@@ -6,9 +6,9 @@
  * variables de entorno del proyecto, nunca en el bundle del navegador.
  */
 
-import { appendRow } from "../_lib/google-sheets.js";
-import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../_lib/evolution.js";
-import { VARIANTES, clean, toE164Peru, makeOrderId } from "../_lib/pedido.js";
+import { appendRow } from "../lib/google-sheets.js";
+import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../lib/evolution.js";
+import { VARIANTES, clean, toE164Peru, makeOrderId } from "../lib/pedido.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -53,9 +53,50 @@ export function validate(payload) {
       subtotal: precio,
       total: precio,
       origen: clean(payload.origen, 200),
-      utm: clean(payload.utm, 200)
+      utm: clean(payload.utm, 200),
+
+      // Identificadores del navegador para la Conversions API. Van a la hoja
+      // tal cual; sin ellos Meta no puede casar el pedido con el clic del anuncio.
+      fbp: clean(payload.fbp, 120),
+      fbc: clean(payload.fbc, 255)
     }
   };
+}
+
+/**
+ * Arma la fila tal como la espera la hoja. El orden tiene que coincidir con
+ * COLUMNAS en ../lib/hoja.js — `npm run check` falla si se desalinean.
+ */
+export function filaDePedido(order, headers) {
+  const cabecera = (nombre) => headers?.get(nombre) || "";
+
+  return [
+    order.fecha,
+    order.orderId,
+    order.nombre,
+    `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
+    order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
+    order.direccion,
+    order.agencia,
+    order.etiqueta,
+    order.cantidad,
+    order.subtotal,
+    "", // Upsells — lo completa /api/upsell si el cliente acepta
+    order.total,
+    "Pendiente",
+    order.origen,
+    order.utm,
+    cabecera("CF-IPCountry"),
+
+    // Q–U: lo que la Conversions API necesita para casar este pedido con el
+    // clic del anuncio. El user agent y la IP tienen que ser los del navegador
+    // del cliente, no los del Worker.
+    order.fbp,
+    order.fbc,
+    `${order.orderId}-lead`, // mismo eventID que dispara el pixel en /gracias
+    clean(cabecera("User-Agent"), 400),
+    cabecera("CF-Connecting-IP")
+  ];
 }
 
 export async function onRequestPost(context) {
@@ -84,24 +125,7 @@ export async function onRequestPost(context) {
   order.fecha = new Date().toISOString();
 
   // 1) Sheets es la fuente de verdad: si falla, el pedido falla.
-  const fila = [
-    order.fecha,
-    order.orderId,
-    order.nombre,
-    `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
-    order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
-    order.direccion,
-    order.agencia,
-    order.etiqueta,
-    order.cantidad,
-    order.subtotal,
-    "", // Upsells — lo completa /api/upsell si el cliente acepta
-    order.total,
-    "Pendiente",
-    order.origen,
-    order.utm,
-    request.headers.get("CF-IPCountry") || ""
-  ];
+  const fila = filaDePedido(order, request.headers);
 
   try {
     await appendRow(env, fila);

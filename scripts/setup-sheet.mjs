@@ -11,14 +11,13 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { updateValues, getValues } from "../functions/_lib/google-sheets.js";
+import { updateValues, getValues } from "../src/lib/google-sheets.js";
+import { COLUMNAS, RANGO_ENCABEZADOS } from "../src/lib/hoja.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export const HEADERS = [
-  "Fecha", "Pedido", "Nombre", "WhatsApp", "Envío", "Dirección", "Agencia", "Variante",
-  "Cantidad", "Subtotal", "Upsells", "Total", "Estado", "Origen", "UTM", "País"
-];
+// El esquema vive en src/lib/hoja.js: es la misma fuente que usa el backend.
+export const HEADERS = COLUMNAS;
 
 /** Lee .dev.vars (KEY="valor") sin dependencias. */
 function loadDevVars() {
@@ -43,7 +42,7 @@ for (const key of ["GOOGLE_SHEET_ID", "GOOGLE_CLIENT_EMAIL", "GOOGLE_PRIVATE_KEY
   }
 }
 
-const [existente = []] = await getValues(env, `${sheetName}!A1:P1`);
+const [existente = []] = await getValues(env, `${sheetName}!${RANGO_ENCABEZADOS}`);
 if (existente.length && existente.join("|") === HEADERS.join("|")) {
   console.log("Los encabezados ya estaban correctos. Nada que hacer.");
   process.exit(0);
@@ -53,7 +52,7 @@ if (existente.length) {
   console.log("  " + existente.join(" | "));
 }
 
-await updateValues(env, `${sheetName}!A1:P1`, [HEADERS]);
+await updateValues(env, `${sheetName}!${RANGO_ENCABEZADOS}`, [HEADERS]);
 console.log(`Encabezados escritos en "${sheetName}":`);
 console.log("  " + HEADERS.join(" | "));
 console.log("\nRecuerda compartir la hoja con " + env.GOOGLE_CLIENT_EMAIL + " como Editor.");
