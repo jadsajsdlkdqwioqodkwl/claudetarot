@@ -221,6 +221,23 @@
   .btn-no { width: 100%; border: 1.5px solid var(--line); background: #f9f9f9; color: var(--plum); font-size: 16px; font-weight: 700; padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
   .btn-no:active { background: #eeeeee; }
 </style>
+
+<!-- Meta Pixel -->
+<script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window,document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1598655637922566');
+  fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" alt=""
+  src="https://www.facebook.com/tr?id=1598655637922566&ev=PageView&noscript=1"></noscript>
+<!-- Fin Meta Pixel -->
 </head>
 <body class="sticky-visible">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -520,7 +537,59 @@
 </div>
 
 <script>
+  /* ── Meta Pixel: eventos del embudo ───────────────────────────────────
+     Los precios de aquí deben coincidir con src/lib/pedido.js.
+     `npm run check` falla si dejan de coincidir. */
+  var FB = {
+    moneda: 'PEN',
+    producto: 'kit-tarot',
+    variantes: { '1kit': 79, '2kit': 139 },
+    bumps: { pendulo: 30, velas: 30 },
+    // Purchase además de Lead: Lead marca "pedido tomado" y Purchase es el
+    // evento por el que se optimizan las campañas COD. Ponlo en false si
+    // prefieres registrar Purchase recién al confirmar la entrega.
+    purchase: true,
+    enviados: {}
+  };
+
+  function fbTrack(evento, datos, unaVez, eventId) {
+    if (typeof fbq !== 'function') return; // pixel bloqueado, sin red o adblock
+    if (unaVez) {
+      if (FB.enviados[evento]) return;
+      FB.enviados[evento] = true;
+    }
+    // eventID permite deduplicar si más adelante se manda el mismo evento
+    // desde el servidor con la Conversions API.
+    fbq('track', evento, datos, eventId ? { eventID: eventId } : undefined);
+  }
+
+  /** La variante marcada en ese momento, con su precio y cantidad. */
+  function fbVariante() {
+    var sel = document.querySelector('.vcard.sel');
+    var v = (sel && sel.getAttribute('data-var')) || '1kit';
+    return { id: v, valor: FB.variantes[v] || FB.variantes['1kit'], unidades: v === '2kit' ? 2 : 1 };
+  }
+
+  fbTrack('ViewContent', {
+    content_ids: [FB.producto],
+    content_type: 'product',
+    content_name: 'Kit de Tarot para Principiantes',
+    value: FB.variantes['1kit'],
+    currency: FB.moneda
+  }, true);
+
   function openCOD() {
+    // Abrir el modal es el "añadir al carrito" de esta página: el cliente
+    // ya eligió variante y pidió el formulario.
+    var v = fbVariante();
+    fbTrack('AddToCart', {
+      content_ids: [FB.producto],
+      content_type: 'product',
+      contents: [{ id: FB.producto, quantity: v.unidades }],
+      value: v.valor,
+      currency: FB.moneda
+    });
+
     document.getElementById('codOverlay').classList.add('on');
     document.body.style.overflow = 'hidden';
   }
@@ -530,8 +599,24 @@
   }
   
   function selVar(el) {
+    // Las variantes están dentro del modal, así que el AddToCart de openCOD
+    // sale con el precio de 1 kit. Si el cliente sube a 2, lo reportamos con
+    // el valor nuevo; si vuelve a clicar la misma, no se repite.
+    var cambio = !el.classList.contains('sel');
+
     document.querySelectorAll('.vcard').forEach(function(c){ c.classList.remove('sel'); });
     el.classList.add('sel');
+
+    if (cambio) {
+      var v = fbVariante();
+      fbTrack('AddToCart', {
+        content_ids: [FB.producto],
+        content_type: 'product',
+        contents: [{ id: FB.producto, quantity: v.unidades }],
+        value: v.valor,
+        currency: FB.moneda
+      });
+    }
   }
   
   function selShip(mode) {
@@ -546,6 +631,40 @@
         : "Provincia de 2 a 3 días hábiles por agencia";
   }
   
+  // InitiateCheckout se dispara cuando el cliente toca el primer campo del
+  // formulario, no al abrir el modal: así no cuenta los clics accidentales.
+  ['fName', 'fPhone', 'fDir', 'fSucursal'].forEach(function(id) {
+    var campo = document.getElementById(id);
+    if (!campo) return;
+    campo.addEventListener('focus', function() {
+      var v = fbVariante();
+      fbTrack('InitiateCheckout', {
+        content_ids: [FB.producto],
+        content_type: 'product',
+        num_items: v.unidades,
+        value: v.valor,
+        currency: FB.moneda
+      }, true);
+    }, { once: true });
+  });
+
+  /** El servidor confirmó el pedido: Lead (y Purchase) con el total real. */
+  function fbPedidoConfirmado(body) {
+    var v = fbVariante();
+    var datos = {
+      content_ids: [FB.producto],
+      content_type: 'product',
+      contents: [{ id: FB.producto, quantity: v.unidades }],
+      num_items: v.unidades,
+      value: typeof body.total === 'number' ? body.total : v.valor,
+      currency: FB.moneda,
+      order_id: body.orderId
+    };
+    // El eventID sale del código de pedido, así que es estable y único.
+    fbTrack('Lead', datos, true, body.orderId + '-lead');
+    if (FB.purchase) fbTrack('Purchase', datos, true, body.orderId);
+  }
+
   // Código del pedido devuelto por /api/order; lo usan los upsells.
   var pedidoId = null;
 
@@ -591,6 +710,7 @@
     .then(function(res){
       if(!res.ok) throw new Error(res.body.error || 'Error al registrar');
       pedidoId = res.body.orderId;
+      fbPedidoConfirmado(res.body);
       // Reintenta los upsells que el cliente aceptó antes de tener el código.
       upsellsPendientes.forEach(addUpsell);
       upsellsPendientes = [];
@@ -610,7 +730,19 @@
   var upsellsPendientes = [];
 
   function addUpsell(item) {
+    // El evento va después de esta guarda a propósito: si el pedido aún no
+    // tiene código, addUpsell se vuelve a llamar al llegar y se contaría dos veces.
     if(!pedidoId) { upsellsPendientes.push(item); return; }
+
+    fbTrack('AddToCart', {
+      content_ids: [item],
+      content_type: 'product',
+      content_name: 'Order bump: ' + item,
+      contents: [{ id: item, quantity: 1 }],
+      value: FB.bumps[item] || 0,
+      currency: FB.moneda
+    }, false, pedidoId + '-' + item);
+
     fetch('/api/upsell', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

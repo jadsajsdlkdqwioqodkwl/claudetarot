@@ -62,5 +62,33 @@ check("variante desconocida cae a 1 kit",
 check("el precio del formulario se ignora",
   validate({ ...lima, precio: 1, total: 1 }).order.total === 139);
 
+/* 4. Meta Pixel: instalado, con todos los eventos y con precios sincronizados */
+const { UPSELLS } = await import(join(root, "src/lib/pedido.js"));
+const headers = readFileSync(join(root, "public/_headers"), "utf8");
+
+check("el pixel está inicializado", html.includes("fbq('init', '1598655637922566')"));
+check("PageView se dispara al cargar", html.includes("fbq('track', 'PageView')"));
+for (const evento of ["ViewContent", "AddToCart", "InitiateCheckout", "Lead", "Purchase"]) {
+  check(`el embudo dispara ${evento}`, html.includes(`'${evento}'`));
+}
+
+// Los precios del pixel viven en el HTML; los de verdad, en el servidor.
+const catalogo = html.match(/variantes:\s*\{([^}]*)\}/)?.[1] ?? "";
+const bumps = html.match(/bumps:\s*\{([^}]*)\}/)?.[1] ?? "";
+for (const [id, { precio }] of Object.entries(VARIANTES)) {
+  check(`el pixel cobra S/ ${precio} por ${id}`,
+    new RegExp(`'${id}':\\s*${precio}\\b`).test(catalogo), catalogo.trim());
+}
+for (const [id, { precio }] of Object.entries(UPSELLS)) {
+  check(`el pixel cobra S/ ${precio} por el bump ${id}`,
+    new RegExp(`${id}:\\s*${precio}\\b`).test(bumps), bumps.trim());
+}
+
+// Sin estos orígenes en la CSP el navegador bloquea el pixel entero.
+const csp = headers.match(/Content-Security-Policy:.*/)?.[0] ?? "";
+check("la CSP permite el script del pixel", csp.includes("https://connect.facebook.net"));
+check("la CSP permite el pixel de imagen", /img-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
+check("la CSP permite las llamadas del pixel", /connect-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

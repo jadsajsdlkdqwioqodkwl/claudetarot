@@ -118,6 +118,40 @@ npm run dev                      # http://localhost:8788
 npm run check                    # chequeos sin red ni credenciales
 ```
 
+## Meta Pixel
+
+Pixel `1598655637922566`, instalado en `public/index.html`. El embudo:
+
+| Evento | Cuándo | Valor |
+|---|---|---|
+| `PageView` | al cargar | — |
+| `ViewContent` | al cargar | 79 |
+| `AddToCart` | clic en el CTA, y otra vez si sube a 2 kits | 79 / 139 |
+| `InitiateCheckout` | primer campo del formulario que toca | según variante |
+| `Lead` | `/api/order` confirmó el pedido | total real |
+| `Purchase` | igual que `Lead` | total real |
+| `AddToCart` | order bump aceptado | 30 |
+
+`InitiateCheckout` va en el primer campo tocado, no al abrir el modal, para no
+contar clics accidentales. `Lead`, `Purchase` e `InitiateCheckout` se disparan
+una sola vez por sesión.
+
+**`Lead` y `Purchase` juntos** es a propósito: `Lead` marca *pedido tomado* y
+`Purchase` es el evento por el que se optimizan las campañas COD. Si prefieres
+registrar `Purchase` recién al confirmar la entrega, pon `purchase: false` en el
+objeto `FB` de `public/index.html`.
+
+Cada evento lleva `eventID` derivado del código de pedido, así que si más
+adelante se envían los mismos eventos desde el servidor con la Conversions API,
+Meta los deduplica solo.
+
+> Los precios del pixel viven en el HTML y los reales en `src/lib/pedido.js`.
+> `npm run check` falla si dejan de coincidir.
+
+Si el pixel no registra nada, revisa la CSP en `public/_headers`: necesita
+`connect.facebook.net` en `script-src` y `www.facebook.com` en `img-src` y
+`connect-src`, o el navegador lo bloquea entero.
+
 ## Cómo funciona el flujo
 
 1. El cliente completa el modal y pulsa **REALIZAR PEDIDO**.
