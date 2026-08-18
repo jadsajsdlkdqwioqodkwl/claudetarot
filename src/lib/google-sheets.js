@@ -95,10 +95,15 @@ export async function getAccessToken(env) {
 export async function appendRow(env, row) {
   const accessToken = await getAccessToken(env);
   const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
-  const range = encodeURIComponent(`${sheetName}!A:Z`);
+  // Solo la columna A: es la que siempre lleva la Fecha, así que marca sin
+  // ambigüedad dónde termina la tabla.
+  const range = encodeURIComponent(`${sheetName}!A:A`);
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
-    `/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+    // OVERWRITE, no INSERT_ROWS: insertar filas desplaza las referencias de
+    // las fórmulas del Panel (Pedidos!$A$2 pasa a $A$3, $A$4...) y la fila
+    // nueva hereda el formato del encabezado en vez del de fecha y moneda.
+    `/values/${range}:append?valueInputOption=USER_ENTERED`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -127,7 +132,9 @@ export async function getValues(env, rangeA1) {
   const accessToken = await getAccessToken(env);
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
-    `/values/${encodeURIComponent(rangeA1)}`;
+    // UNFORMATTED_VALUE: con formato de moneda un total vuelve como
+    // "S/ 139.00" y cualquier Number() sobre eso da NaN.
+    `/values/${encodeURIComponent(rangeA1)}?valueRenderOption=UNFORMATTED_VALUE`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {

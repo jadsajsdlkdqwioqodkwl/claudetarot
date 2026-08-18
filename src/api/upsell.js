@@ -20,6 +20,21 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
+/**
+ * "S/ 139.00" o 139 -> 139.
+ *
+ * Las lecturas ya piden UNFORMATTED_VALUE, así que normalmente llega un
+ * número. Esto es el cinturón de seguridad por si alguien formatea la columna
+ * a mano o cambia el valueRenderOption: sin esto, Number("S/ 139.00") es NaN
+ * y el pedido parecería no existir.
+ */
+function aNumero(valor) {
+  if (typeof valor === "number") return valor;
+  const limpio = String(valor ?? "").replace(/[^\d.-]/g, "");
+  const numero = Number(limpio);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
 export async function onRequestPost({ request, env }) {
   let payload;
   try {
@@ -43,13 +58,13 @@ export async function onRequestPost({ request, env }) {
     // Releemos el subtotal en vez de fiarnos del navegador: el precio del
     // producto sigue saliendo del servidor.
     const [valores = []] = await getValues(env, `${hoja}!${colSubtotal}${fila}:${colTotal}${fila}`);
-    const subtotal = Number(valores[0]);
+    const subtotal = aNumero(valores[0]);
     if (!subtotal) return json({ error: "No encontramos ese pedido." }, 404);
 
     const yaTenia = String(valores[indiceDe("Order bump") - indiceDe("Subtotal")] || "").trim();
     if (yaTenia) {
       // Reintento o doble clic: no lo cobramos dos veces.
-      return json({ ok: true, total: Number(valores[2]) || subtotal, duplicado: true });
+      return json({ ok: true, total: aNumero(valores[2]) || subtotal, duplicado: true });
     }
 
     const total = subtotal + item.precio;
