@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "claudetarot",
+  "main": "src/index.js",
+  "compatibility_date": "2026-01-01",
+
+  // La página vive en public/. Cloudflare la sirve directamente y solo
+  // invoca al Worker cuando la ruta no existe como archivo (o sea, /api/*).
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  "observability": {
+    "enabled": true
+  },
+
+  /**
+   * Tope de pedidos por IP: 5 por minuto. Frena el spam sin estorbar a un
+   * cliente real, y deja probar el formulario varias veces seguidas.
+   * No necesita crear nada: el namespace_id es local a este Worker.
+   */
+  "ratelimits": [
+    {
+      "name": "ORDER_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+
+  /**
+   * Variables en texto plano. ESTE archivo manda: cada despliegue reemplaza
+   * las variables de texto del dashboard por las de aquí, así que edítalas
+   * acá y no en la consola de Cloudflare.
+   *
+   * Los SECRETOS no van aquí (se subirían a GitHub). Van por dashboard o CLI
+   * y sobreviven a los despliegues:
+   *   GOOGLE_PRIVATE_KEY   npx wrangler secret put GOOGLE_PRIVATE_KEY
+   */
+  "vars": {
+    "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",
+    "GOOGLE_SHEET_NAME": "Pedidos",
+    "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com"
+  }
+}

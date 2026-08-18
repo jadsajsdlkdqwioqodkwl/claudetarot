@@ -1,9 +1,14 @@
-# Copia este archivo como .dev.vars para desarrollo local (npm run dev).
-# .dev.vars está en .gitignore: NUNCA subas credenciales al repo.
+# Copia este archivo a `.dev.vars` y completa los valores reales.
+# `.dev.vars` está en .gitignore: nunca se sube al repositorio.
+#
+# En producción las variables de texto salen de wrangler.jsonc y los dos
+# secretos se cargan con `npx wrangler secret put <NOMBRE>`.
 
-# --- Google Sheets (service account) ---
-GOOGLE_SHEET_ID="1AbC...id_de_la_url_de_tu_hoja"
+GOOGLE_SHEET_ID="1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc"
 GOOGLE_SHEET_NAME="Pedidos"
-GOOGLE_CLIENT_EMAIL="pedidos-bot@tu-proyecto.iam.gserviceaccount.com"
-# Pega la clave completa. Los \n literales del JSON se convierten solos.
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN...\n-----END PRIVATE KEY-----\n"
+GOOGLE_CLIENT_EMAIL="crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com"
+
+# El private_key del JSON de la service account, completo y en una sola línea,
+# con los \n literales tal como vienen en el archivo.
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+

@@ -1,9 +1,12 @@
 /**
- * Prepara la hoja de pedidos: escribe la fila de encabezados en el orden que
- * espera el backend. Idempotente — puedes correrlo las veces que quieras.
+ * Deja la hoja lista como CRM. Idempotente.
  *
- *   node scripts/setup-sheet.mjs            # lee .dev.vars
- *   GOOGLE_SHEET_ID=... node scripts/setup-sheet.mjs
+ *   npm run setup:sheet
+ *
+ * Necesita las credenciales en .dev.vars. Si no las tienes en la máquina,
+ * usa el endpoint del Worker, que ya lleva la clave como secret:
+ *
+ *   curl -X POST "https://TU-DOMINIO/api/setup?token=TU_DIAG_TOKEN"
  *
  * En Node hace falta que fetch respete el proxy y la CA del entorno:
  *   NODE_USE_ENV_PROXY=1 node scripts/setup-sheet.mjs
@@ -11,14 +14,9 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { updateValues, getValues } from "../functions/_lib/google-sheets.js";
+import { prepararHoja } from "../src/lib/crm-setup.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-
-export const HEADERS = [
-  "Fecha", "Pedido", "Nombre", "WhatsApp", "Envío", "Dirección", "Agencia", "Variante",
-  "Cantidad", "Subtotal", "Upsells", "Total", "Estado", "Origen", "UTM", "País"
-];
 
 /** Lee .dev.vars (KEY="valor") sin dependencias. */
 function loadDevVars() {
@@ -34,26 +32,19 @@ function loadDevVars() {
 }
 
 const env = { ...loadDevVars(), ...process.env };
-const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
 
 for (const key of ["GOOGLE_SHEET_ID", "GOOGLE_CLIENT_EMAIL", "GOOGLE_PRIVATE_KEY"]) {
   if (!env[key]) {
     console.error(`Falta ${key}. Complétalo en .dev.vars o pásalo como variable de entorno.`);
+    console.error("O prepara la hoja desde el Worker: POST /api/setup?token=TU_DIAG_TOKEN");
     process.exit(1);
   }
 }
 
-const [existente = []] = await getValues(env, `${sheetName}!A1:P1`);
-if (existente.length && existente.join("|") === HEADERS.join("|")) {
-  console.log("Los encabezados ya estaban correctos. Nada que hacer.");
-  process.exit(0);
+try {
+  for (const linea of await prepararHoja(env)) console.log(linea);
+  console.log(`\nRecuerda compartir la hoja con ${env.GOOGLE_CLIENT_EMAIL} como Editor.`);
+} catch (err) {
+  console.error("\nNo se pudo preparar la hoja:", err.message);
+  process.exit(1);
 }
-if (existente.length) {
-  console.log("Encabezados actuales distintos, se van a sobrescribir:");
-  console.log("  " + existente.join(" | "));
-}
-
-await updateValues(env, `${sheetName}!A1:P1`, [HEADERS]);
-console.log(`Encabezados escritos en "${sheetName}":`);
-console.log("  " + HEADERS.join(" | "));
-console.log("\nRecuerda compartir la hoja con " + env.GOOGLE_CLIENT_EMAIL + " como Editor.");

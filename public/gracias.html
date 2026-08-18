@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>¡Pedido confirmado! — Tarot Store Perú</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg:#f5f5f7; --card:#ffffff; --ink:#111111; --muted:#666666;
+    --line:#E0E0E0; --green:#28A745; --wa:#25D366; --body-bg:#f2f2f4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:var(--body-bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh;
+          box-shadow:0 0 20px rgba(0,0,0,0.05); padding:0 20px 48px; }
+
+  .tick { width:76px; height:76px; margin:44px auto 22px; border-radius:50%;
+          background:var(--green); display:flex; align-items:center; justify-content:center;
+          animation:pop .45s cubic-bezier(.2,.9,.3,1.4) both; }
+  .tick svg { width:38px; height:38px; stroke:#fff; stroke-width:3.5; fill:none;
+              stroke-linecap:round; stroke-linejoin:round; }
+  @keyframes pop { from { transform:scale(.4); opacity:0 } to { transform:scale(1); opacity:1 } }
+
+  h1 { font-size:26px; font-weight:900; text-align:center; letter-spacing:-.4px; }
+  .sub { text-align:center; color:var(--muted); font-size:15px; margin-top:10px; }
+
+  .resumen { margin:24px 0 0; background:var(--card); border:1.5px solid var(--line);
+             border-radius:14px; padding:6px 16px; }
+  .resumen .fila { display:flex; justify-content:space-between; gap:14px;
+                   padding:11px 0; border-bottom:1px solid var(--line); font-size:14.5px; }
+  .resumen .fila:last-child { border-bottom:none; }
+  .resumen .k { color:var(--muted); flex:0 0 auto; }
+  .resumen .v { font-weight:600; text-align:right; }
+  .resumen .fila.tot { padding:14px 0; }
+  .resumen .fila.tot .k { font-weight:800; color:var(--ink); }
+  .resumen .fila.tot .v { font-weight:900; font-size:19px; }
+
+  .card { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
+          padding:22px; margin-top:26px; }
+  .card h2 { font-size:18px; font-weight:800; text-align:center; }
+  .card p { font-size:14.5px; color:var(--muted); text-align:center; margin-top:9px; }
+
+  .wa { display:flex; align-items:center; justify-content:center; gap:10px;
+        background:var(--wa); color:#fff; font-size:17px; font-weight:800;
+        padding:17px; border-radius:13px; margin-top:18px; text-decoration:none;
+        box-shadow:0 5px 16px rgba(37,211,102,.34); animation:buzz 2.6s infinite; }
+  .wa:active { transform:scale(.98) }
+  .wa svg { width:23px; height:23px; fill:currentColor }
+  @keyframes buzz { 0%,88%,100%{transform:scale(1)} 92%{transform:scale(1.035)} 96%{transform:scale(.985)} }
+
+  .pasos { margin-top:26px; }
+  .pasos h3 { font-size:13px; font-weight:800; color:var(--muted);
+              text-transform:uppercase; letter-spacing:.9px; text-align:center; }
+  .paso { display:flex; gap:13px; align-items:flex-start; margin-top:15px; }
+  .paso .n { flex:0 0 27px; height:27px; border-radius:50%; background:var(--ink); color:#fff;
+             font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .paso div { font-size:14.5px; }
+  .paso b { font-weight:700 }
+
+  .pie { text-align:center; font-size:12.5px; color:var(--muted); margin-top:30px; }
+  .pie a { color:var(--muted) }
+</style>
+
+<!-- Meta Pixel -->
+<script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window,document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1598655637922566');
+  fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" alt=""
+  src="https://www.facebook.com/tr?id=1598655637922566&ev=PageView&noscript=1"></noscript>
+<!-- Fin Meta Pixel -->
+</head>
+<body>
+
+<div class="wrap">
+  <div class="tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+
+  <h1>¡Pedido confirmado!</h1>
+  <p class="sub">Ya registramos tu pedido. Te escribimos por WhatsApp para coordinar la entrega.</p>
+
+  <div class="resumen" id="resumen"></div>
+
+  <div class="card">
+    <h2>Escríbenos ahora y aseguramos tu entrega</h2>
+    <p>Confirmar por WhatsApp toma 10 segundos y tu kit sale antes.</p>
+    <a class="wa" id="waLink" href="https://wa.me/51928529656" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.23 8.23 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.21 8.21 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.22-.16-.47-.28z"/></svg>
+      Confirmar por WhatsApp
+    </a>
+  </div>
+
+  <div class="pasos">
+    <h3>Qué sigue</h3>
+    <div class="paso"><span class="n">1</span><div>Te contactamos por WhatsApp para <b>confirmar tu dirección</b>.</div></div>
+    <div class="paso"><span class="n">2</span><div>Preparamos y despachamos tu kit.</div></div>
+    <div class="paso"><span class="n">3</span><div><b>Pagas al recibir</b>, en efectivo, cuando el kit esté en tus manos.</div></div>
+  </div>
+
+  <p class="pie">¿Algo mal en tu pedido? <a href="https://wa.me/51928529656">Escríbenos</a> y lo corregimos.</p>
+</div>
+
+<script>
+  (function () {
+    var WA = '51928529656';
+    var total = parseFloat(new URLSearchParams(location.search).get('v'));
+
+    /* Los datos llegan por sessionStorage, no por la URL: el pixel de esta
+       página manda su URL a Meta, y ahí no pueden ir datos personales. */
+    var pedido = {};
+    try { pedido = JSON.parse(sessionStorage.getItem('pedido') || '{}'); } catch (e) {}
+    if (!(total > 0) && typeof pedido.total === 'number') total = pedido.total;
+
+    var soles = function (n) { return 'S/ ' + Number(n).toFixed(2); };
+
+    /* Resumen en pantalla. Solo se pintan las filas que tengan dato, así que
+       si alguien entra directo a /gracias no ve una tabla vacía. */
+    var filas = [
+      ['Producto', pedido.producto],
+      ['Extra', pedido.bump],
+      ['Entrega', pedido.envio],
+      [pedido.envio && pedido.envio.indexOf('Agencia') === 0 ? 'Agencia' : 'Dirección', pedido.destino],
+      ['A nombre de', pedido.nombre]
+    ].filter(function (f) { return f[1]; });
+
+    var html = filas.map(function (f) {
+      return '<div class="fila"><span class="k">' + f[0] + '</span><span class="v">' + escapar(f[1]) + '</span></div>';
+    }).join('');
+    if (total > 0) {
+      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + soles(total) + '</span></div>';
+    }
+    document.getElementById('resumen').innerHTML = html ||
+      '<div class="fila"><span class="k">Tu pedido quedó registrado.</span></div>';
+
+    /* El mensaje de WhatsApp sí lleva todos los datos: es el canal donde el
+       vendedor los necesita, y lo abre el cliente a propósito. */
+    var lineas = ['Hola! Acabo de hacer mi pedido y quiero confirmarlo.', ''];
+    if (pedido.nombre)   lineas.push('Nombre: ' + pedido.nombre);
+    if (pedido.telefono) lineas.push('WhatsApp: +' + pedido.telefono);
+    if (pedido.producto) lineas.push('Producto: ' + pedido.producto);
+    if (pedido.bump)     lineas.push('Extra: ' + pedido.bump);
+    if (pedido.envio)    lineas.push('Entrega: ' + pedido.envio);
+    if (pedido.destino)  lineas.push('Direccion: ' + pedido.destino);
+    if (total > 0)       lineas.push('Total a pagar: ' + soles(total));
+
+    document.getElementById('waLink').href =
+      'https://wa.me/' + WA + '?text=' + encodeURIComponent(lineas.join('\n'));
+
+    /* El Lead se dispara aquí, al final del embudo, con el total real ya
+       incluido el order bump. Sin eventID: el Purchase saldrá por Conversions
+       API desde la hoja usando la columna Event ID, que este evento no toca. */
+    if (typeof fbq === 'function') {
+      fbq('track', 'Lead', {
+        content_name: pedido.producto || 'Kit de Tarot para Principiantes',
+        content_category: 'COD',
+        value: total > 0 ? total : 79,
+        currency: 'PEN'
+      });
+    }
+
+    function escapar(t) {
+      return String(t).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

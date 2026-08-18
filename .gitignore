@@ -1,12 +1,6 @@
 node_modules/
-.wrangler/
 .dev.vars
-*.local
-.DS_Store
-npm-debug.log*
-
-# Credenciales de service account: NUNCA al repo
-*.json.key
-*service-account*.json
-*-sa.json
-tarot-product-page*.json
+.wrangler/
+.env
+*.log
+package-lock.json
