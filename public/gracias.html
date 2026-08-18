@@ -28,12 +28,16 @@
   h1 { font-size:26px; font-weight:900; text-align:center; letter-spacing:-.4px; }
   .sub { text-align:center; color:var(--muted); font-size:15px; margin-top:10px; }
 
-  .cod { margin:22px auto 0; max-width:300px; background:var(--card); border:1.5px solid var(--line);
-         border-radius:14px; padding:16px; text-align:center; }
-  .cod .lab { font-size:11px; font-weight:700; color:var(--muted);
-              text-transform:uppercase; letter-spacing:.9px; }
-  .cod .val { font-size:24px; font-weight:900; letter-spacing:1.2px; margin-top:5px; }
-  .cod .tot { font-size:13px; color:var(--muted); margin-top:7px; }
+  .resumen { margin:24px 0 0; background:var(--card); border:1.5px solid var(--line);
+             border-radius:14px; padding:6px 16px; }
+  .resumen .fila { display:flex; justify-content:space-between; gap:14px;
+                   padding:11px 0; border-bottom:1px solid var(--line); font-size:14.5px; }
+  .resumen .fila:last-child { border-bottom:none; }
+  .resumen .k { color:var(--muted); flex:0 0 auto; }
+  .resumen .v { font-weight:600; text-align:right; }
+  .resumen .fila.tot { padding:14px 0; }
+  .resumen .fila.tot .k { font-weight:800; color:var(--ink); }
+  .resumen .fila.tot .v { font-weight:900; font-size:19px; }
 
   .card { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
           padding:22px; margin-top:26px; }
@@ -84,13 +88,9 @@
   <div class="tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
 
   <h1>¡Pedido confirmado!</h1>
-  <p class="sub">Ya lo tenemos registrado. Te escribimos por WhatsApp para coordinar la entrega.</p>
+  <p class="sub">Ya registramos tu pedido. Te escribimos por WhatsApp para coordinar la entrega.</p>
 
-  <div class="cod">
-    <div class="lab">Tu código de pedido</div>
-    <div class="val" id="codigo">—</div>
-    <div class="tot" id="total"></div>
-  </div>
+  <div class="resumen" id="resumen"></div>
 
   <div class="card">
     <h2>Escríbenos ahora y aseguramos tu entrega</h2>
@@ -113,35 +113,66 @@
 
 <script>
   (function () {
-    var q = new URLSearchParams(location.search);
-    var pedido = (q.get('p') || '').trim();
-    var total = parseFloat(q.get('v'));
+    var WA = '51928529656';
+    var total = parseFloat(new URLSearchParams(location.search).get('v'));
 
-    if (/^TK-[A-Z2-9]{6}$/.test(pedido)) {
-      document.getElementById('codigo').textContent = pedido;
-      document.getElementById('waLink').href =
-        'https://wa.me/51928529656?text=' +
-        encodeURIComponent('Hola! Acabo de hacer mi pedido ' + pedido + ' y quiero confirmarlo.');
-    } else {
-      document.getElementById('codigo').textContent = 'Sin código';
-      pedido = '';
-    }
+    /* Los datos llegan por sessionStorage, no por la URL: el pixel de esta
+       página manda su URL a Meta, y ahí no pueden ir datos personales. */
+    var pedido = {};
+    try { pedido = JSON.parse(sessionStorage.getItem('pedido') || '{}'); } catch (e) {}
+    if (!(total > 0) && typeof pedido.total === 'number') total = pedido.total;
 
+    var soles = function (n) { return 'S/ ' + Number(n).toFixed(2); };
+
+    /* Resumen en pantalla. Solo se pintan las filas que tengan dato, así que
+       si alguien entra directo a /gracias no ve una tabla vacía. */
+    var filas = [
+      ['Producto', pedido.producto],
+      ['Extra', pedido.bump],
+      ['Entrega', pedido.envio],
+      [pedido.envio && pedido.envio.indexOf('Agencia') === 0 ? 'Agencia' : 'Dirección', pedido.destino],
+      ['A nombre de', pedido.nombre]
+    ].filter(function (f) { return f[1]; });
+
+    var html = filas.map(function (f) {
+      return '<div class="fila"><span class="k">' + f[0] + '</span><span class="v">' + escapar(f[1]) + '</span></div>';
+    }).join('');
     if (total > 0) {
-      document.getElementById('total').textContent = 'Total a pagar al recibir: S/ ' + total.toFixed(2);
+      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + soles(total) + '</span></div>';
     }
+    document.getElementById('resumen').innerHTML = html ||
+      '<div class="fila"><span class="k">Tu pedido quedó registrado.</span></div>';
 
-    /* El Lead se dispara aquí, al final del embudo. El eventID sale del código
-       de pedido y es el mismo que quedó guardado en la columna S de la hoja,
-       así que la Conversions API puede deduplicar contra este evento. */
-    if (typeof fbq === 'function' && pedido) {
+    /* El mensaje de WhatsApp sí lleva todos los datos: es el canal donde el
+       vendedor los necesita, y lo abre el cliente a propósito. */
+    var lineas = ['Hola! Acabo de hacer mi pedido y quiero confirmarlo.', ''];
+    if (pedido.nombre)   lineas.push('Nombre: ' + pedido.nombre);
+    if (pedido.telefono) lineas.push('WhatsApp: +' + pedido.telefono);
+    if (pedido.producto) lineas.push('Producto: ' + pedido.producto);
+    if (pedido.bump)     lineas.push('Extra: ' + pedido.bump);
+    if (pedido.envio)    lineas.push('Entrega: ' + pedido.envio);
+    if (pedido.destino)  lineas.push('Direccion: ' + pedido.destino);
+    if (total > 0)       lineas.push('Total a pagar: ' + soles(total));
+
+    document.getElementById('waLink').href =
+      'https://wa.me/' + WA + '?text=' + encodeURIComponent(lineas.join('\n'));
+
+    /* El Lead se dispara aquí, al final del embudo, con el total real ya
+       incluido el order bump. Sin eventID: el Purchase saldrá por Conversions
+       API desde la hoja usando la columna Event ID, que este evento no toca. */
+    if (typeof fbq === 'function') {
       fbq('track', 'Lead', {
-        content_name: 'Kit de Tarot para Principiantes',
+        content_name: pedido.producto || 'Kit de Tarot para Principiantes',
         content_category: 'COD',
         value: total > 0 ? total : 79,
-        currency: 'PEN',
-        order_id: pedido
-      }, { eventID: pedido + '-lead' });
+        currency: 'PEN'
+      });
+    }
+
+    function escapar(t) {
+      return String(t).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
     }
   })();
 </script>

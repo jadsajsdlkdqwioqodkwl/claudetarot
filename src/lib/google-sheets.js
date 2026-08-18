@@ -89,6 +89,8 @@ export async function getAccessToken(env) {
  * Agrega una fila al final de la hoja indicada.
  * @param {object} env  Variables de entorno del Worker
  * @param {Array<string|number>} row  Valores en el orden de las columnas
+ * @returns {Promise<string>} el rango escrito ("Pedidos!A42:O42"), del que
+ *   sale el número de fila que /api/upsell necesita para el order bump.
  */
 export async function appendRow(env, row) {
   const accessToken = await getAccessToken(env);
@@ -113,7 +115,8 @@ export async function appendRow(env, row) {
     throw new Error(`Google Sheets rechazó la fila (${res.status}): ${await res.text()}`);
   }
 
-  return res.json();
+  const body = await res.json();
+  return body.updates?.updatedRange || "";
 }
 
 /**
@@ -154,13 +157,34 @@ export async function updateValues(env, rangeA1, values) {
   return res.json();
 }
 
-/**
- * Busca el número de fila (1-indexado, como lo muestra Sheets) de un pedido
- * por su código en la columna B. Devuelve null si no existe.
- */
-export async function findRowByOrderId(env, orderId) {
-  const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
-  const columna = await getValues(env, `${sheetName}!B:B`);
-  const index = columna.findIndex((fila) => fila[0] === orderId);
-  return index === -1 ? null : index + 1;
+
+/** Metadatos de la hoja: título del libro y de cada pestaña con su id. */
+export async function getSpreadsheet(env) {
+  const accessToken = await getAccessToken(env);
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
+    `?fields=properties.title,sheets.properties(sheetId,title,gridProperties)`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) {
+    if (res.status === 401) cachedToken = null;
+    throw new Error(`Google Sheets no pudo leer el libro (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
+}
+
+/** Cambios estructurales: formatos, validaciones, filtros, pestañas nuevas. */
+export async function batchUpdate(env, requests) {
+  const accessToken = await getAccessToken(env);
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}:batchUpdate`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ requests })
+  });
+  if (!res.ok) {
+    if (res.status === 401) cachedToken = null;
+    throw new Error(`Google Sheets rechazó los cambios (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
 }

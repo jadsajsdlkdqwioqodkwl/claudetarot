@@ -2,7 +2,7 @@
   "name": "tarot-claude-landing",
   "version": "1.0.0",
   "private": true,
-  "description": "Product page COD en Cloudflare Workers, con Google Sheets y Evolution API",
+  "description": "Product page COD en Cloudflare Workers, con Google Sheets como CRM",
   "scripts": {
     "dev": "wrangler dev",
     "check": "node scripts/check.mjs",
@@ -11,5 +11,6 @@
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
-  }
+  },
+  "type": "module"
 }

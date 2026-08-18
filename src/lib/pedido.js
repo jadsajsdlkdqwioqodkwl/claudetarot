@@ -12,7 +12,6 @@ export const VARIANTES = {
 };
 
 export const UPSELLS = {
-  pendulo: { etiqueta: "Péndulo de amatista + mapa Sí/No", precio: 30 },
   velas: { etiqueta: "Set de velas + incienso purificador", precio: 30 }
 };
 
@@ -33,8 +32,11 @@ export function toE164Peru(raw) {
   return null;
 }
 
-/** TK-8F3K2Q — corto, legible por teléfono y suficientemente único. */
-export function makeOrderId() {
+/**
+ * Identificador interno del pedido. NO se le muestra al cliente: solo existe
+ * como event_id para deduplicar el Lead contra la Conversions API.
+ */
+export function makeEventId() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   let code = "";

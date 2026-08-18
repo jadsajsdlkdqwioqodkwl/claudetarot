@@ -202,9 +202,6 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  /* Extra informativo: WhatsApp no bloquea el pedido, pero conviene saberlo. */
-  anota("Evolution API (opcional)", Boolean(env.EVO_API_URL && env.EVO_INSTANCE && env.EVO_API_KEY),
-    env.EVO_API_URL ? "configurada" : "sin configurar — el pedido se guarda igual, solo no sale el WhatsApp");
 
   const roto = pasos.find((p) => !p.ok);
   return terminar(roto

@@ -1,16 +1,31 @@
 /**
- * POST /api/order — recibe el formulario COD del modal, lo guarda en Google
- * Sheets y dispara la confirmación por WhatsApp (Evolution API).
+ * POST /api/order — recibe el formulario COD del modal y lo guarda en Google
+ * Sheets. Responde con el número de fila, que /api/upsell usa después para
+ * añadir el order bump sin necesidad de un código de pedido.
  *
- * Se ejecuta como Cloudflare Pages Function: las credenciales viven en
- * variables de entorno del proyecto, nunca en el bundle del navegador.
+ * Se dispara apenas el cliente pulsa CONFIRMAR, antes de la pantalla del
+ * order bump: así el lead queda registrado aunque abandone ahí.
  */
 
 import { appendRow } from "../lib/google-sheets.js";
-import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../lib/evolution.js";
-import { VARIANTES, clean, toE164Peru, makeOrderId } from "../lib/pedido.js";
+import { VARIANTES, clean, toE164Peru, makeEventId } from "../lib/pedido.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
+
+/**
+ * Fecha y hora de Lima como "YYYY-MM-DD HH:MM:SS".
+ *
+ * Sheets parsea ese formato como fecha-hora de verdad, no como texto, que es
+ * lo que permite filtrar y agrupar por día en el panel. Un ISO con "T" y "Z"
+ * se queda como cadena y rompe los totales. Perú es UTC-5 todo el año, sin
+ * horario de verano, así que el desfase es fijo.
+ */
+export function fechaLima(ahora = new Date()) {
+  return new Date(ahora.getTime() - 5 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
+}
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -32,7 +47,7 @@ export function validate(payload) {
 
   // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
   const variante = VARIANTES[payload.variante] ? payload.variante : "1kit";
-  const { etiqueta, cantidad, precio } = VARIANTES[variante];
+  const { etiqueta, precio } = VARIANTES[variante];
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
@@ -45,15 +60,12 @@ export function validate(payload) {
       nombre,
       telefono,
       envio,
-      direccion,
-      agencia,
+      // Una sola columna: para Lima es la dirección, para provincia la agencia.
+      destino: envio === "casa" ? direccion : agencia,
       variante,
       etiqueta,
-      cantidad,
       subtotal: precio,
       total: precio,
-      origen: clean(payload.origen, 200),
-      utm: clean(payload.utm, 200),
 
       // Identificadores del navegador para la Conversions API. Van a la hoja
       // tal cual; sin ellos Meta no puede casar el pedido con el clic del anuncio.
@@ -72,35 +84,45 @@ export function filaDePedido(order, headers) {
 
   return [
     order.fecha,
-    order.orderId,
     order.nombre,
     `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
     order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
-    order.direccion,
-    order.agencia,
+    order.destino,
     order.etiqueta,
-    order.cantidad,
     order.subtotal,
-    "", // Upsells — lo completa /api/upsell si el cliente acepta
+    "", // Order bump — lo completa /api/upsell si el cliente acepta
     order.total,
     "Pendiente",
-    order.origen,
-    order.utm,
-    cabecera("CF-IPCountry"),
 
-    // Q–U: lo que la Conversions API necesita para casar este pedido con el
+    // K–O: lo que la Conversions API necesita para casar este pedido con el
     // clic del anuncio. El user agent y la IP tienen que ser los del navegador
     // del cliente, no los del Worker.
     order.fbp,
     order.fbc,
-    `${order.orderId}-lead`, // mismo eventID que dispara el pixel en /gracias
+    order.eventId,
     clean(cabecera("User-Agent"), 400),
     cabecera("CF-Connecting-IP")
   ];
 }
 
+/**
+ * Tope de pedidos por IP. Usa el rate limiter nativo de Cloudflare, que no
+ * necesita almacenamiento propio. Si el binding no está (dev local, o aún sin
+ * desplegar) deja pasar: nunca queremos perder un lead por esto.
+ */
+async function dentroDelLimite(env, ip) {
+  if (!env.ORDER_LIMIT || !ip) return true;
+  try {
+    const { success } = await env.ORDER_LIMIT.limit({ key: ip });
+    return success;
+  } catch (err) {
+    console.error("Rate limit:", err.message);
+    return true;
+  }
+}
+
 export async function onRequestPost(context) {
-  const { request, env, waitUntil } = context;
+  const { request, env } = context;
 
   let payload;
   try {
@@ -113,7 +135,7 @@ export async function onRequestPost(context) {
 
   // Honeypot: si un bot llenó el campo oculto, respondemos 200 sin guardar.
   if (clean(payload.website, 50)) {
-    return json({ ok: true, orderId: makeOrderId(), whatsappSent: true });
+    return json({ ok: true, fila: 0, total: 0 });
   }
 
   const { errors, order } = validate(payload);
@@ -121,14 +143,22 @@ export async function onRequestPost(context) {
     return json({ error: "Revisa los datos del formulario.", fields: errors }, 422);
   }
 
-  order.orderId = makeOrderId();
-  order.fecha = new Date().toISOString();
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  if (!(await dentroDelLimite(env, ip))) {
+    return json(
+      { error: "Recibimos varios pedidos desde tu conexión. Espera un minuto e inténtalo de nuevo." },
+      429
+    );
+  }
 
-  // 1) Sheets es la fuente de verdad: si falla, el pedido falla.
-  const fila = filaDePedido(order, request.headers);
+  order.eventId = makeEventId();
+  order.fecha = fechaLima();
 
+  let fila;
   try {
-    await appendRow(env, fila);
+    // Sheets es la fuente de verdad: si falla, el pedido falla.
+    const rango = await appendRow(env, filaDePedido(order, request.headers));
+    fila = numeroDeFila(rango);
   } catch (err) {
     console.error("Sheets:", err.message);
     return json(
@@ -137,22 +167,11 @@ export async function onRequestPost(context) {
     );
   }
 
-  // 2) WhatsApp: el pedido ya está guardado, así que un fallo aquí no lo tumba.
-  let whatsappSent = true;
-  try {
-    await sendWhatsAppText(env, order.telefono, buildCustomerMessage(order));
-  } catch (err) {
-    console.error("Evolution (cliente):", err.message);
-    whatsappSent = false;
-  }
+  return json({ ok: true, fila, total: order.total, eventId: order.eventId });
+}
 
-  if (env.EVO_NOTIFY_NUMBER) {
-    waitUntil(
-      sendWhatsAppText(env, env.EVO_NOTIFY_NUMBER, buildInternalMessage(order)).catch((err) =>
-        console.error("Evolution (interno):", err.message)
-      )
-    );
-  }
-
-  return json({ ok: true, orderId: order.orderId, total: order.total, whatsappSent });
+/** "Pedidos!A42:O42" -> 42. Es cómo localizamos la fila para el order bump. */
+export function numeroDeFila(rangoActualizado) {
+  const match = /![A-Z]+(\d+)/.exec(rangoActualizado || "");
+  return match ? Number(match[1]) : 0;
 }

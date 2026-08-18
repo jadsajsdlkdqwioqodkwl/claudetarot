@@ -16,6 +16,19 @@
   },
 
   /**
+   * Tope de pedidos por IP: 5 por minuto. Frena el spam sin estorbar a un
+   * cliente real, y deja probar el formulario varias veces seguidas.
+   * No necesita crear nada: el namespace_id es local a este Worker.
+   */
+  "ratelimits": [
+    {
+      "name": "ORDER_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+
+  /**
    * Variables en texto plano. ESTE archivo manda: cada despliegue reemplaza
    * las variables de texto del dashboard por las de aquí, así que edítalas
    * acá y no en la consola de Cloudflare.
@@ -23,20 +36,10 @@
    * Los SECRETOS no van aquí (se subirían a GitHub). Van por dashboard o CLI
    * y sobreviven a los despliegues:
    *   GOOGLE_PRIVATE_KEY   npx wrangler secret put GOOGLE_PRIVATE_KEY
-   *   EVO_API_KEY          npx wrangler secret put EVO_API_KEY
    */
   "vars": {
     "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",
     "GOOGLE_SHEET_NAME": "Pedidos",
-    "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
-
-    // Pendientes: completa cuando tengas la instancia de Evolution API.
-    // EVO_API_URL sin barra final, p. ej. "https://evo.tudominio.com"
-    "EVO_API_URL": "",
-    "EVO_INSTANCE": "",
-
-    // Opcional: tu propio número en formato 51987654321 para recibir
-    // un aviso interno por cada pedido y cada upsell.
-    "EVO_NOTIFY_NUMBER": ""
+    "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com"
   }
 }

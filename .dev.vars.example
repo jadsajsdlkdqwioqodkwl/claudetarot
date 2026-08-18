@@ -12,10 +12,3 @@ GOOGLE_CLIENT_EMAIL="crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com
 # con los \n literales tal como vienen en el archivo.
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
 
-# Evolution API — sin barra final en la URL.
-EVO_API_URL="https://evo.tudominio.com"
-EVO_INSTANCE="mi-instancia"
-EVO_API_KEY="tu-api-key"
-
-# Opcional: número propio (51987654321) para el aviso interno de cada pedido.
-EVO_NOTIFY_NUMBER=""

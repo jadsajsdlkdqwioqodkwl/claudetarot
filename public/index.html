@@ -203,6 +203,22 @@
   .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
   .upsell-list .ck { color: var(--green); flex-shrink: 0; }
   
+  .u-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
+  .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
+  .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
+
+  /* El bloque de botones no se va nunca fuera de pantalla: en móvil queda
+     pegado abajo del modal para que "añadir" y "no, gracias" se vean juntos. */
+  .modal-bump { padding-bottom: 14px; }
+  .upsell-cta { position: sticky; bottom: 0; background: #fff; padding-top: 10px; margin-top: 4px; box-shadow: 0 -10px 14px -6px rgba(255,255,255,.95); }
+  .upsell-cta .btn-no { margin-top: 8px; }
+  @media (max-height: 720px) {
+    .u-carousel { aspect-ratio: 4 / 3; }
+    .upsell-list { margin: 10px 0; padding: 10px; }
+    .upsell-price { margin-bottom: 10px; }
+    .upsell-price b { font-size: 26px; }
+  }
+
   .upsell-price { text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 10px; }
   .upsell-price s { color: var(--price-old); font-size: 18px; font-weight: 500; }
   .upsell-price b { color: var(--ink); font-size: 32px; font-weight: 800; }
@@ -476,61 +492,44 @@
 
 <!-- Modal Upsell -->
 <div class="overlay" id="upsellOverlay">
-  <div class="modal">
+  <div class="modal modal-bump">
     <span class="mclose" onclick="closeAll()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
-    
+
     <div id="u1">
       <div class="upsell-head">
         <div class="l1">¡SUPER OFERTA!</div>
-        <div class="l2">¡Solo por tiempo limitado!</div>
-      </div>
-      <div class="upsell-timer">
-        <div>¡Llévate un <b>Péndulo de Amatista + Mapa</b> a un super precio!</div>
-        <div class="cd" id="cd">09:58</div>
-      </div>
-      
-      <!-- Carrusel cuadrado y deslizable para el péndulo -->
-      <div class="u-carousel">
-        <div class="slide">[Foto Péndulo 1]</div>
-        <div class="slide">[Foto Péndulo 2]</div>
-        <div class="slide">[Foto Péndulo 3]</div>
-      </div>
-      
-      <div class="upsell-list">
-        <b>Incluye:</b>
-        <div><svg class="ico ck"><use href="#i-check"/></svg> Péndulo de amatista natural</div>
-        <div><svg class="ico ck"><use href="#i-check"/></svg> Mapa de respuestas Sí / No</div>
-      </div>
-      <div class="upsell-price"><s>S/. 79.00</s><b>S/. 30.00</b></div>
-      
-      <!-- Botón con icono, shaky y mejor tipografía -->
-      <button class="btn-add shaky" onclick="addUpsell('pendulo'); nextUpsell()">
-        <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR AL PEDIDO
-      </button>
-      
-      <!-- Botón de rechazo más visible -->
-      <button class="btn-no" onclick="nextUpsell()">No, gracias</button>
-    </div>
-
-    <div id="u2" style="display:none;">
-      <div class="upsell-head">
-        <div class="l1">ÚLTIMA OPORTUNIDAD</div>
         <div class="l2">Protege y limpia tus cartas</div>
       </div>
-      <div class="ph" style="height:220px;margin-bottom:16px;background:var(--soft-tint);">Imagen (Set Velas)</div>
+      <div class="upsell-timer">
+        <div>Añádelo ahora a <b>mitad de precio</b>, solo con este pedido</div>
+        <div class="cd" id="cd">09:58</div>
+      </div>
+
+      <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
+           se generan solos a partir de los slides que existan. -->
+      <div class="u-carousel" id="bumpCar">
+        <div class="slide"><img src="kittarotcod/velas-1.webp" alt="Set de velas e incienso"
+          onerror="this.parentNode.innerHTML='[Foto Velas 1]'"></div>
+        <div class="slide"><img src="kittarotcod/velas-2.webp" alt="Velas intencionadas"
+          onerror="this.parentNode.innerHTML='[Foto Velas 2]'"></div>
+        <div class="slide"><img src="kittarotcod/velas-3.webp" alt="Incienso purificador"
+          onerror="this.parentNode.innerHTML='[Foto Velas 3]'"></div>
+      </div>
+      <div class="u-dots" id="bumpDots"></div>
+
       <div class="upsell-list">
-        <b>El Set Incluye:</b>
+        <b>El set incluye:</b>
         <div><svg class="ico ck"><use href="#i-check"/></svg> Velas intencionadas</div>
         <div><svg class="ico ck"><use href="#i-check"/></svg> Incienso purificador</div>
       </div>
       <div class="upsell-price"><s>S/. 60.00</s><b>S/. 30.00</b></div>
-      
-      <!-- Botón con icono, shaky y mejor tipografía -->
-      <button class="btn-add shaky" onclick="addUpsell('velas'); closeAll()">
-        <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR Y FINALIZAR
-      </button>
-      
-      <button class="btn-no" onclick="closeAll()">No, terminar pedido sin añadir</button>
+
+      <div class="upsell-cta">
+        <button class="btn-add shaky" onclick="addUpsell('velas')">
+          <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR A MI PEDIDO
+        </button>
+        <button class="btn-no" onclick="closeAll()">No, gracias</button>
+      </div>
     </div>
 
   </div>
@@ -544,7 +543,8 @@
     moneda: 'PEN',
     producto: 'kit-tarot',
     variantes: { '1kit': 79, '2kit': 139 },
-    bumps: { pendulo: 30, velas: 30 },
+    bumps: { velas: 30 },
+    bumpNombres: { velas: 'Set de velas + incienso purificador' },
     // Aquí no se dispara Purchase: sale desde la hoja por Conversions API,
     // usando el Event ID de la columna S. El Lead vive en /gracias.
     enviados: {}
@@ -559,6 +559,13 @@
     // eventID permite deduplicar si más adelante se manda el mismo evento
     // desde el servidor con la Conversions API.
     fbq('track', evento, datos, eventId ? { eventID: eventId } : undefined);
+  }
+
+  /** 987654321 -> 51987654321 ; espeja toE164Peru de src/lib/pedido.js */
+  function aE164(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (d.length === 9 && d.charAt(0) === '9') return '51' + d;
+    return d;
   }
 
   function fbCookie(nombre) {
@@ -583,11 +590,16 @@
     return { fbp: fbCookie('_fbp'), fbc: fbCookie('_fbc') };
   }
 
-  /** La variante marcada en ese momento, con su precio y cantidad. */
+  /** La variante marcada en ese momento, con su precio, cantidad y nombre. */
   function fbVariante() {
     var sel = document.querySelector('.vcard.sel');
     var v = (sel && sel.getAttribute('data-var')) || '1kit';
-    return { id: v, valor: FB.variantes[v] || FB.variantes['1kit'], unidades: v === '2kit' ? 2 : 1 };
+    return {
+      id: v,
+      valor: FB.variantes[v] || FB.variantes['1kit'],
+      unidades: v === '2kit' ? 2 : 1,
+      etiqueta: v === '2kit' ? '2 Kits de Tarot Completo' : '1 Kit de Tarot Completo'
+    };
   }
 
   fbTrack('ViewContent', {
@@ -668,12 +680,16 @@
     }, { once: true });
   });
 
-  // Código del pedido devuelto por /api/order; lo usan los upsells.
-  var pedidoId = null;
+  // Número de fila que /api/order devolvió al insertar el pedido. Es lo que
+  // /api/upsell necesita para añadirle el order bump: no hay código de pedido.
+  var filaPedido = 0;
   // 'pendiente' | 'ok' | 'error' — decide si al cerrar vamos a /gracias.
   var pedidoEstado = 'pendiente';
   var totalPedido = 0;
   var quiereSalir = false;
+  // Lo que el cliente escribió, para pasarlo a /gracias y de ahí al WhatsApp.
+  var datosCliente = {};
+  var bumpAceptado = '';
 
   function submitCOD() {
     var n = document.getElementById('fName').value.trim();
@@ -700,6 +716,16 @@
     var v = fbVariante();
     var ident = fbIdentidad();
 
+    datosCliente = {
+      nombre: n,
+      // Mismo criterio que toE164Peru en el servidor: el mensaje de WhatsApp
+      // tiene que mostrar el número tal como lo va a guardar la hoja.
+      telefono: aE164(p),
+      envio: esCasa ? 'Pago en casa (Lima)' : 'Agencia (provincia)',
+      destino: esCasa ? dir : suc,
+      producto: v.etiqueta
+    };
+
     fetch('/api/order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -711,8 +737,6 @@
         agencia: suc,
         variante: sel ? sel.getAttribute('data-var') : '1kit',
         website: document.getElementById('fWebsite').value,
-        origen: document.referrer || 'directo',
-        utm: location.search || '',
         fbp: ident.fbp,
         fbc: ident.fbc
       })
@@ -720,14 +744,18 @@
     .then(function(r){ return r.json().then(function(b){ return { ok: r.ok, body: b }; }); })
     .then(function(res){
       if(!res.ok) throw new Error(res.body.error || 'Error al registrar');
-      pedidoId = res.body.orderId;
+      filaPedido = res.body.fila;
       pedidoEstado = 'ok';
       totalPedido = typeof res.body.total === 'number' ? res.body.total : v.valor;
-      // Reintenta los upsells que el cliente aceptó antes de tener el código.
-      upsellsPendientes.forEach(addUpsell);
-      upsellsPendientes = [];
-      // Si ya cerró los upsells mientras esperábamos, lo llevamos ahora.
-      if (quiereSalir) irAGracias();
+      // Reintenta el bump si lo aceptó antes de que llegara el número de fila.
+      var enCola = bumpsPendientes; bumpsPendientes = [];
+      if (enCola.length) {
+        // Ojo: aquí NO navegamos. addUpsell va a /gracias cuando termine, o la
+        // navegación cancelaría su fetch y el bump no llegaría a la hoja.
+        enCola.forEach(function (item) { addUpsell(item); });
+      } else if (quiereSalir) {
+        irAGracias();
+      }
     })
     .catch(function(err){
       console.error(err);
@@ -741,14 +769,18 @@
     });
   }
 
-  // Si el cliente acepta un upsell antes de que responda /api/order, lo
-  // guardamos aquí y se envía apenas llegue el código del pedido.
-  var upsellsPendientes = [];
+  // Si acepta el bump antes de que responda /api/order, lo guardamos aquí y
+  // se manda apenas llegue el número de fila.
+  var bumpsPendientes = [];
 
   function addUpsell(item) {
-    // El evento va después de esta guarda a propósito: si el pedido aún no
-    // tiene código, addUpsell se vuelve a llamar al llegar y se contaría dos veces.
-    if(!pedidoId) { upsellsPendientes.push(item); return; }
+    // Sin fila todavía: lo dejamos en cola y salimos. El evento va después de
+    // esta guarda a propósito, o al reintentar se contaría dos veces.
+    if (!filaPedido) {
+      bumpsPendientes.push(item);
+      cerrarBump();
+      return;
+    }
 
     fbTrack('AddToCart', {
       content_ids: [item],
@@ -757,57 +789,102 @@
       contents: [{ id: item, quantity: 1 }],
       value: FB.bumps[item] || 0,
       currency: FB.moneda
-    }, false, pedidoId + '-' + item);
+    }, false, filaPedido + '-' + item);
+
+    // El total de /gracias tiene que incluir el bump. Lo sumamos ya y luego
+    // el servidor confirma con su propia cuenta.
+    totalPedido += FB.bumps[item] || 0;
+    bumpAceptado = item;
 
     fetch('/api/upsell', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId: pedidoId, item: item })
-    }).catch(function(err){ console.error('upsell', err); });
+      // keepalive: si algo navega antes de tiempo, la petición sigue viva.
+      keepalive: true,
+      body: JSON.stringify({ fila: filaPedido, item: item })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(b){ if (typeof b.total === 'number') totalPedido = b.total; })
+    .catch(function(err){ console.error('bump', err); })
+    .finally(cerrarBump);
   }
-  
-  function nextUpsell() {
-    document.getElementById('u1').style.display = 'none';
-    document.getElementById('u2').style.display = 'block';
-  }
+
+  /** Sale del bump hacia /gracias, haya respondido el servidor o no. */
+  function cerrarBump() { closeAll(); }
   
   /* El Lead se dispara en /gracias, no aquí: así solo cuenta a quien de
-     verdad llegó al final, y el eventID va en la URL para que la Conversions
-     API pueda deduplicarlo contra la fila de la hoja. */
+     verdad llegó al final.
+
+     Los datos del cliente viajan por sessionStorage y NO por la URL: el pixel
+     de /gracias manda la URL de la página a Meta, así que un ?nombre=…&tel=…
+     le entregaría los datos personales del comprador. En la URL solo va el
+     total, que es lo que el pixel necesita como `value`. */
   function irAGracias() {
-    location.href = '/gracias?p=' + encodeURIComponent(pedidoId) +
-                    '&v=' + encodeURIComponent(totalPedido);
+    try {
+      sessionStorage.setItem('pedido', JSON.stringify({
+        nombre: datosCliente.nombre,
+        telefono: datosCliente.telefono,
+        envio: datosCliente.envio,
+        destino: datosCliente.destino,
+        producto: datosCliente.producto,
+        bump: bumpAceptado ? FB.bumpNombres[bumpAceptado] : '',
+        total: totalPedido
+      }));
+    } catch (e) { /* modo privado sin storage: el mensaje irá genérico */ }
+
+    location.href = '/gracias?v=' + encodeURIComponent(totalPedido);
   }
 
   function closeAll() {
-    // Cerrar los upsells es el final del embudo. Si el pedido se registró,
+    // Cerrar el order bump es el final del embudo. Si el pedido se registró,
     // el cliente va a la página de gracias; si falló, solo cerramos. Si aún
     // no responde el servidor, lo mandamos apenas conteste.
     if (pedidoEstado === 'ok') { irAGracias(); return; }
-    if (pedidoEstado === 'pendiente') quiereSalir = true;
+    if (pedidoEstado === 'pendiente') { quiereSalir = true; }
 
     document.getElementById('upsellOverlay').classList.remove('on');
     document.getElementById('codOverlay').classList.remove('on');
     document.body.style.overflow = '';
-    setTimeout(function(){
-       document.getElementById('u1').style.display = 'block';
-       document.getElementById('u2').style.display = 'none';
-    }, 400);
   }
   
   var cdInt, s = 598;
   function startCD() {
+    // Defensivo a propósito: startCD() corre justo antes de mandar el pedido,
+    // así que si el contador no está en el DOM no puede tumbar el envío.
+    var el = document.getElementById('cd');
+    if (!el) return;
     clearInterval(cdInt);
     s = 598;
-    document.getElementById('cd').textContent = '09:58';
+    el.textContent = '09:58';
     cdInt = setInterval(function(){
       s--;
       var m = Math.floor(s/60), x = s%60;
-      document.getElementById('cd').textContent = String(m).padStart(2,'0') + ':' + String(x).padStart(2,'0');
+      el.textContent = String(m).padStart(2,'0') + ':' + String(x).padStart(2,'0');
       if(s <= 0) clearInterval(cdInt);
     }, 1000);
   }
   
+  /* Puntos del carrusel del order bump. Se generan a partir de los slides que
+     existan, así que añadir fotos al HTML no pide tocar el JS. */
+  (function bumpCarrusel() {
+    var car = document.getElementById('bumpCar');
+    var dots = document.getElementById('bumpDots');
+    if (!car || !dots) return;
+
+    var slides = car.children.length;
+    if (slides < 2) return; // con una sola foto los puntos sobran
+
+    for (var i = 0; i < slides; i++) {
+      var d = document.createElement('i');
+      if (i === 0) d.className = 'on';
+      dots.appendChild(d);
+    }
+    car.addEventListener('scroll', function () {
+      var actual = Math.round(car.scrollLeft / car.clientWidth);
+      [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
+    }, { passive: true });
+  })();
+
   // Slider Reseñas
   var track = document.getElementById('revTrack'), cards = track.children.length, cur = 0, dots = document.getElementById('revDots');
   for(var i=0; i<cards; i++) {
