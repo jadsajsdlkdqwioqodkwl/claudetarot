@@ -171,7 +171,19 @@ const diag = readFileSync(join(root, "src/api/diag.js"), "utf8");
 const router = readFileSync(join(root, "src/index.js"), "utf8");
 check("/api/diag está enrutado como GET", router.includes('"/api/diag": { GET: diag }'));
 check("el diagnóstico exige DIAG_TOKEN", diag.includes("if (!env.DIAG_TOKEN)"));
-check("compara el token en tiempo constante", diag.includes("function mismoToken"));
+check("compara el token en tiempo constante",
+  readFileSync(join(root, "src/lib/token.js"), "utf8").includes("diff |= a.charCodeAt(i)"));
+
+/* 11b. Preparar la hoja desde el Worker, sin llevar la clave a ninguna máquina */
+const setup = readFileSync(join(root, "src/api/setup.js"), "utf8");
+check("/api/setup existe y es POST", router.includes('"/api/setup": { POST: setup }'));
+check("/api/setup exige DIAG_TOKEN", setup.includes("if (!env.DIAG_TOKEN)"));
+check("/api/setup no acepta GET", !setup.includes("onRequestGet"));
+check("el setup de la hoja es un módulo compartido",
+  setup.includes('from "../lib/crm-setup.js"') &&
+  readFileSync(join(root, "scripts/setup-sheet.mjs"), "utf8").includes('from "../src/lib/crm-setup.js"'));
+check("crm-setup no usa process ni console",
+  !/process\.|console\./.test(readFileSync(join(root, "src/lib/crm-setup.js"), "utf8")));
 check("solo reporta la forma de la clave, no su contenido",
   diag.includes("largo: pk.length") && !/detalle:\s*pk\b/.test(diag));
 

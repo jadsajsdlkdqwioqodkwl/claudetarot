@@ -12,11 +12,13 @@
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
+import { onRequestPost as setup } from "./api/setup.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/upsell": { POST: upsell },
-  "/api/diag": { GET: diag }
+  "/api/diag": { GET: diag },
+  "/api/setup": { POST: setup }
 };
 
 const json = (data, status) =>

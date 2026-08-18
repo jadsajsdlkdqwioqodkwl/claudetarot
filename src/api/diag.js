@@ -15,6 +15,7 @@
 
 import { pemToArrayBuffer, getAccessToken } from "../lib/google-sheets.js";
 import { COLUMNAS } from "../lib/hoja.js";
+import { mismoToken } from "../lib/token.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data, null, 2), {
@@ -22,13 +23,6 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-/** Comparación en tiempo constante: no filtra el token por latencia. */
-function mismoToken(a, b) {
-  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 /** Saca el mensaje útil de un error de la API de Google sin volcar el cuerpo entero. */
 function motivoGoogle(texto) {

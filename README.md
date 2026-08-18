@@ -13,6 +13,8 @@ src/index.js            Router: /api/* al Worker, todo lo demás a los archivos
 src/api/order.js        POST /api/order  — guarda el pedido, devuelve su nº de fila
 src/api/upsell.js       POST /api/upsell — añade el order bump a esa fila
 src/api/diag.js         GET  /api/diag   — diagnóstico de la cadena con Sheets
+src/api/setup.js        POST /api/setup  — deja la hoja lista como CRM
+src/lib/crm-setup.js    La rutina de preparación, compartida con el script
 src/lib/pedido.js       Precios, variantes y utilidades compartidas
 src/lib/hoja.js         Esquema de columnas y estados (A–O)
 src/lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
@@ -67,7 +69,23 @@ Decisiones que explican la forma de la tabla:
 
 ### El CRM
 
-`npm run setup:sheet` deja la hoja lista para trabajar:
+Dos formas de dejar la hoja lista, ambas idempotentes:
+
+```bash
+# a) desde el Worker, que ya tiene la clave como secret (no necesitas nada local)
+curl -X POST "https://TU-DOMINIO/api/setup?token=TU_DIAG_TOKEN"
+
+# b) desde tu máquina, si tienes las credenciales en .dev.vars
+npm run setup:sheet
+```
+
+La opción (a) existe para no tener que llevar la clave privada a ninguna parte:
+el Worker la tiene, así que prepara la hoja él mismo. Es la misma rutina
+(`src/lib/crm-setup.js`) en los dos casos, y va protegida con el mismo
+`DIAG_TOKEN` que `/api/diag`. Es POST y no GET a propósito: modifica la hoja,
+y un GET lo dispararía cualquier precarga del navegador.
+
+Cualquiera de las dos deja la hoja así:
 
 - **`Estado` es un desplegable** con Pendiente · Contactado · Enviado · Pagado · Cancelado.
   Los pedidos se colorean solos según su estado.

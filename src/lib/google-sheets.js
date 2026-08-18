@@ -163,7 +163,9 @@ export async function getSpreadsheet(env) {
   const accessToken = await getAccessToken(env);
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
-    `?fields=properties.title,sheets.properties(sheetId,title,gridProperties)`;
+    // conditionalFormats hace falta para poder borrar las reglas viejas antes
+    // de reescribirlas: sin ellas, cada setup duplicaría los colores.
+    `?fields=properties.title,sheets(properties(sheetId,title,gridProperties),conditionalFormats)`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {
     if (res.status === 401) cachedToken = null;
