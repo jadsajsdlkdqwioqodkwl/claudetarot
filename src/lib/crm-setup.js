@@ -84,6 +84,18 @@ export async function prepararHoja(env) {
         fields: "gridProperties.frozenRowCount"
       }
     },
+
+    // Devuelve las filas de datos a su aspecto normal. Hace falta porque una
+    // fila insertada hereda el formato de la de arriba: la primera copiaba el
+    // negro del encabezado y se lo pasaba a la siguiente, dejando la lista
+    // ilegible. Ya no se insertan filas, pero esto repara las que quedaron.
+    {
+      repeatCell: {
+        range: { sheetId: idPedidos, startRowIndex: 1 },
+        cell: { userEnteredFormat: {} },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat"
+      }
+    },
     {
       repeatCell: {
         range: { sheetId: idPedidos, startRowIndex: 0, endRowIndex: 1 },
