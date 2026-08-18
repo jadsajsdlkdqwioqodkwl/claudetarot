@@ -42,6 +42,32 @@
   .fullimg img { width: 100%; height: auto; display: block; }
   .fullimg .ph { width: 100%; min-height: 340px; border-radius: 0; border-left: none; border-right: none; }
   
+
+  /* Galería de miniaturas + visor a pantalla completa */
+  .gal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px 20px 0; }
+  .gal button { padding: 0; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .15s, transform .15s; }
+  .gal button:hover, .gal button:focus-visible { border-color: var(--purple-soft); transform: translateY(-2px); }
+  .gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gal button:last-child { position: relative; }
+  .gal .mas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(17,17,17,.55); color: #fff; font-weight: 800; font-size: 15px; }
+
+  .visor { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 120; display: none; }
+  .visor.on { display: flex; flex-direction: column; }
+  .visor-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .visor-x { cursor: pointer; padding: 4px; line-height: 0; }
+  .visor-track { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; align-items: center; }
+  .visor-track::-webkit-scrollbar { display: none; }
+  .visor-track figure { flex: 0 0 100%; scroll-snap-align: center; margin: 0; padding: 0 12px; }
+  /* height:auto es imprescindible: el atributo height del <img> es una pista de
+     presentacion que gana sobre aspect-ratio y dejaba la foto a 1000px de alto. */
+  .visor-track img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 14px; background: #111; max-height: 72vh; }
+  .visor-track figcaption { color: #ddd; font-size: 13px; text-align: center; margin-top: 12px; }
+  .visor-nav { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 14px 16px 22px; flex-shrink: 0; }
+  .visor-nav .rev-arrow { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); color: #fff; }
+  .visor-dots { display: flex; gap: 6px; }
+  .visor-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); transition: .2s; }
+  .visor-dots i.on { background: #fff; width: 18px; border-radius: 4px; }
+
   .rating-row { padding: 16px 20px 4px; display: flex; align-items: center; gap: 8px; }
   .stars { color: var(--gold); display: inline-flex; gap: 1px; font-size: 17px; }
   .rating-txt { color: var(--purple-soft); font-weight: 600; font-size: 14px; }
@@ -275,8 +301,12 @@
 </defs></svg>
 
 <div class="wrap">
-  <div class="fullimg"><img src="kittarotcod/1.webp" alt="Kit de Tarot para Principiantes" onerror="this.parentNode.innerHTML='<div class=ph>Banner principal (kittarotcod/1.webp)</div>'"></div>
+  <div class="fullimg"><img src="kittarotcod/1.webp" alt="Kit de Tarot para Principiantes" width="941" height="1672" fetchpriority="high" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>Banner principal (kittarotcod/1.webp)</div>'"></div>
   
+
+  <!-- Miniaturas del producto: abren el visor con el carrusel -->
+  <div class="gal" id="gal" role="group" aria-label="Fotos del kit"></div>
+
   <div class="rating-row">
     <span class="stars"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></span>
     <span class="rating-txt">(4.9/5) en +1286 Reseñas</span>
@@ -314,8 +344,8 @@
     </div>
   </div>
 
-  <div class="fullimg"><img src="kittarotcod/2.webp" alt="Ahora puedes aprender paso a paso" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/2.webp (Problema)</div>'"></div>
-  <div class="fullimg"><img src="kittarotcod/3.webp" alt="Todo lo que puedes aprender" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/3.webp (Aprende)</div>'"></div>
+  <div class="fullimg"><img src="kittarotcod/2.webp" alt="Ahora puedes aprender paso a paso" width="941" height="1672" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/2.webp (Problema)</div>'"></div>
+  <div class="fullimg"><img src="kittarotcod/3.webp" alt="Todo lo que puedes aprender" width="1054" height="1492" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/3.webp (Aprende)</div>'"></div>
 
   <!-- Main CTA 2 -->
   <button class="cta buzz" style="margin-top:24px" onclick="openCOD()">
@@ -393,8 +423,7 @@
     <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
     
     <div class="logo-circle">
-      <!-- Se requiere que el logo sea SVG -->
-      <img src="kittarotcod/logo.svg" alt="Logo de la tienda" onerror="this.outerHTML='<div class=ph style=\'border-radius:50%\'>LOGO SVG</div>'">
+      <img src="kittarotcod/logo.webp" alt="Tarot Store Perú" width="100" height="100">
     </div>
     <div class="garantia">Garantía de 90 días por tu pedido</div>
     
@@ -483,12 +512,28 @@
     
     <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
     
-    <!-- Badges actualizados a webp (placeholder para las imágenes en el entorno web) -->
     <div class="seals">
-      <img src="kittarotcod/garantia.webp" alt="Garantía" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Garantía .webp</div>'">
-      <img src="kittarotcod/tienda-segura.webp" alt="Tienda Segura" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Tienda Segura .webp</div>'">
-      <img src="kittarotcod/compra-segura.webp" alt="Compra Segura" onerror="this.outerHTML='<div class=\'ph\' style=\'border-radius:50%\'>Compra Segura .webp</div>'">
+      <img src="kittarotcod/badges.webp" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú"
+           width="1200" height="518" loading="lazy">
     </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Visor de fotos -->
+<div class="visor" id="visor" role="dialog" aria-modal="true" aria-label="Fotos del kit">
+  <div class="visor-top">
+    <span id="visorPos">1 / 5</span>
+    <span class="visor-x" id="visorX" role="button" tabindex="0" aria-label="Cerrar">
+      <svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg>
+    </span>
+  </div>
+  <div class="visor-track" id="visorTrack"></div>
+  <div class="visor-nav">
+    <div class="rev-arrow" id="visorPrev" role="button" tabindex="0" aria-label="Anterior"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
+    <div class="visor-dots" id="visorDots"></div>
+    <div class="rev-arrow" id="visorNext" role="button" tabindex="0" aria-label="Siguiente"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
   </div>
 </div>
 
@@ -886,6 +931,99 @@
       [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
     }, { passive: true });
   })();
+
+
+  /* ── Galería de fotos ──────────────────────────────────────────────────
+     Una sola lista manda: cambiar, quitar o añadir fotos se hace aquí y
+     tanto las miniaturas como el visor se rearman solos. */
+  var FOTOS = [
+    { archivo: 'g1', alt: 'Mazo de 78 cartas con el significado impreso en cada carta' },
+    { archivo: 'g2', alt: 'Collar amuleto de tarot y bolsa de terciopelo' },
+    { archivo: 'g3', alt: 'Caja del kit con la rueda zodiacal' },
+    { archivo: 'g4', alt: 'Manual con el significado de cada carta, paso a paso' },
+    { archivo: 'g5', alt: 'Tapete floral para tus tiradas' }
+  ];
+
+  var galeria = document.getElementById('gal');
+  var visor = document.getElementById('visor');
+  var visorTrack = document.getElementById('visorTrack');
+  var visorDots = document.getElementById('visorDots');
+  var visorPos = document.getElementById('visorPos');
+  var fotoActual = 0;
+  var ultimoFoco = null;
+
+  FOTOS.forEach(function (foto, i) {
+    var boton = document.createElement('button');
+    boton.type = 'button';
+    boton.setAttribute('aria-label', 'Ver foto ' + (i + 1) + ' de ' + FOTOS.length);
+    boton.innerHTML = '<img src="kittarotcod/galeria/' + foto.archivo + '-mini.webp" alt="' +
+      foto.alt + '" width="400" height="400" loading="lazy">' +
+      (i === FOTOS.length - 1 ? '<span class="mas">Ver todas</span>' : '');
+    boton.addEventListener('click', function () { abrirVisor(i); });
+    galeria.appendChild(boton);
+
+    var fig = document.createElement('figure');
+    // Las grandes se cargan solo al abrir el visor: no penalizan la portada.
+    fig.innerHTML = '<img data-src="kittarotcod/galeria/' + foto.archivo + '.webp" alt="' +
+      foto.alt + '" width="1000" height="1000"><figcaption>' + foto.alt + '</figcaption>';
+    visorTrack.appendChild(fig);
+
+    var punto = document.createElement('i');
+    if (i === 0) punto.className = 'on';
+    visorDots.appendChild(punto);
+  });
+
+  function abrirVisor(indice) {
+    ultimoFoco = document.activeElement;
+    // Carga diferida: la primera vez que se abre, se resuelven los src.
+    [].forEach.call(visorTrack.querySelectorAll('img[data-src]'), function (img) {
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+    });
+    visor.classList.add('on');
+    document.body.style.overflow = 'hidden';
+    irAFoto(indice, 'auto');
+    document.getElementById('visorX').focus();
+  }
+
+  function cerrarVisor() {
+    visor.classList.remove('on');
+    // El modal de pedido puede estar abierto detrás: no le quitamos su bloqueo.
+    if (!document.getElementById('codOverlay').classList.contains('on') &&
+        !document.getElementById('upsellOverlay').classList.contains('on')) {
+      document.body.style.overflow = '';
+    }
+    if (ultimoFoco && ultimoFoco.focus) ultimoFoco.focus();
+  }
+
+  function irAFoto(indice, comportamiento) {
+    fotoActual = (indice + FOTOS.length) % FOTOS.length;
+    visorTrack.scrollTo({ left: fotoActual * visorTrack.clientWidth, behavior: comportamiento || 'smooth' });
+    pintarEstado();
+  }
+
+  function pintarEstado() {
+    [].forEach.call(visorDots.children, function (d, i) { d.className = i === fotoActual ? 'on' : ''; });
+    visorPos.textContent = (fotoActual + 1) + ' / ' + FOTOS.length;
+  }
+
+  // El swipe del dedo no pasa por irAFoto, así que el estado se lee del scroll.
+  visorTrack.addEventListener('scroll', function () {
+    var i = Math.round(visorTrack.scrollLeft / visorTrack.clientWidth);
+    if (i !== fotoActual && i >= 0 && i < FOTOS.length) { fotoActual = i; pintarEstado(); }
+  });
+
+  document.getElementById('visorPrev').addEventListener('click', function () { irAFoto(fotoActual - 1); });
+  document.getElementById('visorNext').addEventListener('click', function () { irAFoto(fotoActual + 1); });
+  document.getElementById('visorX').addEventListener('click', cerrarVisor);
+  visor.addEventListener('click', function (e) { if (e.target === visor) cerrarVisor(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (!visor.classList.contains('on')) return;
+    if (e.key === 'Escape') cerrarVisor();
+    if (e.key === 'ArrowRight') irAFoto(fotoActual + 1);
+    if (e.key === 'ArrowLeft') irAFoto(fotoActual - 1);
+  });
 
   // Slider Reseñas
   var track = document.getElementById('revTrack'), cards = track.children.length, cur = 0, dots = document.getElementById('revDots');

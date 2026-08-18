@@ -198,5 +198,57 @@ for (const [archivo, texto] of [
 
 check("el código de pedido ya no se genera como tal", typeof makeEventId === "function");
 
+/* 10. Galería de fotos y peso de la página */
+const { existsSync, statSync, readdirSync } = await import("node:fs");
+const img = (ruta) => join(root, "public", ruta);
+
+// Se compara contra el marcado, no contra la regla CSS del mismo nombre.
+const posGaleria = html.indexOf('id="gal"');
+const posValoracion = html.indexOf('<div class="rating-row">');
+const posBanner = html.indexOf('kittarotcod/1.webp');
+check("la tira va tras el banner y antes de las reseñas",
+  posBanner < posGaleria && posGaleria < posValoracion,
+  `banner ${posBanner}, tira ${posGaleria}, reseñas ${posValoracion}`);
+check("el visor existe con carrusel, puntos y contador",
+  ["visorTrack", "visorDots", "visorPos", "visorPrev", "visorNext"].every((id) => html.includes(`id="${id}"`)));
+
+const fotos = [...html.matchAll(/archivo:\s*'(g\d)'/g)].map((m) => m[1]);
+check("la galería declara 5 fotos", fotos.length === 5, fotos.join(", "));
+for (const foto of fotos) {
+  check(`existe ${foto}.webp y su miniatura`,
+    existsSync(img(`kittarotcod/galeria/${foto}.webp`)) &&
+    existsSync(img(`kittarotcod/galeria/${foto}-mini.webp`)));
+}
+check("las fotos grandes se cargan solo al abrir el visor", html.includes("data-src=\"kittarotcod/galeria/"));
+// El atributo height del <img> gana sobre aspect-ratio: sin height:auto la
+// foto se renderiza a 1000px de alto y desborda el visor.
+check("el visor lleva height:auto en la foto", /\.visor-track img\s*\{[^}]*height:\s*auto/.test(html));
+check("el visor se cierra con Escape", html.includes('e.key === \'Escape\''));
+
+check("el logo del modal apunta al archivo que existe",
+  html.includes("kittarotcod/logo.webp") && existsSync(img("kittarotcod/logo.webp")));
+check("los sellos apuntan al archivo que existe",
+  html.includes("kittarotcod/badges.webp") && existsSync(img("kittarotcod/badges.webp")));
+for (const viejo of ["logo.svg", "garantia.webp", "tienda-segura.webp", "compra-segura.webp"]) {
+  check(`ya no se pide ${viejo}, que no existe`, !html.includes(viejo));
+}
+
+check("el banner principal tiene prioridad alta", /1\.webp"[^>]*fetchpriority="high"/.test(html));
+for (const banner of ["2.webp", "3.webp"]) {
+  check(`${banner} carga en diferido`, new RegExp(`${banner.replace(".", "\\.")}"[^>]*loading="lazy"`).test(html));
+}
+check("los banners declaran medidas, para que no salte el layout",
+  ["1.webp", "2.webp", "3.webp"].every((b) => new RegExp(`${b.replace(".", "\\.")}"[^>]*width="\\d+" height="\\d+"`).test(html)));
+
+const pesados = [];
+const recorrer = (dir) => readdirSync(join(root, "public", dir), { withFileTypes: true }).forEach((e) => {
+  const rel = dir ? `${dir}/${e.name}` : e.name;
+  if (e.isDirectory()) recorrer(rel);
+  else if (statSync(img(rel)).size > 1024 * 1024) pesados.push(rel);
+});
+recorrer("");
+check("no se despliega ningún archivo de más de 1 MB", pesados.length === 0, pesados.join(", "));
+
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);
