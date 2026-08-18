@@ -1,87 +1,104 @@
-# Kit de Tarot — landing COD → Google Sheets → WhatsApp
+# Kit de Tarot — landing COD + CRM en Google Sheets
 
-Página de producto con formulario de **pago contra entrega**. Cuando el cliente envía el modal,
-el pedido se guarda en **Google Sheets** y recibe una **confirmación por WhatsApp** vía
-**Evolution API**. Los upsells aceptados actualizan la misma fila.
-
-Todo corre en **Cloudflare Pages**: la página es estática y la lógica vive en *Pages Functions*,
-así que las credenciales nunca llegan al navegador.
+Página de producto con formulario de pago contra entrega. Cada lead cae en una
+hoja de Google que funciona como CRM del vendedor: estado editable, filtros por
+día y totales diarios. La confirmación al cliente se hace por WhatsApp desde la
+página de gracias (enlace `wa.me`), sin ninguna API de mensajería de por medio.
 
 ```
-index.html                      Tu página (diseño original, sin cambios de estilo)
-functions/api/order.js          POST /api/order  — guarda el pedido y confirma por WhatsApp
-functions/api/upsell.js         POST /api/upsell — suma el upsell a la fila del pedido
-functions/_lib/pedido.js        Precios, variantes y utilidades compartidas
+functions/api/order.js          POST /api/order — registra el lead (antes del order bump)
+functions/api/bump.js           POST /api/bump  — suma el bump a la MISMA fila
+functions/api/click.js          POST /api/click — marca que abrió WhatsApp
+functions/_lib/pedido.js        Precios, productos, bump y utilidades
 functions/_lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
-functions/_lib/evolution.js     Envío de WhatsApp y plantillas de mensaje
-_headers                        Cabeceras de seguridad y caché
+functions/_lib/rate-limit.js    Máximo de leads por IP (requiere KV)
 scripts/check.mjs               Chequeos sin red: `npm run check`
+scripts/setup-sheet.mjs         Escribe los encabezados de la hoja
 ```
 
-## Imágenes que faltan
+## La hoja
 
-La página las referencia y muestra un marcador punteado mientras no existan. Súbelas a la raíz
-del repo con estos nombres exactos:
+Pestaña **`Pedidos`**, columnas A..M en este orden exacto:
 
-`1.png` (banner) · `2.png` · `3.png` · `logo.svg` · `garantia.webp` · `tienda-segura.webp` ·
-`compra-segura.webp`
+| A | B | C | D | E | F | G |
+|---|---|---|---|---|---|---|
+| Fecha y hora | Día | Nombre | WhatsApp | Envío | Dirección / Agencia | Producto |
 
-## Paso 1 — Google Sheets
+| H | I | J | K | L | M |
+|---|---|---|---|---|---|
+| Order bump | Total | Estado | Clic WhatsApp | Notas del vendedor | Event ID |
 
-Crea la hoja, nombra la pestaña **`Pedidos`** y pega estos encabezados en la fila 1:
+- **Estado** es un desplegable: `Pendiente` · `Enviado` · `Pagado` · `Anulado`.
+  La fila entera se colorea según el valor.
+- **Clic WhatsApp** se marca con `Sí` desde `/api/click`. Filtrando por vacío
+  sale la lista de a quién hay que perseguir.
+- **Event ID** es el identificador interno del lead: localiza su fila al añadir
+  el bump y sirve de `event_id` para deduplicar en la Conversions API de Meta.
+  Nunca se le muestra al cliente.
 
-| A | B | C | D | E | F | G | H |
-|---|---|---|---|---|---|---|---|
-| Fecha | Pedido | Nombre | WhatsApp | Envío | Dirección | Agencia | Variante |
+Pestaña **`Resumen`**: KPIs de hoy y una tabla por día (leads, pagados,
+enviados, pendientes, monto pagado, monto potencial y % de cierre).
 
-| I | J | K | L | M | N | O | P |
-|---|---|---|---|---|---|---|---|
-| Cantidad | Subtotal | Upsells | Total | Estado | Origen | UTM | País |
+## Contrato del formulario
 
-> El orden importa: `/api/upsell` escribe en **K** y **L** buscando el pedido por la columna **B**.
+`POST /api/order` espera:
 
-El **ID de la hoja** está en su URL: `docs.google.com/spreadsheets/d/`**`<ID>`**`/edit`.
-
-### Habilitar la API y crear la service account
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → crea un proyecto.
-2. **APIs y servicios → Biblioteca** → busca *Google Sheets API* → **Habilitar**.
-3. **APIs y servicios → Credenciales → Crear credenciales → Cuenta de servicio**.
-   Nómbrala `pedidos-bot` y crea. No necesita rol de IAM.
-4. Entra a la cuenta creada → pestaña **Claves** → **Agregar clave → Crear nueva → JSON**.
-   Se descarga un archivo; de ahí salen `client_email` y `private_key`.
-5. **Comparte la hoja** con ese `client_email` como **Editor**. Sin esto la API responde 403.
-
-## Paso 2 — Evolution API
-
-Instancia con WhatsApp vinculado por QR. Pruébala antes de conectar el sitio:
-
-```bash
-curl -X POST "$EVO_API_URL/message/sendText/$EVO_INSTANCE" \
-  -H "apikey: $EVO_API_KEY" -H "Content-Type: application/json" \
-  -d '{"number":"51987654321","text":"Prueba"}'
+```json
+{
+  "nombre": "María Fernández",
+  "telefono": "987654321",
+  "envio": "casa",
+  "direccion": "Av. Larco 1234",
+  "agencia": "",
+  "producto": "1kit",
+  "website": ""
+}
 ```
 
-## Paso 3 — Cloudflare Pages
+`envio` es `"casa"` o `"agencia"`; se usa `direccion` o `agencia` según
+corresponda y ambas caen en la misma columna. `producto` es `"1kit"` o `"2kit"`.
+`website` es el honeypot: si viene lleno, la respuesta es 200 pero no se guarda.
 
-1. **Workers & Pages → Create → Pages → Connect to Git** y elige este repositorio.
-2. Framework preset **None**, build command vacío, output directory **`/`**.
-3. **Settings → Variables and Secrets**, en *Production* y *Preview*:
+Responde `{ ok, eventId, total }`. Guarda el `eventId` en memoria:
 
-   | Variable | Tipo |
-   |---|---|
-   | `GOOGLE_SHEET_ID` | texto |
-   | `GOOGLE_SHEET_NAME` | texto (`Pedidos`) |
-   | `GOOGLE_CLIENT_EMAIL` | texto |
-   | `GOOGLE_PRIVATE_KEY` | **secret** |
-   | `EVO_API_URL` | texto |
-   | `EVO_INSTANCE` | texto |
-   | `EVO_API_KEY` | **secret** |
-   | `EVO_NOTIFY_NUMBER` | texto (opcional) |
+- `POST /api/bump`  → `{ eventId, item: "velas" }` responde `{ ok, total }` con
+  el total ya actualizado, para mostrarlo en gracias.html.
+- `POST /api/click` → `{ eventId }` cuando el cliente pulsa el botón de WhatsApp.
 
-   `GOOGLE_PRIVATE_KEY` se pega tal cual viene en el JSON, con los `\n` incluidos.
+El precio nunca se toma del navegador: se recalcula con la tabla de
+`functions/_lib/pedido.js`.
 
-4. Vuelve a desplegar: las variables no se aplican al build anterior.
+## Variables en Cloudflare Pages
+
+| Variable | Tipo |
+|---|---|
+| `GOOGLE_SHEET_ID` | texto |
+| `GOOGLE_SHEET_NAME` | texto (`Pedidos`) |
+| `GOOGLE_CLIENT_EMAIL` | texto |
+| `GOOGLE_PRIVATE_KEY` | **secret** |
+
+Comparte la hoja con el `GOOGLE_CLIENT_EMAIL` como Editor o la API responde 403.
+
+### Límite de leads por IP (opcional)
+
+Sin configurar nada, **no hay límite**: puedes probar el formulario las veces
+que quieras. Para activar el tope de 5 leads por IP cada 24 h, crea un KV
+namespace en el dashboard y enlázalo al proyecto con el nombre **`LEADS_KV`**
+(Settings → Bindings → KV namespace). Si el binding no existe, el código lo
+avisa por consola y deja pasar todo: nunca se pierde una venta por eso.
+
+## Detalles que costaron sangre
+
+- El `append` apunta a `Pedidos!A:A` y usa **OVERWRITE**, no `INSERT_ROWS`.
+  Insertar filas desplaza las referencias de las fórmulas del Resumen y hace
+  que la fila nueva herede el formato del encabezado en vez del de fecha.
+- Las lecturas usan **UNFORMATTED_VALUE**: con formato de moneda, un total
+  vuelve como `"S/ 139"` y cualquier suma posterior da `NaN`.
+- Las fechas se escriben como `2026-08-17 21:35:00` en hora de Lima, formato que
+  Sheets interpreta como fecha real. Un ISO con `T` y `Z` se guarda como texto y
+  rompe los filtros y las sumas por día.
+- Nunca pongas casillas de verificación en una columna entera: rellenan `FALSE`
+  en las mil filas y el `append` empieza a escribir debajo de todas ellas.
 
 ## Desarrollo local
 
@@ -89,21 +106,6 @@ curl -X POST "$EVO_API_URL/message/sendText/$EVO_INSTANCE" \
 npm install
 cp .dev.vars.example .dev.vars   # completa credenciales reales
 npm run dev                      # http://localhost:8788
-npm run check                    # chequeos sin red ni credenciales
+npm run check                    # chequeos sin red
+npm run setup:sheet              # reescribe los encabezados
 ```
-
-## Cómo funciona el flujo
-
-1. El cliente completa el modal y pulsa **REALIZAR PEDIDO**.
-2. La pantalla de upsell aparece de inmediato; en paralelo viaja el `POST /api/order`.
-   Así el pedido queda guardado aunque el cliente abandone en los upsells.
-3. El servidor valida, **recalcula el precio con su propia tabla** (`functions/_lib/pedido.js`)
-   e inserta la fila. Si Sheets falla, el cliente ve un aviso y el pedido no se da por hecho.
-4. Se envía el WhatsApp de confirmación. Si Evolution está caído, el pedido igual quedó
-   registrado y solo se pierde el mensaje automático.
-5. Cada upsell aceptado dispara `POST /api/upsell`, que busca la fila por código de pedido
-   y actualiza *Upsells* y *Total*. Si el cliente acepta antes de que responda `/api/order`,
-   queda en cola y se envía apenas llega el código.
-
-**Precios**: viven en `functions/_lib/pedido.js`. Si los cambias, actualiza también los textos
-de `index.html` — `npm run check` avisa si dejan de coincidir.

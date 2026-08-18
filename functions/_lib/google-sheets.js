@@ -93,10 +93,16 @@ async function getAccessToken(env) {
 export async function appendRow(env, row) {
   const accessToken = await getAccessToken(env);
   const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
-  const range = encodeURIComponent(`${sheetName}!A:Z`);
+  // Se apunta solo a la columna A: así Sheets calcula el final de la tabla
+  // mirando las fechas y no se confunde con formatos o validaciones que
+  // "ocupan" otras columnas sin ser datos reales.
+  const range = encodeURIComponent(`${sheetName}!A:A`);
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
-    `/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+    // OVERWRITE (y no INSERT_ROWS) a propósito: insertar filas desplaza las
+    // referencias de las fórmulas del Resumen y hace que la fila nueva herede
+    // el formato del encabezado en lugar del de fecha.
+    `/values/${range}:append?valueInputOption=USER_ENTERED`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -124,7 +130,9 @@ export async function getValues(env, rangeA1) {
   const accessToken = await getAccessToken(env);
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
-    `/values/${encodeURIComponent(rangeA1)}`;
+    // UNFORMATTED_VALUE: si se lee formateado, un total con formato de moneda
+    // vuelve como "S/ 139" y cualquier suma posterior da NaN.
+    `/values/${encodeURIComponent(rangeA1)}?valueRenderOption=UNFORMATTED_VALUE`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {
@@ -155,12 +163,12 @@ export async function updateValues(env, rangeA1, values) {
 }
 
 /**
- * Busca el número de fila (1-indexado, como lo muestra Sheets) de un pedido
- * por su código en la columna B. Devuelve null si no existe.
+ * Busca el número de fila (1-indexado, como lo muestra Sheets) de un lead por
+ * su Event ID en la columna M. Devuelve null si no existe.
  */
-export async function findRowByOrderId(env, orderId) {
+export async function findRowByEventId(env, eventId) {
   const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
-  const columna = await getValues(env, `${sheetName}!B:B`);
-  const index = columna.findIndex((fila) => fila[0] === orderId);
+  const columna = await getValues(env, `${sheetName}!M:M`);
+  const index = columna.findIndex((fila) => fila[0] === eventId);
   return index === -1 ? null : index + 1;
 }

@@ -1,25 +1,24 @@
 /**
- * Catálogo y utilidades compartidas entre /api/order y /api/upsell.
+ * Catálogo y utilidades compartidas por los endpoints.
  *
  * Los precios viven SOLO aquí: el navegador manda qué eligió el cliente,
- * nunca cuánto cuesta. Si cambias un precio, cámbialo en este archivo y en
- * los textos de index.html.
+ * nunca cuánto cuesta. Si cambias un precio, cámbialo también en index.html.
  */
 
-export const VARIANTES = {
-  "1kit": { etiqueta: "1 Kit de Tarot Completo", cantidad: 1, precio: 79 },
-  "2kit": { etiqueta: "2 Kits de Tarot Completo", cantidad: 2, precio: 139 }
+export const PRODUCTOS = {
+  "1kit": { etiqueta: "1 Kit de Tarot Completo", precio: 79 },
+  "2kit": { etiqueta: "2 Kits de Tarot Completo", precio: 139 }
 };
 
-export const UPSELLS = {
-  pendulo: { etiqueta: "Péndulo de amatista + mapa Sí/No", precio: 30 },
-  velas: { etiqueta: "Set de velas + incienso purificador", precio: 30 }
+/** Único order bump: el set de velas. */
+export const BUMPS = {
+  velas: { etiqueta: "Set de velas + incienso", precio: 30 }
 };
 
-/** Recorta y limpia texto libre para que no rompa la hoja ni el mensaje. */
+/** Recorta y limpia texto libre: fuera caracteres de control e invisibles. */
 export function clean(value, maxLength) {
   return String(value ?? "")
-    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\p{C}/gu, " ")
     .trim()
     .slice(0, maxLength);
 }
@@ -33,11 +32,30 @@ export function toE164Peru(raw) {
   return null;
 }
 
-/** TK-8F3K2Q — corto, legible por teléfono y suficientemente único. */
-export function makeOrderId() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  let code = "";
-  for (const byte of bytes) code += alphabet[byte % alphabet.length];
-  return `TK-${code}`;
+/**
+ * Identificador interno del lead. Nunca se le muestra al cliente: sirve para
+ * localizar su fila al añadir el order bump y como event_id de deduplicación
+ * en la Conversions API de Meta.
+ */
+export function makeEventId() {
+  return crypto.randomUUID();
 }
+
+/**
+ * Fecha en hora de Lima con formato que Google Sheets interpreta como fecha
+ * real (no texto), imprescindible para filtrar y sumar por día.
+ */
+export function fechaLima(date = new Date()) {
+  const texto = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Lima",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+  }).format(date); // "2026-08-17 12:34:56"
+  return { fechaHora: texto, dia: texto.slice(0, 10) };
+}
+
+export const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+  });

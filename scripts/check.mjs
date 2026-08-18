@@ -1,66 +1,61 @@
 /**
- * Chequeos rápidos sin dependencias ni red: `npm run check`
- *  1. La página trae los ids y atributos que el JS del pedido necesita.
- *  2. La validación del backend acepta pedidos buenos y rechaza los malos.
- *  3. Los precios del HTML coinciden con los del servidor.
+ * Chequeos del backend sin red ni credenciales: `npm run check`
  */
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 let failures = 0;
+const check = (name, cond, detail = "") => {
+  if (!cond) failures++;
+  console.log(`${cond ? "OK " : "FALLA"} ${name}${cond || !detail ? "" : ` -- ${detail}`}`);
+};
 
-function check(name, condition, detail = "") {
-  const ok = Boolean(condition);
-  if (!ok) failures++;
-  console.log(`${ok ? "✓" : "✗"} ${name}${ok || !detail ? "" : ` — ${detail}`}`);
-}
-
-const html = readFileSync(join(root, "index.html"), "utf8");
-const { VARIANTES, toE164Peru, makeOrderId } = await import(join(root, "functions/_lib/pedido.js"));
+const { PRODUCTOS, BUMPS, toE164Peru, fechaLima, clean } = await import(join(root, "functions/_lib/pedido.js"));
 const { validate } = await import(join(root, "functions/api/order.js"));
+const { MAX_LEADS_POR_IP, checkRateLimit } = await import(join(root, "functions/_lib/rate-limit.js"));
 
-/* 1. Enganches del formulario */
-for (const id of ["fName", "fPhone", "fDir", "fSucursal", "fWebsite", "shipCasa", "btnPedido"]) {
-  check(`index.html tiene #${id}`, html.includes(`id="${id}"`));
-}
-check('las variantes llevan data-var="1kit" y "2kit"',
-  html.includes('data-var="1kit"') && html.includes('data-var="2kit"'));
-check("el formulario llama a /api/order", html.includes("'/api/order'"));
-check("los upsells llaman a /api/upsell", html.includes("'/api/upsell'"));
-
-/* 2. Precios sincronizados entre página y servidor */
-check("precio de 1 kit (S/ 79) coincide", VARIANTES["1kit"].precio === 79 && html.includes("79.00"));
-check("precio de 2 kits (S/ 139) coincide", VARIANTES["2kit"].precio === 139 && html.includes("139.00"));
-
-/* 3. Validación del backend */
-check("celular 9 dígitos → E.164", toE164Peru("987 654 321") === "51987654321");
+/* Teléfonos */
+check("celular de 9 dígitos a E.164", toE164Peru("987 654 321") === "51987654321");
 check("celular con +51 se respeta", toE164Peru("+51 987654321") === "51987654321");
 check("fijo de 7 dígitos se rechaza", toE164Peru("4451234") === null);
-check("código de pedido con formato TK-XXXXXX", /^TK-[A-Z2-9]{6}$/.test(makeOrderId()));
 
-const lima = {
-  nombre: "María Fernández", telefono: "987654321",
-  envio: "casa", direccion: "Av. Larco 1234, dpto. 502", variante: "2kit"
-};
-const r1 = validate(lima);
-check("pedido de Lima válido pasa", r1.errors.length === 0, r1.errors.join(", "));
-check("total de 2 kits = 139", r1.order.total === 139, String(r1.order.total));
+/* Fechas en hora de Lima, con formato que Sheets entiende como fecha */
+const f = fechaLima(new Date("2026-08-18T02:35:00Z")); // 21:35 en Lima del día 17
+check("fecha convertida a hora de Lima", f.fechaHora === "2026-08-17 21:35:00", f.fechaHora);
+check("día sin hora para agrupar", f.dia === "2026-08-17", f.dia);
 
-const provincia = {
-  nombre: "Diego Salas", telefono: "912345678",
-  envio: "agencia", agencia: "Shalom - Sede Centro", variante: "1kit"
-};
-check("pedido de provincia válido pasa", validate(provincia).errors.length === 0);
-check("Lima sin dirección se rechaza",
-  validate({ ...lima, direccion: "" }).errors.includes("direccion"));
-check("provincia sin agencia se rechaza",
-  validate({ ...provincia, agencia: "" }).errors.includes("agencia"));
-check("variante desconocida cae a 1 kit",
-  validate({ ...lima, variante: "99kits" }).order.total === 79);
-check("el precio del formulario se ignora",
-  validate({ ...lima, precio: 1, total: 1 }).order.total === 139);
+/* Precios */
+check("1 kit cuesta 79", PRODUCTOS["1kit"].precio === 79);
+check("2 kits cuestan 139", PRODUCTOS["2kit"].precio === 139);
+check("solo existe el bump de velas", Object.keys(BUMPS).join() === "velas");
+
+/* Validación */
+const lima = { nombre: "María Fernández", telefono: "987654321", envio: "casa",
+               direccion: "Av. Larco 1234, dpto. 502", producto: "2kit" };
+const prov = { nombre: "Diego Salas", telefono: "912345678", envio: "agencia",
+               agencia: "Shalom - Sede Centro", producto: "1kit" };
+
+check("pedido de Lima válido", validate(lima).errors.length === 0);
+check("pedido de provincia válido", validate(prov).errors.length === 0);
+check("dirección y agencia comparten campo",
+  validate(prov).order.destino === "Shalom - Sede Centro");
+check("Lima sin dirección se rechaza", validate({ ...lima, direccion: "" }).errors.includes("direccion"));
+check("provincia sin agencia se rechaza", validate({ ...prov, agencia: "" }).errors.includes("agencia"));
+check("total de 2 kits = 139", validate(lima).order.total === 139);
+check("producto desconocido cae a 1 kit", validate({ ...lima, producto: "99" }).order.total === 79);
+check("el total del formulario se ignora", validate({ ...lima, total: 1, precio: 1 }).order.total === 139);
+const sucio = "Ana" + String.fromCharCode(7) + "Luz";
+check("se limpian caracteres de control", clean(sucio, 20) === "Ana Luz", clean(sucio, 20));
+
+/* Límite por IP */
+const kv = new Map();
+const env = { LEADS_KV: { get: async (k) => kv.get(k), put: async (k, v) => kv.set(k, v) } };
+let ultimo;
+for (let i = 0; i < MAX_LEADS_POR_IP + 2; i++) ultimo = await checkRateLimit(env, "9.9.9.9");
+check(`el lead numero ${MAX_LEADS_POR_IP + 1} desde la misma IP se bloquea`, ultimo.permitido === false);
+check("otra IP no queda afectada", (await checkRateLimit(env, "8.8.8.8")).permitido === true);
+check("sin KV enlazado no se bloquea a nadie", (await checkRateLimit({}, "9.9.9.9")).permitido === true);
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

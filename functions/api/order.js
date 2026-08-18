@@ -1,25 +1,18 @@
 /**
- * POST /api/order — recibe el formulario COD del modal, lo guarda en Google
- * Sheets y dispara la confirmación por WhatsApp (Evolution API).
+ * POST /api/order — registra el lead en Google Sheets apenas el cliente
+ * confirma, ANTES de mostrarle el order bump. Así no se pierde ningún lead
+ * aunque abandone en esa pantalla.
  *
- * Se ejecuta como Cloudflare Pages Function: las credenciales viven en
- * variables de entorno del proyecto, nunca en el bundle del navegador.
+ * Devuelve un eventId interno (nunca visible para el cliente) que sirve para
+ * localizar su fila si luego acepta el bump, y como event_id de deduplicación
+ * para la Conversions API de Meta.
  */
 
 import { appendRow } from "../_lib/google-sheets.js";
-import { sendWhatsAppText, buildCustomerMessage, buildInternalMessage } from "../_lib/evolution.js";
-import { VARIANTES, clean, toE164Peru, makeOrderId } from "../_lib/pedido.js";
+import { checkRateLimit } from "../_lib/rate-limit.js";
+import { PRODUCTOS, clean, toE164Peru, makeEventId, fechaLima, json } from "../_lib/pedido.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
-
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
 
 export function validate(payload) {
   const errors = [];
@@ -27,40 +20,31 @@ export function validate(payload) {
   const nombre = clean(payload.nombre, 80);
   const telefono = toE164Peru(payload.telefono);
   const envio = payload.envio === "agencia" ? "agencia" : "casa";
-  const direccion = clean(payload.direccion, 160);
-  const agencia = clean(payload.agencia, 160);
+  // Domicilio y agencia comparten columna: es el mismo dato para el vendedor.
+  const destino = clean(envio === "agencia" ? payload.agencia : payload.direccion, 200);
 
   // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
-  const variante = VARIANTES[payload.variante] ? payload.variante : "1kit";
-  const { etiqueta, cantidad, precio } = VARIANTES[variante];
+  const producto = PRODUCTOS[payload.producto] ? payload.producto : "1kit";
+  const { etiqueta, precio } = PRODUCTOS[producto];
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
-  if (envio === "casa" && direccion.length < 6) errors.push("direccion");
-  if (envio === "agencia" && agencia.length < 3) errors.push("agencia");
+  if (destino.length < 5) errors.push(envio === "agencia" ? "agencia" : "direccion");
 
   return {
     errors,
     order: {
       nombre,
       telefono,
-      envio,
-      direccion,
-      agencia,
-      variante,
-      etiqueta,
-      cantidad,
-      subtotal: precio,
-      total: precio,
-      origen: clean(payload.origen, 200),
-      utm: clean(payload.utm, 200)
+      envio: envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
+      destino,
+      producto: etiqueta,
+      total: precio
     }
   };
 }
 
-export async function onRequestPost(context) {
-  const { request, env, waitUntil } = context;
-
+export async function onRequestPost({ request, env }) {
   let payload;
   try {
     const raw = await request.text();
@@ -70,9 +54,10 @@ export async function onRequestPost(context) {
     return json({ error: "No pudimos leer el formulario." }, 400);
   }
 
-  // Honeypot: si un bot llenó el campo oculto, respondemos 200 sin guardar.
+  // Honeypot: si un bot llenó el campo oculto respondemos 200 sin guardar,
+  // para no darle señal de que fue detectado.
   if (clean(payload.website, 50)) {
-    return json({ ok: true, orderId: makeOrderId(), whatsappSent: true });
+    return json({ ok: true, eventId: makeEventId(), total: 0 });
   }
 
   const { errors, order } = validate(payload);
@@ -80,55 +65,38 @@ export async function onRequestPost(context) {
     return json({ error: "Revisa los datos del formulario.", fields: errors }, 422);
   }
 
-  order.orderId = makeOrderId();
-  order.fecha = new Date().toISOString();
+  const ip = request.headers.get("CF-Connecting-IP");
+  const { permitido } = await checkRateLimit(env, ip);
+  if (!permitido) {
+    return json({ error: "Ya registramos varios pedidos desde este dispositivo. Escríbenos por WhatsApp." }, 429);
+  }
 
-  // 1) Sheets es la fuente de verdad: si falla, el pedido falla.
+  const eventId = makeEventId();
+  const { fechaHora, dia } = fechaLima();
+
+  // Orden de columnas de la hoja "Pedidos" (A..M). Ver README.
   const fila = [
-    order.fecha,
-    order.orderId,
-    order.nombre,
-    `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
-    order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
-    order.direccion,
-    order.agencia,
-    order.etiqueta,
-    order.cantidad,
-    order.subtotal,
-    "", // Upsells — lo completa /api/upsell si el cliente acepta
-    order.total,
-    "Pendiente",
-    order.origen,
-    order.utm,
-    request.headers.get("CF-IPCountry") || ""
+    fechaHora,          // A Fecha y hora
+    dia,                // B Día
+    order.nombre,       // C Nombre
+    `'+${order.telefono}`, // D WhatsApp (apóstrofo: Sheets no lo vuelve número)
+    order.envio,        // E Envío
+    order.destino,      // F Dirección / Agencia
+    order.producto,     // G Producto
+    "",                 // H Order bump (lo completa /api/bump)
+    order.total,        // I Total
+    "Pendiente",        // J Estado
+    "",                 // K Clic WhatsApp (lo marca /api/click)
+    "",                 // L Notas del vendedor
+    eventId             // M Event ID
   ];
 
   try {
     await appendRow(env, fila);
   } catch (err) {
     console.error("Sheets:", err.message);
-    return json(
-      { error: "No pudimos registrar tu pedido en este momento. Intenta de nuevo en un minuto." },
-      502
-    );
+    return json({ error: "No pudimos registrar tu pedido. Intenta de nuevo en un minuto." }, 502);
   }
 
-  // 2) WhatsApp: el pedido ya está guardado, así que un fallo aquí no lo tumba.
-  let whatsappSent = true;
-  try {
-    await sendWhatsAppText(env, order.telefono, buildCustomerMessage(order));
-  } catch (err) {
-    console.error("Evolution (cliente):", err.message);
-    whatsappSent = false;
-  }
-
-  if (env.EVO_NOTIFY_NUMBER) {
-    waitUntil(
-      sendWhatsAppText(env, env.EVO_NOTIFY_NUMBER, buildInternalMessage(order)).catch((err) =>
-        console.error("Evolution (interno):", err.message)
-      )
-    );
-  }
-
-  return json({ ok: true, orderId: order.orderId, total: order.total, whatsappSent });
+  return json({ ok: true, eventId, total: order.total });
 }
