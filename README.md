@@ -26,14 +26,50 @@ scripts/setup-sheet.mjs Deja la hoja lista como CRM: `npm run setup:sheet`
 scripts/check.mjs       Chequeos sin red: `npm run check`
 ```
 
-## Imágenes
+## Imágenes y video
 
-Los banners ya están en `public/kittarotcod/` como **WebP** (`1.webp`, `2.webp`, `3.webp`).
+Todo lo que se despliega vive en `public/kittarotcod/`:
 
-Faltan cuatro y la página muestra un marcador punteado mientras no existan. Súbelas a
-`public/kittarotcod/` con estos nombres exactos:
+| Archivo | Uso |
+|---|---|
+| `1.webp` | Banner principal (es el LCP: lleva `fetchpriority="high"`) |
+| `2.mp4` | El video del cuerpo. Arranca solo, en silencio y en bucle |
+| `galeria/g1..g6.webp` | Las seis fotos del visor (1000×1000) |
+| `galeria/g1..g6-mini.webp` | Las miniaturas de la tira (400×400) |
+| `kit-variante.webp` | La foto dentro de las tarjetas de 1 kit y 2 kits |
+| `logo.webp` · `badges.webp` | Logo del modal y sellos de confianza |
 
-`logo.svg` · `garantia.webp` · `tienda-segura.webp` · `compra-segura.webp`
+Los originales pesados y los banners retirados están en `imagenes-fuente/`, **fuera de
+`public/`**, para no viajar en cada despliegue. `npm run check` falla si una imagen pasa de
+1 MB o el video de 6 MB.
+
+### El video
+
+Se sirve como MP4 (H.264), que reproducen todos los navegadores. Si exportas una versión
+WebM —pesa bastante menos— déjala en `public/kittarotcod/2.webm` y añade su `<source>`
+antes del MP4; el navegador elegirá la primera que entienda.
+
+El actual pesa **4,6 MB para 15 segundos**. Por debajo de 2,5 MB el arranque en datos
+móviles es bastante mejor: exportarlo a 720p con bitrate ~1,2 Mbps lo deja ahí sin que se
+note en pantalla de teléfono.
+
+Si el navegador bloquea el autoplay (iOS en bajo consumo, por ejemplo), la página le pone
+controles sola para que el cliente pueda darle play.
+
+### Las fotos de la galería
+
+Las seis salen de la foto del kit que subiste: la primera es el conjunto completo y las
+otras cinco son detalles (mazo, collar y bolsa, caja, manual, tapete). Para poner fotos
+propias, reemplaza `galeria/gN.webp` (1000×1000) y `galeria/gN-mini.webp` (400×400) con los
+mismos nombres. La lista `FOTOS` de `public/index.html` es la única fuente: la tira, el
+carrusel y los puntos se arman desde ahí, y `MOSAICOS` decide cuántas miniaturas se ven
+antes del contador azul.
+
+### Lo que falta subir
+
+El order bump busca `velas-1.webp`, `velas-2.webp` y `velas-3.webp`. Mientras no existan,
+la página **retira el carrusel entero** en vez de mostrar huecos, pero el bump vende bastante
+más con fotos.
 
 ## Paso 1 — Google Sheets
 

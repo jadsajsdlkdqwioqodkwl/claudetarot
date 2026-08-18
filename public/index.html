@@ -43,13 +43,19 @@
   .fullimg .ph { width: 100%; min-height: 340px; border-radius: 0; border-left: none; border-right: none; }
   
 
+
+  /* Video del cuerpo: vertical, ocupa el ancho y no salta al cargar */
+  .videobox { width: 100%; background: #0d0d12; }
+  .videobox video { width: 100%; height: auto; aspect-ratio: 720 / 1280; display: block; object-fit: cover; }
+
   /* Galería de miniaturas + visor a pantalla completa */
   .gal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px 20px 0; }
   .gal button { padding: 0; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .15s, transform .15s; }
   .gal button:hover, .gal button:focus-visible { border-color: var(--purple-soft); transform: translateY(-2px); }
   .gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .gal button:last-child { position: relative; }
-  .gal .mas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(17,17,17,.55); color: #fff; font-weight: 800; font-size: 15px; }
+  .gal .mas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.82); color: var(--purple-soft); font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
 
   .visor { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 120; display: none; }
   .visor.on { display: flex; flex-direction: column; }
@@ -106,7 +112,7 @@
   .rev-wrap { margin: 0 20px 22px; }
   .rev-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; scrollbar-width: none; }
   .rev-track::-webkit-scrollbar { display: none; }
-  .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; display: flex; gap: 12px; background: var(--card); }
+  .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; display: block; background: var(--card); }
   .rev-card .ph { width: 64px; height: 64px; min-width: 64px; border-radius: 8px; }
   .rev-card .name { font-weight: 700; font-size: 15px; color: var(--plum); }
   .rev-card .rs { color: var(--gold); font-size: 13px; margin: 2px 0; }
@@ -162,6 +168,11 @@
   .logo-circle { width: 100px; height: 100px; margin: 0 auto 12px; }
   .logo-circle img { width: 100%; height: 100%; object-fit: contain; }
   
+  .vendedor { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 auto 10px;
+    background: #eaf3ff; color: #0b63d6; border: 1px solid #cfe3ff; border-radius: 999px;
+    padding: 5px 14px; font-size: 13px; font-weight: 800; width: fit-content; }
+  .vendedor svg { width: 15px; height: 15px; }
+
   .garantia { text-align: center; color: var(--price-old); font-size: 20px; font-weight: 800; margin: 10px 0 20px; line-height: 1.2; }
   
   .variants { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -170,7 +181,11 @@
   .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
   .vcard.sel .radio { border-color: var(--purple-soft); }
   .vcard.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--purple-soft); }
-  .vcard .ph { width: 100%; height: 80px; margin-bottom: 10px; border-radius: 8px; }
+  .vcard .foto { width: 100%; height: 86px; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
+  .vcard .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
+  .vcard .dos { position: relative; }
+  .vcard .dos::after { content: "x2"; position: absolute; right: 5px; bottom: 5px; background: rgba(17,17,17,.78);
+    color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
   .vcard .vname { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--plum); }
   .vcard .vprice { font-size: 18px; font-weight: 800; margin-top: 6px; color: var(--ink); }
   .vcard .vold { font-size: 12px; color: var(--muted); text-decoration: line-through; margin-top: 2px; }
@@ -210,8 +225,8 @@
   
   .wa-note { text-align: center; color: var(--green); font-size: 14px; font-weight: 700; margin: 16px 0; line-height: 1.4; display: flex; justify-content: center; align-items: center; gap: 6px; }
   
-  .seals { display: flex; justify-content: center; gap: 16px; padding: 10px 0; }
-  .seals img { width: 70px; height: 70px; object-fit: contain; }
+  .seals { display: block; padding: 16px 0 4px; }
+  .seals img { width: 100%; height: auto; display: block; }
   
   .upsell-head { text-align: center; margin-bottom: 16px; }
   .upsell-head .l1 { color: var(--cta1); font-size: 22px; font-weight: 800; }
@@ -304,9 +319,6 @@
   <div class="fullimg"><img src="kittarotcod/1.webp" alt="Kit de Tarot para Principiantes" width="941" height="1672" fetchpriority="high" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>Banner principal (kittarotcod/1.webp)</div>'"></div>
   
 
-  <!-- Miniaturas del producto: abren el visor con el carrusel -->
-  <div class="gal" id="gal" role="group" aria-label="Fotos del kit"></div>
-
   <div class="rating-row">
     <span class="stars"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></span>
     <span class="rating-txt">(4.9/5) en +1286 Reseñas</span>
@@ -333,9 +345,9 @@
 
   <div class="rev-wrap">
     <div class="rev-track" id="revTrack">
-      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
-      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
-      <div class="rev-card"><div class="ph">foto</div><div><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
+      <div class="rev-card"><div><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
+      <div class="rev-card"><div><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
+      <div class="rev-card"><div><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
     </div>
     <div class="rev-nav">
       <div class="rev-arrow" onclick="revMove(-1)"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
@@ -344,8 +356,17 @@
     </div>
   </div>
 
-  <div class="fullimg"><img src="kittarotcod/2.webp" alt="Ahora puedes aprender paso a paso" width="941" height="1672" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/2.webp (Problema)</div>'"></div>
-  <div class="fullimg"><img src="kittarotcod/3.webp" alt="Todo lo que puedes aprender" width="1054" height="1492" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<div class=ph>kittarotcod/3.webp (Aprende)</div>'"></div>
+  <!-- El video vende el cuerpo de la pagina. Arranca solo y sin sonido, que es
+       lo unico que los navegadores permiten reproducir sin que el usuario toque. -->
+  <div class="videobox">
+    <video id="vidKit" autoplay muted loop playsinline preload="metadata"
+           width="720" height="1280" aria-label="El Kit de Tarot por dentro">
+      <source src="kittarotcod/2.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <!-- Miniaturas del producto: abren el visor con el carrusel -->
+  <div class="gal" id="gal" role="group" aria-label="Fotos del kit"></div>
 
   <!-- Main CTA 2 -->
   <button class="cta buzz" style="margin-top:24px" onclick="openCOD()">
@@ -368,7 +389,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Excelente Kit</div>
       <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
-      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
     </div>
     
     <div class="item">
@@ -377,7 +397,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Muy recomendable</div>
       <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
-      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
     </div>
     
     <div class="item">
@@ -386,7 +405,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">El mejor regalo</div>
       <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
-      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
     </div>
 
     <div class="item">
@@ -395,7 +413,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Práctico y bonito</div>
       <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
-      <div class="rimg"><div class="ph" style="height:140px; border:none; border-radius:0;">[Foto de la compra]</div></div>
     </div>
   </div>
 
@@ -425,12 +442,18 @@
     <div class="logo-circle">
       <img src="kittarotcod/logo.webp" alt="Tarot Store Perú" width="100" height="100">
     </div>
+    <div class="vendedor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/>
+      </svg>
+      Vendedor calificado
+    </div>
     <div class="garantia">Garantía de 90 días por tu pedido</div>
     
     <div class="variants">
       <div class="vcard sel" data-var="1kit" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="ph">1 Kit</div>
+        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="360" height="447" loading="lazy"></div>
         <div class="vname">1 Kit de Tarot Completo</div>
         <div class="vprice">S/. 79.00</div>
         <div class="vold">S/. 129.00</div>
@@ -438,7 +461,7 @@
       <div class="vcard" data-var="2kit" onclick="selVar(this)">
         <div class="vbadge"><svg class="ico"><use href="#i-flame"/></svg> Más Vendido</div>
         <div class="radio"></div>
-        <div class="ph">2 Kits</div>
+        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="360" height="447" loading="lazy"></div>
         <div class="vname">2 Kits de Tarot Completo</div>
         <div class="vprice">S/. 139.00</div>
         <div class="vold">S/. 258.00</div>
@@ -555,12 +578,11 @@
       <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
            se generan solos a partir de los slides que existan. -->
       <div class="u-carousel" id="bumpCar">
-        <div class="slide"><img src="kittarotcod/velas-1.webp" alt="Set de velas e incienso"
-          onerror="this.parentNode.innerHTML='[Foto Velas 1]'"></div>
-        <div class="slide"><img src="kittarotcod/velas-2.webp" alt="Velas intencionadas"
-          onerror="this.parentNode.innerHTML='[Foto Velas 2]'"></div>
-        <div class="slide"><img src="kittarotcod/velas-3.webp" alt="Incienso purificador"
-          onerror="this.parentNode.innerHTML='[Foto Velas 3]'"></div>
+        <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
+             texto suelto en la pantalla del bump espanta mas que no tener foto. -->
+        <div class="slide"><img src="kittarotcod/velas-1.webp" alt="Set de velas e incienso" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/velas-2.webp" alt="Velas intencionadas" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/velas-3.webp" alt="Incienso purificador" onerror="sinFotoBump(this)"></div>
       </div>
       <div class="u-dots" id="bumpDots"></div>
 
@@ -738,6 +760,43 @@
   var datosCliente = {};
   var bumpAceptado = '';
 
+  /* Un fallo de red no puede costar un lead que ya pagamos: se reintenta una
+     vez antes de rendirse. Solo se reintenta si el servidor no llego a
+     contestar o devolvio un error suyo (5xx); un 422 es culpa de los datos y
+     repetirlo daria igual. */
+  function enviarPedido(cuerpo, intento) {
+    return fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    }).then(function (r) {
+      if (r.status >= 500 && intento < 1) throw new Error('reintentar');
+      return r;
+    }).catch(function (err) {
+      if (intento < 1) {
+        return new Promise(function (ok) { setTimeout(ok, 1200); })
+          .then(function () { return enviarPedido(cuerpo, intento + 1); });
+      }
+      throw err;
+    });
+  }
+
+  /* Ultimo recurso: el pedido va por WhatsApp con los datos ya escritos, para
+     que el vendedor lo pase a la hoja a mano. */
+  function enlaceRescate(cuerpo, variante) {
+    var lineas = [
+      'Hola! Quiero hacer este pedido (la web no pudo registrarlo):',
+      '',
+      'Nombre: ' + cuerpo.nombre,
+      'WhatsApp: ' + aE164(cuerpo.telefono),
+      'Producto: ' + variante.etiqueta,
+      'Entrega: ' + (cuerpo.envio === 'casa' ? 'Pago en casa (Lima)' : 'Agencia (provincia)'),
+      (cuerpo.envio === 'casa' ? 'Direccion: ' + cuerpo.direccion : 'Agencia: ' + cuerpo.agencia),
+      'Total a pagar: S/ ' + variante.valor.toFixed(2)
+    ];
+    return 'https://wa.me/51928529656?text=' + encodeURIComponent(lineas.join('\n'));
+  }
+
   function submitCOD() {
     var n = document.getElementById('fName').value.trim();
     var p = document.getElementById('fPhone').value.trim();
@@ -773,21 +832,19 @@
       producto: v.etiqueta
     };
 
-    fetch('/api/order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nombre: n,
-        telefono: p,
-        envio: esCasa ? 'casa' : 'agencia',
-        direccion: dir,
-        agencia: suc,
-        variante: sel ? sel.getAttribute('data-var') : '1kit',
-        website: document.getElementById('fWebsite').value,
-        fbp: ident.fbp,
-        fbc: ident.fbc
-      })
-    })
+    var cuerpoPedido = {
+      nombre: n,
+      telefono: p,
+      envio: esCasa ? 'casa' : 'agencia',
+      direccion: dir,
+      agencia: suc,
+      variante: sel ? sel.getAttribute('data-var') : '1kit',
+      website: document.getElementById('fWebsite').value,
+      fbp: ident.fbp,
+      fbc: ident.fbc
+    };
+
+    enviarPedido(cuerpoPedido, 0)
     .then(function(r){ return r.json().then(function(b){ return { ok: r.ok, body: b }; }); })
     .then(function(res){
       if(!res.ok) throw new Error(res.body.error || 'Error al registrar');
@@ -808,7 +865,11 @@
       console.error(err);
       pedidoEstado = 'error';
       quiereSalir = false;
-      alert('No pudimos registrar tu pedido. Escríbenos por WhatsApp y lo tomamos manualmente.');
+      // El lead ya esta escrito y pagamos por ese clic: antes de darlo por
+      // perdido se le ofrece la salida por WhatsApp con todo relleno.
+      if (confirm('No pudimos registrar tu pedido por un problema de conexión.\n\n¿Lo enviamos por WhatsApp para no perderlo?')) {
+        location.href = enlaceRescate(cuerpoPedido, v);
+      }
     })
     .finally(function(){
       btn.disabled = false;
@@ -933,16 +994,40 @@
   })();
 
 
+
+  /* Autoplay: iOS en bajo consumo y algunos navegadores lo bloquean aunque el
+     video este en silencio. Si pasa, se le ponen controles para que el cliente
+     pueda darle play en vez de quedarse mirando un cuadro congelado. */
+  var video = document.getElementById('vidKit');
+  if (video) {
+    var intento = video.play();
+    if (intento && intento.catch) {
+      intento.catch(function () { video.controls = true; });
+    }
+    // Solo se retira si el navegador no puede con ninguna fuente. Un corte de
+    // red pasajero no debe hacer desaparecer el video de la pagina.
+    video.addEventListener('error', function () {
+      if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+        video.parentNode.style.display = 'none';
+      }
+    }, true);
+  }
+
   /* ── Galería de fotos ──────────────────────────────────────────────────
      Una sola lista manda: cambiar, quitar o añadir fotos se hace aquí y
      tanto las miniaturas como el visor se rearman solos. */
   var FOTOS = [
-    { archivo: 'g1', alt: 'Mazo de 78 cartas con el significado impreso en cada carta' },
-    { archivo: 'g2', alt: 'Collar amuleto de tarot y bolsa de terciopelo' },
-    { archivo: 'g3', alt: 'Caja del kit con la rueda zodiacal' },
-    { archivo: 'g4', alt: 'Manual con el significado de cada carta, paso a paso' },
-    { archivo: 'g5', alt: 'Tapete floral para tus tiradas' }
+    { archivo: 'g1', alt: 'Todo lo que incluye el Kit de Tarot' },
+    { archivo: 'g2', alt: 'Mazo de 78 cartas con el significado impreso en cada carta' },
+    { archivo: 'g3', alt: 'Collar amuleto de tarot y bolsa de terciopelo' },
+    { archivo: 'g4', alt: 'Caja del kit con la rueda zodiacal' },
+    { archivo: 'g5', alt: 'Manual con el significado de cada carta, paso a paso' },
+    { archivo: 'g6', alt: 'Tapete floral para tus tiradas' }
   ];
+
+  /* Cuantas miniaturas caben en la tira. El resto se resume en el contador
+     azul del ultimo mosaico, como en Mercado Libre. */
+  var MOSAICOS = 5;
 
   var galeria = document.getElementById('gal');
   var visor = document.getElementById('visor');
@@ -953,14 +1038,21 @@
   var ultimoFoco = null;
 
   FOTOS.forEach(function (foto, i) {
-    var boton = document.createElement('button');
-    boton.type = 'button';
-    boton.setAttribute('aria-label', 'Ver foto ' + (i + 1) + ' de ' + FOTOS.length);
-    boton.innerHTML = '<img src="kittarotcod/galeria/' + foto.archivo + '-mini.webp" alt="' +
-      foto.alt + '" width="400" height="400" loading="lazy">' +
-      (i === FOTOS.length - 1 ? '<span class="mas">Ver todas</span>' : '');
-    boton.addEventListener('click', function () { abrirVisor(i); });
-    galeria.appendChild(boton);
+    // La tira muestra solo los primeros mosaicos; el ultimo resume el resto.
+    if (i < MOSAICOS) {
+      var restantes = FOTOS.length - MOSAICOS;
+      var esUltimo = i === MOSAICOS - 1 && restantes > 0;
+      var boton = document.createElement('button');
+      boton.type = 'button';
+      boton.setAttribute('aria-label', esUltimo
+        ? 'Ver las ' + FOTOS.length + ' fotos'
+        : 'Ver foto ' + (i + 1) + ' de ' + FOTOS.length);
+      boton.innerHTML = '<img src="kittarotcod/galeria/' + foto.archivo + '-mini.webp" alt="' +
+        foto.alt + '" width="400" height="400" loading="lazy">' +
+        (esUltimo ? '<span class="mas">+' + restantes + '</span>' : '');
+      boton.addEventListener('click', function () { abrirVisor(i); });
+      galeria.appendChild(boton);
+    }
 
     var fig = document.createElement('figure');
     // Las grandes se cargan solo al abrir el visor: no penalizan la portada.
@@ -972,6 +1064,16 @@
     if (i === 0) punto.className = 'on';
     visorDots.appendChild(punto);
   });
+
+  /* Sin fotos del bump se retira el carrusel entero. Se cuenta cuantas fallan
+     para no esconderlo si solo se cayo una. */
+  var fotosBumpRotas = 0;
+  window.sinFotoBump = function (img) {
+    fotosBumpRotas++;
+    var car = document.getElementById('bumpCar');
+    if (car && fotosBumpRotas >= car.querySelectorAll('img').length) car.style.display = 'none';
+    else img.parentNode.style.display = 'none';
+  };
 
   function abrirVisor(indice) {
     ultimoFoco = document.activeElement;

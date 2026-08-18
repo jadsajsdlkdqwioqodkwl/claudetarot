@@ -206,14 +206,18 @@ const img = (ruta) => join(root, "public", ruta);
 const posGaleria = html.indexOf('id="gal"');
 const posValoracion = html.indexOf('<div class="rating-row">');
 const posBanner = html.indexOf('kittarotcod/1.webp');
-check("la tira va tras el banner y antes de las reseñas",
-  posBanner < posGaleria && posGaleria < posValoracion,
+check("la tira va después del banner principal", posBanner < posGaleria,
   `banner ${posBanner}, tira ${posGaleria}, reseñas ${posValoracion}`);
 check("el visor existe con carrusel, puntos y contador",
   ["visorTrack", "visorDots", "visorPos", "visorPrev", "visorNext"].every((id) => html.includes(`id="${id}"`)));
 
 const fotos = [...html.matchAll(/archivo:\s*'(g\d)'/g)].map((m) => m[1]);
-check("la galería declara 5 fotos", fotos.length === 5, fotos.join(", "));
+check("la galería declara 6 fotos", fotos.length === 6, fotos.join(", "));
+const mosaicos = Number((html.match(/var MOSAICOS = (\d+)/) || [])[1]);
+check("la tira muestra menos mosaicos que fotos, para que haya contador",
+  mosaicos > 0 && mosaicos < fotos.length, `mosaicos ${mosaicos}, fotos ${fotos.length}`);
+check("el contador es un +N y ya no dice Ver todas",
+  /mas">\+' \+ restantes/.test(html) && !html.includes("Ver todas"));
 for (const foto of fotos) {
   check(`existe ${foto}.webp y su miniatura`,
     existsSync(img(`kittarotcod/galeria/${foto}.webp`)) &&
@@ -234,20 +238,58 @@ for (const viejo of ["logo.svg", "garantia.webp", "tienda-segura.webp", "compra-
 }
 
 check("el banner principal tiene prioridad alta", /1\.webp"[^>]*fetchpriority="high"/.test(html));
-for (const banner of ["2.webp", "3.webp"]) {
-  check(`${banner} carga en diferido`, new RegExp(`${banner.replace(".", "\\.")}"[^>]*loading="lazy"`).test(html));
-}
-check("los banners declaran medidas, para que no salte el layout",
-  ["1.webp", "2.webp", "3.webp"].every((b) => new RegExp(`${b.replace(".", "\\.")}"[^>]*width="\\d+" height="\\d+"`).test(html)));
+check("el banner principal declara medidas",
+  /1\.webp"[^>]*width="\d+" height="\d+"/.test(html));
+
+/* El video sustituye a los banners 2 y 3 */
+check("los banners 2 y 3 ya no estan en el cuerpo",
+  !html.includes("kittarotcod/2.webp") && !html.includes("kittarotcod/3.webp"));
+check("el video esta en la pagina", html.includes('id="vidKit"'));
+check("el video arranca solo, en silencio y sin salir a pantalla completa",
+  ["autoplay", "muted", "playsinline", "loop"].every((a) => new RegExp(`<video[^>]*${a}`).test(html)));
+check("el video reserva su espacio, para que no salte el layout",
+  /\.videobox video\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*1280/.test(html));
+check("si el autoplay se bloquea aparecen los controles", html.includes("video.controls = true"));
+check("cada <source> del video existe en disco",
+  [...html.matchAll(/<source src="(kittarotcod\/[^"]+)"/g)].every((m) => existsSync(img(m[1]))));
+check("la tira de fotos va debajo del video",
+  html.indexOf('class="videobox"') < html.indexOf('id="gal"'));
+
+/* Fotos en las tarjetas de variante y sello de vendedor */
+check("las variantes muestran la foto del kit",
+  (html.match(/kit-variante\.webp/g) || []).length === 2 && existsSync(img("kittarotcod/kit-variante.webp")));
+check("la tarjeta de 2 kits se distingue", html.includes('class="foto dos"'));
+check("el modal luce el sello de vendedor calificado", html.includes("Vendedor calificado"));
+check("los sellos ocupan el ancho del modal", /\.seals img\s*\{[^}]*width:\s*100%/.test(html));
+
+/* El carrusel del order bump no puede mostrar huecos */
+check("si faltan las fotos del bump se retira el carrusel", html.includes("sinFotoBump"));
 
 const pesados = [];
 const recorrer = (dir) => readdirSync(join(root, "public", dir), { withFileTypes: true }).forEach((e) => {
   const rel = dir ? `${dir}/${e.name}` : e.name;
   if (e.isDirectory()) recorrer(rel);
-  else if (statSync(img(rel)).size > 1024 * 1024) pesados.push(rel);
+  else {
+    // Un video pesa por naturaleza; lo que no puede pesar es una imagen.
+    const limite = /\.(mp4|webm|mov)$/i.test(rel) ? 6 * 1024 * 1024 : 1024 * 1024;
+    const tam = statSync(img(rel)).size;
+    if (tam > limite) pesados.push(`${rel} (${Math.round(tam / 1024)} KB)`);
+  }
 });
 recorrer("");
-check("no se despliega ningún archivo de más de 1 MB", pesados.length === 0, pesados.join(", "));
+check("ninguna imagen pasa de 1 MB ni el video de 6 MB", pesados.length === 0, pesados.join(", "));
+
+const video = statSync(img("kittarotcod/2.mp4")).size / 1024 / 1024;
+if (video > 2.5) console.log(`     aviso: el video pesa ${video.toFixed(1)} MB; por debajo de 2.5 MB carga bastante antes en datos móviles`);
+
+
+/* 11. Que un fallo de red no cueste un lead */
+check("el pedido se reintenta antes de rendirse", html.includes("function enviarPedido(cuerpo, intento)"));
+check("no se reintenta un error de datos, solo uno del servidor", html.includes("r.status >= 500"));
+check("si aun asi falla, el lead sale por WhatsApp con todo escrito",
+  html.includes("function enlaceRescate") && html.includes("wa.me/"));
+check("el rescate lleva nombre, telefono, producto y total",
+  /enlaceRescate[\s\S]{0,700}Total a pagar/.test(html));
 
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
