@@ -38,7 +38,7 @@ Todo lo que se despliega vive en `public/kittarotcod/`:
 | `galeria/g1..g6-mini.webp` | Las miniaturas de la tira (400×400) |
 | `kit-variante.webp` | La foto dentro de las tarjetas de 1 kit y 2 kits |
 | `logo.webp` · `badges.webp` | Logo del modal y sellos de confianza |
-| `f1..f3.webp` | Fotos del carrusel del order bump |
+| `bump1..bump3.webp` | Fotos del carrusel del order bump |
 | `resenas/r1..r3.webp` | Fotos de las tarjetas del carrusel de reseñas |
 
 Los originales pesados y los banners retirados están en `imagenes-fuente/`, **fuera de
@@ -52,7 +52,7 @@ Se sirve como MP4 (H.264), que reproducen todos los navegadores.
 **No se descarga al abrir la página.** El elemento entra sin `src` y con
 `preload="none"`; el JS le pone la fuente cuando faltan ~300 px para llegar y lo arranca
 cuando está a punto de entrar en pantalla. Al alejarse se pausa. Quien no baja hasta ahí no
-gasta un solo byte de los 4,6 MB.
+gasta un solo byte.
 
 Van dos mecanismos a propósito: `IntersectionObserver` (el eficiente, no ejecuta nada
 mientras no pasa nada) y un listener de `scroll` limitado por tiempo como red de seguridad.
@@ -63,8 +63,9 @@ pestaña en segundo plano no se ejecuta y dejaría el mecanismo bloqueado.
 Si el navegador bloquea el play (iOS en bajo consumo, por ejemplo), la página le pone
 controles sola para que el cliente pueda darle play.
 
-El actual pesa **2,6 MB** (720×1280, 15 s), tras el re-export. La versión anterior eran
-4,6 MB y quedó guardada en `imagenes-fuente/2-pesado-4.6MB.mp4` por si hiciera falta.
+El actual pesa **1,8 MB** (720×1280, 15 s): re-exportado sin audio (el video va `muted`,
+así que la pista de sonido solo pesaba sin sonar nunca). La versión original de 4,6 MB
+quedó guardada en `imagenes-fuente/2-pesado-4.6MB.mp4` por si hiciera falta.
 
 ### Carga de la página
 
@@ -75,7 +76,8 @@ sin un solo 404.
 - Las fotos de los dos modales (logo, sellos, foto del kit y las del order bump) llevan
   `data-src` y solo se piden **cuando el modal se abre**: son ~145 KB que no le sirven a
   quien nunca pulsa el botón.
-- El favicon va en línea como data-URI, así no cuesta una petición ni deja un 404.
+- El favicon es el logo de la tienda (`favicon.ico` + PNG en 32/180px), cacheado igual
+  que el resto de `kittarotcod/*`.
 - `preconnect` a los dominios de Meta, para que el pixel salga antes.
 - `public/_headers` cachea `/kittarotcod/*` un año como `immutable` y revalida siempre el
   HTML, para que nadie se quede con precios viejos.
@@ -96,7 +98,7 @@ Ya no falta ninguno: `npm run check` los verifica y avisa al final si alguno des
 Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el navegador no lo
 entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta.
 
-Las tres del order bump (`f1`, `f2`, `f3`) muestran clientes recibiendo su caja. Si
+Las tres del order bump (`bump1`, `bump2`, `bump3`) muestran clientes recibiendo su caja. Si
 prefieres que salgan las velas y el incienso que vende ese popup, reemplázalas con los
 mismos nombres y ajusta los textos alternativos en `public/index.html`.
 

@@ -171,18 +171,6 @@
   .sticky-cta-wrap.hidden { transform: translateX(-50%) translateY(120%); opacity: 0; pointer-events: none; }
   .sticky-cta-wrap .cta { margin: 0; width: 100%; }
 
-  /* Toast Notification */
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(200%); width: calc(100% - 32px); max-width: 448px; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.15); padding: 12px 14px; display: flex; gap: 12px; align-items: center; z-index: 50; border: 1px solid var(--line); transition: transform .55s cubic-bezier(.16,1,.3,1), bottom 0.3s ease; }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  body.sticky-visible .toast { bottom: 95px; } 
-
-  .toast .ph { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; }
-  .toast .tfoto { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; overflow: hidden; background: #f1f1f4; }
-  .toast .tfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .toast .tname { font-weight: 700; font-size: 13px; color: var(--plum); }
-  .toast .tprod { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .toast .tx { margin-left: auto; color: var(--muted); cursor: pointer; padding: 4px; }
-  
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: none; overflow-y: auto; padding: 14px 0; }
   .overlay.on { display: block; }
   .modal { background: #fff; width: calc(100% - 24px); max-width: 456px; margin: 0 auto; border-radius: 16px; position: relative; padding: 22px 20px 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
@@ -500,9 +488,6 @@
   </button>
 </div>
 
-<!-- Toast Floating Notification -->
-<div class="toast" id="toast"><div class="tfoto"><img id="toastFoto" src="kittarotcod/f1.webp" alt="" width="46" height="46"></div><div><div class="tname" id="toastName">Maria Garcia de Piura compró:</div><div class="tprod">Kit de Tarot para Principiantes &middot; hace 42 min</div></div><div class="tx" onclick="hideToast(true)"><svg class="ico"><use href="#i-x"/></svg></div></div>
-
 <!-- Modal COD -->
 <div class="overlay" id="codOverlay">
   <div class="modal">
@@ -643,6 +628,17 @@
         <div>Añádelo ahora a <b>mitad de precio</b>, solo con este pedido</div>
         <div class="cd" id="cd">09:58</div>
       </div>
+
+      <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
+           se generan solos a partir de los slides que existan. -->
+      <div class="u-carousel" id="bumpCar">
+        <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
+             texto suelto en la pantalla del bump espanta mas que no tener foto. -->
+        <div class="slide"><img data-src="kittarotcod/bump1.webp" alt="Clienta recibiendo su pedido en la puerta de casa" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img data-src="kittarotcod/bump2.webp" alt="Cliente con su caja del Kit de Tarot" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img data-src="kittarotcod/bump3.webp" alt="La caja del pedido, sellada con el logo de la tienda" onerror="sinFotoBump(this)"></div>
+      </div>
+      <div class="u-dots" id="bumpDots"></div>
 
       <div class="upsell-list">
         <b>El set incluye:</b>
@@ -1305,26 +1301,6 @@
     }
   });
   
-  // Toast flotante
-  var toast = document.getElementById('toast'), toastName = document.getElementById('toastName');
-  var toastFoto = document.getElementById('toastFoto');
-  var buyers = ['Maria Garcia de Piura','Jose Ramirez de Trujillo','Rosa Flores de Arequipa','Luis Torres de Lima','Ana Quispe de Cusco'];
-  var fotos = ['f1', 'f2', 'f3'];
-  var bi = 0, toastTimer;
-  function showToast() {
-    toastName.textContent = buyers[bi % buyers.length] + ' compró:';
-    toastFoto.src = 'kittarotcod/' + fotos[bi % fotos.length] + '.webp';
-    bi++;
-    toast.classList.add('show');
-    toastTimer = setTimeout(hideToast, 5000);
-  }
-  function hideToast(manual) {
-    toast.classList.remove('show');
-    clearTimeout(toastTimer);
-    if(manual !== true) setTimeout(showToast, 8000);
-  }
-  setTimeout(showToast, 3000);
-
   // INTERSECTION OBSERVER
   document.addEventListener("DOMContentLoaded", function() {
     const stickyWrap = document.querySelector('.sticky-cta-wrap');

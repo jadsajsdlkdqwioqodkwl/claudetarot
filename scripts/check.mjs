@@ -114,6 +114,7 @@ check("el navegador manda la fila", html.includes("fila: filaPedido"));
 check("solo queda el order bump de las velas",
   Object.keys(UPSELLS).join() === "velas", Object.keys(UPSELLS).join());
 check("el péndulo desapareció de la página", !/pendulo|Péndulo/i.test(html));
+check("el carrusel del bump es deslizable", html.includes('id="bumpCar"') && html.includes('id="bumpDots"'));
 check("los botones del bump quedan juntos y visibles", html.includes('class="upsell-cta"'));
 
 /* 8. Meta Pixel */
@@ -333,9 +334,7 @@ check("el limitador no depende de requestAnimationFrame",
   /alMoverse = function[\s\S]{0,260}Date\.now\(\)/.test(html));
 check("el video se pausa al alejarse", /distancia\(MARGEN_PLAY\)[\s\S]{0,120}video\.pause\(\)/.test(html));
 check("las fotos de los modales esperan a que el modal se abra",
-  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante)/g) || []).length === 4);
-check("el toast flotante rota la foto real del cliente junto con el nombre",
-  /var fotos = \['f1', 'f2', 'f3'\];[\s\S]{0,200}toastFoto\.src/.test(html));
+  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante|bump\d)/g) || []).length === 7);
 check("al abrir el modal del pedido se activan sus fotos",
   /function openCOD\(\)[\s\S]{0,600}activarImagenes\(document\.getElementById\('codOverlay'\)\)/.test(html));
 check("al abrir el order bump se activan las suyas",
@@ -354,7 +353,7 @@ check("el HTML se revalida siempre, para que los precios no se queden viejos",
 const pendientes = [
   ...fuentesVideo,
   ...[...html.matchAll(/(?:srcset|src)="(kittarotcod\/resenas\/[^"]+)"/g)].map((m) => m[1]),
-  ...["kittarotcod/f1.webp", "kittarotcod/f2.webp", "kittarotcod/f3.webp"]
+  ...["kittarotcod/bump1.webp", "kittarotcod/bump2.webp", "kittarotcod/bump3.webp"]
 ].filter((f) => {
   if (existsSync(img(f))) return false;
   // Un .jpg cuyo .webp ya existe no falta: es el respaldo para navegadores
