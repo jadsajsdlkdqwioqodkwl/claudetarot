@@ -197,7 +197,7 @@
   .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
   .vcard.sel .radio { border-color: var(--purple-soft); }
   .vcard.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--purple-soft); }
-  .vcard .foto { width: 100%; aspect-ratio: 4 / 5; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
+  .vcard .foto { width: 100%; aspect-ratio: 1 / 1; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
   .vcard .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; display: block; }
   .vcard .dos { position: relative; }
   .vcard .dos::after { content: "x2"; position: absolute; right: 5px; bottom: 5px; background: rgba(17,17,17,.78);
@@ -377,7 +377,8 @@
   <div class="videobox">
     <video id="vidKit" autoplay muted loop playsinline preload="metadata"
            width="720" height="1280" aria-label="El Kit de Tarot por dentro">
-      <source src="kittarotcod/2.webm" type="video/webm">
+      <!-- El MP4 va primero a proposito: el WebM exportado pesaba mas (5,9 MB
+           frente a 4,6 MB), y el navegador se queda con la primera que entiende. -->
       <source src="kittarotcod/2.mp4" type="video/mp4">
     </video>
   </div>
@@ -406,7 +407,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Excelente Kit</div>
       <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
-      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r4.webp" type="image/webp"><img src="kittarotcod/resenas/r4.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
       <div class="megusta">
         <span class="etiqueta">¿Te resultó útil?</span>
         <button type="button" class="like" data-gustos="74" onclick="alternarLike(this)" aria-pressed="false">
@@ -426,7 +426,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Muy recomendable</div>
       <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
-      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r5.webp" type="image/webp"><img src="kittarotcod/resenas/r5.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
       <div class="megusta">
         <span class="etiqueta">¿Te resultó útil?</span>
         <button type="button" class="like" data-gustos="38" onclick="alternarLike(this)" aria-pressed="false">
@@ -446,7 +445,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">El mejor regalo</div>
       <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
-      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r6.webp" type="image/webp"><img src="kittarotcod/resenas/r6.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
       <div class="megusta">
         <span class="etiqueta">¿Te resultó útil?</span>
         <button type="button" class="like" data-gustos="51" onclick="alternarLike(this)" aria-pressed="false">
@@ -466,7 +464,6 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Práctico y bonito</div>
       <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
-      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r7.webp" type="image/webp"><img src="kittarotcod/resenas/r7.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
       <div class="megusta">
         <span class="etiqueta">¿Te resultó útil?</span>
         <button type="button" class="like" data-gustos="29" onclick="alternarLike(this)" aria-pressed="false">
@@ -518,7 +515,7 @@
     <div class="variants">
       <div class="vcard sel" data-var="1kit" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="480" height="600" loading="lazy"></div>
+        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="500" height="500" loading="lazy"></div>
         <div class="vname">1 Kit de Tarot Completo</div>
         <div class="vprice">S/. 79.00</div>
         <div class="vold">S/. 129.00</div>
@@ -526,7 +523,7 @@
       <div class="vcard" data-var="2kit" onclick="selVar(this)">
         <div class="vbadge"><svg class="ico"><use href="#i-flame"/></svg> Más Vendido</div>
         <div class="radio"></div>
-        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="480" height="600" loading="lazy"></div>
+        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="500" height="500" loading="lazy"></div>
         <div class="vname">2 Kits de Tarot Completo</div>
         <div class="vprice">S/. 139.00</div>
         <div class="vold">S/. 258.00</div>
@@ -645,9 +642,9 @@
       <div class="u-carousel" id="bumpCar">
         <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
              texto suelto en la pantalla del bump espanta mas que no tener foto. -->
-        <div class="slide"><img src="kittarotcod/velas-1.webp" alt="Set de velas e incienso" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img src="kittarotcod/velas-2.webp" alt="Velas intencionadas" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img src="kittarotcod/velas-3.webp" alt="Incienso purificador" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f1.webp" alt="Set de velas e incienso" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f2.webp" alt="Velas intencionadas" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f3.webp" alt="Incienso purificador" onerror="sinFotoBump(this)"></div>
       </div>
       <div class="u-dots" id="bumpDots"></div>
 

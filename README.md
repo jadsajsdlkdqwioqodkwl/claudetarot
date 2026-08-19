@@ -67,26 +67,27 @@ antes del contador azul.
 
 ### Lo que falta subir
 
-La página ya los pide. Mientras no existan, **se ocultan solos** (no salen iconos rotos),
-pero cada uno vende:
+Solo quedan las tres fotos del order bump. Mientras no existan, la página **retira el
+carrusel entero** en vez de dejar huecos, pero el bump vende bastante más con foto:
 
 | Archivo | Dónde sale |
 |---|---|
-| `2.webm` | El video. Ya está el MP4; el WebM pesa menos y el navegador lo prefiere |
-| `resenas/r1.webp` · `r2` · `r3` | Foto dentro de cada tarjeta del carrusel de reseñas |
-| `resenas/r4.webp` … `r7.webp` | Foto de las cuatro reseñas verificadas de abajo |
-| `velas-1.webp` · `velas-2.webp` · `velas-3.webp` | Carrusel del order bump |
+| `f1.webp` · `f2.webp` · `f3.webp` | Carrusel del popup del order bump (velas e incienso) |
 
-Todos van en `public/kittarotcod/` (los de reseñas, dentro de `public/kittarotcod/resenas/`).
-`npm run check` los lista uno por uno al final, así que siempre sabes qué falta.
+Van en `public/kittarotcod/`, cuadradas. `npm run check` las lista al final hasta que estén.
 
-**Formatos.** Cada foto de reseña se sirve como `<picture>`: primero el `.webp` y, si el
-navegador no lo entiende, un `.jpg` con el mismo nombre. Con subir solo el `.webp` basta
-para todos los navegadores actuales; el `.jpg` es opcional y solo lo pediría un navegador
-muy viejo. Mismo criterio con el video: `2.webm` primero, `2.mp4` de respaldo.
+**Ya subidas**: `resenas/r1.webp`, `r2.webp` y `r3.webp` (fotos de las tarjetas del carrusel
+de reseñas). Las reseñas verificadas de abajo van sin foto, solo con el "me gusta".
 
-Medidas recomendadas: reseñas del carrusel **cuadradas** (400×400 llega de sobra), reseñas
-de abajo cuadradas o verticales (máx. 800 px de ancho), y las del bump cuadradas.
+**Formatos.** Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el
+navegador no lo entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta; el `.jpg`
+es opcional y `npm run check` ya no lo reclama cuando existe el WebP.
+
+**Sobre el WebM.** El export que se hizo pesaba 5,9 MB, más que el MP4 (4,6 MB), así que la
+página sirve el MP4 y el WebM quedó guardado en `imagenes-fuente/2-export.webm`. Para que
+compense hay que exportarlo con menos bitrate: a 720p y ~1,2 Mbps queda cerca de 2 MB. Si
+consigues ese archivo, déjalo en `public/kittarotcod/2.webm` y añade su `<source>` **antes**
+del MP4 en `public/index.html`.
 
 ## Paso 1 — Google Sheets
 
