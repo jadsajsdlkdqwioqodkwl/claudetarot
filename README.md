@@ -45,16 +45,39 @@ Los originales pesados y los banners retirados están en `imagenes-fuente/`, **f
 
 ### El video
 
-Se sirve como MP4 (H.264), que reproducen todos los navegadores. Si exportas una versión
-WebM —pesa bastante menos— déjala en `public/kittarotcod/2.webm` y añade su `<source>`
-antes del MP4; el navegador elegirá la primera que entienda.
+Se sirve como MP4 (H.264), que reproducen todos los navegadores.
+
+**No se descarga al abrir la página.** El elemento entra sin `src` y con
+`preload="none"`; el JS le pone la fuente cuando faltan ~300 px para llegar y lo arranca
+cuando está a punto de entrar en pantalla. Al alejarse se pausa. Quien no baja hasta ahí no
+gasta un solo byte de los 4,6 MB.
+
+Van dos mecanismos a propósito: `IntersectionObserver` (el eficiente, no ejecuta nada
+mientras no pasa nada) y un listener de `scroll` limitado por tiempo como red de seguridad.
+Si el observador falla, el video no se cargaría nunca y el cliente vería un cuadro muerto,
+así que no depende de uno solo. El limitador **no** usa `requestAnimationFrame`: en una
+pestaña en segundo plano no se ejecuta y dejaría el mecanismo bloqueado.
+
+Si el navegador bloquea el play (iOS en bajo consumo, por ejemplo), la página le pone
+controles sola para que el cliente pueda darle play.
 
 El actual pesa **4,6 MB para 15 segundos**. Por debajo de 2,5 MB el arranque en datos
 móviles es bastante mejor: exportarlo a 720p con bitrate ~1,2 Mbps lo deja ahí sin que se
 note en pantalla de teléfono.
 
-Si el navegador bloquea el autoplay (iOS en bajo consumo, por ejemplo), la página le pone
-controles sola para que el cliente pueda darle play.
+### Carga de la página
+
+Medido con el registro del servidor, no a ojo: **10 peticiones y 537 KB** al abrir,
+sin un solo 404.
+
+- El banner principal es el LCP y va con `fetchpriority="high"`.
+- Las fotos de los dos modales (logo, sellos, foto del kit y las del order bump) llevan
+  `data-src` y solo se piden **cuando el modal se abre**: son ~145 KB que no le sirven a
+  quien nunca pulsa el botón.
+- El favicon va en línea como data-URI, así no cuesta una petición ni deja un 404.
+- `preconnect` a los dominios de Meta, para que el pixel salga antes.
+- `public/_headers` cachea `/kittarotcod/*` un año como `immutable` y revalida siempre el
+  HTML, para que nadie se quede con precios viejos.
 
 ### Las fotos de la galería
 

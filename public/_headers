@@ -7,3 +7,17 @@
 
 /api/*
   Cache-Control: no-store
+
+# Las imagenes y el video no cambian de contenido sin cambiar de nombre, asi que
+# el navegador puede guardarlos un ano y no volver a pedirlos nunca.
+/kittarotcod/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# El HTML si cambia con cada despliegue: se revalida siempre para que nadie se
+# quede con una version vieja de la pagina o de los precios.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/gracias
+  Cache-Control: public, max-age=0, must-revalidate

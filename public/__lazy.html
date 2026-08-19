@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238B0000'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fff' font-family='Georgia,serif'%3ET%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
 <link rel="preconnect" href="https://www.facebook.com" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -505,7 +504,7 @@
     <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
     
     <div class="logo-circle">
-      <img data-src="kittarotcod/logo.webp" alt="Tarot Store Perú" width="100" height="100">
+      <img src="kittarotcod/logo.webp" alt="Tarot Store Perú" width="100" height="100">
     </div>
     <div class="vendedor">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -518,7 +517,7 @@
     <div class="variants">
       <div class="vcard sel" data-var="1kit" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="foto"><img data-src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="500" height="300" loading="lazy"></div>
+        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="500" height="300" loading="lazy"></div>
         <div class="vname">1 Kit de Tarot Completo</div>
         <div class="vprice">S/. 79.00</div>
         <div class="vold">S/. 129.00</div>
@@ -526,7 +525,7 @@
       <div class="vcard" data-var="2kit" onclick="selVar(this)">
         <div class="vbadge"><svg class="ico"><use href="#i-flame"/></svg> Más Vendido</div>
         <div class="radio"></div>
-        <div class="foto dos"><img data-src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="500" height="300" loading="lazy"></div>
+        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="500" height="300" loading="lazy"></div>
         <div class="vname">2 Kits de Tarot Completo</div>
         <div class="vprice">S/. 139.00</div>
         <div class="vold">S/. 258.00</div>
@@ -601,7 +600,7 @@
     <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
     
     <div class="seals">
-      <img data-src="kittarotcod/badges.webp" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú"
+      <img src="kittarotcod/badges.webp" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú"
            width="1200" height="518" loading="lazy">
     </div>
     </div>
@@ -645,9 +644,9 @@
       <div class="u-carousel" id="bumpCar">
         <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
              texto suelto en la pantalla del bump espanta mas que no tener foto. -->
-        <div class="slide"><img data-src="kittarotcod/f1.webp" alt="Set de velas e incienso" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/f2.webp" alt="Velas intencionadas" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/f3.webp" alt="Incienso purificador" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f1.webp" alt="Set de velas e incienso" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f2.webp" alt="Velas intencionadas" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img src="kittarotcod/f3.webp" alt="Incienso purificador" onerror="sinFotoBump(this)"></div>
       </div>
       <div class="u-dots" id="bumpDots"></div>
 
@@ -756,7 +755,6 @@
       currency: FB.moneda
     });
 
-    activarImagenes(document.getElementById('codOverlay'));
     document.getElementById('codOverlay').classList.add('on');
     document.body.style.overflow = 'hidden';
   }
@@ -881,7 +879,6 @@
 
     // El upsell se muestra de inmediato: el pedido viaja en paralelo para no
     // hacer esperar al cliente ni perder el momento de compra.
-    activarImagenes(document.getElementById('upsellOverlay'));
     document.getElementById('upsellOverlay').classList.add('on');
     startCD();
 
@@ -1062,17 +1059,6 @@
 
 
 
-  /* Las fotos de los modales no se descargan hasta que el modal se abre: son
-     ~145 KB que no le sirven a quien nunca pulsa el boton. */
-  window.activarImagenes = function (contenedor) {
-    if (!contenedor) return;
-    var pendientes = contenedor.querySelectorAll('img[data-src]');
-    for (var i = 0; i < pendientes.length; i++) {
-      pendientes[i].src = pendientes[i].getAttribute('data-src');
-      pendientes[i].removeAttribute('data-src');
-    }
-  };
-
   /* El video se carga y arranca solo cuando el visitante se acerca, y se pausa
      al alejarse: no gasta datos de quien no baja, ni bateria de quien ya paso.
 
@@ -1082,8 +1068,8 @@
      descarga nunca y el cliente ve un cuadro muerto. */
   var video = document.getElementById('vidKit');
   if (video) {
-    var MARGEN_CARGA = 300;   // px antes de llegar: da tiempo a bufferar
-    var MARGEN_PLAY = 50;     // px antes de entrar en pantalla
+    var MARGEN_CARGA = 600;   // px antes de llegar: da tiempo a bufferar
+    var MARGEN_PLAY = 100;    // px antes de entrar en pantalla
     var cargado = false;
 
     var cargar = function () {
@@ -1114,15 +1100,13 @@
       else if (!video.paused) video.pause();
     };
 
-    // Red de seguridad: listener de scroll limitado por tiempo. Se evita
-    // requestAnimationFrame a proposito: en una pestana en segundo plano no se
-    // ejecuta, y el limitador se quedaria bloqueado esperandolo para siempre.
-    var ultimaRevision = 0;
+    // Red de seguridad: un listener de scroll acotado con requestAnimationFrame
+    // para que no se ejecute mas de una vez por fotograma.
+    var pendiente = false;
     var alMoverse = function () {
-      var ahora = Date.now();
-      if (ahora - ultimaRevision < 120) return;
-      ultimaRevision = ahora;
-      revisar();
+      if (pendiente) return;
+      pendiente = true;
+      requestAnimationFrame(function () { pendiente = false; revisar(); });
     };
     window.addEventListener('scroll', alMoverse, { passive: true });
     window.addEventListener('resize', alMoverse, { passive: true });
@@ -1148,29 +1132,6 @@
       }
     }, true);
   }
-
-  /* "Me gusta" de las resenas: es decorativo, no viaja a ningun sitio. Suma
-     uno al pulsar y lo devuelve al soltar, como en Mercado Libre. */
-  window.alternarLike = function (boton) {
-    var num = boton.querySelector('.num');
-    var base = Number(boton.getAttribute('data-gustos') || num.textContent) || 0;
-    var activo = boton.classList.toggle('on');
-    boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
-    boton.setAttribute('data-gustos', base);
-    num.textContent = activo ? base + 1 : base;
-    // El pulgar contrario se apaga: no se puede votar las dos cosas.
-    var pareja = boton.parentNode.querySelectorAll('button');
-    for (var i = 0; i < pareja.length; i++) {
-      if (pareja[i] !== boton && pareja[i].classList.contains('on')) alternarLike(pareja[i]);
-    }
-  };
-
-  /* Si la foto de una resena no existe, se quita el hueco en vez de dejar el
-     icono de imagen rota. */
-  window.sinFotoResena = function (img) {
-    var caja = img.closest('.rfoto') || img.closest('.rimg');
-    if (caja) caja.style.display = 'none';
-  };
 
   /* ── Galería de fotos ──────────────────────────────────────────────────
      Una sola lista manda: cambiar, quitar o añadir fotos se hace aquí y
@@ -1355,6 +1316,25 @@
     
     inlineCTAs.forEach(cta => ctaObserver.observe(cta));
   });
+</script>
+<script>
+window.addEventListener('load', function () {
+  var v = document.getElementById('vidKit');
+  var pidio = function () { return performance.getEntriesByType('resource').some(function (r) { return r.name.indexOf('2.mp4') > -1; }); };
+  var informe = { alCargar: pidio() };
+  setTimeout(function () {
+    var y = v.getBoundingClientRect().top + scrollY;
+    scrollTo(0, y - 650);
+    setTimeout(function () {
+      informe.a650px = { descargando: pidio(), src: (v.getAttribute('src') || 'sin src').split('/').pop() };
+      scrollTo(0, y - 100);
+      setTimeout(function () {
+        informe.encima = { descargando: pidio() };
+        document.title = JSON.stringify(informe);
+      }, 900);
+    }, 900);
+  }, 600);
+});
 </script>
 </body>
 </html>

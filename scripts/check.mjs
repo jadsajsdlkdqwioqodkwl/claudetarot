@@ -245,14 +245,16 @@ check("el banner principal declara medidas",
 check("los banners 2 y 3 ya no estan en el cuerpo",
   !html.includes("kittarotcod/2.webp") && !html.includes("kittarotcod/3.webp"));
 check("el video esta en la pagina", html.includes('id="vidKit"'));
-check("el video arranca solo, en silencio y sin salir a pantalla completa",
-  ["autoplay", "muted", "playsinline", "loop"].every((a) => new RegExp(`<video[^>]*${a}`).test(html)));
+check("el video va en silencio, en bucle y sin pantalla completa",
+  ["muted", "playsinline", "loop"].every((a) => new RegExp(`<video[^>]*${a}`).test(html)));
+check("lo arranca el JS al acercarse, no el atributo autoplay",
+  !/<video[^>]*autoplay/.test(html) && html.includes("video.play()"));
 check("el video reserva su espacio, para que no salte el layout",
   /\.videobox video\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*1280/.test(html));
 check("si el autoplay se bloquea aparecen los controles", html.includes("video.controls = true"));
-const fuentesVideo = [...html.matchAll(/<source src="(kittarotcod\/[^"]+)"/g)].map((m) => m[1]);
-check("al menos una fuente del video existe", fuentesVideo.some((f) => existsSync(img(f))),
-  fuentesVideo.join(", "));
+const fuentesVideo = [...html.matchAll(/<video[^>]*data-src="(kittarotcod\/[^"]+)"/g)].map((m) => m[1]);
+check("el archivo de video que pide la página existe",
+  fuentesVideo.length === 1 && existsSync(img(fuentesVideo[0])), fuentesVideo.join(", "));
 check("la tira de fotos va debajo del video",
   html.indexOf('class="videobox"') < html.indexOf('id="gal"'));
 
@@ -313,12 +315,38 @@ check("cada foto del carrusel ofrece WebP y respaldo JPG", conRespaldo.length ==
 check("las tres fotos del carrusel de reseñas ya están subidas",
   ["r1", "r2", "r3"].every((r) => existsSync(img(`kittarotcod/resenas/${r}.webp`))));
 // El WebM exportado pesaba mas que el MP4, asi que se sirve el MP4.
-check("el video se sirve desde el archivo mas ligero disponible",
-  fuentesVideo.length === 1 && fuentesVideo[0] === "kittarotcod/2.mp4", fuentesVideo.join(", "));
+check("se sirve el MP4, que es el mas ligero de los dos",
+  fuentesVideo[0] === "kittarotcod/2.mp4", fuentesVideo.join(", "));
 
 /* 14. Tarjetas de variante en 4:5 */
-check("la foto de la variante es cuadrada", /\.vcard \.foto\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/.test(html));
-check("la imagen del kit se sirve cuadrada", html.includes('width="500" height="500"'));
+check("la foto de la variante es una banda horizontal",
+  /\.vcard \.foto\s*\{[^}]*height:\s*86px/.test(html));
+check("la imagen del kit se sirve apaisada", html.includes('width="500" height="300"'));
+
+
+/* 15. Carga diferida: lo pesado no viaja hasta que hace falta */
+check("el video no trae src: lo pone el JS al acercarse",
+  /<video[^>]*data-src="kittarotcod\/2\.mp4"/.test(html) && !/<video[^>]*\ssrc=/.test(html));
+check("el video no precarga nada", /<video[^>]*preload="none"/.test(html));
+check("hay observador de cercanía y red de seguridad por scroll",
+  html.includes("IntersectionObserver") && html.includes("addEventListener('scroll', alMoverse"));
+check("el limitador no depende de requestAnimationFrame",
+  /alMoverse = function[\s\S]{0,260}Date\.now\(\)/.test(html));
+check("el video se pausa al alejarse", /distancia\(MARGEN_PLAY\)[\s\S]{0,120}video\.pause\(\)/.test(html));
+check("las fotos de los modales esperan a que el modal se abra",
+  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante|f\d)/g) || []).length === 7);
+check("al abrir el modal del pedido se activan sus fotos",
+  /function openCOD\(\)[\s\S]{0,600}activarImagenes\(document\.getElementById\('codOverlay'\)\)/.test(html));
+check("al abrir el order bump se activan las suyas",
+  html.includes("activarImagenes(document.getElementById('upsellOverlay'))"));
+check("hay favicon en línea, sin pedir un archivo", html.includes('rel="icon" href="data:image/svg+xml'));
+check("se conecta por adelantado con Meta", html.includes('rel="preconnect" href="https://connect.facebook.net"'));
+
+const cacheado = readFileSync(join(root, "public/_headers"), "utf8");
+check("las imágenes y el video se cachean un año",
+  /\/kittarotcod\/\*[\s\S]{0,120}max-age=31536000/.test(cacheado));
+check("el HTML se revalida siempre, para que los precios no se queden viejos",
+  /\/index\.html[\s\S]{0,120}must-revalidate/.test(cacheado));
 
 
 /* 12. Archivos que aún no están: no rompen la página, pero cuestan un 404 */
