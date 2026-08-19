@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238B0000'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fff' font-family='Georgia,serif'%3ET%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="kittarotcod/favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="kittarotcod/favicon-180.png">
 <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
 <link rel="preconnect" href="https://www.facebook.com" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -52,7 +54,7 @@
   .videobox video { width: 100%; height: auto; aspect-ratio: 720 / 1280; display: block; object-fit: cover; }
 
   /* Galería de miniaturas + visor a pantalla completa */
-  .gal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px 20px 0; }
+  .gal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 20px 0; }
   .gal button { padding: 0; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .15s, transform .15s; }
   .gal button:hover, .gal button:focus-visible { border-color: var(--purple-soft); transform: translateY(-2px); }
   .gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -69,7 +71,7 @@
   .visor-track figure { flex: 0 0 100%; scroll-snap-align: center; margin: 0; padding: 0 12px; }
   /* height:auto es imprescindible: el atributo height del <img> es una pista de
      presentacion que gana sobre aspect-ratio y dejaba la foto a 1000px de alto. */
-  .visor-track img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 14px; background: #111; max-height: 72vh; }
+  .visor-track img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 14px; background: #111; max-height: 86vh; }
   .visor-track figcaption { color: #ddd; font-size: 13px; text-align: center; margin-top: 12px; }
   .visor-nav { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 14px 16px 22px; flex-shrink: 0; }
   .visor-nav .rev-arrow { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); color: #fff; }
@@ -378,7 +380,7 @@
   <!-- El video vende el cuerpo de la pagina. Arranca solo y sin sonido, que es
        lo unico que los navegadores permiten reproducir sin que el usuario toque. -->
   <div class="videobox">
-    <!-- Sin src ni preload: el archivo son 4,6 MB y no tiene sentido gastarlos
+    <!-- Sin src ni preload: el archivo pesa ~1.8 MB y no tiene sentido gastarlos
          en alguien que nunca baja hasta aqui. El JS le pone la fuente cuando
          faltan ~600px para llegar y lo arranca cuando ya casi lo ve. -->
     <video id="vidKit" muted loop playsinline preload="none"
@@ -1186,7 +1188,7 @@
 
   /* Cuantas miniaturas caben en la tira. El resto se resume en el contador
      azul del ultimo mosaico, como en Mercado Libre. */
-  var MOSAICOS = 5;
+  var MOSAICOS = 4;
 
   var galeria = document.getElementById('gal');
   var visor = document.getElementById('visor');

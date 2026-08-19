@@ -339,7 +339,7 @@ check("al abrir el modal del pedido se activan sus fotos",
   /function openCOD\(\)[\s\S]{0,600}activarImagenes\(document\.getElementById\('codOverlay'\)\)/.test(html));
 check("al abrir el order bump se activan las suyas",
   html.includes("activarImagenes(document.getElementById('upsellOverlay'))"));
-check("hay favicon en línea, sin pedir un archivo", html.includes('rel="icon" href="data:image/svg+xml'));
+check("el favicon usa el logo real de la tienda", html.includes('rel="icon" href="kittarotcod/favicon-32.png"'));
 check("se conecta por adelantado con Meta", html.includes('rel="preconnect" href="https://connect.facebook.net"'));
 
 const cacheado = readFileSync(join(root, "public/_headers"), "utf8");
