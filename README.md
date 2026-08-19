@@ -33,11 +33,13 @@ Todo lo que se despliega vive en `public/kittarotcod/`:
 | Archivo | Uso |
 |---|---|
 | `1.webp` | Banner principal (es el LCP: lleva `fetchpriority="high"`) |
-| `2.mp4` | El video del cuerpo. Arranca solo, en silencio y en bucle |
+| `2.mp4` | El video del cuerpo. Se carga y arranca al acercarte a él |
 | `galeria/g1..g6.webp` | Las seis fotos del visor (1000×1000) |
 | `galeria/g1..g6-mini.webp` | Las miniaturas de la tira (400×400) |
 | `kit-variante.webp` | La foto dentro de las tarjetas de 1 kit y 2 kits |
 | `logo.webp` · `badges.webp` | Logo del modal y sellos de confianza |
+| `f1..f3.webp` | Fotos del carrusel del order bump |
+| `resenas/r1..r3.webp` | Fotos de las tarjetas del carrusel de reseñas |
 
 Los originales pesados y los banners retirados están en `imagenes-fuente/`, **fuera de
 `public/`**, para no viajar en cada despliegue. `npm run check` falla si una imagen pasa de
@@ -61,9 +63,8 @@ pestaña en segundo plano no se ejecuta y dejaría el mecanismo bloqueado.
 Si el navegador bloquea el play (iOS en bajo consumo, por ejemplo), la página le pone
 controles sola para que el cliente pueda darle play.
 
-El actual pesa **4,6 MB para 15 segundos**. Por debajo de 2,5 MB el arranque en datos
-móviles es bastante mejor: exportarlo a 720p con bitrate ~1,2 Mbps lo deja ahí sin que se
-note en pantalla de teléfono.
+El actual pesa **2,6 MB** (720×1280, 15 s), tras el re-export. La versión anterior eran
+4,6 MB y quedó guardada en `imagenes-fuente/2-pesado-4.6MB.mp4` por si hiciera falta.
 
 ### Carga de la página
 
@@ -88,29 +89,16 @@ mismos nombres. La lista `FOTOS` de `public/index.html` es la única fuente: la 
 carrusel y los puntos se arman desde ahí, y `MOSAICOS` decide cuántas miniaturas se ven
 antes del contador azul.
 
-### Lo que falta subir
+### Estado de los archivos
 
-Solo quedan las tres fotos del order bump. Mientras no existan, la página **retira el
-carrusel entero** en vez de dejar huecos, pero el bump vende bastante más con foto:
+Ya no falta ninguno: `npm run check` los verifica y avisa al final si alguno desaparece.
 
-| Archivo | Dónde sale |
-|---|---|
-| `f1.webp` · `f2.webp` · `f3.webp` | Carrusel del popup del order bump (velas e incienso) |
+Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el navegador no lo
+entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta.
 
-Van en `public/kittarotcod/`, cuadradas. `npm run check` las lista al final hasta que estén.
-
-**Ya subidas**: `resenas/r1.webp`, `r2.webp` y `r3.webp` (fotos de las tarjetas del carrusel
-de reseñas). Las reseñas verificadas de abajo van sin foto, solo con el "me gusta".
-
-**Formatos.** Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el
-navegador no lo entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta; el `.jpg`
-es opcional y `npm run check` ya no lo reclama cuando existe el WebP.
-
-**Sobre el WebM.** El export que se hizo pesaba 5,9 MB, más que el MP4 (4,6 MB), así que la
-página sirve el MP4 y el WebM quedó guardado en `imagenes-fuente/2-export.webm`. Para que
-compense hay que exportarlo con menos bitrate: a 720p y ~1,2 Mbps queda cerca de 2 MB. Si
-consigues ese archivo, déjalo en `public/kittarotcod/2.webm` y añade su `<source>` **antes**
-del MP4 en `public/index.html`.
+Las tres del order bump (`f1`, `f2`, `f3`) muestran clientes recibiendo su caja. Si
+prefieres que salgan las velas y el incienso que vende ese popup, reemplázalas con los
+mismos nombres y ajusta los textos alternativos en `public/index.html`.
 
 ## Paso 1 — Google Sheets
 
