@@ -177,6 +177,8 @@
   body.sticky-visible .toast { bottom: 95px; } 
 
   .toast .ph { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; }
+  .toast .tfoto { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; overflow: hidden; background: #f1f1f4; }
+  .toast .tfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .toast .tname { font-weight: 700; font-size: 13px; color: var(--plum); }
   .toast .tprod { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .toast .tx { margin-left: auto; color: var(--muted); cursor: pointer; padding: 4px; }
@@ -499,7 +501,7 @@
 </div>
 
 <!-- Toast Floating Notification -->
-<div class="toast" id="toast"><div class="ph">f</div><div><div class="tname" id="toastName">Maria Garcia de Piura compró:</div><div class="tprod">Kit de Tarot para Principiantes &middot; hace 42 min</div></div><div class="tx" onclick="hideToast(true)"><svg class="ico"><use href="#i-x"/></svg></div></div>
+<div class="toast" id="toast"><div class="tfoto"><img id="toastFoto" src="kittarotcod/f1.webp" alt="" width="46" height="46"></div><div><div class="tname" id="toastName">Maria Garcia de Piura compró:</div><div class="tprod">Kit de Tarot para Principiantes &middot; hace 42 min</div></div><div class="tx" onclick="hideToast(true)"><svg class="ico"><use href="#i-x"/></svg></div></div>
 
 <!-- Modal COD -->
 <div class="overlay" id="codOverlay">
@@ -641,17 +643,6 @@
         <div>Añádelo ahora a <b>mitad de precio</b>, solo con este pedido</div>
         <div class="cd" id="cd">09:58</div>
       </div>
-
-      <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
-           se generan solos a partir de los slides que existan. -->
-      <div class="u-carousel" id="bumpCar">
-        <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
-             texto suelto en la pantalla del bump espanta mas que no tener foto. -->
-        <div class="slide"><img data-src="kittarotcod/f1.webp" alt="Clienta recibiendo su pedido en la puerta de casa" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/f2.webp" alt="Cliente con su caja del Kit de Tarot" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/f3.webp" alt="La caja del pedido, sellada con el logo de la tienda" onerror="sinFotoBump(this)"></div>
-      </div>
-      <div class="u-dots" id="bumpDots"></div>
 
       <div class="upsell-list">
         <b>El set incluye:</b>
@@ -1316,10 +1307,13 @@
   
   // Toast flotante
   var toast = document.getElementById('toast'), toastName = document.getElementById('toastName');
+  var toastFoto = document.getElementById('toastFoto');
   var buyers = ['Maria Garcia de Piura','Jose Ramirez de Trujillo','Rosa Flores de Arequipa','Luis Torres de Lima','Ana Quispe de Cusco'];
+  var fotos = ['f1', 'f2', 'f3'];
   var bi = 0, toastTimer;
   function showToast() {
     toastName.textContent = buyers[bi % buyers.length] + ' compró:';
+    toastFoto.src = 'kittarotcod/' + fotos[bi % fotos.length] + '.webp';
     bi++;
     toast.classList.add('show');
     toastTimer = setTimeout(hideToast, 5000);
