@@ -255,7 +255,8 @@
   .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
   .upsell-list .ck { color: var(--green); flex-shrink: 0; }
   
-  .u-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
+  .u-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 10px 0 4px; }
+  .u-dots { display: flex; justify-content: center; gap: 6px; }
   .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
   .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
 
@@ -638,7 +639,11 @@
         <div class="slide"><img data-src="kittarotcod/bump2.webp" alt="Cliente con su caja del Kit de Tarot" onerror="sinFotoBump(this)"></div>
         <div class="slide"><img data-src="kittarotcod/bump3.webp" alt="La caja del pedido, sellada con el logo de la tienda" onerror="sinFotoBump(this)"></div>
       </div>
-      <div class="u-dots" id="bumpDots"></div>
+      <div class="u-nav">
+        <div class="rev-arrow" onclick="bumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
+        <div class="u-dots" id="bumpDots"></div>
+        <div class="rev-arrow" onclick="bumpMove(1)" role="button" tabindex="0" aria-label="Foto siguiente"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
+      </div>
 
       <div class="upsell-list">
         <b>El set incluye:</b>
@@ -1028,15 +1033,19 @@
     }, 1000);
   }
   
-  /* Puntos del carrusel del order bump. Se generan a partir de los slides que
-     existan, así que añadir fotos al HTML no pide tocar el JS. */
+  /* Puntos y flechas del carrusel del order bump. Se generan a partir de los
+     slides que existan, así que añadir fotos al HTML no pide tocar el JS. */
+  var bumpCarEl, bumpSlides = 0;
   (function bumpCarrusel() {
     var car = document.getElementById('bumpCar');
     var dots = document.getElementById('bumpDots');
     if (!car || !dots) return;
 
     var slides = car.children.length;
-    if (slides < 2) return; // con una sola foto los puntos sobran
+    if (slides < 2) return; // con una sola foto los puntos y flechas sobran
+
+    bumpCarEl = car;
+    bumpSlides = slides;
 
     for (var i = 0; i < slides; i++) {
       var d = document.createElement('i');
@@ -1048,6 +1057,15 @@
       [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
     }, { passive: true });
   })();
+
+  /* Flechas del carrusel del order bump: mismo desplazamiento suave que ya
+     usan revMove() e irAFoto(), solo que sobre #bumpCar. */
+  window.bumpMove = function (dir) {
+    if (!bumpCarEl || !bumpSlides) return;
+    var actual = Math.round(bumpCarEl.scrollLeft / bumpCarEl.clientWidth);
+    var siguiente = (actual + dir + bumpSlides) % bumpSlides;
+    bumpCarEl.scrollTo({ left: siguiente * bumpCarEl.clientWidth, behavior: 'smooth' });
+  };
 
 
 
