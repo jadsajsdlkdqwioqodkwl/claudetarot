@@ -67,9 +67,26 @@ antes del contador azul.
 
 ### Lo que falta subir
 
-El order bump busca `velas-1.webp`, `velas-2.webp` y `velas-3.webp`. Mientras no existan,
-la página **retira el carrusel entero** en vez de mostrar huecos, pero el bump vende bastante
-más con fotos.
+La página ya los pide. Mientras no existan, **se ocultan solos** (no salen iconos rotos),
+pero cada uno vende:
+
+| Archivo | Dónde sale |
+|---|---|
+| `2.webm` | El video. Ya está el MP4; el WebM pesa menos y el navegador lo prefiere |
+| `resenas/r1.webp` · `r2` · `r3` | Foto dentro de cada tarjeta del carrusel de reseñas |
+| `resenas/r4.webp` … `r7.webp` | Foto de las cuatro reseñas verificadas de abajo |
+| `velas-1.webp` · `velas-2.webp` · `velas-3.webp` | Carrusel del order bump |
+
+Todos van en `public/kittarotcod/` (los de reseñas, dentro de `public/kittarotcod/resenas/`).
+`npm run check` los lista uno por uno al final, así que siempre sabes qué falta.
+
+**Formatos.** Cada foto de reseña se sirve como `<picture>`: primero el `.webp` y, si el
+navegador no lo entiende, un `.jpg` con el mismo nombre. Con subir solo el `.webp` basta
+para todos los navegadores actuales; el `.jpg` es opcional y solo lo pediría un navegador
+muy viejo. Mismo criterio con el video: `2.webm` primero, `2.mp4` de respaldo.
+
+Medidas recomendadas: reseñas del carrusel **cuadradas** (400×400 llega de sobra), reseñas
+de abajo cuadradas o verticales (máx. 800 px de ancho), y las del bump cuadradas.
 
 ## Paso 1 — Google Sheets
 

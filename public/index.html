@@ -109,17 +109,23 @@
   .cta .l1 { font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .cta .l2 { font-size: 13px; font-weight: 600; margin-top: 4px; opacity: 0.9; }
   
-  .rev-wrap { margin: 0 20px 22px; }
+  .rev-wrap { margin: 0 20px 22px; position: relative; }
   .rev-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; scrollbar-width: none; }
   .rev-track::-webkit-scrollbar { display: none; }
-  .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; display: block; background: var(--card); }
+  .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 14px; display: flex; gap: 12px; align-items: flex-start; background: var(--card); }
+  .rev-card .rfoto { width: 78px; min-width: 78px; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: #f1f1f4; }
+  .rev-card .rfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Hueco a la derecha para que las flechas no pisen el nombre */
+  .rev-card .rbody { padding-right: 62px; }
   .rev-card .ph { width: 64px; height: 64px; min-width: 64px; border-radius: 8px; }
   .rev-card .name { font-weight: 700; font-size: 15px; color: var(--plum); }
   .rev-card .rs { color: var(--gold); font-size: 13px; margin: 2px 0; }
   .rev-card .rt { font-size: 13px; color: var(--muted); line-height: 1.4; }
-  .rev-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .rev-nav { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 2; }
+  .rev-arrow { width: 28px; height: 28px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
   .rev-arrow { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .rev-dots { display: flex; gap: 6px; }
+  .rev-dots { display: none; }   /* ocultos: la seccion mide menos y el video sube */
   .rev-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: .2s; }
   .rev-dots i.on { background: var(--purple-soft); width: 18px; border-radius: 4px; }
   
@@ -140,6 +146,16 @@
   .rlist .rtext { font-size: 13px; color: var(--muted); }
   .rlist .rimg { margin-top: 10px; width: 100%; border-radius: 8px; overflow: hidden; background: #f0f0f0; }
   
+  /* Foto y "me gusta" de las resenas verificadas */
+  .rlist .rimg { margin-top: 10px; border-radius: 8px; overflow: hidden; background: #f1f1f4; max-width: 190px; }
+  .rlist .rimg img { width: 100%; height: auto; display: block; }
+  .megusta { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .megusta button { display: flex; align-items: center; gap: 5px; background: none; border: 0; cursor: pointer;
+    color: var(--muted); font-size: 13px; font-weight: 600; font-family: inherit; padding: 4px 2px; }
+  .megusta button.on { color: var(--purple-soft); }
+  .megusta .etiqueta { color: var(--muted); font-size: 13px; margin-right: auto; }
+  .megusta svg { width: 16px; height: 16px; }
+
   /* Meta Footer */
   .meta-footer { text-align: center; padding: 20px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 11px; color: var(--muted); line-height: 1.5; }
   
@@ -181,8 +197,8 @@
   .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
   .vcard.sel .radio { border-color: var(--purple-soft); }
   .vcard.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--purple-soft); }
-  .vcard .foto { width: 100%; height: 86px; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
-  .vcard .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
+  .vcard .foto { width: 100%; aspect-ratio: 4 / 5; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
+  .vcard .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; display: block; }
   .vcard .dos { position: relative; }
   .vcard .dos::after { content: "x2"; position: absolute; right: 5px; bottom: 5px; background: rgba(17,17,17,.78);
     color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
@@ -345,9 +361,9 @@
 
   <div class="rev-wrap">
     <div class="rev-track" id="revTrack">
-      <div class="rev-card"><div><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
-      <div class="rev-card"><div><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
-      <div class="rev-card"><div><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r1.webp" type="image/webp"><img src="kittarotcod/resenas/r1.jpg" alt="Compra de Carla Rojas" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r2.webp" type="image/webp"><img src="kittarotcod/resenas/r2.jpg" alt="Compra de Lucía Mendoza" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r3.webp" type="image/webp"><img src="kittarotcod/resenas/r3.jpg" alt="Compra de Andrea Salas" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
     </div>
     <div class="rev-nav">
       <div class="rev-arrow" onclick="revMove(-1)"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
@@ -361,6 +377,7 @@
   <div class="videobox">
     <video id="vidKit" autoplay muted loop playsinline preload="metadata"
            width="720" height="1280" aria-label="El Kit de Tarot por dentro">
+      <source src="kittarotcod/2.webm" type="video/webm">
       <source src="kittarotcod/2.mp4" type="video/mp4">
     </video>
   </div>
@@ -389,6 +406,18 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Excelente Kit</div>
       <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
+      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r4.webp" type="image/webp"><img src="kittarotcod/resenas/r4.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="74" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">74</span>
+        </button>
+        <button type="button" class="nolike" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">0</span>
+        </button>
+      </div>
     </div>
     
     <div class="item">
@@ -397,6 +426,18 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Muy recomendable</div>
       <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
+      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r5.webp" type="image/webp"><img src="kittarotcod/resenas/r5.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="38" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">38</span>
+        </button>
+        <button type="button" class="nolike" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">0</span>
+        </button>
+      </div>
     </div>
     
     <div class="item">
@@ -405,6 +446,18 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">El mejor regalo</div>
       <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
+      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r6.webp" type="image/webp"><img src="kittarotcod/resenas/r6.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="51" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">51</span>
+        </button>
+        <button type="button" class="nolike" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">0</span>
+        </button>
+      </div>
     </div>
 
     <div class="item">
@@ -413,6 +466,18 @@
       <div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div>
       <div class="rtitle">Práctico y bonito</div>
       <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
+      <div class="rimg"><picture><source srcset="kittarotcod/resenas/r7.webp" type="image/webp"><img src="kittarotcod/resenas/r7.jpg" alt="Foto de la compra" width="380" height="380" loading="lazy" onerror="sinFotoResena(this)"></picture></div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="29" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">29</span>
+        </button>
+        <button type="button" class="nolike" onclick="alternarLike(this)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg>
+          <span class="num">0</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -453,7 +518,7 @@
     <div class="variants">
       <div class="vcard sel" data-var="1kit" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="360" height="447" loading="lazy"></div>
+        <div class="foto"><img src="kittarotcod/kit-variante.webp" alt="Kit de Tarot completo" width="480" height="600" loading="lazy"></div>
         <div class="vname">1 Kit de Tarot Completo</div>
         <div class="vprice">S/. 79.00</div>
         <div class="vold">S/. 129.00</div>
@@ -461,7 +526,7 @@
       <div class="vcard" data-var="2kit" onclick="selVar(this)">
         <div class="vbadge"><svg class="ico"><use href="#i-flame"/></svg> Más Vendido</div>
         <div class="radio"></div>
-        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="360" height="447" loading="lazy"></div>
+        <div class="foto dos"><img src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="480" height="600" loading="lazy"></div>
         <div class="vname">2 Kits de Tarot Completo</div>
         <div class="vprice">S/. 139.00</div>
         <div class="vold">S/. 258.00</div>
@@ -1013,6 +1078,30 @@
     }, true);
   }
 
+
+  /* "Me gusta" de las resenas: es decorativo, no viaja a ningun sitio. Suma
+     uno al pulsar y lo devuelve al soltar, como en Mercado Libre. */
+  window.alternarLike = function (boton) {
+    var num = boton.querySelector('.num');
+    var base = Number(boton.getAttribute('data-gustos') || num.textContent) || 0;
+    var activo = boton.classList.toggle('on');
+    boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+    boton.setAttribute('data-gustos', base);
+    num.textContent = activo ? base + 1 : base;
+    // El pulgar contrario se apaga: no se puede votar las dos cosas.
+    var pareja = boton.parentNode.querySelectorAll('button');
+    for (var i = 0; i < pareja.length; i++) {
+      if (pareja[i] !== boton && pareja[i].classList.contains('on')) alternarLike(pareja[i]);
+    }
+  };
+
+  /* Si la foto de una resena no existe, se quita el hueco en vez de dejar el
+     icono de imagen rota. */
+  window.sinFotoResena = function (img) {
+    var caja = img.closest('.rfoto') || img.closest('.rimg');
+    if (caja) caja.style.display = 'none';
+  };
+
   /* ── Galería de fotos ──────────────────────────────────────────────────
      Una sola lista manda: cambiar, quitar o añadir fotos se hace aquí y
      tanto las miniaturas como el visor se rearman solos. */
@@ -1128,7 +1217,10 @@
   });
 
   // Slider Reseñas
-  var track = document.getElementById('revTrack'), cards = track.children.length, cur = 0, dots = document.getElementById('revDots');
+  var track = document.getElementById('revTrack'), cards = track.children.length, cur = 0;
+  // Los puntos se ocultaron para que la seccion sea mas corta y el video suba;
+  // el elemento sigue existiendo para no tener que tocar el resto del codigo.
+  var dots = document.getElementById('revDots') || document.createElement('div');
   for(var i=0; i<cards; i++) {
     var d = document.createElement('i');
     if(i===0) d.className = 'on';

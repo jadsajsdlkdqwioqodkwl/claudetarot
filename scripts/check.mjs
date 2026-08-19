@@ -250,8 +250,9 @@ check("el video arranca solo, en silencio y sin salir a pantalla completa",
 check("el video reserva su espacio, para que no salte el layout",
   /\.videobox video\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*1280/.test(html));
 check("si el autoplay se bloquea aparecen los controles", html.includes("video.controls = true"));
-check("cada <source> del video existe en disco",
-  [...html.matchAll(/<source src="(kittarotcod\/[^"]+)"/g)].every((m) => existsSync(img(m[1]))));
+const fuentesVideo = [...html.matchAll(/<source src="(kittarotcod\/[^"]+)"/g)].map((m) => m[1]);
+check("al menos una fuente del video existe", fuentesVideo.some((f) => existsSync(img(f))),
+  fuentesVideo.join(", "));
 check("la tira de fotos va debajo del video",
   html.indexOf('class="videobox"') < html.indexOf('id="gal"'));
 
@@ -290,6 +291,45 @@ check("si aun asi falla, el lead sale por WhatsApp con todo escrito",
   html.includes("function enlaceRescate") && html.includes("wa.me/"));
 check("el rescate lleva nombre, telefono, producto y total",
   /enlaceRescate[\s\S]{0,700}Total a pagar/.test(html));
+
+
+/* 13. Reseñas: foto, flechas dentro y "me gusta" */
+check("las tarjetas del carrusel llevan foto",
+  (html.match(/class="rfoto"/g) || []).length === 3);
+check("las flechas van dentro de la tarjeta, no debajo",
+  /\.rev-nav\s*\{[^}]*position:\s*absolute/.test(html));
+check("los puntos del carrusel no ocupan alto", /\.rev-dots\s*\{\s*display:\s*none/.test(html));
+check("el carrusel sigue teniendo flechas que funcionan",
+  html.includes("revMove(-1)") && html.includes("revMove(1)"));
+check("las reseñas verificadas llevan foto y me gusta",
+  (html.match(/class="rimg"/g) || []).length === 4 &&
+  (html.match(/class="megusta"/g) || []).length === 4);
+check("el me gusta es interactivo", html.includes("window.alternarLike"));
+check("votar lo contrario apaga el otro pulgar", /alternarLike[\s\S]{0,600}pareja\[i\]/.test(html));
+check("una foto de reseña que falte no deja el icono roto", html.includes("sinFotoResena"));
+
+/* Todas las fotos que subirá el cliente van con WebP primero y respaldo */
+const conRespaldo = [...html.matchAll(/<picture><source srcset="([^"]+\.webp)" type="image\/webp"><img src="([^"]+\.jpg)"/g)];
+check("cada foto de reseña ofrece WebP y respaldo JPG", conRespaldo.length === 7, String(conRespaldo.length));
+check("el video ofrece WebM antes que MP4",
+  html.indexOf('2.webm" type="video/webm"') > 0 &&
+  html.indexOf('2.webm') < html.indexOf('2.mp4'));
+
+/* 14. Tarjetas de variante en 4:5 */
+check("la foto de la variante es 4:5", /\.vcard \.foto\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*5/.test(html));
+check("la imagen del kit se sirve en 4:5", html.includes('width="480" height="600"'));
+
+
+/* 12. Archivos que aún no están: no rompen la página, pero cuestan un 404 */
+const pendientes = [
+  ...fuentesVideo,
+  ...[...html.matchAll(/(?:srcset|src)="(kittarotcod\/resenas\/[^"]+)"/g)].map((m) => m[1]),
+  ...["kittarotcod/velas-1.webp", "kittarotcod/velas-2.webp", "kittarotcod/velas-3.webp"]
+].filter((f) => !existsSync(img(f)));
+if (pendientes.length) {
+  console.log(`     aviso: faltan ${pendientes.length} archivo(s) que la página pide; hasta que los subas se ocultan solos:`);
+  pendientes.forEach((f) => console.log(`       public/${f}`));
+}
 
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
