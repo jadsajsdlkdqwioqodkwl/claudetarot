@@ -99,7 +99,7 @@ Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el nav
 entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta.
 
 Las tres del order bump (`bump1`, `bump2`, `bump3`) muestran clientes recibiendo su caja. Si
-prefieres que salgan las velas y el incienso que vende ese popup, reemplázalas con los
+prefieres que salgan fotos del mazo Rider Waite que vende ese popup, reemplázalas con los
 mismos nombres y ajusta los textos alternativos en `public/index.html`.
 
 ## Paso 1 — Google Sheets
@@ -236,12 +236,14 @@ Pixel `1598655637922566`, instalado en `public/index.html`. El embudo:
 | `AddToCart` | product page | clic en el CTA | 79 |
 | `AddToCart` | product page | si sube a 2 kits | 139 |
 | `InitiateCheckout` | product page | primer campo que toca | según variante |
-| `AddToCart` | product page | order bump aceptado | 30 |
+| `AddToCart` | product page | order bump aceptado | 49 |
 | `PageView` | `/gracias` | al cargar | — |
 | `Lead` | `/gracias` | al cargar | total real, con el bump ya sumado |
+| `Contact` | `/gracias` | clic en el botón de WhatsApp | total real |
 
 `InitiateCheckout` va en el primer campo tocado, no al abrir el modal, para no
 contar clics accidentales. `InitiateCheckout` y `Lead` se disparan una sola vez.
+`Contact` se dispara al pulsar el botón de WhatsApp de la confirmación, no al cargar.
 
 **El `Lead` vive en `/gracias`**, no en la respuesta de `/api/order`: así solo cuenta a
 quien de verdad terminó el embudo, y su `value` ya incluye el order bump.
@@ -321,9 +323,17 @@ Es una confirmación tradicional: tilde verde, resumen del pedido (producto, ext
 entrega, dirección, y el total a pagar al recibir) y un botón grande de WhatsApp a
 **+51 928 529 656**. **No muestra ningún código de pedido.**
 
+Lleva un contador regresivo de 10 minutos ("Tienes 10:00 minutos para asegurar tu
+orden") para meter urgencia a que escriba por WhatsApp, y un aviso verde con lo
+**ahorrado** en el pedido (variante + order bump, no solo el total a pagar), al estilo
+Temu. El ahorro viaja en el mismo `pedido` de `sessionStorage` que ya usaba el total.
+
 El mensaje de WhatsApp llega con todos los datos ya escritos —nombre, teléfono en
 formato internacional, producto, extra, entrega, dirección y total— para que el
 vendedor no tenga que pedirlos.
+
+Al pulsar el botón de WhatsApp se dispara `Contact` (una sola vez): así el pixel
+distingue a quien de verdad escribe para confirmar, no solo a quien llega a la página.
 
 > **Los datos del cliente viajan por `sessionStorage`, no por la URL.** El pixel de
 > `/gracias` manda la URL de la página a Meta, así que un `?nombre=…&telefono=…` le
@@ -335,8 +345,9 @@ Lead de un pedido que no existe.
 
 ## Order bump
 
-Uno solo, el set de velas. El carrusel de fotos es deslizable: añade tantos `.slide`
-como quieras dentro de `#bumpCar` y los puntos se generan solos.
+Uno solo, el mazo **The Classic Tarot Rider Waite** (antes S/ 60, ahora S/ 49). El
+carrusel de fotos es deslizable: añade tantos `.slide` como quieras dentro de `#bumpCar`
+y los puntos se generan solos.
 
 Los botones **Sí, añadir** y **No, gracias** van juntos en un bloque `sticky` al pie del
 modal, para que en móvil se vean los dos sin desplazarse.

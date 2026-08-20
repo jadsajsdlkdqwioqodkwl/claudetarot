@@ -12,7 +12,7 @@ export const VARIANTES = {
 };
 
 export const UPSELLS = {
-  velas: { etiqueta: "Set de velas + incienso purificador", precio: 30 }
+  riderwaite: { etiqueta: "The Classic Tarot Rider Waite", precio: 49 }
 };
 
 /** Recorta y limpia texto libre para que no rompa la hoja ni el mensaje. */

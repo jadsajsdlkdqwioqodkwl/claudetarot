@@ -111,8 +111,8 @@ check("/api/upsell trabaja con el número de fila", upsellSrc.includes("payload.
 check("/api/upsell ya no busca por código de pedido", !upsellSrc.includes("orderId"));
 check("/api/upsell rechaza la fila de encabezados", upsellSrc.includes("fila < 2"));
 check("el navegador manda la fila", html.includes("fila: filaPedido"));
-check("solo queda el order bump de las velas",
-  Object.keys(UPSELLS).join() === "velas", Object.keys(UPSELLS).join());
+check("solo queda el order bump del Rider Waite",
+  Object.keys(UPSELLS).join() === "riderwaite", Object.keys(UPSELLS).join());
 check("el péndulo desapareció de la página", !/pendulo|Péndulo/i.test(html));
 check("el carrusel del bump es deslizable", html.includes('id="bumpCar"') && html.includes('id="bumpDots"'));
 check("los botones del bump quedan juntos y visibles", html.includes('class="upsell-cta"'));
