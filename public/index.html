@@ -214,6 +214,10 @@
   .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
   .ship-opt .txt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
+  /* Opción A: la ciudad va en la misma línea del título */
+  .ship-opt .txt b .loc { color: var(--purple-soft); }
+  /* Opción B: la ciudad va en su propia línea, entre el título y el detalle */
+  .ship-opt .txt .loc-line { display: block; color: var(--purple-soft); font-weight: 800; font-size: 13px; margin-top: 3px; }
   
   .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
   .fg { margin-bottom: 16px; }
@@ -515,7 +519,7 @@
         <div class="vold">S/. 129.00</div>
       </div>
       <div class="vcard" data-var="2kit" onclick="selVar(this)">
-        <div class="vbadge"><svg class="ico"><use href="#i-gift"/></svg> Ideal para regalo</div>
+        <div class="vbadge"><svg class="ico"><use href="#i-gift"/></svg> Regala magia</div>
         <div class="radio"></div>
         <div class="foto dos"><img data-src="kittarotcod/kit-variante.webp" alt="Dos kits de Tarot completos" width="500" height="300" loading="lazy"></div>
         <div class="vname">2 Kits de Tarot Completo</div>
@@ -528,12 +532,12 @@
     <div class="ship-opts">
       <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><small><b>Lima</b>. Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa: <span class="loc">Lima</span></b><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
         <div class="free">Gratis</div>
       </div>
       <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><small><b>Provincia</b>. Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
         <div class="free">Gratis</div>
       </div>
     </div>

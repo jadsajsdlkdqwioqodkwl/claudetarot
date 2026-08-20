@@ -58,6 +58,11 @@
   .resumen .fila.tot { padding:14px 0; }
   .resumen .fila.tot .k { font-weight:800; color:var(--ink); }
   .resumen .fila.tot .v { font-weight:900; font-size:19px; }
+  /* Precio tachado arriba y precio con descuento debajo, tipo invoice de Temu */
+  .resumen .fila.tot .v { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+  .resumen .fila.tot .v .viejo { font-size:13px; font-weight:600; color:var(--muted);
+                                  text-decoration:line-through; }
+  .resumen .fila.tot .v .nuevo { font-size:19px; font-weight:900; color:var(--ink); }
 
   .card { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
           padding:22px; margin-top:26px; }
@@ -169,7 +174,14 @@
       return '<div class="fila"><span class="k">' + f[0] + '</span><span class="v">' + escapar(f[1]) + '</span></div>';
     }).join('');
     if (total > 0) {
-      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + soles(total) + '</span></div>';
+      // Tipo invoice de Temu: el precio sin descuento tachado arriba, y el
+      // precio con descuento (lo que de verdad paga) debajo. El precio sin
+      // descuento sale de sumar de vuelta lo ahorrado.
+      var ahorro = typeof pedido.ahorro === 'number' ? pedido.ahorro : 0;
+      var valorTotal = ahorro > 0
+        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(total) + '</span>'
+        : soles(total);
+      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + valorTotal + '</span></div>';
     }
     document.getElementById('resumen').innerHTML = html ||
       '<div class="fila"><span class="k">Tu pedido quedó registrado.</span></div>';
