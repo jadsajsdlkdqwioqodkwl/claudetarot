@@ -5,7 +5,7 @@
  * y el servidor, la fila que se desalinea de los encabezados, el pixel que
  * deja de disparar, y datos personales que se escapen por la URL.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
@@ -22,8 +22,9 @@ const html = readFileSync(join(root, "public/index.html"), "utf8");
 const gracias = readFileSync(join(root, "public/gracias.html"), "utf8");
 const headers = readFileSync(join(root, "public/_headers"), "utf8");
 const wrangler = readFileSync(join(root, "wrangler.jsonc"), "utf8");
+const upsellSrc = readFileSync(join(root, "src/api/upsell.js"), "utf8");
 
-const { VARIANTES, toE164Peru, makeEventId } = await import(join(root, "src/lib/pedido.js"));
+const { VARIANTES, UPSELLS, toE164Peru, makeEventId } = await import(join(root, "src/lib/pedido.js"));
 const { COLUMNAS, ESTADOS, indiceDe, letraDe } = await import(join(root, "src/lib/hoja.js"));
 const { validate, filaDePedido, numeroDeFila, fechaLima } = await import(join(root, "src/api/order.js"));
 
@@ -34,6 +35,7 @@ for (const id of ["fName", "fPhone", "fDir", "fSucursal", "fWebsite", "shipCasa"
 check('las variantes llevan data-var="1kit" y "2kit"',
   html.includes('data-var="1kit"') && html.includes('data-var="2kit"'));
 check("el formulario llama a /api/order", html.includes("'/api/order'"));
+check("el order bump llama a /api/upsell", html.includes("'/api/upsell'"));
 
 /* 2. Precios sincronizados entre página y servidor */
 check("precio de 1 kit (S/ 79) coincide", VARIANTES["1kit"].precio === 79 && html.includes("79.00"));
@@ -104,9 +106,16 @@ for (const dentro of ["Dirección / Agencia", "Producto", "Order bump", "Estado"
 }
 check("son 15 columnas, A-O", COLUMNAS.length === 15 && letraDe(COLUMNAS.length - 1) === "O");
 
+/* 7. El order bump se localiza por fila, no por código */
+check("/api/upsell trabaja con el número de fila", upsellSrc.includes("payload.fila"));
+check("/api/upsell ya no busca por código de pedido", !upsellSrc.includes("orderId"));
+check("/api/upsell rechaza la fila de encabezados", upsellSrc.includes("fila < 2"));
+check("el navegador manda la fila", html.includes("fila: filaPedido"));
+check("solo queda el order bump del Rider Waite",
+  Object.keys(UPSELLS).join() === "riderwaite", Object.keys(UPSELLS).join());
 check("el péndulo desapareció de la página", !/pendulo|Péndulo/i.test(html));
-check("el order bump quedó fuera de main: sin modal, sin carrusel, sin endpoint",
-  !html.includes("upsellOverlay") && !html.includes("bumpCar") && !existsSync(join(root, "src/api/upsell.js")));
+check("el carrusel del bump es deslizable", html.includes('id="bumpCar"') && html.includes('id="bumpDots"'));
+check("los botones del bump quedan juntos y visibles", html.includes('class="upsell-cta"'));
 
 /* 8. Meta Pixel */
 check("el pixel está inicializado", html.includes("fbq('init', '1598655637922566')"));
@@ -120,9 +129,14 @@ check("Purchase NO se dispara en el navegador",
 check("/gracias dispara Lead", gracias.includes("'Lead'"));
 
 const catalogo = html.match(/variantes:\s*\{([^}]*)\}/)?.[1] ?? "";
+const bumps = html.match(/bumps:\s*\{([^}]*)\}/)?.[1] ?? "";
 for (const [id, { precio }] of Object.entries(VARIANTES)) {
   check(`el pixel cobra S/ ${precio} por ${id}`,
     new RegExp(`'${id}':\\s*${precio}\\b`).test(catalogo), catalogo.trim());
+}
+for (const [id, { precio }] of Object.entries(UPSELLS)) {
+  check(`el pixel cobra S/ ${precio} por el bump ${id}`,
+    new RegExp(`${id}:\\s*${precio}\\b`).test(bumps), bumps.trim());
 }
 
 const csp = headers.match(/Content-Security-Policy:.*/)?.[0] ?? "";
@@ -143,6 +157,8 @@ check("el mensaje de WhatsApp lleva los datos del cliente",
     .every((t) => gracias.includes(t)));
 check("/gracias escapa lo que pinta", gracias.includes("function escapar"));
 check("/gracias no se indexa", gracias.includes('name="robots" content="noindex"'));
+check("el total del bump se suma antes de ir a /gracias",
+  html.includes("totalPedido += FB.bumps[item]"));
 
 /* 10. Tope por IP */
 check("el Worker declara el límite por IP", wrangler.includes('"ORDER_LIMIT"'));
@@ -175,7 +191,7 @@ check("solo reporta la forma de la clave, no su contenido",
 for (const [archivo, texto] of [
   ["public/index.html", html], ["public/gracias.html", gracias],
   ["wrangler.jsonc", wrangler], ["src/api/order.js", readFileSync(join(root, "src/api/order.js"), "utf8")],
-  ["src/api/diag.js", diag]
+  ["src/api/upsell.js", upsellSrc], ["src/api/diag.js", diag]
 ]) {
   check(`${archivo} no menciona Evolution API`, !/EVO_|evolution/i.test(texto));
 }
@@ -183,7 +199,7 @@ for (const [archivo, texto] of [
 check("el código de pedido ya no se genera como tal", typeof makeEventId === "function");
 
 /* 10. Galería de fotos y peso de la página */
-const { statSync, readdirSync } = await import("node:fs");
+const { existsSync, statSync, readdirSync } = await import("node:fs");
 const img = (ruta) => join(root, "public", ruta);
 
 // Se compara contra el marcado, no contra la regla CSS del mismo nombre.
@@ -237,8 +253,8 @@ check("el video reserva su espacio, para que no salte el layout",
   /\.videobox video\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*1280/.test(html));
 check("si el autoplay se bloquea aparecen los controles", html.includes("video.controls = true"));
 const fuentesVideo = [...html.matchAll(/<video[^>]*data-src="(kittarotcod\/[^"]+)"/g)].map((m) => m[1]);
-check("el archivo de video que pide la página existe",
-  fuentesVideo.length === 1 && existsSync(img(fuentesVideo[0])), fuentesVideo.join(", "));
+check("los videos que pide la página existen (el del producto y el del bump)",
+  fuentesVideo.length === 2 && fuentesVideo.every((f) => existsSync(img(f))), fuentesVideo.join(", "));
 check("la tira de fotos va debajo del video",
   html.indexOf('class="videobox"') < html.indexOf('id="gal"'));
 
@@ -248,6 +264,14 @@ check("las variantes muestran la foto del kit",
 check("la tarjeta de 2 kits se distingue", html.includes('class="foto dos"'));
 check("el modal luce el sello de vendedor calificado", html.includes("Vendedor calificado"));
 check("los sellos ocupan el ancho del modal", /\.seals img\s*\{[^}]*width:\s*100%/.test(html));
+
+/* El carrusel del order bump: video primero, fotos después, y una foto rota
+   solo se esconde a si misma (el video siempre le da contenido a la pantalla) */
+check("una foto rota del bump no se cae el carrusel entero", html.includes("sinFotoBump"));
+check("el video del bump va primero en el carrusel",
+  html.indexOf('data-src="kittarotcod/orderbumpvideo1.mp4"') < html.indexOf('data-src="kittarotcod/foto2orderbumb.webp"'));
+check("el video del bump es mudo, en bucle y sin pantalla completa",
+  ["muted", "playsinline", "loop"].every((a) => new RegExp(`<video[^>]*${a}`).test(html.slice(html.indexOf('id="bumpCar"')))));
 
 const pesados = [];
 const recorrer = (dir) => readdirSync(join(root, "public", dir), { withFileTypes: true }).forEach((e) => {
@@ -314,10 +338,12 @@ check("hay observador de cercanía y red de seguridad por scroll",
 check("el limitador no depende de requestAnimationFrame",
   /alMoverse = function[\s\S]{0,260}Date\.now\(\)/.test(html));
 check("el video se pausa al alejarse", /distancia\(MARGEN_PLAY\)[\s\S]{0,120}video\.pause\(\)/.test(html));
-check("las fotos de los modales esperan a que el modal se abra",
-  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante)/g) || []).length === 4);
+check("las fotos y el video de los modales esperan a que el modal se abra",
+  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante|orderbumpvideo1\.mp4|foto2orderbumb|fotobump3)/g) || []).length === 7);
 check("al abrir el modal del pedido se activan sus fotos",
   /function openCOD\(\)[\s\S]{0,600}activarImagenes\(document\.getElementById\('codOverlay'\)\)/.test(html));
+check("al abrir el order bump se activan las suyas",
+  html.includes("activarImagenes(document.getElementById('upsellOverlay'))"));
 check("el favicon usa el logo real de la tienda", html.includes('rel="icon" href="kittarotcod/favicon-32.png"'));
 check("se conecta por adelantado con Meta", html.includes('rel="preconnect" href="https://connect.facebook.net"'));
 
@@ -331,7 +357,8 @@ check("el HTML se revalida siempre, para que los precios no se queden viejos",
 /* 12. Archivos que aún no están: no rompen la página, pero cuestan un 404 */
 const pendientes = [
   ...fuentesVideo,
-  ...[...html.matchAll(/(?:srcset|src)="(kittarotcod\/resenas\/[^"]+)"/g)].map((m) => m[1])
+  ...[...html.matchAll(/(?:srcset|src)="(kittarotcod\/resenas\/[^"]+)"/g)].map((m) => m[1]),
+  ...["kittarotcod/orderbumpvideo1.mp4", "kittarotcod/foto2orderbumb.webp", "kittarotcod/fotobump3.png"]
 ].filter((f) => {
   if (existsSync(img(f))) return false;
   // Un .jpg cuyo .webp ya existe no falta: es el respaldo para navegadores

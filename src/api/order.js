@@ -1,9 +1,10 @@
 /**
  * POST /api/order — recibe el formulario COD del modal y lo guarda en Google
- * Sheets. Responde con el número de fila y el total.
+ * Sheets. Responde con el número de fila, que /api/upsell usa después para
+ * añadir el order bump sin necesidad de un código de pedido.
  *
- * La columna "Order bump" se escribe vacía a propósito: el front-end todavía
- * no ofrece ningún extra, así que queda reservada para cuando se retome.
+ * Se dispara apenas el cliente pulsa CONFIRMAR, antes de la pantalla del
+ * order bump: así el lead queda registrado aunque abandone ahí.
  */
 
 import { appendRow } from "../lib/google-sheets.js";
@@ -89,7 +90,7 @@ export function filaDePedido(order, headers) {
     order.destino,
     order.etiqueta,
     order.subtotal,
-    "", // Order bump — columna reservada, todavía sin usar
+    "", // Order bump — lo completa /api/upsell si el cliente acepta
     order.total,
     "Pendiente",
 
@@ -169,7 +170,7 @@ export async function onRequestPost(context) {
   return json({ ok: true, fila, total: order.total, eventId: order.eventId });
 }
 
-/** "Pedidos!A42:O42" -> 42. */
+/** "Pedidos!A42:O42" -> 42. Es cómo localizamos la fila para el order bump. */
 export function numeroDeFila(rangoActualizado) {
   const match = /![A-Z]+(\d+)/.exec(rangoActualizado || "");
   return match ? Number(match[1]) : 0;

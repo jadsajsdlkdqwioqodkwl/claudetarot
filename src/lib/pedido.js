@@ -1,5 +1,5 @@
 /**
- * Catálogo y utilidades compartidas por /api/order.
+ * Catálogo y utilidades compartidas entre /api/order y /api/upsell.
  *
  * Los precios viven SOLO aquí: el navegador manda qué eligió el cliente,
  * nunca cuánto cuesta. Si cambias un precio, cámbialo en este archivo y en
@@ -9,6 +9,10 @@
 export const VARIANTES = {
   "1kit": { etiqueta: "1 Kit de Tarot Completo", cantidad: 1, precio: 79 },
   "2kit": { etiqueta: "2 Kits de Tarot Completo", cantidad: 2, precio: 139 }
+};
+
+export const UPSELLS = {
+  riderwaite: { etiqueta: "The Classic Tarot Rider Waite", precio: 49 }
 };
 
 /** Recorta y limpia texto libre para que no rompa la hoja ni el mensaje. */

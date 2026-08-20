@@ -5,8 +5,8 @@
  * cambiarlo aquí obliga a revisar `filaDePedido` en ../api/order.js.
  * `npm run check` verifica que ambos sigan cuadrando.
  *
- * No hay columna de "código de pedido": las filas se localizan por su
- * número, que devuelve Sheets al insertarlas. El "Event ID" es interno y solo
+ * No hay columna de "código de pedido": /api/upsell localiza la fila por su
+ * número, que devuelve Sheets al insertarla. El "Event ID" es interno y solo
  * existe para deduplicar contra la Conversions API — nunca se le muestra
  * al cliente.
  */

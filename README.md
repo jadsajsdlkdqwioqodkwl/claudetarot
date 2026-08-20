@@ -11,6 +11,7 @@ Worker solo se ejecuta en `/api/*`, así que las credenciales nunca llegan al na
 wrangler.jsonc          Config del Worker: assets, límite por IP y variables
 src/index.js            Router: /api/* al Worker, todo lo demás a los archivos
 src/api/order.js        POST /api/order  — guarda el pedido, devuelve su nº de fila
+src/api/upsell.js       POST /api/upsell — añade el order bump a esa fila
 src/api/diag.js         GET  /api/diag   — diagnóstico de la cadena con Sheets
 src/api/setup.js        POST /api/setup  — deja la hoja lista como CRM
 src/lib/crm-setup.js    La rutina de preparación, compartida con el script
@@ -37,6 +38,8 @@ Todo lo que se despliega vive en `public/kittarotcod/`:
 | `galeria/g1..g6-mini.webp` | Las miniaturas de la tira (400×400) |
 | `kit-variante.webp` | La foto dentro de las tarjetas de 1 kit y 2 kits |
 | `logo.webp` · `badges.webp` | Logo del modal y sellos de confianza |
+| `orderbumpvideo1.mp4` | Video del carrusel del order bump, primer slide |
+| `foto2orderbumb.webp` · `fotobump3.png` | Las dos fotos del carrusel del order bump, después del video |
 | `resenas/r1..r3.webp` | Fotos de las tarjetas del carrusel de reseñas |
 
 Los originales pesados y los banners retirados están en `imagenes-fuente/`, **fuera de
@@ -71,8 +74,9 @@ Medido con el registro del servidor, no a ojo: **10 peticiones y 537 KB** al abr
 sin un solo 404.
 
 - El banner principal es el LCP y va con `fetchpriority="high"`.
-- Las fotos del modal de pedido (logo, sellos y foto del kit) llevan `data-src` y solo se
-  piden **cuando el modal se abre**: no le sirven de nada a quien nunca pulsa el botón.
+- Las fotos de los dos modales (logo, sellos, foto del kit y las del order bump) llevan
+  `data-src` y solo se piden **cuando el modal se abre**: son ~145 KB que no le sirven a
+  quien nunca pulsa el botón.
 - El favicon es el logo de la tienda (`favicon.ico` + PNG en 32/180px), cacheado igual
   que el resto de `kittarotcod/*`.
 - `preconnect` a los dominios de Meta, para que el pixel salga antes.
@@ -94,6 +98,11 @@ Ya no falta ninguno: `npm run check` los verifica y avisa al final si alguno des
 
 Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el navegador no lo
 entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta.
+
+El carrusel del order bump muestra primero el video del mazo Rider Waite
+(`orderbumpvideo1.mp4`, mudo, en bucle y sin controles) y después sus dos fotos
+(`foto2orderbumb.webp`, `fotobump3.png`). Si las cambias, mantén el video como primer
+slide y ajusta los textos alternativos de las fotos en `public/index.html`.
 
 ## Paso 1 — Google Sheets
 
@@ -119,7 +128,7 @@ Decisiones que explican la forma de la tabla:
 
 - **No hay columna de código de pedido.** Enseñarle un código al cliente en una compra
   contra entrega genera desconfianza, y no hacía falta: `/api/order` devuelve el número
-  de fila que Sheets le asigna, y con eso alcanza para ubicarla después.
+  de fila que Sheets le asigna, y `/api/upsell` actualiza esa fila directamente.
 - **`Dirección / Agencia` es una sola columna.** Un pedido es a domicilio o a agencia,
   nunca las dos, así que dos columnas dejaban siempre una vacía.
 - **`Producto` sustituye a Variante + Cantidad**, porque el nombre ya dice cuántos kits son.
@@ -229,14 +238,17 @@ Pixel `1598655637922566`, instalado en `public/index.html`. El embudo:
 | `AddToCart` | product page | clic en el CTA | 79 |
 | `AddToCart` | product page | si sube a 2 kits | 139 |
 | `InitiateCheckout` | product page | primer campo que toca | según variante |
+| `AddToCart` | product page | order bump aceptado | 49 |
 | `PageView` | `/gracias` | al cargar | — |
-| `Lead` | `/gracias` | al cargar | total real del pedido |
+| `Lead` | `/gracias` | al cargar | total real, con el bump ya sumado |
+| `Contact` | `/gracias` | clic en el botón de WhatsApp | total real |
 
 `InitiateCheckout` va en el primer campo tocado, no al abrir el modal, para no
 contar clics accidentales. `InitiateCheckout` y `Lead` se disparan una sola vez.
+`Contact` se dispara al pulsar el botón de WhatsApp de la confirmación, no al cargar.
 
 **El `Lead` vive en `/gracias`**, no en la respuesta de `/api/order`: así solo cuenta a
-quien de verdad terminó el embudo.
+quien de verdad terminó el embudo, y su `value` ya incluye el order bump.
 
 **`Purchase` no se dispara en el navegador.** Sale desde la hoja por Conversions API,
 usando la columna **`Event ID`** (M) como `event_id`.
@@ -306,16 +318,24 @@ Apágalo cuando termines: borra el secret `DIAG_TOKEN` y vuelve a desplegar.
 
 ## Página de gracias
 
-`public/gracias.html`, servida en **`/gracias`**. El embudo termina ahí: apenas
-`/api/order` confirma el pedido, `irAGracias()` redirige con `?v=<total>`.
+`public/gracias.html`, servida en **`/gracias`**. El embudo termina ahí: al cerrar el
+order bump, `closeAll()` redirige con `?v=<total>`.
 
-Es una confirmación tradicional: tilde verde, resumen del pedido (producto, entrega,
-dirección, y el total a pagar al recibir) y un botón grande de WhatsApp a
+Es una confirmación tradicional: tilde verde, resumen del pedido (producto, extra,
+entrega, dirección, y el total a pagar al recibir) y un botón grande de WhatsApp a
 **+51 928 529 656**. **No muestra ningún código de pedido.**
 
+Lleva un contador regresivo de 10 minutos ("Tienes 10:00 minutos para asegurar tu
+orden") para meter urgencia a que escriba por WhatsApp, y un aviso verde con lo
+**ahorrado** en el pedido (variante + order bump, no solo el total a pagar), al estilo
+Temu. El ahorro viaja en el mismo `pedido` de `sessionStorage` que ya usaba el total.
+
 El mensaje de WhatsApp llega con todos los datos ya escritos —nombre, teléfono en
-formato internacional, producto, entrega, dirección y total— para que el vendedor no
-tenga que pedirlos.
+formato internacional, producto, extra, entrega, dirección y total— para que el
+vendedor no tenga que pedirlos.
+
+Al pulsar el botón de WhatsApp se dispara `Contact` (una sola vez): así el pixel
+distingue a quien de verdad escribe para confirmar, no solo a quien llega a la página.
 
 > **Los datos del cliente viajan por `sessionStorage`, no por la URL.** El pixel de
 > `/gracias` manda la URL de la página a Meta, así que un `?nombre=…&telefono=…` le
@@ -325,14 +345,20 @@ tenga que pedirlos.
 Si `/api/order` falló, no redirige: el cliente ve el aviso de error y no se cuenta un
 Lead de un pedido que no existe.
 
-## Order bump — pausado
+## Order bump
 
-El pop-up de "extra a mitad de precio" (`/api/upsell`, el carrusel `#bumpCar`, la
-columna **Order bump** en la hoja) no llegó a tiempo para este despliegue y se sacó de
-`main` completo: HTML, CSS, JS y el endpoint. La versión funcional completa quedó en la
-rama `pruebas` para retomarla — no hace falta rehacerla desde cero, solo traerla de
-vuelta cuando el catálogo esté listo. La columna **Order bump** de la hoja se sigue
-escribiendo vacía en cada pedido nuevo (columna reservada, sin usar por ahora).
+Uno solo, el mazo **The Classic Tarot Rider Waite** (antes S/ 60, ahora S/ 49). El
+carrusel es deslizable: el primer `.slide` es un video (mudo, en bucle, arranca solo al
+abrir el modal) y los siguientes son fotos. Añade tantos `.slide` como quieras dentro de
+`#bumpCar` y los puntos se generan solos.
+
+Los botones **Sí, añadir** y **No, gracias** van juntos en un bloque `sticky` al pie del
+modal, para que en móvil se vean los dos sin desplazarse.
+
+**El pedido se guarda antes de mostrar el bump**, no después: `/api/order` sale en cuanto
+el cliente confirma, y el bump solo actualiza esa fila. Así no se pierde ningún lead por
+abandonar en la pantalla del bump. Si lo acepta antes de que el servidor responda, queda
+en cola y se manda con el número de fila apenas llega.
 
 ## Tope por IP
 
@@ -346,12 +372,16 @@ perder un lead por el rate limiter.
 ## Cómo funciona el flujo
 
 1. El cliente completa el modal y pulsa **REALIZAR PEDIDO**.
-2. El servidor valida, **recalcula el precio con su propia tabla** (`src/lib/pedido.js`),
-   inserta la fila y devuelve su número y el total. Si Sheets falla, el cliente ve un
-   aviso (con salida de rescate por WhatsApp) y el pedido no se da por hecho.
-3. El cliente aterriza en `/gracias`, se dispara el `Lead` y se le ofrece el WhatsApp con
+2. La pantalla del order bump aparece de inmediato; en paralelo viaja el `POST /api/order`.
+   Así el pedido queda guardado aunque el cliente abandone en el bump.
+3. El servidor valida, **recalcula el precio con su propia tabla** (`src/lib/pedido.js`),
+   inserta la fila y devuelve su número. Si Sheets falla, el cliente ve un aviso y el
+   pedido no se da por hecho.
+4. Si acepta el bump, `POST /api/upsell` escribe el extra en esa fila y recalcula el
+   total leyendo el subtotal de la hoja, no del navegador.
+5. El cliente aterriza en `/gracias`, se dispara el `Lead` y se le ofrece el WhatsApp con
    todos sus datos ya escritos.
-4. El vendedor trabaja la hoja: filtra por día, contacta a quien no escribió por WhatsApp
+6. El vendedor trabaja la hoja: filtra por día, contacta a quien no escribió por WhatsApp
    y va moviendo el **Estado**. El `Panel` le da los totales del día.
 
 **Precios**: viven en `src/lib/pedido.js`. Si los cambias, actualiza también los textos
