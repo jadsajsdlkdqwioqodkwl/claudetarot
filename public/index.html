@@ -239,56 +239,6 @@
   .seals { display: block; padding: 16px 0 4px; }
   .seals img { width: 100%; height: auto; display: block; }
   
-  .upsell-head { text-align: center; margin-bottom: 16px; }
-  .upsell-head .l1 { color: var(--cta1); font-size: 22px; font-weight: 800; }
-  .upsell-head .l2 { color: var(--plum); font-size: 16px; font-weight: 800; margin-top: 4px; }
-  .upsell-timer { background: #fff9f9; border: 1px solid rgba(255,42,0,0.3); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 16px; }
-  .upsell-timer .cd { color: var(--cta1); font-size: 32px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  
-  /* Upsell Square Carousel */
-  .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; margin-bottom: 16px; scrollbar-width: none; background: var(--soft-tint); }
-  .u-carousel::-webkit-scrollbar { display: none; }
-  .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
-  .u-carousel img { width: 100%; height: 100%; object-fit: cover; }
-  
-  .upsell-list { font-size: 14px; margin: 16px 0; background: var(--soft-tint); padding: 14px; border-radius: 12px; }
-  .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
-  .upsell-list .ck { color: var(--green); flex-shrink: 0; }
-  
-  .u-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 10px 0 4px; }
-  .u-dots { display: flex; justify-content: center; gap: 6px; }
-  .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
-  .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
-
-  /* El bloque de botones no se va nunca fuera de pantalla: en móvil queda
-     pegado abajo del modal para que "añadir" y "no, gracias" se vean juntos. */
-  .modal-bump { padding-bottom: 14px; }
-  .upsell-cta { position: sticky; bottom: 0; background: #fff; padding-top: 10px; margin-top: 4px; box-shadow: 0 -10px 14px -6px rgba(255,255,255,.95); }
-  .upsell-cta .btn-no { margin-top: 8px; }
-  @media (max-height: 720px) {
-    .u-carousel { aspect-ratio: 4 / 3; }
-    .upsell-list { margin: 10px 0; padding: 10px; }
-    .upsell-price { margin-bottom: 10px; }
-    .upsell-price b { font-size: 26px; }
-  }
-
-  .upsell-price { text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 10px; }
-  .upsell-price s { color: var(--price-old); font-size: 18px; font-weight: 500; }
-  .upsell-price b { color: var(--ink); font-size: 32px; font-weight: 800; }
-  
-  /* Botón Upsell mejorado y shaky */
-  @keyframes shaky {
-    0% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-1deg); }
-    20%, 40%, 60%, 80% { transform: translateX(4px) rotate(1deg); }
-    100% { transform: translateX(0); }
-  }
-  .btn-add { width: 100%; border: none; background: var(--green); color: #fff; font-size: 18px; font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 18px; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(40,167,69,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn-add.shaky { animation: shaky 3s infinite ease-in-out; }
-  
-  /* Botón Upsell No más visible */
-  .btn-no { width: 100%; border: 1.5px solid var(--line); background: #f9f9f9; color: var(--plum); font-size: 16px; font-weight: 700; padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
-  .btn-no:active { background: #eeeeee; }
 </style>
 
 <!-- Meta Pixel -->
@@ -615,54 +565,6 @@
   </div>
 </div>
 
-<!-- Modal Upsell -->
-<div class="overlay" id="upsellOverlay">
-  <div class="modal modal-bump">
-    <span class="mclose" onclick="closeAll()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
-
-    <div id="u1">
-      <div class="upsell-head">
-        <div class="l1">¡SUPER OFERTA!</div>
-        <div class="l2">Protege y limpia tus cartas</div>
-      </div>
-      <div class="upsell-timer">
-        <div>Añádelo ahora a <b>mitad de precio</b>, solo con este pedido</div>
-        <div class="cd" id="cd">09:58</div>
-      </div>
-
-      <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
-           se generan solos a partir de los slides que existan. -->
-      <div class="u-carousel" id="bumpCar">
-        <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
-             texto suelto en la pantalla del bump espanta mas que no tener foto. -->
-        <div class="slide"><img data-src="kittarotcod/bump1.webp" alt="Clienta recibiendo su pedido en la puerta de casa" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/bump2.webp" alt="Cliente con su caja del Kit de Tarot" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/bump3.webp" alt="La caja del pedido, sellada con el logo de la tienda" onerror="sinFotoBump(this)"></div>
-      </div>
-      <div class="u-nav">
-        <div class="rev-arrow" onclick="bumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
-        <div class="u-dots" id="bumpDots"></div>
-        <div class="rev-arrow" onclick="bumpMove(1)" role="button" tabindex="0" aria-label="Foto siguiente"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
-      </div>
-
-      <div class="upsell-list">
-        <b>El set incluye:</b>
-        <div><svg class="ico ck"><use href="#i-check"/></svg> Velas intencionadas</div>
-        <div><svg class="ico ck"><use href="#i-check"/></svg> Incienso purificador</div>
-      </div>
-      <div class="upsell-price"><s>S/. 60.00</s><b>S/. 30.00</b></div>
-
-      <div class="upsell-cta">
-        <button class="btn-add shaky" onclick="addUpsell('velas')">
-          <svg class="ico"><use href="#i-cart"/></svg> SÍ, AÑADIR A MI PEDIDO
-        </button>
-        <button class="btn-no" onclick="closeAll()">No, gracias</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 <script>
   /* ── Meta Pixel: eventos del embudo ───────────────────────────────────
      Los precios de aquí deben coincidir con src/lib/pedido.js.
@@ -671,8 +573,6 @@
     moneda: 'PEN',
     producto: 'kit-tarot',
     variantes: { '1kit': 79, '2kit': 139 },
-    bumps: { velas: 30 },
-    bumpNombres: { velas: 'Set de velas + incienso purificador' },
     // Aquí no se dispara Purchase: sale desde la hoja por Conversions API,
     // usando el Event ID de la columna S. El Lead vive en /gracias.
     enviados: {}
@@ -809,16 +709,9 @@
     }, { once: true });
   });
 
-  // Número de fila que /api/order devolvió al insertar el pedido. Es lo que
-  // /api/upsell necesita para añadirle el order bump: no hay código de pedido.
-  var filaPedido = 0;
-  // 'pendiente' | 'ok' | 'error' — decide si al cerrar vamos a /gracias.
-  var pedidoEstado = 'pendiente';
   var totalPedido = 0;
-  var quiereSalir = false;
   // Lo que el cliente escribió, para pasarlo a /gracias y de ahí al WhatsApp.
   var datosCliente = {};
-  var bumpAceptado = '';
 
   /* Un fallo de red no puede costar un lead que ya pagamos: se reintenta una
      vez antes de rendirse. Solo se reintenta si el servidor no llego a
@@ -873,12 +766,6 @@
     btn.disabled = true;
     btn.querySelector('.l2').textContent = 'Enviando…';
 
-    // El upsell se muestra de inmediato: el pedido viaja en paralelo para no
-    // hacer esperar al cliente ni perder el momento de compra.
-    activarImagenes(document.getElementById('upsellOverlay'));
-    document.getElementById('upsellOverlay').classList.add('on');
-    startCD();
-
     var sel = document.querySelector('.vcard.sel');
     var v = fbVariante();
     var ident = fbIdentidad();
@@ -909,23 +796,11 @@
     .then(function(r){ return r.json().then(function(b){ return { ok: r.ok, body: b }; }); })
     .then(function(res){
       if(!res.ok) throw new Error(res.body.error || 'Error al registrar');
-      filaPedido = res.body.fila;
-      pedidoEstado = 'ok';
       totalPedido = typeof res.body.total === 'number' ? res.body.total : v.valor;
-      // Reintenta el bump si lo aceptó antes de que llegara el número de fila.
-      var enCola = bumpsPendientes; bumpsPendientes = [];
-      if (enCola.length) {
-        // Ojo: aquí NO navegamos. addUpsell va a /gracias cuando termine, o la
-        // navegación cancelaría su fetch y el bump no llegaría a la hoja.
-        enCola.forEach(function (item) { addUpsell(item); });
-      } else if (quiereSalir) {
-        irAGracias();
-      }
+      irAGracias();
     })
     .catch(function(err){
       console.error(err);
-      pedidoEstado = 'error';
-      quiereSalir = false;
       // El lead ya esta escrito y pagamos por ese clic: antes de darlo por
       // perdido se le ofrece la salida por WhatsApp con todo relleno.
       if (confirm('No pudimos registrar tu pedido por un problema de conexión.\n\n¿Lo enviamos por WhatsApp para no perderlo?')) {
@@ -938,49 +813,6 @@
     });
   }
 
-  // Si acepta el bump antes de que responda /api/order, lo guardamos aquí y
-  // se manda apenas llegue el número de fila.
-  var bumpsPendientes = [];
-
-  function addUpsell(item) {
-    // Sin fila todavía: lo dejamos en cola y salimos. El evento va después de
-    // esta guarda a propósito, o al reintentar se contaría dos veces.
-    if (!filaPedido) {
-      bumpsPendientes.push(item);
-      cerrarBump();
-      return;
-    }
-
-    fbTrack('AddToCart', {
-      content_ids: [item],
-      content_type: 'product',
-      content_name: 'Order bump: ' + item,
-      contents: [{ id: item, quantity: 1 }],
-      value: FB.bumps[item] || 0,
-      currency: FB.moneda
-    }, false, filaPedido + '-' + item);
-
-    // El total de /gracias tiene que incluir el bump. Lo sumamos ya y luego
-    // el servidor confirma con su propia cuenta.
-    totalPedido += FB.bumps[item] || 0;
-    bumpAceptado = item;
-
-    fetch('/api/upsell', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // keepalive: si algo navega antes de tiempo, la petición sigue viva.
-      keepalive: true,
-      body: JSON.stringify({ fila: filaPedido, item: item })
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(b){ if (typeof b.total === 'number') totalPedido = b.total; })
-    .catch(function(err){ console.error('bump', err); })
-    .finally(cerrarBump);
-  }
-
-  /** Sale del bump hacia /gracias, haya respondido el servidor o no. */
-  function cerrarBump() { closeAll(); }
-  
   /* El Lead se dispara en /gracias, no aquí: así solo cuenta a quien de
      verdad llegó al final.
 
@@ -996,78 +828,12 @@
         envio: datosCliente.envio,
         destino: datosCliente.destino,
         producto: datosCliente.producto,
-        bump: bumpAceptado ? FB.bumpNombres[bumpAceptado] : '',
         total: totalPedido
       }));
     } catch (e) { /* modo privado sin storage: el mensaje irá genérico */ }
 
     location.href = '/gracias?v=' + encodeURIComponent(totalPedido);
   }
-
-  function closeAll() {
-    // Cerrar el order bump es el final del embudo. Si el pedido se registró,
-    // el cliente va a la página de gracias; si falló, solo cerramos. Si aún
-    // no responde el servidor, lo mandamos apenas conteste.
-    if (pedidoEstado === 'ok') { irAGracias(); return; }
-    if (pedidoEstado === 'pendiente') { quiereSalir = true; }
-
-    document.getElementById('upsellOverlay').classList.remove('on');
-    document.getElementById('codOverlay').classList.remove('on');
-    document.body.style.overflow = '';
-  }
-  
-  var cdInt, s = 598;
-  function startCD() {
-    // Defensivo a propósito: startCD() corre justo antes de mandar el pedido,
-    // así que si el contador no está en el DOM no puede tumbar el envío.
-    var el = document.getElementById('cd');
-    if (!el) return;
-    clearInterval(cdInt);
-    s = 598;
-    el.textContent = '09:58';
-    cdInt = setInterval(function(){
-      s--;
-      var m = Math.floor(s/60), x = s%60;
-      el.textContent = String(m).padStart(2,'0') + ':' + String(x).padStart(2,'0');
-      if(s <= 0) clearInterval(cdInt);
-    }, 1000);
-  }
-  
-  /* Puntos y flechas del carrusel del order bump. Se generan a partir de los
-     slides que existan, así que añadir fotos al HTML no pide tocar el JS. */
-  var bumpCarEl, bumpSlides = 0;
-  (function bumpCarrusel() {
-    var car = document.getElementById('bumpCar');
-    var dots = document.getElementById('bumpDots');
-    if (!car || !dots) return;
-
-    var slides = car.children.length;
-    if (slides < 2) return; // con una sola foto los puntos y flechas sobran
-
-    bumpCarEl = car;
-    bumpSlides = slides;
-
-    for (var i = 0; i < slides; i++) {
-      var d = document.createElement('i');
-      if (i === 0) d.className = 'on';
-      dots.appendChild(d);
-    }
-    car.addEventListener('scroll', function () {
-      var actual = Math.round(car.scrollLeft / car.clientWidth);
-      [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
-    }, { passive: true });
-  })();
-
-  /* Flechas del carrusel del order bump: mismo desplazamiento suave que ya
-     usan revMove() e irAFoto(), solo que sobre #bumpCar. */
-  window.bumpMove = function (dir) {
-    if (!bumpCarEl || !bumpSlides) return;
-    var actual = Math.round(bumpCarEl.scrollLeft / bumpCarEl.clientWidth);
-    var siguiente = (actual + dir + bumpSlides) % bumpSlides;
-    bumpCarEl.scrollTo({ left: siguiente * bumpCarEl.clientWidth, behavior: 'smooth' });
-  };
-
-
 
   /* Las fotos de los modales no se descargan hasta que el modal se abre: son
      ~145 KB que no le sirven a quien nunca pulsa el boton. */
@@ -1231,16 +997,6 @@
     visorDots.appendChild(punto);
   });
 
-  /* Sin fotos del bump se retira el carrusel entero. Se cuenta cuantas fallan
-     para no esconderlo si solo se cayo una. */
-  var fotosBumpRotas = 0;
-  window.sinFotoBump = function (img) {
-    fotosBumpRotas++;
-    var car = document.getElementById('bumpCar');
-    if (car && fotosBumpRotas >= car.querySelectorAll('img').length) car.style.display = 'none';
-    else img.parentNode.style.display = 'none';
-  };
-
   function abrirVisor(indice) {
     ultimoFoco = document.activeElement;
     // Carga diferida: la primera vez que se abre, se resuelven los src.
@@ -1257,8 +1013,7 @@
   function cerrarVisor() {
     visor.classList.remove('on');
     // El modal de pedido puede estar abierto detrás: no le quitamos su bloqueo.
-    if (!document.getElementById('codOverlay').classList.contains('on') &&
-        !document.getElementById('upsellOverlay').classList.contains('on')) {
+    if (!document.getElementById('codOverlay').classList.contains('on')) {
       document.body.style.overflow = '';
     }
     if (ultimoFoco && ultimoFoco.focus) ultimoFoco.focus();

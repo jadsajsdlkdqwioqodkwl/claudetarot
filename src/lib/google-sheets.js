@@ -90,7 +90,7 @@ export async function getAccessToken(env) {
  * @param {object} env  Variables de entorno del Worker
  * @param {Array<string|number>} row  Valores en el orden de las columnas
  * @returns {Promise<string>} el rango escrito ("Pedidos!A42:O42"), del que
- *   sale el número de fila que /api/upsell necesita para el order bump.
+ *   sale el número de fila insertada.
  */
 export async function appendRow(env, row) {
   const accessToken = await getAccessToken(env);
