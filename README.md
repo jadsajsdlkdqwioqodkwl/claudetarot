@@ -38,7 +38,8 @@ Todo lo que se despliega vive en `public/kittarotcod/`:
 | `galeria/g1..g6-mini.webp` | Las miniaturas de la tira (400×400) |
 | `kit-variante.webp` | La foto dentro de las tarjetas de 1 kit y 2 kits |
 | `logo.webp` · `badges.webp` | Logo del modal y sellos de confianza |
-| `bump1..bump3.webp` | Fotos del carrusel del order bump |
+| `orderbumpvideo1.mp4` | Video del carrusel del order bump, primer slide |
+| `foto2orderbumb.webp` · `fotobump3.png` | Las dos fotos del carrusel del order bump, después del video |
 | `resenas/r1..r3.webp` | Fotos de las tarjetas del carrusel de reseñas |
 
 Los originales pesados y los banners retirados están en `imagenes-fuente/`, **fuera de
@@ -98,9 +99,10 @@ Ya no falta ninguno: `npm run check` los verifica y avisa al final si alguno des
 Las fotos de reseña se sirven como `<picture>`: primero el `.webp` y, si el navegador no lo
 entendiera, un `.jpg` con el mismo nombre. Con el `.webp` basta.
 
-Las tres del order bump (`bump1`, `bump2`, `bump3`) muestran clientes recibiendo su caja. Si
-prefieres que salgan fotos del mazo Rider Waite que vende ese popup, reemplázalas con los
-mismos nombres y ajusta los textos alternativos en `public/index.html`.
+El carrusel del order bump muestra primero el video del mazo Rider Waite
+(`orderbumpvideo1.mp4`, mudo, en bucle y sin controles) y después sus dos fotos
+(`foto2orderbumb.webp`, `fotobump3.png`). Si las cambias, mantén el video como primer
+slide y ajusta los textos alternativos de las fotos en `public/index.html`.
 
 ## Paso 1 — Google Sheets
 
@@ -346,8 +348,9 @@ Lead de un pedido que no existe.
 ## Order bump
 
 Uno solo, el mazo **The Classic Tarot Rider Waite** (antes S/ 60, ahora S/ 49). El
-carrusel de fotos es deslizable: añade tantos `.slide` como quieras dentro de `#bumpCar`
-y los puntos se generan solos.
+carrusel es deslizable: el primer `.slide` es un video (mudo, en bucle, arranca solo al
+abrir el modal) y los siguientes son fotos. Añade tantos `.slide` como quieras dentro de
+`#bumpCar` y los puntos se generan solos.
 
 Los botones **Sí, añadir** y **No, gracias** van juntos en un bloque `sticky` al pie del
 modal, para que en móvil se vean los dos sin desplazarse.

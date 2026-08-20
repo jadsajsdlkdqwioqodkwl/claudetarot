@@ -214,9 +214,7 @@
   .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
   .ship-opt .txt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
-  /* Opción A: la ciudad va en la misma línea del título */
-  .ship-opt .txt b .loc { color: var(--purple-soft); }
-  /* Opción B: la ciudad va en su propia línea, entre el título y el detalle */
+  /* La ciudad va en su propia línea, entre el título y el detalle */
   .ship-opt .txt .loc-line { display: block; color: var(--purple-soft); font-weight: 800; font-size: 13px; margin-top: 3px; }
   
   .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
@@ -253,7 +251,7 @@
   .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; margin-bottom: 16px; scrollbar-width: none; background: var(--soft-tint); }
   .u-carousel::-webkit-scrollbar { display: none; }
   .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
-  .u-carousel img { width: 100%; height: 100%; object-fit: cover; }
+  .u-carousel img, .u-carousel video { width: 100%; height: 100%; object-fit: cover; }
   
   .upsell-list { font-size: 14px; margin: 16px 0; background: var(--soft-tint); padding: 14px; border-radius: 12px; }
   .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
@@ -532,7 +530,7 @@
     <div class="ship-opts">
       <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa: <span class="loc">Lima</span></b><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
         <div class="free">Gratis</div>
       </div>
       <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
@@ -635,14 +633,22 @@
         <div class="cd" id="cd">09:58</div>
       </div>
 
-      <!-- Carrusel deslizable: añade tantas fotos como quieras, los puntos
-           se generan solos a partir de los slides que existan. -->
+      <!-- Carrusel deslizable: el video va primero (autoplay, sin audio) y
+           las fotos después. Añade tantos slides como quieras, los puntos
+           se generan solos a partir de los que existan. -->
       <div class="u-carousel" id="bumpCar">
-        <!-- Si las fotos no existen se retira el carrusel entero: un hueco con
-             texto suelto en la pantalla del bump espanta mas que no tener foto. -->
-        <div class="slide"><img data-src="kittarotcod/bump1.webp" alt="Clienta recibiendo su pedido en la puerta de casa" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/bump2.webp" alt="Cliente con su caja del Kit de Tarot" onerror="sinFotoBump(this)"></div>
-        <div class="slide"><img data-src="kittarotcod/bump3.webp" alt="La caja del pedido, sellada con el logo de la tienda" onerror="sinFotoBump(this)"></div>
+        <!-- Sin src ni preload: pesa varios MB y no tiene sentido gastarlos en
+             quien nunca llega al order bump. El JS le pone la fuente y lo
+             arranca en cuanto se abre el modal. -->
+        <div class="slide">
+          <video muted loop playsinline preload="none"
+                 data-src="kittarotcod/orderbumpvideo1.mp4"
+                 aria-label="El mazo Rider Waite en video"></video>
+        </div>
+        <!-- Si las fotos no existen se retira solo esa foto, no el carrusel
+             entero: el video ya le da contenido a la pantalla del bump. -->
+        <div class="slide"><img data-src="kittarotcod/foto2orderbumb.webp" alt="El mazo Rider Waite, colores tenues fieles al diseño original" onerror="sinFotoBump(this)"></div>
+        <div class="slide"><img data-src="kittarotcod/fotobump3.png" alt="El mazo Rider Waite con su manual incluido" onerror="sinFotoBump(this)"></div>
       </div>
       <div class="u-nav">
         <div class="rev-arrow" onclick="bumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#i-arrow-l"/></svg></div>
@@ -797,9 +803,9 @@
     document.getElementById('boxCasa').style.display = mode === 'casa' ? 'block' : 'none';
     document.getElementById('boxAg').style.display = mode === 'agencia' ? 'block' : 'none';
     
-    document.getElementById('noteEntrega').innerHTML = mode === 'casa' 
-        ? "Entrega para Lima al día siguiente" 
-        : "Provincia de 2 a 3 días hábiles por agencia";
+    document.getElementById('noteEntrega').innerHTML = mode === 'casa'
+        ? "Entrega para Lima al día siguiente"
+        : "Entrega para Lima al día siguiente y provincia 2-3 días";
   }
   
   // InitiateCheckout se dispara cuando el cliente toca el primer campo del
@@ -1095,6 +1101,17 @@
       pendientes[i].src = pendientes[i].getAttribute('data-src');
       pendientes[i].removeAttribute('data-src');
     }
+    // Mismo criterio para el video del order bump: sin descargarlo hasta que
+    // el modal abre, y arranca solo (silenciado) apenas tiene fuente.
+    var videos = contenedor.querySelectorAll('video[data-src]');
+    for (var j = 0; j < videos.length; j++) {
+      var v = videos[j];
+      v.src = v.getAttribute('data-src');
+      v.removeAttribute('data-src');
+      v.load();
+      var intento = v.play();
+      if (intento && intento.catch) intento.catch(function () {}); // autoplay bloqueado: se queda en el primer cuadro
+    }
   };
 
   /* El video se carga y arranca solo cuando el visitante se acerca, y se pausa
@@ -1248,14 +1265,11 @@
     visorDots.appendChild(punto);
   });
 
-  /* Sin fotos del bump se retira el carrusel entero. Se cuenta cuantas fallan
-     para no esconderlo si solo se cayo una. */
-  var fotosBumpRotas = 0;
+  /* Una foto rota del bump solo se esconde a si misma: el video es el primer
+     slide y siempre le da contenido a la pantalla, así que ya no hace falta
+     retirar el carrusel entero si una foto falla. */
   window.sinFotoBump = function (img) {
-    fotosBumpRotas++;
-    var car = document.getElementById('bumpCar');
-    if (car && fotosBumpRotas >= car.querySelectorAll('img').length) car.style.display = 'none';
-    else img.parentNode.style.display = 'none';
+    img.parentNode.style.display = 'none';
   };
 
   function abrirVisor(indice) {

@@ -253,8 +253,8 @@ check("el video reserva su espacio, para que no salte el layout",
   /\.videobox video\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*1280/.test(html));
 check("si el autoplay se bloquea aparecen los controles", html.includes("video.controls = true"));
 const fuentesVideo = [...html.matchAll(/<video[^>]*data-src="(kittarotcod\/[^"]+)"/g)].map((m) => m[1]);
-check("el archivo de video que pide la página existe",
-  fuentesVideo.length === 1 && existsSync(img(fuentesVideo[0])), fuentesVideo.join(", "));
+check("los videos que pide la página existen (el del producto y el del bump)",
+  fuentesVideo.length === 2 && fuentesVideo.every((f) => existsSync(img(f))), fuentesVideo.join(", "));
 check("la tira de fotos va debajo del video",
   html.indexOf('class="videobox"') < html.indexOf('id="gal"'));
 
@@ -265,8 +265,13 @@ check("la tarjeta de 2 kits se distingue", html.includes('class="foto dos"'));
 check("el modal luce el sello de vendedor calificado", html.includes("Vendedor calificado"));
 check("los sellos ocupan el ancho del modal", /\.seals img\s*\{[^}]*width:\s*100%/.test(html));
 
-/* El carrusel del order bump no puede mostrar huecos */
-check("si faltan las fotos del bump se retira el carrusel", html.includes("sinFotoBump"));
+/* El carrusel del order bump: video primero, fotos después, y una foto rota
+   solo se esconde a si misma (el video siempre le da contenido a la pantalla) */
+check("una foto rota del bump no se cae el carrusel entero", html.includes("sinFotoBump"));
+check("el video del bump va primero en el carrusel",
+  html.indexOf('data-src="kittarotcod/orderbumpvideo1.mp4"') < html.indexOf('data-src="kittarotcod/foto2orderbumb.webp"'));
+check("el video del bump es mudo, en bucle y sin pantalla completa",
+  ["muted", "playsinline", "loop"].every((a) => new RegExp(`<video[^>]*${a}`).test(html.slice(html.indexOf('id="bumpCar"')))));
 
 const pesados = [];
 const recorrer = (dir) => readdirSync(join(root, "public", dir), { withFileTypes: true }).forEach((e) => {
@@ -333,8 +338,8 @@ check("hay observador de cercanía y red de seguridad por scroll",
 check("el limitador no depende de requestAnimationFrame",
   /alMoverse = function[\s\S]{0,260}Date\.now\(\)/.test(html));
 check("el video se pausa al alejarse", /distancia\(MARGEN_PLAY\)[\s\S]{0,120}video\.pause\(\)/.test(html));
-check("las fotos de los modales esperan a que el modal se abra",
-  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante|bump\d)/g) || []).length === 7);
+check("las fotos y el video de los modales esperan a que el modal se abra",
+  (html.match(/data-src="kittarotcod\/(logo|badges|kit-variante|orderbumpvideo1\.mp4|foto2orderbumb|fotobump3)/g) || []).length === 7);
 check("al abrir el modal del pedido se activan sus fotos",
   /function openCOD\(\)[\s\S]{0,600}activarImagenes\(document\.getElementById\('codOverlay'\)\)/.test(html));
 check("al abrir el order bump se activan las suyas",
@@ -353,7 +358,7 @@ check("el HTML se revalida siempre, para que los precios no se queden viejos",
 const pendientes = [
   ...fuentesVideo,
   ...[...html.matchAll(/(?:srcset|src)="(kittarotcod\/resenas\/[^"]+)"/g)].map((m) => m[1]),
-  ...["kittarotcod/bump1.webp", "kittarotcod/bump2.webp", "kittarotcod/bump3.webp"]
+  ...["kittarotcod/orderbumpvideo1.mp4", "kittarotcod/foto2orderbumb.webp", "kittarotcod/fotobump3.png"]
 ].filter((f) => {
   if (existsSync(img(f))) return false;
   // Un .jpg cuyo .webp ya existe no falta: es el respaldo para navegadores
