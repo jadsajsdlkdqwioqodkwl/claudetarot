@@ -20,6 +20,11 @@ columna **P (`CAPI`)**, que crea él mismo, y las pestañas `Reporte` e `Histór
 
 4. Guarda y **recarga la hoja**. Aparece el menú **CRM** junto a *Ayuda*.
 5. La primera vez que uses una opción, Google pide permisos: acéptalos.
+6. Ejecuta **CRM → Preparar hoja**. Deja lista la columna `CAPI` y las pestañas.
+
+> Si la hoja tenía solo 15 columnas, `getRange(1, 16)` fallaba y el script moría
+> antes de crear nada: por eso la columna no aparecía. Ahora la rutina amplía la
+> cuadrícula primero.
 
 ### De dónde sale el token
 
@@ -35,6 +40,7 @@ termines de probar.
 
 | Menú | Qué hace |
 |---|---|
+| **Preparar hoja** | Crea la columna P (`CAPI`) y las pestañas `Reporte` e `Histórico` si faltan. Córrelo una vez tras instalar. |
 | **Reporte por rango de fechas…** | Pregunta desde/hasta y escribe la pestaña `Reporte`: un renglón por día con leads, cerrados, pagados, ingresos cobrados, potenciales, ticket promedio y % de cierre, más una fila TOTAL del rango. |
 | **Reporte de hoy** | Lo mismo, directo, sin preguntar. |
 | **Enviar ventas a Meta (CAPI)** | Manda un evento `Purchase` por cada pedido en estado **Pagado** que no se haya reportado aún, y anota en la columna `CAPI` la fecha de envío o el error. |

@@ -37,11 +37,16 @@
    * y sobreviven a los despliegues:
    *   GOOGLE_PRIVATE_KEY    npx wrangler secret put GOOGLE_PRIVATE_KEY
    *   TELEGRAM_BOT_TOKEN    npx wrangler secret put TELEGRAM_BOT_TOKEN
-   *   TELEGRAM_CHAT_ID      npx wrangler secret put TELEGRAM_CHAT_ID
+   *
+   * TELEGRAM_CHAT_ID va aquí y no en el dashboard justamente por lo de arriba:
+   * como texto plano en la consola, el siguiente despliegue lo borraba y el
+   * aviso de Telegram dejaba de salir sin que nadie se enterara. Solo el id de
+   * un chat, sin el token del bot, no sirve para nada.
    */
   "vars": {
     "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",
     "GOOGLE_SHEET_NAME": "Pedidos",
-    "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com"
+    "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
+    "TELEGRAM_CHAT_ID": "8344622761"
   }
 }

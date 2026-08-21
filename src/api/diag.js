@@ -190,7 +190,62 @@ export async function onRequestGet({ request, env }) {
     const cuerpo = await res.text();
     if (!anota("escritura de prueba", res.ok,
       res.ok ? JSON.parse(cuerpo).updates?.updatedRange : `${res.status}: ${motivoGoogle(cuerpo)}`)) {
-      return terminar(
+    
+  /* 9 — Telegram: ¿por qué no llega el aviso del lead? */
+  {
+    const token = env.TELEGRAM_BOT_TOKEN;
+    const chatId = env.TELEGRAM_CHAT_ID;
+
+    if (!token || !chatId) {
+      // Este es el fallo silencioso clásico: notificarTelegram sale sin avisar
+      // cuando falta una de las dos, y los pedidos siguen entrando a la hoja.
+      anota("variables de Telegram", false, {
+        TELEGRAM_BOT_TOKEN: token ? "definido" : "FALTA",
+        TELEGRAM_CHAT_ID: chatId ? chatId : "FALTA",
+        ojo: "un despliegue borra las variables de texto que solo estén en el dashboard; " +
+             "TELEGRAM_CHAT_ID tiene que estar en wrangler.jsonc y el token como secret"
+      });
+    } else {
+      anota("variables de Telegram", true, { chat: chatId, token: `${token.slice(0, 6)}…(${token.length} car.)` });
+
+      // getMe valida el token sin mandarle nada a nadie.
+      const quien = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const datos = await quien.json().catch(() => ({}));
+      if (!anota("el token del bot sirve", quien.ok && datos.ok,
+        quien.ok && datos.ok ? `@${datos.result.username}` : datos.description || `HTTP ${quien.status}`)) {
+        return terminar("El token del bot no vale: revísalo con @BotFather y vuelve a subirlo como secret.");
+      }
+
+      // getChat dice si el bot puede escribirle a ese chat. Es donde se ve el
+      // error mas comun: el bot no puede empezar una conversacion, la persona
+      // tiene que escribirle /start primero.
+      const chat = await fetch(`https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(chatId)}`);
+      const info = await chat.json().catch(() => ({}));
+      anota("el bot alcanza ese chat", chat.ok && info.ok,
+        chat.ok && info.ok
+          ? { tipo: info.result.type, nombre: info.result.username || info.result.title || info.result.first_name }
+          : { error: info.description || `HTTP ${chat.status}`,
+              arreglo: "abre Telegram, busca tu bot y pulsa /start; un bot no puede escribir primero" });
+
+      // Con ?telegram=1 se manda un mensaje de prueba de verdad.
+      if (url.searchParams.get("telegram") === "1") {
+        const envio = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "🔧 *Prueba de /api/diag*\n\nSi lees esto, los avisos de pedidos funcionan.",
+            parse_mode: "Markdown"
+          })
+        });
+        const salida = await envio.json().catch(() => ({}));
+        anota("mensaje de prueba enviado", envio.ok && salida.ok,
+          envio.ok && salida.ok ? "revisa tu Telegram" : salida.description || `HTTP ${envio.status}`);
+      }
+    }
+  }
+
+  return terminar(
         `La cuenta de servicio puede leer pero no escribir. Compártela como **Editor**, no como Lector.`
       );
     }

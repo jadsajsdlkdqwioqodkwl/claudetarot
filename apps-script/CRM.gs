@@ -43,6 +43,8 @@ const DIAS_MAXIMO_EVENTO = 6;
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("CRM")
+    .addItem("Preparar hoja (columna CAPI y pestañas)", "prepararHojaCRM")
+    .addSeparator()
     .addItem("Reporte por rango de fechas…", "reportePorRango")
     .addItem("Reporte de hoy", "reporteDeHoy")
     .addSeparator()
@@ -51,6 +53,49 @@ function onOpen() {
     .addSeparator()
     .addItem("Archivar pedidos antiguos…", "archivarAntiguos")
     .addToUi();
+}
+
+/* ─────────────────────  Preparar la hoja  ─────────────────────── */
+
+/**
+ * Crea lo que el script necesita y aun no existe: la columna CAPI y las
+ * pestanas de Reporte e Historico.
+ *
+ * Existe como opcion aparte porque antes esto vivia dentro de
+ * enviarVentasAMeta, detras de la comprobacion de credenciales: sin el token de
+ * Meta la funcion salia antes de llegar, y la columna no aparecia nunca.
+ */
+function prepararHojaCRM() {
+  const ui = SpreadsheetApp.getUi();
+  const libro = SpreadsheetApp.getActive();
+  const hoja = hojaPedidos_();
+  const hecho = [];
+
+  const celda = hoja.getRange(1, COL.CAPI);
+  if (String(celda.getValue() || "").trim() !== "CAPI") {
+    asegurarColumnaCapi_(hoja);
+    hecho.push('Columna P "CAPI" creada.');
+  } else {
+    hecho.push('La columna P "CAPI" ya estaba.');
+  }
+
+  [HOJA_REPORTE, HOJA_HISTORICO].forEach(function (nombre) {
+    if (!libro.getSheetByName(nombre)) {
+      const nueva = libro.insertSheet(nombre);
+      if (nombre === HOJA_HISTORICO) {
+        nueva.getRange(1, 1, 1, TOTAL_COLUMNAS)
+          .setValues([hoja.getRange(1, 1, 1, TOTAL_COLUMNAS).getValues()[0]])
+          .setFontWeight("bold");
+        nueva.setFrozenRows(1);
+      }
+      hecho.push('Pestana "' + nombre + '" creada.');
+    } else {
+      hecho.push('La pestana "' + nombre + '" ya estaba.');
+    }
+  });
+
+  libro.setActiveSheet(hoja);
+  ui.alert("CRM listo\n\n" + hecho.join("\n"));
 }
 
 /* ──────────────────────────  Reportes  ────────────────────────── */
@@ -172,6 +217,13 @@ function probarConexionMeta() {
 
 function enviarVentasAMeta() {
   const ui = SpreadsheetApp.getUi();
+
+  // La columna se crea antes de mirar las credenciales: si se hace despues y
+  // el token de Meta no esta puesto, la funcion sale y la columna no aparece
+  // nunca, que es justo lo que pasaba.
+  const hoja = hojaPedidos_();
+  asegurarColumnaCapi_(hoja);
+
   let credenciales;
   try {
     credenciales = credencialesMeta_();
@@ -179,9 +231,6 @@ function enviarVentasAMeta() {
     ui.alert(err.message);
     return;
   }
-
-  const hoja = hojaPedidos_();
-  asegurarColumnaCapi_(hoja);
 
   const pedidos = leerPedidos_();
   const pendientes = pedidos.filter((p) => p.estado === ESTADO_VENDIDO && !p.capi);
@@ -300,12 +349,17 @@ function hojaPedidos_() {
 }
 
 function asegurarColumnaCapi_(hoja) {
-  const celda = hoja.getRange(1, COL.CAPI);
-  if (!celda.getValue()) {
-    celda.setValue("CAPI").setFontWeight("bold")
-      .setFontColor("#ffffff").setBackground("#111111");
-    hoja.setColumnWidth(COL.CAPI, 170);
+  // Si la hoja tiene menos columnas que la P, primero hay que crearlas: sin
+  // esto getRange(1, 16) lanza y el script se queda a medias.
+  if (hoja.getMaxColumns() < COL.CAPI) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), COL.CAPI - hoja.getMaxColumns());
   }
+  const celda = hoja.getRange(1, COL.CAPI);
+  if (String(celda.getValue() || "").trim() !== "CAPI") {
+    celda.setValue("CAPI");
+  }
+  celda.setFontWeight("bold").setFontColor("#ffffff").setBackground("#111111");
+  hoja.setColumnWidth(COL.CAPI, 170);
 }
 
 /** Lee la hoja completa a objetos, con el número de fila para poder escribir. */
