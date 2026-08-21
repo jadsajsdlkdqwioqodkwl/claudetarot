@@ -24,7 +24,7 @@
     --ink:#111111;
     --muted:#666666;
     /* Gris más oscuro para textos chicos del modal (hints, detalle de envío,
-       placeholders): con --muted se perdían por poco contraste. */
+        placeholders): con --muted se perdían por poco contraste. */
     --muted-txt:#4A4A4A;
     --line:#E0E0E0;
     --green:#28A745; 
@@ -840,19 +840,34 @@
   var datosCliente = {};
   var bumpAceptado = '';
 
-  /* Un fallo de red no puede costar un lead que ya pagamos: se reintenta una
-     vez antes de rendirse. Solo se reintenta si el servidor no llego a
-     contestar o devolvio un error suyo (5xx); un 422 es culpa de los datos y
-     repetirlo daria igual. */
+  /* ----- INTEGRACIÓN DIRECTA CON GOOGLE APPS SCRIPT CRM ----- */
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwftOTonpc9zOmmVOOZwGbuy9cE_E0Kbz4wASs8ff0PeuLrABxtzCpgrtNkDN_gGxJD1g/exec';
+  var WEBHOOK_SECRET = '7aR0t_2026_s3cr3t';
+
   function enviarPedido(cuerpo, intento) {
-    return fetch('/api/order', {
+    // 1. Añadir seguridad y decirle al script que esto es un lead nuevo
+    cuerpo.token = WEBHOOK_SECRET;
+    cuerpo.action = 'order';
+    
+    // 2. Mapear el producto (antes lo hacía Cloudflare, ahora lo hacemos aquí)
+    var varElegida = fbVariante();
+    cuerpo.producto = varElegida.etiqueta;
+    cuerpo.precio = varElegida.valor;
+
+    // 3. Enviamos directo a Apps Script (usando text/plain para evitar bloqueos CORS)
+    return fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(cuerpo)
-    }).then(function (r) {
-      if (r.status >= 500 && intento < 1) throw new Error('reintentar');
-      return r;
-    }).catch(function (err) {
+    })
+    // Adaptamos la respuesta para que encaje con tu flujo de 'submitCOD'
+    .then(function(r) { return r.json(); })
+    .then(function(b) { 
+      if (b.result === 'error') throw new Error(b.error);
+      // Falsificamos la estructura Response {ok:true} que esperaba tu código original
+      return { ok: true, json: function(){ return Promise.resolve(b); } }; 
+    })
+    .catch(function (err) {
       if (intento < 1) {
         return new Promise(function (ok) { setTimeout(ok, 1200); })
           .then(function () { return enviarPedido(cuerpo, intento + 1); });
@@ -860,6 +875,7 @@
       throw err;
     });
   }
+  /* ----- FIN INTEGRACIÓN APPS SCRIPT (PARTE 1) ----- */
 
   /* Ultimo recurso: el pedido va por WhatsApp con los datos ya escritos, para
      que el vendedor lo pase a la hoja a mano. */
@@ -966,9 +982,8 @@
   // se manda apenas llegue el número de fila.
   var bumpsPendientes = [];
 
+  /* ----- INTEGRACIÓN DIRECTA CON GOOGLE APPS SCRIPT CRM (PARTE 2) ----- */
   function addUpsell(item) {
-    // Sin fila todavía: lo dejamos en cola y salimos. El evento va después de
-    // esta guarda a propósito, o al reintentar se contaría dos veces.
     if (!filaPedido) {
       bumpsPendientes.push(item);
       cerrarBump();
@@ -984,25 +999,28 @@
       currency: FB.moneda
     }, false, filaPedido + '-' + item);
 
-    // El total de /gracias tiene que incluir el bump. Lo sumamos ya y luego
-    // el servidor confirma con su propia cuenta.
     totalPedido += FB.bumps[item] || 0;
-    // El ahorro que se muestra en /gracias también suma el del bump.
     datosCliente.ahorro = (datosCliente.ahorro || 0) + ((FB.bumpsViejos[item] || 0) - (FB.bumps[item] || 0));
     bumpAceptado = item;
 
-    fetch('/api/upsell', {
+    // Conectamos directo a Apps Script para actualizar la fila con el Order Bump
+    fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // keepalive: si algo navega antes de tiempo, la petición sigue viva.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       keepalive: true,
-      body: JSON.stringify({ fila: filaPedido, item: item })
+      body: JSON.stringify({ 
+        action: 'upsell', 
+        fila: filaPedido, 
+        precioBump: FB.bumps[item] || 49,
+        token: WEBHOOK_SECRET
+      })
     })
     .then(function(r){ return r.json(); })
-    .then(function(b){ if (typeof b.total === 'number') totalPedido = b.total; })
-    .catch(function(err){ console.error('bump', err); })
+    .then(function(b){ if (b.result === 'success' && typeof b.total === 'number') totalPedido = b.total; })
+    .catch(function(err){ console.error('Error en bump', err); })
     .finally(cerrarBump);
   }
+  /* ----- FIN INTEGRACIÓN APPS SCRIPT ----- */
 
   /** Sale del bump hacia /gracias, haya respondido el servidor o no. */
   function cerrarBump() { closeAll(); }
