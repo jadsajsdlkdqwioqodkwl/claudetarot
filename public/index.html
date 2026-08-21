@@ -21,8 +21,11 @@
     --gold:#FFD700; 
     --gold-deep:#111111; 
     --gold-soft:#E0E0E0; 
-    --ink:#111111; 
-    --muted:#666666; 
+    --ink:#111111;
+    --muted:#666666;
+    /* Gris más oscuro para textos chicos del modal (hints, detalle de envío,
+       placeholders): con --muted se perdían por poco contraste. */
+    --muted-txt:#4A4A4A;
     --line:#E0E0E0;
     --green:#28A745; 
     --cta1:#FF2A00; 
@@ -212,22 +215,25 @@
   .ship-opt.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
   .ship-opt .txt { flex: 1; }
   .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
-  .ship-opt .txt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
-  /* La ciudad va en su propia línea, entre el título y el detalle */
-  .ship-opt .txt .loc-line { display: block; color: var(--purple-soft); font-weight: 800; font-size: 13px; margin-top: 3px; }
-  
+  .ship-opt .txt small { display: block; color: var(--muted-txt); font-size: 12px; margin-top: 2px; }
+  .ship-opt .free { color: var(--purple-soft); font-weight: 800; font-size: 14px; }
+
   .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
+  /* Palabra a la izquierda y el campo al costado, como una fila; el hint
+     (si lo hay) sigue yendo debajo, a todo el ancho. */
   .fg { margin-bottom: 16px; }
-  .fg label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--ink); }
-  .fg label .req { color: var(--price-old); }
-  .fg .hint { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.3; font-style: italic; }
+  .fg-row { display: flex; align-items: center; gap: 12px; }
+  .fg-row label { flex: 0 0 96px; font-weight: 700; font-size: 13px; line-height: 1.25; color: var(--ink); }
+  .fg-row label .req { color: var(--price-old); }
+  .fg-row .input-icon, .fg-row .sel-input { flex: 1; min-width: 0; }
+  .fg .hint { display: block; font-size: 12px; color: var(--muted-txt); margin-top: 6px; line-height: 1.3; font-style: italic; }
   .fg .input-icon { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; transition: border 0.2s; }
   .fg .input-icon:focus-within { border-color: var(--purple-soft); }
-  .fg .input-icon .ic { background: #F0F0F0; padding: 0 14px; display: flex; align-items: center; color: var(--muted); font-size: 18px; border-right: 1px solid var(--line); }
-  .fg .input-icon input { border: none; outline: none; flex: 1; padding: 14px; font-size: 14px; }
-  select, .sel-input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; background: #fff; outline: none; color: var(--ink); transition: border 0.2s; }
+  .fg .input-icon .ic { background: #F0F0F0; padding: 0 12px; display: flex; align-items: center; color: var(--muted-txt); font-size: 18px; border-right: 1px solid var(--line); }
+  .fg .input-icon input { border: none; outline: none; flex: 1; min-width: 0; padding: 12px; font-size: 14px; color: var(--ink); }
+  select, .sel-input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 14px; background: #fff; outline: none; color: var(--ink); transition: border 0.2s; }
   select:focus, .sel-input:focus { border-color: var(--purple-soft); }
+  .fg input::placeholder, .sel-input::placeholder { color: var(--muted-txt); opacity: 1; }
   
   .entrega-note { text-align: center; color: var(--blue-dark); font-size: 15px; font-weight: 800; margin: 20px 0 16px; line-height: 1.4; }
   
@@ -360,7 +366,7 @@
 
   <div class="rev-wrap">
     <div class="rev-track" id="revTrack">
-      <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r1.webp" type="image/webp"><img src="kittarotcod/resenas/r1.jpg" alt="Compra de Carla Rojas" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r1.webp" type="image/webp"><img src="kittarotcod/resenas/r1.jpg" alt="Compra de Carla Rojas" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Perfecto para principiantes: las cartas ya vienen con el significado impreso, así que no me perdí en nada. El tapete y el collar amuleto son preciosos, mejor calidad de la que esperaba.</div></div></div>
       <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r2.webp" type="image/webp"><img src="kittarotcod/resenas/r2.jpg" alt="Compra de Lucía Mendoza" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
       <div class="rev-card"><div class="rfoto"><picture><source srcset="kittarotcod/resenas/r3.webp" type="image/webp"><img src="kittarotcod/resenas/r3.jpg" alt="Compra de Andrea Salas" width="156" height="156" loading="lazy" onerror="sinFotoResena(this)"></picture></div><div class="rbody"><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
     </div>
@@ -530,13 +536,13 @@
     <div class="ship-opts">
       <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
-        <div class="free">Gratis</div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="free">Lima</div>
       </div>
       <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
-        <div class="free">Gratis</div>
+        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="free">Provincia</div>
       </div>
     </div>
     
@@ -544,17 +550,21 @@
     
     <!-- Shared Questions -->
     <div class="fg">
-      <label>Nombres<span class="req">*</span></label>
-      <div class="input-icon">
-        <span class="ic"><svg class="ico"><use href="#i-user"/></svg></span>
-        <input type="text" id="fName" placeholder="Coloca tu nombre">
+      <div class="fg-row">
+        <label>Nombres<span class="req">*</span></label>
+        <div class="input-icon">
+          <span class="ic"><svg class="ico"><use href="#i-user"/></svg></span>
+          <input type="text" id="fName" placeholder="Coloca tu nombre">
+        </div>
       </div>
     </div>
     <div class="fg">
-      <label>Whatsapp <span class="req">*</span></label>
-      <div class="input-icon">
-        <span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span>
-        <input type="tel" id="fPhone" placeholder="Coloca tu Whatsapp">
+      <div class="fg-row">
+        <label>Whatsapp <span class="req">*</span></label>
+        <div class="input-icon">
+          <span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span>
+          <input type="tel" id="fPhone" placeholder="Coloca tu Whatsapp">
+        </div>
       </div>
       <!-- Respuestas de las FAQ sutilmente integradas aquí -->
       <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega en empaque discreto y embalado.</span>
@@ -563,8 +573,10 @@
     <!-- PAGO EN CASA (LIMA) -> Simplificado -->
     <div id="boxCasa">
       <div class="fg">
-        <label>Dirección de Entrega <span class="req">*</span></label>
-        <input class="sel-input" type="text" placeholder="Coloca tu dirección" id="fDir">
+        <div class="fg-row">
+          <label>Dirección de Entrega <span class="req">*</span></label>
+          <input class="sel-input" type="text" placeholder="Coloca tu dirección" id="fDir">
+        </div>
         <!-- Respuestas de las FAQ sutilmente integradas aquí -->
         <span class="hint">Entregas en horario de la tarde, el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
       </div>
@@ -573,8 +585,10 @@
     <!-- AGENCIA (PROVINCIA) -> Simplificado -->
     <div id="boxAg" style="display:none">
       <div class="fg">
-        <label>Agencia de Destino <span class="req">*</span></label>
-        <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="fSucursal">
+        <div class="fg-row">
+          <label>Agencia de Destino <span class="req">*</span></label>
+          <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="fSucursal">
+        </div>
         <!-- Respuestas de las FAQ sutilmente integradas aquí -->
         <span class="hint">Envíos por Shalom y Olva. Te enviaremos por WhatsApp la foto de tu comprobante con el número de seguimiento.</span>
       </div>
