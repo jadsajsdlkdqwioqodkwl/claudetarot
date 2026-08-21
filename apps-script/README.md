@@ -44,6 +44,8 @@ termines de probar.
 | **Reporte por rango de fechas…** | Pregunta desde/hasta y escribe la pestaña `Reporte`: un renglón por día con leads, cerrados, pagados, ingresos cobrados, potenciales, ticket promedio y % de cierre, más una fila TOTAL del rango. |
 | **Reporte de hoy** | Lo mismo, directo, sin preguntar. |
 | **Enviar ventas a Meta (CAPI)** | Manda un evento `Purchase` por cada pedido en estado **Pagado** que no se haya reportado aún, y anota en la columna `CAPI` la fecha de envío o el error. |
+| **Activar envío automático** | Instala el disparador: a partir de ahí, con solo poner **Pagado** en la columna Estado, esa venta sale sola a Meta y el resultado se escribe en `CAPI`. Es lo que quieres dejar puesto. |
+| **Desactivar envío automático** | Quita ese disparador. |
 | **Probar conexión con Meta** | Comprueba pixel y token sin enviar nada. |
 | **Archivar pedidos antiguos…** | Mueve a `Histórico` los pedidos de más de N días (30 por defecto) para que la lista del día no se sature. |
 
@@ -64,10 +66,15 @@ termines de probar.
 
 ## Automatizarlo
 
-Para no depender de acordarse del menú: en el editor de Apps Script,
-**Activadores → Añadir activador** → función `enviarVentasAMeta`, origen
-**Basado en tiempo**, cada hora. Con eso, marcar un pedido como *Pagado* es lo
-único que tiene que hacer el vendedor.
+Usa **CRM → Activar envío automático al marcar Pagado**. Desde ese momento el
+vendedor solo cambia el estado y la venta se reporta sola.
+
+Va como disparador **instalable** y no como `onEdit` simple a propósito: un
+`onEdit` simple no tiene permiso para salir a internet, así que `UrlFetchApp`
+—la llamada a Meta— fallaría siempre sin decir por qué.
+
+Una fila solo se reporta una vez: si en `CAPI` ya dice `✅ CAPI enviado`, se
+salta. Si dice `❌ …`, se reintenta al volver a marcarla.
 
 ## Probar los cambios
 

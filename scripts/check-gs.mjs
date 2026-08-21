@@ -22,7 +22,7 @@ const check = (name, cond, detail = "") => {
 const contexto = createContext({ console });
 runInContext(readFileSync(join(root, "apps-script/CRM.gs"), "utf8"), contexto);
 const { parsearFecha, filtrarPorRango, sumarTotales, agruparPorDia,
-        normalizarTelefono, construirEvento } = contexto;
+        normalizarTelefono, construirEvento, debeReportarse } = contexto;
 // Las const del script no se cuelgan del contexto; se leen evaluando dentro.
 const { COL } = runInContext("({ COL })", contexto);
 // Las fechas tienen que nacer dentro del sandbox: un Date de Node no pasa el
@@ -100,6 +100,17 @@ check("nunca manda un evento en el futuro",
 
 /* La columna CAPI no pisa las del Worker */
 check("CAPI es la columna P, después de las 15 del Worker", COL.CAPI === 16);
+
+
+/* La regla del envío automático: cuándo toca reportar una fila */
+check("una venta pagada sin marca se reporta", debeReportarse("Pagado", "") === true);
+check("un pedido pendiente no se reporta", debeReportarse("Pendiente", "") === false);
+check("una venta ya enviada no se vuelve a cobrar",
+  debeReportarse("Pagado", "✅ CAPI enviado 20/08/2026 10:00") === false);
+check("un intento fallido sí se reintenta",
+  debeReportarse("Pagado", "❌ Invalid access token") === true);
+check("aguanta espacios y celdas vacías",
+  debeReportarse("  Pagado ", "   ") === true && debeReportarse("", "") === false);
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

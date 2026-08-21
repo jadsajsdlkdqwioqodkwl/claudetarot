@@ -49,6 +49,8 @@ function onOpen() {
     .addItem("Reporte de hoy", "reporteDeHoy")
     .addSeparator()
     .addItem("Enviar ventas a Meta (CAPI)", "enviarVentasAMeta")
+    .addItem("Activar envío automático al marcar Pagado", "instalarDisparador")
+    .addItem("Desactivar envío automático", "quitarDisparador")
     .addItem("Probar conexión con Meta", "probarConexionMeta")
     .addSeparator()
     .addItem("Archivar pedidos antiguos…", "archivarAntiguos")
@@ -233,7 +235,7 @@ function enviarVentasAMeta() {
   }
 
   const pedidos = leerPedidos_();
-  const pendientes = pedidos.filter((p) => p.estado === ESTADO_VENDIDO && !p.capi);
+  const pendientes = pedidos.filter((p) => debeReportarse(p.estado, p.capi));
 
   if (!pendientes.length) {
     ui.alert("No hay ventas nuevas que reportar. Marca pedidos como \"Pagado\" y vuelve a intentarlo.");
@@ -252,8 +254,8 @@ function enviarVentasAMeta() {
     const resultado = enviarLote_(credenciales, eventos);
 
     const marca = resultado.ok
-      ? `Enviado ${Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm")}`
-      : `Error: ${resultado.error}`.slice(0, 200);
+      ? `✅ CAPI enviado ${Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm")}`
+      : `❌ ${resultado.error}`.slice(0, 200);
 
     lote.forEach((p) => hoja.getRange(p.fila, COL.CAPI).setValue(marca));
     if (resultado.ok) enviados += lote.length;
@@ -297,6 +299,108 @@ function credencialesMeta_() {
       "Propiedades del script, y añade META_PIXEL_ID y META_ACCESS_TOKEN.");
   }
   return { pixelId, token, testCode: props.getProperty("META_TEST_EVENT_CODE") };
+}
+
+/* ───────────────  Envío automático al marcar "Pagado"  ─────────────── */
+
+/**
+ * Decide si una fila toca reportar. Se saca aparte para poder probarla:
+ * es la regla que evita cobrar dos veces el mismo pedido.
+ */
+function debeReportarse(estado, capiActual) {
+  if (String(estado || "").trim() !== ESTADO_VENDIDO) return false;
+  const marca = String(capiActual || "").trim();
+  // Un intento fallido anterior sí se reintenta; uno enviado, nunca.
+  return marca === "" || marca.indexOf("Error") === 0 || marca.indexOf("❌") === 0;
+}
+
+/**
+ * Crea el disparador que vigila la columna Estado. Hace falta instalarlo desde
+ * el menú (y no dejarlo como onEdit simple) porque un onEdit simple no puede
+ * llamar a UrlFetchApp: Google no le da permiso para salir a internet.
+ */
+function instalarDisparador() {
+  const ui = SpreadsheetApp.getUi();
+  quitarDisparador(true);
+  ScriptApp.newTrigger("alEditarEstado")
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onEdit()
+    .create();
+  ui.alert('Listo.\n\nDesde ahora, al poner "' + ESTADO_VENDIDO + '" en la columna Estado, ' +
+           "la venta se reporta sola a Meta y el resultado aparece en la columna CAPI.");
+}
+
+function quitarDisparador(silencioso) {
+  const previos = ScriptApp.getProjectTriggers()
+    .filter(function (t) { return t.getHandlerFunction() === "alEditarEstado"; });
+  previos.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  if (!silencioso) {
+    SpreadsheetApp.getUi().alert(previos.length
+      ? "Envío automático desactivado."
+      : "No había ningún envío automático activo.");
+  }
+}
+
+/**
+ * Se dispara con cada edición de la hoja. Sale corriendo salvo que sea
+ * justo lo que interesa: la columna Estado puesta en "Pagado".
+ */
+function alEditarEstado(e) {
+  if (!e || !e.range) return;
+  const hoja = e.range.getSheet();
+  if (hoja.getName() !== HOJA_PEDIDOS) return;
+  if (e.range.getColumn() !== COL.ESTADO) return;
+
+  const fila = e.range.getRow();
+  if (fila < 2) return;   // la fila 1 son los encabezados
+
+  asegurarColumnaCapi_(hoja);
+  const capiActual = hoja.getRange(fila, COL.CAPI).getValue();
+  if (!debeReportarse(hoja.getRange(fila, COL.ESTADO).getValue(), capiActual)) return;
+
+  reportarFila_(hoja, fila);
+}
+
+/** Manda una sola fila a Meta y deja el resultado escrito en la columna CAPI. */
+function reportarFila_(hoja, fila) {
+  const celda = hoja.getRange(fila, COL.CAPI);
+  let credenciales;
+  try {
+    credenciales = credencialesMeta_();
+  } catch (err) {
+    celda.setValue("❌ Falta META_ACCESS_TOKEN");
+    return;
+  }
+
+  const pedido = leerFila_(hoja, fila);
+  const evento = construirEvento(pedido, Math.floor(Date.now() / 1000), DIAS_MAXIMO_EVENTO, sha256Hex_);
+  const resultado = enviarLote_(credenciales, [evento]);
+
+  const cuando = Utilities.formatDate(new Date(),
+    SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm");
+  celda.setValue(resultado.ok
+    ? "✅ CAPI enviado " + cuando
+    : ("❌ " + resultado.error).slice(0, 200));
+}
+
+/** Una sola fila leída con la misma forma que usa leerPedidos_. */
+function leerFila_(hoja, fila) {
+  const f = hoja.getRange(fila, 1, 1, TOTAL_COLUMNAS).getValues()[0];
+  return {
+    fila: fila,
+    fecha: f[COL.FECHA - 1],
+    nombre: String(f[COL.NOMBRE - 1] || ""),
+    telefono: String(f[COL.WHATSAPP - 1] || ""),
+    producto: String(f[COL.PRODUCTO - 1] || ""),
+    total: Number(f[COL.TOTAL - 1]) || 0,
+    estado: String(f[COL.ESTADO - 1] || "").trim(),
+    fbp: String(f[COL.FBP - 1] || ""),
+    fbc: String(f[COL.FBC - 1] || ""),
+    eventId: String(f[COL.EVENT_ID - 1] || ""),
+    userAgent: String(f[COL.USER_AGENT - 1] || ""),
+    ip: String(f[COL.IP - 1] || ""),
+    capi: String(f[COL.CAPI - 1] || "").trim()
+  };
 }
 
 /* ─────────────────────────  Archivado  ────────────────────────── */
