@@ -21,8 +21,11 @@
     --gold:#FFD700; 
     --gold-deep:#111111; 
     --gold-soft:#E0E0E0; 
-    --ink:#111111; 
-    --muted:#666666; 
+    --ink:#111111;
+    --muted:#666666;
+    /* Gris más oscuro para textos chicos del modal (hints, detalle de envío,
+       placeholders): con --muted se perdían por poco contraste. */
+    --muted-txt:#4A4A4A;
     --line:#E0E0E0;
     --green:#28A745; 
     --cta1:#FF2A00; 
@@ -212,22 +215,23 @@
   .ship-opt.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
   .ship-opt .txt { flex: 1; }
   .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
-  .ship-opt .txt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .ship-opt .txt small { display: block; color: var(--muted-txt); font-size: 12px; margin-top: 2px; }
   .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
   /* La ciudad va en su propia línea, entre el título y el detalle */
-  .ship-opt .txt .loc-line { display: block; color: var(--purple-soft); font-weight: 800; font-size: 13px; margin-top: 3px; }
+  .ship-opt .txt .loc-line { display: block; color: var(--blue-dark); font-weight: 800; font-size: 13px; margin-top: 3px; }
   
   .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
   .fg { margin-bottom: 16px; }
   .fg label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--ink); }
   .fg label .req { color: var(--price-old); }
-  .fg .hint { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.3; font-style: italic; }
+  .fg .hint { display: block; font-size: 12px; color: var(--muted-txt); margin-top: 6px; line-height: 1.3; font-style: italic; }
   .fg .input-icon { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; transition: border 0.2s; }
   .fg .input-icon:focus-within { border-color: var(--purple-soft); }
-  .fg .input-icon .ic { background: #F0F0F0; padding: 0 14px; display: flex; align-items: center; color: var(--muted); font-size: 18px; border-right: 1px solid var(--line); }
-  .fg .input-icon input { border: none; outline: none; flex: 1; padding: 14px; font-size: 14px; }
+  .fg .input-icon .ic { background: #F0F0F0; padding: 0 14px; display: flex; align-items: center; color: var(--muted-txt); font-size: 18px; border-right: 1px solid var(--line); }
+  .fg .input-icon input { border: none; outline: none; flex: 1; padding: 14px; font-size: 14px; color: var(--ink); }
   select, .sel-input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; background: #fff; outline: none; color: var(--ink); transition: border 0.2s; }
   select:focus, .sel-input:focus { border-color: var(--purple-soft); }
+  .fg input::placeholder, .sel-input::placeholder { color: var(--muted-txt); opacity: 1; }
   
   .entrega-note { text-align: center; color: var(--blue-dark); font-size: 15px; font-weight: 800; margin: 20px 0 16px; line-height: 1.4; }
   
