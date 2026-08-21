@@ -9,6 +9,7 @@
 
 import { appendRow } from "../lib/google-sheets.js";
 import { VARIANTES, clean, toE164Peru, makeEventId } from "../lib/pedido.js";
+import { notificarTelegram, mensajeLeadNuevo } from "../lib/telegram.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -122,7 +123,7 @@ async function dentroDelLimite(env, ip) {
 }
 
 export async function onRequestPost(context) {
-  const { request, env } = context;
+  const { request, env, waitUntil } = context;
 
   let payload;
   try {
@@ -166,6 +167,10 @@ export async function onRequestPost(context) {
       502
     );
   }
+
+  // El pedido ya quedó guardado; el aviso a Telegram va en segundo plano y
+  // nunca puede atrasar ni tumbar la respuesta al cliente.
+  waitUntil(notificarTelegram(env, mensajeLeadNuevo(order)));
 
   return json({ ok: true, fila, total: order.total, eventId: order.eventId });
 }

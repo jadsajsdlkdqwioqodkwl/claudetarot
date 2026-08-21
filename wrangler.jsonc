@@ -35,7 +35,9 @@
    *
    * Los SECRETOS no van aquí (se subirían a GitHub). Van por dashboard o CLI
    * y sobreviven a los despliegues:
-   *   GOOGLE_PRIVATE_KEY   npx wrangler secret put GOOGLE_PRIVATE_KEY
+   *   GOOGLE_PRIVATE_KEY    npx wrangler secret put GOOGLE_PRIVATE_KEY
+   *   TELEGRAM_BOT_TOKEN    npx wrangler secret put TELEGRAM_BOT_TOKEN
+   *   TELEGRAM_CHAT_ID      npx wrangler secret put TELEGRAM_CHAT_ID
    */
   "vars": {
     "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",

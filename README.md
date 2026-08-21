@@ -18,6 +18,7 @@ src/lib/crm-setup.js    La rutina de preparación, compartida con el script
 src/lib/pedido.js       Precios, variantes y utilidades compartidas
 src/lib/hoja.js         Esquema de columnas y estados (A–O)
 src/lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
+src/lib/telegram.js     Aviso de pedidos nuevos por Telegram, en segundo plano
 public/index.html       Tu página (diseño original, sin cambios de estilo)
 public/gracias.html     /gracias — confirmación, CTA de WhatsApp y evento Lead
 public/kittarotcod/     Imágenes del producto
@@ -190,6 +191,8 @@ Hay **dos sitios distintos** y usar el equivocado hace perder el valor:
 | `GOOGLE_SHEET_NAME` | `wrangler.jsonc` → `vars` | texto |
 | `GOOGLE_CLIENT_EMAIL` | `wrangler.jsonc` → `vars` | texto |
 | `GOOGLE_PRIVATE_KEY` | **Secret** (dashboard o CLI) | credencial |
+| `TELEGRAM_BOT_TOKEN` | **Secret** (dashboard o CLI) | credencial |
+| `TELEGRAM_CHAT_ID` | **Secret** (dashboard o CLI) | identifica a quién avisar |
 
 > **Importante:** cada despliegue reemplaza las variables de **texto** del dashboard por las de
 > `wrangler.jsonc`. Si las escribes solo en la consola, el siguiente build las borra. Los
@@ -204,6 +207,8 @@ O por CLI, que evita errores de copiado en la clave privada:
 
 ```bash
 npx wrangler secret put GOOGLE_PRIVATE_KEY   # pega el private_key completo del JSON
+npx wrangler secret put TELEGRAM_BOT_TOKEN   # el token que te da @BotFather
+npx wrangler secret put TELEGRAM_CHAT_ID     # a quién avisar (ver más abajo)
 ```
 
 `GOOGLE_PRIVATE_KEY` se pega tal cual viene en el JSON, desde `-----BEGIN PRIVATE KEY-----`
@@ -315,6 +320,38 @@ Los fallos más comunes y su arreglo:
 > el error crudo de Google en la línea `Sheets: …`, por si necesitas más.
 
 Apágalo cuando termines: borra el secret `DIAG_TOKEN` y vuelve a desplegar.
+
+## Aviso por Telegram
+
+`/api/order` manda un mensaje a Telegram apenas el pedido queda guardado en
+Sheets, con nombre, WhatsApp, producto, total y la dirección o agencia. Va con
+`waitUntil`, en segundo plano: no atrasa la respuesta al cliente, y si
+Telegram falla (token vencido, sin red) el pedido igual queda guardado —
+Sheets sigue siendo la fuente de verdad, Telegram es solo el aviso.
+
+**Por qué vive aquí y no en Apps Script:** los pedidos entran directo por la
+API de Google Sheets (`src/lib/google-sheets.js`), no por un webhook de Apps
+Script. Los triggers `onEdit`/`onChange` de Apps Script no disparan de forma
+confiable con cambios hechos por la API, así que el único lugar donde avisar
+al instante es el propio Worker, en el momento en que se guarda el pedido.
+
+### Crear el bot y conseguir las credenciales
+
+1. En Telegram, habla con **[@BotFather](https://t.me/BotFather)** → `/newbot`
+   → sigue los pasos. Te da un **token** con forma `123456789:AA...`.
+2. Escríbele algo a tu bot nuevo (o añádelo al grupo/canal donde quieras
+   recibir los avisos) para que tenga con quién hablar.
+3. Consigue el **chat ID**:
+   - Persona o grupo: habla con **[@userinfobot](https://t.me/userinfobot)**
+     (o añádelo al grupo) y te devuelve el ID. En un grupo suele ser negativo
+     (ej. `-100123456789`).
+   - O visita `https://api.telegram.org/bot<TU_TOKEN>/getUpdates` después de
+     mandarle un mensaje al bot: el ID aparece en `"chat":{"id":...}`.
+4. Guarda ambos como secrets (ver arriba). Sin ellos, `/api/order` sigue
+   guardando pedidos con normalidad; simplemente no manda el aviso.
+
+Prueba rápida sin desplegar nada: pégalos en `.dev.vars`, corre `npm run dev`
+y completa un pedido de prueba desde `http://localhost:8788`.
 
 ## Página de gracias
 

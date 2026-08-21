@@ -371,5 +371,19 @@ if (pendientes.length) {
 }
 
 
+/* 16. Aviso de pedidos nuevos por Telegram */
+const orderSrc = readFileSync(join(root, "src/api/order.js"), "utf8");
+const telegramSrc = readFileSync(join(root, "src/lib/telegram.js"), "utf8");
+check("el pedido avisa por Telegram sin bloquear la respuesta",
+  /waitUntil\(notificarTelegram/.test(orderSrc));
+check("el aviso sale después de guardar en Sheets, no antes",
+  orderSrc.indexOf("await appendRow") < orderSrc.indexOf("waitUntil(notificarTelegram"));
+check("sin credenciales de Telegram no truena, solo no avisa",
+  telegramSrc.includes("if (!token || !chatId) return"));
+check("un error de Telegram se registra pero no se lanza",
+  /catch \(err\) \{\s*console\.error\("Telegram/.test(telegramSrc));
+check("el token de Telegram no se imprime en los logs",
+  !/console\.(log|error)\([^)]*token/i.test(telegramSrc));
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);
