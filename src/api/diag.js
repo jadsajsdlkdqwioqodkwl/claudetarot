@@ -190,7 +190,12 @@ export async function onRequestGet({ request, env }) {
     const cuerpo = await res.text();
     if (!anota("escritura de prueba", res.ok,
       res.ok ? JSON.parse(cuerpo).updates?.updatedRange : `${res.status}: ${motivoGoogle(cuerpo)}`)) {
-    
+      return terminar(
+        `La cuenta de servicio puede leer pero no escribir. Compártela como **Editor**, no como Lector.`
+      );
+    }
+  }
+
   /* 9 — Telegram: ¿por qué no llega el aviso del lead? */
   {
     const token = env.TELEGRAM_BOT_TOKEN;
@@ -245,17 +250,10 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  return terminar(
-        `La cuenta de servicio puede leer pero no escribir. Compártela como **Editor**, no como Lector.`
-      );
-    }
-  }
-
-
   const roto = pasos.find((p) => !p.ok);
   return terminar(roto
     ? `Todo conecta, pero revisa: ${roto.paso}.`
     : url.searchParams.get("write") === "1"
-      ? "Cadena completa OK, incluida la escritura. Los pedidos deberían entrar."
+      ? "Cadena completa OK, incluida la escritura y Telegram. Los pedidos deberían entrar y avisar."
       : "Lectura OK. Vuelve a llamar con &write=1 para probar la escritura.");
 }
