@@ -20,6 +20,7 @@ export function mensajeLeadNuevo(order) {
 
   return (
     `🚨 *¡Nuevo pedido!* 🚨\n\n` +
+    `🕐 *Hora:* ${limpiar(order.fecha)}\n` +
     `👤 *Nombre:* ${limpiar(order.nombre)}\n` +
     `📱 *WhatsApp:* +${order.telefono}\n` +
     `📦 *Producto:* ${limpiar(order.etiqueta)}\n` +
@@ -27,6 +28,24 @@ export function mensajeLeadNuevo(order) {
     `🚚 *Entrega:* ${entrega}\n` +
     `📍 *${etiquetaDestino}:* ${limpiar(order.destino)}\n\n` +
     `🔥 _Escríbele rápido para confirmar el pedido._`
+  );
+}
+
+/**
+ * Arma el aviso de que un pedido ya en la hoja sumó el order bump. Va
+ * aparte de mensajeLeadNuevo porque llega en un segundo request
+ * (/api/upsell), después de que el cliente ya vio el pedido base: el bump
+ * es una decisión que toma más tarde, así que no puede ir en el primer aviso.
+ */
+export function mensajeBumpAgregado({ nombre, telefono, envio, destino, bump, total }) {
+  return (
+    `🎁 *¡Se sumó el order bump!* 🎁\n\n` +
+    `👤 *Nombre:* ${limpiar(nombre)}\n` +
+    `📱 *WhatsApp:* ${limpiar(telefono)}\n` +
+    `➕ *Extra:* ${limpiar(bump)}\n` +
+    `💰 *Nuevo total:* S/ ${total.toFixed(2)}\n` +
+    `🚚 *Entrega:* ${limpiar(envio)}\n` +
+    `📍 *Destino:* ${limpiar(destino)}`
   );
 }
 

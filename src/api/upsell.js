@@ -13,6 +13,7 @@
 import { getValues, updateValues } from "../lib/google-sheets.js";
 import { COLUMNAS, indiceDe, letraDe } from "../lib/hoja.js";
 import { UPSELLS } from "../lib/pedido.js";
+import { notificarTelegram, mensajeBumpAgregado } from "../lib/telegram.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -35,7 +36,7 @@ function aNumero(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -51,24 +52,41 @@ export async function onRequestPost({ request, env }) {
 
   const hoja = env.GOOGLE_SHEET_NAME || "Pedidos";
   const colBump = letraDe(indiceDe("Order bump"));
-  const colSubtotal = letraDe(indiceDe("Subtotal"));
   const colTotal = letraDe(indiceDe("Total"));
 
+  // Leemos desde Nombre hasta Total de una sola vez: además del subtotal,
+  // es lo que necesita el aviso de Telegram sin hacer una segunda llamada.
+  const colInicio = indiceDe("Nombre");
+  const colFin = indiceDe("Total");
+
   try {
+    const [valores = []] = await getValues(
+      env, `${hoja}!${letraDe(colInicio)}${fila}:${letraDe(colFin)}${fila}`
+    );
+    const en = (nombreColumna) => valores[indiceDe(nombreColumna) - colInicio];
+
     // Releemos el subtotal en vez de fiarnos del navegador: el precio del
     // producto sigue saliendo del servidor.
-    const [valores = []] = await getValues(env, `${hoja}!${colSubtotal}${fila}:${colTotal}${fila}`);
-    const subtotal = aNumero(valores[0]);
+    const subtotal = aNumero(en("Subtotal"));
     if (!subtotal) return json({ error: "No encontramos ese pedido." }, 404);
 
-    const yaTenia = String(valores[indiceDe("Order bump") - indiceDe("Subtotal")] || "").trim();
+    const yaTenia = String(en("Order bump") || "").trim();
     if (yaTenia) {
-      // Reintento o doble clic: no lo cobramos dos veces.
-      return json({ ok: true, total: aNumero(valores[2]) || subtotal, duplicado: true });
+      // Reintento o doble clic: no lo cobramos dos veces, ni avisamos otra vez.
+      return json({ ok: true, total: aNumero(en("Total")) || subtotal, duplicado: true });
     }
 
     const total = subtotal + item.precio;
     await updateValues(env, `${hoja}!${colBump}${fila}:${colTotal}${fila}`, [[item.etiqueta, total]]);
+
+    waitUntil(notificarTelegram(env, mensajeBumpAgregado({
+      nombre: en("Nombre"),
+      telefono: en("WhatsApp"),
+      envio: en("Envío"),
+      destino: en("Dirección / Agencia"),
+      bump: item.etiqueta,
+      total
+    })));
 
     return json({ ok: true, total });
   } catch (err) {
