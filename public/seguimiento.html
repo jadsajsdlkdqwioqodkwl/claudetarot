@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/kittarotcod/favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="/kittarotcod/favicon-180.png">
+<title>Seguimiento de tu envío — Tarot Store Perú</title>
+
+<!--
+  Esta página NO lleva el pixel de Meta, a diferencia de index.html y
+  gracias.html. El pixel manda a Meta la URL de la página, y acá la URL
+  ES el código del envío: instalarlo sería entregarle a Meta la llave con
+  la que cualquiera abre el seguimiento de un cliente. No hay nada que
+  medir en esta página, así que no hay nada que discutir.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg:#f5f5f7; --card:#ffffff; --ink:#111111; --muted:#666666;
+    --muted-txt:#4A4A4A; --line:#E0E0E0; --green:#28A745; --wa:#25D366;
+    --body-bg:#f2f2f4; --brand-teal:#068988; --blue-accent:#2D9CDB;
+    --urgent:#FF2A00; --gold:#FFD700;
+    --aviso-bg:#F4F9FF; --aviso-line:#cfe4fb;
+    --ok-bg:#e6f9ec; --ok-line:#b7ecc7;
+    --alerta-bg:#fff5f2; --alerta-line:rgba(255,42,0,.28);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:var(--body-bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh;
+          box-shadow:0 0 20px rgba(0,0,0,.05); padding:0 20px 44px; }
+  img { max-width:100%; display:block; }
+  [hidden] { display:none !important; }
+
+  /* ── Cabecera ─────────────────────────────────────────────── */
+  .top { display:flex; align-items:center; gap:10px; padding:20px 0 18px; }
+  .top img { width:34px; height:34px; border-radius:9px; }
+  .top .marca { font-size:13px; font-weight:800; letter-spacing:.3px; text-transform:uppercase;
+                color:var(--brand-teal); }
+  .top .sub { font-size:12px; color:var(--muted); font-weight:500; }
+
+  /* ── Encabezado del envío ─────────────────────────────────── */
+  .cabecera { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
+              padding:20px; text-align:center; }
+  .cabecera .hola { font-size:14px; color:var(--muted); }
+  .cabecera h1 { font-size:23px; font-weight:900; letter-spacing:-.4px; margin-top:4px; }
+  .chip { display:inline-flex; align-items:center; gap:7px; margin-top:12px; padding:7px 15px;
+          border-radius:22px; font-size:13.5px; font-weight:800; background:#eef1f4; color:var(--muted-txt); }
+  .chip .punto { width:9px; height:9px; border-radius:50%; background:currentColor; }
+  .chip.viva { background:#e8f6f6; color:var(--brand-teal); }
+  .chip.viva .punto { animation:latido 1.4s infinite; }
+  .chip.lista { background:var(--ok-bg); color:var(--green); }
+  .chip.fin { background:#eef1f4; color:var(--muted-txt); }
+  @keyframes latido { 0%,100%{opacity:1} 50%{opacity:.25} }
+  .cabecera .cod { margin-top:12px; font-size:12px; color:var(--muted); }
+  .cabecera .cod b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
+                     color:var(--ink); letter-spacing:.5px; }
+
+  /* ── Aviso de apurarse ────────────────────────────────────── */
+  .alerta { display:flex; gap:10px; align-items:flex-start; margin-top:14px; padding:13px 15px;
+            background:var(--alerta-bg); border:1.5px solid var(--alerta-line); border-radius:13px; }
+  .alerta svg { width:20px; height:20px; flex:0 0 20px; margin-top:1px; stroke:var(--urgent);
+                fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .alerta p { font-size:13.5px; font-weight:700; color:var(--urgent); line-height:1.4; }
+
+  /* ── Línea de tiempo ──────────────────────────────────────── */
+  .linea { margin-top:22px; background:var(--card); border:1.5px solid var(--line);
+           border-radius:16px; padding:22px 20px 6px; }
+  .paso { display:flex; gap:14px; position:relative; padding-bottom:22px; }
+  .paso:last-child { padding-bottom:16px; }
+  /* El tallo que une los puntos. En el último paso no hay nada que unir. */
+  .paso:not(:last-child)::before { content:''; position:absolute; left:12px; top:26px; bottom:0;
+                                   width:2px; background:var(--line); }
+  .paso.hecho:not(:last-child)::before { background:var(--green); }
+  .paso .bolita { flex:0 0 26px; height:26px; border-radius:50%; border:2px solid var(--line);
+                  background:var(--card); display:flex; align-items:center; justify-content:center;
+                  position:relative; z-index:1; }
+  .paso .bolita svg { width:14px; height:14px; stroke:#fff; fill:none; stroke-width:3.4;
+                      stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+  .paso.hecho .bolita { background:var(--green); border-color:var(--green); }
+  .paso.hecho .bolita svg { opacity:1; }
+  .paso.ahora .bolita { background:var(--brand-teal); border-color:var(--brand-teal);
+                        box-shadow:0 0 0 5px rgba(6,137,136,.16); }
+  .paso.ahora .bolita svg { opacity:1; }
+  .paso .txt h3 { font-size:15px; font-weight:700; color:var(--muted); }
+  .paso.hecho .txt h3 { color:var(--ink); }
+  .paso.ahora .txt h3 { color:var(--brand-teal); font-weight:800; }
+  .paso .txt p { font-size:13px; color:var(--muted); margin-top:2px; }
+  .paso .txt .cuando { font-size:12px; color:var(--muted); margin-top:3px; font-weight:600; }
+
+  /* ── Bloque de instrucciones ──────────────────────────────── */
+  .instr { margin-top:22px; border-radius:16px; padding:20px; border:1.5px solid var(--aviso-line);
+           background:var(--aviso-bg); }
+  .instr.destacado { border-color:var(--ok-line); background:var(--ok-bg); }
+  .instr h2 { font-size:17px; font-weight:900; letter-spacing:-.2px; }
+  .instr > p { font-size:14.5px; color:var(--muted-txt); margin-top:8px; }
+  .instr ul { list-style:none; margin-top:14px; display:flex; flex-direction:column; gap:11px; }
+  .instr li { display:flex; gap:10px; align-items:flex-start; font-size:14.5px; line-height:1.45; }
+  .instr li svg { width:19px; height:19px; flex:0 0 19px; margin-top:2px; stroke:var(--green);
+                  fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+  .instr li.ojo svg { stroke:var(--urgent); }
+  .instr b { font-weight:800; }
+
+  /* ── Clave de recojo ──────────────────────────────────────── */
+  .clave { margin-top:16px; background:var(--card); border:2px dashed var(--brand-teal);
+           border-radius:14px; padding:16px; text-align:center; }
+  .clave .rot { font-size:11.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+                color:var(--brand-teal); }
+  .clave .val { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:27px;
+                font-weight:800; letter-spacing:2px; margin-top:6px; word-break:break-all; }
+  .clave button { margin-top:11px; border:1.5px solid var(--brand-teal); background:transparent;
+                  color:var(--brand-teal); font-family:inherit; font-size:13px; font-weight:800;
+                  padding:8px 18px; border-radius:9px; cursor:pointer; }
+  .clave button:active { transform:scale(.97); }
+
+  /* ── Datos y voucher ──────────────────────────────────────── */
+  .datos { margin-top:22px; background:var(--card); border:1.5px solid var(--line);
+           border-radius:16px; padding:6px 18px; }
+  .datos .fila { display:flex; justify-content:space-between; gap:14px; padding:12px 0;
+                 border-bottom:1px solid var(--line); font-size:14.5px; }
+  .datos .fila:last-child { border-bottom:none; }
+  .datos .k { color:var(--muted); flex:0 0 auto; }
+  .datos .v { font-weight:600; text-align:right; }
+  .datos .fila.saldo .v { color:var(--urgent); font-weight:800; }
+  .nota { font-size:12.5px; color:var(--muted); margin-top:9px; padding:0 4px; }
+
+  .rotulo { font-size:12.5px; font-weight:800; color:var(--muted); text-transform:uppercase;
+            letter-spacing:.9px; margin:26px 0 12px; }
+  .voucher { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
+             padding:10px; cursor:zoom-in; }
+  .voucher img { width:100%; border-radius:10px; background:#f0f0f2; }
+  .voucher .pie { font-size:12.5px; color:var(--muted); text-align:center; padding:9px 4px 4px; }
+
+  .lupa { position:fixed; inset:0; background:rgba(0,0,0,.93); z-index:60; display:none;
+          align-items:center; justify-content:center; padding:16px; cursor:zoom-out; }
+  .lupa.on { display:flex; }
+  .lupa img { max-width:100%; max-height:92vh; width:auto; border-radius:10px; }
+
+  /* ── WhatsApp y pie ───────────────────────────────────────── */
+  .wa { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:26px;
+        background:var(--wa); color:#fff; font-size:16.5px; font-weight:800; padding:16px;
+        border-radius:13px; text-decoration:none; box-shadow:0 5px 16px rgba(37,211,102,.32); }
+  .wa:active { transform:scale(.98); }
+  .wa svg { width:22px; height:22px; fill:currentColor; }
+  .pie { text-align:center; font-size:12.5px; color:var(--muted); margin-top:26px; }
+
+  /* ── Cargando y error ─────────────────────────────────────── */
+  .hueso { background:var(--card); border:1.5px solid var(--line); border-radius:16px;
+           padding:20px; margin-top:14px; }
+  .hueso i { display:block; height:13px; border-radius:7px; background:#ececef; margin-bottom:11px;
+             animation:brillo 1.3s ease-in-out infinite; }
+  .hueso i:last-child { margin-bottom:0; width:58%; }
+  @keyframes brillo { 0%,100%{opacity:1} 50%{opacity:.45} }
+  .vacio { text-align:center; padding:52px 10px; }
+  .vacio h1 { font-size:21px; font-weight:900; }
+  .vacio p { font-size:14.5px; color:var(--muted); margin-top:10px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <img src="/kittarotcod/logo.webp" alt="" width="34" height="34">
+    <div>
+      <div class="marca">Tarot Store Perú</div>
+      <div class="sub">Seguimiento de tu envío</div>
+    </div>
+  </header>
+
+  <!-- Cargando -->
+  <div id="cargando">
+    <div class="hueso"><i></i><i></i><i></i></div>
+    <div class="hueso"><i></i><i></i><i></i><i></i></div>
+  </div>
+
+  <!-- No encontrado / error -->
+  <div id="vacio" class="vacio" hidden>
+    <h1 id="vacioTit">No encontramos ese envío</h1>
+    <p id="vacioTxt">Revisa que el link sea el que te enviamos por WhatsApp, completo y sin espacios.</p>
+    <a class="wa" id="waVacio" href="#" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"/></svg>
+      Escríbenos por WhatsApp
+    </a>
+  </div>
+
+  <!-- El envío -->
+  <main id="envio" hidden>
+    <section class="cabecera">
+      <div class="hola" id="hola"></div>
+      <h1 id="titulo"></h1>
+      <div class="chip" id="chip"><span class="punto"></span><span id="chipTxt"></span></div>
+      <div class="cod">Código de seguimiento <b id="codigo"></b></div>
+    </section>
+
+    <div class="alerta" id="alerta" hidden>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <p id="alertaTxt"></p>
+    </div>
+
+    <section class="linea" id="linea"></section>
+
+    <section class="instr" id="instr"></section>
+
+    <section class="datos" id="datos"></section>
+
+    <div id="bloqueVoucher" hidden>
+      <div class="rotulo">Comprobante de tu envío</div>
+      <figure class="voucher" id="voucher">
+        <img id="voucherImg" src="" alt="Foto del comprobante de envío">
+        <figcaption class="pie">Toca la foto para ampliarla</figcaption>
+      </figure>
+    </div>
+
+    <a class="wa" id="wa" href="#" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"/></svg>
+      <span id="waTxt">Tengo una consulta</span>
+    </a>
+
+    <p class="pie">Tarot Store Perú · Esta página se actualiza sola conforme avanza tu envío.</p>
+  </main>
+</div>
+
+<div class="lupa" id="lupa"><img id="lupaImg" src="" alt="Comprobante de envío ampliado"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var WHATSAPP = "51928529656";
+
+  /*
+   * El recorrido del envío. Tiene que coincidir con ESTADOS_ENVIO de
+   * src/lib/ventas.js y con VENTAS.gs — `npm run check` compara los tres y
+   * falla si alguno se desincroniza. "Cancelado" no está acá porque no es un
+   * paso del camino: es salirse de él.
+   */
+  var PASOS = [
+    { estado: "Separado",   titulo: "Pedido apartado",      nota: "Guardamos tu kit a tu nombre." },
+    { estado: "Preparando", titulo: "Preparando tu envío",  nota: "Estamos empaquetando tu pedido." },
+    { estado: "En camino",  titulo: "En camino",            nota: "Tu paquete viaja a la agencia." },
+    { estado: "En destino", titulo: "Llegó a la agencia",   nota: "Listo para que lo recojas." },
+    { estado: "Entregado",  titulo: "Entregado",            nota: "El paquete ya está contigo." }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (t) {
+    return String(t == null ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  };
+  var soles = function (n) { return "S/ " + Number(n || 0).toFixed(2); };
+  var primerNombre = function (nombre) { return String(nombre || "").trim().split(/\s+/)[0] || ""; };
+
+  var codigo = decodeURIComponent(location.pathname.replace(/^\/+/, "")).toUpperCase();
+
+  function waLink(texto) {
+    return "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(texto);
+  }
+
+  function mostrarVacio(titulo, texto) {
+    $("cargando").hidden = true;
+    $("envio").hidden = true;
+    $("vacio").hidden = false;
+    if (titulo) $("vacioTit").textContent = titulo;
+    if (texto) $("vacioTxt").textContent = texto;
+    $("waVacio").href = waLink(
+      "Hola, no puedo ver el seguimiento de mi pedido" + (codigo ? " (" + codigo + ")" : "") + "."
+    );
+  }
+
+  /* ── Línea de tiempo ────────────────────────────────────────────── */
+
+  function pintarLinea(e) {
+    var actual = 0;
+    for (var i = 0; i < PASOS.length; i++) {
+      if (PASOS[i].estado === e.estado) actual = i;
+    }
+
+    $("linea").innerHTML = PASOS.map(function (paso, i) {
+      var clase = i < actual ? "hecho" : (i === actual ? "ahora" : "");
+      // El paso actual también lleva el check: para el cliente, "acá estoy"
+      // es un hito cumplido, no algo a medias.
+      var cuando = "";
+      if (paso.estado === "En destino" && i <= actual && e.diasEsperando !== null) {
+        cuando = e.diasEsperando === 0
+          ? "Llegó hoy"
+          : "Esperándote hace " + e.diasEsperando + (e.diasEsperando === 1 ? " día" : " días");
+      }
+      return '<div class="paso ' + clase + '">' +
+        '<div class="bolita"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
+        '<div class="txt"><h3>' + esc(paso.titulo) + '</h3>' +
+        '<p>' + esc(paso.nota) + '</p>' +
+        (cuando ? '<div class="cuando">' + esc(cuando) + '</div>' : '') +
+        '</div></div>';
+    }).join("");
+  }
+
+  /* ── Instrucciones, distintas en cada estado ────────────────────── */
+
+  var CHECK = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  var OJO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>';
+
+  function item(html, ojo) {
+    return '<li' + (ojo ? ' class="ojo"' : '') + '>' + (ojo ? OJO : CHECK) + '<span>' + html + '</span></li>';
+  }
+
+  function instrucciones(e) {
+    var caja = $("instr");
+    caja.className = "instr";
+
+    if (e.estado === "Cancelado") {
+      caja.innerHTML = "<h2>Este pedido fue cancelado</h2>" +
+        "<p>Si crees que es un error, escríbenos por WhatsApp y lo revisamos contigo.</p>";
+      return;
+    }
+
+    if (e.estado === "Separado" || e.estado === "Preparando") {
+      caja.innerHTML = "<h2>Estamos preparando tu pedido</h2>" +
+        "<p>Apenas lo despachemos verás acá la foto del comprobante de envío y la clave " +
+        "para recogerlo. No tienes que hacer nada todavía.</p>";
+      return;
+    }
+
+    if (e.estado === "En camino") {
+      caja.innerHTML = "<h2>Tu paquete ya salió</h2>" +
+        "<p>Está viajando" + (e.ciudad ? " a <b>" + esc(e.ciudad) + "</b>" : "") +
+        ". <b>Todavía no vayas a la agencia:</b> esta misma página te va a avisar apenas llegue.</p>" +
+        "<ul>" +
+        item("Los envíos a provincia suelen tardar entre <b>1 y 3 días útiles</b>.") +
+        item("Guarda este link. Es el único lugar donde vas a ver el estado de tu envío.") +
+        "</ul>";
+      return;
+    }
+
+    if (e.estado === "En destino") {
+      caja.className = "instr destacado";
+      var lista = "";
+      lista += item("Lleva tu <b>DNI físico</b> — el original. Una foto o una copia no la aceptan.");
+      lista += item("El paquete está a nombre de <b>" + esc(e.cliente) + "</b>.");
+      if (e.clave) lista += item("Da la <b>clave de recojo</b> que ves abajo en el mostrador.");
+      lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>, la clave, y que nos avises " +
+        "antes por WhatsApp para autorizarlo.");
+      lista += item("La agencia guarda tu paquete alrededor de <b>30 días</b>. Pasado ese plazo lo " +
+        "devuelven a nuestro almacén.", true);
+
+      caja.innerHTML = "<h2>Ya puedes recogerlo 🎉</h2>" +
+        "<p>Tu paquete está esperándote" + (e.agencia ? " en <b>" + esc(e.agencia) + "</b>" : "") +
+        (e.ciudad ? ", " + esc(e.ciudad) : "") + ".</p><ul>" + lista + "</ul>";
+      return;
+    }
+
+    // Entregado
+    caja.className = "instr destacado";
+    caja.innerHTML = "<h2>¡Entregado! 🎉</h2>" +
+      "<p>Gracias por tu compra. Si algo llegó dañado o no es lo que pediste, escríbenos por " +
+      "WhatsApp el mismo día y lo resolvemos.</p>";
+  }
+
+  /* ── Clave de recojo ────────────────────────────────────────────── */
+
+  function pintarClave(e) {
+    if (e.estado !== "En destino" || !e.clave) return;
+
+    var caja = document.createElement("div");
+    caja.className = "clave";
+    caja.innerHTML = '<div class="rot">Clave de recojo</div>' +
+      '<div class="val" id="claveVal">' + esc(e.clave) + '</div>' +
+      '<button type="button" id="copiar">Copiar clave</button>';
+    $("instr").insertAdjacentElement("afterend", caja);
+
+    $("copiar").addEventListener("click", function () {
+      var boton = this;
+      var listo = function () {
+        boton.textContent = "¡Copiada!";
+        setTimeout(function () { boton.textContent = "Copiar clave"; }, 1800);
+      };
+      // navigator.clipboard no existe fuera de HTTPS ni en navegadores viejos,
+      // y sin el respaldo el botón se quedaba mudo sin decir por qué.
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(e.clave).then(listo, seleccionar);
+      } else {
+        seleccionar();
+      }
+      function seleccionar() {
+        var rango = document.createRange();
+        rango.selectNodeContents($("claveVal"));
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(rango);
+        listo();
+      }
+    });
+  }
+
+  /* ── Datos del envío ────────────────────────────────────────────── */
+
+  function fila(k, v, clase) {
+    if (!v && v !== 0) return "";
+    return '<div class="fila ' + (clase || "") + '"><span class="k">' + esc(k) +
+      '</span><span class="v">' + esc(v) + '</span></div>';
+  }
+
+  function pintarDatos(e) {
+    var producto = e.producto + (Number(e.cantidad) > 1 ? " × " + e.cantidad : "");
+    var html = "";
+    html += fila("Producto", producto);
+    if (e.enAgencia) {
+      html += fila("Agencia", e.agencia);
+      html += fila("Ciudad", e.ciudad);
+    } else {
+      html += fila("Entrega", e.agencia || e.ciudad);
+    }
+    html += fila("Pedido el", e.fecha);
+    if (e.saldo > 0) html += fila("Saldo pendiente", soles(e.saldo), "saldo");
+    $("datos").innerHTML = html;
+
+    if (e.saldo > 0) {
+      $("datos").insertAdjacentHTML("afterend",
+        '<p class="nota">Este saldo se coordina con nosotros por WhatsApp, no se paga en ' +
+        "la agencia.</p>");
+    }
+  }
+
+  /* ── Pintado general ────────────────────────────────────────────── */
+
+  function pintar(e) {
+    document.title = "Envío " + e.codigo + " — " + e.estado;
+
+    $("hola").textContent = primerNombre(e.cliente) ? "Hola, " + primerNombre(e.cliente) : "Tu envío";
+    $("titulo").textContent =
+      e.estado === "En destino" ? "Tu pedido ya llegó" :
+      e.estado === "Entregado" ? "Pedido entregado" :
+      e.estado === "Cancelado" ? "Pedido cancelado" :
+      e.estado === "En camino" ? "Tu pedido va en camino" : "Tu pedido está en preparación";
+
+    var chip = $("chip");
+    chip.className = "chip " +
+      (e.estado === "En destino" || e.estado === "Entregado" ? "lista" :
+       e.estado === "Cancelado" ? "fin" : "viva");
+    $("chipTxt").textContent = e.estado;
+    $("codigo").textContent = e.codigo;
+
+    if (e.apurar) {
+      $("alerta").hidden = false;
+      $("alertaTxt").textContent =
+        "Tu paquete lleva " + e.diasEsperando + " días esperándote en la agencia. " +
+        "Recógelo pronto para que no lo devuelvan.";
+    }
+
+    if (e.estado === "Cancelado") {
+      $("linea").hidden = true;
+    } else {
+      pintarLinea(e);
+    }
+
+    instrucciones(e);
+    pintarClave(e);
+    pintarDatos(e);
+
+    if (e.voucher) {
+      $("bloqueVoucher").hidden = false;
+      $("voucherImg").src = e.voucher;
+      // Si Drive no devuelve la foto, el cuadro roto asusta más que no tenerla.
+      $("voucherImg").addEventListener("error", function () {
+        $("bloqueVoucher").hidden = true;
+      });
+      $("voucher").addEventListener("click", function () {
+        $("lupaImg").src = e.voucher;
+        $("lupa").classList.add("on");
+      });
+      $("lupa").addEventListener("click", function () { this.classList.remove("on"); });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") $("lupa").classList.remove("on");
+      });
+    }
+
+    $("waTxt").textContent =
+      e.estado === "En destino" ? "Tengo un problema para recoger" : "Tengo una consulta";
+    $("wa").href = waLink("Hola, consulto por mi pedido " + e.codigo + " (" + e.cliente + ").");
+
+    $("cargando").hidden = true;
+    $("envio").hidden = false;
+  }
+
+  /* ── Arranque ───────────────────────────────────────────────────── */
+
+  if (!codigo) {
+    mostrarVacio();
+    return;
+  }
+
+  fetch("/api/seguimiento?c=" + encodeURIComponent(codigo))
+    .then(function (res) {
+      return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+    })
+    .then(function (r) {
+      if (!r.ok || !r.data.envio) {
+        mostrarVacio(null, r.data && r.data.error ? r.data.error : null);
+        return;
+      }
+      pintar(r.data.envio);
+    })
+    .catch(function () {
+      mostrarVacio(
+        "No pudimos cargar tu envío",
+        "Revisa tu conexión y vuelve a intentarlo en un momento."
+      );
+    });
+})();
+</script>
+</body>
+</html>

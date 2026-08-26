@@ -83,3 +83,178 @@ La lógica de cálculo se prueba sin subir nada a Google:
 ```bash
 npm run check:gs
 ```
+
+---
+
+# CRM de ventas manuales — `VENTAS.gs`
+
+El segundo negocio del mismo libro. Mientras `CRM.gs` trabaja la pestaña
+**`Pedidos`** (los leads que entran solos por la landing), `VENTAS.gs` trabaja la
+pestaña **`Ventas`**: las ventas que reportas a mano de tus campañas manuales, y
+la página de seguimiento que ve tu cliente de provincia.
+
+Los dos conviven sin tocarse: no comparten ni una constante ni una función.
+
+## Instalar
+
+Sobre el mismo proyecto de Apps Script donde ya está `CRM.gs`:
+
+1. **Extensiones → Apps Script**.
+2. **Archivo → +** tres veces y pega, respetando los nombres exactos:
+
+   | Archivo nuevo | Tipo | Contenido |
+   |---|---|---|
+   | `VENTAS` | Secuencia de comandos | `apps-script/VENTAS.gs` |
+   | `PANEL` | HTML | `apps-script/PANEL.html` |
+   | `SUBIR` | HTML | `apps-script/SUBIR.html` |
+
+3. Reemplaza `Código.gs` por la versión nueva de `apps-script/CRM.gs`. **Solo
+   cambió su `onOpen`**, que ahora cuelga también el menú *Ventas*; el resto del
+   archivo está igual.
+4. Guarda y **recarga la hoja**. Junto a *CRM* aparece el menú **Ventas**.
+5. **Ventas → Preparar hoja de Ventas.** Google pide permisos la primera vez
+   (hoja de cálculo, Drive y correo): acéptalos.
+6. **Ventas → Activar automatismos de Ventas.**
+
+> Los dos menús se montan desde el `onOpen` de `CRM.gs` porque Apps Script solo
+> admite **un** `onOpen` por proyecto. Si `VENTAS.gs` definiera el suyo, uno de
+> los dos menús desaparecería sin decir nada. `npm run check` lo vigila.
+
+## La pestaña `Ventas`
+
+Una fila por venta. Tus tres paneles viejos (Dinsides, Shalom, separados) son
+ahora la columna **`Canal`** y la columna **`Estado`**: apartar no es una forma
+de envío, es un momento del envío, y una venta apartada termina saliendo por
+Shalom o por Dinsides igual.
+
+| | | | | |
+|---|---|---|---|---|
+| **A** Fecha | **B** Código | **C** Cliente | **D** WhatsApp | **E** Producto |
+| **F** Cantidad | **G** Precio | **H** Adelanto | **I** Saldo | **J** Canal |
+| **K** Ciudad | **L** Agencia / Dirección | **M** Clave Shalom | **N** Estado | **O** Voucher |
+| **P** Notas | **Q** Link seguimiento | **R** En destino desde | **S** Alerta | **T** Actualizado |
+
+Más una columna **U (`Drive ID`) oculta**, que es la que lee el Worker para
+servir la foto del voucher.
+
+**Columnas que no se escriben a mano:** `Saldo` (I), `Link seguimiento` (Q) y
+`Alerta` (S) son `ARRAYFORMULA` que viven en la fila 2 y cubren toda la columna.
+Es lo que hace que una venta nueva salga con su saldo y su link ya puestos sin
+arrastrar nada. Si escribes encima de una celda de esas tres, rompes el cálculo
+de esa columna entera; para arreglarlo, vuelve a correr *Preparar hoja de Ventas*.
+
+**Registrar una venta es escribir el nombre del cliente.** Con los automatismos
+activos, la fila se completa sola: fecha, código, estado y canal. El resto lo
+llenas tú.
+
+## Qué hace cada opción
+
+| Menú | Qué hace |
+|---|---|
+| **Preparar hoja de Ventas** | Crea la pestaña, encabezados, desplegables, colores por estado, las fórmulas, el panel y la carpeta de Drive. Idempotente. |
+| **Registrar venta nueva** | Deja la siguiente fila lista y te pone el cursor en el nombre. |
+| **Completar códigos y fechas que falten** | Para la migración: recorre la hoja y le pone código, fecha, estado y canal a toda fila que tenga cliente y le falten. |
+| **Marcar «En camino» / «En destino» / «Entregado»** | Cambia el estado de la fila donde tengas el cursor y sella la fecha. |
+| **Subir voucher de envío…** | Diálogo con selector de archivo. La foto va a tu Drive y aparece sola en la página del cliente. |
+| **Copiar link de seguimiento** | El link de esa venta, listo para pegar. |
+| **Avisar al cliente por WhatsApp** | Abre WhatsApp con el mensaje ya escrito, distinto según el estado del envío. |
+| **Abrir panel del celular** | La URL de la Web App (ver abajo). |
+| **Revisar pendientes de recojo ahora** | Corre a mano la revisión que hace sola cada mañana. |
+
+## El panel del celular
+
+**Los menús de Apps Script no aparecen en la app móvil de Google Sheets.** Solo
+en navegador. Y el momento de marcar «En destino» y subir la foto del voucher es
+justamente cuando estás en el mostrador de la agencia, con el celular.
+
+Por eso el mismo proyecto se publica además como **aplicación web**:
+
+1. En el editor: **Implementar → Nueva implementación → Aplicación web**.
+2. **Ejecutar como:** Yo. **Quién tiene acceso:** Solo yo.
+3. Copia la URL y **guárdala en la pantalla de inicio del celular**.
+
+La autenticación es tu propia cuenta de Google. No hay token que pegar ni
+contraseña que se pueda filtrar, y como solo tú tienes acceso, nadie más puede
+abrirlo aunque conozca la URL.
+
+Desde ahí ves los envíos vivos ordenados por urgencia, con botones para cambiar
+el estado y un botón de foto que abre la cámara directo. Cada tarjeta avisa de lo
+que le falta al envío para que su página sirva de algo: la clave de Shalom, el
+voucher.
+
+> Cada vez que cambies el código, **vuelve a implementar** (Implementar → Gestionar
+> implementaciones → editar → Versión nueva). La URL no cambia.
+
+## La foto del voucher
+
+Va a una carpeta de **tu propio Drive** (`Vouchers de envío — Tarot Store Perú`),
+creada por el script la primera vez. Coste cero: son tus 15 GB, y un voucher
+comprimido pesa unos 200 KB.
+
+**No la sube la service account del Worker.** Las cuentas de servicio tienen
+**0 bytes** de cuota en Drive y cualquier subida suya muere con
+`storageQuotaExceeded`. Es el error clásico de este montaje y la razón de que la
+foto la suba Apps Script, que corre con tu cuenta.
+
+El archivo queda accesible por link, pero **su id nunca sale de la hoja**: el
+cliente recibe `…/v/TS-K3M582R` y el Worker le pasa los bytes. Así nadie puede
+recorrer tu carpeta a partir de una foto, y la CSP del sitio sigue con
+`img-src 'self'`.
+
+Reemplazar un voucher manda el anterior a la papelera: corregir una foto es
+corregir un error, y dejar la equivocada en Drive solo confunde después.
+
+## Los avisos de recojo
+
+Un paquete que se queda en la agencia vuelve al remitente en un mes. Los avisos
+están a los **2, 6, 15 y 25 días** de haber llegado, contados desde la columna
+`En destino desde`, que se sella sola al marcar el estado.
+
+Van por dos vías, a propósito:
+
+- **En la hoja, siempre:** la columna `Alerta` y el bloque *Pendientes de recojo*
+  del panel se calculan con fórmulas. Están al día aunque el disparador falle.
+- **Por correo, solo cuando toca:** cada mañana a las 9 (hora de Lima) revisa la
+  hoja y te escribe **solo si alguna venta cruzó hoy un escalón**. Un correo
+  diario repitiendo lo mismo se vuelve ruido, y en dos semanas dejas de abrirlo
+  — que es justo cuando importaba.
+
+El correo llega a la cuenta con la que autorizaste el script, trae el saldo por
+cobrar de cada uno y un link directo para escribirle por WhatsApp.
+
+## El panel de ventas
+
+La pestaña **`Panel Ventas`** se alimenta sola:
+
+- **Hoy** — ventas, ingresos, cobrado en adelantos, por cobrar y ticket promedio.
+- **Ahora mismo** — apartados sin despachar, preparando, en camino, esperando
+  recojo, y todo el saldo vivo por cobrar.
+- **Por canal** — Shalom, Dinsides, entrega directa y por definir.
+- **Por día** — la serie completa, el día más reciente arriba.
+- **Pendientes de recojo** — quién, dónde, cuántos días lleva y cuánto debe.
+
+Los dos bloques que crecen (por día, y pendientes de recojo) van en grupos de
+columnas distintos a propósito: uno debajo del otro, el de arriba se comía al de
+abajo apenas hubiera unas cuantas ventas.
+
+## Migrar tu Sheet 2 actual
+
+Tu hoja vieja **no se toca**: queda de respaldo.
+
+1. Corre **Preparar hoja de Ventas**.
+2. Copia tus filas y pégalas en `Ventas` empezando en **A2**, columna por
+   columna. **No pegues nada en I, Q ni S** — son las calculadas.
+3. Corre **Completar códigos y fechas que falten**.
+
+El paso 3 hace falta porque un pegado múltiple no dispara el automatismo del
+código: el evento de edición no trae valor y no distingue una fila de cincuenta.
+Sin él, esas ventas se quedarían sin código y por lo tanto sin página de
+seguimiento.
+
+## Cambiar el dominio, los estados o los plazos
+
+Todo vive arriba de `VENTAS.gs`: `SITIO`, `ESTADOS_V`, `CANALES_V`, `ALERTAS_V`.
+Si cambias cualquiera, **cámbialo también en `src/lib/ventas.js`** del Worker.
+`npm run check` compara los dos archivos y falla si se desalinean: sin ese
+chequeo, el Worker leería la clave de Shalom en la columna del precio y nadie se
+enteraría hasta que un cliente lo reclamara.

@@ -4,6 +4,10 @@ Página de producto con formulario de **pago contra entrega**. El pedido se guar
 **Google Sheets**, que hace de CRM: el vendedor filtra por día, cambia el estado de cada
 pedido y ve los totales. El cliente confirma por WhatsApp desde la página de gracias.
 
+El mismo libro lleva un **segundo negocio**: la pestaña `Ventas`, donde se reportan a mano
+las ventas de las campañas manuales, y de la que cuelga una **página de seguimiento de
+envíos** para el cliente de provincia. Ver *[CRM de ventas manuales](#crm-de-ventas-manuales-y-seguimiento-de-envíos)*.
+
 Todo corre en un **Cloudflare Worker**: `public/` se sirve como archivos estáticos y el
 Worker solo se ejecuta en `/api/*`, así que las credenciales nunca llegan al navegador.
 
@@ -14,13 +18,18 @@ src/api/order.js        POST /api/order  — guarda el pedido, devuelve su nº d
 src/api/upsell.js       POST /api/upsell — añade el order bump a esa fila
 src/api/diag.js         GET  /api/diag   — diagnóstico de la cadena con Sheets
 src/api/setup.js        POST /api/setup  — deja la hoja lista como CRM
+src/api/seguimiento.js  GET  /api/seguimiento — datos públicos de un envío
+src/api/voucher.js      GET  /v/<código> — la foto del voucher, desde tu Drive
 src/lib/crm-setup.js    La rutina de preparación, compartida con el script
+src/lib/ventas.js       Esquema de la pestaña Ventas: columnas, estados, códigos
+src/lib/ventas-hoja.js  Lectura de esa pestaña desde el Worker
 src/lib/pedido.js       Precios, variantes y utilidades compartidas
 src/lib/hoja.js         Esquema de columnas y estados (A–O)
 src/lib/google-sheets.js JWT RS256 con WebCrypto + Sheets API, sin dependencias
 src/lib/telegram.js     Aviso de pedidos nuevos por Telegram, en segundo plano
 public/index.html       Tu página (diseño original, sin cambios de estilo)
 public/gracias.html     /gracias — confirmación, CTA de WhatsApp y evento Lead
+public/seguimiento.html /TS-XXXXXXX — seguimiento del envío, sin login
 public/kittarotcod/     Imágenes del producto
 public/_headers         Cabeceras de seguridad y caché
 scripts/setup-sheet.mjs Deja la hoja lista como CRM: `npm run setup:sheet`
@@ -189,6 +198,7 @@ Hay **dos sitios distintos** y usar el equivocado hace perder el valor:
 |---|---|---|
 | `GOOGLE_SHEET_ID` | `wrangler.jsonc` → `vars` | texto, no es secreto |
 | `GOOGLE_SHEET_NAME` | `wrangler.jsonc` → `vars` | texto |
+| `GOOGLE_VENTAS_NAME` | `wrangler.jsonc` → `vars` | texto — la pestaña del CRM de ventas |
 | `GOOGLE_CLIENT_EMAIL` | `wrangler.jsonc` → `vars` | texto |
 | `GOOGLE_PRIVATE_KEY` | **Secret** (dashboard o CLI) | credencial |
 | `TELEGRAM_BOT_TOKEN` | **Secret** (dashboard o CLI) | credencial |
@@ -405,6 +415,111 @@ para frenar el spam. Al pasarse responde 429 con un aviso claro.
 
 Si el binding no está disponible, el límite se salta en vez de fallar: nunca queremos
 perder un lead por el rate limiter.
+
+## CRM de ventas manuales y seguimiento de envíos
+
+Lo de arriba es el embudo de leads: la landing escribe en la pestaña `Pedidos` y el
+vendedor la trabaja. Esto es otra cosa, en el mismo libro y sin tocar aquello.
+
+Las campañas manuales no generan leads en la web: las ventas se cierran por WhatsApp y se
+anotan a mano. Esas viven en la pestaña **`Ventas`**, que además le da a cada venta una
+**página pública de seguimiento** para el cliente de provincia.
+
+```
+https://kit-tarot-para-principiantes.tarotperu.store/TS-K3M582R
+```
+
+### Por qué una tabla y no tres paneles
+
+La hoja anterior tenía un bloque para Dinsides, otro para Shalom y otro para los
+separados. Tres bloques lado a lado no se filtran, no se suman y no se pueden conectar a
+una página web. Ahora es **una fila por venta** con dos columnas que dicen lo mismo mejor:
+
+- **`Canal`** — Shalom · Dinsides · Entrega directa · Por definir.
+- **`Estado`** — Separado · Preparando · En camino · En destino · Entregado · Cancelado.
+
+**Apartar no es una forma de envío, es un momento del envío.** Una venta separada termina
+saliendo por Shalom o por Dinsides igual, así que ser "separado" es su estado y no su
+canal. Mientras no se sepa por dónde sale, su canal es *Por definir*.
+
+El esquema completo de columnas, las macros y la migración están en
+[`apps-script/README.md`](apps-script/README.md).
+
+### La página de seguimiento
+
+`public/seguimiento.html`, servida bajo **`/TS-XXXXXXX`**. El código va en la raíz y no
+bajo `/seguimiento/…` porque es un link que viaja por WhatsApp: cuanto más corto, mejor.
+
+Muestra una línea de tiempo del envío, la agencia, la **clave de recojo** con botón de
+copiar, la foto del comprobante y unas instrucciones que **cambian con el estado**:
+
+| Estado | Qué le dice al cliente |
+|---|---|
+| Separado · Preparando | Estamos preparando tu pedido. No tienes que hacer nada. |
+| En camino | Ya salió. **Todavía no vayas a la agencia**, acá te avisamos. |
+| En destino | Ya puedes recogerlo: **DNI físico**, la clave, a nombre de quién está, qué necesita otra persona si va por ti, y el plazo antes de que lo devuelvan. |
+| Entregado | Gracias. Si algo llegó mal, escríbenos hoy. |
+
+A los pocos días de espera aparece además un aviso rojo para que se apure.
+
+**El código es la única llave de la página**, así que:
+
+- Es **aleatorio, no correlativo** (`TS-` + letra, dígito, letra, tres dígitos, letra).
+  Correlativo, cualquiera sumaría uno y vería el envío del vecino.
+- No usa `I`, `O`, `0` ni `1`: el cliente lo va a dictar por teléfono.
+- **La página no lleva el pixel de Meta.** El pixel manda a Meta la URL de la página, y
+  acá la URL *es* la llave: instalarlo sería entregársela. `npm run check` lo vigila.
+- Va con `noindex` en la página, en la API y en la foto.
+- La respuesta de `/api/seguimiento` lleva solo lo que el cliente puede ver de su propio
+  envío. **Nunca** su WhatsApp, tus notas internas ni el id de Drive.
+- Un código mal formado y uno que no existe dan el **mismo 404**: cualquier diferencia le
+  diría a un curioso cuándo va por buen camino.
+- Tope propio de 40 consultas por minuto y por IP (`TRACK_LIMIT`), aparte del de pedidos.
+  Compartiendo el de `/api/order`, un cliente impaciente se quedaba sin poder pedir.
+
+Una ruta como `/TS-loquesea` **también** devuelve la página, que dirá que ese envío no
+existe. Quien escribe mal una letra al copiar el link merece eso y no el 404 pelado de
+Cloudflare.
+
+### La foto del voucher
+
+Se sube desde el Sheets (o desde el panel del celular) a una carpeta de **tu propio
+Drive**, y el Worker la sirve en `/v/<código>`.
+
+**La service account no puede subirla.** Las cuentas de servicio tienen **0 bytes** de
+cuota en Drive: toda subida suya muere con `storageQuotaExceeded`. Apps Script, en cambio,
+corre con tu cuenta de Google y usa tus 15 GB. Por eso la foto entra por ahí y no por el
+Worker, y por eso esto no cuesta nada ni necesita un bucket.
+
+El Worker hace de intermediario en vez de mandar al cliente a Drive:
+
+- La URL queda en tu dominio y no delata dónde guardas nada.
+- La CSP de `public/_headers` sigue con `img-src 'self'`, sin abrirle la puerta a
+  `googleusercontent`.
+- **El id de Drive nunca llega al navegador**, así que nadie puede recorrer tu carpeta a
+  partir de una foto.
+
+Prueba tres URLs de Google en orden hasta que una devuelva de verdad una imagen: Drive a
+veces contesta la primera con un HTML de "no se puede previsualizar", y servir eso tal cual
+le dejaría al cliente un cuadro roto sin que nadie se entere.
+
+### Avisos de recojo
+
+Un paquete que se queda en la agencia vuelve al remitente en un mes. La hoja avisa a los
+**2, 6, 15 y 25 días** de haber llegado, por dos vías a la vez: la columna `Alerta` y el
+panel están siempre al día por fórmula, y un disparador diario manda correo **solo el día
+que una venta cruza un escalón**. Un correo diario repitiendo lo mismo se vuelve ruido, y
+en dos semanas dejas de abrirlo — que es justo cuando importaba.
+
+### Quién escribe qué
+
+**El Worker solo lee la pestaña `Ventas`.** Quien escribe es el vendedor, desde el Sheets o
+desde el panel del celular. Si el Worker también escribiera ahí habría dos dueños del mismo
+dato y ganaría el último que guarde. `npm run check` lo vigila.
+
+Las lecturas se guardan 20 s en la memoria del isolate: Sheets cobra por llamada y releer
+la pestaña entera en cada visita sería tirar cuota. El precio es que un cambio de estado
+recién hecho puede tardar hasta 20 s en verse en la página del cliente.
 
 ## Cómo funciona el flujo
 

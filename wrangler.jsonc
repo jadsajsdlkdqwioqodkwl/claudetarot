@@ -25,6 +25,19 @@
       "name": "ORDER_LIMIT",
       "namespace_id": "1001",
       "simple": { "limit": 5, "period": 60 }
+    },
+
+    /**
+     * Consultas a la página de seguimiento: 40 por minuto y por IP. Va aparte
+     * de ORDER_LIMIT porque son cosas distintas: 5 pedidos por minuto es
+     * sospechoso, pero recargar el seguimiento de tu propio envío varias veces
+     * seguidas es lo normal. Compartiendo el tope, un cliente impaciente se
+     * quedaba sin poder pedir.
+     */
+    {
+      "name": "TRACK_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 40, "period": 60 }
     }
   ],
 
@@ -46,6 +59,9 @@
   "vars": {
     "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",
     "GOOGLE_SHEET_NAME": "Pedidos",
+    // La pestaña del CRM manual de ventas, la que alimenta el seguimiento.
+    // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
+    "GOOGLE_VENTAS_NAME": "Ventas",
     "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
     "TELEGRAM_CHAT_ID": "8780926886"
   }

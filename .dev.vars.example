@@ -17,3 +17,5 @@ GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY--
 TELEGRAM_BOT_TOKEN="123456789:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TELEGRAM_CHAT_ID="123456789"
 
+# Pestaña del CRM manual de ventas (la del seguimiento de provincia).
+GOOGLE_VENTAS_NAME="Ventas"

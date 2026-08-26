@@ -41,8 +41,21 @@ const DIAS_MAXIMO_EVENTO = 6;
 /* ────────────────────────────  Menú  ──────────────────────────── */
 
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("CRM")
+  const ui = SpreadsheetApp.getUi();
+
+  // El menú de ventas manuales vive en VENTAS.gs. Se cuelga desde acá porque
+  // Apps Script solo admite un onOpen() por proyecto: si VENTAS.gs definiera
+  // el suyo, uno de los dos menús desaparecería sin decir nada. El guard deja
+  // que CRM.gs siga funcionando solo, sin VENTAS.gs instalado.
+  if (typeof menuVentas_ === "function") {
+    try {
+      menuVentas_(ui);
+    } catch (err) {
+      console.error("No se pudo montar el menú Ventas: " + err.message);
+    }
+  }
+
+  ui.createMenu("CRM")
     .addItem("Preparar hoja (columna CAPI y pestañas)", "prepararHojaCRM")
     .addSeparator()
     .addItem("Reporte por rango de fechas…", "reportePorRango")

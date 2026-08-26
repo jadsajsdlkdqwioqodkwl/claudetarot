@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  /*
+   * Panel de envíos para el celular.
+   *
+   * Existe porque los menús de Apps Script no aparecen en la app móvil de
+   * Google Sheets, y el momento de marcar «En destino» y subir la foto del
+   * voucher es justamente cuando estás en el mostrador de la agencia.
+   *
+   * Misma paleta que la landing y que la página de seguimiento del cliente.
+   */
+  :root {
+    --bg:#f2f2f4; --card:#fff; --ink:#111; --muted:#666; --muted-txt:#4A4A4A;
+    --line:#E0E0E0; --teal:#068988; --green:#28A745; --wa:#25D366;
+    --rojo:#C62828; --urgente:#FF2A00; --ambar:#FFF4E5; --azul:#E3F0FD;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+         background:var(--bg); color:var(--ink); font-size:15px; line-height:1.45;
+         padding:0 14px calc(28px + env(safe-area-inset-bottom)); }
+  [hidden] { display:none !important; }
+
+  header { position:sticky; top:0; z-index:5; background:var(--bg); padding:16px 0 12px; }
+  .titulo { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .titulo h1 { font-size:19px; font-weight:900; letter-spacing:-.3px; }
+  .refrescar { border:1.5px solid var(--line); background:var(--card); border-radius:9px;
+               padding:8px 12px; font-family:inherit; font-size:13px; font-weight:700;
+               color:var(--muted-txt); cursor:pointer; }
+  .buscar { width:100%; margin-top:10px; padding:11px 13px; font-family:inherit; font-size:15px;
+            border:1.5px solid var(--line); border-radius:11px; background:var(--card); }
+  .buscar:focus { outline:none; border-color:var(--teal); }
+
+  .grupo { margin-top:20px; }
+  .grupo > h2 { font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+                color:var(--muted); margin-bottom:9px; display:flex; gap:7px; align-items:center; }
+  .grupo > h2 .n { background:var(--line); color:var(--muted-txt); border-radius:20px;
+                   padding:1px 8px; font-size:11px; letter-spacing:0; }
+
+  .env { background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+         padding:14px; margin-bottom:11px; }
+  .env.espera { border-color:#f0d9b8; background:var(--ambar); }
+  .env.urge { border-color:rgba(255,42,0,.4); }
+  .env .fila1 { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .env .quien { font-size:16px; font-weight:800; letter-spacing:-.2px; }
+  .env .cod { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+              color:var(--muted); margin-top:2px; }
+  .env .dias { flex:0 0 auto; font-size:11.5px; font-weight:800; padding:4px 9px; border-radius:20px;
+               background:#fff; border:1.5px solid var(--line); color:var(--muted-txt); }
+  .env .dias.urge { background:#fdecea; border-color:#f5c6c2; color:var(--rojo); }
+  .env .detalle { font-size:13.5px; color:var(--muted-txt); margin-top:7px; }
+  .env .detalle span + span::before { content:" · "; color:var(--line); }
+  .env .saldo { margin-top:6px; font-size:13.5px; font-weight:800; color:var(--rojo); }
+  .env .clave { margin-top:8px; font-size:13px; }
+  .env .clave b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:1px; }
+  .env .falta { margin-top:8px; font-size:12.5px; font-weight:700; color:var(--urgente); }
+
+  .acciones { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+  /* El botón de subir foto es un <label> (envuelve el input file), así que
+     tiene que entrar en la misma regla o se queda sin borde ni alto y rompe
+     la fila entera. */
+  .acciones button, .acciones a, .acciones label {
+    flex:1 1 auto; min-height:42px; display:flex; align-items:center; justify-content:center;
+    gap:6px; padding:0 12px; border:1.5px solid var(--line); border-radius:10px;
+    background:#fff; color:var(--ink); font-family:inherit; font-size:13.5px; font-weight:700;
+    cursor:pointer; text-decoration:none; text-align:center; line-height:1.2;
+  }
+  .acciones .principal { background:var(--teal); border-color:var(--teal); color:#fff; flex:1 1 100%; }
+  .acciones .wa { background:var(--wa); border-color:var(--wa); color:#fff; }
+  .acciones button:active, .acciones a:active, .acciones label:active { transform:scale(.98); }
+  .acciones select { min-height:42px; border:1.5px solid var(--line); border-radius:10px;
+                     background:#fff; font-family:inherit; font-size:13.5px; font-weight:700;
+                     padding:0 8px; color:var(--muted-txt); flex:1 1 auto; }
+  .acciones input[type=file] { display:none; }
+  .acciones .ok { border-color:var(--green); color:var(--green); }
+
+  .estado-vacio, .cargando { text-align:center; color:var(--muted); padding:46px 16px; font-size:14.5px; }
+  .hueso { background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+           padding:16px; margin-bottom:11px; }
+  .hueso i { display:block; height:12px; border-radius:6px; background:#ececef; margin-bottom:9px;
+             animation:brillo 1.3s ease-in-out infinite; }
+  .hueso i:last-child { width:55%; margin-bottom:0; }
+  @keyframes brillo { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+  .toast { position:fixed; left:14px; right:14px; bottom:calc(16px + env(safe-area-inset-bottom));
+           background:#111; color:#fff; padding:13px 16px; border-radius:12px; font-size:14px;
+           font-weight:600; z-index:20; box-shadow:0 8px 24px rgba(0,0,0,.25);
+           transform:translateY(140%); transition:transform .25s; }
+  .toast.on { transform:translateY(0); }
+  .toast.mal { background:var(--rojo); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titulo">
+    <h1>Envíos activos</h1>
+    <button class="refrescar" id="refrescar">Actualizar</button>
+  </div>
+  <input class="buscar" id="buscar" type="search" placeholder="Buscar cliente, código o ciudad…"
+         autocomplete="off">
+</header>
+
+<div id="cargando" class="cargando">
+  <div class="hueso"><i></i><i></i><i></i></div>
+  <div class="hueso"><i></i><i></i><i></i></div>
+</div>
+
+<main id="lista" hidden></main>
+<p id="vacio" class="estado-vacio" hidden>No hay envíos activos ahora mismo.</p>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  "use strict";
+
+  var MAX_LADO = 1600;
+  var CALIDAD = 0.82;
+
+  /**
+   * Los grupos del panel, en el orden en que reclaman atención. Lo que espera
+   * en la agencia va primero: es lo único que tiene un reloj corriendo en
+   * contra (a los ~30 días la agencia devuelve el paquete).
+   */
+  var GRUPOS = [
+    { estado: "En destino", titulo: "Esperando recojo" },
+    { estado: "En camino", titulo: "En camino" },
+    { estado: "Preparando", titulo: "Preparando" },
+    { estado: "Separado", titulo: "Apartados" }
+  ];
+
+  /** El botón grande de cada tarjeta: el paso siguiente del recorrido. */
+  var SIGUIENTE = {
+    "Separado": "Preparando",
+    "Preparando": "En camino",
+    "En camino": "En destino",
+    "En destino": "Entregado"
+  };
+
+  var datos = { envios: [], estados: [] };
+  var filtro = "";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (t) {
+    return String(t == null ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  };
+  var soles = function (n) { return "S/ " + Number(n || 0).toFixed(2); };
+
+  var reloj = null;
+  function avisar(texto, mal) {
+    var t = $("toast");
+    t.textContent = texto;
+    t.className = "toast on" + (mal ? " mal" : "");
+    clearTimeout(reloj);
+    reloj = setTimeout(function () { t.className = "toast"; }, mal ? 6000 : 3200);
+  }
+
+  /* ── Cargar ───────────────────────────────────────────────────────── */
+
+  function cargar(silencioso) {
+    if (!silencioso) {
+      $("cargando").hidden = false;
+      $("lista").hidden = true;
+      $("vacio").hidden = true;
+    }
+    google.script.run
+      .withSuccessHandler(function (r) { datos = r; pintar(); })
+      .withFailureHandler(function (err) {
+        $("cargando").hidden = true;
+        avisar(err && err.message ? err.message : "No se pudo cargar la lista.", true);
+      })
+      .panelVentasDatos();
+  }
+
+  /* ── Pintar ───────────────────────────────────────────────────────── */
+
+  function coincide(e) {
+    if (!filtro) return true;
+    var aguja = filtro.toLowerCase();
+    return [e.cliente, e.codigo, e.ciudad, e.direccion, e.producto, e.telefono]
+      .join(" ").toLowerCase().indexOf(aguja) !== -1;
+  }
+
+  /** El escalón de alerta que le toca a un envío por los días que lleva. */
+  function escalon(dias) {
+    if (dias === null || dias === undefined) return null;
+    var activo = null;
+    (datos.alertas || []).forEach(function (a) { if (dias >= a.dias) activo = a; });
+    return activo;
+  }
+
+  function tarjeta(e) {
+    var aviso = e.estado === "En destino" ? escalon(e.dias) : null;
+    var clases = "env" + (e.estado === "En destino" ? " espera" : "") + (aviso ? " urge" : "");
+
+    var html = '<article class="' + clases + '" data-codigo="' + esc(e.codigo) + '">';
+
+    html += '<div class="fila1"><div><div class="quien">' + esc(e.cliente) + "</div>" +
+      '<div class="cod">' + esc(e.codigo) + "</div></div>";
+    if (e.dias !== null && e.dias !== undefined && e.estado === "En destino") {
+      html += '<div class="dias' + (aviso ? " urge" : "") + '">' +
+        (aviso ? aviso.icono + " " : "") + e.dias + (e.dias === 1 ? " día" : " días") + "</div>";
+    }
+    html += "</div>";
+
+    html += '<div class="detalle"><span>' + esc(e.producto || "—") +
+      (Number(e.cantidad) > 1 ? " ×" + e.cantidad : "") + "</span>" +
+      (e.canal ? "<span>" + esc(e.canal) + "</span>" : "") +
+      (e.ciudad ? "<span>" + esc(e.ciudad) + "</span>" : "") + "</div>";
+    if (e.direccion) html += '<div class="detalle"><span>' + esc(e.direccion) + "</span></div>";
+
+    if (e.saldo > 0) html += '<div class="saldo">Saldo por cobrar ' + soles(e.saldo) + "</div>";
+    if (e.clave) html += '<div class="clave">Clave de recojo <b>' + esc(e.clave) + "</b></div>";
+
+    // Lo que le falta al envío para que su página de seguimiento sirva de algo.
+    var falta = [];
+    if (e.canal === "Shalom" && !e.clave) falta.push("falta la clave de Shalom");
+    if (!e.tieneVoucher && (e.estado === "En camino" || e.estado === "En destino")) {
+      falta.push("falta el voucher");
+    }
+    if (falta.length) html += '<div class="falta">⚠️ ' + esc(falta.join(" · ")) + "</div>";
+
+    html += '<div class="acciones">';
+    if (SIGUIENTE[e.estado]) {
+      html += '<button class="principal" data-accion="estado" data-a="' +
+        esc(SIGUIENTE[e.estado]) + '">Marcar «' + esc(SIGUIENTE[e.estado]) + "»</button>";
+    }
+    html += '<label class="' + (e.tieneVoucher ? "ok" : "") + '">' +
+      (e.tieneVoucher ? "📷 Cambiar foto" : "📷 Subir voucher") +
+      '<input type="file" accept="image/*" capture="environment" data-accion="voucher"></label>';
+    html += '<a class="wa" href="' + esc(e.wa) + '" target="_blank" rel="noopener">WhatsApp</a>';
+    html += '<a href="' + esc(e.link) + '" target="_blank" rel="noopener">Ver página</a>';
+
+    html += '<select data-accion="forzar"><option value="">Cambiar a…</option>' +
+      datos.estados.map(function (s) {
+        return s === e.estado ? "" : '<option value="' + esc(s) + '">' + esc(s) + "</option>";
+      }).join("") + "</select>";
+    html += "</div></article>";
+
+    return html;
+  }
+
+  function pintar() {
+    var visibles = datos.envios.filter(coincide);
+    $("cargando").hidden = true;
+
+    if (!visibles.length) {
+      $("lista").hidden = true;
+      $("vacio").hidden = false;
+      $("vacio").textContent = filtro
+        ? "Ningún envío coincide con «" + filtro + "»."
+        : "No hay envíos activos ahora mismo.";
+      return;
+    }
+
+    var html = "";
+    GRUPOS.forEach(function (g) {
+      var suyos = visibles.filter(function (e) { return e.estado === g.estado; });
+      if (!suyos.length) return;
+      html += '<section class="grupo"><h2>' + esc(g.titulo) +
+        '<span class="n">' + suyos.length + "</span></h2>" +
+        suyos.map(tarjeta).join("") + "</section>";
+    });
+
+    $("lista").innerHTML = html;
+    $("lista").hidden = false;
+    $("vacio").hidden = true;
+  }
+
+  /* ── Acciones ─────────────────────────────────────────────────────── */
+
+  function codigoDe(nodo) {
+    var tarjeta = nodo.closest(".env");
+    return tarjeta ? tarjeta.getAttribute("data-codigo") : null;
+  }
+
+  function cambiarEstado(codigo, estado, boton) {
+    var textoOriginal = boton ? boton.textContent : "";
+    if (boton) { boton.disabled = true; boton.textContent = "Guardando…"; }
+
+    google.script.run
+      .withSuccessHandler(function (venta) {
+        avisar(venta.cliente + " → " + estado);
+        // Se recarga entero en vez de retocar la tarjeta: el envío puede haber
+        // cambiado de grupo, y una tarjeta en el grupo equivocado confunde más
+        // que esperar medio segundo.
+        cargar(true);
+      })
+      .withFailureHandler(function (err) {
+        avisar(err && err.message ? err.message : "No se pudo cambiar el estado.", true);
+        if (boton) { boton.disabled = false; boton.textContent = textoOriginal; }
+      })
+      .panelVentasCambiarEstado(codigo, estado);
+  }
+
+  /**
+   * Reduce la foto antes de mandarla. Una foto de celular pesa 4–8 MB y viaja
+   * en base64, que la infla un tercio más: sin esto, subir un voucher con la
+   * señal de una agencia de provincia tarda muchísimo o se corta a la mitad.
+   */
+  function encoger(archivo, cuandoEste) {
+    var lector = new FileReader();
+    lector.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var escala = Math.min(1, MAX_LADO / Math.max(img.width, img.height));
+        var lienzo = document.createElement("canvas");
+        lienzo.width = Math.round(img.width * escala);
+        lienzo.height = Math.round(img.height * escala);
+        lienzo.getContext("2d").drawImage(img, 0, 0, lienzo.width, lienzo.height);
+        cuandoEste(lienzo.toDataURL("image/jpeg", CALIDAD).split(",")[1], "image/jpeg");
+      };
+      // Un formato que el navegador no sabe dibujar se manda tal cual y que lo
+      // rechace el servidor, en vez de quedarse en silencio.
+      img.onerror = function () {
+        cuandoEste(String(lector.result).split(",")[1], archivo.type);
+      };
+      img.src = lector.result;
+    };
+    lector.readAsDataURL(archivo);
+  }
+
+  function subirVoucher(codigo, archivo, etiqueta) {
+    var textoOriginal = etiqueta ? etiqueta.firstChild.nodeValue : "";
+    var poner = function (texto) {
+      if (etiqueta) etiqueta.firstChild.nodeValue = texto;
+    };
+    poner("Preparando…");
+
+    encoger(archivo, function (base64, mime) {
+      poner("Subiendo…");
+      google.script.run
+        .withSuccessHandler(function (mensaje) {
+          avisar(mensaje);
+          cargar(true);
+        })
+        .withFailureHandler(function (err) {
+          avisar(err && err.message ? err.message : "No se pudo subir la foto.", true);
+          poner(textoOriginal);
+        })
+        .guardarVoucherVenta(codigo, base64, mime, archivo.name || "voucher.jpg");
+    });
+  }
+
+  $("lista").addEventListener("click", function (ev) {
+    var boton = ev.target.closest('button[data-accion="estado"]');
+    if (!boton) return;
+    cambiarEstado(codigoDe(boton), boton.getAttribute("data-a"), boton);
+  });
+
+  $("lista").addEventListener("change", function (ev) {
+    var nodo = ev.target;
+    var accion = nodo.getAttribute("data-accion");
+
+    if (accion === "forzar" && nodo.value) {
+      cambiarEstado(codigoDe(nodo), nodo.value, null);
+      nodo.value = "";
+    }
+
+    if (accion === "voucher" && nodo.files && nodo.files[0]) {
+      subirVoucher(codigoDe(nodo), nodo.files[0], nodo.closest("label"));
+      nodo.value = "";
+    }
+  });
+
+  $("refrescar").addEventListener("click", function () { cargar(false); });
+
+  var esperando = null;
+  $("buscar").addEventListener("input", function () {
+    var valor = this.value.trim();
+    clearTimeout(esperando);
+    esperando = setTimeout(function () { filtro = valor; pintar(); }, 160);
+  });
+
+  cargar(false);
+</script>
+</body>
+</html>
