@@ -21,3 +21,11 @@
   Cache-Control: public, max-age=0, must-revalidate
 /gracias
   Cache-Control: public, max-age=0, must-revalidate
+
+# La página de seguimiento se sirve bajo /TS-XXXXXXX, no bajo su nombre de
+# archivo, así que esta regla la aplica el Worker al reenviarla (ver
+# paginaDeSeguimiento en src/index.js). Aquí queda por si alguien la abre
+# directo: sin datos dentro, es solo el cascarón.
+/seguimiento.html
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow

@@ -385,5 +385,200 @@ check("un error de Telegram se registra pero no se lanza",
 check("el token de Telegram no se imprime en los logs",
   !/console\.(log|error)\([^)]*token/i.test(telegramSrc));
 
+
+/* 17. CRM de ventas manuales y página de seguimiento */
+const ventasGs = readFileSync(join(root, "apps-script/VENTAS.gs"), "utf8");
+const crmGs = readFileSync(join(root, "apps-script/CRM.gs"), "utf8");
+const seguimientoHtml = readFileSync(join(root, "public/seguimiento.html"), "utf8");
+const seguimientoApi = readFileSync(join(root, "src/api/seguimiento.js"), "utf8");
+const voucherApi = readFileSync(join(root, "src/api/voucher.js"), "utf8");
+const indexSrc = readFileSync(join(root, "src/index.js"), "utf8");
+const panelHtml = readFileSync(join(root, "apps-script/PANEL.html"), "utf8");
+
+const {
+  COLUMNAS_VENTA, ESTADOS_ENVIO, CANALES, ALERTAS_RECOJO, RE_CODIGO,
+  esCodigo, nuevoCodigo, aNumero, diasEsperando, alertaDe, fechaSuelta, letraVenta
+} = await import(join(root, "src/lib/ventas.js"));
+const { vistaPublica } = await import(join(root, "src/api/seguimiento.js"));
+
+/** Lee un array de literales de texto de un .gs: `const X = ["a", "b"];` */
+function listaDeGs(fuente, nombre) {
+  const bloque = new RegExp(`const ${nombre} = \\[([^\\]]*)\\]`, "s").exec(fuente);
+  if (!bloque) return null;
+  return [...bloque[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+}
+
+/* El esquema vive en dos runtimes que no pueden importarse entre sí: el Worker
+   y Apps Script. Si se desalinean, el Worker lee la clave de Shalom en la
+   columna del precio y nadie se entera hasta que un cliente lo reclama. */
+const encabezadosGs = listaDeGs(ventasGs, "ENCABEZADOS_V");
+check("VENTAS.gs y ventas.js declaran las mismas columnas",
+  encabezadosGs && encabezadosGs.join("|") === COLUMNAS_VENTA.join("|"),
+  encabezadosGs ? encabezadosGs.join(" | ") : "no se pudo leer ENCABEZADOS_V");
+
+check("VENTAS.gs cuenta el mismo número de columnas",
+  new RegExp(`const TOTAL_COLUMNAS_V = ${COLUMNAS_VENTA.length};`).test(ventasGs));
+
+const colV = {};
+const bloqueCol = /const COL_V = \{([^}]*)\}/s.exec(ventasGs);
+if (bloqueCol) {
+  for (const [, clave, valor] of bloqueCol[1].matchAll(/([A-Z_]+):\s*(\d+)/g)) {
+    colV[clave] = Number(valor);
+  }
+}
+check("COL_V apunta a las columnas correctas (1-indexado)",
+  Object.keys(colV).length === COLUMNAS_VENTA.length &&
+  colV.CODIGO === COLUMNAS_VENTA.indexOf("Código") + 1 &&
+  colV.ESTADO === COLUMNAS_VENTA.indexOf("Estado") + 1 &&
+  colV.CLAVE === COLUMNAS_VENTA.indexOf("Clave Shalom") + 1 &&
+  colV.DRIVE_ID === COLUMNAS_VENTA.indexOf("Drive ID") + 1 &&
+  colV.EN_DESTINO === COLUMNAS_VENTA.indexOf("En destino desde") + 1,
+  JSON.stringify(colV));
+
+check("los estados del envío coinciden en el Worker y en el script",
+  (listaDeGs(ventasGs, "ESTADOS_V") || []).join("|") === ESTADOS_ENVIO.join("|"));
+check("los canales coinciden en el Worker y en el script",
+  (listaDeGs(ventasGs, "CANALES_V") || []).join("|") === CANALES.join("|"));
+
+/* La línea de tiempo de la página es el mismo recorrido, menos "Cancelado":
+   cancelar no es un paso del camino, es salirse de él. */
+const pasosPagina = [...seguimientoHtml.matchAll(/\{ estado: "([^"]+)"/g)].map((m) => m[1]);
+check("la línea de tiempo de la página sigue el recorrido real",
+  pasosPagina.join("|") === ESTADOS_ENVIO.filter((e) => e !== "Cancelado").join("|"),
+  pasosPagina.join(" → "));
+
+const diasGs = [...ventasGs.matchAll(/\{ dias: (\d+), icono/g)].map((m) => Number(m[1]));
+check("los avisos de recojo son los mismos en los dos lados",
+  diasGs.join(",") === ALERTAS_RECOJO.map((a) => a.dias).join(","),
+  diasGs.join(", "));
+check("los avisos de recojo van de menos a más días",
+  ALERTAS_RECOJO.every((a, i) => i === 0 || a.dias > ALERTAS_RECOJO[i - 1].dias));
+
+/* Códigos */
+let codigosOk = true;
+for (let i = 0; i < 500; i++) codigosOk = codigosOk && esCodigo(nuevoCodigo());
+check("todo código generado pasa su propia validación", codigosOk);
+check("el código no usa caracteres que se confunden al dictarlo",
+  !/[IO01]/.test(nuevoCodigo()) && !RE_CODIGO.source.includes("A-Z]"));
+check("el código de VENTAS.gs usa el mismo alfabeto",
+  ventasGs.includes('"ABCDEFGHJKLMNPQRSTUVWXYZ"') && ventasGs.includes('"23456789"'));
+check("un código mal formado se rechaza",
+  !esCodigo("TS-I3M582R") && !esCodigo("TS-K3M58R") && !esCodigo("otra-cosa"));
+check("un código en minúsculas o con espacios sigue valiendo",
+  esCodigo(" ts-k3m582r "));
+
+/* Importes: Sheets no devuelve el número crudo sino lo que se ve en la celda. */
+check('"S/ 1,234.50" se lee como mil doscientos, no como uno',
+  aNumero("S/ 1,234.50") === 1234.5, String(aNumero("S/ 1,234.50")));
+check("una celda vacía vale cero", aNumero("") === 0 && aNumero(null) === 0);
+
+/* Fechas: "05/09/2026" es 5 de setiembre en Perú, no 9 de mayo. */
+check("la fecha de la hoja se lee en formato peruano",
+  fechaSuelta("05/09/2026").getUTCMonth() === 8);
+/* Por día calendario de Lima y no por horas: si lo dejaste ayer a las 6 pm y
+   hoy son las 8 am, para el cliente es "1 día", no "0". Y las 04:00 UTC son
+   todavía la noche anterior en Lima (UTC-5), que es donde esto se equivoca. */
+check("los días de espera se cuentan por día calendario de Lima",
+  diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T15:00:00Z")) === 7 &&
+  diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T04:00:00Z")) === 6,
+  String(diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T15:00:00Z"))));
+check("el escalón que gana es el más alto cumplido",
+  alertaDe(30).dias === ALERTAS_RECOJO[ALERTAS_RECOJO.length - 1].dias &&
+  alertaDe(1) === null);
+
+/* Lo que la página pública puede y no puede ver */
+const ventaDePrueba = {};
+COLUMNAS_VENTA.forEach((c) => { ventaDePrueba[c] = "dato-" + c; });
+Object.assign(ventaDePrueba, {
+  "Código": "TS-K3M582R", "Estado": "En destino", "Precio": "S/ 139.00",
+  "Adelanto": "S/ 50.00", "Canal": "Shalom", "Clave Shalom": "CLAVE-123",
+  "WhatsApp": "+51987654321", "Notas": "cliente moroso, cobrar antes",
+  "Drive ID": "1AbCdEfGhIjKlMnOpQrS", "En destino desde": "01/09/2026"
+});
+const publica = vistaPublica(ventaDePrueba, new Date("2026-09-08T15:00:00Z"));
+const serializada = JSON.stringify(publica);
+
+check("el seguimiento no expone el WhatsApp del cliente", !serializada.includes("987654321"));
+check("el seguimiento no expone las notas internas", !serializada.includes("moroso"));
+check("el seguimiento no expone el id de Drive", !serializada.includes("1AbCdEfGhIjKlMnOpQrS"));
+check("el saldo se recalcula y no se lee de la fórmula", publica.saldo === 89, String(publica.saldo));
+check("la foto se ofrece por código, no por Drive", publica.voucher === "/v/TS-K3M582R");
+check("en destino sí se muestra la clave de recojo", publica.clave === "CLAVE-123");
+
+/* Antes de llegar, la clave no sirve para nada y solo invita a ir de balde. */
+const enCamino = vistaPublica({ ...ventaDePrueba, "Estado": "En camino" });
+check("antes de llegar la clave no se muestra", enCamino.clave === "");
+check("un estado desconocido cae al primero del recorrido",
+  vistaPublica({ ...ventaDePrueba, "Estado": "inventado" }).estado === ESTADOS_ENVIO[0]);
+check("a los 7 días esperando se le pide al cliente que se apure",
+  publica.diasEsperando === 7 && publica.apurar === true);
+check("un envío que aún no llegó no cuenta días de espera",
+  enCamino.diasEsperando === null && enCamino.apurar === false);
+
+/* Privacidad de la página: la URL ES la llave del envío. */
+check("la página de seguimiento no lleva el pixel de Meta",
+  !/fbq\(|connect\.facebook\.net/.test(seguimientoHtml));
+check("la página de seguimiento pide no ser indexada",
+  /<meta name="robots" content="noindex/.test(seguimientoHtml));
+check("la API del seguimiento también responde noindex",
+  seguimientoApi.includes('"X-Robots-Tag"') && voucherApi.includes('"X-Robots-Tag"'));
+check("el mismo 404 para un código falso que para uno que no existe",
+  /No encontramos ning[uú]n env[ií]o con ese c[oó]digo/.test(seguimientoApi));
+
+/* El voucher sale de la hoja, así que el endpoint no puede fiarse de la celda. */
+check("el proxy del voucher solo acepta un id de Drive, no una URL",
+  voucherApi.includes("RE_DRIVE_ID") && /\^\[A-Za-z0-9_-\]\{10,100\}\$/.test(voucherApi));
+check("un HTML de error de Drive no se sirve como si fuera la foto",
+  voucherApi.includes('tipo.startsWith("image/")'));
+
+/* Rutas */
+check("el Worker enruta /api/seguimiento", indexSrc.includes('"/api/seguimiento"'));
+check("el Worker sirve la foto en /v/", indexSrc.includes('pathname.startsWith("/v/")'));
+check("la página de seguimiento cuelga de la raíz, con el código como ruta",
+  indexSrc.includes("RE_RUTA_SEGUIMIENTO") && indexSrc.includes("paginaDeSeguimiento"));
+check("el seguimiento tiene su propio tope por IP, aparte del de pedidos",
+  seguimientoApi.includes("env.TRACK_LIMIT") && wrangler.includes('"TRACK_LIMIT"'));
+check("la pestaña de ventas está declarada como variable del Worker",
+  wrangler.includes('"GOOGLE_VENTAS_NAME"'));
+
+/* El Worker solo lee la pestaña Ventas: quien escribe es el vendedor. */
+const ventasHoja = readFileSync(join(root, "src/lib/ventas-hoja.js"), "utf8");
+check("el Worker no escribe en la pestaña Ventas",
+  !/updateValues|appendRow|batchUpdate/.test(ventasHoja + seguimientoApi + voucherApi));
+
+/* Apps Script: un solo onOpen por proyecto, o un menú desaparece sin avisar. */
+check("VENTAS.gs no define su propio onOpen",
+  !/^function onOpen/m.test(ventasGs));
+check("CRM.gs cuelga el menú de Ventas y aguanta que no esté instalado",
+  crmGs.includes("menuVentas_") && crmGs.includes('typeof menuVentas_ === "function"'));
+check("los dos scripts no comparten ningún nombre global",
+  [...ventasGs.matchAll(/^(?:function|const) ([A-Za-z0-9_]+)/gm)]
+    .map((m) => m[1])
+    .every((n) => !new RegExp(`^(?:function|const) ${n}\\b`, "m").test(crmGs)));
+
+/* Lo que hace que el montaje del voucher funcione y no cueste nada. */
+check("el voucher lo sube tu cuenta de Google, no la service account",
+  ventasGs.includes("carpetaVouchers_") && ventasGs.includes("DriveApp.createFolder"));
+check("el archivo del voucher queda accesible por link",
+  ventasGs.includes("DriveApp.Access.ANYONE_WITH_LINK"));
+check("la foto se encoge antes de subirla, en el panel y en el diálogo",
+  panelHtml.includes("MAX_LADO") &&
+  readFileSync(join(root, "apps-script/SUBIR.html"), "utf8").includes("MAX_LADO"));
+
+/* El dominio del seguimiento tiene que ser el mismo en los dos sitios. */
+const sitio = /const SITIO = "([^"]+)"/.exec(ventasGs)?.[1] || "";
+check("el dominio del seguimiento va sin barra final y por HTTPS",
+  sitio.startsWith("https://") && !sitio.endsWith("/"), sitio);
+
+/* Las columnas calculadas no se escriben a mano: son ARRAYFORMULA. */
+for (const columna of ["SALDO", "LINK", "ALERTA"]) {
+  check(`la columna ${columna} se calcula sola con ARRAYFORMULA`,
+    new RegExp(`getRange\\(2, COL_V\\.${columna}\\)\\s*\\.setFormula\\(\\s*'=ARRAYFORMULA`, "s")
+      .test(ventasGs));
+}
+check("Ventas llega más allá de la Z, y letraVenta lo sabe",
+  COLUMNAS_VENTA.length > 26 ? letraVenta(26) === "AA" : letraVenta(20) === "U");
+
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);
