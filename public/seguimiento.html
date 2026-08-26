@@ -233,18 +233,21 @@
   var WHATSAPP = "51928529656";
 
   /*
-   * El recorrido del envío. Tiene que coincidir con ESTADOS_ENVIO de
-   * src/lib/ventas.js y con VENTAS.gs — `npm run check` compara los tres y
-   * falla si alguno se desincroniza. "Cancelado" no está acá porque no es un
-   * paso del camino: es salirse de él.
+   * Qué decir en cada paso del recorrido. Los nombres tienen que coincidir con
+   * ESTADOS_ENVIO de src/lib/ventas.js y con VENTAS.gs — `npm run check`
+   * compara los tres y falla si alguno se desincroniza.
+   *
+   * CUÁLES de estos pasos se dibujan lo decide el servidor y viaja en
+   * `envio.pasos`: a un pedido que se entrega en Lima no se le puede enseñar
+   * un "llegó a la agencia" que nunca va a ocurrir. "Cancelado" no está acá
+   * porque no es un paso del camino: es salirse de él.
    */
-  var PASOS = [
-    { estado: "Separado",   titulo: "Pedido apartado",      nota: "Guardamos tu kit a tu nombre." },
-    { estado: "Preparando", titulo: "Preparando tu envío",  nota: "Estamos empaquetando tu pedido." },
-    { estado: "En camino",  titulo: "En camino",            nota: "Tu paquete viaja a la agencia." },
-    { estado: "En destino", titulo: "Llegó a la agencia",   nota: "Listo para que lo recojas." },
-    { estado: "Entregado",  titulo: "Entregado",            nota: "El paquete ya está contigo." }
-  ];
+  var COPIA = {
+    "Pendiente":  { titulo: "Pedido registrado",  nota: "Tu pedido está anotado a tu nombre." },
+    "En camino":  { titulo: "En camino",          nota: "Tu paquete ya salió." },
+    "En destino": { titulo: "Llegó a la agencia", nota: "Listo para que lo recojas." },
+    "Entregado":  { titulo: "Entregado",          nota: "El paquete ya está contigo." }
+  };
 
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (t) {
@@ -275,25 +278,29 @@
   /* ── Línea de tiempo ────────────────────────────────────────────── */
 
   function pintarLinea(e) {
-    var actual = 0;
-    for (var i = 0; i < PASOS.length; i++) {
-      if (PASOS[i].estado === e.estado) actual = i;
-    }
+    var pasos = e.pasos && e.pasos.length ? e.pasos : Object.keys(COPIA);
+    var actual = Math.max(0, pasos.indexOf(e.estado));
 
-    $("linea").innerHTML = PASOS.map(function (paso, i) {
-      var clase = i < actual ? "hecho" : (i === actual ? "ahora" : "");
+    $("linea").innerHTML = pasos.map(function (estado, i) {
+      var texto = COPIA[estado] || { titulo: estado, nota: "" };
+      // "Llegó a la agencia" solo tiene sentido si hay una agencia. Cuando el
+      // pedido se entrega a domicilio, el mismo paso se llama por su nombre.
+      if (estado === "En destino" && !e.enAgencia) {
+        texto = { titulo: "Llegó a su destino", nota: "Tu paquete ya está donde tenía que llegar." };
+      }
       // El paso actual también lleva el check: para el cliente, "acá estoy"
       // es un hito cumplido, no algo a medias.
+      var clase = i < actual ? "hecho" : (i === actual ? "ahora" : "");
       var cuando = "";
-      if (paso.estado === "En destino" && i <= actual && e.diasEsperando !== null) {
+      if (estado === "En destino" && i <= actual && e.diasEsperando !== null) {
         cuando = e.diasEsperando === 0
           ? "Llegó hoy"
           : "Esperándote hace " + e.diasEsperando + (e.diasEsperando === 1 ? " día" : " días");
       }
       return '<div class="paso ' + clase + '">' +
         '<div class="bolita"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
-        '<div class="txt"><h3>' + esc(paso.titulo) + '</h3>' +
-        '<p>' + esc(paso.nota) + '</p>' +
+        '<div class="txt"><h3>' + esc(texto.titulo) + '</h3>' +
+        '<p>' + esc(texto.nota) + '</p>' +
         (cuando ? '<div class="cuando">' + esc(cuando) + '</div>' : '') +
         '</div></div>';
     }).join("");
@@ -318,17 +325,20 @@
       return;
     }
 
-    if (e.estado === "Separado" || e.estado === "Preparando") {
+    if (e.estado === "Pendiente") {
       caja.innerHTML = "<h2>Estamos preparando tu pedido</h2>" +
-        "<p>Apenas lo despachemos verás acá la foto del comprobante de envío y la clave " +
-        "para recogerlo. No tienes que hacer nada todavía.</p>";
+        "<p>Apenas lo despachemos verás acá la foto del comprobante de envío" +
+        (e.enAgencia ? " y la clave para recogerlo" : "") +
+        ". No tienes que hacer nada todavía.</p>";
       return;
     }
 
     if (e.estado === "En camino") {
       caja.innerHTML = "<h2>Tu paquete ya salió</h2>" +
-        "<p>Está viajando" + (e.ciudad ? " a <b>" + esc(e.ciudad) + "</b>" : "") +
-        ". <b>Todavía no vayas a la agencia:</b> esta misma página te va a avisar apenas llegue.</p>" +
+        "<p>Está en camino" + (e.destino ? " a <b>" + esc(e.destino) + "</b>" : "") + ". " +
+        (e.enAgencia
+          ? "<b>Todavía no vayas a la agencia:</b> esta misma página te va a avisar apenas llegue."
+          : "Te avisamos apenas llegue.") + "</p>" +
         "<ul>" +
         item("Los envíos a provincia suelen tardar entre <b>1 y 3 días útiles</b>.") +
         item("Guarda este link. Es el único lugar donde vas a ver el estado de tu envío.") +
@@ -338,18 +348,28 @@
 
     if (e.estado === "En destino") {
       caja.className = "instr destacado";
+
+      // Sin agencia de por medio no hay mostrador, ni DNI que llevar, ni clave
+      // que dar: pedirle todo eso a quien recibe en su casa solo lo confunde.
+      if (!e.enAgencia) {
+        caja.innerHTML = "<h2>Tu pedido ya llegó 🎉</h2>" +
+          "<p>Está en su destino" + (e.destino ? ", en <b>" + esc(e.destino) + "</b>" : "") +
+          ". Cualquier cosa, escríbenos por WhatsApp.</p>";
+        return;
+      }
+
       var lista = "";
       lista += item("Lleva tu <b>DNI físico</b> — el original. Una foto o una copia no la aceptan.");
       lista += item("El paquete está a nombre de <b>" + esc(e.cliente) + "</b>.");
       if (e.clave) lista += item("Da la <b>clave de recojo</b> que ves abajo en el mostrador.");
-      lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>, la clave, y que nos avises " +
-        "antes por WhatsApp para autorizarlo.");
+      lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>" +
+        (e.clave ? ", la clave" : "") + ", y que nos avises antes por WhatsApp para autorizarlo.");
       lista += item("La agencia guarda tu paquete alrededor de <b>30 días</b>. Pasado ese plazo lo " +
         "devuelven a nuestro almacén.", true);
 
       caja.innerHTML = "<h2>Ya puedes recogerlo 🎉</h2>" +
-        "<p>Tu paquete está esperándote" + (e.agencia ? " en <b>" + esc(e.agencia) + "</b>" : "") +
-        (e.ciudad ? ", " + esc(e.ciudad) : "") + ".</p><ul>" + lista + "</ul>";
+        "<p>Tu paquete está esperándote" +
+        (e.destino ? " en <b>" + esc(e.destino) + "</b>" : "") + ".</p><ul>" + lista + "</ul>";
       return;
     }
 
@@ -363,7 +383,7 @@
   /* ── Clave de recojo ────────────────────────────────────────────── */
 
   function pintarClave(e) {
-    if (e.estado !== "En destino" || !e.clave) return;
+    if (e.estado !== "En destino" || !e.enAgencia || !e.clave) return;
 
     var caja = document.createElement("div");
     caja.className = "clave";
@@ -405,17 +425,18 @@
   }
 
   function pintarDatos(e) {
-    var producto = e.producto + (Number(e.cantidad) > 1 ? " × " + e.cantidad : "");
     var html = "";
-    html += fila("Producto", producto);
-    if (e.enAgencia) {
-      html += fila("Agencia", e.agencia);
-      html += fila("Ciudad", e.ciudad);
-    } else {
-      html += fila("Entrega", e.agencia || e.ciudad);
-    }
+    html += fila(e.enAgencia ? "Agencia" : "Entrega en", e.destino);
     html += fila("Pedido el", e.fecha);
     if (e.saldo > 0) html += fila("Saldo pendiente", soles(e.saldo), "saldo");
+
+    // La hoja es minimalista y casi ningún campo es obligatorio, así que una
+    // venta puede llegar sin destino y sin saldo. Una tarjeta vacía se lee
+    // como un error de la página, así que en ese caso no se dibuja.
+    if (!html) {
+      $("datos").hidden = true;
+      return;
+    }
     $("datos").innerHTML = html;
 
     if (e.saldo > 0) {
@@ -479,7 +500,9 @@
     }
 
     $("waTxt").textContent =
-      e.estado === "En destino" ? "Tengo un problema para recoger" : "Tengo una consulta";
+      e.estado === "En destino" && e.enAgencia
+        ? "Tengo un problema para recoger"
+        : "Tengo una consulta";
     $("wa").href = waLink("Hola, consulto por mi pedido " + e.codigo + " (" + e.cliente + ").");
 
     $("cargando").hidden = true;

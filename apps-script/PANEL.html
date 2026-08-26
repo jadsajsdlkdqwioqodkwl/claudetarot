@@ -11,12 +11,15 @@
    * Google Sheets, y el momento de marcar «En destino» y subir la foto del
    * voucher es justamente cuando estás en el mostrador de la agencia.
    *
-   * Misma paleta que la landing y que la página de seguimiento del cliente.
+   * Con ?c=TS-… muestra solo esa venta: es a donde lleva el botón 📷 de la
+   * fila, así que llegas directo a lo tuyo sin buscar en una lista.
+   *
+   * Misma paleta que la landing y que la página del cliente.
    */
   :root {
     --bg:#f2f2f4; --card:#fff; --ink:#111; --muted:#666; --muted-txt:#4A4A4A;
     --line:#E0E0E0; --teal:#068988; --green:#28A745; --wa:#25D366;
-    --rojo:#C62828; --urgente:#FF2A00; --ambar:#FFF4E5; --azul:#E3F0FD;
+    --rojo:#C62828; --urgente:#FF2A00; --ambar:#FFF4E5;
   }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body { font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
@@ -52,10 +55,10 @@
                background:#fff; border:1.5px solid var(--line); color:var(--muted-txt); }
   .env .dias.urge { background:#fdecea; border-color:#f5c6c2; color:var(--rojo); }
   .env .detalle { font-size:13.5px; color:var(--muted-txt); margin-top:7px; }
-  .env .detalle span + span::before { content:" · "; color:var(--line); }
   .env .saldo { margin-top:6px; font-size:13.5px; font-weight:800; color:var(--rojo); }
   .env .clave { margin-top:8px; font-size:13px; }
   .env .clave b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:1px; }
+  .env .notas { margin-top:8px; font-size:13px; color:var(--muted); font-style:italic; }
   .env .falta { margin-top:8px; font-size:12.5px; font-weight:700; color:var(--urgente); }
 
   .acciones { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
@@ -63,20 +66,23 @@
      tiene que entrar en la misma regla o se queda sin borde ni alto y rompe
      la fila entera. */
   .acciones button, .acciones a, .acciones label {
-    flex:1 1 auto; min-height:42px; display:flex; align-items:center; justify-content:center;
+    flex:1 1 auto; min-height:44px; display:flex; align-items:center; justify-content:center;
     gap:6px; padding:0 12px; border:1.5px solid var(--line); border-radius:10px;
     background:#fff; color:var(--ink); font-family:inherit; font-size:13.5px; font-weight:700;
     cursor:pointer; text-decoration:none; text-align:center; line-height:1.2;
   }
   .acciones .principal { background:var(--teal); border-color:var(--teal); color:#fff; flex:1 1 100%; }
+  .acciones .foto { background:#111; border-color:#111; color:#fff; flex:1 1 100%; }
   .acciones .wa { background:var(--wa); border-color:var(--wa); color:#fff; }
+  .acciones .cobrar { border-color:var(--green); color:var(--green); }
   .acciones button:active, .acciones a:active, .acciones label:active { transform:scale(.98); }
-  .acciones select { min-height:42px; border:1.5px solid var(--line); border-radius:10px;
+  .acciones select { min-height:44px; border:1.5px solid var(--line); border-radius:10px;
                      background:#fff; font-family:inherit; font-size:13.5px; font-weight:700;
                      padding:0 8px; color:var(--muted-txt); flex:1 1 auto; }
   .acciones input[type=file] { display:none; }
-  .acciones .ok { border-color:var(--green); color:var(--green); }
 
+  .volver { display:inline-block; margin-top:16px; font-size:13.5px; font-weight:700;
+            color:var(--teal); text-decoration:none; }
   .estado-vacio, .cargando { text-align:center; color:var(--muted); padding:46px 16px; font-size:14.5px; }
   .hueso { background:var(--card); border:1.5px solid var(--line); border-radius:14px;
            padding:16px; margin-bottom:11px; }
@@ -97,10 +103,10 @@
 
 <header>
   <div class="titulo">
-    <h1>Envíos activos</h1>
+    <h1 id="tituloPagina">Envíos activos</h1>
     <button class="refrescar" id="refrescar">Actualizar</button>
   </div>
-  <input class="buscar" id="buscar" type="search" placeholder="Buscar cliente, código o ciudad…"
+  <input class="buscar" id="buscar" type="search" placeholder="Buscar cliente, código o destino…"
          autocomplete="off">
 </header>
 
@@ -111,36 +117,31 @@
 
 <main id="lista" hidden></main>
 <p id="vacio" class="estado-vacio" hidden>No hay envíos activos ahora mismo.</p>
+<a class="volver" id="volver" href="?" hidden>← Ver todos los envíos</a>
 
 <div class="toast" id="toast"></div>
 
 <script>
   "use strict";
 
+  /* El código con el que llegó la URL, si vino con ?c=TS-… */
+  var FOCO = <?= JSON.stringify(codigo) ?>;
+
   var MAX_LADO = 1600;
   var CALIDAD = 0.82;
 
   /**
    * Los grupos del panel, en el orden en que reclaman atención. Lo que espera
-   * en la agencia va primero: es lo único que tiene un reloj corriendo en
-   * contra (a los ~30 días la agencia devuelve el paquete).
+   * en la agencia va primero: es lo único con un reloj corriendo en contra
+   * (a los ~30 días la agencia devuelve el paquete).
    */
   var GRUPOS = [
     { estado: "En destino", titulo: "Esperando recojo" },
     { estado: "En camino", titulo: "En camino" },
-    { estado: "Preparando", titulo: "Preparando" },
-    { estado: "Separado", titulo: "Apartados" }
+    { estado: "Pendiente", titulo: "Sin despachar" }
   ];
 
-  /** El botón grande de cada tarjeta: el paso siguiente del recorrido. */
-  var SIGUIENTE = {
-    "Separado": "Preparando",
-    "Preparando": "En camino",
-    "En camino": "En destino",
-    "En destino": "Entregado"
-  };
-
-  var datos = { envios: [], estados: [] };
+  var datos = { envios: [], estados: [], alertas: [], agencia: "Shalom" };
   var filtro = "";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -158,6 +159,17 @@
     t.className = "toast on" + (mal ? " mal" : "");
     clearTimeout(reloj);
     reloj = setTimeout(function () { t.className = "toast"; }, mal ? 6000 : 3200);
+  }
+
+  /**
+   * El paso siguiente del recorrido. A un envío que no va por agencia no se le
+   * ofrece "En destino": ese paso solo existe si hay un mostrador donde esperar.
+   */
+  function siguiente(e) {
+    if (e.estado === "Pendiente") return "En camino";
+    if (e.estado === "En camino") return e.enAgencia ? "En destino" : "Entregado";
+    if (e.estado === "En destino") return "Entregado";
+    return null;
   }
 
   /* ── Cargar ───────────────────────────────────────────────────────── */
@@ -180,9 +192,10 @@
   /* ── Pintar ───────────────────────────────────────────────────────── */
 
   function coincide(e) {
+    if (FOCO) return e.codigo === FOCO;
     if (!filtro) return true;
     var aguja = filtro.toLowerCase();
-    return [e.cliente, e.codigo, e.ciudad, e.direccion, e.producto, e.telefono]
+    return [e.cliente, e.codigo, e.destino, e.telefono, e.dni]
       .join(" ").toLowerCase().indexOf(aguja) !== -1;
   }
 
@@ -196,76 +209,95 @@
 
   function tarjeta(e) {
     var aviso = e.estado === "En destino" ? escalon(e.dias) : null;
-    var clases = "env" + (e.estado === "En destino" ? " espera" : "") + (aviso ? " urge" : "");
+    var html = '<article class="env' + (e.estado === "En destino" ? " espera" : "") +
+      (aviso ? " urge" : "") + '" data-codigo="' + esc(e.codigo) + '">';
 
-    var html = '<article class="' + clases + '" data-codigo="' + esc(e.codigo) + '">';
-
-    html += '<div class="fila1"><div><div class="quien">' + esc(e.cliente) + "</div>" +
-      '<div class="cod">' + esc(e.codigo) + "</div></div>";
+    html += '<div class="fila1"><div><div class="quien">' + esc(e.cliente || "(sin nombre)") +
+      '</div><div class="cod">' + esc(e.codigo) + " · " + esc(e.estado) + "</div></div>";
     if (e.dias !== null && e.dias !== undefined && e.estado === "En destino") {
       html += '<div class="dias' + (aviso ? " urge" : "") + '">' +
         (aviso ? aviso.icono + " " : "") + e.dias + (e.dias === 1 ? " día" : " días") + "</div>";
     }
     html += "</div>";
 
-    html += '<div class="detalle"><span>' + esc(e.producto || "—") +
-      (Number(e.cantidad) > 1 ? " ×" + e.cantidad : "") + "</span>" +
-      (e.canal ? "<span>" + esc(e.canal) + "</span>" : "") +
-      (e.ciudad ? "<span>" + esc(e.ciudad) + "</span>" : "") + "</div>";
-    if (e.direccion) html += '<div class="detalle"><span>' + esc(e.direccion) + "</span></div>";
-
-    if (e.saldo > 0) html += '<div class="saldo">Saldo por cobrar ' + soles(e.saldo) + "</div>";
+    // "Shalom · Shalom — Av. El Sol 320" dice Shalom dos veces. Si el destino
+    // ya nombra la agencia, con el destino basta.
+    var repetido = e.envio && e.destino &&
+      e.destino.toLowerCase().indexOf(e.envio.toLowerCase()) !== -1;
+    var detalle = (repetido ? [e.destino] : [e.envio, e.destino])
+      .filter(Boolean).join(" · ");
+    if (detalle) html += '<div class="detalle">' + esc(detalle) + "</div>";
+    if (e.saldo > 0) html += '<div class="saldo">Por cobrar ' + soles(e.saldo) + "</div>";
     if (e.clave) html += '<div class="clave">Clave de recojo <b>' + esc(e.clave) + "</b></div>";
+    if (e.notas) html += '<div class="notas">' + esc(e.notas) + "</div>";
 
-    // Lo que le falta al envío para que su página de seguimiento sirva de algo.
+    // Lo que le falta al envío para que su página sirva de algo.
     var falta = [];
-    if (e.canal === "Shalom" && !e.clave) falta.push("falta la clave de Shalom");
-    if (!e.tieneVoucher && (e.estado === "En camino" || e.estado === "En destino")) {
-      falta.push("falta el voucher");
-    }
+    if (e.enAgencia && !e.clave) falta.push("falta la clave de Shalom");
+    if (!e.tieneVoucher && e.estado !== "Pendiente") falta.push("falta el voucher");
+    if (!e.telefono) falta.push("falta el WhatsApp");
     if (falta.length) html += '<div class="falta">⚠️ ' + esc(falta.join(" · ")) + "</div>";
 
     html += '<div class="acciones">';
-    if (SIGUIENTE[e.estado]) {
-      html += '<button class="principal" data-accion="estado" data-a="' +
-        esc(SIGUIENTE[e.estado]) + '">Marcar «' + esc(SIGUIENTE[e.estado]) + "»</button>";
-    }
-    html += '<label class="' + (e.tieneVoucher ? "ok" : "") + '">' +
-      (e.tieneVoucher ? "📷 Cambiar foto" : "📷 Subir voucher") +
-      '<input type="file" accept="image/*" capture="environment" data-accion="voucher"></label>';
-    html += '<a class="wa" href="' + esc(e.wa) + '" target="_blank" rel="noopener">WhatsApp</a>';
-    html += '<a href="' + esc(e.link) + '" target="_blank" rel="noopener">Ver página</a>';
 
+    // Con ?c=, subir la foto es a lo que vienes: va arriba y a todo lo ancho.
+    var botonFoto = '<label class="' + (FOCO ? "foto" : "") + '">' +
+      (e.tieneVoucher ? "📷 Cambiar voucher" : "📷 Subir voucher") +
+      '<input type="file" accept="image/*" capture="environment" data-accion="voucher"></label>';
+    if (FOCO) html += botonFoto;
+
+    var paso = siguiente(e);
+    if (paso) {
+      html += '<button class="principal" data-accion="estado" data-a="' + esc(paso) +
+        '">Marcar «' + esc(paso) + "»</button>";
+    }
+    if (!FOCO) html += botonFoto;
+
+    if (e.saldo > 0) {
+      html += '<button class="cobrar" data-accion="pagado">✓ Cobrado</button>';
+    }
+    if (e.telefono) {
+      html += '<a class="wa" href="' + esc(e.wa) + '" target="_blank" rel="noopener">WhatsApp</a>';
+    }
+    html += '<a href="' + esc(e.link) + '" target="_blank" rel="noopener">Ver página</a>';
     html += '<select data-accion="forzar"><option value="">Cambiar a…</option>' +
       datos.estados.map(function (s) {
         return s === e.estado ? "" : '<option value="' + esc(s) + '">' + esc(s) + "</option>";
       }).join("") + "</select>";
-    html += "</div></article>";
 
-    return html;
+    return html + "</div></article>";
   }
 
   function pintar() {
     var visibles = datos.envios.filter(coincide);
     $("cargando").hidden = true;
+    $("volver").hidden = !FOCO;
+    $("tituloPagina").textContent = FOCO ? "Envío " + FOCO : "Envíos activos";
+    $("buscar").hidden = Boolean(FOCO);
 
     if (!visibles.length) {
       $("lista").hidden = true;
       $("vacio").hidden = false;
-      $("vacio").textContent = filtro
-        ? "Ningún envío coincide con «" + filtro + "»."
-        : "No hay envíos activos ahora mismo.";
+      $("vacio").textContent = FOCO
+        ? "No encontramos el envío " + FOCO + ", o ya está entregado."
+        : filtro
+          ? "Ningún envío coincide con «" + filtro + "»."
+          : "No hay envíos activos ahora mismo.";
       return;
     }
 
     var html = "";
-    GRUPOS.forEach(function (g) {
-      var suyos = visibles.filter(function (e) { return e.estado === g.estado; });
-      if (!suyos.length) return;
-      html += '<section class="grupo"><h2>' + esc(g.titulo) +
-        '<span class="n">' + suyos.length + "</span></h2>" +
-        suyos.map(tarjeta).join("") + "</section>";
-    });
+    if (FOCO) {
+      html = visibles.map(tarjeta).join("");
+    } else {
+      GRUPOS.forEach(function (g) {
+        var suyos = visibles.filter(function (e) { return e.estado === g.estado; });
+        if (!suyos.length) return;
+        html += '<section class="grupo"><h2>' + esc(g.titulo) +
+          '<span class="n">' + suyos.length + "</span></h2>" +
+          suyos.map(tarjeta).join("") + "</section>";
+      });
+    }
 
     $("lista").innerHTML = html;
     $("lista").hidden = false;
@@ -279,23 +311,23 @@
     return tarjeta ? tarjeta.getAttribute("data-codigo") : null;
   }
 
-  function cambiarEstado(codigo, estado, boton) {
-    var textoOriginal = boton ? boton.textContent : "";
-    if (boton) { boton.disabled = true; boton.textContent = "Guardando…"; }
+  function llamar(metodo, argumentos, alTerminar, boton, textoOcupado) {
+    var original = boton ? boton.textContent : "";
+    if (boton) { boton.disabled = true; boton.textContent = textoOcupado; }
 
-    google.script.run
-      .withSuccessHandler(function (venta) {
-        avisar(venta.cliente + " → " + estado);
+    var run = google.script.run
+      .withSuccessHandler(function (r) {
+        alTerminar(r);
         // Se recarga entero en vez de retocar la tarjeta: el envío puede haber
         // cambiado de grupo, y una tarjeta en el grupo equivocado confunde más
         // que esperar medio segundo.
         cargar(true);
       })
       .withFailureHandler(function (err) {
-        avisar(err && err.message ? err.message : "No se pudo cambiar el estado.", true);
-        if (boton) { boton.disabled = false; boton.textContent = textoOriginal; }
-      })
-      .panelVentasCambiarEstado(codigo, estado);
+        avisar(err && err.message ? err.message : "No se pudo guardar el cambio.", true);
+        if (boton) { boton.disabled = false; boton.textContent = original; }
+      });
+    run[metodo].apply(run, argumentos);
   }
 
   /**
@@ -325,46 +357,53 @@
     lector.readAsDataURL(archivo);
   }
 
-  function subirVoucher(codigo, archivo, etiqueta) {
-    var textoOriginal = etiqueta ? etiqueta.firstChild.nodeValue : "";
-    var poner = function (texto) {
-      if (etiqueta) etiqueta.firstChild.nodeValue = texto;
-    };
-    poner("Preparando…");
-
-    encoger(archivo, function (base64, mime) {
-      poner("Subiendo…");
-      google.script.run
-        .withSuccessHandler(function (mensaje) {
-          avisar(mensaje);
-          cargar(true);
-        })
-        .withFailureHandler(function (err) {
-          avisar(err && err.message ? err.message : "No se pudo subir la foto.", true);
-          poner(textoOriginal);
-        })
-        .guardarVoucherVenta(codigo, base64, mime, archivo.name || "voucher.jpg");
-    });
-  }
-
   $("lista").addEventListener("click", function (ev) {
-    var boton = ev.target.closest('button[data-accion="estado"]');
+    var boton = ev.target.closest("button[data-accion]");
     if (!boton) return;
-    cambiarEstado(codigoDe(boton), boton.getAttribute("data-a"), boton);
+    var accion = boton.getAttribute("data-accion");
+    var codigo = codigoDe(boton);
+
+    if (accion === "estado") {
+      var destino = boton.getAttribute("data-a");
+      llamar("panelVentasCambiarEstado", [codigo, destino],
+        function (venta) { avisar(venta.cliente + " → " + destino); }, boton, "Guardando…");
+    }
+    if (accion === "pagado") {
+      llamar("panelVentasMarcarPagado", [codigo],
+        function (mensaje) { avisar(mensaje); }, boton, "Guardando…");
+    }
   });
 
   $("lista").addEventListener("change", function (ev) {
     var nodo = ev.target;
     var accion = nodo.getAttribute("data-accion");
+    var codigo = codigoDe(nodo);
 
     if (accion === "forzar" && nodo.value) {
-      cambiarEstado(codigoDe(nodo), nodo.value, null);
+      var destino = nodo.value;
       nodo.value = "";
+      llamar("panelVentasCambiarEstado", [codigo, destino],
+        function (venta) { avisar(venta.cliente + " → " + destino); }, null, "");
     }
 
     if (accion === "voucher" && nodo.files && nodo.files[0]) {
-      subirVoucher(codigoDe(nodo), nodo.files[0], nodo.closest("label"));
+      var archivo = nodo.files[0];
+      var etiqueta = nodo.closest("label");
+      var texto = etiqueta.firstChild;
+      var original = texto.nodeValue;
       nodo.value = "";
+      texto.nodeValue = "Preparando…";
+
+      encoger(archivo, function (base64, mime) {
+        texto.nodeValue = "Subiendo…";
+        google.script.run
+          .withSuccessHandler(function (mensaje) { avisar(mensaje); cargar(true); })
+          .withFailureHandler(function (err) {
+            avisar(err && err.message ? err.message : "No se pudo subir la foto.", true);
+            texto.nodeValue = original;
+          })
+          .guardarVoucherVenta(codigo, base64, mime, archivo.name || "voucher.jpg");
+      });
     }
   });
 

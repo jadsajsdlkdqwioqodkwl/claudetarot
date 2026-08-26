@@ -396,21 +396,21 @@ const indexSrc = readFileSync(join(root, "src/index.js"), "utf8");
 const panelHtml = readFileSync(join(root, "apps-script/PANEL.html"), "utf8");
 
 const {
-  COLUMNAS_VENTA, ESTADOS_ENVIO, CANALES, ALERTAS_RECOJO, RE_CODIGO,
-  esCodigo, nuevoCodigo, aNumero, diasEsperando, alertaDe, fechaSuelta, letraVenta
+  COLUMNAS_VENTA, COLUMNAS_QUE_SE_ESCRIBEN, ESTADOS_ENVIO, ENVIOS, ENVIO_AGENCIA,
+  ALERTAS_RECOJO, RE_CODIGO, pasosDe, esCodigo, nuevoCodigo, aNumero, esVerdadero,
+  diasEsperando, alertaDe, fechaSuelta, letraVenta
 } = await import(join(root, "src/lib/ventas.js"));
 const { vistaPublica } = await import(join(root, "src/api/seguimiento.js"));
 
 /** Lee un array de literales de texto de un .gs: `const X = ["a", "b"];` */
 function listaDeGs(fuente, nombre) {
   const bloque = new RegExp(`const ${nombre} = \\[([^\\]]*)\\]`, "s").exec(fuente);
-  if (!bloque) return null;
-  return [...bloque[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+  return bloque ? [...bloque[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]) : null;
 }
 
 /* El esquema vive en dos runtimes que no pueden importarse entre sí: el Worker
    y Apps Script. Si se desalinean, el Worker lee la clave de Shalom en la
-   columna del precio y nadie se entera hasta que un cliente lo reclama. */
+   columna del saldo y nadie se entera hasta que un cliente lo reclama. */
 const encabezadosGs = listaDeGs(ventasGs, "ENCABEZADOS_V");
 check("VENTAS.gs y ventas.js declaran las mismas columnas",
   encabezadosGs && encabezadosGs.join("|") === COLUMNAS_VENTA.join("|"),
@@ -430,6 +430,7 @@ check("COL_V apunta a las columnas correctas (1-indexado)",
   Object.keys(colV).length === COLUMNAS_VENTA.length &&
   colV.CODIGO === COLUMNAS_VENTA.indexOf("Código") + 1 &&
   colV.ESTADO === COLUMNAS_VENTA.indexOf("Estado") + 1 &&
+  colV.PAGADO === COLUMNAS_VENTA.indexOf("Pagado") + 1 &&
   colV.CLAVE === COLUMNAS_VENTA.indexOf("Clave Shalom") + 1 &&
   colV.DRIVE_ID === COLUMNAS_VENTA.indexOf("Drive ID") + 1 &&
   colV.EN_DESTINO === COLUMNAS_VENTA.indexOf("En destino desde") + 1,
@@ -437,20 +438,77 @@ check("COL_V apunta a las columnas correctas (1-indexado)",
 
 check("los estados del envío coinciden en el Worker y en el script",
   (listaDeGs(ventasGs, "ESTADOS_V") || []).join("|") === ESTADOS_ENVIO.join("|"));
-check("los canales coinciden en el Worker y en el script",
-  (listaDeGs(ventasGs, "CANALES_V") || []).join("|") === CANALES.join("|"));
+check("los tipos de envío coinciden en el Worker y en el script",
+  (listaDeGs(ventasGs, "ENVIOS_V") || []).join("|") === ENVIOS.join("|"));
 
-/* La línea de tiempo de la página es el mismo recorrido, menos "Cancelado":
-   cancelar no es un paso del camino, es salirse de él. */
-const pasosPagina = [...seguimientoHtml.matchAll(/\{ estado: "([^"]+)"/g)].map((m) => m[1]);
-check("la línea de tiempo de la página sigue el recorrido real",
-  pasosPagina.join("|") === ESTADOS_ENVIO.filter((e) => e !== "Cancelado").join("|"),
-  pasosPagina.join(" → "));
+/* La hoja tiene que seguir siendo corta: es la queja que la hizo nacer así.
+   Si alguna vez hace falta otra columna, que sea una decisión y no un descuido. */
+check("la hoja no pasa de 18 columnas",
+  COLUMNAS_VENTA.length <= 18, `son ${COLUMNAS_VENTA.length}`);
+check("el vendedor solo escribe en 11 columnas o menos",
+  COLUMNAS_QUE_SE_ESCRIBEN.length <= 11, `son ${COLUMNAS_QUE_SE_ESCRIBEN.length}`);
+check("todas las columnas que se escriben existen en la hoja",
+  COLUMNAS_QUE_SE_ESCRIBEN.every((c) => COLUMNAS_VENTA.includes(c)));
+check("las columnas que se rellenan solas no están en la lista de escribir",
+  ["Fecha", "Código", "Alerta", "Avisar", "Voucher", "Drive ID", "En destino desde"]
+    .every((c) => !COLUMNAS_QUE_SE_ESCRIBEN.includes(c)));
+
+/* Los botones viven EN la fila, como fórmulas. Es lo que evita el diálogo. */
+for (const [columna, marca] of [["ALERTA", "ARRAYFORMULA"], ["AVISAR", "HYPERLINK"],
+                                ["VOUCHER", "HYPERLINK"]]) {
+  check(`la columna ${columna} se rellena sola`,
+    new RegExp(`getRange\\(2, COL_V\\.${columna}\\)[\\s\\S]{0,80}?setFormula`).test(ventasGs) &&
+    new RegExp(`COL_V\\.${columna}\\)[\\s\\S]{0,900}?${marca}`).test(ventasGs));
+}
+check("el botón de avisar abre WhatsApp con el mensaje ya escrito",
+  ventasGs.includes('"https://wa.me/"') && ventasGs.includes('"💬 Avisar"'));
+check("el botón del voucher lleva al panel centrado en esa venta",
+  ventasGs.includes("?c=") && ventasGs.includes("urlDelPanel_()"));
+check("el código de la fila es un link a la página del cliente",
+  /setFormula\('=HYPERLINK\("' \+ SITIO/.test(ventasGs));
+
+/* ENCODEURL no funciona dentro de ARRAYFORMULA; el espacio se codifica a mano.
+   Se busca la llamada con paréntesis, no la palabra: el comentario que explica
+   por qué no se usa la menciona, y no es un fallo. */
+check("el mensaje de WhatsApp codifica los espacios sin ENCODEURL",
+  ventasGs.includes("SUBSTITUTE(") && ventasGs.includes('" ","%20"') &&
+  !ventasGs.includes("ENCODEURL("));
+
+/* El menú es para configurar, no para el día a día. */
+const opcionesMenu = (ventasGs.match(/\.addItem\(/g) || []).length;
+check("el menú no se usa para el trabajo diario", opcionesMenu <= 6, `${opcionesMenu} opciones`);
+check("no quedó ningún diálogo de subir voucher",
+  !existsSync(join(root, "apps-script/SUBIR.html")) && !ventasGs.includes('createTemplateFromFile("SUBIR")'));
+
+/* La línea de tiempo: los textos en la página, qué pasos se dibujan en el Worker. */
+const copiaPagina = [...seguimientoHtml.matchAll(/^\s*"([^"]+)":\s*\{ titulo:/gm)].map((m) => m[1]);
+check("la página tiene texto para cada paso del recorrido",
+  copiaPagina.join("|") === ESTADOS_ENVIO.filter((e) => e !== "Cancelado").join("|"),
+  copiaPagina.join(" → "));
+check("un envío a domicilio no ve el paso de la agencia",
+  !pasosDe("Lima").includes("En destino") && pasosDe(ENVIO_AGENCIA).includes("En destino"));
+/* Salvo que ya esté ahí: si no, el estado no aparecía en la lista, la página no
+   encontraba dónde estaba y resaltaba el primer paso — le decía al cliente que
+   su pedido seguía sin salir. */
+check("un envío a domicilio ya en destino sí ve ese paso",
+  pasosDe("Lima", "En destino").includes("En destino"));
+check("el estado siempre está entre los pasos que se le dibujan al cliente",
+  ENVIOS.every((envio) => ESTADOS_ENVIO
+    .filter((e) => e !== "Cancelado")
+    .every((estado) => pasosDe(envio, estado).includes(estado))));
+check("los pasos siempre son un subconjunto del recorrido, en orden",
+  ENVIOS.every((e) => pasosDe(e).every((p) => ESTADOS_ENVIO.includes(p))) &&
+  ENVIOS.every((e) => {
+    const orden = pasosDe(e).map((p) => ESTADOS_ENVIO.indexOf(p));
+    return orden.every((n, i) => i === 0 || n > orden[i - 1]);
+  }));
+check("la página tiene texto para todo paso que el Worker pueda mandar",
+  ENVIOS.every((envio) => ESTADOS_ENVIO.every((estado) =>
+    pasosDe(envio, estado).every((p) => copiaPagina.includes(p)))));
 
 const diasGs = [...ventasGs.matchAll(/\{ dias: (\d+), icono/g)].map((m) => Number(m[1]));
 check("los avisos de recojo son los mismos en los dos lados",
-  diasGs.join(",") === ALERTAS_RECOJO.map((a) => a.dias).join(","),
-  diasGs.join(", "));
+  diasGs.join(",") === ALERTAS_RECOJO.map((a) => a.dias).join(","), diasGs.join(", "));
 check("los avisos de recojo van de menos a más días",
   ALERTAS_RECOJO.every((a, i) => i === 0 || a.dias > ALERTAS_RECOJO[i - 1].dias));
 
@@ -464,13 +522,16 @@ check("el código de VENTAS.gs usa el mismo alfabeto",
   ventasGs.includes('"ABCDEFGHJKLMNPQRSTUVWXYZ"') && ventasGs.includes('"23456789"'));
 check("un código mal formado se rechaza",
   !esCodigo("TS-I3M582R") && !esCodigo("TS-K3M58R") && !esCodigo("otra-cosa"));
-check("un código en minúsculas o con espacios sigue valiendo",
-  esCodigo(" ts-k3m582r "));
+check("un código en minúsculas o con espacios sigue valiendo", esCodigo(" ts-k3m582r "));
+check("un código repetido al copiar una fila se detecta y se cambia",
+  ventasGs.includes("usados[codigo]") && ventasGs.includes("ponerCodigo_"));
 
-/* Importes: Sheets no devuelve el número crudo sino lo que se ve en la celda. */
+/* Importes y casillas: Sheets no devuelve el número crudo sino lo que se ve. */
 check('"S/ 1,234.50" se lee como mil doscientos, no como uno',
   aNumero("S/ 1,234.50") === 1234.5, String(aNumero("S/ 1,234.50")));
 check("una celda vacía vale cero", aNumero("") === 0 && aNumero(null) === 0);
+check("una casilla marcada es verdadera y una vacía no",
+  esVerdadero(true) && esVerdadero("TRUE") && !esVerdadero("FALSE") && !esVerdadero(""));
 
 /* Fechas: "05/09/2026" es 5 de setiembre en Perú, no 9 de mayo. */
 check("la fecha de la hoja se lee en formato peruano",
@@ -480,18 +541,17 @@ check("la fecha de la hoja se lee en formato peruano",
    todavía la noche anterior en Lima (UTC-5), que es donde esto se equivoca. */
 check("los días de espera se cuentan por día calendario de Lima",
   diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T15:00:00Z")) === 7 &&
-  diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T04:00:00Z")) === 6,
-  String(diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T15:00:00Z"))));
+  diasEsperando(fechaSuelta("01/09/2026"), new Date("2026-09-08T04:00:00Z")) === 6);
 check("el escalón que gana es el más alto cumplido",
-  alertaDe(30).dias === ALERTAS_RECOJO[ALERTAS_RECOJO.length - 1].dias &&
-  alertaDe(1) === null);
+  alertaDe(30).dias === ALERTAS_RECOJO[ALERTAS_RECOJO.length - 1].dias && alertaDe(1) === null);
 
 /* Lo que la página pública puede y no puede ver */
 const ventaDePrueba = {};
 COLUMNAS_VENTA.forEach((c) => { ventaDePrueba[c] = "dato-" + c; });
 Object.assign(ventaDePrueba, {
-  "Código": "TS-K3M582R", "Estado": "En destino", "Precio": "S/ 139.00",
-  "Adelanto": "S/ 50.00", "Canal": "Shalom", "Clave Shalom": "CLAVE-123",
+  "Código": "TS-K3M582R", "Cliente": "Rosa Quispe", "Estado": "En destino",
+  "Envío": ENVIO_AGENCIA, "DNI": "45781234", "Adelanto": "S/ 50.00", "Saldo": "S/ 89.00",
+  "Pagado": "FALSE", "Destino": "Shalom — Av. El Sol 320", "Clave Shalom": "CLAVE-123",
   "WhatsApp": "+51987654321", "Notas": "cliente moroso, cobrar antes",
   "Drive ID": "1AbCdEfGhIjKlMnOpQrS", "En destino desde": "01/09/2026"
 });
@@ -500,20 +560,36 @@ const serializada = JSON.stringify(publica);
 
 check("el seguimiento no expone el WhatsApp del cliente", !serializada.includes("987654321"));
 check("el seguimiento no expone las notas internas", !serializada.includes("moroso"));
+check("el seguimiento no expone el DNI", !serializada.includes("45781234"));
 check("el seguimiento no expone el id de Drive", !serializada.includes("1AbCdEfGhIjKlMnOpQrS"));
-check("el saldo se recalcula y no se lee de la fórmula", publica.saldo === 89, String(publica.saldo));
+check("el saldo sale de la hoja tal cual", publica.saldo === 89, String(publica.saldo));
 check("la foto se ofrece por código, no por Drive", publica.voucher === "/v/TS-K3M582R");
 check("en destino sí se muestra la clave de recojo", publica.clave === "CLAVE-123");
+check("a los 7 días esperando se le pide al cliente que se apure",
+  publica.diasEsperando === 7 && publica.apurar === true);
+
+/* La casilla "Pagado" es lo último que tocó el vendedor, así que manda sobre
+   la celda del saldo: si no, cobrar y olvidar borrar el saldo le pedía plata
+   al cliente en su cara. */
+check("si la casilla Pagado está marcada, no queda saldo",
+  vistaPublica({ ...ventaDePrueba, "Pagado": "TRUE" }).saldo === 0);
 
 /* Antes de llegar, la clave no sirve para nada y solo invita a ir de balde. */
 const enCamino = vistaPublica({ ...ventaDePrueba, "Estado": "En camino" });
 check("antes de llegar la clave no se muestra", enCamino.clave === "");
-check("un estado desconocido cae al primero del recorrido",
-  vistaPublica({ ...ventaDePrueba, "Estado": "inventado" }).estado === ESTADOS_ENVIO[0]);
-check("a los 7 días esperando se le pide al cliente que se apure",
-  publica.diasEsperando === 7 && publica.apurar === true);
 check("un envío que aún no llegó no cuenta días de espera",
   enCamino.diasEsperando === null && enCamino.apurar === false);
+check("un estado desconocido cae al primero del recorrido",
+  vistaPublica({ ...ventaDePrueba, "Estado": "inventado" }).estado === ESTADOS_ENVIO[0]);
+
+/* A quien recibe en casa no se le pide clave, ni DNI, ni se le mete prisa. */
+const enCasa = vistaPublica({ ...ventaDePrueba, "Envío": "Lima" });
+check("una entrega a domicilio no pide clave ni mete prisa",
+  enCasa.clave === "" && enCasa.apurar === false && enCasa.enAgencia === false);
+const enCasaEnCamino = vistaPublica({ ...ventaDePrueba, "Envío": "Lima", "Estado": "En camino" });
+check("los pasos del envío viajan al navegador, no los adivina la página",
+  Array.isArray(publica.pasos) && publica.pasos.length > enCasaEnCamino.pasos.length,
+  publica.pasos.join(" → ") + "  vs  " + enCasaEnCamino.pasos.join(" → "));
 
 /* Privacidad de la página: la URL ES la llave del envío. */
 check("la página de seguimiento no lleva el pixel de Meta",
@@ -547,8 +623,7 @@ check("el Worker no escribe en la pestaña Ventas",
   !/updateValues|appendRow|batchUpdate/.test(ventasHoja + seguimientoApi + voucherApi));
 
 /* Apps Script: un solo onOpen por proyecto, o un menú desaparece sin avisar. */
-check("VENTAS.gs no define su propio onOpen",
-  !/^function onOpen/m.test(ventasGs));
+check("VENTAS.gs no define su propio onOpen", !/^function onOpen/m.test(ventasGs));
 check("CRM.gs cuelga el menú de Ventas y aguanta que no esté instalado",
   crmGs.includes("menuVentas_") && crmGs.includes('typeof menuVentas_ === "function"'));
 check("los dos scripts no comparten ningún nombre global",
@@ -561,24 +636,16 @@ check("el voucher lo sube tu cuenta de Google, no la service account",
   ventasGs.includes("carpetaVouchers_") && ventasGs.includes("DriveApp.createFolder"));
 check("el archivo del voucher queda accesible por link",
   ventasGs.includes("DriveApp.Access.ANYONE_WITH_LINK"));
-check("la foto se encoge antes de subirla, en el panel y en el diálogo",
-  panelHtml.includes("MAX_LADO") &&
-  readFileSync(join(root, "apps-script/SUBIR.html"), "utf8").includes("MAX_LADO"));
+check("la foto se encoge antes de subirla", panelHtml.includes("MAX_LADO"));
+check("el panel se puede abrir centrado en una sola venta",
+  ventasGs.includes("e.parameter.c") && panelHtml.includes("FOCO"));
 
 /* El dominio del seguimiento tiene que ser el mismo en los dos sitios. */
 const sitio = /const SITIO = "([^"]+)"/.exec(ventasGs)?.[1] || "";
 check("el dominio del seguimiento va sin barra final y por HTTPS",
   sitio.startsWith("https://") && !sitio.endsWith("/"), sitio);
-
-/* Las columnas calculadas no se escriben a mano: son ARRAYFORMULA. */
-for (const columna of ["SALDO", "LINK", "ALERTA"]) {
-  check(`la columna ${columna} se calcula sola con ARRAYFORMULA`,
-    new RegExp(`getRange\\(2, COL_V\\.${columna}\\)\\s*\\.setFormula\\(\\s*'=ARRAYFORMULA`, "s")
-      .test(ventasGs));
-}
 check("Ventas llega más allá de la Z, y letraVenta lo sabe",
-  COLUMNAS_VENTA.length > 26 ? letraVenta(26) === "AA" : letraVenta(20) === "U");
-
+  COLUMNAS_VENTA.length > 26 ? letraVenta(26) === "AA" : letraVenta(17) === "R");
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

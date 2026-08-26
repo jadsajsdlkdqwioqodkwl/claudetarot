@@ -5,8 +5,9 @@ Página de producto con formulario de **pago contra entrega**. El pedido se guar
 pedido y ve los totales. El cliente confirma por WhatsApp desde la página de gracias.
 
 El mismo libro lleva un **segundo negocio**: la pestaña `Ventas`, donde se reportan a mano
-las ventas de las campañas manuales, y de la que cuelga una **página de seguimiento de
-envíos** para el cliente de provincia. Ver *[CRM de ventas manuales](#crm-de-ventas-manuales-y-seguimiento-de-envíos)*.
+las ventas de las campañas manuales —escribiendo el nombre del cliente y poco más—, y de la
+que cuelga una **página de seguimiento de envíos** para el cliente.
+Ver *[CRM de ventas manuales](#crm-de-ventas-manuales-y-seguimiento-de-envíos)*.
 
 Todo corre en un **Cloudflare Worker**: `public/` se sirve como archivos estáticos y el
 Worker solo se ejecuta en `/api/*`, así que las credenciales nunca llegan al navegador.
@@ -423,44 +424,65 @@ vendedor la trabaja. Esto es otra cosa, en el mismo libro y sin tocar aquello.
 
 Las campañas manuales no generan leads en la web: las ventas se cierran por WhatsApp y se
 anotan a mano. Esas viven en la pestaña **`Ventas`**, que además le da a cada venta una
-**página pública de seguimiento** para el cliente de provincia.
+**página pública de seguimiento** para el cliente.
 
 ```
 https://kit-tarot-para-principiantes.tarotperu.store/TS-K3M582R
 ```
 
-### Por qué una tabla y no tres paneles
+### Escribir poco y no abrir nada
+
+La hoja tiene 16 columnas y **solo se escriben 10**; tres de esas son un clic (dos
+desplegables y una casilla). Fecha, código, alerta de recojo y los dos botones de la fila
+se rellenan solos. Registrar una venta es **escribir el nombre del cliente**.
+
+Los tres botones viven **en la propia fila**, como fórmulas `HYPERLINK`: un clic y ya, sin
+diálogo que esperar ni venta que elegir de una lista.
+
+| Columna | Un clic hace |
+|---|---|
+| `Código` | abre la página de seguimiento, la que ve el cliente |
+| `Avisar` | abre WhatsApp con el mensaje ya escrito, distinto según el estado |
+| `Voucher` | abre el panel del celular centrado en esa venta, listo para la foto |
+
+**Nada es obligatorio.** Una venta con solo nombre y WhatsApp ya funciona; lo que falte,
+faltará en la página del cliente y nada más.
+
+Y la hoja te dice qué llenar sin que tengas que acordarte: en una fila de **Lima**, `DNI` y
+`Clave Shalom` se ven grises; al poner **Shalom** en `Envío` se encienden.
+
+El esquema completo, las macros y la migración están en
+[`apps-script/README.md`](apps-script/README.md).
+
+### Una tabla, no tres paneles
 
 La hoja anterior tenía un bloque para Dinsides, otro para Shalom y otro para los
 separados. Tres bloques lado a lado no se filtran, no se suman y no se pueden conectar a
-una página web. Ahora es **una fila por venta** con dos columnas que dicen lo mismo mejor:
+una página web. Ahora es **una fila por venta** con una columna `Envío` de tres opciones.
 
-- **`Canal`** — Shalom · Dinsides · Entrega directa · Por definir.
-- **`Estado`** — Separado · Preparando · En camino · En destino · Entregado · Cancelado.
-
-**Apartar no es una forma de envío, es un momento del envío.** Una venta separada termina
-saliendo por Shalom o por Dinsides igual, así que ser "separado" es su estado y no su
-canal. Mientras no se sepa por dónde sale, su canal es *Por definir*.
-
-El esquema completo de columnas, las macros y la migración están en
-[`apps-script/README.md`](apps-script/README.md).
+Esa columna decide todo lo demás: qué celdas te pide la hoja, qué pasos ve el cliente en su
+línea de tiempo y si el envío entra o no en las alertas de recojo. Un pedido que se entrega
+en Lima no pasa por ningún mostrador, así que no tiene clave, ni DNI que llevar, ni un
+reloj corriendo en contra.
 
 ### La página de seguimiento
 
 `public/seguimiento.html`, servida bajo **`/TS-XXXXXXX`**. El código va en la raíz y no
 bajo `/seguimiento/…` porque es un link que viaja por WhatsApp: cuanto más corto, mejor.
 
-Muestra una línea de tiempo del envío, la agencia, la **clave de recojo** con botón de
-copiar, la foto del comprobante y unas instrucciones que **cambian con el estado**:
+Muestra una línea de tiempo, el destino, la **clave de recojo** con botón de copiar, la
+foto del comprobante y unas instrucciones que **cambian con el estado**:
 
 | Estado | Qué le dice al cliente |
 |---|---|
-| Separado · Preparando | Estamos preparando tu pedido. No tienes que hacer nada. |
+| Pendiente | Estamos preparando tu pedido. No tienes que hacer nada. |
 | En camino | Ya salió. **Todavía no vayas a la agencia**, acá te avisamos. |
-| En destino | Ya puedes recogerlo: **DNI físico**, la clave, a nombre de quién está, qué necesita otra persona si va por ti, y el plazo antes de que lo devuelvan. |
+| En destino (agencia) | Ya puedes recogerlo: **DNI físico**, la clave, a nombre de quién está, qué necesita otra persona si va por ti, y el plazo antes de que lo devuelvan. |
+| En destino (domicilio) | Tu pedido ya llegó. Sin clave ni DNI: no hay mostrador de por medio. |
 | Entregado | Gracias. Si algo llegó mal, escríbenos hoy. |
 
-A los pocos días de espera aparece además un aviso rojo para que se apure.
+A los pocos días de espera aparece además un aviso rojo para que se apure — solo en los
+envíos por agencia, que son los únicos que se pueden devolver.
 
 **El código es la única llave de la página**, así que:
 
@@ -471,7 +493,8 @@ A los pocos días de espera aparece además un aviso rojo para que se apure.
   acá la URL *es* la llave: instalarlo sería entregársela. `npm run check` lo vigila.
 - Va con `noindex` en la página, en la API y en la foto.
 - La respuesta de `/api/seguimiento` lleva solo lo que el cliente puede ver de su propio
-  envío. **Nunca** su WhatsApp, tus notas internas ni el id de Drive.
+  envío. **Nunca** su WhatsApp, su DNI, tus notas internas ni el id de Drive. El DNI está
+  en la hoja porque lo pide Shalom al registrar el envío, no para enseñárselo a nadie.
 - Un código mal formado y uno que no existe dan el **mismo 404**: cualquier diferencia le
   diría a un curioso cuándo va por buen camino.
 - Tope propio de 40 consultas por minuto y por IP (`TRACK_LIMIT`), aparte del de pedidos.
@@ -483,8 +506,8 @@ Cloudflare.
 
 ### La foto del voucher
 
-Se sube desde el Sheets (o desde el panel del celular) a una carpeta de **tu propio
-Drive**, y el Worker la sirve en `/v/<código>`.
+Se sube desde el panel del celular —al que se llega con el botón 📷 de la fila— a una
+carpeta de **tu propio Drive**, y el Worker la sirve en `/v/<código>`.
 
 **La service account no puede subirla.** Las cuentas de servicio tienen **0 bytes** de
 cuota en Drive: toda subida suya muere con `storageQuotaExceeded`. Apps Script, en cambio,

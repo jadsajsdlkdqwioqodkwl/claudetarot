@@ -2,8 +2,11 @@
  * Esquema de la pestaña "Ventas": el CRM de reporte manual.
  *
  * Es una tabla aparte de "Pedidos". Pedidos lo escribe el formulario de la
- * landing (leads); Ventas la escribe el vendedor a mano desde el Sheets o el
- * panel móvil. Ninguna de las dos toca a la otra.
+ * landing (leads); Ventas la escribe el vendedor a mano. Ninguna toca a la otra.
+ *
+ * La tabla es corta a propósito. De las 16 columnas, **solo se escriben 10**, y
+ * tres de esas son un clic (dos desplegables y una casilla). El resto se
+ * rellena solo: fecha, código, alerta de recojo y los dos botones de la fila.
  *
  * Este archivo es la única fuente del orden de columnas para el Worker.
  * `apps-script/VENTAS.gs` repite la lista porque corre en otro runtime y no
@@ -12,65 +15,74 @@
  */
 
 export const COLUMNAS_VENTA = [
-  "Fecha",
-  "Código",
+  "Fecha",            // se pone sola
+  "Código",           // se pone solo, y es el link a la página del cliente
   "Cliente",
   "WhatsApp",
-  "Producto",
-  "Cantidad",
-  "Precio",
+  "Envío",            // desplegable
+  "DNI",              // solo provincia
   "Adelanto",
   "Saldo",
-  "Canal",
-  "Ciudad",
-  "Agencia / Dirección",
-  "Clave Shalom",
-  "Estado",
-  "Voucher",
+  "Pagado",           // casilla
+  "Destino",          // dirección (Lima) o agencia (provincia)
+  "Clave Shalom",     // solo provincia
+  "Estado",           // desplegable
   "Notas",
-  "Link seguimiento",
+  "Alerta",           // se calcula sola
+  "Avisar",           // botón: WhatsApp con el mensaje ya escrito
+  "Voucher",          // botón: subir o cambiar la foto
+  // Ocultas: plomería que nadie escribe a mano.
   "En destino desde",
-  "Alerta",
-  "Actualizado",
-  // Oculta: el id del archivo en Drive. El cliente nunca lo ve — la foto se
-  // sirve desde nuestro dominio, por código de venta, en /v/<código>.
   "Drive ID"
 ];
 
-/**
- * Estados del envío, en el orden real del recorrido. La página de seguimiento
- * dibuja su línea de tiempo desde este array, así que el orden importa.
- *
- * "Separado" es la venta apartada con adelanto que todavía no se despacha:
- * en tu hoja vieja era un panel propio, acá es el primer estado del recorrido.
- */
-export const ESTADOS_ENVIO = [
-  "Separado",
-  "Preparando",
-  "En camino",
-  "En destino",
-  "Entregado",
-  "Cancelado"
+/** Las que el vendedor llena. El resto se rellenan solas. */
+export const COLUMNAS_QUE_SE_ESCRIBEN = [
+  "Cliente", "WhatsApp", "Envío", "DNI", "Adelanto",
+  "Saldo", "Pagado", "Destino", "Clave Shalom", "Estado", "Notas"
 ];
 
-/** El estado con el que nace una venta nueva. */
-export const ESTADO_INICIAL = "Separado";
+/**
+ * Cómo sale el paquete. Es lo único que decide qué le pide la hoja y qué le
+ * dice la página al cliente: un envío por agencia necesita DNI y clave de
+ * recojo; uno de Lima, ninguno de los dos.
+ */
+export const ENVIOS = ["Lima", "Shalom", "Dinsides"];
+export const ENVIO_POR_DEFECTO = "Lima";
+
+/** El único que obliga al cliente a ir a un mostrador con su DNI. */
+export const ENVIO_AGENCIA = "Shalom";
+
+/**
+ * El recorrido del envío. La página dibuja su línea de tiempo desde acá, así
+ * que el orden importa. "Cancelado" va al final porque no es un paso del
+ * camino: es salirse de él.
+ */
+export const ESTADOS_ENVIO = ["Pendiente", "En camino", "En destino", "Entregado", "Cancelado"];
+
+export const ESTADO_INICIAL = "Pendiente";
 
 /** Único estado en el que el paquete espera al cliente en la agencia. */
 export const ESTADO_ESPERANDO = "En destino";
 
-/** Estados que ya no cuentan como envío activo. */
-export const ESTADOS_CERRADOS_ENVIO = ["Entregado", "Cancelado"];
-
 /**
- * Cómo sale el paquete. "Separado" no está acá a propósito: apartar no es una
- * forma de envío, es un estado. Una venta separada termina saliendo por Shalom
- * o por Dinsides, y hasta entonces su canal es "Por definir".
+ * Los pasos que ve el cliente, según cómo le llega el pedido.
+ *
+ * Un envío a Lima no pasa por ninguna agencia, así que enseñarle "llegó a la
+ * agencia" sería mentirle sobre un paso que nunca va a ocurrir.
+ *
+ * Salvo que ya esté ahí: si el vendedor marcó "En destino" en un envío que no
+ * es por agencia, ese paso existe de verdad para ese pedido y hay que
+ * dibujarlo. Sin esta excepción el estado no aparecía en la lista, la página
+ * no encontraba dónde estaba y terminaba resaltando el primer paso — le decía
+ * al cliente que su pedido seguía sin salir.
  */
-export const CANALES = ["Shalom", "Dinsides", "Entrega directa", "Por definir"];
-
-/** El canal que obliga a llevar clave de recojo y DNI a la agencia. */
-export const CANAL_AGENCIA = "Shalom";
+export function pasosDe(envio, estado) {
+  const conAgencia = envio === ENVIO_AGENCIA || estado === ESTADO_ESPERANDO;
+  return conAgencia
+    ? ["Pendiente", "En camino", "En destino", "Entregado"]
+    : ["Pendiente", "En camino", "Entregado"];
+}
 
 /**
  * Días que lleva el paquete esperando en la agencia y qué avisar en cada
@@ -113,13 +125,8 @@ export function nuevoCodigo(azar = Math.random) {
   const de = (alfabeto) => alfabeto[Math.floor(azar() * alfabeto.length)];
   return (
     "TS-" +
-    de(LETRAS) +
-    de(DIGITOS) +
-    de(LETRAS) +
-    de(DIGITOS) +
-    de(DIGITOS) +
-    de(DIGITOS) +
-    de(LETRAS)
+    de(LETRAS) + de(DIGITOS) + de(LETRAS) +
+    de(DIGITOS) + de(DIGITOS) + de(DIGITOS) + de(LETRAS)
   );
 }
 
@@ -141,11 +148,23 @@ export function letraVenta(indice) {
   return letra;
 }
 
-/** "A1:U1" — el rango que ocupan los encabezados de Ventas. */
+/** "A1:R1" — el rango que ocupan los encabezados de Ventas. */
 export const RANGO_ENCABEZADOS_VENTA = `A1:${letraVenta(COLUMNAS_VENTA.length - 1)}1`;
 
-/** El rango de datos completo, sin encabezado: "A2:U". */
+/** El rango de datos completo, sin encabezado: "A2:R". */
 export const RANGO_DATOS_VENTA = `A2:${letraVenta(COLUMNAS_VENTA.length - 1)}`;
+
+/**
+ * Una casilla de la hoja como booleano.
+ *
+ * getValues del Worker devuelve lo que se ve en la celda, y una casilla marcada
+ * se ve como el texto "TRUE". Comprobarla con Boolean() daría verdadero también
+ * para "FALSE", que es justo el caso contrario.
+ */
+export function esVerdadero(valor) {
+  if (typeof valor === "boolean") return valor;
+  return /^(true|verdadero|sí|si|x|✓)$/i.test(String(valor ?? "").trim());
+}
 
 /**
  * Un número de la hoja como número de verdad.
