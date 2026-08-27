@@ -90,31 +90,50 @@ npm run check:gs
 
 El segundo negocio del mismo libro. Mientras `CRM.gs` trabaja la pestaña
 **`Pedidos`** (los leads que entran solos por la landing), `VENTAS.gs` trabaja la
-pestaña **`Ventas`**: las ventas que reportas a mano de tus campañas manuales, y
-la página de seguimiento que ve tu cliente de provincia.
+pestaña **`Ventas`**: las ventas que reportas a mano, y la página de seguimiento
+que ve tu cliente.
 
 Los dos conviven sin tocarse: no comparten ni una constante ni una función.
+
+## La idea: escribir poco y no abrir nada
+
+**Registrar una venta es escribir el nombre del cliente.** El resto de la fila se
+completa sola: fecha, código, tipo de envío y estado.
+
+**Los botones están en la propia fila**, como fórmulas. Un clic y ya — no hay
+ninguna ventana que esperar ni ninguna venta que elegir de una lista, porque la
+fila en la que estás ya sabe de quién es:
+
+| Columna | Un clic hace |
+|---|---|
+| **`Código`** | abre la página de seguimiento, la que ve tu cliente |
+| **`Avisar`** | abre WhatsApp con el mensaje ya escrito, distinto según el estado |
+| **`Voucher`** | abre el panel del celular centrado en esa venta, listo para la foto |
+
+Y **nada es obligatorio**. Una venta con solo el nombre y el WhatsApp ya
+funciona; lo que falte, faltará en la página del cliente y nada más.
 
 ## Instalar
 
 Sobre el mismo proyecto de Apps Script donde ya está `CRM.gs`:
 
 1. **Extensiones → Apps Script**.
-2. **Archivo → +** tres veces y pega, respetando los nombres exactos:
+2. **Archivo → +** dos veces y pega, respetando los nombres exactos:
 
    | Archivo nuevo | Tipo | Contenido |
    |---|---|---|
    | `VENTAS` | Secuencia de comandos | `apps-script/VENTAS.gs` |
    | `PANEL` | HTML | `apps-script/PANEL.html` |
-   | `SUBIR` | HTML | `apps-script/SUBIR.html` |
 
 3. Reemplaza `Código.gs` por la versión nueva de `apps-script/CRM.gs`. **Solo
    cambió su `onOpen`**, que ahora cuelga también el menú *Ventas*; el resto del
    archivo está igual.
 4. Guarda y **recarga la hoja**. Junto a *CRM* aparece el menú **Ventas**.
 5. **Ventas → Preparar hoja de Ventas.** Google pide permisos la primera vez
-   (hoja de cálculo, Drive y correo): acéptalos.
-6. **Ventas → Activar automatismos de Ventas.**
+   (hoja, Drive y correo): acéptalos.
+6. **Ventas → Activar automatismos.**
+7. Publica el panel del celular (ver abajo) y **vuelve a correr *Preparar hoja***
+   para que el botón 📷 apunte a él.
 
 > Los dos menús se montan desde el `onOpen` de `CRM.gs` porque Apps Script solo
 > admite **un** `onOpen` por proyecto. Si `VENTAS.gs` definiera el suyo, uno de
@@ -122,44 +141,55 @@ Sobre el mismo proyecto de Apps Script donde ya está `CRM.gs`:
 
 ## La pestaña `Ventas`
 
-Una fila por venta. Tus tres paneles viejos (Dinsides, Shalom, separados) son
-ahora la columna **`Canal`** y la columna **`Estado`**: apartar no es una forma
-de envío, es un momento del envío, y una venta apartada termina saliendo por
-Shalom o por Dinsides igual.
+Dieciséis columnas, de las que **solo escribes diez** — y tres de esas son un
+clic:
 
-| | | | | |
-|---|---|---|---|---|
-| **A** Fecha | **B** Código | **C** Cliente | **D** WhatsApp | **E** Producto |
-| **F** Cantidad | **G** Precio | **H** Adelanto | **I** Saldo | **J** Canal |
-| **K** Ciudad | **L** Agencia / Dirección | **M** Clave Shalom | **N** Estado | **O** Voucher |
-| **P** Notas | **Q** Link seguimiento | **R** En destino desde | **S** Alerta | **T** Actualizado |
+| | Columna | Quién la llena |
+|---|---|---|
+| **A** | Fecha | sola |
+| **B** | Código | sola · *es link a la página del cliente* |
+| **C** | Cliente | ✍️ tú |
+| **D** | WhatsApp | ✍️ tú |
+| **E** | Envío | ▾ Lima · Shalom · Dinsides |
+| **F** | DNI | ✍️ tú *(solo provincia)* |
+| **G** | Adelanto | ✍️ tú |
+| **H** | Saldo | ✍️ tú |
+| **I** | Pagado | ☑️ casilla |
+| **J** | Destino | ✍️ tú — dirección o agencia |
+| **K** | Clave Shalom | ✍️ tú *(solo provincia)* |
+| **L** | Estado | ▾ Pendiente · En camino · En destino · Entregado · Cancelado |
+| **M** | Notas | ✍️ tú |
+| **N** | Alerta | sola |
+| **O** | Avisar | sola · *botón de WhatsApp* |
+| **P** | Voucher | sola · *botón de foto* |
 
-Más una columna **U (`Drive ID`) oculta**, que es la que lee el Worker para
-servir la foto del voucher.
+Más dos columnas ocultas (`En destino desde` y `Drive ID`) que solo escribe el
+script.
 
-**Columnas que no se escriben a mano:** `Saldo` (I), `Link seguimiento` (Q) y
-`Alerta` (S) son `ARRAYFORMULA` que viven en la fila 2 y cubren toda la columna.
-Es lo que hace que una venta nueva salga con su saldo y su link ya puestos sin
-arrastrar nada. Si escribes encima de una celda de esas tres, rompes el cálculo
-de esa columna entera; para arreglarlo, vuelve a correr *Preparar hoja de Ventas*.
+**No tienes que acordarte de qué llenar en cada caso.** En una fila de **Lima**,
+las columnas `DNI` y `Clave Shalom` se ven grises y apagadas; al poner **Shalom**
+en `Envío` se encienden y te piden que las llenes. El `Saldo` sale en rojo
+mientras haya algo por cobrar y en verde tachado apenas marcas `Pagado`.
 
-**Registrar una venta es escribir el nombre del cliente.** Con los automatismos
-activos, la fila se completa sola: fecha, código, estado y canal. El resto lo
-llenas tú.
+**Columnas de solo lectura:** `Alerta`, `Avisar` y `Voucher` son `ARRAYFORMULA`
+que viven en la fila 2 y cubren toda la columna — es lo que hace que una venta
+nueva salga con sus botones ya puestos sin arrastrar nada. Si escribes encima de
+una de esas tres, rompes esa columna entera; para arreglarla, vuelve a correr
+*Preparar hoja de Ventas*.
 
-## Qué hace cada opción
+## Qué hace cada opción del menú
+
+Son seis y **ninguna es para el día a día**: marcar un estado, avisar al cliente
+o subir el voucher se hacen desde la propia fila. Un menú al que hay que volver
+todos los días es un menú mal hecho.
 
 | Menú | Qué hace |
 |---|---|
-| **Preparar hoja de Ventas** | Crea la pestaña, encabezados, desplegables, colores por estado, las fórmulas, el panel y la carpeta de Drive. Idempotente. |
-| **Registrar venta nueva** | Deja la siguiente fila lista y te pone el cursor en el nombre. |
-| **Completar códigos y fechas que falten** | Para la migración: recorre la hoja y le pone código, fecha, estado y canal a toda fila que tenga cliente y le falten. |
-| **Marcar «En camino» / «En destino» / «Entregado»** | Cambia el estado de la fila donde tengas el cursor y sella la fecha. |
-| **Subir voucher de envío…** | Diálogo con selector de archivo. La foto va a tu Drive y aparece sola en la página del cliente. |
-| **Copiar link de seguimiento** | El link de esa venta, listo para pegar. |
-| **Avisar al cliente por WhatsApp** | Abre WhatsApp con el mensaje ya escrito, distinto según el estado del envío. |
-| **Abrir panel del celular** | La URL de la Web App (ver abajo). |
+| **Preparar hoja de Ventas** | Crea o pone al día la pestaña, los desplegables, los colores, las fórmulas, el panel y la carpeta de Drive. Idempotente. |
+| **Revisar y completar la hoja** | Le pone código a las filas que no lo tengan, cambia los códigos repetidos y fecha las ventas que ya estén en agencia. Para después de pegar datos de golpe. |
+| **Abrir panel del celular** | Te da la URL de la Web App. |
 | **Revisar pendientes de recojo ahora** | Corre a mano la revisión que hace sola cada mañana. |
+| **Activar / Desactivar automatismos** | El autocódigo y la revisión diaria. |
 
 ## El panel del celular
 
@@ -172,15 +202,17 @@ Por eso el mismo proyecto se publica además como **aplicación web**:
 1. En el editor: **Implementar → Nueva implementación → Aplicación web**.
 2. **Ejecutar como:** Yo. **Quién tiene acceso:** Solo yo.
 3. Copia la URL y **guárdala en la pantalla de inicio del celular**.
+4. Vuelve al Sheets y corre **Preparar hoja de Ventas** para que el botón 📷 de
+   cada fila apunte al panel.
 
 La autenticación es tu propia cuenta de Google. No hay token que pegar ni
 contraseña que se pueda filtrar, y como solo tú tienes acceso, nadie más puede
 abrirlo aunque conozca la URL.
 
-Desde ahí ves los envíos vivos ordenados por urgencia, con botones para cambiar
-el estado y un botón de foto que abre la cámara directo. Cada tarjeta avisa de lo
-que le falta al envío para que su página sirva de algo: la clave de Shalom, el
-voucher.
+El botón 📷 de la hoja abre el panel **ya centrado en esa venta**
+(`?c=TS-K3M582R`), con el botón de subir foto arriba del todo: llegas directo a
+lo tuyo. Sin `?c=`, el panel lista los envíos vivos ordenados por urgencia, y
+cada tarjeta avisa de lo que le falta al envío para que su página sirva de algo.
 
 > Cada vez que cambies el código, **vuelve a implementar** (Implementar → Gestionar
 > implementaciones → editar → Versión nueva). La URL no cambia.
@@ -207,8 +239,8 @@ corregir un error, y dejar la equivocada en Drive solo confunde después.
 ## Los avisos de recojo
 
 Un paquete que se queda en la agencia vuelve al remitente en un mes. Los avisos
-están a los **2, 6, 15 y 25 días** de haber llegado, contados desde la columna
-`En destino desde`, que se sella sola al marcar el estado.
+están a los **2, 6, 15 y 25 días** de haber llegado, contados desde el día en que
+pusiste el estado en «En destino».
 
 Van por dos vías, a propósito:
 
@@ -222,20 +254,18 @@ Van por dos vías, a propósito:
 El correo llega a la cuenta con la que autorizaste el script, trae el saldo por
 cobrar de cada uno y un link directo para escribirle por WhatsApp.
 
+Los envíos que no van por agencia **no generan alertas**: no hay ningún
+mostrador donde el paquete pueda quedarse esperando.
+
 ## El panel de ventas
 
-La pestaña **`Panel Ventas`** se alimenta sola:
+La pestaña **`Panel Ventas`** se alimenta sola: hoy (ventas, cobrado, por
+cobrar), ahora mismo (sin despachar, en camino, esperando recojo, saldo vivo),
+por tipo de envío, por día, y la lista de pendientes de recojo con sus días y su
+saldo.
 
-- **Hoy** — ventas, ingresos, cobrado en adelantos, por cobrar y ticket promedio.
-- **Ahora mismo** — apartados sin despachar, preparando, en camino, esperando
-  recojo, y todo el saldo vivo por cobrar.
-- **Por canal** — Shalom, Dinsides, entrega directa y por definir.
-- **Por día** — la serie completa, el día más reciente arriba.
-- **Pendientes de recojo** — quién, dónde, cuántos días lleva y cuánto debe.
-
-Los dos bloques que crecen (por día, y pendientes de recojo) van en grupos de
-columnas distintos a propósito: uno debajo del otro, el de arriba se comía al de
-abajo apenas hubiera unas cuantas ventas.
+«Por cobrar» cuenta solo lo que no está pagado ni cancelado: sumar la columna
+entera contaría plata que ya entró.
 
 ## Migrar tu Sheet 2 actual
 
@@ -243,18 +273,20 @@ Tu hoja vieja **no se toca**: queda de respaldo.
 
 1. Corre **Preparar hoja de Ventas**.
 2. Copia tus filas y pégalas en `Ventas` empezando en **A2**, columna por
-   columna. **No pegues nada en I, Q ni S** — son las calculadas.
-3. Corre **Completar códigos y fechas que falten**.
+   columna. **No pegues nada en N, O ni P** — son las calculadas.
+3. Corre **Revisar y completar la hoja**.
 
 El paso 3 hace falta porque un pegado múltiple no dispara el automatismo del
 código: el evento de edición no trae valor y no distingue una fila de cincuenta.
 Sin él, esas ventas se quedarían sin código y por lo tanto sin página de
-seguimiento.
+seguimiento. Ese mismo paso detecta los **códigos repetidos** que salen de copiar
+una fila entera — dos ventas con el mismo código comparten página, y el cliente
+vería la del otro.
 
 ## Cambiar el dominio, los estados o los plazos
 
-Todo vive arriba de `VENTAS.gs`: `SITIO`, `ESTADOS_V`, `CANALES_V`, `ALERTAS_V`.
+Todo vive arriba de `VENTAS.gs`: `SITIO`, `ESTADOS_V`, `ENVIOS_V`, `ALERTAS_V`.
 Si cambias cualquiera, **cámbialo también en `src/lib/ventas.js`** del Worker.
 `npm run check` compara los dos archivos y falla si se desalinean: sin ese
-chequeo, el Worker leería la clave de Shalom en la columna del precio y nadie se
+chequeo, el Worker leería la clave de Shalom en la columna del saldo y nadie se
 enteraría hasta que un cliente lo reclamara.

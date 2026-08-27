@@ -1,12 +1,14 @@
 /**
  * GET /api/seguimiento?c=TS-K3M582R
  *
- * Lo que alimenta la página de seguimiento del cliente de provincia. Sin
- * login: el código es toda la autenticación, por eso es aleatorio y por eso
- * esta respuesta lleva SOLO lo que el cliente puede ver de su propio envío.
+ * Lo que alimenta la página de seguimiento del cliente. Sin login: el código es
+ * toda la autenticación, por eso es aleatorio y por eso esta respuesta lleva
+ * SOLO lo que el cliente puede ver de su propio envío.
  *
  * Fuera de la respuesta, deliberadamente:
  *   · WhatsApp — el código puede reenviarse; el teléfono no viaja con él.
+ *   · DNI      — el cliente ya sabe el suyo. Está en la hoja porque lo pide
+ *                Shalom al registrar el envío, no porque haya que enseñárselo.
  *   · Notas    — son notas internas del vendedor sobre el cliente.
  *   · Drive ID — la foto se sirve por /v/<código>, nunca por el id de Drive.
  */
@@ -14,8 +16,10 @@ import { buscarVenta } from "../lib/ventas-hoja.js";
 import {
   ESTADOS_ENVIO,
   ESTADO_ESPERANDO,
-  CANAL_AGENCIA,
+  ENVIO_AGENCIA,
+  pasosDe,
   aNumero,
+  esVerdadero,
   diasEsperando,
   alertaDe,
   fechaSuelta
@@ -57,38 +61,39 @@ export function vistaPublica(venta, ahora = new Date()) {
     ? venta["Estado"]
     : ESTADOS_ENVIO[0];
 
+  const enAgencia = venta["Envío"] === ENVIO_AGENCIA;
   const enDestinoDesde = fechaSuelta(venta["En destino desde"]);
-  const dias = estado === ESTADO_ESPERANDO ? diasEsperando(enDestinoDesde, ahora) : null;
 
-  const precio = aNumero(venta["Precio"]);
-  const adelanto = aNumero(venta["Adelanto"]);
+  // Los días esperando solo cuentan cuando hay una agencia donde esperar. Un
+  // pedido que se entrega en casa no tiene reloj corriendo en contra, y
+  // apurar a ese cliente sería inventarle una urgencia que no existe.
+  const dias = enAgencia && estado === ESTADO_ESPERANDO
+    ? diasEsperando(enDestinoDesde, ahora)
+    : null;
+
+  // Si marcó la casilla, no queda nada por cobrar, diga lo que diga la celda
+  // del saldo: la casilla es lo último que tocó y por lo tanto lo más reciente.
+  const saldo = esVerdadero(venta["Pagado"]) ? 0 : Math.max(0, aNumero(venta["Saldo"]));
 
   return {
     codigo: venta["Código"],
     cliente: venta["Cliente"],
     estado,
-    canal: venta["Canal"],
-    // Solo un envío por agencia obliga a llevar clave y DNI al mostrador.
-    enAgencia: venta["Canal"] === CANAL_AGENCIA,
-    producto: venta["Producto"],
-    cantidad: venta["Cantidad"],
-    ciudad: venta["Ciudad"],
-    agencia: venta["Agencia / Dirección"],
+    enAgencia,
+    // Los pasos viajan desde el servidor porque dependen del tipo de envío:
+    // a Lima no se le puede enseñar un "llegó a la agencia" que nunca ocurrirá.
+    pasos: pasosDe(venta["Envío"], estado),
+    destino: venta["Destino"],
     // La clave solo aparece cuando ya sirve de algo: antes de que el paquete
     // llegue, enseñarla solo invita a que el cliente vaya a la agencia de balde.
-    clave: estado === ESTADO_ESPERANDO ? venta["Clave Shalom"] : "",
-    precio,
-    adelanto,
-    // El saldo se recalcula acá y no se lee de la hoja: esa celda es una
-    // fórmula y llega ya formateada como "S/ 45.00".
-    saldo: Math.max(0, precio - adelanto),
+    clave: enAgencia && estado === ESTADO_ESPERANDO ? venta["Clave Shalom"] : "",
+    saldo,
     fecha: venta["Fecha"],
     diasEsperando: dias,
     // Al cliente no le mostramos el escalón de alerta (es para el vendedor),
     // pero sí si ya conviene que se apure.
     apurar: Boolean(alertaDe(dias)),
-    voucher: venta["Drive ID"] ? `/v/${venta["Código"]}` : null,
-    actualizado: venta["Actualizado"]
+    voucher: venta["Drive ID"] ? `/v/${venta["Código"]}` : null
   };
 }
 
