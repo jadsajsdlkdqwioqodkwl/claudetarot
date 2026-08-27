@@ -97,8 +97,9 @@ Los dos conviven sin tocarse: no comparten ni una constante ni una función.
 
 ## La idea: escribir poco y no abrir nada
 
-**Registrar una venta es escribir el nombre del cliente.** El resto de la fila se
-completa sola: fecha, código, tipo de envío y estado.
+**Registrar una venta es escribir el DNI y el celular en una celda.** Fecha,
+código, tipo de envío y estado se completan solos, y con ellos salen los
+botones de la fila.
 
 **Los botones están en la propia fila**, como fórmulas. Un clic y ya — no hay
 ninguna ventana que esperar ni ninguna venta que elegir de una lista, porque la
@@ -106,12 +107,11 @@ fila en la que estás ya sabe de quién es:
 
 | Columna | Un clic hace |
 |---|---|
-| **`Código`** | abre la página de seguimiento, la que ve tu cliente |
 | **`Avisar`** | abre WhatsApp con el mensaje ya escrito, distinto según el estado |
 | **`Voucher`** | abre el panel del celular centrado en esa venta, listo para la foto |
 
-Y **nada es obligatorio**. Una venta con solo el nombre y el WhatsApp ya
-funciona; lo que falte, faltará en la página del cliente y nada más.
+Y **nada es obligatorio**. Una venta con solo un celular ya funciona; lo que
+falte, faltará en la página del cliente y nada más.
 
 ## Instalar
 
@@ -132,8 +132,8 @@ Sobre el mismo proyecto de Apps Script donde ya está `CRM.gs`:
 5. **Ventas → Preparar hoja de Ventas.** Google pide permisos la primera vez
    (hoja, Drive y correo): acéptalos.
 6. **Ventas → Activar automatismos.**
-7. Publica el panel del celular (ver abajo) y **vuelve a correr *Preparar hoja***
-   para que el botón 📷 apunte a él.
+7. Publica el panel del celular y conéctalo (ver abajo). Sin ese paso, la
+   columna `Voucher` no tiene links.
 
 > Los dos menús se montan desde el `onOpen` de `CRM.gs` porque Apps Script solo
 > admite **un** `onOpen` por proyecto. Si `VENTAS.gs` definiera el suyo, uno de
@@ -141,35 +141,51 @@ Sobre el mismo proyecto de Apps Script donde ya está `CRM.gs`:
 
 ## La pestaña `Ventas`
 
-Dieciséis columnas, de las que **solo escribes diez** — y tres de esas son un
-clic:
+Diez columnas a la vista, de las que **solo escribes seis** — y dos de esas son
+un desplegable:
 
 | | Columna | Quién la llena |
 |---|---|---|
-| **A** | Fecha | sola |
-| **B** | Código | sola · *es link a la página del cliente* |
-| **C** | Cliente | ✍️ tú |
-| **D** | WhatsApp | ✍️ tú |
-| **E** | Envío | ▾ Lima · Shalom · Dinsides |
-| **F** | DNI | ✍️ tú *(solo provincia)* |
-| **G** | Adelanto | ✍️ tú |
-| **H** | Saldo | ✍️ tú |
-| **I** | Pagado | ☑️ casilla |
-| **J** | Destino | ✍️ tú — dirección o agencia |
-| **K** | Clave Shalom | ✍️ tú *(solo provincia)* |
-| **L** | Estado | ▾ Pendiente · En camino · En destino · Entregado · Cancelado |
-| **M** | Notas | ✍️ tú |
-| **N** | Alerta | sola |
-| **O** | Avisar | sola · *botón de WhatsApp* |
-| **P** | Voucher | sola · *botón de foto* |
+| **A** | Fecha | sola · con **calendario** para corregirla |
+| **B** | DNI / WSP | ✍️ tú |
+| **C** | Envío | ▾ Lima · Shalom · Dinsides |
+| **D** | Adelanto | ✍️ tú |
+| **E** | Saldo | ✍️ tú |
+| **F** | Clave Shalom / Notas | ✍️ tú |
+| **G** | Alerta | sola |
+| **H** | Avisar | sola · *botón de WhatsApp* |
+| **I** | Voucher | sola · *botón de foto* |
+| **J** | Estado | ▾ Pendiente · En camino · En destino · Pagado · Cancelado |
 
-Más dos columnas ocultas (`En destino desde` y `Drive ID`) que solo escribe el
-script.
+Más tres columnas ocultas al final (`Código`, `En destino desde`, `Drive ID`)
+que solo escribe el script.
 
-**No tienes que acordarte de qué llenar en cada caso.** En una fila de **Lima**,
-las columnas `DNI` y `Clave Shalom` se ven grises y apagadas; al poner **Shalom**
-en `Envío` se encienden y te piden que las llenes. El `Saldo` sale en rojo
-mientras haya algo por cobrar y en verde tachado apenas marcas `Pagado`.
+### Las dos celdas que llevan dos cosas
+
+**`DNI / WSP`** — escribe lo que tengas: `45781234 / 987654321`, o solo el
+celular, o solo el DNI. El celular se reconoce solo, porque en Perú son nueve
+dígitos que empiezan en 9 y un DNI son ocho. También entiende `+51 987 654 321`.
+Si no hay celular, la fila simplemente no tendrá botón de *Avisar*.
+
+**`Clave Shalom / Notas`** — la clave **primero**, tus notas después de la
+barra: `4821 / pidió factura, llamar en la tarde`.
+
+> De esa celda, a la página del cliente **solo llega la clave**, y solo si lo
+> que va antes de la barra parece una clave: corta, sin espacios y sin signos.
+> Si escribes solo notas, la página no publica nada — ante la duda prefiere
+> callarse, porque la alternativa sería publicar lo que escribes de tus clientes
+> en una página sin login.
+
+### Una sola columna de estado
+
+`Estado` es lo único que actualizas conforme avanza el envío. No hay una
+casilla de «Pagado» aparte: **`Pagado` es el último paso del recorrido**, porque
+recoger y cobrar son el mismo momento y dos columnas obligaban a acordarse de
+tocar las dos.
+
+El saldo se ve rojo mientras el estado no sea `Pagado`, y verde tachado en
+cuanto lo marcas. En una fila de **Lima**, la celda de `Clave Shalom / Notas`
+se ve gris y apagada; al poner **Shalom** en `Envío` se enciende.
 
 **Columnas de solo lectura:** `Alerta`, `Avisar` y `Voucher` son `ARRAYFORMULA`
 que viven en la fila 2 y cubren toda la columna — es lo que hace que una venta
@@ -179,15 +195,16 @@ una de esas tres, rompes esa columna entera; para arreglarla, vuelve a correr
 
 ## Qué hace cada opción del menú
 
-Son seis y **ninguna es para el día a día**: marcar un estado, avisar al cliente
-o subir el voucher se hacen desde la propia fila. Un menú al que hay que volver
-todos los días es un menú mal hecho.
+Ninguna es para el día a día: marcar un estado, avisar al cliente o subir el
+voucher se hacen desde la propia fila. Un menú al que hay que volver todos los
+días es un menú mal hecho.
 
 | Menú | Qué hace |
 |---|---|
-| **Preparar hoja de Ventas** | Crea o pone al día la pestaña, los desplegables, los colores, las fórmulas, el panel y la carpeta de Drive. Idempotente. |
+| **Preparar hoja de Ventas** | Crea o pone al día la pestaña, el calendario, los desplegables, los colores, las fórmulas, el panel y la carpeta de Drive. Idempotente. |
 | **Revisar y completar la hoja** | Le pone código a las filas que no lo tengan, cambia los códigos repetidos y fecha las ventas que ya estén en agencia. Para después de pegar datos de golpe. |
-| **Abrir panel del celular** | Te da la URL de la Web App. |
+| **Conectar el panel del celular…** | Pega la URL de la Web App para que el botón 📷 funcione. |
+| **Abrir panel del celular** | Te lleva al panel. |
 | **Revisar pendientes de recojo ahora** | Corre a mano la revisión que hace sola cada mañana. |
 | **Activar / Desactivar automatismos** | El autocódigo y la revisión diaria. |
 
@@ -201,9 +218,9 @@ Por eso el mismo proyecto se publica además como **aplicación web**:
 
 1. En el editor: **Implementar → Nueva implementación → Aplicación web**.
 2. **Ejecutar como:** Yo. **Quién tiene acceso:** Solo yo.
-3. Copia la URL y **guárdala en la pantalla de inicio del celular**.
-4. Vuelve al Sheets y corre **Preparar hoja de Ventas** para que el botón 📷 de
-   cada fila apunte al panel.
+3. Copia la URL (termina en `/exec`).
+4. En la hoja: **Ventas → Conectar el panel del celular…** y pégala.
+5. **Guarda esa misma URL en la pantalla de inicio del celular.**
 
 La autenticación es tu propia cuenta de Google. No hay token que pegar ni
 contraseña que se pueda filtrar, y como solo tú tienes acceso, nadie más puede
@@ -213,6 +230,18 @@ El botón 📷 de la hoja abre el panel **ya centrado en esa venta**
 (`?c=TS-K3M582R`), con el botón de subir foto arriba del todo: llegas directo a
 lo tuyo. Sin `?c=`, el panel lista los envíos vivos ordenados por urgencia, y
 cada tarjeta avisa de lo que le falta al envío para que su página sirva de algo.
+
+### Si la columna `Voucher` no muestra links
+
+Dice `⚠️ conecta el panel` en vez de `📷 Subir`. Es el paso 4 de arriba, que
+falta.
+
+El paso existe porque `ScriptApp.getService().getUrl()` —la forma automática de
+saber la URL— devuelve vacío mientras el proyecto no esté desplegado como
+aplicación web, y a veces también después, según cómo quedara la implementación.
+Cuando eso pasa no hay ninguna pista de por qué; pegando la URL a mano, deja de
+depender de esa llamada. Conectarlo reescribe las fórmulas en el momento: no
+hace falta volver a correr *Preparar hoja*.
 
 > Cada vez que cambies el código, **vuelve a implementar** (Implementar → Gestionar
 > implementaciones → editar → Versión nueva). La URL no cambia.
@@ -251,9 +280,6 @@ Van por dos vías, a propósito:
   diario repitiendo lo mismo se vuelve ruido, y en dos semanas dejas de abrirlo
   — que es justo cuando importaba.
 
-El correo llega a la cuenta con la que autorizaste el script, trae el saldo por
-cobrar de cada uno y un link directo para escribirle por WhatsApp.
-
 Los envíos que no van por agencia **no generan alertas**: no hay ningún
 mostrador donde el paquete pueda quedarse esperando.
 
@@ -264,16 +290,14 @@ cobrar), ahora mismo (sin despachar, en camino, esperando recojo, saldo vivo),
 por tipo de envío, por día, y la lista de pendientes de recojo con sus días y su
 saldo.
 
-«Por cobrar» cuenta solo lo que no está pagado ni cancelado: sumar la columna
-entera contaría plata que ya entró.
+«Por cobrar» cuenta solo lo que no está en `Pagado` ni en `Cancelado`: sumar la
+columna entera contaría plata que ya entró.
 
-## Migrar tu Sheet 2 actual
-
-Tu hoja vieja **no se toca**: queda de respaldo.
+## Migrar datos que ya tengas
 
 1. Corre **Preparar hoja de Ventas**.
-2. Copia tus filas y pégalas en `Ventas` empezando en **A2**, columna por
-   columna. **No pegues nada en N, O ni P** — son las calculadas.
+2. Pega tus filas empezando en **A2**, columna por columna. **No pegues nada en
+   G, H ni I** — son las calculadas.
 3. Corre **Revisar y completar la hoja**.
 
 El paso 3 hace falta porque un pegado múltiple no dispara el automatismo del

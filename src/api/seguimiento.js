@@ -6,10 +6,11 @@
  * SOLO lo que el cliente puede ver de su propio envío.
  *
  * Fuera de la respuesta, deliberadamente:
- *   · WhatsApp — el código puede reenviarse; el teléfono no viaja con él.
- *   · DNI      — el cliente ya sabe el suyo. Está en la hoja porque lo pide
- *                Shalom al registrar el envío, no porque haya que enseñárselo.
- *   · Notas    — son notas internas del vendedor sobre el cliente.
+ *   · DNI y WhatsApp — viven en la misma celda que la página nunca manda. El
+ *     cliente ya sabe los suyos; están en la hoja porque los pide Shalom al
+ *     registrar el envío, no para enseñárselos a quien tenga el link.
+ *   · Notas    — son notas internas del vendedor sobre el cliente. Comparten
+ *     celda con la clave, y de esa celda solo sale la clave (ver claveDe).
  *   · Drive ID — la foto se sirve por /v/<código>, nunca por el id de Drive.
  */
 import { buscarVenta } from "../lib/ventas-hoja.js";
@@ -18,8 +19,8 @@ import {
   ESTADO_ESPERANDO,
   ENVIO_AGENCIA,
   pasosDe,
+  claveDe,
   aNumero,
-  esVerdadero,
   diasEsperando,
   alertaDe,
   fechaSuelta
@@ -71,23 +72,19 @@ export function vistaPublica(venta, ahora = new Date()) {
     ? diasEsperando(enDestinoDesde, ahora)
     : null;
 
-  // Si marcó la casilla, no queda nada por cobrar, diga lo que diga la celda
-  // del saldo: la casilla es lo último que tocó y por lo tanto lo más reciente.
-  const saldo = esVerdadero(venta["Pagado"]) ? 0 : Math.max(0, aNumero(venta["Saldo"]));
-
   return {
     codigo: venta["Código"],
-    cliente: venta["Cliente"],
     estado,
     enAgencia,
     // Los pasos viajan desde el servidor porque dependen del tipo de envío:
     // a Lima no se le puede enseñar un "llegó a la agencia" que nunca ocurrirá.
     pasos: pasosDe(venta["Envío"], estado),
-    destino: venta["Destino"],
     // La clave solo aparece cuando ya sirve de algo: antes de que el paquete
     // llegue, enseñarla solo invita a que el cliente vaya a la agencia de balde.
-    clave: enAgencia && estado === ESTADO_ESPERANDO ? venta["Clave Shalom"] : "",
-    saldo,
+    clave: enAgencia && estado === ESTADO_ESPERANDO
+      ? claveDe(venta["Clave Shalom / Notas"])
+      : "",
+    saldo: Math.max(0, aNumero(venta["Saldo"])),
     fecha: venta["Fecha"],
     diasEsperando: dias,
     // Al cliente no le mostramos el escalón de alerta (es para el vendedor),

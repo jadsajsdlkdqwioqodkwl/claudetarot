@@ -397,8 +397,8 @@ const panelHtml = readFileSync(join(root, "apps-script/PANEL.html"), "utf8");
 
 const {
   COLUMNAS_VENTA, COLUMNAS_QUE_SE_ESCRIBEN, ESTADOS_ENVIO, ENVIOS, ENVIO_AGENCIA,
-  ALERTAS_RECOJO, RE_CODIGO, pasosDe, esCodigo, nuevoCodigo, aNumero, esVerdadero,
-  diasEsperando, alertaDe, fechaSuelta, letraVenta
+  ESTADO_FINAL, ALERTAS_RECOJO, RE_CODIGO, pasosDe, esCodigo, nuevoCodigo,
+  telefonoDe, claveDe, aNumero, diasEsperando, alertaDe, fechaSuelta, letraVenta
 } = await import(join(root, "src/lib/ventas.js"));
 const { vistaPublica } = await import(join(root, "src/api/seguimiento.js"));
 
@@ -428,10 +428,11 @@ if (bloqueCol) {
 }
 check("COL_V apunta a las columnas correctas (1-indexado)",
   Object.keys(colV).length === COLUMNAS_VENTA.length &&
-  colV.CODIGO === COLUMNAS_VENTA.indexOf("Código") + 1 &&
+  colV.FECHA === COLUMNAS_VENTA.indexOf("Fecha") + 1 &&
+  colV.CONTACTO === COLUMNAS_VENTA.indexOf("DNI / WSP") + 1 &&
+  colV.CLAVE === COLUMNAS_VENTA.indexOf("Clave Shalom / Notas") + 1 &&
   colV.ESTADO === COLUMNAS_VENTA.indexOf("Estado") + 1 &&
-  colV.PAGADO === COLUMNAS_VENTA.indexOf("Pagado") + 1 &&
-  colV.CLAVE === COLUMNAS_VENTA.indexOf("Clave Shalom") + 1 &&
+  colV.CODIGO === COLUMNAS_VENTA.indexOf("Código") + 1 &&
   colV.DRIVE_ID === COLUMNAS_VENTA.indexOf("Drive ID") + 1 &&
   colV.EN_DESTINO === COLUMNAS_VENTA.indexOf("En destino desde") + 1,
   JSON.stringify(colV));
@@ -443,29 +444,53 @@ check("los tipos de envío coinciden en el Worker y en el script",
 
 /* La hoja tiene que seguir siendo corta: es la queja que la hizo nacer así.
    Si alguna vez hace falta otra columna, que sea una decisión y no un descuido. */
-check("la hoja no pasa de 18 columnas",
-  COLUMNAS_VENTA.length <= 18, `son ${COLUMNAS_VENTA.length}`);
-check("el vendedor solo escribe en 11 columnas o menos",
-  COLUMNAS_QUE_SE_ESCRIBEN.length <= 11, `son ${COLUMNAS_QUE_SE_ESCRIBEN.length}`);
+check("la hoja no pasa de 13 columnas",
+  COLUMNAS_VENTA.length <= 13, `son ${COLUMNAS_VENTA.length}`);
+check("el vendedor solo escribe en 6 columnas o menos",
+  COLUMNAS_QUE_SE_ESCRIBEN.length <= 6, `son ${COLUMNAS_QUE_SE_ESCRIBEN.length}`);
 check("todas las columnas que se escriben existen en la hoja",
   COLUMNAS_QUE_SE_ESCRIBEN.every((c) => COLUMNAS_VENTA.includes(c)));
 check("las columnas que se rellenan solas no están en la lista de escribir",
   ["Fecha", "Código", "Alerta", "Avisar", "Voucher", "Drive ID", "En destino desde"]
     .every((c) => !COLUMNAS_QUE_SE_ESCRIBEN.includes(c)));
 
+/* El orden importa: es lo que el vendedor pidió, y una columna que se cuela en
+   medio le rompe el recorrido de izquierda a derecha con el que trabaja. */
+check("el orden de las columnas es el acordado",
+  COLUMNAS_VENTA.join("|") === [
+    "Fecha", "DNI / WSP", "Envío", "Adelanto", "Saldo", "Clave Shalom / Notas",
+    "Alerta", "Avisar", "Voucher", "Estado",
+    "Código", "En destino desde", "Drive ID"
+  ].join("|"), COLUMNAS_VENTA.join(" · "));
+check("la plomería queda al final y oculta",
+  ventasGs.includes("hideColumns(PRIMERA_OCULTA_V") &&
+  COLUMNAS_VENTA.slice(-3).join("|") === "Código|En destino desde|Drive ID");
+
+/* La fecha con calendario: el formato de fecha por sí solo no lo saca. */
+check("la fecha tiene calendario",
+  /datos\(COL_V\.FECHA\)\.setDataValidation\(/.test(ventasGs) &&
+  ventasGs.includes("requireDate()"));
+
 /* Los botones viven EN la fila, como fórmulas. Es lo que evita el diálogo. */
 for (const [columna, marca] of [["ALERTA", "ARRAYFORMULA"], ["AVISAR", "HYPERLINK"],
                                 ["VOUCHER", "HYPERLINK"]]) {
   check(`la columna ${columna} se rellena sola`,
     new RegExp(`getRange\\(2, COL_V\\.${columna}\\)[\\s\\S]{0,80}?setFormula`).test(ventasGs) &&
-    new RegExp(`COL_V\\.${columna}\\)[\\s\\S]{0,900}?${marca}`).test(ventasGs));
+    new RegExp(`COL_V\\.${columna}\\)[\\s\\S]{0,1400}?${marca}`).test(ventasGs));
 }
 check("el botón de avisar abre WhatsApp con el mensaje ya escrito",
-  ventasGs.includes('"https://wa.me/"') && ventasGs.includes('"💬 Avisar"'));
+  ventasGs.includes('"https://wa.me/51"') && ventasGs.includes('"💬 Avisar"'));
 check("el botón del voucher lleva al panel centrado en esa venta",
   ventasGs.includes("?c=") && ventasGs.includes("urlDelPanel_()"));
-check("el código de la fila es un link a la página del cliente",
-  /setFormula\('=HYPERLINK\("' \+ SITIO/.test(ventasGs));
+
+/* El link del voucher no aparecía porque getUrl() devuelve vacío mientras el
+   panel no esté desplegado, y no había forma de arreglarlo desde la hoja. */
+check("la URL del panel se puede pegar a mano si getUrl() no la da",
+  ventasGs.includes("conectarPanelMovil") && ventasGs.includes("PROP_PANEL_V"));
+check("conectar el panel reescribe las fórmulas en el momento",
+  /function conectarPanelMovil[\s\S]*?escribirFormulasVentas_\(hojaVentas_\(\)\)/.test(ventasGs));
+check("sin panel conectado la columna Voucher lo dice, no queda muda",
+  ventasGs.includes("⚠️ conecta el panel"));
 
 /* ENCODEURL no funciona dentro de ARRAYFORMULA; el espacio se codifica a mano.
    Se busca la llamada con paréntesis, no la palabra: el comentario que explica
@@ -476,9 +501,10 @@ check("el mensaje de WhatsApp codifica los espacios sin ENCODEURL",
 
 /* El menú es para configurar, no para el día a día. */
 const opcionesMenu = (ventasGs.match(/\.addItem\(/g) || []).length;
-check("el menú no se usa para el trabajo diario", opcionesMenu <= 6, `${opcionesMenu} opciones`);
+check("el menú no se usa para el trabajo diario", opcionesMenu <= 7, `${opcionesMenu} opciones`);
 check("no quedó ningún diálogo de subir voucher",
-  !existsSync(join(root, "apps-script/SUBIR.html")) && !ventasGs.includes('createTemplateFromFile("SUBIR")'));
+  !existsSync(join(root, "apps-script/SUBIR.html")) &&
+  !ventasGs.includes('createTemplateFromFile("SUBIR")'));
 
 /* La línea de tiempo: los textos en la página, qué pasos se dibujan en el Worker. */
 const copiaPagina = [...seguimientoHtml.matchAll(/^\s*"([^"]+)":\s*\{ titulo:/gm)].map((m) => m[1]);
@@ -505,6 +531,9 @@ check("los pasos siempre son un subconjunto del recorrido, en orden",
 check("la página tiene texto para todo paso que el Worker pueda mandar",
   ENVIOS.every((envio) => ESTADOS_ENVIO.every((estado) =>
     pasosDe(envio, estado).every((p) => copiaPagina.includes(p)))));
+check("el recorrido termina en Pagado: recoger y cobrar son el mismo momento",
+  ESTADO_FINAL === "Pagado" && !ESTADOS_ENVIO.includes("Entregado") &&
+  pasosDe(ENVIO_AGENCIA).slice(-1)[0] === ESTADO_FINAL);
 
 const diasGs = [...ventasGs.matchAll(/\{ dias: (\d+), icono/g)].map((m) => Number(m[1]));
 check("los avisos de recojo son los mismos en los dos lados",
@@ -524,14 +553,81 @@ check("un código mal formado se rechaza",
   !esCodigo("TS-I3M582R") && !esCodigo("TS-K3M58R") && !esCodigo("otra-cosa"));
 check("un código en minúsculas o con espacios sigue valiendo", esCodigo(" ts-k3m582r "));
 check("un código repetido al copiar una fila se detecta y se cambia",
-  ventasGs.includes("usados[codigo]") && ventasGs.includes("ponerCodigo_"));
+  ventasGs.includes("usados[codigo]") && ventasGs.includes("parte.repetidas"));
 
-/* Importes y casillas: Sheets no devuelve el número crudo sino lo que se ve. */
+/* "DNI / WSP" es una sola celda: hay que sacar el celular de ahí sin pedirle a
+   nadie que respete un formato. Un DNI son 8 dígitos y un celular 9 que
+   empiezan en 9, así que no se pueden confundir. */
+check("el celular sale de la celda de DNI / WSP",
+  telefonoDe("45781234 / 987654321") === "987654321" &&
+  telefonoDe("987654321") === "987654321" &&
+  telefonoDe("+51 987 654 321") === "987654321",
+  telefonoDe("45781234 / 987654321"));
+check("un DNI solo no se confunde con un celular",
+  telefonoDe("45781234") === "" && telefonoDe("91234567") === "");
+check("sin contacto no hay teléfono", telefonoDe("") === "" && telefonoDe(null) === "");
+/* Los tres sitios que sacan el celular de esa celda —esta librería, la función
+   del panel y la fórmula de la columna «Avisar»— tienen que darse el mismo
+   número. Si divergen, el botón de la hoja escribe a uno y el panel a otro, y
+   el cliente recibe el aviso en un teléfono que no es el suyo.
+
+   No se comparan como texto sino ejecutándolos: la fórmula vive dentro de una
+   cadena con las barras dobladas, y comparar cadenas escapadas es justo el
+   tipo de chequeo que pasa mientras el comportamiento ya cambió. */
+function patronDeGs(fuente, marca) {
+  const trozo = fuente.slice(fuente.indexOf(marca));
+  const limpia = /replace\(\/\[([^\]]+)\]\/g/.exec(trozo);
+  const busca = /\/\(\?:\^\|\\D\)([^/]+)\/\s*\n?\s*\.exec/.exec(trozo);
+  return limpia && busca
+    ? { adornos: new RegExp(`[${limpia[1]}]`, "g"), celular: new RegExp(`(?:^|\\D)${busca[1]}`) }
+    : null;
+}
+const patronGs = patronDeGs(ventasGs, "function celularDe_");
+check("celularDe_ de VENTAS.gs se pudo leer para compararlo", Boolean(patronGs));
+
+/* Y la fórmula de la hoja, que es la tercera copia del mismo patrón. */
+const formulaLimpia = /REGEXREPLACE\(TO_TEXT\(' \+ rContacto \+ '\),"\[([^"]+)\]",""\)/.exec(ventasGs);
+const formulaCelular = /REGEXEXTRACT\(' \+ limpio \+\s*\n?\s*',"([^"]+)"\)/.exec(ventasGs);
+check("la fórmula de «Avisar» se pudo leer para compararla",
+  Boolean(formulaLimpia && formulaCelular));
+
+if (patronGs && formulaLimpia && formulaCelular) {
+  const desdeGs = (t) => {
+    const m = patronGs.celular.exec(String(t).replace(patronGs.adornos, ""));
+    return m ? m[1] : "";
+  };
+  const desdeFormula = (t) => {
+    const adornos = new RegExp(`[${formulaLimpia[1].replace(/\\\\/g, "\\")}]`, "g");
+    const celular = new RegExp(formulaCelular[1].replace(/\\\\/g, "\\"));
+    const m = celular.exec(String(t).replace(adornos, ""));
+    return m ? m[1] : "";
+  };
+  const casos = ["987654321", "45781234 / 987654321", "+51 987 654 321",
+                 "45781234", "10293847987654321", ""];
+  check("el panel de Apps Script saca el mismo celular que el Worker",
+    casos.every((c) => desdeGs(c) === telefonoDe(c)),
+    casos.map((c) => `${c}→${desdeGs(c)}|${telefonoDe(c)}`).join("  "));
+  check("la fórmula de la hoja saca el mismo celular que el Worker",
+    casos.every((c) => desdeFormula(c) === telefonoDe(c)),
+    casos.map((c) => `${c}→${desdeFormula(c)}|${telefonoDe(c)}`).join("  "));
+}
+
+/* "Clave Shalom / Notas" también es una sola celda, y de ahí solo puede salir
+   la clave: la página no tiene login, así que publicar por error una nota
+   interna sería filtrar lo que escribes de tus clientes. */
+check("la clave sale de la celda compartida con las notas",
+  claveDe("4821 / pidió factura") === "4821" && claveDe("AB-1234") === "AB-1234");
+check("una celda con puras notas no publica nada como clave",
+  claveDe("cliente pidió factura") === "" &&
+  claveDe("llamar antes de enviar / urgente") === "" &&
+  claveDe("") === "");
+check("VENTAS.gs parte la celda con la misma regla",
+  ventasGs.includes("claveDe_") && ventasGs.includes("{3,14}"));
+
+/* Importes: Sheets no devuelve el número crudo sino lo que se ve. */
 check('"S/ 1,234.50" se lee como mil doscientos, no como uno',
   aNumero("S/ 1,234.50") === 1234.5, String(aNumero("S/ 1,234.50")));
 check("una celda vacía vale cero", aNumero("") === 0 && aNumero(null) === 0);
-check("una casilla marcada es verdadera y una vacía no",
-  esVerdadero(true) && esVerdadero("TRUE") && !esVerdadero("FALSE") && !esVerdadero(""));
 
 /* Fechas: "05/09/2026" es 5 de setiembre en Perú, no 9 de mayo. */
 check("la fecha de la hoja se lee en formato peruano",
@@ -549,30 +645,28 @@ check("el escalón que gana es el más alto cumplido",
 const ventaDePrueba = {};
 COLUMNAS_VENTA.forEach((c) => { ventaDePrueba[c] = "dato-" + c; });
 Object.assign(ventaDePrueba, {
-  "Código": "TS-K3M582R", "Cliente": "Rosa Quispe", "Estado": "En destino",
-  "Envío": ENVIO_AGENCIA, "DNI": "45781234", "Adelanto": "S/ 50.00", "Saldo": "S/ 89.00",
-  "Pagado": "FALSE", "Destino": "Shalom — Av. El Sol 320", "Clave Shalom": "CLAVE-123",
-  "WhatsApp": "+51987654321", "Notas": "cliente moroso, cobrar antes",
-  "Drive ID": "1AbCdEfGhIjKlMnOpQrS", "En destino desde": "01/09/2026"
+  "Código": "TS-K3M582R", "Estado": "En destino", "Envío": ENVIO_AGENCIA,
+  "DNI / WSP": "45781234 / 987654321", "Adelanto": "S/ 50.00", "Saldo": "S/ 89.00",
+  "Clave Shalom / Notas": "4821 / cliente moroso, cobrar antes",
+  "Drive ID": "1AbCdEfGhIjKlMnOpQrS", "En destino desde": "01/09/2026", "Fecha": "01/09/2026"
 });
 const publica = vistaPublica(ventaDePrueba, new Date("2026-09-08T15:00:00Z"));
 const serializada = JSON.stringify(publica);
 
 check("el seguimiento no expone el WhatsApp del cliente", !serializada.includes("987654321"));
-check("el seguimiento no expone las notas internas", !serializada.includes("moroso"));
 check("el seguimiento no expone el DNI", !serializada.includes("45781234"));
+check("el seguimiento no expone las notas que comparten celda con la clave",
+  !serializada.includes("moroso"));
 check("el seguimiento no expone el id de Drive", !serializada.includes("1AbCdEfGhIjKlMnOpQrS"));
+check("de la celda compartida solo sale la clave", publica.clave === "4821");
 check("el saldo sale de la hoja tal cual", publica.saldo === 89, String(publica.saldo));
 check("la foto se ofrece por código, no por Drive", publica.voucher === "/v/TS-K3M582R");
-check("en destino sí se muestra la clave de recojo", publica.clave === "CLAVE-123");
 check("a los 7 días esperando se le pide al cliente que se apure",
   publica.diasEsperando === 7 && publica.apurar === true);
 
-/* La casilla "Pagado" es lo último que tocó el vendedor, así que manda sobre
-   la celda del saldo: si no, cobrar y olvidar borrar el saldo le pedía plata
-   al cliente en su cara. */
-check("si la casilla Pagado está marcada, no queda saldo",
-  vistaPublica({ ...ventaDePrueba, "Pagado": "TRUE" }).saldo === 0);
+/* Cobrado es el final del recorrido, así que ya no queda saldo que enseñar. */
+check("una venta ya cobrada no le pide plata al cliente",
+  vistaPublica({ ...ventaDePrueba, "Estado": ESTADO_FINAL, "Saldo": "" }).saldo === 0);
 
 /* Antes de llegar, la clave no sirve para nada y solo invita a ir de balde. */
 const enCamino = vistaPublica({ ...ventaDePrueba, "Estado": "En camino" });
@@ -590,6 +684,22 @@ const enCasaEnCamino = vistaPublica({ ...ventaDePrueba, "Envío": "Lima", "Estad
 check("los pasos del envío viajan al navegador, no los adivina la página",
   Array.isArray(publica.pasos) && publica.pasos.length > enCasaEnCamino.pasos.length,
   publica.pasos.join(" → ") + "  vs  " + enCasaEnCamino.pasos.join(" → "));
+
+/* El aviso del flete y el mensaje que manda el cliente al ir a recoger. */
+check("la página avisa de escribir antes de ir a la agencia",
+  /Escríbenos el mismo día o un día antes/.test(seguimientoHtml) &&
+  seguimientoHtml.includes("48 horas antes"));
+check("ese aviso solo sale cuando hay agencia y el paquete ya llegó",
+  /function pintarFlete[\s\S]{0,220}?estado !== "En destino" \|\| !e\.enAgencia\) return/
+    .test(seguimientoHtml));
+check("el botón de WhatsApp pide cubrir el flete al ir a recoger",
+  seguimientoHtml.includes("cubrir mi garantía de envío gratis") &&
+  seguimientoHtml.includes("Avisar que voy a recoger"));
+
+/* La hoja ya no guarda el nombre del cliente: la página no puede pedirlo. */
+check("la página no espera un nombre que la hoja ya no guarda",
+  !/e\.cliente/.test(seguimientoHtml) && !/e\.destino/.test(seguimientoHtml));
+check("el panel tampoco", !/e\.cliente|e\.destino\b/.test(panelHtml));
 
 /* Privacidad de la página: la URL ES la llave del envío. */
 check("la página de seguimiento no lleva el pixel de Meta",
@@ -644,8 +754,8 @@ check("el panel se puede abrir centrado en una sola venta",
 const sitio = /const SITIO = "([^"]+)"/.exec(ventasGs)?.[1] || "";
 check("el dominio del seguimiento va sin barra final y por HTTPS",
   sitio.startsWith("https://") && !sitio.endsWith("/"), sitio);
-check("Ventas llega más allá de la Z, y letraVenta lo sabe",
-  COLUMNAS_VENTA.length > 26 ? letraVenta(26) === "AA" : letraVenta(17) === "R");
+check("las letras de columna llegan hasta la última de la hoja",
+  letraVenta(COLUMNAS_VENTA.length - 1) === "M");
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

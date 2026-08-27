@@ -4,9 +4,9 @@
  * Una pestaña "Ventas" donde cada fila es una venta, y una página pública de
  * seguimiento para el cliente: https://…/TS-K3M582R
  *
- * La hoja es corta a propósito. De sus 16 columnas visibles **solo se escriben
- * 10**, y tres de esas son un clic (dos desplegables y una casilla). Fecha,
- * código, alerta de recojo y los dos botones de la fila se rellenan solos.
+ * **Registrar una venta es escribir el DNI y el celular en una celda.** Fecha,
+ * código, envío y estado se ponen solos, y los botones de la fila salen con
+ * ellos. En total se escriben cinco celdas por venta, dos de ellas de un clic.
  *
  * Los botones viven EN la fila, como fórmulas HYPERLINK: un clic y ya. No hay
  * ningún diálogo que abrir ni ninguna venta que elegir de una lista — la fila
@@ -34,6 +34,8 @@ const SITIO = "https://kit-tarot-para-principiantes.tarotperu.store";
 /** Carpeta de Drive donde van las fotos de los vouchers. */
 const CARPETA_VOUCHERS = "Vouchers de envío — Tarot Store Perú";
 const PROP_CARPETA_V = "VENTAS_CARPETA_ID";
+/** La URL del panel, si la pegaste a mano porque getUrl() no la daba. */
+const PROP_PANEL_V = "VENTAS_PANEL_URL";
 
 /**
  * Las columnas, 1-indexadas como las pide getRange.
@@ -42,18 +44,18 @@ const PROP_CARPETA_V = "VENTAS_CARPETA_ID";
  * lee la clave de Shalom en la columna del saldo y nadie se entera.
  */
 const COL_V = {
-  FECHA: 1, CODIGO: 2, CLIENTE: 3, WHATSAPP: 4, ENVIO: 5, DNI: 6,
-  ADELANTO: 7, SALDO: 8, PAGADO: 9, DESTINO: 10, CLAVE: 11, ESTADO: 12,
-  NOTAS: 13, ALERTA: 14, AVISAR: 15, VOUCHER: 16,
-  EN_DESTINO: 17, DRIVE_ID: 18
+  FECHA: 1, CONTACTO: 2, ENVIO: 3, ADELANTO: 4, SALDO: 5, CLAVE: 6,
+  ALERTA: 7, AVISAR: 8, VOUCHER: 9, ESTADO: 10,
+  CODIGO: 11, EN_DESTINO: 12, DRIVE_ID: 13
 };
-const TOTAL_COLUMNAS_V = 18;
+const TOTAL_COLUMNAS_V = 13;
+/** Las tres últimas son plomería y se ocultan. */
+const PRIMERA_OCULTA_V = COL_V.CODIGO;
 
 const ENCABEZADOS_V = [
-  "Fecha", "Código", "Cliente", "WhatsApp", "Envío", "DNI",
-  "Adelanto", "Saldo", "Pagado", "Destino", "Clave Shalom", "Estado",
-  "Notas", "Alerta", "Avisar", "Voucher",
-  "En destino desde", "Drive ID"
+  "Fecha", "DNI / WSP", "Envío", "Adelanto", "Saldo", "Clave Shalom / Notas",
+  "Alerta", "Avisar", "Voucher", "Estado",
+  "Código", "En destino desde", "Drive ID"
 ];
 
 /** Cómo sale el paquete. Decide qué pide la hoja y qué le dice la página. */
@@ -61,10 +63,15 @@ const ENVIOS_V = ["Lima", "Shalom", "Dinsides"];
 const ENVIO_POR_DEFECTO_V = "Lima";
 const ENVIO_AGENCIA_V = "Shalom";
 
-/** El recorrido del envío. La página de seguimiento lo repite. */
-const ESTADOS_V = ["Pendiente", "En camino", "En destino", "Entregado", "Cancelado"];
+/**
+ * El recorrido, en una sola columna. No hay "Entregado" aparte de "Pagado":
+ * un paquete recogido es un paquete cobrado, y dos columnas para el mismo
+ * momento obligaban a acordarse de tocar las dos.
+ */
+const ESTADOS_V = ["Pendiente", "En camino", "En destino", "Pagado", "Cancelado"];
 const ESTADO_INICIAL_V = "Pendiente";
 const ESTADO_ESPERANDO_V = "En destino";
+const ESTADO_FINAL_V = "Pagado";
 
 /**
  * Los avisos de recojo. Cada escalón se muestra en la columna "Alerta" y, el
@@ -84,9 +91,9 @@ const ZONA = "America/Lima";
 /**
  * Cuelga el menú "Ventas". Lo llama onOpen() de CRM.gs.
  *
- * Son seis opciones y ninguna es para el día a día: marcar un estado, avisar
- * al cliente o subir el voucher se hacen desde la propia fila. Un menú al que
- * hay que volver todos los días es un menú mal hecho.
+ * Ninguna opción es para el día a día: marcar un estado, avisar al cliente o
+ * subir el voucher se hacen desde la propia fila. Un menú al que hay que
+ * volver todos los días es un menú mal hecho.
  *
  * @param {GoogleAppsScript.Base.Ui} ui
  */
@@ -95,6 +102,7 @@ function menuVentas_(ui) {
     .addItem("Preparar hoja de Ventas", "prepararHojaVentas")
     .addItem("Revisar y completar la hoja", "revisarHojaVentas")
     .addSeparator()
+    .addItem("Conectar el panel del celular…", "conectarPanelMovil")
     .addItem("Abrir panel del celular", "abrirPanelMovil")
     .addItem("Revisar pendientes de recojo ahora", "revisarPendientesDeRecojo")
     .addSeparator()
@@ -108,7 +116,7 @@ function menuVentas_(ui) {
 /**
  * Deja la pestaña "Ventas" lista para trabajar. Idempotente: córrela las veces
  * que quieras y siempre termina igual. Vuelve a correrla también después de
- * publicar el panel del celular, para que el botón 📷 apunte a él.
+ * conectar el panel del celular, para que el botón 📷 apunte a él.
  */
 function prepararHojaVentas() {
   const ui = SpreadsheetApp.getUi();
@@ -132,7 +140,7 @@ function prepararHojaVentas() {
   formatearVentas_(hoja);
   escribirFormulasVentas_(hoja);
   colorearVentas_(hoja);
-  hecho.push("Columnas, desplegables, colores y botones al día.");
+  hecho.push("Columnas, calendario, desplegables, colores y botones al día.");
 
   construirPanelVentas_(libro);
   hecho.push('Pestaña "' + HOJA_PANEL_V + '" al día.');
@@ -146,9 +154,10 @@ function prepararHojaVentas() {
   hecho.push(
     urlDelPanel_()
       ? "Botón 📷 conectado al panel del celular."
-      : "⚠️ El botón 📷 todavía no funciona: falta publicar el panel del celular.\n" +
-        "   Implementar → Nueva implementación → Aplicación web\n" +
-        "   (Ejecutar como: Yo · Acceso: Solo yo), y vuelve a correr esta opción."
+      : "⚠️ La columna Voucher NO tiene links todavía: falta conectar el panel.\n" +
+        "   Publícalo (Implementar → Nueva implementación → Aplicación web,\n" +
+        "   Ejecutar como: Yo · Acceso: Solo yo), copia su URL, y corre\n" +
+        "   Ventas → Conectar el panel del celular…"
   );
 
   ui.alert("Ventas", hecho.join("\n"), ui.ButtonSet.OK);
@@ -156,7 +165,7 @@ function prepararHojaVentas() {
 
 function formatearVentas_(hoja) {
   hoja.setFrozenRows(1);
-  hoja.setFrozenColumns(3);
+  hoja.setFrozenColumns(2);
 
   hoja.getRange(1, 1, 1, TOTAL_COLUMNAS_V)
     .setFontWeight("bold")
@@ -167,14 +176,14 @@ function formatearVentas_(hoja) {
   const filas = Math.max(hoja.getMaxRows() - 1, 1);
   const datos = function (col) { return hoja.getRange(2, col, filas, 1); };
 
-  datos(COL_V.FECHA).setNumberFormat("dd/mm");
+  datos(COL_V.FECHA).setNumberFormat("dd/mm/yyyy");
   datos(COL_V.EN_DESTINO).setNumberFormat("dd/mm/yyyy");
   [COL_V.ADELANTO, COL_V.SALDO].forEach(function (c) {
     datos(c).setNumberFormat('"S/ "#,##0.00');
   });
-  // El WhatsApp y el DNI como texto: como números, Sheets se come el 0 o el 9
-  // del principio y el número deja de servir para nada.
-  [COL_V.WHATSAPP, COL_V.DNI, COL_V.CLAVE, COL_V.CODIGO].forEach(function (c) {
+  // DNI, celular y clave como texto: como números, Sheets se come el 0 o el 9
+  // del principio y el dato deja de servir para nada.
+  [COL_V.CONTACTO, COL_V.CLAVE, COL_V.CODIGO].forEach(function (c) {
     datos(c).setNumberFormat("@");
   });
 
@@ -185,31 +194,28 @@ function formatearVentas_(hoja) {
   datos(COL_V.ENVIO).setDataValidation(lista(ENVIOS_V));
   datos(COL_V.ESTADO).setDataValidation(lista(ESTADOS_V));
 
-  // "Pagado" es una casilla y no un sí/no escrito: un clic, y en el celular
-  // se puede marcar con el pulgar sin abrir ningún teclado.
-  datos(COL_V.PAGADO).insertCheckboxes().setHorizontalAlignment("center");
+  // El calendario de la fecha. La validación de fecha es lo que hace aparecer
+  // el selector al hacer doble clic; con el formato de fecha a secas no sale.
+  // allowInvalid queda en true para que escribir "12/3" a mano no dé un error
+  // rojo: Sheets lo interpreta igual y la fecha queda bien.
+  datos(COL_V.FECHA).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).build()
+  );
 
   const anchos = {};
-  anchos[COL_V.FECHA] = 60;
-  anchos[COL_V.CODIGO] = 105;
-  anchos[COL_V.CLIENTE] = 165;
-  anchos[COL_V.WHATSAPP] = 105;
+  anchos[COL_V.FECHA] = 100;
+  anchos[COL_V.CONTACTO] = 185;
   anchos[COL_V.ENVIO] = 95;
-  anchos[COL_V.DNI] = 95;
   anchos[COL_V.ADELANTO] = 95;
   anchos[COL_V.SALDO] = 95;
-  anchos[COL_V.PAGADO] = 70;
-  anchos[COL_V.DESTINO] = 215;
-  anchos[COL_V.CLAVE] = 105;
-  anchos[COL_V.ESTADO] = 110;
-  anchos[COL_V.NOTAS] = 220;
+  anchos[COL_V.CLAVE] = 280;
   anchos[COL_V.ALERTA] = 215;
   anchos[COL_V.AVISAR] = 95;
   anchos[COL_V.VOUCHER] = 105;
+  anchos[COL_V.ESTADO] = 115;
   Object.keys(anchos).forEach(function (c) { hoja.setColumnWidth(Number(c), anchos[c]); });
 
-  // Plomería: la escribe el script y nadie la mira.
-  hoja.hideColumns(COL_V.EN_DESTINO, 2);
+  hoja.hideColumns(PRIMERA_OCULTA_V, TOTAL_COLUMNAS_V - PRIMERA_OCULTA_V + 1);
 
   const filtro = hoja.getFilter();
   if (filtro) filtro.remove();
@@ -223,13 +229,13 @@ function formatearVentas_(hoja) {
  * fórmula por fila. Es la única forma de que una venta nueva salga con sus
  * botones ya puestos sin que nadie arrastre nada hacia abajo.
  *
- * El precio: si escribes a mano en N, O o P rompes el array de esa columna.
+ * El precio: si escribes a mano en G, H o I rompes el array de esa columna.
  * Son columnas de solo lectura; para repararlas, vuelve a correr Preparar hoja.
  */
 function escribirFormulasVentas_(hoja) {
   const r = function (letra) { return "$" + letra + "$2:$" + letra; };
-  const rCodigo = r("B"), rCliente = r("C"), rTelefono = r("D"), rEnvio = r("E");
-  const rDestino = r("J"), rEstado = r("L"), rDesde = r("Q"), rDrive = r("R");
+  const rContacto = r("B"), rEnvio = r("C"), rEstado = r("J");
+  const rCodigo = r("K"), rDesde = r("L"), rDrive = r("M");
 
   const link = '"' + SITIO + '/"&' + rCodigo;
 
@@ -248,33 +254,39 @@ function escribirFormulasVentas_(hoja) {
   );
 
   /* ── Botón «Avisar»: WhatsApp con el mensaje ya escrito ─────────── */
-  const soloDigitos = 'REGEXREPLACE(TO_TEXT(' + rTelefono + '),"\\D","")';
-  // Nueve dígitos que empiezan en 9 es un celular peruano; lo demás se respeta
-  // tal cual, por si algún día vendes fuera.
-  const telefono = 'IF(LEN(' + soloDigitos + ')=9,"51","")&' + soloDigitos;
+  // El celular sale de la celda "DNI / WSP" sin pedirle a nadie que respete
+  // ningún formato. Primero se quita lo que adorna un número —espacios, puntos,
+  // paréntesis y el "+"— para que "+51 987 654 321" siga siendo un número; la
+  // barra y el guion se dejan porque acá separan el DNI del celular. Después se
+  // exige que el número esté rodeado de algo que no sea un dígito: sin eso,
+  // "10293847987654321" da un falso positivo con un 9 de en medio.
+  //
+  // Es el mismo patrón que telefonoDe() en src/lib/ventas.js. Si dijeran cosas
+  // distintas, este botón escribiría a un número y el panel a otro.
+  const limpio = 'REGEXREPLACE(TO_TEXT(' + rContacto + '),"[\\s.()+]","")';
+  const celular = 'IFERROR(REGEXEXTRACT(' + limpio +
+    ',"(?:^|\\D)(?:51)?(9\\d{8})(?:\\D|$)"),"")';
 
-  const hola = '"Hola "&' + rCliente + '&"! "';
   const enAgencia = "(" + rEnvio + '="' + ENVIO_AGENCIA_V + '")';
-
   const mensaje =
     'IF(' + rEstado + '="' + ESTADO_ESPERANDO_V + '",' +
       "IF(" + enAgencia + "," +
-        hola + '&"Tu pedido ya llegó a "&' + rDestino + '&" y puedes recogerlo. ' +
-          'Lleva tu DNI físico. Acá está tu clave de recojo y todo lo que necesitas: "&' + link + "," +
-        hola + '&"Tu pedido ya llegó a su destino. Acá puedes ver los detalles: "&' + link +
+        '"Hola! Tu pedido ya llegó a la agencia y puedes recogerlo. Lleva tu DNI físico. ' +
+          'Acá está tu clave de recojo y todo lo que necesitas saber: "&' + link + "," +
+        '"Hola! Tu pedido ya llegó a su destino. Acá puedes ver los detalles: "&' + link +
       ")," +
     "IF(" + rEstado + '="En camino",' +
-      hola + '&"Tu pedido ya salió. Te aviso apenas llegue. Puedes seguirlo acá: "&' + link + "," +
-    "IF(" + rEstado + '="Entregado",' +
-      hola + '&"Confirmo que ya recogiste tu pedido. Cualquier cosa me escribes.",' +
-      hola + '&"Ya tengo registrado tu pedido. Acá puedes ver su estado cuando quieras: "&' + link +
+      '"Hola! Tu pedido ya salió. Te aviso apenas llegue. Puedes seguirlo acá: "&' + link + "," +
+    "IF(" + rEstado + '="' + ESTADO_FINAL_V + '",' +
+      '"Hola! Confirmo que ya recogiste tu pedido y quedamos al día. Cualquier cosa me escribes.",' +
+      '"Hola! Ya tengo registrado tu pedido. Acá puedes ver su estado cuando quieras: "&' + link +
     ")))";
 
   // Nada de ENCODEURL: no funciona dentro de ARRAYFORMULA. Como el texto lo
   // escribimos nosotros y no lleva &, ? ni #, basta con codificar el espacio.
   hoja.getRange(2, COL_V.AVISAR).setFormula(
-    '=ARRAYFORMULA(IF((' + rCodigo + '="")+(' + rTelefono + '=""),"",' +
-    'HYPERLINK("https://wa.me/"&' + telefono + '&"?text="&' +
+    '=ARRAYFORMULA(IF((' + rCodigo + '="")+(' + celular + '=""),"",' +
+    'HYPERLINK("https://wa.me/51"&' + celular + '&"?text="&' +
     'SUBSTITUTE(' + mensaje + '," ","%20"),"💬 Avisar")))'
   );
 
@@ -284,7 +296,7 @@ function escribirFormulasVentas_(hoja) {
     panel
       ? '=ARRAYFORMULA(IF(' + rCodigo + '="","",HYPERLINK("' + panel + '?c="&' + rCodigo +
         ',IF(' + rDrive + '="","📷 Subir","📷 Cambiar"))))'
-      : '=ARRAYFORMULA(IF(' + rCodigo + '="","","📷 publica el panel"))'
+      : '=ARRAYFORMULA(IF(' + rCodigo + '="","","⚠️ conecta el panel"))'
   );
 }
 
@@ -297,43 +309,43 @@ function colorearVentas_(hoja) {
   const reglas = [];
 
   /* Lo que no aplica se apaga. Es lo que hace que no tengas que acordarte de
-     qué llenar: en una fila de Lima, DNI y Clave Shalom se ven grises; en una
-     de Shalom se encienden y te piden que las llenes. */
+     qué llenar: en una fila de Lima la clave de Shalom se ve gris; en una de
+     Shalom se enciende y te pide que la llenes. */
   reglas.push(
     regla()
-      .whenFormulaSatisfied('=$E2<>"' + ENVIO_AGENCIA_V + '"')
-      .setBackground("#F3F3F3").setFontColor("#CCCCCC")
-      .setRanges([columna(COL_V.DNI), columna(COL_V.CLAVE)])
+      .whenFormulaSatisfied('=AND($C2<>"",$C2<>"' + ENVIO_AGENCIA_V + '")')
+      .setBackground("#F3F3F3").setFontColor("#BBBBBB")
+      .setRanges([columna(COL_V.CLAVE)])
       .build()
   );
 
-  /* El saldo: verde y tachado si ya cobraste, rojo si todavía no. */
+  /* El saldo: verde y tachado cuando ya cobraste, rojo mientras no. */
   reglas.push(
-    regla().whenFormulaSatisfied("=$I2=TRUE")
+    regla().whenFormulaSatisfied('=$J2="' + ESTADO_FINAL_V + '"')
       .setBackground("#E2F6E4").setFontColor("#1E7B34").setStrikethrough(true)
       .setRanges([columna(COL_V.SALDO)]).build()
   );
   reglas.push(
-    regla().whenFormulaSatisfied("=AND($I2<>TRUE,N($H2)>0)")
+    regla().whenFormulaSatisfied('=AND($J2<>"' + ESTADO_FINAL_V + '",N($E2)>0)')
       .setFontColor("#C62828").setBold(true)
       .setRanges([columna(COL_V.SALDO)]).build()
   );
 
   /* La alerta grave, imposible de pasar por alto. */
   reglas.push(
-    regla().whenFormulaSatisfied('=OR(LEFT($N2,1)="🔴",LEFT($N2,1)="⛔")')
+    regla().whenFormulaSatisfied('=OR(LEFT($G2,1)="🔴",LEFT($G2,1)="⛔")')
       .setBackground("#FDE2E0").setFontColor("#B3261E").setBold(true)
       .setRanges([columna(COL_V.ALERTA)]).build()
   );
 
   /* Y la fila entera según el estado, para leer la lista de un vistazo. */
   const porEstado = function (estado, color) {
-    return regla().whenFormulaSatisfied('=$L2="' + estado + '"')
+    return regla().whenFormulaSatisfied('=$J2="' + estado + '"')
       .setBackground(color).setRanges([todo]).build();
   };
   reglas.push(porEstado("En camino", "#E3F0FD"));
   reglas.push(porEstado(ESTADO_ESPERANDO_V, "#FFF4E5"));
-  reglas.push(porEstado("Entregado", "#F4F4F4"));
+  reglas.push(porEstado(ESTADO_FINAL_V, "#F4F4F4"));
   reglas.push(porEstado("Cancelado", "#EDEDED"));
 
   // Se reemplazan todas para que la rutina sea idempotente: si no, cada corrida
@@ -359,13 +371,13 @@ function construirPanelVentas_(libro) {
 
   const V = "'" + HOJA_VENTAS + "'!";
   const r = function (letra) { return V + "$" + letra + "$2:$" + letra; };
-  const rFecha = r("A"), rCodigo = r("B"), rCliente = r("C"), rEnvio = r("E");
-  const rAdelanto = r("G"), rSaldo = r("H"), rPagado = r("I"), rDestino = r("J");
-  const rEstado = r("L"), rAlerta = r("N"), rDesde = r("Q");
+  const rFecha = r("A"), rContacto = r("B"), rEnvio = r("C"), rAdelanto = r("D");
+  const rSaldo = r("E"), rAlerta = r("G"), rEstado = r("J"), rCodigo = r("K"), rDesde = r("L");
 
-  // Lo que de verdad falta por cobrar: el saldo de lo que no está pagado ni
+  // Lo que de verdad falta por cobrar: el saldo de lo que no está cobrado ni
   // cancelado. Sumar la columna entera contaría plata que ya entró.
-  const porCobrar = "SUMIFS(" + rSaldo + "," + rPagado + ",FALSE," + rEstado + ',"<>Cancelado")';
+  const porCobrar = "SUMIFS(" + rSaldo + "," + rEstado + ',"<>' + ESTADO_FINAL_V +
+    '",' + rEstado + ',"<>Cancelado")';
   const hoy = function (rango) {
     return "SUMIFS(" + rango + "," + rFecha + ',">="&TODAY(),' + rFecha + ',"<"&TODAY()+1)';
   };
@@ -399,8 +411,8 @@ function construirPanelVentas_(libro) {
       envio,
       "=COUNTIF(" + rEnvio + "," + e + ")",
       "=SUMIF(" + rEnvio + "," + e + "," + rAdelanto + ")",
-      "=SUMIFS(" + rSaldo + "," + rEnvio + "," + e + "," + rPagado + ",FALSE," +
-        rEstado + ',"<>Cancelado")'
+      "=SUMIFS(" + rSaldo + "," + rEnvio + "," + e + "," + rEstado + ',"<>' +
+        ESTADO_FINAL_V + '",' + rEstado + ',"<>Cancelado")'
     ];
   });
   panel.getRange(17, 1, filasEnvio.length, 4).setValues(filasEnvio);
@@ -426,12 +438,12 @@ function construirPanelVentas_(libro) {
 
   /* ── Pendientes de recojo (columnas F–J, crece hacia abajo) ──────── */
   panel.getRange("F4").setValue("PENDIENTES DE RECOJO");
-  panel.getRange("F5:K5")
-    .setValues([["Código", "Cliente", "Dónde", "Días", "Alerta", "Saldo"]]);
+  panel.getRange("F5:J5")
+    .setValues([["Código", "DNI / WSP", "Días", "Alerta", "Saldo"]]);
 
-  // Los días van DENTRO del array y se ordena por su posición (la 4), no por un
+  // Los días van DENTRO del array y se ordena por su posición (la 3), no por un
   // rango aparte. SORT admite una columna externa, pero tiene que medir lo mismo
-  // que lo que ordena, y aquí FILTER ya recortó las filas: pasarle la columna Q
+  // que lo que ordena, y aquí FILTER ya recortó las filas: pasarle la columna L
   // entera daba un error de dimensiones que el IFERROR se tragaba, dejando el
   // bloque diciendo "nada pendiente" para siempre.
   //
@@ -440,9 +452,8 @@ function construirPanelVentas_(libro) {
   const diasEspera = "IF(" + rDesde + '="","",TODAY()-INT(' + rDesde + "))";
   panel.getRange("F6").setFormula(
     "=IFERROR(SORT(FILTER(ARRAYFORMULA({" +
-      rCodigo + "," + rCliente + "," + rDestino + "," + diasEspera + "," +
-      rAlerta + "," + rSaldo +
-    "})," + rEstado + '="' + ESTADO_ESPERANDO_V + '",' + rDesde + '<>""),4,FALSE),' +
+      rCodigo + "," + rContacto + "," + diasEspera + "," + rAlerta + "," + rSaldo +
+    "})," + rEstado + '="' + ESTADO_ESPERANDO_V + '",' + rDesde + '<>""),3,FALSE),' +
     '"Nada pendiente de recojo 🎉")'
   );
 
@@ -452,7 +463,7 @@ function construirPanelVentas_(libro) {
   ["A4", "A9", "A15", "F4", "A" + filaDia].forEach(function (celda) {
     panel.getRange(celda).setFontWeight("bold").setFontColor("#068988").setFontSize(11);
   });
-  [panel.getRange("A16:D16"), panel.getRange("F5:K5"),
+  [panel.getRange("A16:D16"), panel.getRange("F5:J5"),
    panel.getRange(filaDia + 1, 1, 1, 4)].forEach(function (rango) {
     rango.setFontWeight("bold").setFontColor("#ffffff").setBackground("#111111");
   });
@@ -463,17 +474,16 @@ function construirPanelVentas_(libro) {
   panel.getRange(17, 3, filasEnvio.length, 2).setNumberFormat(soles);
   panel.getRange(filaDia + 2, 3, 400, 2).setNumberFormat(soles);
   panel.getRange(filaDia + 2, 1, 400, 1).setNumberFormat("ddd dd/mm/yyyy");
-  panel.getRange("K6:K400").setNumberFormat(soles);
+  panel.getRange("J6:J400").setNumberFormat(soles);
 
   panel.setColumnWidth(1, 180);
   [2, 3, 4].forEach(function (c) { panel.setColumnWidth(c, 120); });
   panel.setColumnWidth(5, 30);
-  panel.setColumnWidth(6, 110);
-  panel.setColumnWidth(7, 165);
-  panel.setColumnWidth(8, 195);
-  panel.setColumnWidth(9, 60);
-  panel.setColumnWidth(10, 235);
-  panel.setColumnWidth(11, 100);
+  panel.setColumnWidth(6, 115);
+  panel.setColumnWidth(7, 185);
+  panel.setColumnWidth(8, 60);
+  panel.setColumnWidth(9, 235);
+  panel.setColumnWidth(10, 100);
   panel.setFrozenRows(5);
 }
 
@@ -482,9 +492,9 @@ function construirPanelVentas_(libro) {
 /**
  * Disparador instalable sobre la hoja. Hace dos cosas y ninguna te pide nada:
  *
- *  1. Escribes el nombre de un cliente en una fila sin código y la fila se
- *     completa sola: fecha, código —que además queda como link a su página—,
- *     tipo de envío y estado. Registrar una venta es escribir un nombre.
+ *  1. Escribes el DNI o el celular en una fila sin código y la fila se
+ *     completa sola: fecha de hoy, código, tipo de envío y estado. Con eso
+ *     salen los botones de la fila y el cliente ya tiene su página.
  *  2. Mueves el Estado a "En destino" y anota el día. Ese día es el que
  *     cuentan las alertas de 2, 6, 15 y 25 días — sin él, el paquete puede
  *     pasarse un mes en la agencia sin que nadie lo note.
@@ -502,7 +512,7 @@ function alEditarVenta(e) {
   const col = e.range.getColumn();
   if (fila < 2) return;
 
-  if (col === COL_V.CLIENTE && String(e.value || "").trim()) {
+  if (col === COL_V.CONTACTO && String(e.value || "").trim()) {
     completarFila_(hoja, fila);
   }
 
@@ -515,8 +525,7 @@ function alEditarVenta(e) {
 function completarFila_(hoja, fila, usados) {
   if (String(hoja.getRange(fila, COL_V.CODIGO).getValue() || "").trim()) return false;
 
-  const codigo = codigoLibre_(hoja, usados);
-  ponerCodigo_(hoja, fila, codigo);
+  hoja.getRange(fila, COL_V.CODIGO).setValue(codigoLibre_(hoja, usados));
 
   if (!hoja.getRange(fila, COL_V.FECHA).getValue()) {
     hoja.getRange(fila, COL_V.FECHA).setValue(hoy_());
@@ -531,19 +540,8 @@ function completarFila_(hoja, fila, usados) {
 }
 
 /**
- * El código se escribe como enlace a su propia página de seguimiento, así que
- * un clic en la celda abre lo que ve el cliente. La celda sigue leyéndose como
- * el código pelado —getValue() de una fórmula devuelve su resultado—, así que
- * ni el Worker ni las macros se enteran de que hay un HYPERLINK debajo.
- */
-function ponerCodigo_(hoja, fila, codigo) {
-  hoja.getRange(fila, COL_V.CODIGO)
-    .setFormula('=HYPERLINK("' + SITIO + "/" + codigo + '","' + codigo + '")');
-}
-
-/**
  * Anota el día en que el paquete llegó a la agencia. Al salir de "En destino"
- * se borra: si no, un paquete ya entregado seguiría sumando días y disparando
+ * se borra: si no, un paquete ya recogido seguiría sumando días y disparando
  * alertas para siempre.
  */
 function sellarEstado_(hoja, fila, estado) {
@@ -558,7 +556,7 @@ function sellarEstado_(hoja, fila, estado) {
 /**
  * Repasa la hoja entera y arregla lo que el automatismo no pudo:
  *
- *  · Filas con cliente y sin código. Pasa al pegar varias de golpe: un pegado
+ *  · Filas con contacto y sin código. Pasa al pegar varias de golpe: un pegado
  *    múltiple no trae valor y el disparador no puede saber qué cambió.
  *  · Códigos repetidos, que salen de copiar una fila entera. Dos ventas con el
  *    mismo código comparten página de seguimiento, y el cliente ve la del otro.
@@ -578,7 +576,7 @@ function revisarHojaVentas() {
   const parte = { nuevas: 0, repetidas: 0, fechadas: 0 };
 
   filas.forEach(function (f, i) {
-    if (!String(f[COL_V.CLIENTE - 1] || "").trim()) return;
+    if (!String(f[COL_V.CONTACTO - 1] || "").trim()) return;
     const fila = i + 2;
     const codigo = String(f[COL_V.CODIGO - 1] || "").trim().toUpperCase();
 
@@ -586,7 +584,7 @@ function revisarHojaVentas() {
       completarFila_(hoja, fila, usados);
       parte.nuevas++;
     } else if (usados[codigo]) {
-      ponerCodigo_(hoja, fila, codigoLibre_(hoja, usados));
+      hoja.getRange(fila, COL_V.CODIGO).setValue(codigoLibre_(hoja, usados));
       parte.repetidas++;
     } else {
       usados[codigo] = true;
@@ -703,7 +701,7 @@ function revisarPendientesDeRecojo() {
   MailApp.sendEmail({
     to: Session.getEffectiveUser().getEmail(),
     subject: "🔔 " + (cruzaron.length === 1
-      ? "Recojo pendiente: " + cruzaron[0].cliente + " (" + cruzaron[0].dias + " días)"
+      ? "Recojo pendiente: " + cruzaron[0].codigo + " (" + cruzaron[0].dias + " días)"
       : cruzaron.length + " pedidos llevan días sin recoger"),
     htmlBody: correoDePendientes_(cruzaron, esperando)
   });
@@ -727,21 +725,20 @@ function correoDePendientes_(cruzaron, esperando) {
     html += '<div style="border:1.5px solid #E0E0E0;border-left:5px solid #FF2A00;' +
       'border-radius:10px;padding:14px 16px;margin-bottom:12px">' +
       '<div style="font-size:16px;font-weight:bold">' + v.escalon.icono + " " + v.dias +
-      " días · " + escaparHtml_(v.cliente) + "</div>" +
+      " días · " + escaparHtml_(v.codigo) + "</div>" +
       '<div style="font-size:13px;color:#444;margin-top:6px">' +
-      escaparHtml_(v.destino || "") + "</div>" +
-      (v.saldo > 0 && !v.pagado
+      escaparHtml_(v.contacto || "") + "</div>" +
+      (v.saldo > 0
         ? '<div style="font-size:13px;color:#C62828;margin-top:4px"><b>Por cobrar: S/ ' +
           v.saldo.toFixed(2) + "</b></div>"
         : "") +
       '<div style="margin-top:10px;font-size:13px">' +
-      '<a href="https://wa.me/' + telefonoInternacional_(v.telefono) + "?text=" +
-      encodeURIComponent(
-        "Hola " + primerNombre_(v.cliente) + "! Tu pedido sigue esperándote en " +
-        (v.destino || "la agencia") + ". Acá están los detalles: " + SITIO + "/" + v.codigo
-      ) +
-      '" style="color:#25D366;font-weight:bold;text-decoration:none">Escribirle por WhatsApp</a>' +
-      " &nbsp;·&nbsp; " +
+      (v.telefono
+        ? '<a href="https://wa.me/51' + v.telefono + "?text=" +
+          encodeURIComponent(mensajeParaCliente_(v)) +
+          '" style="color:#25D366;font-weight:bold;text-decoration:none">Escribirle por ' +
+          "WhatsApp</a> &nbsp;·&nbsp; "
+        : "") +
       '<a href="' + SITIO + "/" + v.codigo +
       '" style="color:#068988;text-decoration:none">Ver su seguimiento</a></div></div>';
   });
@@ -770,7 +767,7 @@ function avisarSinPendientes_(esperando) {
 /* ═══════════════════════════  Disparadores  ══════════════════════════ */
 
 /**
- * Instala los dos automatismos: el autocódigo al escribir un cliente y la
+ * Instala los dos automatismos: el autocódigo al escribir un contacto y la
  * revisión diaria de recojos. Idempotente: quita los suyos antes de poner.
  */
 function instalarDisparadoresVentas() {
@@ -784,7 +781,7 @@ function instalarDisparadoresVentas() {
   const ui = SpreadsheetApp.getUi();
   ui.alert("Ventas",
     "Listo. Desde ahora:\n\n" +
-    "· Escribes el nombre de un cliente y la fila se completa sola.\n" +
+    "· Escribes el DNI o el celular y la fila se completa sola.\n" +
     "· Mover el Estado a «" + ESTADO_ESPERANDO_V + "» anota el día de llegada.\n" +
     "· Cada mañana reviso los recojos y te escribo a " +
     Session.getEffectiveUser().getEmail() + " cuando alguno cumple " +
@@ -834,16 +831,18 @@ function panelVentasDatos() {
     hoja.getRange(2, 1, ultima - 1, TOTAL_COLUMNAS_V).getValues().forEach(function (fila, i) {
       const estado = String(fila[COL_V.ESTADO - 1] || "").trim();
       if (!String(fila[COL_V.CODIGO - 1] || "").trim()) return;
-      // Entregados y cancelados no se tocan más: el panel es para lo vivo.
-      if (estado === "Entregado" || estado === "Cancelado") return;
+      // Cobrados y cancelados no se tocan más: el panel es para lo vivo.
+      if (estado === ESTADO_FINAL_V || estado === "Cancelado") return;
 
       const venta = ventaDeFila_(fila, i + 2);
       const desde = fila[COL_V.EN_DESTINO - 1];
       venta.dias = desde instanceof Date ? diasDesde_(desde) : null;
       venta.tieneVoucher = Boolean(String(fila[COL_V.DRIVE_ID - 1] || "").trim());
       venta.link = SITIO + "/" + venta.codigo;
-      venta.wa = "https://wa.me/" + telefonoInternacional_(venta.telefono) +
-        "?text=" + encodeURIComponent(mensajeParaCliente_(venta));
+      venta.wa = venta.telefono
+        ? "https://wa.me/51" + venta.telefono + "?text=" +
+          encodeURIComponent(mensajeParaCliente_(venta))
+        : "";
       envios.push(venta);
     });
   }
@@ -876,13 +875,50 @@ function panelVentasCambiarEstado(codigo, estado) {
   return leerVenta_(hoja, fila);
 }
 
-/** Marca el saldo como cobrado desde el panel. */
-function panelVentasMarcarPagado(codigo) {
-  const hoja = hojaVentas_();
-  const fila = filaDeCodigo_(hoja, codigo);
-  if (!fila) throw new Error("No existe la venta " + codigo + ".");
-  hoja.getRange(fila, COL_V.PAGADO).setValue(true);
-  return "Saldo de " + codigo + " marcado como cobrado.";
+/**
+ * Guarda la URL del panel a mano.
+ *
+ * Existe porque ScriptApp.getService().getUrl() devuelve vacío mientras el
+ * proyecto no esté desplegado como aplicación web — y a veces también después,
+ * según cómo quedara la implementación. Cuando eso pasa, la columna Voucher se
+ * queda sin links y no hay forma de saber por qué. Pegando la URL aquí, deja
+ * de depender de esa llamada.
+ */
+function conectarPanelMovil() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+
+  const respuesta = ui.prompt(
+    "Conectar el panel del celular",
+    "Pega la URL de la aplicación web (Implementar → Gestionar implementaciones → " +
+    "copiar la URL; termina en /exec).\n\n" +
+    "Déjalo vacío y acepta para volver a detectarla sola.\n\n" +
+    "Ahora mismo: " + (urlDelPanel_() || "sin conectar"),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (respuesta.getSelectedButton() !== ui.Button.OK) return;
+
+  const url = respuesta.getResponseText().trim();
+  if (!url) {
+    props.deleteProperty(PROP_PANEL_V);
+  } else if (!/^https:\/\/script\.google\.com\/.*\/(exec|dev)$/.test(url)) {
+    ui.alert("Ventas",
+      "Esa no parece la URL del panel. Tiene que empezar por " +
+      "https://script.google.com/ y terminar en /exec.", ui.ButtonSet.OK);
+    return;
+  } else {
+    props.setProperty(PROP_PANEL_V, url);
+  }
+
+  // Reescribir la fórmula es el punto de todo esto: sin este paso la columna
+  // Voucher seguiría con el texto de aviso hasta la próxima Preparar hoja.
+  escribirFormulasVentas_(hojaVentas_());
+
+  ui.alert("Ventas",
+    urlDelPanel_()
+      ? "Panel conectado. La columna Voucher ya tiene sus links.\n\n" + urlDelPanel_()
+      : "Panel desconectado. La columna Voucher vuelve a avisar que falta conectarlo.",
+    ui.ButtonSet.OK);
 }
 
 /** Enseña la URL del panel para abrirla o guardarla en el celular. */
@@ -892,11 +928,11 @@ function abrirPanelMovil() {
 
   if (!url) {
     ui.alert("Panel del celular",
-      "Todavía no está publicado.\n\n" +
-      "En el editor de Apps Script: Implementar → Nueva implementación → " +
-      "Aplicación web → Ejecutar como: Yo · Quién tiene acceso: Solo yo.\n\n" +
-      "Después vuelve a correr «Preparar hoja de Ventas» para que el botón 📷 " +
-      "de cada fila apunte al panel.",
+      "Todavía no está conectado.\n\n" +
+      "1. En el editor: Implementar → Nueva implementación → Aplicación web\n" +
+      "   (Ejecutar como: Yo · Quién tiene acceso: Solo yo).\n" +
+      "2. Copia la URL que te da.\n" +
+      "3. Ventas → Conectar el panel del celular… y pégala.",
       ui.ButtonSet.OK);
     return;
   }
@@ -919,8 +955,10 @@ function abrirPanelMovil() {
   );
 }
 
-/** La URL publicada de la Web App, o "" si todavía no se ha publicado. */
+/** La URL publicada de la Web App, o "" si todavía no se ha conectado. */
 function urlDelPanel_() {
+  const guardada = PropertiesService.getScriptProperties().getProperty(PROP_PANEL_V);
+  if (guardada) return guardada;
   try {
     return ScriptApp.getService().getUrl() || "";
   } catch (err) {
@@ -957,26 +995,61 @@ function ventaDeFila_(v, fila) {
     const n = typeof x === "number" ? x : parseFloat(String(x).replace(/[^\d.-]/g, ""));
     return isNaN(n) ? 0 : n;
   };
-  const pagado = v[COL_V.PAGADO - 1] === true;
+  const contacto = texto(COL_V.CONTACTO);
+  const estado = texto(COL_V.ESTADO);
 
   return {
     fila: fila,
     codigo: texto(COL_V.CODIGO),
-    cliente: texto(COL_V.CLIENTE),
-    telefono: texto(COL_V.WHATSAPP),
+    contacto: contacto,
+    telefono: celularDe_(contacto),
     envio: texto(COL_V.ENVIO),
-    dni: texto(COL_V.DNI),
     adelanto: num(COL_V.ADELANTO),
-    // Si marcó la casilla no queda nada por cobrar, diga lo que diga la celda
-    // del saldo: la casilla es lo último que tocó.
-    saldo: pagado ? 0 : Math.max(0, num(COL_V.SALDO)),
-    pagado: pagado,
-    destino: texto(COL_V.DESTINO),
-    clave: texto(COL_V.CLAVE),
-    estado: texto(COL_V.ESTADO),
-    notas: texto(COL_V.NOTAS),
+    saldo: estado === ESTADO_FINAL_V ? 0 : Math.max(0, num(COL_V.SALDO)),
+    clave: claveDe_(texto(COL_V.CLAVE)),
+    // Las notas sin la clave delante: el panel ya la enseña en su propia línea
+    // y repetirla convierte la nota en ruido.
+    notas: notasDe_(texto(COL_V.CLAVE)),
+    estado: estado,
     enAgencia: texto(COL_V.ENVIO) === ENVIO_AGENCIA_V
   };
+}
+
+/**
+ * El celular que hay dentro de "DNI / WSP". Mismo patrón que la fórmula de la
+ * columna «Avisar» y que telefonoDe() en src/lib/ventas.js — los tres tienen
+ * que coincidir o el botón de la hoja escribiría a un número y el panel a otro.
+ */
+function celularDe_(texto) {
+  const encontrado = /(?:^|\D)(?:51)?(9\d{8})(?:\D|$)/
+    .exec(String(texto || "").replace(/[\s.()+]/g, ""));
+  return encontrado ? encontrado[1] : "";
+}
+
+/**
+ * La clave de recojo que hay dentro de "Clave Shalom / Notas".
+ *
+ * Se toma lo que va antes de la primera barra, pero solo si parece una clave:
+ * corta, sin espacios y sin signos. Es lo que impide que una celda con puras
+ * notas internas acabe publicada en una página sin login como si fuera la
+ * clave del cliente. Ante la duda no hay clave — fallar hacia el silencio es
+ * lo correcto cuando la alternativa es filtrar.
+ */
+function claveDe_(texto) {
+  const primero = String(texto || "").split("/")[0].trim();
+  return /^[A-Za-z0-9-]{3,14}$/.test(primero) ? primero : "";
+}
+
+/**
+ * Lo que queda de esa celda una vez sacada la clave: tus notas de verdad.
+ * Una celda con solo la clave y sin barra no tiene notas — buscar la barra sin
+ * comprobar que existe devolvía la clave otra vez como si fuera una nota.
+ */
+function notasDe_(texto) {
+  const bruto = String(texto || "").trim();
+  if (!claveDe_(bruto)) return bruto;
+  const barra = bruto.indexOf("/");
+  return barra === -1 ? "" : bruto.slice(barra + 1).trim();
 }
 
 function filaDeCodigo_(hoja, codigo) {
@@ -1058,26 +1131,21 @@ function carpetaVouchers_() {
  */
 function mensajeParaCliente_(venta) {
   const link = SITIO + "/" + venta.codigo;
-  const hola = "Hola " + primerNombre_(venta.cliente) + "! ";
 
   if (venta.estado === ESTADO_ESPERANDO_V) {
     return venta.enAgencia
-      ? hola + "Tu pedido ya llegó a " + (venta.destino || "la agencia") +
-        " y puedes recogerlo. Lleva tu DNI físico. Acá está tu clave de recojo y todo lo " +
-        "que necesitas: " + link
-      : hola + "Tu pedido ya llegó a su destino. Acá puedes ver los detalles: " + link;
+      ? "Hola! Tu pedido ya llegó a la agencia y puedes recogerlo. Lleva tu DNI físico. " +
+        "Acá está tu clave de recojo y todo lo que necesitas saber: " + link
+      : "Hola! Tu pedido ya llegó a su destino. Acá puedes ver los detalles: " + link;
   }
   if (venta.estado === "En camino") {
-    return hola + "Tu pedido ya salió. Te aviso apenas llegue. Puedes seguirlo acá: " + link;
+    return "Hola! Tu pedido ya salió. Te aviso apenas llegue. Puedes seguirlo acá: " + link;
   }
-  if (venta.estado === "Entregado") {
-    return hola + "Confirmo que ya recogiste tu pedido. Cualquier cosa me escribes.";
+  if (venta.estado === ESTADO_FINAL_V) {
+    return "Hola! Confirmo que ya recogiste tu pedido y quedamos al día. " +
+      "Cualquier cosa me escribes.";
   }
-  return hola + "Ya tengo registrado tu pedido. Acá puedes ver su estado cuando quieras: " + link;
-}
-
-function primerNombre_(nombre) {
-  return String(nombre || "").trim().split(/\s+/)[0] || "";
+  return "Hola! Ya tengo registrado tu pedido. Acá puedes ver su estado cuando quieras: " + link;
 }
 
 /** Hoy a medianoche, hora de Lima. Sin hora: lo que se cuenta son días. */
@@ -1091,16 +1159,6 @@ function diasDesde_(fecha) {
   const dia = 24 * 60 * 60 * 1000;
   const desde = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
   return Math.max(0, Math.round((hoy_().getTime() - desde.getTime()) / dia));
-}
-
-/**
- * El teléfono como lo quiere wa.me: solo dígitos y con código de país.
- * Un celular peruano de nueve dígitos se asume peruano; lo demás se respeta.
- */
-function telefonoInternacional_(telefono) {
-  const digitos = String(telefono || "").replace(/\D/g, "");
-  if (digitos.length === 9 && digitos.charAt(0) === "9") return "51" + digitos;
-  return digitos;
 }
 
 function escaparHtml_(texto) {
