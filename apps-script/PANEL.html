@@ -74,7 +74,6 @@
   .acciones .principal { background:var(--teal); border-color:var(--teal); color:#fff; flex:1 1 100%; }
   .acciones .foto { background:#111; border-color:#111; color:#fff; flex:1 1 100%; }
   .acciones .wa { background:var(--wa); border-color:var(--wa); color:#fff; }
-  .acciones .cobrar { border-color:var(--green); color:var(--green); }
   .acciones button:active, .acciones a:active, .acciones label:active { transform:scale(.98); }
   .acciones select { min-height:44px; border:1.5px solid var(--line); border-radius:10px;
                      background:#fff; font-family:inherit; font-size:13.5px; font-weight:700;
@@ -106,7 +105,7 @@
     <h1 id="tituloPagina">Envíos activos</h1>
     <button class="refrescar" id="refrescar">Actualizar</button>
   </div>
-  <input class="buscar" id="buscar" type="search" placeholder="Buscar cliente, código o destino…"
+  <input class="buscar" id="buscar" type="search" placeholder="Buscar por DNI, celular o código…"
          autocomplete="off">
 </header>
 
@@ -164,11 +163,14 @@
   /**
    * El paso siguiente del recorrido. A un envío que no va por agencia no se le
    * ofrece "En destino": ese paso solo existe si hay un mostrador donde esperar.
+   *
+   * "Pagado" es el final del camino y no una columna aparte: recoger y cobrar
+   * son el mismo momento, y separarlos obligaba a acordarse de tocar dos cosas.
    */
   function siguiente(e) {
     if (e.estado === "Pendiente") return "En camino";
-    if (e.estado === "En camino") return e.enAgencia ? "En destino" : "Entregado";
-    if (e.estado === "En destino") return "Entregado";
+    if (e.estado === "En camino") return e.enAgencia ? "En destino" : "Pagado";
+    if (e.estado === "En destino") return "Pagado";
     return null;
   }
 
@@ -195,7 +197,7 @@
     if (FOCO) return e.codigo === FOCO;
     if (!filtro) return true;
     var aguja = filtro.toLowerCase();
-    return [e.cliente, e.codigo, e.destino, e.telefono, e.dni]
+    return [e.codigo, e.contacto, e.envio]
       .join(" ").toLowerCase().indexOf(aguja) !== -1;
   }
 
@@ -212,7 +214,10 @@
     var html = '<article class="env' + (e.estado === "En destino" ? " espera" : "") +
       (aviso ? " urge" : "") + '" data-codigo="' + esc(e.codigo) + '">';
 
-    html += '<div class="fila1"><div><div class="quien">' + esc(e.cliente || "(sin nombre)") +
+    // El contacto es el título: es lo único que identifica a la persona desde
+    // que la hoja dejó de guardar el nombre.
+    html += '<div class="fila1"><div><div class="quien">' +
+      esc(e.contacto || "(sin contacto)") +
       '</div><div class="cod">' + esc(e.codigo) + " · " + esc(e.estado) + "</div></div>";
     if (e.dias !== null && e.dias !== undefined && e.estado === "En destino") {
       html += '<div class="dias' + (aviso ? " urge" : "") + '">' +
@@ -220,15 +225,11 @@
     }
     html += "</div>";
 
-    // "Shalom · Shalom — Av. El Sol 320" dice Shalom dos veces. Si el destino
-    // ya nombra la agencia, con el destino basta.
-    var repetido = e.envio && e.destino &&
-      e.destino.toLowerCase().indexOf(e.envio.toLowerCase()) !== -1;
-    var detalle = (repetido ? [e.destino] : [e.envio, e.destino])
-      .filter(Boolean).join(" · ");
-    if (detalle) html += '<div class="detalle">' + esc(detalle) + "</div>";
+    if (e.envio) html += '<div class="detalle">' + esc(e.envio) + "</div>";
     if (e.saldo > 0) html += '<div class="saldo">Por cobrar ' + soles(e.saldo) + "</div>";
     if (e.clave) html += '<div class="clave">Clave de recojo <b>' + esc(e.clave) + "</b></div>";
+    // La celda entera de "Clave Shalom / Notas": acá sí se ve completa, porque
+    // el panel es tuyo. A la página del cliente solo le llega la clave.
     if (e.notas) html += '<div class="notas">' + esc(e.notas) + "</div>";
 
     // Lo que le falta al envío para que su página sirva de algo.
@@ -253,9 +254,6 @@
     }
     if (!FOCO) html += botonFoto;
 
-    if (e.saldo > 0) {
-      html += '<button class="cobrar" data-accion="pagado">✓ Cobrado</button>';
-    }
     if (e.telefono) {
       html += '<a class="wa" href="' + esc(e.wa) + '" target="_blank" rel="noopener">WhatsApp</a>';
     }
@@ -366,11 +364,7 @@
     if (accion === "estado") {
       var destino = boton.getAttribute("data-a");
       llamar("panelVentasCambiarEstado", [codigo, destino],
-        function (venta) { avisar(venta.cliente + " → " + destino); }, boton, "Guardando…");
-    }
-    if (accion === "pagado") {
-      llamar("panelVentasMarcarPagado", [codigo],
-        function (mensaje) { avisar(mensaje); }, boton, "Guardando…");
+        function (venta) { avisar(venta.codigo + " → " + destino); }, boton, "Guardando…");
     }
   });
 
@@ -383,7 +377,7 @@
       var destino = nodo.value;
       nodo.value = "";
       llamar("panelVentasCambiarEstado", [codigo, destino],
-        function (venta) { avisar(venta.cliente + " → " + destino); }, null, "");
+        function (venta) { avisar(venta.codigo + " → " + destino); }, null, "");
     }
 
     if (accion === "voucher" && nodo.files && nodo.files[0]) {

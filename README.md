@@ -5,7 +5,7 @@ Página de producto con formulario de **pago contra entrega**. El pedido se guar
 pedido y ve los totales. El cliente confirma por WhatsApp desde la página de gracias.
 
 El mismo libro lleva un **segundo negocio**: la pestaña `Ventas`, donde se reportan a mano
-las ventas de las campañas manuales —escribiendo el nombre del cliente y poco más—, y de la
+las ventas de las campañas manuales —escribiendo el DNI y el celular, y poco más—, y de la
 que cuelga una **página de seguimiento de envíos** para el cliente.
 Ver *[CRM de ventas manuales](#crm-de-ventas-manuales-y-seguimiento-de-envíos)*.
 
@@ -432,24 +432,54 @@ https://kit-tarot-para-principiantes.tarotperu.store/TS-K3M582R
 
 ### Escribir poco y no abrir nada
 
-La hoja tiene 16 columnas y **solo se escriben 10**; tres de esas son un clic (dos
-desplegables y una casilla). Fecha, código, alerta de recojo y los dos botones de la fila
-se rellenan solos. Registrar una venta es **escribir el nombre del cliente**.
+La hoja tiene 10 columnas a la vista y **solo se escriben 6**; dos de esas son un
+desplegable. Fecha, código, alerta de recojo y los dos botones de la fila se rellenan solos.
+Registrar una venta es **escribir el DNI y el celular en una celda**.
 
-Los tres botones viven **en la propia fila**, como fórmulas `HYPERLINK`: un clic y ya, sin
-diálogo que esperar ni venta que elegir de una lista.
+| | Columna | Quién la llena |
+|---|---|---|
+| A | Fecha | sola · con calendario |
+| B | DNI / WSP | ✍️ |
+| C | Envío | ▾ Lima · Shalom · Dinsides |
+| D | Adelanto | ✍️ |
+| E | Saldo | ✍️ |
+| F | Clave Shalom / Notas | ✍️ |
+| G · H · I | Alerta · Avisar · Voucher | solas |
+| J | Estado | ▾ Pendiente · En camino · En destino · Pagado · Cancelado |
 
-| Columna | Un clic hace |
-|---|---|
-| `Código` | abre la página de seguimiento, la que ve el cliente |
-| `Avisar` | abre WhatsApp con el mensaje ya escrito, distinto según el estado |
-| `Voucher` | abre el panel del celular centrado en esa venta, listo para la foto |
+Más tres columnas ocultas al final: `Código`, `En destino desde` y `Drive ID`.
 
-**Nada es obligatorio.** Una venta con solo nombre y WhatsApp ya funciona; lo que falte,
-faltará en la página del cliente y nada más.
+Los botones viven **en la propia fila**, como fórmulas `HYPERLINK`: un clic y ya, sin
+diálogo que esperar ni venta que elegir de una lista. `Avisar` abre WhatsApp con el mensaje
+ya escrito según el estado; `Voucher` abre el panel del celular centrado en esa venta.
 
-Y la hoja te dice qué llenar sin que tengas que acordarte: en una fila de **Lima**, `DNI` y
-`Clave Shalom` se ven grises; al poner **Shalom** en `Envío` se encienden.
+**Nada es obligatorio.** Una venta con solo un celular ya funciona; lo que falte, faltará
+en la página del cliente y nada más.
+
+### Dos celdas que llevan dos cosas
+
+**`DNI / WSP`** es una sola celda porque en la práctica se anotan juntos. El celular se
+reconoce solo: en Perú son nueve dígitos que empiezan en 9 y un DNI son ocho, así que
+`45781234 / 987654321`, `987654321` y `+51 987 654 321` se leen igual de bien. Ese mismo
+patrón vive en tres sitios —el Worker, el panel y la fórmula de la hoja— y `npm run check`
+los **ejecuta** contra los mismos casos en vez de compararlos como texto: comparar cadenas
+escapadas es justo el chequeo que sigue pasando cuando el comportamiento ya cambió.
+
+**`Clave Shalom / Notas`** lleva la clave primero y tus notas después de la barra. De esa
+celda **solo sale la clave** hacia la página del cliente, y solo si lo que va antes de la
+barra parece una clave: corta, sin espacios y sin signos. Si escribes solo notas, no se
+publica nada — ante la duda prefiere callarse, porque la alternativa es publicar lo que
+escribes de tus clientes en una página sin login.
+
+### Una sola columna de estado
+
+`Estado` es lo único que se actualiza conforme avanza el envío, y **`Pagado` es su último
+paso**: recoger y cobrar son el mismo momento, y una casilla aparte obligaba a acordarse de
+tocar dos cosas para cerrar una venta.
+
+La hoja además te dice qué llenar sin que tengas que acordarte: en una fila de **Lima** la
+celda de la clave se ve gris; al poner **Shalom** se enciende. El saldo va rojo mientras el
+estado no sea `Pagado`, y verde tachado en cuanto lo marcas.
 
 El esquema completo, las macros y la migración están en
 [`apps-script/README.md`](apps-script/README.md).
@@ -477,9 +507,15 @@ foto del comprobante y unas instrucciones que **cambian con el estado**:
 |---|---|
 | Pendiente | Estamos preparando tu pedido. No tienes que hacer nada. |
 | En camino | Ya salió. **Todavía no vayas a la agencia**, acá te avisamos. |
-| En destino (agencia) | Ya puedes recogerlo: **DNI físico**, la clave, a nombre de quién está, qué necesita otra persona si va por ti, y el plazo antes de que lo devuelvan. |
+| En destino (agencia) | Ya puedes recogerlo: **DNI físico**, la clave, el plazo antes de que lo devuelvan, y **el aviso de escribirnos antes de ir** para que le cubramos el flete. |
 | En destino (domicilio) | Tu pedido ya llegó. Sin clave ni DNI: no hay mostrador de por medio. |
-| Entregado | Gracias. Si algo llegó mal, escríbenos hoy. |
+| Pagado | Gracias. Si algo llegó mal, escríbenos hoy. |
+
+Cuando el paquete está en la agencia, el botón de WhatsApp deja de ser una consulta y pasa
+a ser **«Avisar que voy a recoger»**, con el mensaje que pide cubrir la garantía de envío
+ya escrito. Es lo único de esa página que le pide al cliente una acción con plazo, así que
+va en su propia caja y no como un punto más de la lista: perdido entre los otros, se lee
+como un consejo y no se cumple.
 
 A los pocos días de espera aparece además un aviso rojo para que se apure — solo en los
 envíos por agencia, que son los únicos que se pueden devolver.
@@ -494,7 +530,9 @@ envíos por agencia, que son los únicos que se pueden devolver.
 - Va con `noindex` en la página, en la API y en la foto.
 - La respuesta de `/api/seguimiento` lleva solo lo que el cliente puede ver de su propio
   envío. **Nunca** su WhatsApp, su DNI, tus notas internas ni el id de Drive. El DNI está
-  en la hoja porque lo pide Shalom al registrar el envío, no para enseñárselo a nadie.
+  en la hoja porque lo pide Shalom al registrar el envío, no para enseñárselo a nadie, y
+  comparte celda con el celular igual que la clave comparte celda con las notas: de cada
+  una de esas dos celdas sale hacia fuera exactamente un dato, nunca la celda entera.
 - Un código mal formado y uno que no existe dan el **mismo 404**: cualquier diferencia le
   diría a un curioso cuándo va por buen camino.
 - Tope propio de 40 consultas por minuto y por IP (`TRACK_LIMIT`), aparte del de pedidos.

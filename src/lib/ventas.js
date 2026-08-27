@@ -4,9 +4,8 @@
  * Es una tabla aparte de "Pedidos". Pedidos lo escribe el formulario de la
  * landing (leads); Ventas la escribe el vendedor a mano. Ninguna toca a la otra.
  *
- * La tabla es corta a propósito. De las 16 columnas, **solo se escriben 10**, y
- * tres de esas son un clic (dos desplegables y una casilla). El resto se
- * rellena solo: fecha, código, alerta de recojo y los dos botones de la fila.
+ * La tabla es corta a propósito: **solo se escriben cinco celdas por venta**, y
+ * dos de ellas son un desplegable. Todo lo demás se rellena solo.
  *
  * Este archivo es la única fuente del orden de columnas para el Worker.
  * `apps-script/VENTAS.gs` repite la lista porque corre en otro runtime y no
@@ -15,31 +14,25 @@
  */
 
 export const COLUMNAS_VENTA = [
-  "Fecha",            // se pone sola
-  "Código",           // se pone solo, y es el link a la página del cliente
-  "Cliente",
-  "WhatsApp",
-  "Envío",            // desplegable
-  "DNI",              // solo provincia
+  "Fecha",                 // se pone sola, y tiene calendario para corregirla
+  "DNI / WSP",             // el único dato de contacto: "45781234 / 987654321"
+  "Envío",                 // desplegable
   "Adelanto",
   "Saldo",
-  "Pagado",           // casilla
-  "Destino",          // dirección (Lima) o agencia (provincia)
-  "Clave Shalom",     // solo provincia
-  "Estado",           // desplegable
-  "Notas",
-  "Alerta",           // se calcula sola
-  "Avisar",           // botón: WhatsApp con el mensaje ya escrito
-  "Voucher",          // botón: subir o cambiar la foto
-  // Ocultas: plomería que nadie escribe a mano.
+  "Clave Shalom / Notas",  // la clave primero, tus notas después de la barra
+  "Alerta",                // se calcula sola
+  "Avisar",                // botón: WhatsApp al cliente, con el mensaje escrito
+  "Voucher",               // botón: subir o cambiar la foto
+  "Estado",                // desplegable — la única columna que se actualiza
+  // Ocultas: plomería que nadie escribe ni lee a mano.
+  "Código",
   "En destino desde",
   "Drive ID"
 ];
 
 /** Las que el vendedor llena. El resto se rellenan solas. */
 export const COLUMNAS_QUE_SE_ESCRIBEN = [
-  "Cliente", "WhatsApp", "Envío", "DNI", "Adelanto",
-  "Saldo", "Pagado", "Destino", "Clave Shalom", "Estado", "Notas"
+  "DNI / WSP", "Envío", "Adelanto", "Saldo", "Clave Shalom / Notas", "Estado"
 ];
 
 /**
@@ -54,16 +47,22 @@ export const ENVIO_POR_DEFECTO = "Lima";
 export const ENVIO_AGENCIA = "Shalom";
 
 /**
- * El recorrido del envío. La página dibuja su línea de tiempo desde acá, así
- * que el orden importa. "Cancelado" va al final porque no es un paso del
- * camino: es salirse de él.
+ * El recorrido del envío, en una sola columna.
+ *
+ * No hay un "Entregado" aparte de "Pagado": en este negocio un paquete
+ * recogido es un paquete cobrado, y dos columnas para el mismo momento
+ * obligaban a acordarse de tocar las dos. "Cancelado" va al final porque no
+ * es un paso del camino: es salirse de él.
  */
-export const ESTADOS_ENVIO = ["Pendiente", "En camino", "En destino", "Entregado", "Cancelado"];
+export const ESTADOS_ENVIO = ["Pendiente", "En camino", "En destino", "Pagado", "Cancelado"];
 
 export const ESTADO_INICIAL = "Pendiente";
 
 /** Único estado en el que el paquete espera al cliente en la agencia. */
 export const ESTADO_ESPERANDO = "En destino";
+
+/** El final feliz: recogido y cobrado. */
+export const ESTADO_FINAL = "Pagado";
 
 /**
  * Los pasos que ve el cliente, según cómo le llega el pedido.
@@ -80,8 +79,8 @@ export const ESTADO_ESPERANDO = "En destino";
 export function pasosDe(envio, estado) {
   const conAgencia = envio === ENVIO_AGENCIA || estado === ESTADO_ESPERANDO;
   return conAgencia
-    ? ["Pendiente", "En camino", "En destino", "Entregado"]
-    : ["Pendiente", "En camino", "Entregado"];
+    ? [ESTADO_INICIAL, "En camino", ESTADO_ESPERANDO, ESTADO_FINAL]
+    : [ESTADO_INICIAL, "En camino", ESTADO_FINAL];
 }
 
 /**
@@ -130,6 +129,53 @@ export function nuevoCodigo(azar = Math.random) {
   );
 }
 
+/**
+ * El celular que hay dentro de "DNI / WSP".
+ *
+ * La celda es una sola y el vendedor escribe lo que tiene: a veces el DNI y el
+ * celular, a veces solo uno. Un celular peruano son nueve dígitos que empiezan
+ * en 9 y un DNI son ocho, así que se distinguen sin pedirle a nadie que
+ * respete ningún formato.
+ *
+ * Primero se quita lo que adorna un número —espacios, puntos, paréntesis y el
+ * "+"— para que "+51 987 654 321" siga siendo un número. La barra y el guion
+ * NO se tocan: en esta celda separan un dato del otro, y borrarlos pegaría el
+ * DNI con el celular en una tira de dígitos donde ya no se sabe dónde empieza
+ * cada uno.
+ *
+ * Después se exige que el número esté rodeado de algo que no sea un dígito, o
+ * de los bordes de la celda. Sin ese requisito, "10293847987654321" da un
+ * falso positivo: hay un 9 seguido de ocho dígitos en medio que no es el
+ * teléfono de nadie.
+ *
+ * RE2 (el motor de Google Sheets) admite este mismo patrón, y la columna
+ * "Avisar" lo usa tal cual: si aquí y allá dijeran cosas distintas, el botón
+ * de la hoja escribiría a un número y el panel a otro.
+ */
+const RE_ADORNOS = /[\s.()+]/g;
+const RE_CELULAR = /(?:^|\D)(?:51)?(9\d{8})(?:\D|$)/;
+
+export function telefonoDe(texto) {
+  const encontrado = RE_CELULAR.exec(String(texto ?? "").replace(RE_ADORNOS, ""));
+  return encontrado ? encontrado[1] : "";
+}
+
+/**
+ * La clave de recojo que hay dentro de "Clave Shalom / Notas".
+ *
+ * Se toma lo que va antes de la primera barra, pero **solo si parece una
+ * clave**: corta, sin espacios y sin signos. Es lo que impide que una celda
+ * con puras notas internas ("cliente pidió factura") acabe publicada en una
+ * página sin login como si fuera su clave de recojo. Ante la duda, no hay
+ * clave — fallar hacia el silencio es lo correcto cuando lo otro es filtrar.
+ */
+const RE_CLAVE = /^[A-Za-z0-9-]{3,14}$/;
+
+export function claveDe(texto) {
+  const primero = String(texto ?? "").split("/")[0].trim();
+  return RE_CLAVE.test(primero) ? primero : "";
+}
+
 /** Índice 0-based de una columna por nombre. Lanza si no existe. */
 export function indiceVenta(nombre) {
   const i = COLUMNAS_VENTA.indexOf(nombre);
@@ -137,7 +183,7 @@ export function indiceVenta(nombre) {
   return i;
 }
 
-/** 0 -> "A", 25 -> "Z", 26 -> "AA". Ventas pasa de la Z, así que hace falta. */
+/** 0 -> "A", 25 -> "Z", 26 -> "AA". */
 export function letraVenta(indice) {
   let n = indice;
   let letra = "";
@@ -148,23 +194,11 @@ export function letraVenta(indice) {
   return letra;
 }
 
-/** "A1:R1" — el rango que ocupan los encabezados de Ventas. */
+/** "A1:M1" — el rango que ocupan los encabezados de Ventas. */
 export const RANGO_ENCABEZADOS_VENTA = `A1:${letraVenta(COLUMNAS_VENTA.length - 1)}1`;
 
-/** El rango de datos completo, sin encabezado: "A2:R". */
+/** El rango de datos completo, sin encabezado: "A2:M". */
 export const RANGO_DATOS_VENTA = `A2:${letraVenta(COLUMNAS_VENTA.length - 1)}`;
-
-/**
- * Una casilla de la hoja como booleano.
- *
- * getValues del Worker devuelve lo que se ve en la celda, y una casilla marcada
- * se ve como el texto "TRUE". Comprobarla con Boolean() daría verdadero también
- * para "FALSE", que es justo el caso contrario.
- */
-export function esVerdadero(valor) {
-  if (typeof valor === "boolean") return valor;
-  return /^(true|verdadero|sí|si|x|✓)$/i.test(String(valor ?? "").trim());
-}
 
 /**
  * Un número de la hoja como número de verdad.

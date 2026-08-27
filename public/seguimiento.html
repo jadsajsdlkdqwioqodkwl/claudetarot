@@ -105,6 +105,14 @@
   .instr li.ojo svg { stroke:var(--urgent); }
   .instr b { font-weight:800; }
 
+  /* ── Aviso del flete: hay que escribir antes de ir ────────── */
+  .flete { margin-top:16px; background:#FFF8E8; border:1.5px solid #F0D9A8;
+           border-radius:14px; padding:16px 17px; }
+  .flete h3 { font-size:15px; font-weight:900; color:#8A5B00; display:flex; gap:8px;
+              align-items:center; }
+  .flete p { font-size:14px; color:#5C4200; margin-top:8px; line-height:1.5; }
+  .flete b { font-weight:800; }
+
   /* ── Clave de recojo ──────────────────────────────────────── */
   .clave { margin-top:16px; background:var(--card); border:2px dashed var(--brand-teal);
            border-radius:14px; padding:16px; text-align:center; }
@@ -246,7 +254,10 @@
     "Pendiente":  { titulo: "Pedido registrado",  nota: "Tu pedido está anotado a tu nombre." },
     "En camino":  { titulo: "En camino",          nota: "Tu paquete ya salió." },
     "En destino": { titulo: "Llegó a la agencia", nota: "Listo para que lo recojas." },
-    "Entregado":  { titulo: "Entregado",          nota: "El paquete ya está contigo." }
+    // El estado se llama "Pagado" en la hoja porque para el vendedor recoger y
+    // cobrar son el mismo momento. Al cliente eso no le dice nada: lo que él
+    // ve es que su pedido llegó.
+    "Pagado":     { titulo: "Entregado",          nota: "El paquete ya está contigo." }
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -256,7 +267,6 @@
       .replace(/"/g, "&quot;");
   };
   var soles = function (n) { return "S/ " + Number(n || 0).toFixed(2); };
-  var primerNombre = function (nombre) { return String(nombre || "").trim().split(/\s+/)[0] || ""; };
 
   var codigo = decodeURIComponent(location.pathname.replace(/^\/+/, "")).toUpperCase();
 
@@ -335,7 +345,7 @@
 
     if (e.estado === "En camino") {
       caja.innerHTML = "<h2>Tu paquete ya salió</h2>" +
-        "<p>Está en camino" + (e.destino ? " a <b>" + esc(e.destino) + "</b>" : "") + ". " +
+        "<p>Ya salió rumbo a su destino. " +
         (e.enAgencia
           ? "<b>Todavía no vayas a la agencia:</b> esta misma página te va a avisar apenas llegue."
           : "Te avisamos apenas llegue.") + "</p>" +
@@ -353,14 +363,13 @@
       // que dar: pedirle todo eso a quien recibe en su casa solo lo confunde.
       if (!e.enAgencia) {
         caja.innerHTML = "<h2>Tu pedido ya llegó 🎉</h2>" +
-          "<p>Está en su destino" + (e.destino ? ", en <b>" + esc(e.destino) + "</b>" : "") +
-          ". Cualquier cosa, escríbenos por WhatsApp.</p>";
+          "<p>Ya está en su destino. Cualquier cosa, escríbenos por WhatsApp.</p>";
         return;
       }
 
       var lista = "";
       lista += item("Lleva tu <b>DNI físico</b> — el original. Una foto o una copia no la aceptan.");
-      lista += item("El paquete está a nombre de <b>" + esc(e.cliente) + "</b>.");
+      lista += item("El paquete está registrado con <b>tu DNI</b>, el que nos diste al comprar.");
       if (e.clave) lista += item("Da la <b>clave de recojo</b> que ves abajo en el mostrador.");
       lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>" +
         (e.clave ? ", la clave" : "") + ", y que nos avises antes por WhatsApp para autorizarlo.");
@@ -368,16 +377,37 @@
         "devuelven a nuestro almacén.", true);
 
       caja.innerHTML = "<h2>Ya puedes recogerlo 🎉</h2>" +
-        "<p>Tu paquete está esperándote" +
-        (e.destino ? " en <b>" + esc(e.destino) + "</b>" : "") + ".</p><ul>" + lista + "</ul>";
+        "<p>Tu paquete ya está en la agencia que elegiste, la que figura en tu boleta.</p>" +
+        "<ul>" + lista + "</ul>";
       return;
     }
 
-    // Entregado
+    // Pagado: recogido y al día
     caja.className = "instr destacado";
     caja.innerHTML = "<h2>¡Entregado! 🎉</h2>" +
       "<p>Gracias por tu compra. Si algo llegó dañado o no es lo que pediste, escríbenos por " +
       "WhatsApp el mismo día y lo resolvemos.</p>";
+  }
+
+  /* ── Aviso del flete ────────────────────────────────────────────── */
+
+  /**
+   * Lo que el cliente tiene que hacer ANTES de ir: avisarnos, para activarle
+   * la cobertura del flete. Va en su propia caja y no como un punto más de la
+   * lista porque es lo único de esta página que le pide una acción con plazo;
+   * perdido entre los otros puntos, se lee como un consejo y no se cumple.
+   */
+  function pintarFlete(e) {
+    if (e.estado !== "En destino" || !e.enAgencia) return;
+
+    var caja = document.createElement("div");
+    caja.className = "flete";
+    caja.innerHTML =
+      "<h3>📅 Avísanos antes de ir</h3>" +
+      "<p><b>Escríbenos el mismo día o un día antes de ir a Shalom.</b> Por política de la " +
+      "agencia, el pago del flete vence si no se recoge pronto; por ello lo activamos " +
+      "<b>48 horas antes</b> de tu visita y así solo pagas el saldo de tu producto.</p>";
+    $("instr").insertAdjacentElement("afterend", caja);
   }
 
   /* ── Clave de recojo ────────────────────────────────────────────── */
@@ -390,7 +420,11 @@
     caja.innerHTML = '<div class="rot">Clave de recojo</div>' +
       '<div class="val" id="claveVal">' + esc(e.clave) + '</div>' +
       '<button type="button" id="copiar">Copiar clave</button>';
-    $("instr").insertAdjacentElement("afterend", caja);
+    // Después del aviso del flete si lo hay, para que el orden de lectura sea
+    // «qué hacer antes de ir» y luego «con qué ir».
+    document.querySelector(".flete") 
+      ? document.querySelector(".flete").insertAdjacentElement("afterend", caja)
+      : $("instr").insertAdjacentElement("afterend", caja);
 
     $("copiar").addEventListener("click", function () {
       var boton = this;
@@ -426,7 +460,6 @@
 
   function pintarDatos(e) {
     var html = "";
-    html += fila(e.enAgencia ? "Agencia" : "Entrega en", e.destino);
     html += fila("Pedido el", e.fecha);
     if (e.saldo > 0) html += fila("Saldo pendiente", soles(e.saldo), "saldo");
 
@@ -451,16 +484,16 @@
   function pintar(e) {
     document.title = "Envío " + e.codigo + " — " + e.estado;
 
-    $("hola").textContent = primerNombre(e.cliente) ? "Hola, " + primerNombre(e.cliente) : "Tu envío";
+    $("hola").textContent = "Tu pedido";
     $("titulo").textContent =
       e.estado === "En destino" ? "Tu pedido ya llegó" :
-      e.estado === "Entregado" ? "Pedido entregado" :
+      e.estado === "Pagado" ? "Pedido entregado" :
       e.estado === "Cancelado" ? "Pedido cancelado" :
       e.estado === "En camino" ? "Tu pedido va en camino" : "Tu pedido está en preparación";
 
     var chip = $("chip");
     chip.className = "chip " +
-      (e.estado === "En destino" || e.estado === "Entregado" ? "lista" :
+      (e.estado === "En destino" || e.estado === "Pagado" ? "lista" :
        e.estado === "Cancelado" ? "fin" : "viva");
     $("chipTxt").textContent = e.estado;
     $("codigo").textContent = e.codigo;
@@ -479,6 +512,7 @@
     }
 
     instrucciones(e);
+    pintarFlete(e);
     pintarClave(e);
     pintarDatos(e);
 
@@ -499,11 +533,18 @@
       });
     }
 
-    $("waTxt").textContent =
-      e.estado === "En destino" && e.enAgencia
-        ? "Tengo un problema para recoger"
-        : "Tengo una consulta";
-    $("wa").href = waLink("Hola, consulto por mi pedido " + e.codigo + " (" + e.cliente + ").");
+    // En la agencia el botón no es para consultar: es para avisar que va a ir,
+    // que es lo que dispara la cobertura del flete. Por eso cambia de texto y
+    // de mensaje justo en ese estado.
+    var vaARecoger = e.estado === "En destino" && e.enAgencia;
+    $("waTxt").textContent = vaARecoger
+      ? "Avisar que voy a recoger"
+      : "Tengo una consulta";
+    $("wa").href = waLink(vaARecoger
+      // En una sola línea a propósito: es el texto que ve el cliente y partirlo
+      // en dos trozos hace que nadie pueda buscarlo tal cual en el archivo.
+      ? "Hola, mi pedido ya llegó y me estaré acercando, por favor cubrir mi garantía de envío gratis y enviarme el comprobante 🙏😊 (" + e.codigo + ")"
+      : "Hola, consulto por mi pedido " + e.codigo + ".");
 
     $("cargando").hidden = true;
     $("envio").hidden = false;
