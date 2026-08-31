@@ -1,0 +1,388 @@
+/* ==========================================================================
+   PLANTILLA GHL — Landing COD estilo Shopify
+   Pega este bloque completo en:
+   Sites → (tu Funnel) → Settings → Custom CSS
+   (o en el Custom CSS del Step, si prefieres que solo aplique a esa página)
+
+   Convención: todo elemento de esta landing lleva una Custom Class con
+   prefijo "lp-" (landing page), asignada en GHL desde la pestaña
+   "Advanced" de cada elemento. Ver ghl-template/README.md para el mapeo
+   completo elemento → clase.
+
+   No renombres estas clases sin cambiarlas también aquí: son el único
+   punto de unión entre el editor visual de GHL y este CSS.
+   ========================================================================== */
+
+/* ---------- 1. Variables y base ---------- */
+:root {
+  --lp-bg: #f5f5f7;
+  --lp-body-bg: #f2f2f4;
+  --lp-card: #ffffff;
+  --lp-ink: #111111;
+  --lp-muted: #666666;
+  --lp-muted-txt: #4a4a4a;
+  --lp-line: #e0e0e0;
+  --lp-green: #28a745;
+  --lp-gold: #ffd700;
+  --lp-accent: #007bff;      /* acento de selección / focus */
+  --lp-blue-dark: #1e3a8a;
+  --lp-soft-tint: #f4f9ff;
+  --lp-cta1: #ff2a00;
+  --lp-cta2: #ff6a00;
+  --lp-price-old: #e53935;
+  --lp-wa: #25d366;
+  --lp-radius: 12px;
+  --lp-radius-lg: 16px;
+}
+
+body {
+  background: var(--lp-body-bg) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+/* Tarjeta central tipo app móvil (máx. 480px), igual que el .wrap original.
+   Ponla en la Section raíz que envuelve TODO el contenido del Step. */
+.lp-page {
+  max-width: 480px !important;
+  margin: 0 auto !important;
+  background: var(--lp-bg) !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05) !important;
+  padding-bottom: 100px !important; /* deja aire para el sticky CTA */
+}
+
+/* ---------- 2. Banner / imagen principal ---------- */
+.lp-banner img { display: block; width: 100%; height: auto; }
+
+/* ---------- 3. Rating row ---------- */
+.lp-rating-row { display: flex !important; align-items: center; gap: 8px; padding: 16px 20px 4px; }
+.lp-rating-stars { color: var(--lp-gold) !important; font-size: 17px !important; letter-spacing: 1px; }
+.lp-rating-count { color: var(--lp-accent) !important; font-weight: 600 !important; font-size: 14px !important; }
+
+/* ---------- 4. Badge de envío gratis ---------- */
+.lp-badge-free {
+  display: inline-flex !important;
+  background: #e6f3ef !important;
+  color: var(--lp-green) !important;
+  padding: 5px 14px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  margin: 8px 0 0 !important;
+}
+
+/* ---------- 5. Título ---------- */
+.lp-title { font-size: 24px !important; font-weight: 800 !important; line-height: 1.2 !important; color: var(--lp-ink) !important; }
+
+/* ---------- 6. "X personas viendo" ---------- */
+.lp-viewing { display: flex !important; align-items: center; gap: 8px; font-weight: 600 !important; font-size: 14px !important; color: var(--lp-muted) !important; padding: 4px 0 12px; }
+.lp-viewing-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--lp-price-old);
+  display: inline-block; animation: lpBlink 1.2s infinite;
+}
+@keyframes lpBlink { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+
+/* ---------- 7. Precio ---------- */
+.lp-price-block { padding: 0 0 10px; }
+.lp-price-old { color: var(--lp-price-old) !important; font-weight: 700 !important; font-size: 16px !important; text-decoration: line-through !important; }
+.lp-price-now { font-size: 38px !important; font-weight: 800 !important; color: var(--lp-ink) !important; margin-top: -4px !important; }
+
+/* ---------- 8. Stock ---------- */
+.lp-stock-row { display: flex !important; align-items: center; gap: 8px; font-size: 14px !important; font-weight: 500 !important; padding: 10px 0 4px; }
+.lp-stock-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lp-green); display: inline-block; }
+.lp-stock-bar { margin: 8px 0 18px !important; height: 8px !important; background: #e0e0e0 !important; border-radius: 5px !important; overflow: hidden !important; padding: 0 !important; }
+.lp-stock-bar-fill { height: 100%; width: 46%; background: var(--lp-green); border-radius: 5px; }
+
+/* ---------- 9. CTA (botón + microcopia), reutilizado en CTA1/CTA2/Sticky ---------- */
+.lp-cta-wrap { margin: 0 0 22px; }
+.lp-cta-btn {
+  width: 100% !important;
+  background: linear-gradient(90deg, var(--lp-cta1), var(--lp-cta2)) !important;
+  border: none !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 16px 12px !important;
+  box-shadow: 0 6px 18px rgba(255, 42, 0, .3) !important;
+  color: #fff !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  transition: transform .15s !important;
+}
+.lp-cta-btn:active { transform: scale(.98); }
+.lp-cta-sub {
+  text-align: center !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--lp-muted) !important;
+  margin-top: -14px !important;
+  opacity: .95;
+}
+/* leve "llamada de atención": aplícala solo al botón principal si quieres */
+.lp-cta-buzz { animation: lpBuzz 2.4s ease-in-out infinite; }
+@keyframes lpBuzz {
+  0%, 82%, 100% { transform: translateX(0) rotate(0); }
+  84% { transform: translateX(-3px) rotate(-.8deg); }
+  86% { transform: translateX(3px) rotate(.8deg); }
+  88% { transform: translateX(-3px) rotate(-.8deg); }
+  90% { transform: translateX(3px) rotate(.8deg); }
+  92% { transform: translateX(-2px) rotate(-.5deg); }
+  94% { transform: translateX(2px) rotate(.5deg); }
+}
+
+/* ---------- 10. Carrusel de reseñas con foto ---------- */
+.lp-review-card {
+  border: 1.5px solid var(--lp-line) !important;
+  border-radius: var(--lp-radius) !important;
+  background: var(--lp-card) !important;
+  padding: 14px !important;
+  display: flex !important;
+  gap: 12px;
+  align-items: flex-start;
+}
+.lp-review-avatar { width: 64px !important; min-width: 64px; aspect-ratio: 1/1; border-radius: 8px !important; overflow: hidden; }
+.lp-review-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.lp-review-name { font-weight: 700 !important; font-size: 15px !important; color: var(--lp-ink) !important; }
+.lp-review-stars { color: var(--lp-gold) !important; font-size: 13px !important; margin: 2px 0 !important; }
+.lp-review-text { font-size: 13px !important; color: var(--lp-muted) !important; line-height: 1.4 !important; }
+
+/* ---------- 11. Video ---------- */
+.lp-video { background: #0d0d12; }
+.lp-video video { width: 100%; height: auto; display: block; }
+
+/* ---------- 12. Galería (Image Gallery nativo) ---------- */
+.lp-gallery { padding: 10px 0 0 !important; }
+.lp-gallery img { border-radius: 10px !important; border: 1.5px solid var(--lp-line) !important; }
+
+/* ---------- 13. Resumen "lo que dicen nuestros clientes" ---------- */
+.lp-summary { text-align: center !important; padding: 24px 0 8px !important; }
+.lp-summary-big { font-size: 44px !important; font-weight: 800 !important; color: var(--lp-ink) !important; }
+.lp-summary-stars { color: var(--lp-gold) !important; font-size: 20px !important; }
+.lp-summary-count { color: var(--lp-muted) !important; font-size: 13px !important; }
+
+/* ---------- 14. Lista de reseñas detalladas ---------- */
+.lp-review-item {
+  border: 1px solid var(--lp-line) !important;
+  background: #fff !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .02) !important;
+}
+.lp-review-item-name { font-weight: 700 !important; font-size: 15px !important; color: var(--lp-ink) !important; }
+.lp-review-item-date { font-size: 12px !important; color: var(--lp-muted) !important; }
+.lp-review-item-verif { color: var(--lp-green) !important; font-size: 12px !important; font-weight: 600 !important; }
+.lp-review-item-title { font-weight: 700 !important; font-size: 15px !important; color: var(--lp-ink) !important; }
+.lp-review-item-body { font-size: 13px !important; color: var(--lp-muted) !important; }
+
+/* ---------- 15. Footer legal (disclaimer Meta) ---------- */
+.lp-footer-legal {
+  text-align: center !important;
+  padding: 20px !important;
+  border-top: 1px solid var(--lp-line) !important;
+  font-size: 11px !important;
+  color: var(--lp-muted) !important;
+  line-height: 1.5 !important;
+}
+
+/* ---------- 16. Sticky CTA ---------- */
+/* Si tu builder tiene un toggle nativo "Sticky" en la pestaña Advanced de la
+   Section, actívalo (Position: Bottom) y NO necesitas el position:fixed de
+   abajo — bórralo. Se deja aquí como red de seguridad por si tu editor no
+   trae ese toggle todavía. */
+.lp-sticky-wrap {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 0 !important;
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  background: var(--lp-bg) !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, .08) !important;
+  z-index: 999 !important;
+}
+.lp-sticky-wrap .lp-cta-wrap { margin: 0 !important; }
+.lp-sticky-wrap .lp-cta-sub { display: none; } /* en la barra fija, solo botón */
+
+/* ---------- 17. Popup / Modal COD ---------- */
+/* GHL suele envolver el contenido del Popup en su propio contenedor con
+   scroll y overlay: aquí solo tocamos el "cuerpo" (la tarjeta blanca) al que
+   le pusiste la clase lp-modal, para que tenga la pinta de modal Shopify. */
+.lp-modal {
+  background: #fff !important;
+  max-width: 456px !important;
+  border-radius: var(--lp-radius-lg) !important;
+  padding: 22px 20px 26px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .2) !important;
+}
+.lp-modal-logo { width: 100px !important; height: 100px !important; margin: 0 auto 12px !important; }
+.lp-modal-logo img { object-fit: contain; }
+.lp-modal-vendor {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto 10px !important;
+  background: #eaf3ff !important;
+  color: #0b63d6 !important;
+  border: 1px solid #cfe3ff !important;
+  border-radius: 999px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  width: fit-content !important;
+}
+.lp-modal-guarantee {
+  text-align: center !important;
+  color: var(--lp-price-old) !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  margin: 10px 0 20px !important;
+}
+
+/* ---------- 18. Tarjetas de variante (1 / 2 / 3 unidades) ----------
+   Técnica: el campo "Cantidad" del formulario nativo se deja como un campo
+   de Opción única (Radio). Le pones la Custom Class lp-variant-field al
+   CAMPO (no al form completo). GHL pinta cada opción como
+   input[type=radio] + label dentro de ese wrapper: aquí ocultamos el
+   círculo nativo y convertimos el label en tarjeta clicable.
+
+   Los nombres internos exactos (.checkbox-item, .form-builder--radio, etc.)
+   cambian entre versiones del Form Builder. Si algo no aplica 1:1, haz clic
+   derecho → Inspeccionar sobre una opción dentro de tu formulario publicado,
+   confirma el nombre real de la clase que envuelve cada opción y ajusta el
+   selector — el patrón (ocultar el radio, convertir el label en tarjeta,
+   resaltar con :checked) se mantiene igual. */
+.lp-variant-field { margin-bottom: 20px !important; }
+.lp-variant-field > div,
+.lp-variant-field fieldset { display: flex !important; gap: 8px !important; }
+.lp-variant-field label {
+  flex: 1 1 0 !important;
+  border: 2px solid var(--lp-line) !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 12px 6px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  background: #fff !important;
+  transition: .15s !important;
+  position: relative !important;
+  font-size: 13px !important;
+}
+.lp-variant-field input[type="radio"] {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+}
+/* Estado seleccionado: casilla marcada resalta su propio label */
+.lp-variant-field input[type="radio"]:checked + label,
+.lp-variant-field label:has(input[type="radio"]:checked) {
+  border-color: var(--lp-accent) !important;
+  background: var(--lp-soft-tint) !important;
+}
+.lp-variant-field .lp-vprice { display: block; font-size: 17px; font-weight: 800; color: var(--lp-ink); }
+.lp-variant-field .lp-vold { display: block; font-size: 11px; color: var(--lp-price-old); text-decoration: line-through; }
+.lp-variant-field .lp-vname { display: block; font-size: 12px; font-weight: 700; color: var(--lp-ink); margin-top: 4px; }
+.lp-variant-field .lp-vbadge {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  background: var(--lp-price-old); color: #fff; font-size: 9px; font-weight: 800;
+  padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+}
+
+/* ---------- 19. Método de envío (mismo patrón, en lista vertical) ---------- */
+.lp-ship-field { margin-bottom: 20px !important; }
+.lp-ship-field > div,
+.lp-ship-field fieldset {
+  border: 1px solid var(--lp-line) !important;
+  border-radius: var(--lp-radius) !important;
+  overflow: hidden !important;
+  background: #fff !important;
+}
+.lp-ship-field label {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px !important;
+  cursor: pointer !important;
+  border-bottom: 1px solid var(--lp-line) !important;
+}
+.lp-ship-field label:last-child { border-bottom: none !important; }
+.lp-ship-field input[type="radio"] {
+  position: absolute !important; opacity: 0 !important; width: 1px !important; height: 1px !important;
+}
+.lp-ship-field input[type="radio"]:checked + label,
+.lp-ship-field label:has(input[type="radio"]:checked) {
+  background: var(--lp-soft-tint) !important;
+}
+
+/* ---------- 20. Campos del formulario (nombre, whatsapp, dirección) ---------- */
+.lp-form-cod input[type="text"],
+.lp-form-cod input[type="tel"],
+.lp-form-cod input[type="email"],
+.lp-form-cod select {
+  border: 1px solid var(--lp-line) !important;
+  border-radius: 10px !important;
+  padding: 14px !important;
+  font-size: 14px !important;
+  color: var(--lp-ink) !important;
+  background: #fff !important;
+  transition: border .15s !important;
+}
+.lp-form-cod input:focus,
+.lp-form-cod select:focus {
+  border-color: var(--lp-accent) !important;
+  outline: none !important;
+}
+.lp-form-cod label { font-weight: 700 !important; font-size: 13px !important; color: var(--lp-ink) !important; }
+/* Texto de ayuda nativo del campo (usa el "Help text" del Form Builder en
+   vez de crear Text elements sueltos: así el hint viaja pegado al campo). */
+.lp-form-cod .help-text,
+.lp-form-cod small { color: var(--lp-muted-txt) !important; font-size: 12px !important; font-style: italic !important; }
+
+.lp-entrega-note { text-align: center !important; color: var(--lp-blue-dark) !important; font-size: 15px !important; font-weight: 800 !important; margin: 20px 0 16px !important; }
+
+/* Botón de envío del propio Form Builder — dale esta clase desde
+   Form → Style/Botón → Custom Class */
+.lp-btn-submit {
+  width: 100% !important;
+  background: linear-gradient(90deg, var(--lp-cta1), var(--lp-cta2)) !important;
+  border: none !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 18px !important;
+  color: #fff !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 16px rgba(255, 42, 0, .3) !important;
+}
+
+.lp-wa-note { text-align: center !important; color: var(--lp-green) !important; font-size: 14px !important; font-weight: 700 !important; margin: 16px 0 !important; }
+.lp-trust-seals img { width: 100%; height: auto; display: block; }
+
+/* ---------- 21. Página de Gracias ---------- */
+.lp-thanks-page { max-width: 480px !important; margin: 0 auto !important; padding: 0 20px 48px !important; }
+.lp-thanks-tick {
+  width: 76px !important; height: 76px !important; margin: 44px auto 22px !important;
+  border-radius: 50% !important; background: var(--lp-green) !important;
+  display: flex !important; align-items: center; justify-content: center;
+}
+.lp-thanks-title { font-size: 26px !important; font-weight: 900 !important; text-align: center !important; }
+.lp-thanks-sub { text-align: center !important; color: var(--lp-muted) !important; font-size: 15px !important; }
+.lp-thanks-timer {
+  display: flex !important; align-items: center; justify-content: center; gap: 8px;
+  background: #fff5f2 !important; border: 1.5px solid rgba(255, 42, 0, .28) !important;
+  border-radius: var(--lp-radius) !important; padding: 10px 14px !important;
+  color: var(--lp-cta1) !important; font-weight: 700 !important; font-size: 13.5px !important;
+}
+.lp-thanks-card {
+  background: #fff !important; border: 1.5px solid var(--lp-line) !important;
+  border-radius: var(--lp-radius-lg) !important; padding: 22px !important; margin-top: 26px !important;
+  text-align: center !important;
+}
+.lp-thanks-wa {
+  display: flex !important; align-items: center; justify-content: center; gap: 10px !important;
+  background: var(--lp-wa) !important; color: #fff !important; font-size: 17px !important; font-weight: 800 !important;
+  padding: 17px !important; border-radius: 13px !important; box-shadow: 0 5px 16px rgba(37, 211, 102, .34) !important;
+}
+.lp-thanks-step-num {
+  flex: 0 0 27px; height: 27px; border-radius: 50%; background: var(--lp-ink); color: #fff;
+  font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+}

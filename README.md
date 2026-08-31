@@ -9,6 +9,11 @@ las ventas de las campañas manuales —escribiendo el DNI y el celular, y poco 
 que cuelga una **página de seguimiento de envíos** para el cliente.
 Ver *[CRM de ventas manuales](#crm-de-ventas-manuales-y-seguimiento-de-envíos)*.
 
+Si en vez de este stack (Cloudflare Worker + Sheets) quieres reconstruir esta misma
+landing **100% nativa dentro de GoHighLevel** (para otro producto, editable por alguien
+no técnico desde el editor visual), ver
+*[ghl-template/README.md](ghl-template/README.md)*.
+
 Todo corre en un **Cloudflare Worker**: `public/` se sirve como archivos estáticos y el
 Worker solo se ejecuta en `/api/*`, así que las credenciales nunca llegan al navegador.
 
