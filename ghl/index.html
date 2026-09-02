@@ -8,6 +8,13 @@
 <!-- ============================================================================
   CÓMO USAR ESTE ARCHIVO EN GO HIGH LEVEL (GHL)
   ============================================================================
+  Este archivo es 100% autocontenido: el CSS, el HTML y las preguntas del
+  formulario (Nombres, WhatsApp, Método de Envío, Dirección/Agencia) están
+  todos aquí — no usa el Form Builder de GHL ni ningún iframe. El pedido se
+  envía con un fetch() propio a un Webhook de GHL (ver "2) TU WEBHOOK..."
+  dentro del <script>, y la sección 4 del README) para seguir usando
+  Pipelines y Workflows de forma nativa.
+
   Este NO es un archivo que subas "tal cual" a GHL. Es una página completa que
   puedes abrir en tu navegador para verla funcionar (con imágenes de prueba),
   y de la que copias 3 bloques distintos a 3 lugares distintos de GHL:
@@ -241,45 +248,88 @@
 
   #tarotKit .sect-title { font-size: 16px; font-weight: 800; margin: 12px 0 10px; color: var(--plum); }
 
-  #tarotKit .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
+  /* Método de envío: tarjetas reales, no un formulario de terceros — por
+     eso pueden ser 100% fieles al diseño original (icono, "Gratis", texto
+     de detalle en su propia línea), sin las limitaciones de reestilar un
+     iframe ajeno. */
+  #tarotKit .ship-opts { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #fff; }
+  #tarotKit .ship-opt { display: flex; align-items: center; gap: 12px; padding: 16px 14px; cursor: pointer; border-bottom: 1px solid var(--line); transition: background 0.2s; }
+  #tarotKit .ship-opt:last-child { border-bottom: none; }
+  #tarotKit .ship-opt.sel { background: var(--soft-tint); }
+  #tarotKit .ship-opt .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  #tarotKit .ship-opt.sel .radio { border-color: var(--ink); }
+  #tarotKit .ship-opt.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
+  #tarotKit .ship-opt .txt { flex: 1; }
+  #tarotKit .ship-opt .txt b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
+  #tarotKit .ship-opt .txt small { display: block; color: var(--muted-txt); font-size: 12px; margin-top: 2px; }
+  #tarotKit .ship-opt .free { color: var(--ink); font-weight: 800; font-size: 14px; }
+  #tarotKit .ship-opt .txt .loc-line { display: block; color: var(--blue-dark); font-weight: 800; font-size: 13px; margin-top: 3px; }
 
-  /* Order bump compacto: va DEBAJO del iframe del formulario nativo de GHL
-     (no antes), como una franja angosta con una miniatura, precio y un botón
-     chico — no un carrusel grande. Al tocar "Añadir" solo cambia de estado
-     visual y actualiza el campo oculto f-bump del formulario (ver Bloque C,
-     tkAddBump); no es un segundo popup. */
-  #tarotKit .bump-mini { display: flex; align-items: center; gap: 12px; border: 1.5px dashed var(--price-old); background: #fff9f9; border-radius: 12px; padding: 12px; margin: 16px 0; }
-  #tarotKit .bump-mini .thumb { width: 56px; height: 56px; min-width: 56px; border-radius: 8px; overflow: hidden; background: var(--soft-tint); }
-  #tarotKit .bump-mini .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #tarotKit .bump-mini .info { flex: 1; min-width: 0; }
-  #tarotKit .bump-mini .tag { font-size: 11px; font-weight: 800; color: var(--cta1); text-transform: uppercase; letter-spacing: .3px; }
-  #tarotKit .bump-mini .name { font-size: 13px; font-weight: 700; color: var(--plum); line-height: 1.25; margin-top: 2px; }
-  #tarotKit .bump-mini .price { font-size: 12px; margin-top: 4px; }
-  #tarotKit .bump-mini .price s { color: var(--price-old); margin-right: 6px; }
-  #tarotKit .bump-mini .price b { color: var(--ink); }
+  #tarotKit .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
+  #tarotKit .fg { margin-bottom: 16px; }
+  #tarotKit .fg label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--ink); }
+  #tarotKit .fg label .req { color: var(--price-old); }
+  #tarotKit .fg .hint { display: block; font-size: 12px; color: var(--muted-txt); margin-top: 6px; line-height: 1.3; font-style: italic; }
+  #tarotKit .fg .input-icon { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; transition: border 0.2s; }
+  #tarotKit .fg .input-icon:focus-within { border-color: var(--purple-soft); }
+  #tarotKit .fg .input-icon .ic { background: #F0F0F0; padding: 0 14px; display: flex; align-items: center; color: var(--muted-txt); font-size: 18px; border-right: 1px solid var(--line); }
+  #tarotKit .fg .input-icon input { border: none; outline: none; flex: 1; padding: 14px; font-size: 14px; color: var(--ink); min-width: 0; }
+  #tarotKit .sel-input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; background: #fff; outline: none; color: var(--ink); transition: border 0.2s; }
+  #tarotKit .sel-input:focus { border-color: var(--purple-soft); }
+  #tarotKit .fg input::placeholder, #tarotKit .sel-input::placeholder { color: var(--muted-txt); opacity: 1; }
+
+  #tarotKit .entrega-note { text-align: center; color: var(--blue-dark); font-size: 15px; font-weight: 800; margin: 20px 0 16px; line-height: 1.4; }
+
+  #tarotKit .btn-pedido { width: 100%; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #fff; border-radius: 12px; padding: 18px; margin-top: 6px; box-shadow: 0 6px 16px var(--cta-shadow); transition: transform 0.2s; }
+  #tarotKit .btn-pedido:active { transform: scale(0.98); }
+  #tarotKit .btn-pedido:disabled { opacity: .7; cursor: default; }
+  #tarotKit .btn-pedido .l1 { font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  #tarotKit .btn-pedido .l2 { font-size: 13px; font-weight: 600; margin-top: 4px; opacity: 0.9; }
+
+  #tarotKit .wa-note { text-align: center; color: var(--green); font-size: 14px; font-weight: 700; margin: 16px 0; line-height: 1.4; display: flex; justify-content: center; align-items: center; gap: 6px; }
+
+  /* ── Modal Upsell (order bump): un 2do modal, igual que en tu web
+     original. Ahora que el envío es un fetch() propio (no un formulario de
+     GHL en iframe cross-origin), sí es 100% confiable saber "ya se envió" y
+     recién mostrar esto, así que se restaura el flujo original completo. */
+  #tarotKit .upsell-head { text-align: center; margin-bottom: 16px; }
+  #tarotKit .upsell-head .l1 { color: var(--cta1); font-size: 22px; font-weight: 800; }
+  #tarotKit .upsell-head .l2 { color: var(--plum); font-size: 16px; font-weight: 800; margin-top: 4px; }
+  #tarotKit .upsell-timer { background: #fff9f9; border: 1px solid rgba(0,135,76,0.3); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 16px; }
+  #tarotKit .upsell-timer .cd { color: var(--cta1); font-size: 32px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  #tarotKit .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; margin-bottom: 16px; scrollbar-width: none; background: var(--soft-tint); }
+  #tarotKit .u-carousel::-webkit-scrollbar { display: none; }
+  #tarotKit .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+  #tarotKit .u-carousel img, #tarotKit .u-carousel video { width: 100%; height: 100%; object-fit: cover; }
+  #tarotKit .upsell-list { font-size: 14px; margin: 16px 0; background: var(--soft-tint); padding: 14px; border-radius: 12px; }
+  #tarotKit .upsell-list div { padding: 4px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
+  #tarotKit .upsell-list .ck { color: var(--green); flex-shrink: 0; }
+  #tarotKit .u-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 10px 0 4px; }
+  #tarotKit .u-dots { display: flex; justify-content: center; gap: 6px; }
+  #tarotKit .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
+  #tarotKit .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
+  #tarotKit .modal-bump { padding-bottom: 14px; }
+  #tarotKit .upsell-cta { position: sticky; bottom: 0; background: #fff; padding-top: 10px; margin-top: 4px; box-shadow: 0 -10px 14px -6px rgba(255,255,255,.95); }
+  #tarotKit .upsell-cta .btn-no { margin-top: 8px; }
+  @media (max-height: 720px) {
+    #tarotKit .u-carousel { aspect-ratio: 4 / 3; }
+    #tarotKit .upsell-list { margin: 10px 0; padding: 10px; }
+    #tarotKit .upsell-price { margin-bottom: 10px; }
+    #tarotKit .upsell-price b { font-size: 26px; }
+  }
+  #tarotKit .upsell-price { text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+  #tarotKit .upsell-price s { color: var(--price-old); font-size: 18px; font-weight: 500; }
+  #tarotKit .upsell-price b { color: var(--ink); font-size: 32px; font-weight: 800; }
   @keyframes tkShaky {
     0% { transform: translateX(0); }
     10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-1deg); }
     20%, 40%, 60%, 80% { transform: translateX(4px) rotate(1deg); }
     100% { transform: translateX(0); }
   }
-  #tarotKit .btn-add { flex-shrink: 0; border: none; cursor: pointer; border-radius: 10px; padding: 11px 14px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: #fff; background: linear-gradient(90deg, var(--cta1), var(--cta2)); white-space: nowrap; box-shadow: 0 4px 12px var(--cta-shadow); }
+  #tarotKit .btn-add { width: 100%; border: none; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #fff; font-size: 18px; font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 18px; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 6px 20px var(--cta-shadow); display: flex; align-items: center; justify-content: center; gap: 8px; }
   #tarotKit .btn-add.shaky { animation: tkShaky 3s infinite ease-in-out; }
-  #tarotKit .btn-add.added { background: var(--ink); animation: none; box-shadow: none; }
-
-  /* Formulario nativo de GHL: este <div> es donde se pega el código de
-     inserción (iframe) que GHL genera para tu formulario. Todo lo de aquí
-     abajo evita que el iframe se salga del modal: ancho 100%, sin overflow
-     horizontal, altura la ajusta solo form_embed.js (ver Bloque C). */
-  #tarotKit .ghl-embed-wrap { width: 100%; overflow: hidden; border-radius: 12px; margin-bottom: 4px; min-height: 60px; background: #fafafa; }
-  /* min-height de reserva: form_embed.js (cargado en Bloque C) ajusta el alto
-     real apenas el formulario termina de pintarse dentro del iframe. Sin este
-     mínimo, el iframe puede arrancar colapsado (~150px) un instante antes de
-     que ese script corra, y se ve como si el formulario "no entrara". */
-  #tarotKit .ghl-embed-wrap iframe { width: 100% !important; max-width: 100% !important; border: none !important; display: block; min-height: 640px; }
-  #tarotKit .ghl-loading { text-align: center; color: var(--muted-txt); font-size: 13px; padding: 24px 0; }
-
-  #tarotKit .wa-note { text-align: center; color: var(--green); font-size: 14px; font-weight: 700; margin: 16px 0; line-height: 1.4; display: flex; justify-content: center; align-items: center; gap: 6px; }
+  #tarotKit .btn-no { width: 100%; border: 1.5px solid var(--line); background: #f9f9f9; color: var(--plum); font-size: 16px; font-weight: 700; padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+  #tarotKit .btn-no:active { background: #eeeeee; }
 
   #tarotKit .seals { display: block; padding: 16px 0 4px; }
   #tarotKit .seals img { width: 100%; height: auto; display: block; }
@@ -294,6 +344,7 @@
   <symbol id="tk-i-badge" viewBox="0 0 24 24"><path d="M12 2l2.4 1.8 3-.2.9 2.9 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-.9 2.9-3-.2L12 22l-2.4-1.8-3 .2-.9-2.9L3.3 15l.9-2.9-.9-2.9 2.4-1.8.9-2.9 3 .2z"/><path d="M9 12l2 2 4-4"/></symbol>
   <symbol id="tk-i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 100-4 2 2 0 000 4zM18 18a2 2 0 100-4 2 2 0 000 4z"/></symbol>
   <symbol id="tk-i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="tk-i-phone" viewBox="0 0 24 24"><path d="M4 4h5l2 5-3 2a12 12 0 006 6l2-3 5 2v5a2 2 0 01-2 2A17 17 0 014 6a2 2 0 010-2z"/></symbol>
   <symbol id="tk-i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></symbol>
   <symbol id="tk-i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8"/></symbol>
   <symbol id="tk-i-arrow-l" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
@@ -378,9 +429,6 @@
     </div>
     <div class="garantia">Garantía de 90 días por tu pedido</div>
 
-    <!-- Variante: se queda fuera del formulario de GHL (para conservar el
-         diseño exacto de tarjetas con foto). La selección viaja al formulario
-         como parámetro de URL -> campo oculto (ver Bloque C, tkBuildFormUrl). -->
     <div class="variants">
       <div class="vcard sel" data-var="1kit" data-precio="79" onclick="tkSelVar(this)">
         <div class="radio"></div>
@@ -411,62 +459,113 @@
       </div>
     </div>
 
+    <div class="sect-title">Método de Envío</div>
+    <div class="ship-opts">
+      <div class="ship-opt sel" id="tkShipCasa" onclick="tkSelShip('casa')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#tk-i-box"/></svg> Pago en Casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+      <div class="ship-opt" id="tkShipAg" onclick="tkSelShip('agencia')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#tk-i-truck"/></svg> Envío por Agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+    </div>
+
     <div class="form-head">Completa tu información</div>
 
-    <!-- ====================== FORMULARIO NATIVO DE GHL ======================
-         1) Crea tu formulario en GHL con estos campos, EN ESTE ORDEN:
-              - Nombres (texto)                    -> CSS Class Name: f-nombre
-              - WhatsApp (teléfono)                 -> CSS Class Name: f-whatsapp
-              - Método de Envío (opción única)      -> CSS Class Name: f-envio
-                  Opción A: "Pago en Casa (Lima) - Gratis"
-                  Opción B: "Envío por Agencia (Provincia) - Gratis"
-              - Dirección de Entrega (texto)        -> CSS Class Name: f-direccion
-                  Lógica condicional: mostrar SOLO si Método de Envío = Opción A
-              - Agencia de Destino (texto)          -> CSS Class Name: f-agencia
-                  Lógica condicional: mostrar SOLO si Método de Envío = Opción B
-              - Variante (oculto)                   -> CSS Class Name: f-variante
-              - Extra / Bump (oculto)                -> CSS Class Name: f-bump
-              - Botón enviar                         -> CSS Class Name: f-submit
-         2) En Acciones del formulario: "Redirigir a URL", pega tu enlace de
-            WhatsApp (wa.me/519XXXXXXXX) y activa "Abrir en pestaña nueva".
-         3) Copia el código de inserción (iframe) que te da GHL y pégalo aquí
-            reemplazando el iframe de ejemplo de abajo (mismo id="tkGhlForm").
-         4) Pega el CSS de form-custom.css en el Custom CSS del formulario.
-         ==================================================================== -->
-    <div class="ghl-embed-wrap" id="tkGhlWrap">
-      <div class="ghl-loading" id="tkGhlLoading">Cargando formulario…</div>
-      <!-- EJEMPLO — reemplaza data-ghl-src por el src real de tu formulario -->
-      <iframe id="tkGhlForm"
-              data-ghl-src="https://api.leadconnectorhq.com/widget/form/TU_FORM_ID"
-              style="display:none"
-              scrolling="no"
-              title="Formulario de pedido">
-      </iframe>
+    <div class="fg">
+      <label>Nombres<span class="req">*</span></label>
+      <div class="input-icon">
+        <span class="ic"><svg class="ico"><use href="#tk-i-user"/></svg></span>
+        <input type="text" id="tkName" placeholder="Coloca tu nombre">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Whatsapp <span class="req">*</span></label>
+      <div class="input-icon">
+        <span class="ic"><svg class="ico"><use href="#tk-i-phone"/></svg></span>
+        <input type="tel" id="tkPhone" placeholder="Coloca tu Whatsapp">
+      </div>
+      <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega en empaque discreto y embalado.</span>
     </div>
 
-    <!-- Order bump: va DEBAJO del formulario nativo de GHL (a propósito, no
-         antes) y compacto, con una sola miniatura en vez de un carrusel.
-         Antes esto era un 2do popup que aparecía DESPUÉS de enviar el
-         formulario; con un iframe de GHL de por medio no hay forma confiable
-         de saber "ya se envió" para recién mostrar ese popup, así que este
-         mismo contenido (miniatura/precio/beneficio) se agrega ANTES del
-         envío — "Añadir" solo marca la casilla oculta f-bump del mismo
-         formulario. Ver el README para más detalle. -->
-    <div class="bump-mini" id="tkBumpMini">
-      <div class="thumb"><img data-asset="bumpFoto2" alt="The Classic Tarot Rider Waite" onerror="tkSinFotoBump(this)"></div>
-      <div class="info">
-        <div class="tag">🎁 Extra con descuento</div>
-        <div class="name">The Classic Tarot Rider Waite</div>
-        <div class="price"><s>S/. 60.00</s><b>S/. 49.00</b></div>
+    <div id="tkBoxCasa">
+      <div class="fg">
+        <label>Dirección de Entrega <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Coloca tu dirección" id="tkDir">
+        <span class="hint">Entregas en horario de la tarde, el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
       </div>
-      <button type="button" class="btn-add shaky" id="tkBtnAdd" onclick="tkAddBump()">
-        <span id="tkBtnAddTxt">+ Añadir</span>
-      </button>
     </div>
+
+    <div id="tkBoxAg" style="display:none">
+      <div class="fg">
+        <label>Agencia de Destino <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="tkSucursal">
+        <span class="hint">Envíos por Shalom y Olva. Te enviaremos por WhatsApp la foto de tu comprobante con el número de seguimiento.</span>
+      </div>
+    </div>
+
+    <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan.
+         Su valor viaja en el payload del webhook para que tu Workflow pueda
+         descartar el envío si viene relleno. -->
+    <input type="text" id="tkWebsite" tabindex="-1" autocomplete="off" aria-hidden="true"
+           style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
+    <div class="entrega-note" id="tkNoteEntrega">Entrega para Lima al día siguiente y provincia 2-3 días</div>
+
+    <button class="btn-pedido buzz" id="tkBtnPedido" onclick="tkSubmitCOD()">
+      <div class="l1"><svg class="ico"><use href="#tk-i-box"/></svg> REALIZAR PEDIDO</div>
+      <div class="l2">Pedir Ahora</div>
+    </button>
 
     <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#tk-i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
 
     <div class="seals"><img data-asset="badges" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú" width="1200" height="518" loading="lazy"></div>
+  </div>
+</div>
+
+<!-- Modal Upsell (order bump): 2do modal, se abre justo al enviar el
+     pedido — el pedido viaja en paralelo por fetch() (ver tkSubmitCOD). -->
+<div class="overlay" id="tkUpsellOverlay">
+  <div class="modal modal-bump">
+    <span class="mclose" onclick="tkCloseAll()"><svg class="ico" style="width:26px;height:26px"><use href="#tk-i-x"/></svg></span>
+
+    <div class="upsell-head">
+      <div class="l1">¡SUPER OFERTA!</div>
+      <div class="l2">The Classic Tarot Rider Waite</div>
+    </div>
+    <div class="upsell-timer">
+      <div>Añádelo ahora con <b>descuento</b>, solo con este pedido</div>
+      <div class="cd" id="tkCd">09:58</div>
+    </div>
+
+    <div class="u-carousel" id="tkBumpCar">
+      <div class="slide"><video muted loop playsinline preload="none" data-asset-video="bumpVideo" aria-label="El mazo Rider Waite en video"></video></div>
+      <div class="slide"><img data-asset="bumpFoto2" alt="El mazo Rider Waite, colores tenues fieles al diseño original" onerror="tkSinFotoBump(this)"></div>
+      <div class="slide"><img data-asset="bumpFoto3" alt="El mazo Rider Waite con su manual incluido" onerror="tkSinFotoBump(this)"></div>
+    </div>
+    <div class="u-nav">
+      <div class="rev-arrow" onclick="tkBumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#tk-i-arrow-l"/></svg></div>
+      <div class="u-dots" id="tkBumpDots"></div>
+      <div class="rev-arrow" onclick="tkBumpMove(1)" role="button" tabindex="0" aria-label="Foto siguiente"><svg class="ico"><use href="#tk-i-arrow-r"/></svg></div>
+    </div>
+
+    <div class="upsell-list">
+      <b>Incluye:</b>
+      <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Colores tenues, fieles al diseño original.</div>
+      <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Cartas en su idioma nativo.</div>
+      <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Manual incluido.</div>
+    </div>
+    <div class="upsell-price"><s>S/. 60.00</s><b>S/. 49.00</b></div>
+
+    <div class="upsell-cta">
+      <button class="btn-add shaky" onclick="tkAddBump()">
+        <svg class="ico"><use href="#tk-i-cart"/></svg> SÍ, AÑADIR A MI PEDIDO
+      </button>
+      <button class="btn-no" onclick="tkCloseAll()">No, gracias</button>
+    </div>
   </div>
 </div>
 
@@ -485,7 +584,6 @@
 </div>
 </div><!-- /#tarotKit -->
 
-<script src="https://link.msgsndr.com/js/form_embed.js"></script>
 <script>
   /* ====================== BLOQUE C: LÓGICA DE LA PÁGINA ====================== */
 
@@ -500,7 +598,9 @@
     kitVariante: '',
     badges: '',
     bodyVideo: '',
+    bumpVideo: '',
     bumpFoto2: '',
+    bumpFoto3: '',
     r1: '', r2: '', r3: '',
     g1: '', g1mini: '',
     g2: '', g2mini: '',
@@ -515,7 +615,9 @@
     kitVariante: 'kittarotcod/kit-variante.webp',
     badges: 'kittarotcod/badges.webp',
     bodyVideo: 'kittarotcod/2.mp4',
+    bumpVideo: 'kittarotcod/orderbumpvideo1.mp4',
     bumpFoto2: 'kittarotcod/foto2orderbumb.webp',
+    bumpFoto3: 'kittarotcod/fotobump3.png',
     r1: 'kittarotcod/resenas/r1.webp', r2: 'kittarotcod/resenas/r2.webp', r3: 'kittarotcod/resenas/r3.webp',
     g1: 'kittarotcod/galeria/g1.webp', g1mini: 'kittarotcod/galeria/g1-mini.webp',
     g2: 'kittarotcod/galeria/g2.webp', g2mini: 'kittarotcod/galeria/g2-mini.webp',
@@ -526,9 +628,14 @@
   };
   function tkAsset(clave) { return ASSETS_GHL[clave] || ASSETS_FALLBACK[clave]; }
 
-  /* 2) TU FORMULARIO Y TU WHATSAPP ----------------------------------------- */
-  // URL base del iframe de tu formulario de GHL (sin los parámetros ?variante=..).
-  var GHL_FORM_SRC = 'https://api.leadconnectorhq.com/widget/form/TU_FORM_ID';
+  /* 2) TU WEBHOOK DE GHL Y TU WHATSAPP -------------------------------------
+     WEBHOOK_URL: crea un Workflow en GHL con disparador "Inbound Webhook"
+     (Settings > Workflows > Nuevo > Trigger: Inbound Webhook) y pega aquí la
+     URL que te da. Ese Workflow es tu "formulario": ahí mapeas los campos
+     del payload (ver tkSubmitCOD más abajo) a Contact/Custom Fields y de ahí
+     a tu Pipeline — sin pasar por el Form Builder ni por ningún iframe. Ver
+     el README, sección 4. */
+  var WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/TU_LOCATION_ID/webhook-trigger/TU_WEBHOOK_ID';
   var WHATSAPP_NUM = '51928529656';
 
   document.querySelectorAll('[data-asset]').forEach(function (el) {
@@ -559,16 +666,11 @@
   fbTrack('ViewContent', { content_ids: [FB.producto], content_type: 'product', content_name: 'Kit de Tarot para Principiantes', value: FB.variantes['1kit'], currency: FB.moneda }, true);
 
   /* ── Identidad de Meta (fbclid / _fbp / _fbc) ─────────────────────────
-     Esta página SÍ puede leer estas cookies (las escribe el Pixel de Meta
-     que corre aquí mismo, vía Tracking Code de GHL); el iframe del
-     formulario NO puede — vive en otro dominio (leadconnectorhq.com), y las
-     cookies no cruzan dominios. Por eso estos 3 valores se calculan aquí y
-     se mandan pegados a la URL del iframe (mismo mecanismo que variante y
-     bump); adentro, tus 3 campos ocultos f-fbclid/f-fbp/f-fbc los recogen
-     — con el script de la sección "Custom HTML" del README (o con "Fill
-     with URL parameter" si tu builder lo trae). Sin esto, Meta igual recibe
-     el evento del navegador, pero con peor "puntaje de coincidencia"
-     (matching) para atribuir la compra al anuncio exacto. */
+     Se manda tal cual dentro del mismo payload del webhook (ver
+     tkSubmitCOD) — sin dominios ni cookies cruzadas de por medio, porque ya
+     no hay iframe. Sirve para que tu Workflow (o una integración de
+     Conversions API server-side) pueda mandar el evento con mejor
+     "matching" hacia el anuncio exacto que generó la venta. */
   function tkCookie(nombre) {
     var m = document.cookie.match('(^|;)\\s*' + nombre + '\\s*=\\s*([^;]+)');
     return m ? m.pop() : '';
@@ -588,42 +690,11 @@
     };
   }
 
-  /* ── Modal COD: abre, activa imágenes/video diferidos y carga el iframe
-     del formulario de GHL SOLO en este momento (no antes), para no gastar
-     la carga del iframe en quien nunca llega a pedir. */
-  var tkBumpAceptado = false;
-  var tkFormCargado = false;
-
-  function tkBuildFormUrl() {
-    var v = tkVarianteActual();
-    var meta = tkIdentidadMeta();
-    var params = new URLSearchParams();
-    params.set('variante', v.id);
-    params.set('bump', tkBumpAceptado ? 'riderwaite' : '');
-    params.set('fbclid', meta.fbclid);
-    params.set('fbp', meta.fbp);
-    params.set('fbc', meta.fbc);
-    var sep = GHL_FORM_SRC.indexOf('?') > -1 ? '&' : '?';
-    return GHL_FORM_SRC + sep + params.toString();
-  }
-
-  function tkCargarFormulario() {
-    var iframe = document.getElementById('tkGhlForm');
-    var loading = document.getElementById('tkGhlLoading');
-    var real = iframe.getAttribute('data-ghl-src') && GHL_FORM_SRC.indexOf('TU_FORM_ID') === -1;
-    iframe.src = tkBuildFormUrl();
-    iframe.style.display = 'block';
-    if (loading) loading.style.display = 'none';
-    if (!tkFormCargado) {
-      tkFormCargado = true;
-      fbTrack('InitiateCheckout', { content_ids: [FB.producto], content_type: 'product', value: tkVarianteActual().valor, currency: FB.moneda }, true);
-    }
-    if (!real) {
-      // Placeholder visible mientras GHL_FORM_SRC no se haya reemplazado, para
-      // que quede clarísimo en la vista previa que falta pegar el form real.
-      if (loading) { loading.style.display = 'block'; loading.textContent = 'Pega aquí el src real de tu formulario de GHL (variable GHL_FORM_SRC).'; }
-      iframe.style.display = 'none';
-    }
+  /** 987654321 -> 51987654321 */
+  function tkAE164(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (d.length === 9 && d.charAt(0) === '9') return '51' + d;
+    return d;
   }
 
   function tkOpenCOD() {
@@ -632,7 +703,6 @@
     tkActivarImagenes(document.getElementById('tkCodOverlay'));
     document.getElementById('tkCodOverlay').classList.add('on');
     document.body.style.overflow = 'hidden';
-    if (!tkFormCargado) tkCargarFormulario();
   }
   function tkCloseCOD() {
     document.getElementById('tkCodOverlay').classList.remove('on');
@@ -646,43 +716,214 @@
     if (cambio) {
       var v = tkVarianteActual();
       fbTrack('AddToCart', { content_ids: [FB.producto], content_type: 'product', contents: [{ id: FB.producto, quantity: v.unidades }], value: v.valor, currency: FB.moneda });
-      if (tkFormCargado) tkCargarFormulario(); // re-sincroniza el campo oculto f-variante
     }
+  }
+
+  function tkSelShip(mode) {
+    document.getElementById('tkShipCasa').classList.toggle('sel', mode === 'casa');
+    document.getElementById('tkShipAg').classList.toggle('sel', mode === 'agencia');
+    document.getElementById('tkBoxCasa').style.display = mode === 'casa' ? 'block' : 'none';
+    document.getElementById('tkBoxAg').style.display = mode === 'agencia' ? 'block' : 'none';
+    document.getElementById('tkNoteEntrega').innerHTML = mode === 'casa'
+      ? 'Entrega para Lima al día siguiente'
+      : 'Entrega para Lima al día siguiente y provincia 2-3 días';
+  }
+
+  // InitiateCheckout se dispara al enfocar el primer campo real del
+  // formulario (no al abrir el modal): así no cuenta clics accidentales.
+  ['tkName', 'tkPhone', 'tkDir', 'tkSucursal'].forEach(function (id) {
+    var campo = document.getElementById(id);
+    if (!campo) return;
+    campo.addEventListener('focus', function () {
+      var v = tkVarianteActual();
+      fbTrack('InitiateCheckout', { content_ids: [FB.producto], content_type: 'product', value: v.valor, currency: FB.moneda }, true);
+    }, { once: true });
+  });
+
+  /* ── Envío del pedido: un solo fetch() a tu webhook de GHL, sin
+     formulario de terceros ni iframe de por medio. Mismo criterio que tenía
+     tu web original: si el servidor no contesta o da error 5xx, se
+     reintenta una vez; si sigue fallando, el lead no se pierde — se ofrece
+     mandarlo por WhatsApp con todo ya escrito. */
+  var tkPedidoEstado = 'pendiente'; // 'pendiente' | 'ok' | 'error'
+  var tkQuiereSalir = false;
+  var tkDatosPedido = {};
+  var tkBumpAceptado = false;
+
+  function tkEnviarWebhook(cuerpo, intento) {
+    return fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    }).then(function (r) {
+      if (r.status >= 500 && intento < 1) throw new Error('reintentar');
+      return r;
+    }).catch(function (err) {
+      if (intento < 1) {
+        return new Promise(function (ok) { setTimeout(ok, 1200); })
+          .then(function () { return tkEnviarWebhook(cuerpo, intento + 1); });
+      }
+      throw err;
+    });
+  }
+
+  function tkMensajeWhatsapp() {
+    var d = tkDatosPedido;
+    var lineas = ['Hola! Quiero confirmar mi pedido:', ''];
+    lineas.push('Nombre: ' + d.nombre);
+    lineas.push('WhatsApp: +' + d.telefono);
+    lineas.push('Producto: ' + d.producto);
+    if (d.bump) lineas.push('Extra: ' + d.bump);
+    lineas.push('Entrega: ' + d.envio);
+    lineas.push((d.envio.indexOf('Agencia') === 0 ? 'Agencia: ' : 'Direccion: ') + d.destino);
+    lineas.push('Total a pagar: S/ ' + d.total.toFixed(2));
+    return 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(lineas.join('\n'));
+  }
+
+  function tkIrAWhatsapp() {
+    fbTrack('Lead', { content_name: 'Kit de Tarot para Principiantes', content_category: 'COD', value: tkDatosPedido.total, currency: FB.moneda }, true);
+    location.href = tkMensajeWhatsapp();
+  }
+
+  function tkSubmitCOD() {
+    var n = document.getElementById('tkName').value.trim();
+    var p = document.getElementById('tkPhone').value.trim();
+    var esCasa = document.getElementById('tkShipCasa').classList.contains('sel');
+    var dir = document.getElementById('tkDir').value.trim();
+    var suc = document.getElementById('tkSucursal').value.trim();
+
+    if (!n) { alert('Ingresa tus nombres y apellidos'); return; }
+    if (p.replace(/\D/g, '').length < 9) { alert('Ingresa un WhatsApp válido de 9 dígitos'); return; }
+    if (esCasa && dir.length < 6) { alert('Ingresa tu dirección de entrega'); return; }
+    if (!esCasa && suc.length < 3) { alert('Indica la agencia de destino'); return; }
+
+    var btn = document.getElementById('tkBtnPedido');
+    btn.disabled = true;
+    btn.querySelector('.l2').textContent = 'Enviando…';
+
+    // El upsell se muestra de inmediato (como en tu web original): el
+    // pedido viaja en paralelo, sin bloquear al cliente por la red.
+    tkActivarImagenes(document.getElementById('tkUpsellOverlay'));
+    document.getElementById('tkUpsellOverlay').classList.add('on');
+    tkStartCd();
+
+    var v = tkVarianteActual();
+    var meta = tkIdentidadMeta();
+    var telefono = tkAE164(p);
+    var envioTxt = esCasa ? 'Pago en casa (Lima)' : 'Agencia (provincia)';
+    var destino = esCasa ? dir : suc;
+
+    var cuerpo = {
+      nombre: n,
+      telefono: telefono,
+      envio: esCasa ? 'casa' : 'agencia',
+      direccion: dir,
+      agencia: suc,
+      variante: v.id,
+      producto: v.id === '2kit' ? '2 Kits de Tarot Completo' : '1 Kit de Tarot Completo',
+      precio_variante: v.valor,
+      bump: tkBumpAceptado ? 'riderwaite' : '',
+      total: v.valor + (tkBumpAceptado ? FB.bumps.riderwaite : 0),
+      moneda: FB.moneda,
+      website: document.getElementById('tkWebsite').value, // honeypot anti-bots
+      fbclid: meta.fbclid,
+      fbp: meta.fbp,
+      fbc: meta.fbc,
+      pagina: location.href
+    };
+
+    tkDatosPedido = {
+      nombre: n,
+      telefono: telefono,
+      producto: cuerpo.producto,
+      envio: envioTxt,
+      destino: destino,
+      bump: '',
+      total: cuerpo.total
+    };
+
+    tkEnviarWebhook(cuerpo, 0)
+      .then(function (r) {
+        if (!r.ok) throw new Error('Error al registrar (' + r.status + ')');
+        tkPedidoEstado = 'ok';
+        if (tkQuiereSalir) tkIrAWhatsapp();
+      })
+      .catch(function (err) {
+        console.error(err);
+        tkPedidoEstado = 'error';
+        tkQuiereSalir = false;
+        // El lead no se pierde: se ofrece mandarlo por WhatsApp con todo
+        // ya escrito, igual que hacía tu web original ante una falla.
+        if (confirm('No pudimos registrar tu pedido por un problema de conexión.\n\n¿Lo enviamos por WhatsApp para no perderlo?')) {
+          location.href = tkMensajeWhatsapp();
+        }
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.querySelector('.l2').textContent = 'Pedir Ahora';
+      });
   }
 
   function tkAddBump() {
-    tkBumpAceptado = !tkBumpAceptado;
-    var btn = document.getElementById('tkBtnAdd');
-    var txt = document.getElementById('tkBtnAddTxt');
-    btn.classList.toggle('added', tkBumpAceptado);
-    btn.classList.toggle('shaky', !tkBumpAceptado);
-    txt.textContent = tkBumpAceptado ? '✓ Añadido' : '+ Añadir';
-    if (tkBumpAceptado) {
-      fbTrack('AddToCart', { content_ids: ['riderwaite'], content_type: 'product', content_name: 'Order bump: riderwaite', contents: [{ id: 'riderwaite', quantity: 1 }], value: FB.bumps.riderwaite, currency: FB.moneda });
-    }
-    if (tkFormCargado) tkCargarFormulario(); // re-sincroniza el campo oculto f-bump
+    tkBumpAceptado = true;
+    tkDatosPedido.bump = 'The Classic Tarot Rider Waite';
+    tkDatosPedido.total += FB.bumps.riderwaite;
+    fbTrack('AddToCart', { content_ids: ['riderwaite'], content_type: 'product', content_name: 'Order bump: riderwaite', contents: [{ id: 'riderwaite', quantity: 1 }], value: FB.bumps.riderwaite, currency: FB.moneda });
+    tkCloseAll();
   }
 
-  /* ── Mejor esfuerzo: GHL envía un postMessage al padre cuando el
-     formulario se envía con éxito (lo usa su propio form_embed.js para
-     autoajustar el alto del iframe). Lo aprovechamos SOLO para disparar el
-     evento Lead del Pixel desde esta página — el envío real del formulario
-     y la redirección a WhatsApp NO dependen de esto, esos ya los maneja GHL
-     de forma nativa (Acciones del formulario > Redirigir a URL). Si este
-     mensaje nunca llega, no rompe nada: solo no se dispara este Lead extra
-     de cliente (para eso existe también la integración nativa de Meta
-     Conversions API de GHL, que es server-side y no depende de esto). */
-  window.addEventListener('message', function (event) {
-    try {
-      var data = event.data;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { return; } }
-      if (!data || typeof data !== 'object') return;
-      var esEnvio = (data.type && String(data.type).toLowerCase().indexOf('submit') > -1) ||
-                    (data.event && String(data.event).toLowerCase().indexOf('submit') > -1);
-      if (!esEnvio) return;
-      fbTrack('Lead', { content_name: 'Kit de Tarot para Principiantes', content_category: 'COD', value: tkVarianteActual().valor + (tkBumpAceptado ? FB.bumps.riderwaite : 0), currency: FB.moneda }, true);
-    } catch (e) { /* nunca debe tumbar la página */ }
-  });
+  var tkCdInt, tkCdSeg = 598;
+  function tkStartCd() {
+    var el = document.getElementById('tkCd');
+    if (!el) return;
+    clearInterval(tkCdInt);
+    tkCdSeg = 598;
+    el.textContent = '09:58';
+    tkCdInt = setInterval(function () {
+      tkCdSeg--;
+      var m = Math.floor(tkCdSeg / 60), s = tkCdSeg % 60;
+      el.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      if (tkCdSeg <= 0) clearInterval(tkCdInt);
+    }, 1000);
+  }
+
+  function tkCloseAll() {
+    // Cerrar el order bump es el final del embudo: si el pedido ya se
+    // registró, vamos a WhatsApp; si aún no responde el servidor, se manda
+    // apenas conteste (tkQuiereSalir); si falló, ya se ofreció el rescate.
+    if (tkPedidoEstado === 'ok') { tkIrAWhatsapp(); return; }
+    if (tkPedidoEstado === 'pendiente') { tkQuiereSalir = true; }
+    document.getElementById('tkUpsellOverlay').classList.remove('on');
+    document.getElementById('tkCodOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+
+  /* Puntos y flechas del carrusel del order bump. */
+  var tkBumpCarEl, tkBumpSlides = 0;
+  (function () {
+    var car = document.getElementById('tkBumpCar');
+    var dots = document.getElementById('tkBumpDots');
+    if (!car || !dots) return;
+    var slides = car.children.length;
+    if (slides < 2) return;
+    tkBumpCarEl = car;
+    tkBumpSlides = slides;
+    for (var i = 0; i < slides; i++) {
+      var d = document.createElement('i');
+      if (i === 0) d.className = 'on';
+      dots.appendChild(d);
+    }
+    car.addEventListener('scroll', function () {
+      var actual = Math.round(car.scrollLeft / car.clientWidth);
+      [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
+    }, { passive: true });
+  })();
+  window.tkBumpMove = function (dir) {
+    if (!tkBumpCarEl || !tkBumpSlides) return;
+    var actual = Math.round(tkBumpCarEl.scrollLeft / tkBumpCarEl.clientWidth);
+    var siguiente = (actual + dir + tkBumpSlides) % tkBumpSlides;
+    tkBumpCarEl.scrollTo({ left: siguiente * tkBumpCarEl.clientWidth, behavior: 'smooth' });
+  };
 
   function tkActivarImagenes(contenedor) {
     if (!contenedor) return;
