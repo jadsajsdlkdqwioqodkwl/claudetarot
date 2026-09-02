@@ -159,11 +159,62 @@ que se indica — es lo que hace que `form-custom.css` los reconozca:
 | 7 | Extra / Bump | Campo oculto (hidden) | `f-bump` | Valor por defecto = parámetro de URL `bump` |
 | 8 | Botón enviar | — | `f-submit` | Texto: "REALIZAR PEDIDO" |
 
-**Lógica condicional** (para los campos 4 y 5): en el Form Builder, dentro
-de la configuración de cada campo hay una pestaña "Conditional Logic" /
-"Lógica condicional" — ahí eliges "Mostrar este campo si Método de Envío es
-igual a [Opción A/B]". Es una función nativa de GHL, corre dentro del propio
-iframe, así que es 100% confiable (no depende de nada externo).
+**Lógica condicional** (para los campos 4 y 5) — 3 caminos, de más simple a
+más manual. Los tres son formularios 100% nativos de GHL: pipelines,
+workflows y automatizaciones funcionan igual con cualquiera de los tres, la
+única diferencia es CÓMO se muestra/oculta el campo.
+
+**Opción 1 — si tu builder la trae.** Abre el campo "Dirección de Entrega",
+busca una pestaña "Conditional Logic" / "Lógica condicional", y configura
+"Mostrar este campo si Método de Envío es igual a Pago en Casa" (y lo mismo
+al revés en "Agencia de Destino"). No todas las cuentas/versiones de GHL
+traen esta pestaña en Forms (algunas solo la traen en Surveys) — si no la
+ves, pasa a la Opción 2.
+
+**Opción 2 — Custom HTML dentro del mismo formulario (recomendada si no
+tienes la Opción 1).** El Form Builder de GHL deja arrastrar un elemento
+**"Custom HTML"** como un campo más, DENTRO del propio formulario. Como ese
+script corre en el mismo documento que tus campos (no es cross-origin, a
+diferencia del script de la página madre), puede mostrar/ocultar Dirección y
+Agencia con JavaScript normal, sin depender de nada externo, y el envío
+sigue siendo el mismo formulario nativo. Arrastra un bloque "Custom HTML" en
+cualquier parte del formulario (no necesita espacio visual) y pega esto:
+
+```html
+<script>
+(function () {
+  function actualizar() {
+    var marcado = document.querySelector('.f-envio input[type="radio"]:checked');
+    if (!marcado) return;
+    var etiqueta = marcado.closest('label');
+    var texto = (etiqueta ? etiqueta.textContent : '').toLowerCase();
+    var esCasa = texto.indexOf('casa') > -1;
+    var dir = document.querySelector('.f-direccion');
+    var ag = document.querySelector('.f-agencia');
+    if (dir) dir.style.display = esCasa ? '' : 'none';
+    if (ag) ag.style.display = esCasa ? 'none' : '';
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target.matches && e.target.matches('.f-envio input[type="radio"]')) actualizar();
+  });
+  document.addEventListener('DOMContentLoaded', actualizar);
+  setTimeout(actualizar, 300); // red de seguridad si el formulario tarda en pintar
+})();
+</script>
+```
+
+Este script identifica la opción marcada por su TEXTO ("casa" vs el resto),
+no por su posición, así que sigue funcionando aunque cambies el orden de las
+opciones o el texto exacto (mientras la de Lima diga "casa" en algún lado).
+
+**Opción 3 — usar una Survey en vez de un Form.** Las Surveys de GHL están
+pensadas justo para "la pregunta 2 cambia según la respuesta de la pregunta
+1" con una lógica condicional visual, sin código. También disparan
+Workflows (trigger "Survey Submitted") y también pueden mover Contacts por
+Pipelines — es igual de nativo que un Form, solo que el constructor es
+distinto. Si prefieres armarlo así en vez de con el script de la Opción 2,
+dímelo y actualizo el HTML para que el iframe cargue tu Survey en vez de tu
+Form (el embed y la sincronización de variante/bump funcionan igual).
 
 **Campos ocultos con valor desde la URL**: en la configuración de un campo
 "Hidden", GHL tiene una opción para rellenarlo automáticamente con un
