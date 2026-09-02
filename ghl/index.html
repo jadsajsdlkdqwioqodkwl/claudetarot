@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit de Tarot para Principiantes — GHL</title>
+
+<!-- ============================================================================
+  CÓMO USAR ESTE ARCHIVO EN GO HIGH LEVEL (GHL)
+  ============================================================================
+  Este NO es un archivo que subas "tal cual" a GHL. Es una página completa que
+  puedes abrir en tu navegador para verla funcionar (con imágenes de prueba),
+  y de la que copias 3 bloques distintos a 3 lugares distintos de GHL:
+
+  BLOQUE A — <style> de abajo (todo el CSS):
+    Pégalo en un elemento "Custom Code" (tipo CSS) al inicio de la página,
+    o en Sitio > Página > Configuración > Custom CSS. En GHL basta con UN
+    elemento "Custom Code" con este <style>...</style> completo.
+
+  BLOQUE B — Todo el <body> (desde <div class="wrap"> hasta el final,
+    SIN el <script> de Meta Pixel/Clarity, que va aparte):
+    Pégalo en UN elemento "Custom HTML" que ocupe toda la página (borra las
+    secciones vacías que trae la plantilla en blanco de GHL).
+
+  BLOQUE C — El <script> final (toda la lógica: carrusel, galería, modal,
+    Pixel de eventos):
+    Va DENTRO del mismo elemento "Custom HTML" del Bloque B, justo después
+    del HTML (o en Sitio > Página > Configuración > Tracking Code > Footer).
+
+  El Meta Pixel y Microsoft Clarity (arriba del todo) van en:
+    Sitio > Configuración > Tracking Code > Header (para que carguen en TODAS
+    las páginas), no dentro del Custom HTML.
+
+  ============================================================================
+  IMÁGENES Y VIDEOS — dónde van y cómo se llaman
+  ============================================================================
+  Sube estos archivos a GHL en Sitios > Medios (Media Storage). Te recomiendo
+  crear las mismas 3 carpetas para no perderte, aunque GHL igual te va a dar
+  una URL distinta para cada archivo (algo como
+  https://storage.googleapis.com/msgsndr/.../media/xxxxx.webp):
+
+    /kittarotcod/                  (raíz del kit)
+      1.webp                 → banner principal (foto vertical de portada)
+      2.mp4                  → video del cuerpo de la página (vertical)
+      logo.webp              → logo circular (arriba del formulario)
+      kit-variante.webp      → foto del kit (usada en las 2 tarjetas de variante)
+      badges.webp            → banda de sellos de confianza (abajo del formulario)
+      orderbumpvideo1.mp4    → video del mazo Rider Waite (bloque "añadir extra")
+      foto2orderbumb.webp    → foto 2 del mazo Rider Waite
+      fotobump3.png          → foto 3 del mazo Rider Waite
+
+    /kittarotcod/resenas/          (fotos de las 3 reseñas con foto)
+      r1.webp, r2.webp, r3.webp
+
+    /kittarotcod/galeria/          (galería de 6 fotos + sus miniaturas)
+      g1.webp  g1-mini.webp
+      g2.webp  g2-mini.webp
+      g3.webp  g3-mini.webp
+      g4.webp  g4-mini.webp
+      g5.webp  g5-mini.webp
+      g6.webp  g6-mini.webp
+
+  Después de subir cada archivo, copia su URL pública y pégala en el objeto
+  ASSETS que está al PRINCIPIO del <script> (búscalo, dice "1) PEGA AQUÍ TUS
+  URLS DE GHL"). Es el ÚNICO lugar del archivo donde tienes que tocar rutas de
+  imágenes — todo el HTML las toma de ahí, así que no hay que buscar por las
+  1000+ líneas del archivo.
+
+  Puedes probar este archivo en tu navegador ANTES de subir nada: si dejas
+  ASSETS vacío, usa automáticamente los nombres de archivo relativos
+  (kittarotcod/...) como fallback, así que si lo abres junto a la carpeta
+  "public/kittarotcod" de tu proyecto original, se ve igual.
+  ============================================================================
+-->
+
+<style>
+  /* ====================== BLOQUE A: CSS DE LA PÁGINA ====================== */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg:#f5f5f7;
+    --card:#ffffff;
+    --brand-teal:#068988;
+    --plum:#111111;
+    --purple-soft:#007BFF;
+    --gold:#FFD700;
+    --ink:#111111;
+    --muted:#666666;
+    --muted-txt:#4A4A4A;
+    --line:#E0E0E0;
+    --green:#28A745;
+    --cta1:#FF2A00;
+    --cta2:#FF6A00;
+    --price-old:#E53935;
+    --blue-accent:#2D9CDB;
+    --blue-dark:#1E3A8A;
+    --body-bg: #f2f2f4;
+    --soft-tint: #F4F9FF;
+  }
+
+  #tarotKit, #tarotKit * { margin:0; padding:0; box-sizing:border-box; }
+  #tarotKit { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--body-bg); color: var(--ink); line-height: 1.4; overflow-x: hidden; }
+  #tarotKit .wrap { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); padding-bottom: 96px; }
+  #tarotKit img { max-width: 100%; display: block; }
+  #tarotKit .ico { width: 1em; height: 1em; display: inline-block; vertical-align: -.125em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  #tarotKit .ph { background: repeating-linear-gradient(45deg, #f4f4f9, #f4f4f9 12px, #eef0f5 12px, #eef0f5 24px); border: 1.5px dashed var(--purple-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--purple-soft); font-size: 12px; font-weight: 600; padding: 8px; min-height: 60px; }
+
+  #tarotKit .fullimg { width: 100%; display: block; }
+  #tarotKit .fullimg img { width: 100%; height: auto; display: block; }
+
+  #tarotKit .videobox { width: 100%; background: #0d0d12; }
+  #tarotKit .videobox video { width: 100%; height: auto; aspect-ratio: 720 / 1280; display: block; object-fit: cover; }
+
+  #tarotKit .gal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 20px 0; }
+  #tarotKit .gal button { padding: 0; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .15s, transform .15s; }
+  #tarotKit .gal button:hover, #tarotKit .gal button:focus-visible { border-color: var(--purple-soft); transform: translateY(-2px); }
+  #tarotKit .gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #tarotKit .gal button:last-child { position: relative; }
+  #tarotKit .gal .mas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.82); color: var(--purple-soft); font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
+
+  #tarotKit .visor { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 120; display: none; }
+  #tarotKit .visor.on { display: flex; flex-direction: column; }
+  #tarotKit .visor-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  #tarotKit .visor-x { cursor: pointer; padding: 4px; line-height: 0; }
+  #tarotKit .visor-track { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; align-items: center; }
+  #tarotKit .visor-track::-webkit-scrollbar { display: none; }
+  #tarotKit .visor-track figure { flex: 0 0 100%; scroll-snap-align: center; margin: 0; padding: 0 12px; }
+  #tarotKit .visor-track img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 14px; background: #111; max-height: 86vh; }
+  #tarotKit .visor-track figcaption { color: #ddd; font-size: 13px; text-align: center; margin-top: 12px; }
+  #tarotKit .visor-nav { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 14px 16px 22px; flex-shrink: 0; }
+  #tarotKit .visor-nav .rev-arrow { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); color: #fff; }
+  #tarotKit .visor-dots { display: flex; gap: 6px; }
+  #tarotKit .visor-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); transition: .2s; }
+  #tarotKit .visor-dots i.on { background: #fff; width: 18px; border-radius: 4px; }
+
+  #tarotKit .rating-row { padding: 16px 20px 4px; display: flex; align-items: center; gap: 8px; }
+  #tarotKit .stars { color: var(--gold); display: inline-flex; gap: 1px; font-size: 17px; }
+  #tarotKit .rating-txt { color: var(--purple-soft); font-weight: 600; font-size: 14px; }
+
+  #tarotKit .badge-free { display: inline-flex; align-items: center; background: #e6f3ef; color: var(--green); padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; margin: 8px 20px 0; }
+
+  #tarotKit h1.title { padding: 8px 20px; font-size: 24px; font-weight: 800; line-height: 1.2; color: var(--plum); }
+  #tarotKit h1.title .chk { color: var(--green); display: inline-flex; vertical-align: -2px; }
+
+  #tarotKit .viewing { padding: 0 20px 12px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--muted); }
+  #tarotKit .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--price-old); display: inline-block; animation: tkBlink 1.2s infinite; }
+  @keyframes tkBlink { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+
+  #tarotKit .price-block { padding: 0 20px 10px; }
+  #tarotKit .antes { color: var(--price-old); font-weight: 700; font-size: 16px; text-decoration: line-through; }
+  #tarotKit .ahora { font-size: 38px; font-weight: 800; color: var(--ink); margin-top: -4px; }
+
+  #tarotKit .stock { padding: 10px 20px 4px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  #tarotKit .stock .gdot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+  #tarotKit .stock-bar { margin: 0 20px 18px; height: 8px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+  #tarotKit .stock-bar span { display: block; height: 100%; width: 46%; background: var(--green); }
+
+  #tarotKit .cta { display: block; width: calc(100% - 40px); margin: 0 20px 22px; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #ffffff; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 6px 18px rgba(255,42,0,.3); transition: transform 0.2s; }
+  #tarotKit .cta:active { transform: scale(0.98); }
+  #tarotKit .buzz { animation: tkBuzz 2s ease-in-out infinite; transform-origin: center; }
+  @keyframes tkBuzz {
+    0%,82%,100%{transform:translateX(0) rotate(0)}
+    84%{transform:translateX(-3px) rotate(-.8deg)}86%{transform:translateX(3px) rotate(.8deg)}
+    88%{transform:translateX(-3px) rotate(-.8deg)}90%{transform:translateX(3px) rotate(.8deg)}
+    92%{transform:translateX(-2px) rotate(-.5deg)}94%{transform:translateX(2px) rotate(.5deg)}
+    96%{transform:translateX(-1px)}98%{transform:translateX(1px)}
+  }
+  #tarotKit .cta .l1 { font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  #tarotKit .cta .l2 { font-size: 13px; font-weight: 600; margin-top: 4px; opacity: 0.9; }
+
+  #tarotKit .rev-wrap { margin: 0 20px 22px; position: relative; }
+  #tarotKit .rev-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; scrollbar-width: none; }
+  #tarotKit .rev-track::-webkit-scrollbar { display: none; }
+  #tarotKit .rev-card { scroll-snap-align: center; min-width: 100%; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 14px; display: flex; gap: 12px; align-items: flex-start; background: var(--card); }
+  #tarotKit .rev-card .rfoto { width: 78px; min-width: 78px; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: #f1f1f4; }
+  #tarotKit .rev-card .rfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #tarotKit .rev-card .rbody { padding-right: 62px; }
+  #tarotKit .rev-card .ph { width: 64px; height: 64px; min-width: 64px; border-radius: 8px; }
+  #tarotKit .rev-card .name { font-weight: 700; font-size: 15px; color: var(--plum); }
+  #tarotKit .rev-card .rs { color: var(--gold); font-size: 13px; margin: 2px 0; }
+  #tarotKit .rev-card .rt { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  #tarotKit .rev-nav { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 2; }
+  #tarotKit .rev-arrow { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  #tarotKit .rev-dots { display: none; }
+  #tarotKit .rev-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: .2s; }
+  #tarotKit .rev-dots i.on { background: var(--purple-soft); width: 18px; border-radius: 4px; }
+
+  #tarotKit .clientes { text-align: center; padding: 24px 20px 8px; }
+  #tarotKit .clientes h2 { font-size: 22px; font-weight: 800; color: var(--plum); line-height: 1.2; }
+  #tarotKit .clientes .big { font-size: 44px; font-weight: 800; color: var(--ink); margin-top: 4px; }
+  #tarotKit .clientes .cstars { color: var(--gold); font-size: 20px; }
+  #tarotKit .clientes small { color: var(--muted); font-size: 13px; display: block; margin-top: 4px; }
+
+  #tarotKit .rlist { padding: 6px 20px 22px; }
+  #tarotKit .rlist .item { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+  #tarotKit .rlist .top { display: flex; justify-content: space-between; align-items: center; }
+  #tarotKit .rlist .who { font-weight: 700; font-size: 15px; color: var(--plum); }
+  #tarotKit .rlist .date { font-size: 12px; color: var(--muted); }
+  #tarotKit .rlist .verif { display: flex; align-items: center; gap: 5px; color: var(--green); font-size: 12px; font-weight: 600; margin: 6px 0; }
+  #tarotKit .rlist .rs { color: var(--gold); font-size: 14px; }
+  #tarotKit .rlist .rtitle { font-weight: 700; font-size: 15px; margin: 6px 0 4px; color: var(--ink); }
+  #tarotKit .rlist .rtext { font-size: 13px; color: var(--muted); }
+  #tarotKit .rlist .rimg { margin-top: 10px; border-radius: 8px; overflow: hidden; background: #f1f1f4; max-width: 190px; }
+  #tarotKit .rlist .rimg img { width: 100%; height: auto; display: block; }
+  #tarotKit .megusta { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  #tarotKit .megusta button { display: flex; align-items: center; gap: 5px; background: none; border: 0; cursor: pointer;
+    color: var(--muted); font-size: 13px; font-weight: 600; font-family: inherit; padding: 4px 2px; }
+  #tarotKit .megusta button.on { color: var(--purple-soft); }
+  #tarotKit .megusta .etiqueta { color: var(--muted); font-size: 13px; margin-right: auto; }
+  #tarotKit .megusta svg { width: 16px; height: 16px; }
+
+  #tarotKit .meta-footer { text-align: center; padding: 20px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  #tarotKit .sticky-cta-wrap {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(0); width: 100%; max-width: 480px; background: var(--bg); padding: 12px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); z-index: 45; transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
+  #tarotKit .sticky-cta-wrap.hidden { transform: translateX(-50%) translateY(120%); opacity: 0; pointer-events: none; }
+  #tarotKit .sticky-cta-wrap .cta { margin: 0; width: 100%; }
+
+  #tarotKit .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: none; overflow-y: auto; padding: 14px 0; }
+  #tarotKit .overlay.on { display: block; }
+  #tarotKit .modal { background: #fff; width: calc(100% - 24px); max-width: 456px; margin: 0 auto; border-radius: 16px; position: relative; padding: 22px 20px 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  #tarotKit .mclose { position: absolute; top: 16px; right: 16px; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px; z-index: 10; }
+
+  #tarotKit .logo-circle { width: 100px; height: 100px; margin: 0 auto 12px; }
+  #tarotKit .logo-circle img { width: 100%; height: 100%; object-fit: contain; }
+
+  #tarotKit .vendedor { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 auto 10px;
+    background: #eaf3ff; color: #0b63d6; border: 1px solid #cfe3ff; border-radius: 999px;
+    padding: 5px 14px; font-size: 13px; font-weight: 800; width: fit-content; }
+  #tarotKit .vendedor svg { width: 15px; height: 15px; }
+
+  #tarotKit .garantia { text-align: center; color: var(--price-old); font-size: 20px; font-weight: 800; margin: 10px 0 20px; line-height: 1.2; }
+
+  #tarotKit .variants { display: flex; gap: 10px; margin-bottom: 20px; }
+  #tarotKit .vcard { flex: 1; border: 2px solid var(--line); border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; position: relative; background: #fff; transition: 0.2s; }
+  #tarotKit .vcard.sel { border-color: var(--purple-soft); background: var(--soft-tint); }
+  #tarotKit .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+  #tarotKit .vcard.sel .radio { border-color: var(--purple-soft); }
+  #tarotKit .vcard.sel .radio::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--purple-soft); }
+  #tarotKit .vcard .foto { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #f4f2ef; }
+  #tarotKit .vcard .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; display: block; }
+  #tarotKit .vcard .dos { position: relative; }
+  #tarotKit .vcard .dos::after { content: "x2"; position: absolute; right: 5px; bottom: 5px; background: rgba(17,17,17,.78);
+    color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+  #tarotKit .vcard .vprice { font-size: 18px; font-weight: 800; color: var(--ink); }
+  #tarotKit .vcard .vold { font-size: 12px; color: var(--price-old); text-decoration: line-through; margin-top: 2px; }
+  #tarotKit .vcard .vname { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--plum); margin-top: 6px; }
+  #tarotKit .vcard .vinc-list { list-style: none; margin-top: 4px; padding: 0; text-align: left; }
+  #tarotKit .vcard .vinc-list li { font-size: 10.5px; font-weight: 500; line-height: 1.35; color: var(--muted-txt); padding-left: 12px; position: relative; }
+  #tarotKit .vcard .vinc-list li::before { content: '•'; position: absolute; left: 0; color: var(--purple-soft); font-weight: 800; }
+  #tarotKit .vbadge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--price-old); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 8px rgba(0,0,0,.15); }
+
+  #tarotKit .sect-title { font-size: 16px; font-weight: 800; margin: 12px 0 10px; color: var(--plum); }
+
+  #tarotKit .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
+
+  /* Bloque "Añade el mazo Rider Waite (opcional)" — reemplaza al segundo modal
+     (order bump) original. Sigue siendo el mismo carrusel/copy/precio, solo
+     que vive DENTRO del mismo modal, plegado hasta que el cliente lo abre, así
+     el modal no crece de más ni se sale de la pantalla por defecto. */
+  #tarotKit .bump-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border: 1.5px dashed var(--price-old); background: #fff9f9; color: var(--cta1); font-weight: 800; font-size: 14px;
+    border-radius: 12px; padding: 12px 14px; cursor: pointer; margin-bottom: 14px; }
+  #tarotKit .bump-toggle .arrow { transition: transform .2s; }
+  #tarotKit .bump-toggle.open .arrow { transform: rotate(180deg); }
+  #tarotKit .bump-box { display: none; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin: -4px 0 16px; background: #fff; }
+  #tarotKit .bump-box.on { display: block; }
+  #tarotKit .upsell-head { text-align: center; margin-bottom: 12px; }
+  #tarotKit .upsell-head .l1 { color: var(--cta1); font-size: 18px; font-weight: 800; }
+  #tarotKit .upsell-head .l2 { color: var(--plum); font-size: 14px; font-weight: 800; margin-top: 2px; }
+  #tarotKit .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; margin-bottom: 12px; scrollbar-width: none; background: var(--soft-tint); }
+  #tarotKit .u-carousel::-webkit-scrollbar { display: none; }
+  #tarotKit .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+  #tarotKit .u-carousel img, #tarotKit .u-carousel video { width: 100%; height: 100%; object-fit: cover; }
+  #tarotKit .upsell-list { font-size: 13px; margin: 12px 0; background: var(--soft-tint); padding: 12px; border-radius: 12px; }
+  #tarotKit .upsell-list div { padding: 3px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
+  #tarotKit .upsell-list .ck { color: var(--green); flex-shrink: 0; }
+  #tarotKit .u-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 8px 0 4px; }
+  #tarotKit .u-dots { display: flex; justify-content: center; gap: 6px; }
+  #tarotKit .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
+  #tarotKit .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
+  #tarotKit .upsell-price { text-align: center; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+  #tarotKit .upsell-price s { color: var(--price-old); font-size: 16px; font-weight: 500; }
+  #tarotKit .upsell-price b { color: var(--ink); font-size: 26px; font-weight: 800; }
+  @keyframes tkShaky {
+    0% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-1deg); }
+    20%, 40%, 60%, 80% { transform: translateX(4px) rotate(1deg); }
+    100% { transform: translateX(0); }
+  }
+  #tarotKit .btn-add { width: 100%; border: none; background: var(--green); color: #fff; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 15px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 20px rgba(40,167,69,0.3); }
+  #tarotKit .btn-add.shaky { animation: tkShaky 3s infinite ease-in-out; }
+  #tarotKit .btn-add.added { background: var(--ink); animation: none; }
+
+  /* Formulario nativo de GHL: este <div> es donde se pega el código de
+     inserción (iframe) que GHL genera para tu formulario. Todo lo de aquí
+     abajo evita que el iframe se salga del modal: ancho 100%, sin overflow
+     horizontal, altura la ajusta solo form_embed.js (ver Bloque C). */
+  #tarotKit .ghl-embed-wrap { width: 100%; overflow: hidden; border-radius: 12px; margin-bottom: 4px; min-height: 60px; background: #fafafa; }
+  /* min-height de reserva: form_embed.js (cargado en Bloque C) ajusta el alto
+     real apenas el formulario termina de pintarse dentro del iframe. Sin este
+     mínimo, el iframe puede arrancar colapsado (~150px) un instante antes de
+     que ese script corra, y se ve como si el formulario "no entrara". */
+  #tarotKit .ghl-embed-wrap iframe { width: 100% !important; max-width: 100% !important; border: none !important; display: block; min-height: 640px; }
+  #tarotKit .ghl-loading { text-align: center; color: var(--muted-txt); font-size: 13px; padding: 24px 0; }
+
+  #tarotKit .wa-note { text-align: center; color: var(--green); font-size: 14px; font-weight: 700; margin: 16px 0; line-height: 1.4; display: flex; justify-content: center; align-items: center; gap: 6px; }
+
+  #tarotKit .seals { display: block; padding: 16px 0 4px; }
+  #tarotKit .seals img { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+
+<div id="tarotKit">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="tk-i-star" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="tk-i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="tk-i-badge" viewBox="0 0 24 24"><path d="M12 2l2.4 1.8 3-.2.9 2.9 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-.9 2.9-3-.2L12 22l-2.4-1.8-3 .2-.9-2.9L3.3 15l.9-2.9-.9-2.9 2.4-1.8.9-2.9 3 .2z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="tk-i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 100-4 2 2 0 000 4zM18 18a2 2 0 100-4 2 2 0 000 4z"/></symbol>
+  <symbol id="tk-i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="tk-i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></symbol>
+  <symbol id="tk-i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8"/></symbol>
+  <symbol id="tk-i-arrow-l" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="tk-i-arrow-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="tk-i-gift" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="4"/><rect x="5" y="13" width="14" height="8"/><path d="M12 9v12M12 9C9.5 9 8 7.5 8 6a2.5 2.5 0 015 0c0-1.5 1.5-3 3-3a2 2 0 010 4c1 .5 1 2 1 2"/></symbol>
+  <symbol id="tk-i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="tk-i-cards" viewBox="0 0 24 24"><rect x="2.4" y="5.2" width="10" height="14" rx="2" transform="rotate(-14 7.4 12.2)"/><rect x="11.4" y="4.4" width="10" height="14" rx="2" transform="rotate(9 16.4 11.4)"/><path d="M16 8.3l1 2.2 2.3.2-1.8 1.6.6 2.3-2.1-1.3-2.1 1.3.6-2.3-1.8-1.6 2.3-.2z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="tk-i-cart" viewBox="0 0 24 24"><path d="M9 20a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2zm-9.8-2h11.6L21 7H6M3 3h2l.4 2M6 7l1.3 11"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="fullimg"><img data-asset="hero" alt="Kit de Tarot para Principiantes" width="941" height="1672" fetchpriority="high" decoding="async"></div>
+
+  <div class="rating-row">
+    <span class="stars"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></span>
+    <span class="rating-txt">(4.9/5) en +1286 Reseñas</span>
+  </div>
+
+  <div class="badge-free">Envío gratis a todo Perú</div>
+
+  <h1 class="title">Kit de tarot para principiantes</h1>
+  <div class="viewing"><span class="rdot"></span> 12 Personas viendo este producto AHORA!</div>
+
+  <div class="price-block">
+    <div class="antes">Antes S/ 129.00</div>
+    <div class="ahora">Ahora S/ 79.00</div>
+  </div>
+
+  <div class="stock"><span class="gdot"></span> Solo quedan 23 kits en stock</div>
+  <div class="stock-bar"><span></span></div>
+
+  <button class="cta buzz" onclick="tkOpenCOD()">
+    <div class="l1"><svg class="ico"><use href="#tk-i-cards"/></svg> ¡QUIERO APRENDER TAROT!</div>
+    <div class="l2">Envío gratis y pagas al recibir</div>
+  </button>
+
+  <div class="rev-wrap">
+    <div class="rev-track" id="tkRevTrack">
+      <div class="rev-card"><div class="rfoto"><img data-asset="r1" alt="Compra de Carla Rojas" width="156" height="156" loading="lazy" onerror="tkSinFotoResena(this)"></div><div class="rbody"><div class="name">Carla Rojas</div><div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div><div class="rt">Llegó completo y las cartas tienen los significados impresos, ideal para empezar sin saber nada. El tapete es hermoso.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><img data-asset="r2" alt="Compra de Lucía Mendoza" width="156" height="156" loading="lazy" onerror="tkSinFotoResena(this)"></div><div class="rbody"><div class="name">Lucía Mendoza</div><div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div><div class="rt">El manual paso a paso me ayudó muchísimo. Ya hago mis primeras tiradas. El collar amuleto es un detalle precioso.</div></div></div>
+      <div class="rev-card"><div class="rfoto"><img data-asset="r3" alt="Compra de Andrea Salas" width="156" height="156" loading="lazy" onerror="tkSinFotoResena(this)"></div><div class="rbody"><div class="name">Andrea Salas</div><div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div><div class="rt">Pedí por pago contra entrega y todo perfecto. La calidad del mazo Rider Waite superó mis expectativas.</div></div></div>
+    </div>
+    <div class="rev-nav">
+      <div class="rev-arrow" onclick="tkRevMove(-1)"><svg class="ico"><use href="#tk-i-arrow-l"/></svg></div>
+      <div class="rev-dots" id="tkRevDots"></div>
+      <div class="rev-arrow" onclick="tkRevMove(1)"><svg class="ico"><use href="#tk-i-arrow-r"/></svg></div>
+    </div>
+  </div>
+
+  <div class="videobox">
+    <video id="tkVidKit" muted loop playsinline preload="none" data-asset-video="bodyVideo" width="720" height="1280" aria-label="El Kit de Tarot por dentro"></video>
+  </div>
+
+  <div class="gal" id="tkGal" role="group" aria-label="Fotos del kit"></div>
+
+  <button class="cta buzz" style="margin-top:24px" onclick="tkOpenCOD()">
+    <div class="l1"><svg class="ico"><use href="#tk-i-bag"/></svg> EMPIEZA TU CAMINO EN EL TAROT</div>
+    <div class="l2">Pago contra entrega disponible</div>
+  </button>
+
+  <div class="clientes">
+    <h2>Lo que nuestros clientes dicen de nosotros</h2>
+    <div class="big">4.8</div>
+    <div class="cstars"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
+    <small>+546 Reseñas verificadas</small>
+  </div>
+
+  <div class="rlist">
+    <div class="item">
+      <div class="top"><span class="who">Johana D.</span><span class="date">Febrero 2026</span></div>
+      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
+      <div class="rtitle">Excelente Kit</div>
+      <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="74" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">74</span></button>
+        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top"><span class="who">Mariana V.</span><span class="date">Enero 2026</span></div>
+      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
+      <div class="rtitle">Muy recomendable</div>
+      <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="38" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">38</span></button>
+        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top"><span class="who">Silvia P.</span><span class="date">Diciembre 2025</span></div>
+      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
+      <div class="rtitle">El mejor regalo</div>
+      <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="51" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">51</span></button>
+        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top"><span class="who">Fernanda L.</span><span class="date">Noviembre 2025</span></div>
+      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
+      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
+      <div class="rtitle">Práctico y bonito</div>
+      <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
+      <div class="megusta">
+        <span class="etiqueta">¿Te resultó útil?</span>
+        <button type="button" class="like" data-gustos="29" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">29</span></button>
+        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="meta-footer">
+    <p>This site is not a part of the Facebook website or Facebook Inc. Additionally, This site is NOT endorsed by Facebook in any way. FACEBOOK is a trademark of FACEBOOK, Inc.</p>
+  </footer>
+</div>
+
+<div class="sticky-cta-wrap">
+  <button class="cta buzz" onclick="tkOpenCOD()">
+    <div class="l1"><svg class="ico"><use href="#tk-i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
+    <div class="l2">Envío gratis a todo el Perú</div>
+  </button>
+</div>
+
+<!-- Modal COD: el formulario real de GHL vive aquí adentro -->
+<div class="overlay" id="tkCodOverlay">
+  <div class="modal">
+    <span class="mclose" onclick="tkCloseCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#tk-i-x"/></svg></span>
+
+    <div class="logo-circle"><img data-asset="logo" alt="Tarot Store Perú" width="100" height="100"></div>
+    <div class="vendedor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>
+      Vendedor calificado
+    </div>
+    <div class="garantia">Garantía de 90 días por tu pedido</div>
+
+    <!-- Variante: se queda fuera del formulario de GHL (para conservar el
+         diseño exacto de tarjetas con foto). La selección viaja al formulario
+         como parámetro de URL -> campo oculto (ver Bloque C, tkBuildFormUrl). -->
+    <div class="variants">
+      <div class="vcard sel" data-var="1kit" data-precio="79" onclick="tkSelVar(this)">
+        <div class="radio"></div>
+        <div class="foto"><img data-asset="kitVariante" alt="Kit de Tarot completo" width="500" height="300" loading="lazy"></div>
+        <div class="vprice">S/. 79.00</div>
+        <div class="vold">S/. 129.00</div>
+        <div class="vname">1 Kit de Tarot Completo</div>
+        <ul class="vinc-list">
+          <li>Mazo Rider-Waite con significados</li>
+          <li>Manual</li>
+          <li>Tapete de lectura</li>
+          <li>Collar de carta de Tarot de regalo</li>
+        </ul>
+      </div>
+      <div class="vcard" data-var="2kit" data-precio="139" onclick="tkSelVar(this)">
+        <div class="vbadge"><svg class="ico"><use href="#tk-i-gift"/></svg> Regala magia</div>
+        <div class="radio"></div>
+        <div class="foto dos"><img data-asset="kitVariante" alt="Dos kits de Tarot completos" width="500" height="300" loading="lazy"></div>
+        <div class="vprice">S/. 139.00</div>
+        <div class="vold">S/. 258.00</div>
+        <div class="vname">2 Kits de Tarot Completo</div>
+        <ul class="vinc-list">
+          <li>2 mazos Rider-Waite con significados</li>
+          <li>2 manuales</li>
+          <li>2 tapetes de lectura</li>
+          <li>2 collares de carta de Tarot de regalo</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bloque "añadir extra": antes era un 2do modal DESPUÉS de enviar el
+         formulario. Con un formulario nativo de GHL en iframe no hay forma
+         confiable de saber "ya envió" para recién mostrar un popup nuevo, así
+         que este mismo contenido (carrusel, bullets, precio) va ANTES del
+         envío, plegado por defecto. Ver el README para más detalle. -->
+    <div class="bump-toggle" id="tkBumpToggle" onclick="tkToggleBump()">
+      <span>🎁 Añade el mazo Rider Waite con descuento (opcional)</span>
+      <svg class="ico arrow" style="width:18px;height:18px"><use href="#tk-i-arrow-r"/></svg>
+    </div>
+    <div class="bump-box" id="tkBumpBox">
+      <div class="upsell-head">
+        <div class="l1">¡SUPER OFERTA!</div>
+        <div class="l2">The Classic Tarot Rider Waite</div>
+      </div>
+      <div class="u-carousel" id="tkBumpCar">
+        <div class="slide"><video muted loop playsinline preload="none" data-asset-video="bumpVideo" aria-label="El mazo Rider Waite en video"></video></div>
+        <div class="slide"><img data-asset="bumpFoto2" alt="El mazo Rider Waite, colores tenues fieles al diseño original" onerror="tkSinFotoBump(this)"></div>
+        <div class="slide"><img data-asset="bumpFoto3" alt="El mazo Rider Waite con su manual incluido" onerror="tkSinFotoBump(this)"></div>
+      </div>
+      <div class="u-nav">
+        <div class="rev-arrow" onclick="tkBumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#tk-i-arrow-l"/></svg></div>
+        <div class="u-dots" id="tkBumpDots"></div>
+        <div class="rev-arrow" onclick="tkBumpMove(1)" role="button" tabindex="0" aria-label="Foto siguiente"><svg class="ico"><use href="#tk-i-arrow-r"/></svg></div>
+      </div>
+      <div class="upsell-list">
+        <b>Incluye:</b>
+        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Colores tenues, fieles al diseño original.</div>
+        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Cartas en su idioma nativo.</div>
+        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Manual incluido.</div>
+      </div>
+      <div class="upsell-price"><s>S/. 60.00</s><b>S/. 49.00</b></div>
+      <button type="button" class="btn-add shaky" id="tkBtnAdd" onclick="tkAddBump()">
+        <svg class="ico"><use href="#tk-i-cart"/></svg> <span id="tkBtnAddTxt">SÍ, AÑADIR A MI PEDIDO</span>
+      </button>
+    </div>
+
+    <div class="form-head">Completa tu información</div>
+
+    <!-- ====================== FORMULARIO NATIVO DE GHL ======================
+         1) Crea tu formulario en GHL con estos campos, EN ESTE ORDEN:
+              - Nombres (texto)                    -> CSS Class Name: f-nombre
+              - WhatsApp (teléfono)                 -> CSS Class Name: f-whatsapp
+              - Método de Envío (opción única)      -> CSS Class Name: f-envio
+                  Opción A: "Pago en Casa (Lima) - Gratis"
+                  Opción B: "Envío por Agencia (Provincia) - Gratis"
+              - Dirección de Entrega (texto)        -> CSS Class Name: f-direccion
+                  Lógica condicional: mostrar SOLO si Método de Envío = Opción A
+              - Agencia de Destino (texto)          -> CSS Class Name: f-agencia
+                  Lógica condicional: mostrar SOLO si Método de Envío = Opción B
+              - Variante (oculto)                   -> CSS Class Name: f-variante
+              - Extra / Bump (oculto)                -> CSS Class Name: f-bump
+              - Botón enviar                         -> CSS Class Name: f-submit
+         2) En Acciones del formulario: "Redirigir a URL", pega tu enlace de
+            WhatsApp (wa.me/519XXXXXXXX) y activa "Abrir en pestaña nueva".
+         3) Copia el código de inserción (iframe) que te da GHL y pégalo aquí
+            reemplazando el iframe de ejemplo de abajo (mismo id="tkGhlForm").
+         4) Pega el CSS de form-custom.css en el Custom CSS del formulario.
+         ==================================================================== -->
+    <div class="ghl-embed-wrap" id="tkGhlWrap">
+      <div class="ghl-loading" id="tkGhlLoading">Cargando formulario…</div>
+      <!-- EJEMPLO — reemplaza data-ghl-src por el src real de tu formulario -->
+      <iframe id="tkGhlForm"
+              data-ghl-src="https://api.leadconnectorhq.com/widget/form/TU_FORM_ID"
+              style="display:none"
+              scrolling="no"
+              title="Formulario de pedido">
+      </iframe>
+    </div>
+
+    <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#tk-i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
+
+    <div class="seals"><img data-asset="badges" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú" width="1200" height="518" loading="lazy"></div>
+  </div>
+</div>
+
+<!-- Visor de fotos -->
+<div class="visor" id="tkVisor" role="dialog" aria-modal="true" aria-label="Fotos del kit">
+  <div class="visor-top">
+    <span id="tkVisorPos">1 / 5</span>
+    <span class="visor-x" id="tkVisorX" role="button" tabindex="0" aria-label="Cerrar"><svg class="ico" style="width:26px;height:26px"><use href="#tk-i-x"/></svg></span>
+  </div>
+  <div class="visor-track" id="tkVisorTrack"></div>
+  <div class="visor-nav">
+    <div class="rev-arrow" id="tkVisorPrev" role="button" tabindex="0" aria-label="Anterior"><svg class="ico"><use href="#tk-i-arrow-l"/></svg></div>
+    <div class="visor-dots" id="tkVisorDots"></div>
+    <div class="rev-arrow" id="tkVisorNext" role="button" tabindex="0" aria-label="Siguiente"><svg class="ico"><use href="#tk-i-arrow-r"/></svg></div>
+  </div>
+</div>
+</div><!-- /#tarotKit -->
+
+<script src="https://link.msgsndr.com/js/form_embed.js"></script>
+<script>
+  /* ====================== BLOQUE C: LÓGICA DE LA PÁGINA ====================== */
+
+  /* 1) PEGA AQUÍ TUS URLS DE GHL ------------------------------------------
+     Sube cada archivo a Sitios > Medios en GHL, copia la URL pública que te
+     entrega y pégala como valor. Si la dejas en '', se usa el nombre de
+     archivo relativo (kittarotcod/...) para poder previsualizar este archivo
+     localmente junto a tu carpeta public/kittarotcod original. */
+  var ASSETS_GHL = {
+    hero: '',
+    logo: '',
+    kitVariante: '',
+    badges: '',
+    bodyVideo: '',
+    bumpVideo: '',
+    bumpFoto2: '',
+    bumpFoto3: '',
+    r1: '', r2: '', r3: '',
+    g1: '', g1mini: '',
+    g2: '', g2mini: '',
+    g3: '', g3mini: '',
+    g4: '', g4mini: '',
+    g5: '', g5mini: '',
+    g6: '', g6mini: ''
+  };
+  var ASSETS_FALLBACK = {
+    hero: 'kittarotcod/1.webp',
+    logo: 'kittarotcod/logo.webp',
+    kitVariante: 'kittarotcod/kit-variante.webp',
+    badges: 'kittarotcod/badges.webp',
+    bodyVideo: 'kittarotcod/2.mp4',
+    bumpVideo: 'kittarotcod/orderbumpvideo1.mp4',
+    bumpFoto2: 'kittarotcod/foto2orderbumb.webp',
+    bumpFoto3: 'kittarotcod/fotobump3.png',
+    r1: 'kittarotcod/resenas/r1.webp', r2: 'kittarotcod/resenas/r2.webp', r3: 'kittarotcod/resenas/r3.webp',
+    g1: 'kittarotcod/galeria/g1.webp', g1mini: 'kittarotcod/galeria/g1-mini.webp',
+    g2: 'kittarotcod/galeria/g2.webp', g2mini: 'kittarotcod/galeria/g2-mini.webp',
+    g3: 'kittarotcod/galeria/g3.webp', g3mini: 'kittarotcod/galeria/g3-mini.webp',
+    g4: 'kittarotcod/galeria/g4.webp', g4mini: 'kittarotcod/galeria/g4-mini.webp',
+    g5: 'kittarotcod/galeria/g5.webp', g5mini: 'kittarotcod/galeria/g5-mini.webp',
+    g6: 'kittarotcod/galeria/g6.webp', g6mini: 'kittarotcod/galeria/g6-mini.webp'
+  };
+  function tkAsset(clave) { return ASSETS_GHL[clave] || ASSETS_FALLBACK[clave]; }
+
+  /* 2) TU FORMULARIO Y TU WHATSAPP ----------------------------------------- */
+  // URL base del iframe de tu formulario de GHL (sin los parámetros ?variante=..).
+  var GHL_FORM_SRC = 'https://api.leadconnectorhq.com/widget/form/TU_FORM_ID';
+  var WHATSAPP_NUM = '51928529656';
+
+  document.querySelectorAll('[data-asset]').forEach(function (el) {
+    el.src = tkAsset(el.getAttribute('data-asset'));
+  });
+
+  /* ── Meta Pixel: eventos del embudo (sin backend, todo desde el navegador) */
+  var FB = {
+    moneda: 'PEN',
+    producto: 'kit-tarot',
+    variantes: { '1kit': 79, '2kit': 139 },
+    bumps: { riderwaite: 49 }
+  };
+  function fbTrack(evento, datos, unaVez) {
+    if (typeof fbq !== 'function') return;
+    if (unaVez) {
+      FB._enviados = FB._enviados || {};
+      if (FB._enviados[evento]) return;
+      FB._enviados[evento] = true;
+    }
+    fbq('track', evento, datos);
+  }
+  function tkVarianteActual() {
+    var sel = document.querySelector('#tarotKit .vcard.sel');
+    var v = (sel && sel.getAttribute('data-var')) || '1kit';
+    return { id: v, valor: FB.variantes[v] || FB.variantes['1kit'], unidades: v === '2kit' ? 2 : 1 };
+  }
+  fbTrack('ViewContent', { content_ids: [FB.producto], content_type: 'product', content_name: 'Kit de Tarot para Principiantes', value: FB.variantes['1kit'], currency: FB.moneda }, true);
+
+  /* ── Modal COD: abre, activa imágenes/video diferidos y carga el iframe
+     del formulario de GHL SOLO en este momento (no antes), para no gastar
+     la carga del iframe en quien nunca llega a pedir. */
+  var tkBumpAceptado = false;
+  var tkFormCargado = false;
+
+  function tkBuildFormUrl() {
+    var v = tkVarianteActual();
+    var params = new URLSearchParams();
+    params.set('variante', v.id);
+    params.set('bump', tkBumpAceptado ? 'riderwaite' : '');
+    var sep = GHL_FORM_SRC.indexOf('?') > -1 ? '&' : '?';
+    return GHL_FORM_SRC + sep + params.toString();
+  }
+
+  function tkCargarFormulario() {
+    var iframe = document.getElementById('tkGhlForm');
+    var loading = document.getElementById('tkGhlLoading');
+    var real = iframe.getAttribute('data-ghl-src') && GHL_FORM_SRC.indexOf('TU_FORM_ID') === -1;
+    iframe.src = tkBuildFormUrl();
+    iframe.style.display = 'block';
+    if (loading) loading.style.display = 'none';
+    if (!tkFormCargado) {
+      tkFormCargado = true;
+      fbTrack('InitiateCheckout', { content_ids: [FB.producto], content_type: 'product', value: tkVarianteActual().valor, currency: FB.moneda }, true);
+    }
+    if (!real) {
+      // Placeholder visible mientras GHL_FORM_SRC no se haya reemplazado, para
+      // que quede clarísimo en la vista previa que falta pegar el form real.
+      if (loading) { loading.style.display = 'block'; loading.textContent = 'Pega aquí el src real de tu formulario de GHL (variable GHL_FORM_SRC).'; }
+      iframe.style.display = 'none';
+    }
+  }
+
+  function tkOpenCOD() {
+    var v = tkVarianteActual();
+    fbTrack('AddToCart', { content_ids: [FB.producto], content_type: 'product', contents: [{ id: FB.producto, quantity: v.unidades }], value: v.valor, currency: FB.moneda });
+    tkActivarImagenes(document.getElementById('tkCodOverlay'));
+    document.getElementById('tkCodOverlay').classList.add('on');
+    document.body.style.overflow = 'hidden';
+    if (!tkFormCargado) tkCargarFormulario();
+  }
+  function tkCloseCOD() {
+    document.getElementById('tkCodOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+
+  function tkSelVar(el) {
+    var cambio = !el.classList.contains('sel');
+    document.querySelectorAll('#tarotKit .vcard').forEach(function (c) { c.classList.remove('sel'); });
+    el.classList.add('sel');
+    if (cambio) {
+      var v = tkVarianteActual();
+      fbTrack('AddToCart', { content_ids: [FB.producto], content_type: 'product', contents: [{ id: FB.producto, quantity: v.unidades }], value: v.valor, currency: FB.moneda });
+      if (tkFormCargado) tkCargarFormulario(); // re-sincroniza el campo oculto f-variante
+    }
+  }
+
+  function tkToggleBump() {
+    var box = document.getElementById('tkBumpBox');
+    var toggle = document.getElementById('tkBumpToggle');
+    var abrir = !box.classList.contains('on');
+    box.classList.toggle('on', abrir);
+    toggle.classList.toggle('open', abrir);
+    if (abrir) tkActivarImagenes(box);
+  }
+  function tkAddBump() {
+    tkBumpAceptado = !tkBumpAceptado;
+    var btn = document.getElementById('tkBtnAdd');
+    var txt = document.getElementById('tkBtnAddTxt');
+    btn.classList.toggle('added', tkBumpAceptado);
+    btn.classList.toggle('shaky', !tkBumpAceptado);
+    txt.textContent = tkBumpAceptado ? '✓ AÑADIDO A TU PEDIDO' : 'SÍ, AÑADIR A MI PEDIDO';
+    if (tkBumpAceptado) {
+      fbTrack('AddToCart', { content_ids: ['riderwaite'], content_type: 'product', content_name: 'Order bump: riderwaite', contents: [{ id: 'riderwaite', quantity: 1 }], value: FB.bumps.riderwaite, currency: FB.moneda });
+    }
+    if (tkFormCargado) tkCargarFormulario(); // re-sincroniza el campo oculto f-bump
+  }
+
+  /* ── Mejor esfuerzo: GHL envía un postMessage al padre cuando el
+     formulario se envía con éxito (lo usa su propio form_embed.js para
+     autoajustar el alto del iframe). Lo aprovechamos SOLO para disparar el
+     evento Lead del Pixel desde esta página — el envío real del formulario
+     y la redirección a WhatsApp NO dependen de esto, esos ya los maneja GHL
+     de forma nativa (Acciones del formulario > Redirigir a URL). Si este
+     mensaje nunca llega, no rompe nada: solo no se dispara este Lead extra
+     de cliente (para eso existe también la integración nativa de Meta
+     Conversions API de GHL, que es server-side y no depende de esto). */
+  window.addEventListener('message', function (event) {
+    try {
+      var data = event.data;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { return; } }
+      if (!data || typeof data !== 'object') return;
+      var esEnvio = (data.type && String(data.type).toLowerCase().indexOf('submit') > -1) ||
+                    (data.event && String(data.event).toLowerCase().indexOf('submit') > -1);
+      if (!esEnvio) return;
+      fbTrack('Lead', { content_name: 'Kit de Tarot para Principiantes', content_category: 'COD', value: tkVarianteActual().valor + (tkBumpAceptado ? FB.bumps.riderwaite : 0), currency: FB.moneda }, true);
+    } catch (e) { /* nunca debe tumbar la página */ }
+  });
+
+  function tkActivarImagenes(contenedor) {
+    if (!contenedor) return;
+    var pendientes = contenedor.querySelectorAll('img[data-asset]');
+    for (var i = 0; i < pendientes.length; i++) {
+      if (pendientes[i].src && pendientes[i].src.indexOf('data:') !== 0) continue;
+      pendientes[i].src = tkAsset(pendientes[i].getAttribute('data-asset'));
+    }
+    var videos = contenedor.querySelectorAll('video[data-asset-video]');
+    for (var j = 0; j < videos.length; j++) {
+      var v = videos[j];
+      if (v.src) continue;
+      v.src = tkAsset(v.getAttribute('data-asset-video'));
+      v.load();
+      var intento = v.play();
+      if (intento && intento.catch) intento.catch(function () {});
+    }
+  }
+
+  /* ── Video del cuerpo: carga y reproduce solo cuando el visitante se acerca. */
+  (function () {
+    var video = document.getElementById('tkVidKit');
+    if (!video) return;
+    var MARGEN_CARGA = 300, MARGEN_PLAY = 50, cargado = false;
+    var cargar = function () {
+      if (cargado) return;
+      cargado = true;
+      video.src = tkAsset('bodyVideo');
+      video.load();
+    };
+    var reproducir = function () {
+      cargar();
+      if (!video.paused) return;
+      var intento = video.play();
+      if (intento && intento.catch) intento.catch(function () { video.controls = true; });
+    };
+    var distancia = function (margen) {
+      var r = video.getBoundingClientRect();
+      var alto = window.innerHeight || document.documentElement.clientHeight;
+      return r.top < alto + margen && r.bottom > -margen;
+    };
+    var revisar = function () {
+      if (distancia(MARGEN_CARGA)) cargar();
+      if (distancia(MARGEN_PLAY)) reproducir();
+      else if (!video.paused) video.pause();
+    };
+    var ultimaRevision = 0;
+    var alMoverse = function () {
+      var ahora = Date.now();
+      if (ahora - ultimaRevision < 120) return;
+      ultimaRevision = ahora;
+      revisar();
+    };
+    window.addEventListener('scroll', alMoverse, { passive: true });
+    window.addEventListener('resize', alMoverse, { passive: true });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entradas, obs) { if (entradas[0].isIntersecting) { cargar(); obs.disconnect(); } }, { rootMargin: MARGEN_CARGA + 'px 0px' }).observe(video);
+      new IntersectionObserver(function (entradas) { if (entradas[0].isIntersecting) reproducir(); else if (!video.paused) video.pause(); }, { rootMargin: MARGEN_PLAY + 'px 0px', threshold: 0.15 }).observe(video);
+    }
+    revisar();
+    video.addEventListener('error', function () {
+      if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) video.parentNode.style.display = 'none';
+    }, true);
+  })();
+
+  window.tkAlternarLike = function (boton) {
+    var num = boton.querySelector('.num');
+    var base = Number(boton.getAttribute('data-gustos') || num.textContent) || 0;
+    var activo = boton.classList.toggle('on');
+    boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+    boton.setAttribute('data-gustos', base);
+    num.textContent = activo ? base + 1 : base;
+    var pareja = boton.parentNode.querySelectorAll('button');
+    for (var i = 0; i < pareja.length; i++) {
+      if (pareja[i] !== boton && pareja[i].classList.contains('on')) tkAlternarLike(pareja[i]);
+    }
+  };
+  window.tkSinFotoResena = function (img) {
+    var caja = img.closest('.rfoto');
+    if (caja) caja.style.display = 'none';
+  };
+  window.tkSinFotoBump = function (img) {
+    img.parentNode.style.display = 'none';
+  };
+
+  /* ── Galería de fotos + visor a pantalla completa ── */
+  var TK_FOTOS = [
+    { archivo: 'g1', alt: 'Todo lo que incluye el Kit de Tarot' },
+    { archivo: 'g2', alt: 'Cartas con el significado impreso: no hace falta memorizar nada' },
+    { archivo: 'g3', alt: 'Cada carta trae palabras clave, numerología, chakra, planeta y signo' },
+    { archivo: 'g4', alt: 'Guía completa 2025 incluida: lecturas fáciles sin voltear la carta' },
+    { archivo: 'g5', alt: 'Collar amuleto de tarot, en su cajita de regalo' },
+    { archivo: 'g6', alt: 'Tapete floral para cuidar tus cartas en cada lectura' }
+  ];
+  var TK_MOSAICOS = 4;
+  var tkGaleria = document.getElementById('tkGal');
+  var tkVisor = document.getElementById('tkVisor');
+  var tkVisorTrack = document.getElementById('tkVisorTrack');
+  var tkVisorDots = document.getElementById('tkVisorDots');
+  var tkVisorPos = document.getElementById('tkVisorPos');
+  var tkFotoActual = 0, tkUltimoFoco = null;
+
+  TK_FOTOS.forEach(function (foto, i) {
+    if (i < TK_MOSAICOS) {
+      var restantes = TK_FOTOS.length - TK_MOSAICOS;
+      var esUltimo = i === TK_MOSAICOS - 1 && restantes > 0;
+      var boton = document.createElement('button');
+      boton.type = 'button';
+      boton.setAttribute('aria-label', esUltimo ? 'Ver las ' + TK_FOTOS.length + ' fotos' : 'Ver foto ' + (i + 1) + ' de ' + TK_FOTOS.length);
+      boton.innerHTML = '<img src="' + tkAsset(foto.archivo + 'mini') + '" alt="' + foto.alt + '" width="400" height="400" loading="lazy">' + (esUltimo ? '<span class="mas">+' + restantes + '</span>' : '');
+      boton.addEventListener('click', function () { tkAbrirVisor(i); });
+      tkGaleria.appendChild(boton);
+    }
+    var fig = document.createElement('figure');
+    fig.innerHTML = '<img data-asset="' + foto.archivo + '" alt="' + foto.alt + '" width="1000" height="1000"><figcaption>' + foto.alt + '</figcaption>';
+    tkVisorTrack.appendChild(fig);
+    var punto = document.createElement('i');
+    if (i === 0) punto.className = 'on';
+    tkVisorDots.appendChild(punto);
+  });
+
+  function tkAbrirVisor(indice) {
+    tkUltimoFoco = document.activeElement;
+    tkActivarImagenes(tkVisorTrack);
+    tkVisor.classList.add('on');
+    document.body.style.overflow = 'hidden';
+    tkIrAFoto(indice, 'auto');
+    document.getElementById('tkVisorX').focus();
+  }
+  function tkCerrarVisor() {
+    tkVisor.classList.remove('on');
+    if (!document.getElementById('tkCodOverlay').classList.contains('on')) document.body.style.overflow = '';
+    if (tkUltimoFoco && tkUltimoFoco.focus) tkUltimoFoco.focus();
+  }
+  function tkIrAFoto(indice, comportamiento) {
+    tkFotoActual = (indice + TK_FOTOS.length) % TK_FOTOS.length;
+    tkVisorTrack.scrollTo({ left: tkFotoActual * tkVisorTrack.clientWidth, behavior: comportamiento || 'smooth' });
+    tkPintarEstado();
+  }
+  function tkPintarEstado() {
+    [].forEach.call(tkVisorDots.children, function (d, i) { d.className = i === tkFotoActual ? 'on' : ''; });
+    tkVisorPos.textContent = (tkFotoActual + 1) + ' / ' + TK_FOTOS.length;
+  }
+  tkVisorTrack.addEventListener('scroll', function () {
+    var i = Math.round(tkVisorTrack.scrollLeft / tkVisorTrack.clientWidth);
+    if (i !== tkFotoActual && i >= 0 && i < TK_FOTOS.length) { tkFotoActual = i; tkPintarEstado(); }
+  });
+  document.getElementById('tkVisorPrev').addEventListener('click', function () { tkIrAFoto(tkFotoActual - 1); });
+  document.getElementById('tkVisorNext').addEventListener('click', function () { tkIrAFoto(tkFotoActual + 1); });
+  document.getElementById('tkVisorX').addEventListener('click', tkCerrarVisor);
+  tkVisor.addEventListener('click', function (e) { if (e.target === tkVisor) tkCerrarVisor(); });
+  document.addEventListener('keydown', function (e) {
+    if (!tkVisor.classList.contains('on')) return;
+    if (e.key === 'Escape') tkCerrarVisor();
+    if (e.key === 'ArrowRight') tkIrAFoto(tkFotoActual + 1);
+    if (e.key === 'ArrowLeft') tkIrAFoto(tkFotoActual - 1);
+  });
+
+  // Slider de reseñas
+  var tkTrack = document.getElementById('tkRevTrack'), tkCards = tkTrack.children.length, tkCur = 0;
+  var tkDots = document.getElementById('tkRevDots');
+  for (var ri = 0; ri < tkCards; ri++) {
+    var d = document.createElement('i');
+    if (ri === 0) d.className = 'on';
+    tkDots.appendChild(d);
+  }
+  function tkRevRender() {
+    tkTrack.scrollTo({ left: tkCur * tkTrack.clientWidth, behavior: 'smooth' });
+    [].forEach.call(tkDots.children, function (d, i) { d.className = i === tkCur ? 'on' : ''; });
+  }
+  function tkRevMove(dir) { tkCur = (tkCur + dir + tkCards) % tkCards; tkRevRender(); }
+  tkTrack.addEventListener('scroll', function () {
+    var i = Math.round(tkTrack.scrollLeft / tkTrack.clientWidth);
+    if (i !== tkCur) { tkCur = i; [].forEach.call(tkDots.children, function (d, j) { d.className = j === tkCur ? 'on' : ''; }); }
+  });
+
+  // Carrusel del bloque "añadir extra"
+  var tkBumpCarEl, tkBumpSlides = 0;
+  (function () {
+    var car = document.getElementById('tkBumpCar');
+    var dots = document.getElementById('tkBumpDots');
+    if (!car || !dots) return;
+    var slides = car.children.length;
+    if (slides < 2) return;
+    tkBumpCarEl = car;
+    tkBumpSlides = slides;
+    for (var i = 0; i < slides; i++) {
+      var d = document.createElement('i');
+      if (i === 0) d.className = 'on';
+      dots.appendChild(d);
+    }
+    car.addEventListener('scroll', function () {
+      var actual = Math.round(car.scrollLeft / car.clientWidth);
+      [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
+    }, { passive: true });
+  })();
+  window.tkBumpMove = function (dir) {
+    if (!tkBumpCarEl || !tkBumpSlides) return;
+    var actual = Math.round(tkBumpCarEl.scrollLeft / tkBumpCarEl.clientWidth);
+    var siguiente = (actual + dir + tkBumpSlides) % tkBumpSlides;
+    tkBumpCarEl.scrollTo({ left: siguiente * tkBumpCarEl.clientWidth, behavior: 'smooth' });
+  };
+
+  // Sticky CTA: se oculta cuando algún CTA inline está visible
+  document.addEventListener('DOMContentLoaded', function () {
+    var stickyWrap = document.querySelector('#tarotKit .sticky-cta-wrap');
+    var inlineCTAs = document.querySelectorAll('#tarotKit .cta:not(.sticky-cta-wrap .cta)');
+    var visibleCTAs = new Map();
+    var ctaObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) { visibleCTAs.set(entry.target, entry.isIntersecting); });
+      var isAnyVisible = Array.from(visibleCTAs.values()).some(function (v) { return v; });
+      stickyWrap.classList.toggle('hidden', isAnyVisible);
+    }, { root: null, threshold: 0.1 });
+    inlineCTAs.forEach(function (cta) { ctaObserver.observe(cta); });
+  });
+</script>
+</body>
+</html>
