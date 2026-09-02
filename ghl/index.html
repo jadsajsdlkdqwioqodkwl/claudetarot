@@ -558,6 +558,36 @@
   }
   fbTrack('ViewContent', { content_ids: [FB.producto], content_type: 'product', content_name: 'Kit de Tarot para Principiantes', value: FB.variantes['1kit'], currency: FB.moneda }, true);
 
+  /* ── Identidad de Meta (fbclid / _fbp / _fbc) ─────────────────────────
+     Esta página SÍ puede leer estas cookies (las escribe el Pixel de Meta
+     que corre aquí mismo, vía Tracking Code de GHL); el iframe del
+     formulario NO puede — vive en otro dominio (leadconnectorhq.com), y las
+     cookies no cruzan dominios. Por eso estos 3 valores se calculan aquí y
+     se mandan pegados a la URL del iframe (mismo mecanismo que variante y
+     bump); adentro, tus 3 campos ocultos f-fbclid/f-fbp/f-fbc los recogen
+     — con el script de la sección "Custom HTML" del README (o con "Fill
+     with URL parameter" si tu builder lo trae). Sin esto, Meta igual recibe
+     el evento del navegador, pero con peor "puntaje de coincidencia"
+     (matching) para atribuir la compra al anuncio exacto. */
+  function tkCookie(nombre) {
+    var m = document.cookie.match('(^|;)\\s*' + nombre + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+  (function tkGuardarFbc() {
+    if (tkCookie('_fbc')) return;
+    var fbclid = new URLSearchParams(location.search).get('fbclid');
+    if (!fbclid) return;
+    // Mismo formato que usa el propio Pixel de Meta para _fbc.
+    document.cookie = '_fbc=fb.1.' + Date.now() + '.' + fbclid + ';path=/;max-age=7776000;SameSite=Lax';
+  })();
+  function tkIdentidadMeta() {
+    return {
+      fbclid: new URLSearchParams(location.search).get('fbclid') || '',
+      fbp: tkCookie('_fbp'),
+      fbc: tkCookie('_fbc')
+    };
+  }
+
   /* ── Modal COD: abre, activa imágenes/video diferidos y carga el iframe
      del formulario de GHL SOLO en este momento (no antes), para no gastar
      la carga del iframe en quien nunca llega a pedir. */
@@ -566,9 +596,13 @@
 
   function tkBuildFormUrl() {
     var v = tkVarianteActual();
+    var meta = tkIdentidadMeta();
     var params = new URLSearchParams();
     params.set('variante', v.id);
     params.set('bump', tkBumpAceptado ? 'riderwaite' : '');
+    params.set('fbclid', meta.fbclid);
+    params.set('fbp', meta.fbp);
+    params.set('fbc', meta.fbc);
     var sep = GHL_FORM_SRC.indexOf('?') > -1 ? '&' : '?';
     return GHL_FORM_SRC + sep + params.toString();
   }

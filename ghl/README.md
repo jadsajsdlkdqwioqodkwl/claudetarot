@@ -28,6 +28,14 @@ todavía) — revisa el paso 2.
 sueltos como en tu web original — por eso los deliverables son "el HTML" +
 "el CSS del formulario", cada uno en su sitio.
 
+**Captura de fbclid / \_fbp / \_fbc.** `index.html` ya lee estas 3 cookies/
+parámetro por su cuenta (igual que hacía tu web original) y los manda pegados
+a la URL del iframe del formulario, junto con variante y bump — no tienes que
+tocar nada de eso. Lo único manual es crear los 3 campos ocultos que los
+reciben dentro de tu formulario de GHL (tabla de la sección 4) y pegar el
+script que los rellena; no puedo crear esos campos por ti porque vive dentro
+de tu cuenta de GHL, a la que no tengo acceso.
+
 **Arreglo de overflow con imágenes rotas.** Si una imagen no carga (URL sin
 reemplazar, archivo no subido todavía), el navegador muestra su ícono +
 texto ALT, y ese texto se comporta como texto normal dentro de una tarjeta
@@ -155,35 +163,41 @@ que se indica — es lo que hace que `form-custom.css` los reconozca:
 | 3 | Método de Envío | Opción única (radio) | `f-envio` | Opción A: "Pago en Casa (Lima) — Gratis". Opción B: "Envío por Agencia (Provincia) — Gratis" |
 | 4 | Dirección de Entrega | Texto corto | `f-direccion` | Lógica condicional: mostrar solo si Método de Envío = Opción A |
 | 5 | Agencia de Destino | Texto corto | `f-agencia` | Lógica condicional: mostrar solo si Método de Envío = Opción B. Placeholder: "Ej: Shalom - Sede Centro" |
-| 6 | Variante | Campo oculto (hidden) | `f-variante` | Valor por defecto = parámetro de URL `variante` |
-| 7 | Extra / Bump | Campo oculto (hidden) | `f-bump` | Valor por defecto = parámetro de URL `bump` |
-| 8 | Botón enviar | — | `f-submit` | Texto: "REALIZAR PEDIDO" |
+| 6 | Variante | Campo oculto (hidden) | `f-variante` | Se rellena solo (ver script más abajo) |
+| 7 | Extra / Bump | Campo oculto (hidden) | `f-bump` | Se rellena solo |
+| 8 | Facebook Click ID | Campo oculto (hidden) | `f-fbclid` | Se rellena solo |
+| 9 | Facebook Browser ID | Campo oculto (hidden) | `f-fbp` | Se rellena solo |
+| 10 | Facebook Click ID (cookie) | Campo oculto (hidden) | `f-fbc` | Se rellena solo |
+| 11 | Botón enviar | — | `f-submit` | Texto: "REALIZAR PEDIDO" |
 
-**Lógica condicional** (para los campos 4 y 5) — 3 caminos, de más simple a
-más manual. Los tres son formularios 100% nativos de GHL: pipelines,
-workflows y automatizaciones funcionan igual con cualquiera de los tres, la
-única diferencia es CÓMO se muestra/oculta el campo.
+Sé honesto conmigo mismo aquí: crear estos campos DENTRO de tu formulario es
+lo único que no puedo hacer por ti — no tengo acceso a tu cuenta de GHL, así
+que ese paso (arrastrar el campo, ponerle el tipo y pegarle el nombre de
+clase de la tabla) lo tienes que hacer tú, una vez, campo por campo. Lo que
+sí puedo darte es UN solo script que resuelve TODO lo demás (el toggle
+Lima/Provincia y el llenado automático de los 3 campos de Facebook) para que
+no tengas que tocar más configuración aparte de crear los campos.
 
-**Opción 1 — si tu builder la trae.** Abre el campo "Dirección de Entrega",
-busca una pestaña "Conditional Logic" / "Lógica condicional", y configura
-"Mostrar este campo si Método de Envío es igual a Pago en Casa" (y lo mismo
-al revés en "Agencia de Destino"). No todas las cuentas/versiones de GHL
-traen esta pestaña en Forms (algunas solo la traen en Surveys) — si no la
-ves, pasa a la Opción 2.
+**Antes de nada — revisa si ya tienes esto sin código.** En tu cuenta de GHL,
+ve a **Configuración (del sub-account) > Integraciones > Facebook/Meta Ads**.
+Si la conectas ahí, GHL manda los eventos de conversión (Lead, Purchase) por
+su propia integración de Conversions API del lado del servidor, sin que
+tengas que capturar fbclid/fbp/fbc a mano. Es la opción "cero código" real.
+Lo de abajo es para cuando quieres además el máximo de precisión en el
+matching (fbclid/fbp/fbc a nivel de contacto) o esa integración nativa no
+está disponible en tu plan.
 
-**Opción 2 — Custom HTML dentro del mismo formulario (recomendada si no
-tienes la Opción 1).** El Form Builder de GHL deja arrastrar un elemento
-**"Custom HTML"** como un campo más, DENTRO del propio formulario. Como ese
-script corre en el mismo documento que tus campos (no es cross-origin, a
-diferencia del script de la página madre), puede mostrar/ocultar Dirección y
-Agencia con JavaScript normal, sin depender de nada externo, y el envío
-sigue siendo el mismo formulario nativo. Arrastra un bloque "Custom HTML" en
-cualquier parte del formulario (no necesita espacio visual) y pega esto:
+**Un solo script para todo.** Arrastra UN elemento **"Custom HTML"** en
+cualquier parte del formulario (no necesita espacio visual — funciona igual
+esté al principio o al final) y pega esto una sola vez:
 
 ```html
 <script>
 (function () {
-  function actualizar() {
+  // 1) Lima/Provincia: identifica la opción marcada por su TEXTO ("casa"),
+  //    no por su posición, así que sigue funcionando si reordenas las
+  //    opciones o cambias el texto exacto.
+  function actualizarEnvio() {
     var marcado = document.querySelector('.f-envio input[type="radio"]:checked');
     if (!marcado) return;
     var etiqueta = marcado.closest('label');
@@ -195,17 +209,30 @@ cualquier parte del formulario (no necesita espacio visual) y pega esto:
     if (ag) ag.style.display = esCasa ? 'none' : '';
   }
   document.addEventListener('change', function (e) {
-    if (e.target.matches && e.target.matches('.f-envio input[type="radio"]')) actualizar();
+    if (e.target.matches && e.target.matches('.f-envio input[type="radio"]')) actualizarEnvio();
   });
-  document.addEventListener('DOMContentLoaded', actualizar);
-  setTimeout(actualizar, 300); // red de seguridad si el formulario tarda en pintar
+
+  // 2) Rellena los campos ocultos desde la URL del propio iframe. La página
+  //    madre (index.html) ya arma esa URL con ?variante=..&bump=..
+  //    &fbclid=..&fbp=..&fbc=.. cada vez que abre o actualiza el formulario
+  //    — este script solo copia esos valores a los inputs ocultos.
+  function llenarOcultos() {
+    var q = new URLSearchParams(location.search);
+    ['variante', 'bump', 'fbclid', 'fbp', 'fbc'].forEach(function (clave) {
+      var campo = document.querySelector('.f-' + clave);
+      if (campo && q.get(clave)) campo.value = q.get(clave);
+    });
+  }
+
+  function iniciar() { actualizarEnvio(); llenarOcultos(); }
+  document.addEventListener('DOMContentLoaded', iniciar);
+  setTimeout(iniciar, 300); // red de seguridad si el formulario tarda en pintar
 })();
 </script>
 ```
 
-Este script identifica la opción marcada por su TEXTO ("casa" vs el resto),
-no por su posición, así que sigue funcionando aunque cambies el orden de las
-opciones o el texto exacto (mientras la de Lima diga "casa" en algún lado).
+Este mismo script reemplaza al que te pasé antes (ya incluye el toggle) —
+solo necesitas UNO, no los dos.
 
 **Opción 3 — usar una Survey en vez de un Form.** Las Surveys de GHL están
 pensadas justo para "la pregunta 2 cambia según la respuesta de la pregunta
@@ -248,7 +275,11 @@ Por último, pega todo el contenido de `form-custom.css` en la pestaña
 
 - [ ] Los 21 archivos de la tabla están subidos y sus URLs pegadas en `ASSETS_GHL`.
 - [ ] `GHL_FORM_SRC` apunta a tu formulario real (ya no dice `TU_FORM_ID`).
-- [ ] El formulario tiene los 8 campos con sus `CSS Class Name` exactos.
+- [ ] El formulario tiene los 11 campos con sus `CSS Class Name` exactos.
+- [ ] Pegaste el script "Un solo script para todo" (sección 4) en un bloque
+      Custom HTML dentro del formulario.
+- [ ] El Meta Pixel está cargado en la página (Tracking Code > Header) — sin
+      él, `_fbp`/`_fbc` nunca se escriben y esos 2 campos llegan vacíos.
 - [ ] La lógica condicional de Dirección/Agencia funciona (pruébalo dentro
       del formulario directamente en GHL antes de embeberlo).
 - [ ] La acción de envío redirige a tu WhatsApp con "abrir en pestaña nueva".
