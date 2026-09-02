@@ -92,7 +92,7 @@ select:focus {
 input::placeholder, textarea::placeholder { color: #4A4A4A !important; opacity: 1 !important; }
 
 /* ------------------------- 4) BOTÓN DE ENVIAR -----------------------------
-   Mismo degradé rojo/naranja que ".btn-pedido" del sitio. */
+   Mismo degradé verde de los botones del sitio (ghl/index.html: --cta1/--cta2). */
 button[type="submit"],
 input[type="submit"],
 .f-submit,
@@ -102,7 +102,7 @@ input[type="submit"],
   width: 100% !important;
   border: none !important;
   cursor: pointer !important;
-  background: linear-gradient(90deg, #FF2A00, #FF6A00) !important;
+  background: linear-gradient(90deg, #00874C, #1FD65F) !important;
   color: #ffffff !important;
   border-radius: 12px !important;
   padding: 16px !important;
@@ -110,7 +110,7 @@ input[type="submit"],
   font-weight: 800 !important;
   font-family: 'Inter', sans-serif !important;
   margin-top: 10px !important;
-  box-shadow: 0 6px 16px rgba(255, 42, 0, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(0, 135, 76, 0.35) !important;
 }
 button[type="submit"]:active, input[type="submit"]:active { transform: scale(0.98); }
 

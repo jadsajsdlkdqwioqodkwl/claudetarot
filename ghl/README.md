@@ -14,29 +14,58 @@ no hayas pegado tus URLs reales.
 
 ## 1. Decisiones de diseño que debes conocer
 
-**El video sí está incluido.** Se carga solo (como en tu web original) cuando
-el visitante se acerca a esa parte de la página — revisa que subiste
-`2.mp4` y que su URL quedó en `ASSETS_GHL.bodyVideo` dentro del `<script>`.
+**El video sí está incluido en el código.** Se carga solo (como en tu web
+original) cuando el visitante se acerca a esa parte de la página. Si no
+aparece, ya no falla en silencio: desde este ajuste, si el navegador no
+puede reproducir la fuente (URL sin reemplazar, archivo no subido, formato
+no soportado), la caja del video se reemplaza por un aviso visible tipo
+"Video no disponible — revisa ASSETS_GHL.bodyVideo", igual que una imagen
+rota muestra su icono en vez de desaparecer. Si lo ves así, es que falta
+pegar la URL real en `ASSETS_GHL.bodyVideo` (o el archivo no se subió
+todavía) — revisa el paso 2.
 
 **El formulario real vive dentro de un iframe de GHL**, no son inputs
 sueltos como en tu web original — por eso los deliverables son "el HTML" +
 "el CSS del formulario", cada uno en su sitio.
 
-**El "order bump" (mazo Rider Waite) cambió de un 2do popup a un bloque
-plegable DENTRO del mismo modal, antes de enviar el formulario.** Esto es
-intencional: en tu web original, el 2do popup aparecía *después* de que el
+**Arreglo de overflow con imágenes rotas.** Si una imagen no carga (URL sin
+reemplazar, archivo no subido todavía), el navegador muestra su ícono +
+texto ALT, y ese texto se comporta como texto normal dentro de una tarjeta
+flex/grid — sin protección, empuja la tarjeta más ancha y la hace salirse
+del modal (esto es lo que viste en tu captura: la tarjeta "2 Kits" se corría
+hacia afuera). Ya está corregido en el CSS (`.vcard { min-width: 0 }` y
+`.gal { grid-template-columns: repeat(4, minmax(0,1fr)) }`), así que ahora
+ni con todas las imágenes rotas se sale nada del modal — lo probé a propósito
+bloqueando todas las imágenes para confirmarlo.
+
+**El "order bump" (mazo Rider Waite) ahora es una franja compacta DEBAJO del
+iframe del formulario**, no un carrusel grande ni un 2do popup: una sola
+miniatura, nombre, precio y un botón chico "+ Añadir". Va debajo del
+formulario (no antes) a propósito. Por qué no es un popup después de
+enviar: en tu web original, ese 2do popup aparecía *después* de que el
 servidor confirmaba que el pedido se guardó. Con un formulario nativo de GHL
 en iframe (dominio distinto al de tu página), no hay forma 100% confiable de
 que la página madre sepa "ya se envió" para recién mostrar un popup nuevo —
-apostar todo el flujo de conversión a eso es exactamente el tipo de cosa que
-se rompe a medias, que es justo lo que te pasó la vez pasada. Por eso el
-mismo carrusel/fotos/precio/beneficios del bump siguen ahí (sigue siendo un
-carrusel, con las mismas imágenes), solo que el cliente lo agrega ANTES de
-tocar "enviar", y ese "sí quiero" viaja en el mismo envío (campo oculto
-`f-bump`). Si prefieres el popup-después-de-enviar de todos modos, se puede
-armar con el `postMessage` que ya dejé escuchando en el código (ver el
-comentario "Mejor esfuerzo" dentro de `index.html`), pero no es 100%
-garantizado — depende de un mensaje que GHL no documenta oficialmente.
+apostar todo el flujo de conversión a eso es el tipo de cosa que se rompe a
+medias. Por eso el cliente lo agrega ANTES de tocar "enviar", y ese "sí
+quiero" viaja en el mismo envío (campo oculto `f-bump`). Si de todos modos
+prefieres el popup-después-de-enviar, se puede armar con el `postMessage`
+que ya dejé escuchando en el código (ver el comentario "Mejor esfuerzo"
+dentro de `index.html`), pero no es 100% garantizado — depende de un mensaje
+que GHL no documenta oficialmente.
+
+**Los botones ahora son verdes (degradado tipo Shopify)**, no rojo/naranja:
+`--cta1`/`--cta2` en el `:root` del CSS controlan ese degradé y se usan en
+el CTA principal, el sticky CTA y el botón "+ Añadir" del bump; el botón
+"REALIZAR PEDIDO" real (dentro del iframe) se pinta igual desde
+`form-custom.css`. Si quieres otro tono de verde, esos son los únicos 3
+lugares a tocar (los dos `--cta1`/`--cta2` de `index.html` y el
+`linear-gradient` del botón submit en `form-custom.css`).
+
+**Se quitó la sección "Lo que nuestros clientes dicen de nosotros"** (el
+resumen 4.8 + reseñas verificadas con botones de "me gusta"). El carrusel
+corto de 3 reseñas con foto que está más arriba, cerca del video, se queda
+igual — solo se eliminó el bloque largo de abajo.
 
 **La página de "gracias" ya no se usa.** El propio formulario de GHL
 redirige a WhatsApp al enviarse (lo configuras tú en GHL, ver paso 4 más
@@ -55,9 +84,7 @@ que no te pierdas):
 | `kittarotcod/` | `logo.webp` | Logo circular arriba del formulario | 24 KB |
 | `kittarotcod/` | `kit-variante.webp` | Foto del kit (tarjetas de variante) | 32 KB |
 | `kittarotcod/` | `badges.webp` | Sellos de confianza (debajo del form) | 88 KB |
-| `kittarotcod/` | `orderbumpvideo1.mp4` | Video del mazo Rider Waite (bump) | 3.6 MB |
-| `kittarotcod/` | `foto2orderbumb.webp` | Foto 2 del mazo Rider Waite | 56 KB |
-| `kittarotcod/` | `fotobump3.png` | Foto 3 del mazo Rider Waite | 92 KB |
+| `kittarotcod/` | `foto2orderbumb.webp` | Miniatura del mazo Rider Waite (bump, debajo del form) | 56 KB |
 | `kittarotcod/resenas/` | `r1.webp` | Foto reseña — Carla Rojas | 40 KB |
 | `kittarotcod/resenas/` | `r2.webp` | Foto reseña — Lucía Mendoza | 36 KB |
 | `kittarotcod/resenas/` | `r3.webp` | Foto reseña — Andrea Salas | 36 KB |
@@ -68,9 +95,11 @@ que no te pierdas):
 | `kittarotcod/galeria/` | `g5.webp` + `g5-mini.webp` | Galería foto 5 | 52 KB / 12 KB |
 | `kittarotcod/galeria/` | `g6.webp` + `g6-mini.webp` | Galería foto 6 | 140 KB / 36 KB |
 
-Total: 23 archivos. Los favicons (`favicon-32.png`, `favicon-180.png`) no
+Total: 21 archivos. Los favicons (`favicon-32.png`, `favicon-180.png`) no
 están en la tabla porque el favicon se configura aparte, en Sitios >
-Configuración, no dentro del HTML de la página.
+Configuración, no dentro del HTML de la página. `orderbumpvideo1.mp4` y
+`fotobump3.png` de tu carpeta original ya no se usan (el bump ahora es una
+miniatura sola, no un carrusel) — no hace falta subirlos.
 
 ### Cómo conectarlos
 
@@ -166,7 +195,7 @@ Por último, pega todo el contenido de `form-custom.css` en la pestaña
 
 ## 5. Checklist antes de publicar
 
-- [ ] Los 23 archivos de la tabla están subidos y sus URLs pegadas en `ASSETS_GHL`.
+- [ ] Los 21 archivos de la tabla están subidos y sus URLs pegadas en `ASSETS_GHL`.
 - [ ] `GHL_FORM_SRC` apunta a tu formulario real (ya no dice `TU_FORM_ID`).
 - [ ] El formulario tiene los 8 campos con sus `CSS Class Name` exactos.
 - [ ] La lógica condicional de Dirección/Agencia funciona (pruébalo dentro

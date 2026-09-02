@@ -89,8 +89,9 @@
     --muted-txt:#4A4A4A;
     --line:#E0E0E0;
     --green:#28A745;
-    --cta1:#FF2A00;
-    --cta2:#FF6A00;
+    --cta1:#00874C;
+    --cta2:#1FD65F;
+    --cta-shadow: rgba(0,135,76,.35);
     --price-old:#E53935;
     --blue-accent:#2D9CDB;
     --blue-dark:#1E3A8A;
@@ -112,7 +113,12 @@
   #tarotKit .videobox { width: 100%; background: #0d0d12; }
   #tarotKit .videobox video { width: 100%; height: auto; aspect-ratio: 720 / 1280; display: block; object-fit: cover; }
 
-  #tarotKit .gal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 20px 0; }
+  /* minmax(0,1fr) en vez de 1fr: si una miniatura no carga, el texto ALT de
+     la imagen rota se comporta como texto normal y su ancho "de contenido"
+     puede ser más grande que la columna — sin el minmax(0,...) empuja la
+     grilla entera y se sale del modal/página. Mismo motivo en ".vcard" más
+     abajo (line ~216). */
+  #tarotKit .gal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px 20px 0; }
   #tarotKit .gal button { padding: 0; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .15s, transform .15s; }
   #tarotKit .gal button:hover, #tarotKit .gal button:focus-visible { border-color: var(--purple-soft); transform: translateY(-2px); }
   #tarotKit .gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -157,7 +163,7 @@
   #tarotKit .stock-bar { margin: 0 20px 18px; height: 8px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
   #tarotKit .stock-bar span { display: block; height: 100%; width: 46%; background: var(--green); }
 
-  #tarotKit .cta { display: block; width: calc(100% - 40px); margin: 0 20px 22px; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #ffffff; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 6px 18px rgba(255,42,0,.3); transition: transform 0.2s; }
+  #tarotKit .cta { display: block; width: calc(100% - 40px); margin: 0 20px 22px; border: none; cursor: pointer; background: linear-gradient(90deg, var(--cta1), var(--cta2)); color: #ffffff; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 6px 18px var(--cta-shadow); transition: transform 0.2s; }
   #tarotKit .cta:active { transform: scale(0.98); }
   #tarotKit .buzz { animation: tkBuzz 2s ease-in-out infinite; transform-origin: center; }
   @keyframes tkBuzz {
@@ -188,30 +194,6 @@
   #tarotKit .rev-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: .2s; }
   #tarotKit .rev-dots i.on { background: var(--purple-soft); width: 18px; border-radius: 4px; }
 
-  #tarotKit .clientes { text-align: center; padding: 24px 20px 8px; }
-  #tarotKit .clientes h2 { font-size: 22px; font-weight: 800; color: var(--plum); line-height: 1.2; }
-  #tarotKit .clientes .big { font-size: 44px; font-weight: 800; color: var(--ink); margin-top: 4px; }
-  #tarotKit .clientes .cstars { color: var(--gold); font-size: 20px; }
-  #tarotKit .clientes small { color: var(--muted); font-size: 13px; display: block; margin-top: 4px; }
-
-  #tarotKit .rlist { padding: 6px 20px 22px; }
-  #tarotKit .rlist .item { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
-  #tarotKit .rlist .top { display: flex; justify-content: space-between; align-items: center; }
-  #tarotKit .rlist .who { font-weight: 700; font-size: 15px; color: var(--plum); }
-  #tarotKit .rlist .date { font-size: 12px; color: var(--muted); }
-  #tarotKit .rlist .verif { display: flex; align-items: center; gap: 5px; color: var(--green); font-size: 12px; font-weight: 600; margin: 6px 0; }
-  #tarotKit .rlist .rs { color: var(--gold); font-size: 14px; }
-  #tarotKit .rlist .rtitle { font-weight: 700; font-size: 15px; margin: 6px 0 4px; color: var(--ink); }
-  #tarotKit .rlist .rtext { font-size: 13px; color: var(--muted); }
-  #tarotKit .rlist .rimg { margin-top: 10px; border-radius: 8px; overflow: hidden; background: #f1f1f4; max-width: 190px; }
-  #tarotKit .rlist .rimg img { width: 100%; height: auto; display: block; }
-  #tarotKit .megusta { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
-  #tarotKit .megusta button { display: flex; align-items: center; gap: 5px; background: none; border: 0; cursor: pointer;
-    color: var(--muted); font-size: 13px; font-weight: 600; font-family: inherit; padding: 4px 2px; }
-  #tarotKit .megusta button.on { color: var(--purple-soft); }
-  #tarotKit .megusta .etiqueta { color: var(--muted); font-size: 13px; margin-right: auto; }
-  #tarotKit .megusta svg { width: 16px; height: 16px; }
-
   #tarotKit .meta-footer { text-align: center; padding: 20px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 11px; color: var(--muted); line-height: 1.5; }
 
   #tarotKit .sticky-cta-wrap {
@@ -236,7 +218,10 @@
   #tarotKit .garantia { text-align: center; color: var(--price-old); font-size: 20px; font-weight: 800; margin: 10px 0 20px; line-height: 1.2; }
 
   #tarotKit .variants { display: flex; gap: 10px; margin-bottom: 20px; }
-  #tarotKit .vcard { flex: 1; border: 2px solid var(--line); border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; position: relative; background: #fff; transition: 0.2s; }
+  /* min-width:0 es el mismo arreglo que minmax(0,1fr) de ".gal" pero para
+     flexbox: sin esto, una foto de variante que no carga puede empujar la
+     tarjeta (y por lo tanto el modal) más ancha que la pantalla. */
+  #tarotKit .vcard { flex: 1; min-width: 0; border: 2px solid var(--line); border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; position: relative; background: #fff; transition: 0.2s; }
   #tarotKit .vcard.sel { border-color: var(--purple-soft); background: var(--soft-tint); }
   #tarotKit .vcard .radio { width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
   #tarotKit .vcard.sel .radio { border-color: var(--purple-soft); }
@@ -258,43 +243,29 @@
 
   #tarotKit .form-head { text-align: center; color: var(--blue-accent); font-size: 18px; font-weight: 800; margin: 16px 0 16px; }
 
-  /* Bloque "Añade el mazo Rider Waite (opcional)" — reemplaza al segundo modal
-     (order bump) original. Sigue siendo el mismo carrusel/copy/precio, solo
-     que vive DENTRO del mismo modal, plegado hasta que el cliente lo abre, así
-     el modal no crece de más ni se sale de la pantalla por defecto. */
-  #tarotKit .bump-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border: 1.5px dashed var(--price-old); background: #fff9f9; color: var(--cta1); font-weight: 800; font-size: 14px;
-    border-radius: 12px; padding: 12px 14px; cursor: pointer; margin-bottom: 14px; }
-  #tarotKit .bump-toggle .arrow { transition: transform .2s; }
-  #tarotKit .bump-toggle.open .arrow { transform: rotate(180deg); }
-  #tarotKit .bump-box { display: none; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin: -4px 0 16px; background: #fff; }
-  #tarotKit .bump-box.on { display: block; }
-  #tarotKit .upsell-head { text-align: center; margin-bottom: 12px; }
-  #tarotKit .upsell-head .l1 { color: var(--cta1); font-size: 18px; font-weight: 800; }
-  #tarotKit .upsell-head .l2 { color: var(--plum); font-size: 14px; font-weight: 800; margin-top: 2px; }
-  #tarotKit .u-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; margin-bottom: 12px; scrollbar-width: none; background: var(--soft-tint); }
-  #tarotKit .u-carousel::-webkit-scrollbar { display: none; }
-  #tarotKit .u-carousel .slide { flex: 0 0 100%; scroll-snap-align: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 600; }
-  #tarotKit .u-carousel img, #tarotKit .u-carousel video { width: 100%; height: 100%; object-fit: cover; }
-  #tarotKit .upsell-list { font-size: 13px; margin: 12px 0; background: var(--soft-tint); padding: 12px; border-radius: 12px; }
-  #tarotKit .upsell-list div { padding: 3px 0; display: flex; gap: 8px; align-items: center; color: var(--plum); font-weight: 500; }
-  #tarotKit .upsell-list .ck { color: var(--green); flex-shrink: 0; }
-  #tarotKit .u-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 8px 0 4px; }
-  #tarotKit .u-dots { display: flex; justify-content: center; gap: 6px; }
-  #tarotKit .u-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background .2s, width .2s; }
-  #tarotKit .u-dots i.on { background: var(--plum); width: 18px; border-radius: 4px; }
-  #tarotKit .upsell-price { text-align: center; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 10px; }
-  #tarotKit .upsell-price s { color: var(--price-old); font-size: 16px; font-weight: 500; }
-  #tarotKit .upsell-price b { color: var(--ink); font-size: 26px; font-weight: 800; }
+  /* Order bump compacto: va DEBAJO del iframe del formulario nativo de GHL
+     (no antes), como una franja angosta con una miniatura, precio y un botón
+     chico — no un carrusel grande. Al tocar "Añadir" solo cambia de estado
+     visual y actualiza el campo oculto f-bump del formulario (ver Bloque C,
+     tkAddBump); no es un segundo popup. */
+  #tarotKit .bump-mini { display: flex; align-items: center; gap: 12px; border: 1.5px dashed var(--price-old); background: #fff9f9; border-radius: 12px; padding: 12px; margin: 16px 0; }
+  #tarotKit .bump-mini .thumb { width: 56px; height: 56px; min-width: 56px; border-radius: 8px; overflow: hidden; background: var(--soft-tint); }
+  #tarotKit .bump-mini .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #tarotKit .bump-mini .info { flex: 1; min-width: 0; }
+  #tarotKit .bump-mini .tag { font-size: 11px; font-weight: 800; color: var(--cta1); text-transform: uppercase; letter-spacing: .3px; }
+  #tarotKit .bump-mini .name { font-size: 13px; font-weight: 700; color: var(--plum); line-height: 1.25; margin-top: 2px; }
+  #tarotKit .bump-mini .price { font-size: 12px; margin-top: 4px; }
+  #tarotKit .bump-mini .price s { color: var(--price-old); margin-right: 6px; }
+  #tarotKit .bump-mini .price b { color: var(--ink); }
   @keyframes tkShaky {
     0% { transform: translateX(0); }
     10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-1deg); }
     20%, 40%, 60%, 80% { transform: translateX(4px) rotate(1deg); }
     100% { transform: translateX(0); }
   }
-  #tarotKit .btn-add { width: 100%; border: none; background: var(--green); color: #fff; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 15px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 20px rgba(40,167,69,0.3); }
+  #tarotKit .btn-add { flex-shrink: 0; border: none; cursor: pointer; border-radius: 10px; padding: 11px 14px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: #fff; background: linear-gradient(90deg, var(--cta1), var(--cta2)); white-space: nowrap; box-shadow: 0 4px 12px var(--cta-shadow); }
   #tarotKit .btn-add.shaky { animation: tkShaky 3s infinite ease-in-out; }
-  #tarotKit .btn-add.added { background: var(--ink); animation: none; }
+  #tarotKit .btn-add.added { background: var(--ink); animation: none; box-shadow: none; }
 
   /* Formulario nativo de GHL: este <div> es donde se pega el código de
      inserción (iframe) que GHL genera para tu formulario. Todo lo de aquí
@@ -383,67 +354,6 @@
     <div class="l2">Pago contra entrega disponible</div>
   </button>
 
-  <div class="clientes">
-    <h2>Lo que nuestros clientes dicen de nosotros</h2>
-    <div class="big">4.8</div>
-    <div class="cstars"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
-    <small>+546 Reseñas verificadas</small>
-  </div>
-
-  <div class="rlist">
-    <div class="item">
-      <div class="top"><span class="who">Johana D.</span><span class="date">Febrero 2026</span></div>
-      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
-      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
-      <div class="rtitle">Excelente Kit</div>
-      <div class="rtext">Hice mi pedido con pago contra entrega y lo bueno es que el kit es tal cual como lo muestran. Las cartas con significado impreso son geniales para empezar.</div>
-      <div class="megusta">
-        <span class="etiqueta">¿Te resultó útil?</span>
-        <button type="button" class="like" data-gustos="74" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">74</span></button>
-        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
-      </div>
-    </div>
-
-    <div class="item">
-      <div class="top"><span class="who">Mariana V.</span><span class="date">Enero 2026</span></div>
-      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
-      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
-      <div class="rtitle">Muy recomendable</div>
-      <div class="rtext">Llegó rapidísimo a Arequipa por Shalom. Todo el kit muy bien empacado. La guía es fácil de entender.</div>
-      <div class="megusta">
-        <span class="etiqueta">¿Te resultó útil?</span>
-        <button type="button" class="like" data-gustos="38" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">38</span></button>
-        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
-      </div>
-    </div>
-
-    <div class="item">
-      <div class="top"><span class="who">Silvia P.</span><span class="date">Diciembre 2025</span></div>
-      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
-      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
-      <div class="rtitle">El mejor regalo</div>
-      <div class="rtext">Me lo regaló mi hermana y me encantó la caja en la que viene. El tapete tiene un material suave, excelente calidad.</div>
-      <div class="megusta">
-        <span class="etiqueta">¿Te resultó útil?</span>
-        <button type="button" class="like" data-gustos="51" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">51</span></button>
-        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
-      </div>
-    </div>
-
-    <div class="item">
-      <div class="top"><span class="who">Fernanda L.</span><span class="date">Noviembre 2025</span></div>
-      <div class="verif"><svg class="ico"><use href="#tk-i-badge"/></svg> Comprador Verificado</div>
-      <div class="rs"><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg><svg class="ico"><use href="#tk-i-star"/></svg></div>
-      <div class="rtitle">Práctico y bonito</div>
-      <div class="rtext">La bolsa para las cartas y las indicaciones directas en las ilustraciones de verdad facilitan mucho el aprendizaje.</div>
-      <div class="megusta">
-        <span class="etiqueta">¿Te resultó útil?</span>
-        <button type="button" class="like" data-gustos="29" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">29</span></button>
-        <button type="button" class="nolike" onclick="tkAlternarLike(this)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 22V11l5-9 1.5 1a2 2 0 01.6 2.2L13 9h5.5a2 2 0 012 2.5l-1.8 8A2 2 0 0116.7 22z"/><path d="M7 11H3v11h4"/></svg><span class="num">0</span></button>
-      </div>
-    </div>
-  </div>
-
   <footer class="meta-footer">
     <p>This site is not a part of the Facebook website or Facebook Inc. Additionally, This site is NOT endorsed by Facebook in any way. FACEBOOK is a trademark of FACEBOOK, Inc.</p>
   </footer>
@@ -501,42 +411,6 @@
       </div>
     </div>
 
-    <!-- Bloque "añadir extra": antes era un 2do modal DESPUÉS de enviar el
-         formulario. Con un formulario nativo de GHL en iframe no hay forma
-         confiable de saber "ya envió" para recién mostrar un popup nuevo, así
-         que este mismo contenido (carrusel, bullets, precio) va ANTES del
-         envío, plegado por defecto. Ver el README para más detalle. -->
-    <div class="bump-toggle" id="tkBumpToggle" onclick="tkToggleBump()">
-      <span>🎁 Añade el mazo Rider Waite con descuento (opcional)</span>
-      <svg class="ico arrow" style="width:18px;height:18px"><use href="#tk-i-arrow-r"/></svg>
-    </div>
-    <div class="bump-box" id="tkBumpBox">
-      <div class="upsell-head">
-        <div class="l1">¡SUPER OFERTA!</div>
-        <div class="l2">The Classic Tarot Rider Waite</div>
-      </div>
-      <div class="u-carousel" id="tkBumpCar">
-        <div class="slide"><video muted loop playsinline preload="none" data-asset-video="bumpVideo" aria-label="El mazo Rider Waite en video"></video></div>
-        <div class="slide"><img data-asset="bumpFoto2" alt="El mazo Rider Waite, colores tenues fieles al diseño original" onerror="tkSinFotoBump(this)"></div>
-        <div class="slide"><img data-asset="bumpFoto3" alt="El mazo Rider Waite con su manual incluido" onerror="tkSinFotoBump(this)"></div>
-      </div>
-      <div class="u-nav">
-        <div class="rev-arrow" onclick="tkBumpMove(-1)" role="button" tabindex="0" aria-label="Foto anterior"><svg class="ico"><use href="#tk-i-arrow-l"/></svg></div>
-        <div class="u-dots" id="tkBumpDots"></div>
-        <div class="rev-arrow" onclick="tkBumpMove(1)" role="button" tabindex="0" aria-label="Foto siguiente"><svg class="ico"><use href="#tk-i-arrow-r"/></svg></div>
-      </div>
-      <div class="upsell-list">
-        <b>Incluye:</b>
-        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Colores tenues, fieles al diseño original.</div>
-        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Cartas en su idioma nativo.</div>
-        <div><svg class="ico ck"><use href="#tk-i-check"/></svg> Manual incluido.</div>
-      </div>
-      <div class="upsell-price"><s>S/. 60.00</s><b>S/. 49.00</b></div>
-      <button type="button" class="btn-add shaky" id="tkBtnAdd" onclick="tkAddBump()">
-        <svg class="ico"><use href="#tk-i-cart"/></svg> <span id="tkBtnAddTxt">SÍ, AÑADIR A MI PEDIDO</span>
-      </button>
-    </div>
-
     <div class="form-head">Completa tu información</div>
 
     <!-- ====================== FORMULARIO NATIVO DE GHL ======================
@@ -568,6 +442,26 @@
               scrolling="no"
               title="Formulario de pedido">
       </iframe>
+    </div>
+
+    <!-- Order bump: va DEBAJO del formulario nativo de GHL (a propósito, no
+         antes) y compacto, con una sola miniatura en vez de un carrusel.
+         Antes esto era un 2do popup que aparecía DESPUÉS de enviar el
+         formulario; con un iframe de GHL de por medio no hay forma confiable
+         de saber "ya se envió" para recién mostrar ese popup, así que este
+         mismo contenido (miniatura/precio/beneficio) se agrega ANTES del
+         envío — "Añadir" solo marca la casilla oculta f-bump del mismo
+         formulario. Ver el README para más detalle. -->
+    <div class="bump-mini" id="tkBumpMini">
+      <div class="thumb"><img data-asset="bumpFoto2" alt="The Classic Tarot Rider Waite" onerror="tkSinFotoBump(this)"></div>
+      <div class="info">
+        <div class="tag">🎁 Extra con descuento</div>
+        <div class="name">The Classic Tarot Rider Waite</div>
+        <div class="price"><s>S/. 60.00</s><b>S/. 49.00</b></div>
+      </div>
+      <button type="button" class="btn-add shaky" id="tkBtnAdd" onclick="tkAddBump()">
+        <span id="tkBtnAddTxt">+ Añadir</span>
+      </button>
     </div>
 
     <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#tk-i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
@@ -606,9 +500,7 @@
     kitVariante: '',
     badges: '',
     bodyVideo: '',
-    bumpVideo: '',
     bumpFoto2: '',
-    bumpFoto3: '',
     r1: '', r2: '', r3: '',
     g1: '', g1mini: '',
     g2: '', g2mini: '',
@@ -623,9 +515,7 @@
     kitVariante: 'kittarotcod/kit-variante.webp',
     badges: 'kittarotcod/badges.webp',
     bodyVideo: 'kittarotcod/2.mp4',
-    bumpVideo: 'kittarotcod/orderbumpvideo1.mp4',
     bumpFoto2: 'kittarotcod/foto2orderbumb.webp',
-    bumpFoto3: 'kittarotcod/fotobump3.png',
     r1: 'kittarotcod/resenas/r1.webp', r2: 'kittarotcod/resenas/r2.webp', r3: 'kittarotcod/resenas/r3.webp',
     g1: 'kittarotcod/galeria/g1.webp', g1mini: 'kittarotcod/galeria/g1-mini.webp',
     g2: 'kittarotcod/galeria/g2.webp', g2mini: 'kittarotcod/galeria/g2-mini.webp',
@@ -726,21 +616,13 @@
     }
   }
 
-  function tkToggleBump() {
-    var box = document.getElementById('tkBumpBox');
-    var toggle = document.getElementById('tkBumpToggle');
-    var abrir = !box.classList.contains('on');
-    box.classList.toggle('on', abrir);
-    toggle.classList.toggle('open', abrir);
-    if (abrir) tkActivarImagenes(box);
-  }
   function tkAddBump() {
     tkBumpAceptado = !tkBumpAceptado;
     var btn = document.getElementById('tkBtnAdd');
     var txt = document.getElementById('tkBtnAddTxt');
     btn.classList.toggle('added', tkBumpAceptado);
     btn.classList.toggle('shaky', !tkBumpAceptado);
-    txt.textContent = tkBumpAceptado ? '✓ AÑADIDO A TU PEDIDO' : 'SÍ, AÑADIR A MI PEDIDO';
+    txt.textContent = tkBumpAceptado ? '✓ Añadido' : '+ Añadir';
     if (tkBumpAceptado) {
       fbTrack('AddToCart', { content_ids: ['riderwaite'], content_type: 'product', content_name: 'Order bump: riderwaite', contents: [{ id: 'riderwaite', quantity: 1 }], value: FB.bumps.riderwaite, currency: FB.moneda });
     }
@@ -827,23 +709,23 @@
       new IntersectionObserver(function (entradas) { if (entradas[0].isIntersecting) reproducir(); else if (!video.paused) video.pause(); }, { rootMargin: MARGEN_PLAY + 'px 0px', threshold: 0.15 }).observe(video);
     }
     revisar();
+    /* Antes esto ocultaba la caja del video por completo si la fuente
+       fallaba, así que un video mal subido/URL sin reemplazar desaparecía
+       sin ningún rastro (a diferencia de una imagen rota, que sí se ve).
+       Ahora deja un aviso visible del mismo estilo que los placeholders de
+       imagen, así se nota de inmediato que falta pegar la URL real en
+       ASSETS_GHL.bodyVideo en vez de parecer un bug. */
     video.addEventListener('error', function () {
-      if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) video.parentNode.style.display = 'none';
+      if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+        var aviso = document.createElement('div');
+        aviso.className = 'ph';
+        aviso.style.cssText = 'width:100%;aspect-ratio:720/1280;border-radius:0;border-left:none;border-right:none;';
+        aviso.textContent = 'Video no disponible — revisa ASSETS_GHL.bodyVideo';
+        video.replaceWith(aviso);
+      }
     }, true);
   })();
 
-  window.tkAlternarLike = function (boton) {
-    var num = boton.querySelector('.num');
-    var base = Number(boton.getAttribute('data-gustos') || num.textContent) || 0;
-    var activo = boton.classList.toggle('on');
-    boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
-    boton.setAttribute('data-gustos', base);
-    num.textContent = activo ? base + 1 : base;
-    var pareja = boton.parentNode.querySelectorAll('button');
-    for (var i = 0; i < pareja.length; i++) {
-      if (pareja[i] !== boton && pareja[i].classList.contains('on')) tkAlternarLike(pareja[i]);
-    }
-  };
   window.tkSinFotoResena = function (img) {
     var caja = img.closest('.rfoto');
     if (caja) caja.style.display = 'none';
@@ -942,33 +824,6 @@
     var i = Math.round(tkTrack.scrollLeft / tkTrack.clientWidth);
     if (i !== tkCur) { tkCur = i; [].forEach.call(tkDots.children, function (d, j) { d.className = j === tkCur ? 'on' : ''; }); }
   });
-
-  // Carrusel del bloque "añadir extra"
-  var tkBumpCarEl, tkBumpSlides = 0;
-  (function () {
-    var car = document.getElementById('tkBumpCar');
-    var dots = document.getElementById('tkBumpDots');
-    if (!car || !dots) return;
-    var slides = car.children.length;
-    if (slides < 2) return;
-    tkBumpCarEl = car;
-    tkBumpSlides = slides;
-    for (var i = 0; i < slides; i++) {
-      var d = document.createElement('i');
-      if (i === 0) d.className = 'on';
-      dots.appendChild(d);
-    }
-    car.addEventListener('scroll', function () {
-      var actual = Math.round(car.scrollLeft / car.clientWidth);
-      [].forEach.call(dots.children, function (d, i) { d.className = i === actual ? 'on' : ''; });
-    }, { passive: true });
-  })();
-  window.tkBumpMove = function (dir) {
-    if (!tkBumpCarEl || !tkBumpSlides) return;
-    var actual = Math.round(tkBumpCarEl.scrollLeft / tkBumpCarEl.clientWidth);
-    var siguiente = (actual + dir + tkBumpSlides) % tkBumpSlides;
-    tkBumpCarEl.scrollTo({ left: siguiente * tkBumpCarEl.clientWidth, behavior: 'smooth' });
-  };
 
   // Sticky CTA: se oculta cuando algún CTA inline está visible
   document.addEventListener('DOMContentLoaded', function () {
