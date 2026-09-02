@@ -11,9 +11,11 @@
   Este archivo es 100% autocontenido: el CSS, el HTML y las preguntas del
   formulario (Nombres, WhatsApp, Método de Envío, Dirección/Agencia) están
   todos aquí — no usa el Form Builder de GHL ni ningún iframe. El pedido se
-  envía con un fetch() propio a un Webhook de GHL (ver "2) TU WEBHOOK..."
-  dentro del <script>, y la sección 4 del README) para seguir usando
-  Pipelines y Workflows de forma nativa.
+  envía con un fetch() propio a un endpoint del Worker de Cloudflare que ya
+  tienes en producción (ver "2) TU WEBHOOK..." dentro del <script>, y la
+  sección 5 del README) — ese Worker es el que habla con la API de GHL y
+  deja el pedido en tus Contacts/Pipeline, porque "Inbound Webhook" está
+  bloqueado en el plan actual de la cuenta.
 
   Este NO es un archivo que subas "tal cual" a GHL. Es una página completa que
   puedes abrir en tu navegador para verla funcionar (con imágenes de prueba),
@@ -508,8 +510,8 @@
     </div>
 
     <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan.
-         Su valor viaja en el payload del webhook para que tu Workflow pueda
-         descartar el envío si viene relleno. -->
+         Su valor viaja en el payload; el Worker descarta el envío si viene
+         relleno (ver src/api/ghl-lead.js). -->
     <input type="text" id="tkWebsite" tabindex="-1" autocomplete="off" aria-hidden="true"
            style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 
@@ -628,14 +630,15 @@
   };
   function tkAsset(clave) { return ASSETS_GHL[clave] || ASSETS_FALLBACK[clave]; }
 
-  /* 2) TU WEBHOOK DE GHL Y TU WHATSAPP -------------------------------------
-     WEBHOOK_URL: crea un Workflow en GHL con disparador "Inbound Webhook"
-     (Settings > Workflows > Nuevo > Trigger: Inbound Webhook) y pega aquí la
-     URL que te da. Ese Workflow es tu "formulario": ahí mapeas los campos
-     del payload (ver tkSubmitCOD más abajo) a Contact/Custom Fields y de ahí
-     a tu Pipeline — sin pasar por el Form Builder ni por ningún iframe. Ver
-     el README, sección 4. */
-  var WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/TU_LOCATION_ID/webhook-trigger/TU_WEBHOOK_ID';
+  /* 2) TU WEBHOOK Y TU WHATSAPP ---------------------------------------------
+     WEBHOOK_URL ya apunta a tu propio Worker de Cloudflare (el mismo que ya
+     tienes desplegado en producción) — no a un Webhook de GHL: "Inbound
+     Webhook" está bloqueado en tu plan actual, así que el Worker hace de
+     puente hacia la API de GHL (crea el Contact, le deja una nota con el
+     pedido y, si configuraste Pipeline, la Opportunity). Ver el README,
+     sección 5, para dejar el Worker funcionando (token + Location ID). Si
+     cambias de dominio, actualiza esta URL. */
+  var WEBHOOK_URL = 'https://kit-tarot-para-principiantes.tarotperu.store/api/ghl-lead';
   var WHATSAPP_NUM = '51928529656';
 
   document.querySelectorAll('[data-asset]').forEach(function (el) {

@@ -63,6 +63,16 @@
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
     "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
-    "TELEGRAM_CHAT_ID": "8780926886"
+    "TELEGRAM_CHAT_ID": "8780926886",
+
+    // Puente de /api/ghl-lead hacia la API de GHL (ver ghl/README.md, sección
+    // 5). GHL_LOCATION_ID no es secreto (identifica tu sub-cuenta, no da
+    // acceso por sí solo); el token sí (GHL_PRIVATE_TOKEN, por
+    // `wrangler secret put`). Pipeline/Stage son opcionales: sin ellos el
+    // pedido igual registra el Contact y la nota, solo no crea la
+    // Opportunity.
+    "GHL_LOCATION_ID": "",
+    "GHL_PIPELINE_ID": "",
+    "GHL_PIPELINE_STAGE_ID": ""
   }
 }

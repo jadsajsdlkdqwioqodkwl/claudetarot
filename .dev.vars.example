@@ -19,3 +19,13 @@ TELEGRAM_CHAT_ID="123456789"
 
 # Pestaña del CRM manual de ventas (la del seguimiento de provincia).
 GOOGLE_VENTAS_NAME="Ventas"
+
+# Puente de /api/ghl-lead hacia GHL (ver ghl/README.md, sección 5).
+# Token de una Private Integration de tu sub-cuenta de GHL (Settings >
+# Private Integrations), con scopes de contacts y opportunities.
+GHL_PRIVATE_TOKEN="pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+GHL_LOCATION_ID="TU_LOCATION_ID"
+# Opcionales — sin estos dos, el pedido igual registra el Contact y la nota,
+# solo no crea la Opportunity en un Pipeline.
+GHL_PIPELINE_ID=""
+GHL_PIPELINE_STAGE_ID=""

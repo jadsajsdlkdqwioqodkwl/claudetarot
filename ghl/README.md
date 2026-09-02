@@ -5,8 +5,9 @@ Este paquete tiene **1 solo archivo** para pegar en GoHighLevel:
 - **`index.html`** → CSS + HTML + las preguntas del formulario (Nombres,
   WhatsApp, Método de Envío, Dirección/Agencia) + el order bump, todo
   autocontenido. No usa el Form Builder de GHL ni ningún iframe: el pedido
-  se envía con un `fetch()` propio a un **Webhook de GHL**, que es lo que
-  conecta esto con tus Pipelines y Workflows.
+  se envía con un `fetch()` propio a un endpoint nuevo de **tu Worker de
+  Cloudflare** (el mismo que ya tienes desplegado en producción), que habla
+  directo con la API de GHL para dejar el pedido en Contacts/Pipeline.
 
 Puedes abrir `index.html` directamente en tu navegador para verlo funcionar
 antes de tocar GHL — usa nombres de archivo relativos como reserva mientras
@@ -16,7 +17,7 @@ no hayas pegado tus URLs reales.
 era el CSS para el formulario del Form Builder, que este archivo ya no usa.
 Bórralo si lo tenías guardado.)
 
-## 1. Por qué cambió de un iframe de GHL a un Webhook
+## 1. Por qué esto pasó por 3 arquitecturas distintas
 
 Pediste "todo en un solo HTML — CSS, HTML y las preguntas — para no tener
 que hacer nada más". Eso y "usar el formulario nativo de GHL para tener
@@ -24,20 +25,24 @@ pipelines" son, en la práctica, dos cosas que **no pueden ser ciertas al
 mismo tiempo**: el Form Builder de GHL SIEMPRE entrega su formulario como un
 iframe a un dominio distinto (así lo diseñó GHL, no hay forma de "traer" el
 HTML de sus campos hacia tu propio archivo) — por eso el "Cargando
-formulario…" que viste: es el propio formulario de GHL, en su iframe,
-tardando o fallando en pintar sus campos, algo que yo no puedo depurar
-porque vive dentro de tu cuenta.
+formulario…" que viste en el primer intento: era el propio formulario de
+GHL, en su iframe, tardando o fallando en pintar sus campos.
 
-La solución: **el formulario completo (preguntas, estilos, lógica del
-toggle Lima/Provincia) ahora es HTML normal dentro de tu propia página**, y
-al enviarse hace un `POST` directo a un **Webhook** de GHL — un tipo de
-disparador de Workflow hecho justo para recibir datos desde fuera de GHL
-(exactamente tu caso). Sigue siendo 100% nativo de GHL: el Workflow que
-recibe el webhook puede crear/actualizar el Contact, meterlo a un Pipeline,
-mandar notificaciones, etc. — todo lo que un formulario disparaba, lo
-dispara un webhook igual. Lo único que cambia es que tú no ves un campo
-"CSS Class Name" que configurar por cada pregunta: las preguntas ya están
-resueltas en el HTML.
+El siguiente intento fue **el formulario completo como HTML normal** dentro
+de tu propia página, enviando el pedido a un **Webhook entrante** de un
+Workflow de GHL — pero esa función resultó estar bloqueada en tu plan actual
+("Funciones prémium… deshabilitada").
+
+Lo que quedó, y es lo que tienes ahora: **el mismo HTML autocontenido**
+(nada cambió ahí), pero el `fetch()` del pedido va a un **endpoint nuevo de
+tu propio Worker de Cloudflare** — el mismo Worker que ya tienes corriendo
+en producción hoy — y ese Worker es quien llama a la API de GHL directo
+(crea/actualiza el Contact, deja una nota con el pedido y, si configuras un
+Pipeline, la Opportunity). Sigue siendo GHL de verdad del otro lado — Contact,
+notas, Pipeline — nada más que en vez de pasar por un Workflow con un
+trigger que tu plan no tiene, pasa por una llamada a la API que si funciona
+en cualquier plan (siempre que puedas crear un token de Private Integration
+en tu cuenta — ver sección 5).
 
 ## 2. Decisiones de diseño que debes conocer
 
@@ -48,9 +53,9 @@ carrusel, cuenta regresiva y "SÍ AÑADIR / NO GRACIAS") mientras el pedido
 viaja en paralelo por `fetch()`. Al cerrar ese 2do modal (aceptes o no el
 bump), te redirige a WhatsApp con todo el pedido ya escrito en el mensaje.
 
-**Si el webhook falla** (sin internet, GHL caído, URL mal pegada), el lead
-no se pierde: aparece un aviso ofreciendo mandarlo por WhatsApp igual, con
-todos los datos ya escritos — igual que hacía tu web original.
+**Si el envío falla** (sin internet, el Worker o GHL caídos), el lead no se
+pierde: aparece un aviso ofreciendo mandarlo por WhatsApp igual, con todos
+los datos ya escritos — igual que hacía tu web original.
 
 **El video sí está incluido en el código.** Se carga solo cuando el
 visitante se acerca a esa parte de la página. Si no aparece, ya no falla en
@@ -69,8 +74,8 @@ las imágenes a propósito, incluso así no se sale nada del modal.
 
 **fbclid / \_fbp / \_fbc.** Van dentro del mismo `fetch()` que manda todo lo
 demás (nombre, teléfono, producto, etc.) — un solo payload, sin necesidad de
-pasarlos por ningún iframe ni campo oculto. Tu Workflow los recibe como
-cualquier otro dato del webhook.
+pasarlos por ningún iframe ni campo oculto. El Worker los deja escritos en
+la nota del Contact en GHL.
 
 **Botones verdes** (degradado tipo Shopify: `--cta1`/`--cta2` en el `:root`
 del CSS). Si quieres otro tono, ese es el único lugar a tocar.
@@ -148,53 +153,74 @@ El `#tarotKit` que envuelve todo el HTML y prefija cada regla del CSS
 estilos de tu página choquen con clases que ya use la plantilla de GHL en
 el resto del sitio.
 
-## 5. Cómo conectar tu Webhook (Pipelines y Workflows)
+## 5. Cómo dejar funcionando el puente (tu Worker → API de GHL)
 
-1. En GHL: **Automatización > Workflows > + Nuevo Workflow**.
-2. Como disparador (Trigger), elige **"Inbound Webhook"**. GHL te muestra
-   una URL única — cópiala.
-3. En `index.html`, busca la variable `WEBHOOK_URL` (cerca del inicio del
-   `<script>`, sección "2) TU WEBHOOK Y TU WHATSAPP") y pégala ahí.
-4. Envía un pedido de prueba desde el archivo abierto en tu navegador (con
-   `WEBHOOK_URL` ya puesta). En el Workflow, GHL te deja ver el "payload"
-   de ese envío de prueba — con eso arma el mapeo del siguiente paso.
-5. Agrega acciones al Workflow, por ejemplo:
-   - **"Create/Update Contact"**: mapea `nombre` → nombre del contacto,
-     `telefono` → teléfono, y el resto (`producto`, `envio`, `direccion`,
-     `agencia`, `bump`, `total`, `fbclid`, `fbp`, `fbc`) → Custom Fields
-     que crees para cada uno.
-   - **"Create Opportunity"** (o el disparador automático de tu Pipeline al
-     crear/actualizar un Contact): para que el pedido entre a tu Pipeline
-     de ventas.
-   - Cualquier otra automatización que ya uses (notificación a Slack/
-     Telegram, tags, etc.) — se agrega igual que con cualquier otro
-     trigger.
+Esto se hace UNA vez, en el repositorio de tu Worker (el mismo que ya
+despliega `kit-tarot-para-principiantes.tarotperu.store` hoy), no dentro de
+GHL. Ya agregué el código; solo falta la configuración y el deploy.
 
-Los campos que manda el `fetch()` en cada pedido son:
+**A) Consigue tus credenciales de GHL:**
 
-| Campo | Qué es |
-|---|---|
-| `nombre` | Nombre del cliente |
-| `telefono` | WhatsApp en formato 51XXXXXXXXX |
-| `envio` | `casa` o `agencia` |
-| `direccion` | Dirección (si envío = casa) |
-| `agencia` | Agencia de destino (si envío = agencia) |
-| `variante` | `1kit` o `2kit` |
-| `producto` | Nombre legible de la variante |
-| `precio_variante` | Precio de esa variante, en soles |
-| `bump` | `riderwaite` si aceptó el extra, si no vacío |
-| `total` | Precio variante + bump (si lo aceptó) |
-| `moneda` | `PEN` |
-| `website` | Trampa anti-bots — si viene con texto, es un bot; tu Workflow puede filtrar por esto |
-| `fbclid`, `fbp`, `fbc` | Identificadores de Meta Ads para matching/CAPI |
-| `pagina` | URL desde la que se hizo el pedido |
+1. En tu sub-cuenta de GHL: **Configuración > Private Integrations** (a
+   veces aparece como "Integraciones privadas" o dentro de "Configuración >
+   API"). Crea una nueva integración con estos permisos (scopes):
+   `contacts.write`, `contacts.readonly`, y si vas a usar Pipeline también
+   `opportunities.write`. Copia el token que te da — empieza con `pit-`.
+2. Tu **Location ID**: en GHL, ve a **Configuración > Perfil de la empresa**
+   (o mira la URL del navegador estando dentro de tu sub-cuenta — trae un
+   segmento largo tipo `location/XXXXXXXXXXXXXXXXXXXX`). Cópialo.
+3. *(Opcional, solo si quieres que el pedido cree una Opportunity en un
+   Pipeline)*: el **Pipeline ID** y el **Stage ID** de la etapa donde deben
+   caer los pedidos nuevos. Están en Configuración > Pipelines, o pídeme
+   ayuda si no los encuentras a simple vista — se pueden sacar por API.
 
-**Nota sobre CORS**: los Webhooks de GHL están hechos para recibir datos
-desde fuera de GHL (integraciones, Zapier, tu propia web), así que aceptan
-peticiones `POST` de otros orígenes sin problema — no deberías necesitar
-nada especial de tu lado. Si alguna vez ves un error de CORS en la consola
-del navegador, avísame y lo resolvemos con un pequeño cambio (mandar el
-`fetch` con `mode: 'no-cors'`, al costo de no poder leer la respuesta).
+**B) Configura el Worker (en tu terminal, dentro del repo):**
+
+```bash
+npx wrangler secret put GHL_PRIVATE_TOKEN
+# pega el token pit-... cuando te lo pida
+```
+
+Y en `wrangler.jsonc`, sección `vars` (ya están los campos, solo faltan los
+valores):
+
+```jsonc
+"GHL_LOCATION_ID": "tu_location_id",
+"GHL_PIPELINE_ID": "",        // opcional
+"GHL_PIPELINE_STAGE_ID": ""   // opcional
+```
+
+**C) Despliega:**
+
+```bash
+npm run deploy
+```
+
+Con eso, `WEBHOOK_URL` en `ghl/index.html` (que ya apunta a
+`https://kit-tarot-para-principiantes.tarotperu.store/api/ghl-lead`) queda
+funcionando — no necesitas tocar esa variable salvo que cambies de dominio.
+
+**Qué hace el Worker con cada pedido** (`src/api/ghl-lead.js`): valida los
+datos igual que ya validaba `/api/order`, descarta bots por el honeypot,
+aplica el mismo límite de 5 pedidos por minuto por IP, y llama a la API de
+GHL para: crear o actualizar el Contact (por teléfono, así un cliente que
+pide dos veces no genera un duplicado), dejarle una nota con el resumen
+completo del pedido (producto, entrega, destino, total, fbclid/fbp/fbc), y
+—si configuraste Pipeline/Stage— crear la Opportunity. También manda el
+mismo aviso a tu Telegram que ya recibías con `/api/order`, si tienes
+`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` configurados.
+
+Probé toda esta lógica con pruebas automatizadas (payload correcto, honeypot,
+validación, límite por IP, CORS, y qué pasa si la API de GHL responde con
+error) — lo único que NO pude probar es la llamada real a la API de GHL,
+porque no tengo credenciales de tu cuenta. Si al probar un pedido real te
+da error, mándame el mensaje que te devuelve y lo ajustamos — las APIs a
+veces cambian de forma sutil entre versiones.
+
+**Si más adelante consigues acceso a Workflows/Inbound Webhook** (upgrade de
+plan, o soporte de GHL te lo habilita), no hace falta deshacer nada de esto:
+simplemente podrías migrar `WEBHOOK_URL` a la URL de ese Webhook en vez de
+tu Worker, si prefieres esa ruta.
 
 ## 6. Redirección a WhatsApp
 
@@ -206,13 +232,14 @@ el `<script>`. Cambia ese número si hace falta.
 ## 7. Checklist antes de publicar
 
 - [ ] Los 23 archivos de la tabla están subidos y sus URLs pegadas en `ASSETS_GHL`.
-- [ ] `WEBHOOK_URL` apunta a tu Workflow real (ya no dice `TU_WEBHOOK_ID`).
 - [ ] `WHATSAPP_NUM` es tu número real.
-- [ ] El Workflow tiene al menos "Create/Update Contact" y algo que lo
-      meta a tu Pipeline.
-- [ ] Hiciste un pedido de prueba end-to-end: se abre el order bump, llega
-      el registro al Workflow (revísalo en GHL, pestaña de ejecuciones), y
-      WhatsApp se abre con el mensaje correcto.
+- [ ] `GHL_PRIVATE_TOKEN` subido con `wrangler secret put`, y `GHL_LOCATION_ID`
+      puesto en `wrangler.jsonc`.
+- [ ] Corriste `npm run deploy`.
+- [ ] Hiciste un pedido de prueba end-to-end: se abre el order bump, el
+      Contact aparece en GHL con su nota (revisa en Contacts, búscalo por
+      el teléfono de prueba), y WhatsApp se abre con el mensaje correcto.
+- [ ] Si configuraste Pipeline: la Opportunity aparece en la etapa correcta.
 - [ ] Abriste la página publicada en el celular y: el modal no se corta,
       nada se sale hacia los costados, el video del cuerpo carga al hacer
       scroll, la galería abre el visor de fotos.

@@ -15,13 +15,17 @@ import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
+import { onRequestPost as ghlLead, onRequestOptions as ghlLeadOptions } from "./api/ghl-lead.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/upsell": { POST: upsell },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
-  "/api/seguimiento": { GET: seguimiento }
+  "/api/seguimiento": { GET: seguimiento },
+  // Recibe los pedidos de ghl/index.html (la landing pegada en GHL, en otro
+  // dominio) y los registra en GHL por API — ver src/api/ghl-lead.js.
+  "/api/ghl-lead": { POST: ghlLead, OPTIONS: ghlLeadOptions }
 };
 
 /**
