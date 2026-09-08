@@ -14,22 +14,30 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    --navy-950: #050b1a;
-    --navy-900: #0a1730;
-    --navy-800: #10203f;
-    --navy-700: #1a2e56;
-    --blue: #3b6cf6;
+    /* Paleta sacada del material de Conde School: degradado violeta -> azul ->
+       cian de sus artes (el del señor del casco y contenedores), botón verde
+       plano con canto inferior (no glow difuminado) y el amarillo del gancho
+       de la grúa como acento. */
+    --violet: #3c1e78;
+    --indigo: #1e2f8f;
+    --navy-950: #0c1130;
+    --navy-900: #171049;
+    --navy-800: #241a68;
+    --navy-700: #2c2384;
+    --blue: #2f6df6;
     --cyan: #22d3ee;
-    --green: #16a34a;
-    --green-dark: #128038;
-    --amber: #f2a541;
+    --green: #2fbf5f;
+    --green-dark: #1c8a41;
+    --amber: #f5c518;
+    --amber-dark: #a97c00;
     --ink: #0f172a;
     --muted: #5b6478;
     --line: #e4e8f0;
     --bg: #f6f8fc;
     --card: #ffffff;
     --radius: 18px;
-    --shadow: 0 20px 44px -22px rgba(10, 23, 48, .28);
+    --shadow: 0 20px 44px -22px rgba(20, 15, 60, .32);
+    --grad-brand: linear-gradient(135deg, var(--violet) 0%, var(--indigo) 48%, var(--cyan) 115%);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -58,19 +66,22 @@
     font-weight: 800; font-size: 16px; cursor: pointer;
     transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
   }
-  .btn:active { transform: scale(.97); }
+  /* Botón plano con canto inferior: el estilo "presionable" del CTA verde de
+     Conde School, no un glow difuminado. Al hacer clic baja y pierde el canto. */
   .btn-cta {
-    background: linear-gradient(180deg, #22c55e, var(--green));
+    background: var(--green);
     color: #fff;
-    box-shadow: 0 14px 30px -12px rgba(22, 163, 74, .55);
+    box-shadow: 0 4px 0 var(--green-dark), 0 10px 22px -10px rgba(28, 138, 65, .55);
   }
-  .btn-cta:hover { filter: brightness(1.06); box-shadow: 0 16px 36px -12px rgba(22, 163, 74, .65); }
+  .btn-cta:hover { filter: brightness(1.05); }
+  .btn-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--green-dark); }
   .btn-ghost {
-    background: rgba(255, 255, 255, .08);
+    background: rgba(255, 255, 255, .1);
     color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, .3);
+    border: 1.5px solid rgba(255, 255, 255, .35);
   }
-  .btn-ghost:hover { background: rgba(255, 255, 255, .16); }
+  .btn-ghost:hover { background: rgba(255, 255, 255, .18); }
+  .btn-ghost:active { transform: translateY(1px); }
 
   /* ---------- Reveal on scroll ---------- */
   .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
@@ -83,9 +94,9 @@
   /* ---------- Header ---------- */
   header.site {
     position: sticky; top: 0; z-index: 60;
-    background: rgba(5, 11, 26, .78);
+    background: rgba(23, 16, 73, .82);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
   }
   .site-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
   .logo { display: flex; align-items: center; gap: 10px; }
@@ -105,9 +116,9 @@
   /* ---------- Hero ---------- */
   .hero {
     background:
-      radial-gradient(1100px 480px at 85% -10%, rgba(34, 211, 238, .18), transparent 60%),
-      radial-gradient(900px 500px at 0% 110%, rgba(59, 108, 246, .22), transparent 55%),
-      linear-gradient(180deg, var(--navy-950), var(--navy-900) 55%, var(--navy-800));
+      radial-gradient(1000px 460px at 88% 8%, rgba(34, 211, 238, .35), transparent 60%),
+      radial-gradient(700px 420px at 4% 100%, rgba(60, 30, 120, .5), transparent 60%),
+      var(--grad-brand);
     color: #fff;
     padding: 64px 0 84px;
     position: relative;
@@ -159,10 +170,10 @@
   .b-icon {
     flex-shrink: 0; width: 52px; height: 52px; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(155deg, #eaf6ff, #dfeaff);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -6px 12px -4px rgba(59,108,246,.18);
+    background: linear-gradient(150deg, var(--indigo), var(--violet));
+    box-shadow: 0 6px 14px -6px rgba(30, 47, 143, .55);
   }
-  .b-icon svg { width: 26px; height: 26px; color: var(--blue); }
+  .b-icon svg { width: 26px; height: 26px; color: var(--cyan); }
   .b-card h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
   .b-card p { margin-top: 6px; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
 
@@ -290,7 +301,7 @@
   .sticky-cta {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(5,11,26,.92); backdrop-filter: blur(8px);
+    background: rgba(12,17,48,.94); backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255,255,255,.1);
     transform: translateY(120%); transition: transform .3s ease;
   }
@@ -350,8 +361,8 @@
         <svg viewBox="0 0 480 420" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="gCont" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#3b6cf6"/>
-              <stop offset="1" stop-color="#1a2e56"/>
+              <stop offset="0" stop-color="#3f6df0"/>
+              <stop offset="1" stop-color="#241a68"/>
             </linearGradient>
             <linearGradient id="gCard" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#ffffff"/>
@@ -379,8 +390,8 @@
             <path d="M11 18l5 5 9-11" stroke="#0a1730" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           </g>
           <g transform="translate(300,200)" opacity=".9">
-            <circle cx="20" cy="20" r="20" fill="#f2a541"/>
-            <path d="M20 10v20M12 22l8 8 8-8" stroke="#3a2205" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="20" cy="20" r="20" fill="#f5c518"/>
+            <path d="M20 10v20M12 22l8 8 8-8" stroke="#4a3600" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           </g>
           <path d="M40 300c60 24 130 24 200 0s160-24 200 4" stroke="#22d3ee" stroke-width="2" stroke-dasharray="2 10" stroke-linecap="round" opacity=".55"/>
         </svg>
@@ -759,8 +770,7 @@
   }
 
   // ---------- WhatsApp de respaldo ----------
-  // TODO: reemplazar por el número real de WhatsApp del negocio (formato 51XXXXXXXXX).
-  var WHATSAPP_NUMERO = "51900000000";
+  var WHATSAPP_NUMERO = "51935070774";
 
   // ---------- Formulario ----------
   var form = document.getElementById("leadForm");

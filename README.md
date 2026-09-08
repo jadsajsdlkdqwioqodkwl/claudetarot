@@ -675,10 +675,16 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Número de WhatsApp real**: `WHATSAPP_NUMERO` en el `<script>` de
-  `public/temario-diplomado.html` tiene un placeholder (`51900000000`). Se usa solo para el
-  botón de "Escríbenos ahora" que aparece después de enviar el formulario — el registro del
-  lead en GHL no depende de este número.
+- **Foto real del héroe**: la landing usa una ilustración SVG hecha a mano (contenedor +
+  gráfico), no la foto real de Conde School (el señor del casco con el contenedor), porque
+  esa foto se compartió pegada en el chat y no como archivo adjunto — este entorno no guarda
+  el binario de una imagen pegada así, solo de un archivo subido. En cuanto la mandes como
+  adjunto se reemplaza el bloque `.hero-art` de `public/temario-diplomado.html` por un
+  `<img>` con la foto real.
+- **Paleta**: ya no es el navy genérico de la primera versión — se ajustó a ojo (violeta →
+  azul → cian, botón verde plano con canto inferior, amarillo del gancho de la grúa) a partir
+  de lo visto en las imágenes de Conde School. Con los archivos reales se puede afinar a los
+  hex exactos en vez de a ojo.
 - **Redes sociales del footer**: los íconos de Facebook/Instagram/TikTok/YouTube apuntan a
   `#` — reemplaza los `href` por las cuentas reales de Conde School.
 - **Credenciales de GHL**: sin `GHL_API_KEY` y `GHL_LOCATION_ID` reales, el formulario
