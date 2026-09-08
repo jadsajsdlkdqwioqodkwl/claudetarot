@@ -56,15 +56,29 @@
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--green); color: #fff; border: none; cursor: pointer;
     font-weight: 800; font-size: 16px; padding: 15px 26px; border-radius: 999px;
-    box-shadow: 0 5px 0 var(--green-dark), 0 12px 20px -10px rgba(11, 162, 57, .5);
-    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+    animation: buzz 2.2s ease-in-out infinite; transform-origin: center;
+    transition: filter .15s ease;
   }
   .btn-wa:hover { filter: brightness(1.05); }
-  .btn-wa:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--green-dark); }
+  .btn-wa:active { animation: none; transform: scale(.97); }
   .btn-wa img { width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; }
   .btn-wa .chev { width: 16px; height: 16px; flex-shrink: 0; }
-  .btn-wa.small { padding: 10px 18px; font-size: 14px; box-shadow: 0 4px 0 var(--green-dark); }
+  .btn-wa.small { padding: 10px 18px; font-size: 14px; }
   .btn-wa.small img { width: 18px; height: 18px; }
+  /* Mismo "buzz" que usan los botones de la página del kit de tarot: llama
+     la atención sin molestar, un tirón cada 2.2s en vez de vibrar siempre. */
+  @keyframes buzz {
+    0%, 82%, 100% { transform: translateX(0) rotate(0); }
+    84% { transform: translateX(-3px) rotate(-.8deg); }
+    86% { transform: translateX(3px) rotate(.8deg); }
+    88% { transform: translateX(-3px) rotate(-.8deg); }
+    90% { transform: translateX(3px) rotate(.8deg); }
+    92% { transform: translateX(-2px) rotate(-.5deg); }
+    94% { transform: translateX(2px) rotate(.5deg); }
+    96% { transform: translateX(-1px); }
+    98% { transform: translateX(1px); }
+  }
+  @media (prefers-reduced-motion: reduce) { .btn-wa { animation: none; } }
   .btn-wa.block { width: 100%; justify-content: center; }
 
   .btn-outline {
@@ -157,14 +171,19 @@
   .mid-cta p { margin-bottom: 16px; color: var(--muted); font-size: 15px; }
 
   /* ---------- Nuestro trabajo: la foto es el cuerpo de la sección ---------- */
-  section.trabajo { padding: 64px 0; background: var(--bg-soft); }
-  .trabajo-head { max-width: 620px; margin: 0 auto 28px; text-align: center; }
-  .trabajo-head .eyebrow-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .trabajo-head .eyebrow-row img { width: 26px; height: 26px; }
-  .trabajo-head h2 { margin-top: 8px; font-size: clamp(23px, 3.2vw, 30px); font-weight: 900; letter-spacing: -.02em; }
-  .trabajo-head p { margin-top: 10px; color: var(--muted); font-size: 15.5px; }
-  .trabajo-photo { max-width: 780px; margin: 0 auto; }
-  .trabajo-photo img { width: 100%; height: auto; border-radius: 20px; }
+  /* Secciones "cuerpo": la foto grande hace todo el trabajo, el texto es solo
+     el encabezado. Se reutiliza para "Nuestro trabajo", el mockup de
+     beneficios y el bono de Shopify. */
+  section.body-sec { padding: 56px 0; }
+  section.body-sec.soft { background: var(--bg-soft); }
+  .body-head { max-width: 620px; margin: 0 auto 28px; text-align: center; }
+  .body-head .eyebrow-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .body-head .eyebrow-row img { width: 26px; height: 26px; }
+  .body-head h2 { margin-top: 8px; font-size: clamp(23px, 3.2vw, 30px); font-weight: 900; letter-spacing: -.02em; }
+  .body-head p { margin-top: 10px; color: var(--muted); font-size: 15.5px; }
+  .body-photo { max-width: 780px; margin: 0 auto; }
+  .body-photo img { width: 100%; height: auto; border-radius: 20px; }
+  .body-photo.narrow { max-width: 460px; }
 
   /* ---------- Temario: lista plana, sin tarjetas flotantes ---------- */
   section.temario { padding: 64px 0; }
@@ -418,10 +437,25 @@
     </div>
   </section>
 
-  <!-- ============ NUESTRO TRABAJO ============ -->
-  <section class="trabajo">
+  <!-- ============ TODO LO QUE INCLUYE ============ -->
+  <section class="body-sec">
     <div class="wrap">
-      <div class="trabajo-head reveal">
+      <div class="body-head reveal">
+        <span class="eyebrow">Material incluido</span>
+        <h2>Todo lo que llevas con el diplomado</h2>
+        <p>Cursos, guías, cotizadores y tu certificado — todo dentro del Campus Virtual.</p>
+      </div>
+      <div class="body-photo reveal">
+        <img src="img/beneficios-mockup.jpg" width="1080" height="1080" loading="lazy"
+          alt="Todo lo que incluye el Diplomado en Importación premium de Conde School: cursos, guías, diccionario del importador, cotizadores y certificado">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NUESTRO TRABAJO ============ -->
+  <section class="body-sec soft">
+    <div class="wrap">
+      <div class="body-head reveal">
         <div class="eyebrow-row">
           <img src="img/barquito.png" alt="">
           <span class="eyebrow">Así trabajamos</span>
@@ -429,8 +463,23 @@
         <h2>Nuestra propia operación, no solo la teoría</h2>
         <p>Fotos reales de nuestro almacén, embarques y asesorías — la misma agencia de carga y aduana que verás en tus clases.</p>
       </div>
-      <div class="trabajo-photo reveal">
+      <div class="body-photo reveal">
         <img src="img/nuestrotrabajo.png" width="938" height="716" loading="lazy" alt="Fotos reales del trabajo de Conde School: almacén, embarque de contenedores y asesorías a importadores">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BONO: TIENDA EN SHOPIFY ============ -->
+  <section class="body-sec">
+    <div class="wrap">
+      <div class="body-head reveal">
+        <span class="eyebrow">Bono exclusivo</span>
+        <h2>De la importación a las ventas</h2>
+        <p>Por tu inscripción, aprende a crear tu tienda virtual en Shopify para vender lo que importas.</p>
+      </div>
+      <div class="body-photo narrow reveal">
+        <img src="img/bono-shopify.jpg" width="1122" height="1402" loading="lazy"
+          alt="Bono de Conde School: crea tu tienda virtual en Shopify para vender los productos que importas">
       </div>
     </div>
   </section>
