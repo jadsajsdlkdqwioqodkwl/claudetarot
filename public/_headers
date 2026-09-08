@@ -13,6 +13,10 @@
 /kittarotcod/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Fotos reales de Conde School para /temario-diplomado, mismo criterio.
+/img/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # El HTML si cambia con cada despliegue: se revalida siempre para que nadie se
 # quede con una version vieja de la pagina o de los precios.
 /

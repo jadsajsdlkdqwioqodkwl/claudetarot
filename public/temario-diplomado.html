@@ -8,25 +8,27 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Diplomado en Importación para Emprendedores | Conde School">
 <meta property="og:description" content="Aprende a importar de China, EE. UU. y Panamá con acompañamiento 1 a 1 durante un año. Temario completo, sesión por sesión.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a1730'/%3E%3Cpath d='M9 20V12l7-4 7 4v8l-7 4-7-4Z' fill='none' stroke='%2322d3ee' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M9 12l7 4 7-4M16 16v8' fill='none' stroke='%2322d3ee' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d94ff'/%3E%3Cpath d='M9 20V12l7-4 7 4v8l-7 4-7-4Z' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M9 12l7 4 7-4M16 16v8' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
 <noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    /* Celeste, no azul oscuro: el fondo se queda siempre en el rango claro/medio
-       de azul cielo, nunca cae a navy ni a negro. El verde plano del CTA y el
-       amarillo del gancho de la grúa quedan como acentos, igual que en el
-       material real de Conde School. */
-    --sky-50: #eef9ff;
-    --sky-100: #daf1ff;
-    --sky-200: #aee2fb;
-    --celeste: #12a3e6;
-    --celeste-deep: #0b6fae;
+    /* Paleta muestreada de verdad con Pillow sobre public/img/hero-diplomado.jpg
+       y public/img/bono-shopify.jpg (no a ojo): violeta #6b45fc arriba-izquierda
+       -> celeste #0d94ff abajo-derecha, y el verde plano real del botón
+       "QUIERO INFORMACIÓN" (~#0ba239). Vívido, pero nunca cae a navy/negro —
+       el punto más oscuro del degradado real sigue siendo un azul franco. */
+    --violet: #6b45fc;
+    --celeste: #0d94ff;
+    --celeste-deep: #0068d6;
+    --sky-50: #f4faff;
+    --sky-100: #e2f1ff;
+    --sky-200: #bfe0fc;
     --blue: #2f6df6;
-    --cyan: #22d3ee;
-    --green: #22c55e;
-    --green-dark: #15803d;
+    --cyan: #17c3f2;
+    --green: #0ba239;
+    --green-dark: #066b26;
     --amber: #f5c518;
     --amber-dark: #a97c00;
     --ink: #0f172a;
@@ -35,8 +37,8 @@
     --bg: var(--sky-50);
     --card: #ffffff;
     --radius: 18px;
-    --shadow: 0 20px 44px -22px rgba(18, 100, 163, .22);
-    --grad-brand: linear-gradient(160deg, var(--sky-50) 0%, var(--sky-200) 55%, var(--celeste) 130%);
+    --shadow: 0 20px 44px -22px rgba(18, 100, 163, .28);
+    --grad-brand: linear-gradient(135deg, var(--violet) 0%, var(--celeste-deep) 55%, var(--celeste) 100%);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -75,14 +77,15 @@
   .btn-cta:hover { filter: brightness(1.05); }
   .btn-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--green-dark); }
   .btn-ghost {
-    background: #fff;
-    color: var(--celeste-deep);
-    border: 1.5px solid var(--sky-200);
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, .4);
   }
-  .btn-ghost:hover { background: var(--sky-50); border-color: var(--celeste); }
+  .btn-ghost:hover { background: rgba(255, 255, 255, .2); }
   .btn-ghost:active { transform: translateY(1px); }
-  /* Variante para fondos claros con más contraste, como dentro del formulario. */
-  .btn-ghost.on-light { border-color: var(--celeste); }
+  /* Variante para fondos claros, como la vista de éxito del formulario. */
+  .btn-ghost.on-light { background: #fff; color: var(--celeste-deep); border-color: var(--sky-200); }
+  .btn-ghost.on-light:hover { background: var(--sky-50); border-color: var(--celeste); }
 
   /* ---------- Reveal on scroll ---------- */
   .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
@@ -117,42 +120,55 @@
   /* ---------- Hero ---------- */
   .hero {
     background:
-      radial-gradient(900px 420px at 92% 0%, rgba(255, 255, 255, .7), transparent 60%),
+      radial-gradient(1000px 460px at 88% 8%, rgba(23, 195, 242, .4), transparent 60%),
       var(--grad-brand);
-    color: var(--ink);
+    color: #fff;
     padding: 64px 0 84px;
     position: relative;
     overflow: hidden;
   }
   .hero-grid { display: grid; gap: 48px; align-items: center; }
-  @media (min-width: 960px) { .hero-grid { grid-template-columns: 1.05fr .95fr; gap: 56px; } }
-  .hero .eyebrow { color: var(--celeste-deep); background: #fff; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--sky-200); }
+  @media (min-width: 960px) { .hero-grid { grid-template-columns: .95fr 1.05fr; gap: 40px; } }
+  .hero .eyebrow { color: #fff; background: rgba(255, 255, 255, .16); padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .32); }
   .hero h1 {
     margin-top: 20px; font-size: clamp(30px, 4.4vw, 48px); font-weight: 900;
     line-height: 1.1; letter-spacing: -.02em;
   }
-  .hero h1 em { font-style: normal; color: var(--celeste-deep); }
+  .hero h1 em { font-style: normal; color: var(--cyan); }
   .hero p.lede {
-    margin-top: 18px; font-size: 17px; color: #234058; max-width: 52ch; line-height: 1.6;
+    margin-top: 18px; font-size: 17px; color: rgba(255, 255, 255, .85); max-width: 52ch; line-height: 1.6;
   }
   .hero-ctas { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 14px; }
   .trust-row { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 10px; }
   .trust-chip {
     display: flex; align-items: center; gap: 8px;
-    background: rgba(255, 255, 255, .75); border: 1px solid rgba(255, 255, 255, .9);
-    padding: 9px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #12334d;
+    background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .26);
+    padding: 9px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff;
   }
-  .trust-chip svg { width: 16px; height: 16px; color: var(--celeste-deep); flex-shrink: 0; }
+  .trust-chip svg { width: 16px; height: 16px; color: var(--cyan); flex-shrink: 0; }
 
-  /* ---------- Hero illustration (hand-built, no stock art) ---------- */
+  /* ---------- Foto real de Conde School ---------- */
   .hero-art { position: relative; }
-  .hero-art svg { width: 100%; height: auto; filter: drop-shadow(0 30px 50px rgba(0,0,0,.35)); }
+  .hero-art img {
+    width: 100%; height: auto; border-radius: 22px;
+    box-shadow: 0 30px 60px -20px rgba(8, 20, 50, .55);
+  }
 
   /* ---------- Section headings ---------- */
   .sec-head { max-width: 640px; margin: 0 auto 44px; text-align: center; }
   .sec-head .eyebrow { color: var(--celeste-deep); }
   .sec-head h2 { margin-top: 12px; font-size: clamp(26px, 3.4vw, 36px); font-weight: 900; letter-spacing: -.02em; }
   .sec-head p { margin-top: 12px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+
+  /* ---------- Contenido real (no ilustraciones) ---------- */
+  section.showcase { padding: 44px 0 0; }
+  .showcase-grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .showcase-grid { grid-template-columns: 1.2fr .8fr; align-items: start; } }
+  .showcase-grid figure {
+    margin: 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    border: 1px solid var(--sky-200);
+  }
+  .showcase-grid img { width: 100%; height: auto; display: block; }
 
   section.benefits { padding: 88px 0 24px; }
 
@@ -191,13 +207,12 @@
 
   /* ---------- Mid CTA banner ---------- */
   .cta-banner {
-    margin-top: 88px; background: linear-gradient(120deg, var(--sky-100), var(--sky-200));
-    border: 1px solid var(--sky-200);
-    color: var(--ink); border-radius: 24px; padding: 40px 32px;
+    margin-top: 88px; background: var(--grad-brand);
+    color: #fff; border-radius: 24px; padding: 40px 32px;
     display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
   }
   .cta-banner h3 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
-  .cta-banner p { margin-top: 6px; color: #234058; font-size: 14.5px; }
+  .cta-banner p { margin-top: 6px; color: rgba(255,255,255,.8); font-size: 14.5px; }
 
   /* ---------- Temario ---------- */
   section.temario { padding: 88px 0; }
@@ -238,14 +253,14 @@
   }
   @media (min-width: 820px) { .form-card { grid-template-columns: 1fr 1fr; } }
   .form-side {
-    padding: 44px 40px;
-    background: linear-gradient(160deg, var(--sky-100), var(--sky-200));
+    padding: 44px 40px; color: #fff;
+    background: var(--grad-brand);
   }
   .form-side h2 { font-size: 26px; font-weight: 900; letter-spacing: -.02em; }
-  .form-side p { margin-top: 12px; color: #234058; font-size: 15px; line-height: 1.6; }
+  .form-side p { margin-top: 12px; color: rgba(255,255,255,.82); font-size: 15px; line-height: 1.6; }
   .form-side .mini-list { margin-top: 26px; display: flex; flex-direction: column; gap: 12px; }
-  .form-side .mini-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #12334d; }
-  .form-side .mini-list svg { width: 18px; height: 18px; color: var(--celeste-deep); flex-shrink: 0; margin-top: 1px; }
+  .form-side .mini-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #fff; }
+  .form-side .mini-list svg { width: 18px; height: 18px; color: var(--cyan); flex-shrink: 0; margin-top: 1px; }
 
   .form-fields { padding: 40px; background: #fff; }
   .field { margin-bottom: 16px; }
@@ -287,16 +302,19 @@
 
   /* ---------- Footer ---------- */
   footer.site {
-    background: var(--sky-100); color: #234058; padding: 48px 0 90px;
+    background: linear-gradient(120deg, var(--violet), var(--celeste-deep));
+    color: rgba(255,255,255,.72); padding: 48px 0 90px;
   }
   @media (min-width: 640px) { footer.site { padding-bottom: 48px; } }
-  .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 26px; border-bottom: 1px solid var(--sky-200); }
+  footer.site .logo .word { color: #fff; }
+  footer.site .logo .word span { color: var(--cyan); }
+  .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 26px; border-bottom: 1px solid rgba(255,255,255,.18); }
   .foot-social { display: flex; gap: 10px; }
   .foot-social a {
-    width: 38px; height: 38px; border-radius: 50%; background: #fff; color: var(--celeste-deep);
+    width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff;
     display: flex; align-items: center; justify-content: center; transition: background .15s ease;
   }
-  .foot-social a:hover { background: var(--sky-50); }
+  .foot-social a:hover { background: rgba(255,255,255,.24); }
   .foot-social svg { width: 17px; height: 17px; }
   .foot-bottom { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px 20px; justify-content: space-between; font-size: 12.5px; }
 
@@ -360,44 +378,27 @@
       </div>
 
       <div class="hero-art">
-        <!-- Ilustración propia, geométrica: contenedor + ruta de importación -->
-        <svg viewBox="0 0 480 420" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="gCont" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#4fc8f0"/>
-              <stop offset="1" stop-color="#0b6fae"/>
-            </linearGradient>
-            <linearGradient id="gCard" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#ffffff"/>
-              <stop offset="1" stop-color="#eef3ff"/>
-            </linearGradient>
-          </defs>
-          <ellipse cx="240" cy="366" rx="170" ry="18" fill="#000" opacity=".18"/>
-          <g transform="translate(70,120)">
-            <rect x="0" y="40" width="230" height="140" rx="10" fill="url(#gCont)"/>
-            <g stroke="#c9d8ff" stroke-width="2" opacity=".55">
-              <path d="M0 76h230M0 112h230M0 148h230"/>
-            </g>
-            <rect x="14" y="54" width="46" height="34" rx="4" fill="#0a1730" opacity=".35"/>
-            <rect x="0" y="40" width="230" height="140" rx="10" fill="none" stroke="#0a1730" stroke-opacity=".25" stroke-width="2"/>
-          </g>
-          <g transform="translate(268,52)">
-            <rect x="0" y="0" width="150" height="110" rx="16" fill="url(#gCard)" stroke="#dbe4fb"/>
-            <path d="M18 74l24-26 20 16 34-40" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <circle cx="96" cy="24" r="5" fill="#16a34a"/>
-            <path d="M18 90h114" stroke="#e4e8f0" stroke-width="3" stroke-linecap="round"/>
-            <path d="M18 96h70" stroke="#e4e8f0" stroke-width="3" stroke-linecap="round"/>
-          </g>
-          <g transform="translate(70,40)">
-            <circle cx="18" cy="18" r="18" fill="#22d3ee"/>
-            <path d="M11 18l5 5 9-11" stroke="#0a1730" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </g>
-          <g transform="translate(300,200)" opacity=".9">
-            <circle cx="20" cy="20" r="20" fill="#f5c518"/>
-            <path d="M20 10v20M12 22l8 8 8-8" stroke="#4a3600" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </g>
-          <path d="M40 300c60 24 130 24 200 0s160-24 200 4" stroke="#22d3ee" stroke-width="2" stroke-dasharray="2 10" stroke-linecap="round" opacity=".55"/>
-        </svg>
+        <img
+          src="img/hero-diplomado.jpg"
+          width="1254" height="1254"
+          alt="Especialista de Conde School con casco de importador, sosteniendo un contenedor a escala de COSCO Shipping, con un contenedor real siendo izado de fondo"
+          fetchpriority="high">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTENIDO REAL DE CONDE SCHOOL ============ -->
+  <section class="showcase">
+    <div class="wrap">
+      <div class="showcase-grid reveal">
+        <figure>
+          <img src="img/beneficios-mockup.jpg" width="1080" height="1080" loading="lazy"
+            alt="Todo lo que incluye el Diplomado en Importación premium de Conde School: cursos, guías, diccionario del importador, cotizadores y certificado">
+        </figure>
+        <figure>
+          <img src="img/bono-shopify.jpg" width="1122" height="1402" loading="lazy"
+            alt="Bono de Conde School: crea tu tienda virtual en Shopify para vender los productos que importas">
+        </figure>
       </div>
     </div>
   </section>
@@ -691,7 +692,7 @@
           <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
           <h3 id="successTitle">¡Listo! Ya registramos tu solicitud</h3>
           <p>Un asesor de Conde School te va a escribir por WhatsApp en menos de 24 horas con la información del diplomado.</p>
-          <a class="btn btn-ghost" id="waLink" href="#" target="_blank" rel="noopener">Escríbenos ahora por WhatsApp</a>
+          <a class="btn btn-ghost on-light" id="waLink" href="#" target="_blank" rel="noopener">Escríbenos ahora por WhatsApp</a>
         </div>
 
       </div>

@@ -675,17 +675,16 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Foto real del héroe**: la landing usa una ilustración SVG hecha a mano (contenedor +
-  gráfico), no la foto real de Conde School (el señor del casco con el contenedor), porque
-  esa foto se compartió pegada en el chat y no como archivo adjunto — este entorno no guarda
-  el binario de una imagen pegada así, solo de un archivo subido a la conversación o ya en el
-  repo. Para cerrar esto: sube el archivo a `public/img/` en esta rama (o dame una URL donde
-  viva) y reemplazo el bloque `.hero-art` de `public/temario-diplomado.html` por un `<img>`
-  con la foto real.
-- **Paleta**: celeste — fondo claro/medio de azul cielo en toda la página (`--sky-50` a
-  `--celeste`), sin ningún navy ni negro de fondo; el verde plano del CTA y el amarillo del
-  gancho de la grúa quedan como acentos. Se ajustó a ojo a partir de lo visto en las imágenes
-  de Conde School — con los archivos reales se puede afinar a los hex exactos en vez de a ojo.
+- **Fotos reales de Conde School**: ya están en `public/img/` (`hero-diplomado.jpg`,
+  `beneficios-mockup.jpg`, `bono-shopify.jpg`) — subidas directo al repo, así que a
+  diferencia de una imagen pegada en el chat, esta sí se pudo leer y usar tal cual. El héroe
+  usa la foto del señor del casco con el contenedor; las otras dos van en una franja de
+  "contenido real" entre el héroe y los beneficios.
+- **Paleta**: violeta `#6b45fc` → celeste `#0d94ff`, muestreados con Pillow directo sobre
+  `hero-diplomado.jpg` y el botón verde de `bono-shopify.jpg` (`--violet`, `--celeste`,
+  `--green` en el `:root` de `public/temario-diplomado.html`) — ya no son a ojo. Vívido en
+  los bloques de marca (header, banner de CTA, formulario, footer), pero el punto más oscuro
+  del degradado real sigue siendo un azul franco, nunca navy ni negro.
 - **Redes sociales del footer**: los íconos de Facebook/Instagram/TikTok/YouTube apuntan a
   `#` — reemplaza los `href` por las cuentas reales de Conde School.
 - **Credenciales de GHL**: sin `GHL_API_KEY` y `GHL_LOCATION_ID` reales, el formulario
