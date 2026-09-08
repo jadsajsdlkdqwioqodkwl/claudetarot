@@ -599,3 +599,89 @@ recién hecho puede tardar hasta 20 s en verse en la página del cliente.
 
 **Precios**: viven en `src/lib/pedido.js`. Si los cambias, actualiza también los textos
 de `public/index.html` — `npm run check` avisa si dejan de coincidir.
+
+---
+
+# Diplomado en Importación (Conde School) → GHL como CRM
+
+Segundo sitio que vive en el mismo Worker, sin relación con el kit de tarot: la landing del
+**Diplomado en Importación para Emprendedores** de Conde School. No guarda nada en Google
+Sheets — el formulario crea o actualiza el contacto directo en **GoHighLevel (GHL)** vía su
+API, con un tag fijo para que la automatización de retargeting ya armada en GHL lo recoja.
+
+```
+public/temario-diplomado.html   La landing: hecha a mano, sin dependencias externas
+src/api/lead-diplomado.js       POST /api/temario-lead — valida y crea el contacto en GHL
+src/api/temario-diag.js         GET  /api/temario-diag  — diagnóstico de la conexión con GHL
+src/lib/ghl.js                  Cliente mínimo de la API de GHL (upsert de contacto + tag)
+src/lib/lead.js                 Validación del formulario (nombre + WhatsApp)
+```
+
+La ruta pública es **`/temario-diplomado`, sin `.html`** — es la URL que se va a pautar y
+compartir, así que se sirve explícita desde `src/index.js` (`paginaDelDiplomado`) en vez de
+confiar en cómo resuelva Cloudflare las rutas "limpias" por defecto.
+
+## Por qué GHL y no Sheets
+
+Conde School ya tiene su cuenta de GHL con una automatización de retargeting armada sobre
+tags de contacto. Meter esos leads en Sheets primero (como el tarot) obligaría a sincronizar
+dos sistemas a mano. Aquí el Worker llama directo a la API de GHL — GHL ES el CRM, no hay
+una segunda fuente de verdad que mantener sincronizada.
+
+Se usa el endpoint de **upsert** (`POST /contacts/upsert`): si el WhatsApp ya existe como
+contacto en esa location, lo actualiza y le suma el tag en vez de duplicarlo. No se crea
+ninguna Opportunity ni se toca ningún Pipeline — no hacía falta para el retargeting, y cada
+pieza de más es una pieza más que puede romperse en silencio.
+
+## El formulario
+
+Solo dos campos: **nombre y WhatsApp**. Es a propósito la fricción mínima — el patrón que
+mejor convierte para captación por WhatsApp en LatAm, y es lo único que la automatización de
+retargeting necesita para arrancar. No se pide precio en la página: es una landing de
+captación ("quiero información"), no de venta directa — el precio y las fechas de la
+próxima cohorte se dan por WhatsApp, ya con el contacto tibio.
+
+Lleva honeypot (`website`, campo oculto) y un límite de 8 solicitudes por minuto y por IP
+(`TEMARIO_LEAD_LIMIT` en `wrangler.jsonc`), igual de criterio que `/api/order`: sin el
+binding de rate limit, nunca se pierde un lead por eso.
+
+## Variables de entorno
+
+```
+GHL_API_KEY       secret — Private Integration Token de GHL (scope: contactos)
+GHL_LOCATION_ID   texto  — el location de esa cuenta de GHL
+GHL_LEAD_TAG      texto  — tag que se le pone al contacto (por defecto "lead-diplomado-importacion")
+DIAG_TOKEN        secret — enciende /api/diag y /api/temario-diag (comparten el mismo)
+```
+
+`GHL_API_KEY` se saca de GHL en **Configuración → Integraciones → Private Integrations**,
+con permiso de lectura/escritura de contactos. `GHL_LOCATION_ID` sale de la URL del panel de
+esa location (`.../location/<ID>/...`). En producción:
+
+```
+npx wrangler secret put GHL_API_KEY
+npx wrangler secret put DIAG_TOKEN
+```
+
+`GHL_LOCATION_ID` y `GHL_LEAD_TAG` van como texto plano en `wrangler.jsonc` (no son
+secretos) — cámbialos ahí, no en el dashboard, por la misma razón que `TELEGRAM_CHAT_ID`:
+un despliegue borra lo que solo esté en la consola.
+
+## Diagnóstico
+
+`GET /api/temario-diag?token=…` recorre la cadena igual que `/api/diag`, pero para GHL: si
+faltan las variables, y si el token tiene acceso a esa location (con un `GET /locations/:id`
+que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
+
+## Pendiente antes de pasar a producción
+
+- **Número de WhatsApp real**: `WHATSAPP_NUMERO` en el `<script>` de
+  `public/temario-diplomado.html` tiene un placeholder (`51900000000`). Se usa solo para el
+  botón de "Escríbenos ahora" que aparece después de enviar el formulario — el registro del
+  lead en GHL no depende de este número.
+- **Redes sociales del footer**: los íconos de Facebook/Instagram/TikTok/YouTube apuntan a
+  `#` — reemplaza los `href` por las cuentas reales de Conde School.
+- **Credenciales de GHL**: sin `GHL_API_KEY` y `GHL_LOCATION_ID` reales, el formulario
+  responde `502` (el lead nunca se pierde en silencio: el cliente ve un error y puede
+  reintentar). Corre `/api/temario-diag` después de cargar las credenciales para confirmar
+  la cadena completa.

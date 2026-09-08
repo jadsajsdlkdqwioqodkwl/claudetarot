@@ -19,3 +19,16 @@ TELEGRAM_CHAT_ID="123456789"
 
 # Pestaña del CRM manual de ventas (la del seguimiento de provincia).
 GOOGLE_VENTAS_NAME="Ventas"
+
+# Landing de Conde School (public/temario-diplomado.html): crea/actualiza el
+# contacto en GHL con un tag, para retargeting. GHL_API_KEY es un Private
+# Integration Token (Configuración → Integraciones → Private Integrations),
+# con el scope de contactos. GHL_LOCATION_ID sale de la URL del panel de esa
+# location. En producción GHL_API_KEY va como secret:
+#   npx wrangler secret put GHL_API_KEY
+GHL_API_KEY="pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+GHL_LOCATION_ID="REEMPLAZA_CON_TU_LOCATION_ID"
+GHL_LEAD_TAG="lead-diplomado-importacion"
+
+# Token del diagnóstico compartido por /api/diag y /api/temario-diag.
+DIAG_TOKEN="elige-un-token-largo-y-al-azar"

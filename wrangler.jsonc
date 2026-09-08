@@ -38,6 +38,17 @@
       "name": "TRACK_LIMIT",
       "namespace_id": "1002",
       "simple": { "limit": 40, "period": 60 }
+    },
+
+    /**
+     * Formulario de public/temario-diplomado.html: nombre + WhatsApp, sin
+     * fricción, así que 8 por minuto por IP deja probar varias veces
+     * seguidas sin abrirle la puerta a un bot.
+     */
+    {
+      "name": "TEMARIO_LEAD_LIMIT",
+      "namespace_id": "1003",
+      "simple": { "limit": 8, "period": 60 }
     }
   ],
 
@@ -63,6 +74,12 @@
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
     "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
-    "TELEGRAM_CHAT_ID": "8780926886"
+    "TELEGRAM_CHAT_ID": "8780926886",
+
+    // Landing de Conde School (public/temario-diplomado.html). El
+    // GHL_API_KEY (Private Integration Token) va como secret, nunca aquí:
+    //   npx wrangler secret put GHL_API_KEY
+    "GHL_LOCATION_ID": "REEMPLAZA_CON_TU_LOCATION_ID",
+    "GHL_LEAD_TAG": "lead-diplomado-importacion"
   }
 }

@@ -29,3 +29,10 @@
 /seguimiento.html
   Cache-Control: public, max-age=0, must-revalidate
   X-Robots-Tag: noindex, nofollow
+
+# La landing del diplomado vive en /temario-diplomado (sin .html): esa ruta
+# la sirve el Worker (ver paginaDelDiplomado en src/index.js) y ya pone su
+# propio Cache-Control. Esta entrada es solo para quien abra el archivo
+# directo, por si el .html queda expuesto además de la ruta limpia.
+/temario-diplomado.html
+  Cache-Control: public, max-age=0, must-revalidate

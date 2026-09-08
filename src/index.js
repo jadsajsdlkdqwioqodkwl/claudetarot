@@ -15,13 +15,17 @@ import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
+import { onRequestPost as leadDiplomado } from "./api/lead-diplomado.js";
+import { onRequestGet as temarioDiag } from "./api/temario-diag.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/upsell": { POST: upsell },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
-  "/api/seguimiento": { GET: seguimiento }
+  "/api/seguimiento": { GET: seguimiento },
+  "/api/temario-lead": { POST: leadDiplomado },
+  "/api/temario-diag": { GET: temarioDiag }
 };
 
 /**
@@ -60,6 +64,19 @@ async function paginaDeSeguimiento(request, env) {
   return new Response(res.body, { status: res.status, headers });
 }
 
+/**
+ * /temario-diplomado sin ".html": es la URL que se va a pautar y compartir
+ * (condeschool.org/temario-diplomado), así que se sirve explícito en vez de
+ * confiar en cómo resuelva Cloudflare las rutas "limpias" por defecto.
+ */
+async function paginaDelDiplomado(request, env) {
+  const url = new URL("/temario-diplomado.html", request.url);
+  const res = await env.ASSETS.fetch(new Request(url, { method: "GET" }));
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  return new Response(res.body, { status: res.status, headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
@@ -74,6 +91,10 @@ export default {
 
     if (RE_RUTA_SEGUIMIENTO.test(pathname)) {
       return paginaDeSeguimiento(request, env);
+    }
+
+    if (pathname === "/temario-diplomado" && request.method === "GET") {
+      return paginaDelDiplomado(request, env);
     }
 
     const metodos = ROUTES[pathname];
