@@ -314,7 +314,7 @@
       <div class="hero-photo reveal">
         <img
           src="img/hero-diplomado.jpg"
-          width="1254" height="1254"
+          width="1000" height="1000"
           alt="Especialista de Conde School con casco de importador, sosteniendo un contenedor a escala de COSCO Shipping, con un contenedor real siendo izado de fondo"
           fetchpriority="high">
       </div>
@@ -446,7 +446,7 @@
         <p>Cursos, guías, cotizadores y tu certificado — todo dentro del Campus Virtual.</p>
       </div>
       <div class="body-photo reveal">
-        <img src="img/beneficios-mockup.jpg" width="1080" height="1080" loading="lazy"
+        <img src="img/beneficios-mockup.jpg" width="900" height="900" loading="lazy"
           alt="Todo lo que incluye el Diplomado en Importación premium de Conde School: cursos, guías, diccionario del importador, cotizadores y certificado">
       </div>
     </div>
@@ -464,7 +464,7 @@
         <p>Fotos reales de nuestro almacén, embarques y asesorías — la misma agencia de carga y aduana que verás en tus clases.</p>
       </div>
       <div class="body-photo reveal">
-        <img src="img/nuestrotrabajo.png" width="938" height="716" loading="lazy" alt="Fotos reales del trabajo de Conde School: almacén, embarque de contenedores y asesorías a importadores">
+        <img src="img/nuestrotrabajo.png" width="900" height="687" loading="lazy" alt="Fotos reales del trabajo de Conde School: almacén, embarque de contenedores y asesorías a importadores">
       </div>
     </div>
   </section>
@@ -478,7 +478,7 @@
         <p>Por tu inscripción, aprende a crear tu tienda virtual en Shopify para vender lo que importas.</p>
       </div>
       <div class="body-photo narrow reveal">
-        <img src="img/bono-shopify.jpg" width="1122" height="1402" loading="lazy"
+        <img src="img/bono-shopify.jpg" width="760" height="950" loading="lazy"
           alt="Bono de Conde School: crea tu tienda virtual en Shopify para vender los productos que importas">
       </div>
     </div>
@@ -735,6 +735,14 @@
   // ---------- WhatsApp de respaldo ----------
   var WHATSAPP_NUMERO = "51935070774";
 
+  // ---------- A dónde llama el formulario ----------
+  // Vacío = misma URL donde vive esta página (así funciona en Cloudflare tal
+  // cual). Si pegas este HTML en GHL, la página ya no vive en este dominio,
+  // así que hay que apuntar a la URL del Worker desplegado:
+  //   var API_BASE = "https://tu-worker.tu-cuenta.workers.dev";
+  // El build de scripts/build-ghl-embed.mjs deja ese aviso bien visible.
+  var API_BASE = "";
+
   // ---------- Formulario ----------
   var form = document.getElementById("leadForm");
   var submitBtn = document.getElementById("submitBtn");
@@ -775,7 +783,7 @@
     var htmlOriginal = submitBtn.innerHTML;
     submitBtn.textContent = "Enviando…";
 
-    fetch("/api/temario-lead", {
+    fetch(API_BASE + "/api/temario-lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre: nombre, whatsapp: digitos, website: form.website.value })

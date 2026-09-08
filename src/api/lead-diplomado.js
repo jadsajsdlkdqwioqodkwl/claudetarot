@@ -5,6 +5,12 @@
  * verdad" propia: GHL ES el CRM. El Worker solo valida, filtra bots y
  * reenvía el contacto con su tag — así el lead entra directo a la
  * automatización de retargeting que ya tiene armada Conde School.
+ *
+ * CORS abierto a propósito: este formulario no solo vive en este dominio,
+ * también se pega tal cual como HTML dentro de una página de GoHighLevel
+ * (otro origen). El endpoint no usa cookies ni nada por sesión — solo
+ * nombre y WhatsApp — así que un origin abierto no expone nada; es lo mismo
+ * que ya vale para cualquiera que llame a la API con curl.
  */
 
 import { validarLead, limpiar } from "../lib/lead.js";
@@ -12,14 +18,26 @@ import { upsertContactoConTag } from "../lib/ghl.js";
 
 const MAX_BODY_BYTES = 4 * 1024;
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      ...CORS_HEADERS
     }
   });
+
+/** El navegador manda esto antes del POST real cuando el origen es distinto. */
+export function onRequestOptions() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
 
 /** Mismo criterio que /api/order: sin binding, nunca se pierde un lead por esto. */
 async function dentroDelLimite(env, ip) {

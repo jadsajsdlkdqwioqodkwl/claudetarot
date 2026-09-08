@@ -15,7 +15,7 @@ import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
-import { onRequestPost as leadDiplomado } from "./api/lead-diplomado.js";
+import { onRequestPost as leadDiplomado, onRequestOptions as leadDiplomadoOptions } from "./api/lead-diplomado.js";
 import { onRequestGet as temarioDiag } from "./api/temario-diag.js";
 
 const ROUTES = {
@@ -24,7 +24,9 @@ const ROUTES = {
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
   "/api/seguimiento": { GET: seguimiento },
-  "/api/temario-lead": { POST: leadDiplomado },
+  // OPTIONS es el preflight de CORS: el formulario también vive pegado como
+  // HTML dentro de una página de GHL, en otro origen.
+  "/api/temario-lead": { POST: leadDiplomado, OPTIONS: leadDiplomadoOptions },
   "/api/temario-diag": { GET: temarioDiag }
 };
 

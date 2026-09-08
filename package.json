@@ -8,7 +8,8 @@
     "check": "node scripts/check.mjs",
     "setup:sheet": "NODE_USE_ENV_PROXY=1 node scripts/setup-sheet.mjs",
     "deploy": "wrangler deploy",
-    "check:gs": "node scripts/check-gs.mjs"
+    "check:gs": "node scripts/check-gs.mjs",
+    "build:ghl": "node scripts/build-ghl-embed.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

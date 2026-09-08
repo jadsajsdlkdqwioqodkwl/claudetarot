@@ -675,13 +675,13 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Fotos reales de Conde School**: en `public/img/`, subidas directo al repo (no pegadas en
-  el chat, que no deja un binario que se pueda leer). En uso: `hero-diplomado.jpg` (el héroe),
-  `log0.jpg` (el logo, en el header y el footer), `nuestrotrabajo.png` (la sección "Nuestra
-  propia operación") y `wspicon.png` (el ícono de WhatsApp de todos los botones). El diseño
-  se simplificó a partir de la segunda versión — más plano, sin tarjetas con degradado —
-  así que `beneficios-mockup.jpg` y `bono-shopify.jpg` quedaron en la carpeta sin usarse por
-  ahora; si quieres que vuelvan a aparecer en la página, dime dónde.
+- **Fotos reales de Conde School**: las 7 en uso viven en `public/img/`, subidas directo al
+  repo (no pegadas en el chat, que no deja un binario que se pueda leer) y reescaladas al
+  tamaño real que ocupan en la página — de 2.6 MB crudos a 1.3 MB. `hero-diplomado.jpg` es
+  el héroe, `log0.jpg` el logo (header y footer), `wspicon.png` el ícono de todos los
+  botones de WhatsApp, `barquito.png` el adorno de "Así trabajamos", y
+  `beneficios-mockup.jpg` / `nuestrotrabajo.png` / `bono-shopify.jpg` son las tres
+  secciones-cuerpo entre los beneficios y el temario.
 - **Paleta**: violeta `#6b45fc` → celeste `#0d94ff`, muestreados con Pillow directo sobre
   `hero-diplomado.jpg`, y el botón verde `#0ba239` real de Conde School — ya no son a ojo.
   La página en sí es blanca y simple (un registro, no una landing de gradientes); el color
@@ -692,3 +692,28 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
   responde `502` (el lead nunca se pierde en silencio: el cliente ve un error y puede
   reintentar). Corre `/api/temario-diag` después de cargar las credenciales para confirmar
   la cadena completa.
+
+## Pegar la landing directo en GoHighLevel
+
+`public/temario-diplomado.html` funciona tal cual en este dominio, pero las rutas relativas
+a `public/img/*` no resuelven si el HTML se pega en un bloque de código de GHL — la página
+pasa a vivir en otro dominio. Para eso:
+
+```
+npm run build:ghl
+```
+
+Genera `dist/temario-diplomado-ghl.html`: el mismo archivo, con las 7 fotos embebidas como
+`data:` URI (así no depende de ningún otro host) y `API_BASE` apuntando a un placeholder
+(`https://REEMPLAZA-CON-TU-DOMINIO.workers.dev`) en vez de la ruta relativa `/api/temario-lead`
+— sin eso, el formulario intentaría llamar al dominio de GHL, que no tiene ese endpoint.
+Antes de pegarlo:
+
+1. Despliega el Worker (`npm run deploy`) y anota su URL (`*.workers.dev` o tu dominio).
+2. Abre `dist/temario-diplomado-ghl.html` y reemplaza el placeholder de `API_BASE` por esa URL.
+3. Pega el HTML completo en el bloque de código de GHL.
+
+`/api/temario-lead` ya responde con CORS abierto (`Access-Control-Allow-Origin: *`) para
+esto — el endpoint no usa cookies ni nada por sesión, solo nombre y WhatsApp, así que abrir
+el origen no expone nada que un `curl` no pudiera ver igual. `dist/` no se versiona
+(`.gitignore`): es un artefacto que se regenera, no algo para mantener a mano.

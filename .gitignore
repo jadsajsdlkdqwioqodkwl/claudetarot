@@ -4,3 +4,8 @@ node_modules/
 .env
 *.log
 package-lock.json
+
+# Salida de scripts/build-ghl-embed.mjs: un HTML con las fotos embebidas en
+# base64, varios MB — se regenera con `npm run build:ghl`, no hace falta
+# versionarlo.
+dist/
