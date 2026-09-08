@@ -14,31 +14,20 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    /* Paleta muestreada de verdad con Pillow sobre public/img/hero-diplomado.jpg
-       y public/img/bono-shopify.jpg (no a ojo): violeta #6b45fc arriba-izquierda
-       -> celeste #0d94ff abajo-derecha, y el verde plano real del botón
-       "QUIERO INFORMACIÓN" (~#0ba239). Vívido, pero nunca cae a navy/negro —
-       el punto más oscuro del degradado real sigue siendo un azul franco. */
-    --violet: #6b45fc;
+    /* Muestreado con Pillow sobre las fotos reales de Conde School: celeste
+       del degradado del héroe y verde real del botón de WhatsApp. Acá solo se
+       usan como acento — la página en sí es blanca y simple. */
     --celeste: #0d94ff;
     --celeste-deep: #0068d6;
-    --sky-50: #f4faff;
-    --sky-100: #e2f1ff;
-    --sky-200: #bfe0fc;
-    --blue: #2f6df6;
-    --cyan: #17c3f2;
+    --violet: #6b45fc;
     --green: #0ba239;
-    --green-dark: #066b26;
-    --amber: #f5c518;
-    --amber-dark: #a97c00;
+    --green-dark: #077a2b;
     --ink: #0f172a;
     --muted: #5b6478;
-    --line: #e0eef8;
-    --bg: var(--sky-50);
-    --card: #ffffff;
-    --radius: 18px;
-    --shadow: 0 20px 44px -22px rgba(18, 100, 163, .28);
-    --grad-brand: linear-gradient(135deg, var(--violet) 0%, var(--celeste-deep) 55%, var(--celeste) 100%);
+    --line: #e6ebf2;
+    --bg: #ffffff;
+    --bg-soft: #f7fafc;
+    --radius: 14px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,48 +36,47 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg);
     color: var(--ink);
-    line-height: 1.5;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
   img, svg { display: block; max-width: 100%; }
   a { color: inherit; text-decoration: none; }
   ul { list-style: none; }
   button { font: inherit; cursor: pointer; }
-  section { scroll-margin-top: 84px; }
+  section { scroll-margin-top: 76px; }
 
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
   .eyebrow {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    display: block; font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--celeste-deep);
   }
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-    border: none; border-radius: 999px; padding: 16px 30px;
-    font-weight: 800; font-size: 16px; cursor: pointer;
+
+  /* ---------- Botón de WhatsApp: icono real + chevron, canto sólido ---------- */
+  .btn-wa {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--green); color: #fff; border: none; cursor: pointer;
+    font-weight: 800; font-size: 16px; padding: 15px 26px; border-radius: 999px;
+    box-shadow: 0 5px 0 var(--green-dark), 0 12px 20px -10px rgba(11, 162, 57, .5);
     transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
   }
-  /* Botón plano con canto inferior: el estilo "presionable" del CTA verde de
-     Conde School, no un glow difuminado. Al hacer clic baja y pierde el canto. */
-  .btn-cta {
-    background: var(--green);
-    color: #fff;
-    box-shadow: 0 4px 0 var(--green-dark), 0 10px 22px -10px rgba(28, 138, 65, .55);
+  .btn-wa:hover { filter: brightness(1.05); }
+  .btn-wa:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--green-dark); }
+  .btn-wa img { width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; }
+  .btn-wa .chev { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-wa.small { padding: 10px 18px; font-size: 14px; box-shadow: 0 4px 0 var(--green-dark); }
+  .btn-wa.small img { width: 18px; height: 18px; }
+  .btn-wa.block { width: 100%; justify-content: center; }
+
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: var(--celeste-deep); border: 1.5px solid var(--line);
+    font-weight: 700; font-size: 15px; padding: 13px 22px; border-radius: 999px;
+    transition: border-color .15s ease, background .15s ease;
   }
-  .btn-cta:hover { filter: brightness(1.05); }
-  .btn-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--green-dark); }
-  .btn-ghost {
-    background: rgba(255, 255, 255, .12);
-    color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, .4);
-  }
-  .btn-ghost:hover { background: rgba(255, 255, 255, .2); }
-  .btn-ghost:active { transform: translateY(1px); }
-  /* Variante para fondos claros, como la vista de éxito del formulario. */
-  .btn-ghost.on-light { background: #fff; color: var(--celeste-deep); border-color: var(--sky-200); }
-  .btn-ghost.on-light:hover { background: var(--sky-50); border-color: var(--celeste); }
+  .btn-outline:hover { border-color: var(--celeste); background: var(--bg-soft); }
 
   /* ---------- Reveal on scroll ---------- */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .5s ease, transform .5s ease; }
   .reveal.in { opacity: 1; transform: none; }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -98,236 +86,178 @@
   /* ---------- Header ---------- */
   header.site {
     position: sticky; top: 0; z-index: 60;
-    background: rgba(238, 249, 255, .88);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--sky-200);
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
   }
-  .site-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo .mark {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: linear-gradient(155deg, var(--cyan), var(--celeste));
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 6px 14px -6px rgba(18, 163, 230, .5);
-  }
-  .logo .mark svg { width: 20px; height: 20px; }
-  .logo .word { font-weight: 900; font-size: 17px; letter-spacing: -.01em; color: var(--ink); }
-  .logo .word span { color: var(--celeste-deep); }
-  header .btn-cta { padding: 11px 22px; font-size: 14px; }
+  .site-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; gap: 16px; }
+  img.logo-img { height: 30px; width: auto; }
   .hdr-cta { display: none; }
-  @media (min-width: 720px) { .hdr-cta { display: inline-flex; } }
+  @media (min-width: 640px) { .hdr-cta { display: inline-flex; } }
 
-  /* ---------- Hero ---------- */
-  .hero {
-    background:
-      radial-gradient(1000px 460px at 88% 8%, rgba(23, 195, 242, .4), transparent 60%),
-      var(--grad-brand);
-    color: #fff;
-    padding: 64px 0 84px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-grid { display: grid; gap: 48px; align-items: center; }
-  @media (min-width: 960px) { .hero-grid { grid-template-columns: .95fr 1.05fr; gap: 40px; } }
-  .hero .eyebrow { color: #fff; background: rgba(255, 255, 255, .16); padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .32); }
+  /* ---------- Hero: simple, la foto hace el trabajo ---------- */
+  .hero { padding: 40px 0 8px; text-align: center; }
+  .hero .wrap { max-width: 760px; }
   .hero h1 {
-    margin-top: 20px; font-size: clamp(30px, 4.4vw, 48px); font-weight: 900;
-    line-height: 1.1; letter-spacing: -.02em;
+    margin-top: 10px; font-size: clamp(26px, 4.4vw, 40px); font-weight: 900;
+    line-height: 1.15; letter-spacing: -.02em;
   }
-  .hero h1 em { font-style: normal; color: var(--cyan); }
+  .hero h1 em { font-style: normal; color: var(--celeste-deep); }
   .hero p.lede {
-    margin-top: 18px; font-size: 17px; color: rgba(255, 255, 255, .85); max-width: 52ch; line-height: 1.6;
+    margin: 14px auto 0; font-size: 16.5px; color: var(--muted); max-width: 56ch; line-height: 1.6;
   }
-  .hero-ctas { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 14px; }
-  .trust-row { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 10px; }
-  .trust-chip {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .26);
-    padding: 9px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff;
-  }
-  .trust-chip svg { width: 16px; height: 16px; color: var(--cyan); flex-shrink: 0; }
+  .hero-ctas { margin-top: 24px; }
 
-  /* ---------- Foto real de Conde School ---------- */
-  .hero-art { position: relative; }
-  .hero-art img {
-    width: 100%; height: auto; border-radius: 22px;
-    box-shadow: 0 30px 60px -20px rgba(8, 20, 50, .55);
+  .hero-photo { margin-top: 32px; }
+  .hero-photo img {
+    width: 100%; max-width: 520px; height: auto; margin: 0 auto;
+    border-radius: 20px;
   }
+
+  .trust-line {
+    margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 13.5px; font-weight: 600; color: var(--muted);
+  }
+  .trust-line svg { width: 16px; height: 16px; color: var(--celeste); flex-shrink: 0; }
 
   /* ---------- Section headings ---------- */
-  .sec-head { max-width: 640px; margin: 0 auto 44px; text-align: center; }
-  .sec-head .eyebrow { color: var(--celeste-deep); }
-  .sec-head h2 { margin-top: 12px; font-size: clamp(26px, 3.4vw, 36px); font-weight: 900; letter-spacing: -.02em; }
-  .sec-head p { margin-top: 12px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+  .sec-head { max-width: 620px; margin: 0 auto 32px; text-align: center; }
+  .sec-head h2 { margin-top: 8px; font-size: clamp(23px, 3.2vw, 30px); font-weight: 900; letter-spacing: -.02em; }
+  .sec-head p { margin-top: 10px; color: var(--muted); font-size: 15.5px; line-height: 1.6; }
 
-  /* ---------- Contenido real (no ilustraciones) ---------- */
-  section.showcase { padding: 44px 0 0; }
-  .showcase-grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
-  @media (min-width: 720px) { .showcase-grid { grid-template-columns: 1.2fr .8fr; align-items: start; } }
-  .showcase-grid figure {
-    margin: 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
-    border: 1px solid var(--sky-200);
+  section.benefits { padding: 64px 0 8px; }
+
+  /* ---------- Beneficios: lista simple, sin tarjetas con degradado ---------- */
+  .b-list { display: grid; gap: 0; grid-template-columns: 1fr; max-width: 880px; margin: 0 auto; }
+  @media (min-width: 700px) { .b-list { grid-template-columns: 1fr 1fr; } }
+  .b-item {
+    display: flex; gap: 14px; padding: 18px 4px; border-bottom: 1px solid var(--line);
   }
-  .showcase-grid img { width: 100%; height: auto; display: block; }
-
-  section.benefits { padding: 88px 0 24px; }
-
-  /* ---------- Benefit cards ---------- */
-  .b-grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
-  @media (min-width: 640px) { .b-grid { grid-template-columns: 1fr 1fr; } }
-  .b-card {
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 26px; display: flex; gap: 18px; position: relative; overflow: hidden;
-  }
-  .b-card .num {
-    position: absolute; top: 14px; right: 18px; font-weight: 900; font-size: 34px;
-    color: var(--line); line-height: 1;
+  @media (min-width: 700px) {
+    .b-item:nth-child(odd) { padding-right: 20px; border-right: 1px solid var(--line); }
+    .b-item:nth-child(even) { padding-left: 20px; }
   }
   .b-icon {
-    flex-shrink: 0; width: 52px; height: 52px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(150deg, var(--celeste), var(--celeste-deep));
-    box-shadow: 0 6px 14px -6px rgba(18, 163, 230, .5);
+    flex-shrink: 0; width: 34px; height: 34px; color: var(--celeste-deep);
   }
-  .b-icon svg { width: 26px; height: 26px; color: #fff; }
-  .b-card h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
-  .b-card p { margin-top: 6px; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+  .b-icon svg { width: 100%; height: 100%; }
+  .b-item h3 { font-size: 15.5px; font-weight: 800; letter-spacing: -.01em; }
+  .b-item p { margin-top: 4px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 
-  /* ---------- Bonus callout ---------- */
   .bonus {
-    margin: 56px auto 0; max-width: 900px;
-    background: linear-gradient(120deg, #fff7ea, #fff);
-    border: 1px solid #f3ddab; border-radius: var(--radius);
-    padding: 28px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    margin: 32px auto 0; max-width: 880px;
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   }
-  .bonus .b-icon { background: linear-gradient(155deg, #fff1d6, #ffe3ad); }
-  .bonus .b-icon svg { color: var(--amber); }
-  .bonus strong { font-size: 16px; }
-  .bonus p { color: var(--muted); font-size: 14.5px; margin-top: 4px; }
+  .bonus .b-icon { color: var(--green-dark); }
+  .bonus strong { font-size: 15.5px; }
+  .bonus p { color: var(--muted); font-size: 14px; margin-top: 3px; }
 
-  /* ---------- Mid CTA banner ---------- */
-  .cta-banner {
-    margin-top: 88px; background: var(--grad-brand);
-    color: #fff; border-radius: 24px; padding: 40px 32px;
-    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-  }
-  .cta-banner h3 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
-  .cta-banner p { margin-top: 6px; color: rgba(255,255,255,.8); font-size: 14.5px; }
+  .mid-cta { margin-top: 48px; text-align: center; }
+  .mid-cta p { margin-bottom: 16px; color: var(--muted); font-size: 15px; }
 
-  /* ---------- Temario ---------- */
-  section.temario { padding: 88px 0; }
-  .acc { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-  .acc-item { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  /* ---------- Nuestro trabajo: la foto es el cuerpo de la sección ---------- */
+  section.trabajo { padding: 64px 0; background: var(--bg-soft); }
+  .trabajo-head { max-width: 620px; margin: 0 auto 28px; text-align: center; }
+  .trabajo-head .eyebrow-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .trabajo-head .eyebrow-row img { width: 26px; height: 26px; }
+  .trabajo-head h2 { margin-top: 8px; font-size: clamp(23px, 3.2vw, 30px); font-weight: 900; letter-spacing: -.02em; }
+  .trabajo-head p { margin-top: 10px; color: var(--muted); font-size: 15.5px; }
+  .trabajo-photo { max-width: 780px; margin: 0 auto; }
+  .trabajo-photo img { width: 100%; height: auto; border-radius: 20px; }
+
+  /* ---------- Temario: lista plana, sin tarjetas flotantes ---------- */
+  section.temario { padding: 64px 0; }
+  .acc { max-width: 720px; margin: 0 auto; border-top: 1px solid var(--line); }
+  .acc-item { border-bottom: 1px solid var(--line); }
   .acc-btn {
     width: 100%; background: none; border: none; text-align: left;
-    padding: 20px 22px; display: flex; align-items: center; gap: 16px;
+    padding: 18px 4px; display: flex; align-items: center; gap: 14px;
   }
   .acc-btn .idx {
-    flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px;
-    background: var(--celeste); color: #fff; font-weight: 800; font-size: 14px;
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg-soft); color: var(--celeste-deep); font-weight: 800; font-size: 13px;
     display: flex; align-items: center; justify-content: center;
   }
   .acc-btn .ttl { flex: 1; }
-  .acc-btn .ttl b { display: block; font-size: 15.5px; font-weight: 800; }
+  .acc-btn .ttl b { display: block; font-size: 15px; font-weight: 800; }
   .acc-btn .ttl span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .acc-btn .chev { width: 20px; height: 20px; color: var(--muted); transition: transform .25s ease; flex-shrink: 0; }
+  .acc-btn .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .25s ease; flex-shrink: 0; }
   .acc-item.open .acc-btn .chev { transform: rotate(180deg); color: var(--celeste-deep); }
   .acc-panel { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
   .acc-item.open .acc-panel { max-height: 600px; }
-  .acc-panel ul { padding: 0 22px 22px 74px; display: flex; flex-direction: column; gap: 9px; }
-  .acc-panel li { position: relative; font-size: 14.5px; color: var(--muted); line-height: 1.5; padding-left: 20px; }
+  .acc-panel ul { padding: 0 4px 20px 62px; display: flex; flex-direction: column; gap: 8px; }
+  .acc-panel li { position: relative; font-size: 14px; color: var(--muted); line-height: 1.5; padding-left: 18px; }
   .acc-panel li::before {
-    content: ""; position: absolute; left: 0; top: 7px; width: 8px; height: 8px;
-    border-radius: 2px; background: var(--celeste);
+    content: ""; position: absolute; left: 0; top: 7px; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--celeste);
   }
 
-  /* ---------- Form ---------- */
-  section.form-sec {
-    padding: 20px 0 100px;
-  }
+  /* ---------- Form: simple, sin panel a dos colores ---------- */
+  section.form-sec { padding: 20px 0 90px; }
   .form-card {
-    max-width: 880px; margin: 0 auto; border-radius: 28px; overflow: hidden;
-    background: #fff; border: 1px solid var(--sky-200);
-    color: var(--ink); box-shadow: var(--shadow);
-    display: grid;
+    max-width: 480px; margin: 0 auto; border-radius: var(--radius);
+    background: var(--bg-soft); border: 1px solid var(--line);
+    padding: 32px 28px; text-align: center;
   }
-  @media (min-width: 820px) { .form-card { grid-template-columns: 1fr 1fr; } }
-  .form-side {
-    padding: 44px 40px; color: #fff;
-    background: var(--grad-brand);
-  }
-  .form-side h2 { font-size: 26px; font-weight: 900; letter-spacing: -.02em; }
-  .form-side p { margin-top: 12px; color: rgba(255,255,255,.82); font-size: 15px; line-height: 1.6; }
-  .form-side .mini-list { margin-top: 26px; display: flex; flex-direction: column; gap: 12px; }
-  .form-side .mini-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #fff; }
-  .form-side .mini-list svg { width: 18px; height: 18px; color: var(--cyan); flex-shrink: 0; margin-top: 1px; }
-
-  .form-fields { padding: 40px; background: #fff; }
-  .field { margin-bottom: 16px; }
-  .field label { display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
-  .phone-input { display: flex; align-items: stretch; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--sky-200); background: var(--sky-50); }
-  .phone-input .prefix { display: flex; align-items: center; padding: 0 12px; font-weight: 700; font-size: 14.5px; color: var(--ink); background: var(--sky-100); border-right: 1.5px solid var(--sky-200); }
+  .form-card h2 { font-size: 22px; font-weight: 900; letter-spacing: -.02em; }
+  .form-card > p { margin-top: 10px; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+  .field { margin-top: 18px; text-align: left; }
+  .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .phone-input { display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--line); background: #fff; }
+  .phone-input .prefix { display: flex; align-items: center; gap: 6px; padding: 0 12px; font-weight: 700; font-size: 14.5px; background: var(--bg-soft); border-right: 1.5px solid var(--line); }
+  .phone-input .prefix svg { width: 18px; height: 13px; border-radius: 2px; flex-shrink: 0; }
   .field input {
-    width: 100%; border: 1.5px solid var(--sky-200); background: var(--sky-50);
-    color: var(--ink); border-radius: 12px; padding: 13px 14px; font-size: 15px; font-family: inherit;
-    transition: border-color .15s ease, background .15s ease;
+    width: 100%; border: 1.5px solid var(--line); background: #fff;
+    color: var(--ink); border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: inherit;
+    transition: border-color .15s ease;
   }
   .phone-input input { border: none; border-radius: 0; flex: 1; }
-  .field input::placeholder { color: #7c93a8; }
-  .field input:focus { outline: none; border-color: var(--celeste); background: #fff; }
-  .field .err { display: none; margin-top: 6px; font-size: 12.5px; color: #dc2626; }
+  .field input::placeholder { color: #98a7b8; }
+  .field input:focus { outline: none; border-color: var(--celeste); }
+  .field .err { display: none; margin-top: 6px; font-size: 12.5px; color: #dc2626; text-align: left; }
   .field.invalid input, .field.invalid .phone-input { border-color: #ef4444; }
   .field.invalid .err { display: block; }
   .website-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
-  .form-fields .btn-cta { width: 100%; margin-top: 6px; padding: 16px; font-size: 16px; }
+  .form-card .btn-wa { margin-top: 20px; }
   .form-note { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-  .form-msg { display: none; margin-top: 14px; font-size: 13.5px; padding: 10px 12px; border-radius: 10px; }
+  .form-msg { display: none; margin-top: 14px; font-size: 13.5px; padding: 10px 12px; border-radius: 10px; text-align: left; }
   .form-msg.show { display: block; }
   .form-msg.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
-  /* ---------- Success state ---------- */
-  .success-view { display: none; padding: 60px 40px; text-align: center; grid-column: 1 / -1; }
+  .success-view { display: none; }
   .success-view.show { display: block; }
-  .form-card.success .form-side, .form-card.success .form-fields { display: none; }
+  .form-card.success form { display: none; }
   .success-view .check {
-    width: 68px; height: 68px; margin: 0 auto 20px; border-radius: 50%;
-    background: linear-gradient(155deg, #22c55e, var(--green-dark));
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 14px 30px -10px rgba(34,197,94,.6);
+    width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%;
+    background: var(--green); display: flex; align-items: center; justify-content: center;
   }
-  .success-view .check svg { width: 32px; height: 32px; color: #fff; }
-  .success-view h3 { font-size: 22px; font-weight: 900; }
-  .success-view p { margin-top: 10px; color: var(--muted); font-size: 15px; max-width: 44ch; margin-inline: auto; line-height: 1.6; }
-  .success-view .btn-ghost { margin-top: 22px; border-color: var(--celeste); }
+  .success-view .check svg { width: 28px; height: 28px; color: #fff; }
+  .success-view p { color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+  .success-view .btn-wa { margin-top: 18px; }
 
   /* ---------- Footer ---------- */
-  footer.site {
-    background: linear-gradient(120deg, var(--violet), var(--celeste-deep));
-    color: rgba(255,255,255,.72); padding: 48px 0 90px;
-  }
-  @media (min-width: 640px) { footer.site { padding-bottom: 48px; } }
-  footer.site .logo .word { color: #fff; }
-  footer.site .logo .word span { color: var(--cyan); }
-  .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 26px; border-bottom: 1px solid rgba(255,255,255,.18); }
+  footer.site { border-top: 1px solid var(--line); padding: 36px 0 84px; }
+  @media (min-width: 640px) { footer.site { padding-bottom: 36px; } }
+  .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
   .foot-social { display: flex; gap: 10px; }
   .foot-social a {
-    width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff;
+    width: 34px; height: 34px; border-radius: 50%; background: var(--bg-soft); color: var(--celeste-deep);
     display: flex; align-items: center; justify-content: center; transition: background .15s ease;
   }
-  .foot-social a:hover { background: rgba(255,255,255,.24); }
-  .foot-social svg { width: 17px; height: 17px; }
-  .foot-bottom { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px 20px; justify-content: space-between; font-size: 12.5px; }
+  .foot-social a:hover { background: var(--line); }
+  .foot-social svg { width: 16px; height: 16px; }
+  .foot-bottom { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; font-size: 12px; color: var(--muted); }
 
   /* ---------- Sticky mobile CTA ---------- */
   .sticky-cta {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(255,255,255,.96); backdrop-filter: blur(8px);
-    border-top: 1px solid var(--sky-200); box-shadow: 0 -8px 20px -12px rgba(18,100,163,.25);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.97); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
     transform: translateY(120%); transition: transform .3s ease;
   }
   .sticky-cta.show { transform: translateY(0); }
-  .sticky-cta .btn-cta { width: 100%; }
   @media (min-width: 720px) { .sticky-cta { display: none; } }
 </style>
 </head>
@@ -335,13 +265,11 @@
 
 <header class="site">
   <div class="wrap site-bar">
-    <a class="logo" href="#top">
-      <span class="mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1730" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 15V9l8-4 8 4v6l-8 4-8-4Z"/><path d="M4 9l8 4 8-4"/></svg>
-      </span>
-      <span class="word">CONDE<span> SCHOOL</span></span>
+    <a href="#top"><img class="logo-img" src="img/log0.jpg" alt="Conde School"></a>
+    <a class="btn-wa small hdr-cta" href="#form">
+      <img src="img/wspicon.png" alt="">
+      Quiero información
     </a>
-    <a class="btn btn-cta hdr-cta" href="#form">Quiero información</a>
   </div>
 </header>
 
@@ -349,57 +277,33 @@
 
   <!-- ============ HERO ============ -->
   <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <span class="eyebrow">Diplomado en Importación para Emprendedores</span>
-        <h1>Aprende a importar de <em>China, EE. UU. y Panamá</em> — y arma tu propio negocio</h1>
-        <p class="lede">
-          6 sesiones en vivo y acompañamiento 1 a 1 durante un año, de la mano de la misma
-          agencia de carga y aduana que gestiona más de 200 operaciones al mes. No es solo
-          teoría: es la ruta completa, del proveedor a la venta.
-        </p>
-        <div class="hero-ctas">
-          <a class="btn btn-cta" href="#form">
-            Quiero información
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <a class="btn btn-ghost" href="#temario">Ver el temario</a>
-        </div>
-        <div class="trust-row">
-          <span class="trust-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
-            Acreditado por el Ilustre Colegio de Abogados del Callao
-          </span>
-          <span class="trust-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/></svg>
-            +200 operaciones de importación al mes
-          </span>
-        </div>
+    <div class="wrap">
+      <span class="eyebrow">Diplomado en Importación para Emprendedores</span>
+      <h1>Aprende a importar de <em>China, EE. UU. y Panamá</em> y arma tu propio negocio</h1>
+      <p class="lede">
+        6 sesiones en vivo y acompañamiento 1 a 1 durante un año, de la mano de la misma
+        agencia de carga y aduana que gestiona más de 200 operaciones al mes.
+      </p>
+      <div class="hero-ctas">
+        <a class="btn-wa" href="#form">
+          <img src="img/wspicon.png" alt="">
+          Quiero información
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </a>
       </div>
 
-      <div class="hero-art">
+      <div class="hero-photo reveal">
         <img
           src="img/hero-diplomado.jpg"
           width="1254" height="1254"
           alt="Especialista de Conde School con casco de importador, sosteniendo un contenedor a escala de COSCO Shipping, con un contenedor real siendo izado de fondo"
           fetchpriority="high">
       </div>
-    </div>
-  </section>
 
-  <!-- ============ CONTENIDO REAL DE CONDE SCHOOL ============ -->
-  <section class="showcase">
-    <div class="wrap">
-      <div class="showcase-grid reveal">
-        <figure>
-          <img src="img/beneficios-mockup.jpg" width="1080" height="1080" loading="lazy"
-            alt="Todo lo que incluye el Diplomado en Importación premium de Conde School: cursos, guías, diccionario del importador, cotizadores y certificado">
-        </figure>
-        <figure>
-          <img src="img/bono-shopify.jpg" width="1122" height="1402" loading="lazy"
-            alt="Bono de Conde School: crea tu tienda virtual en Shopify para vender los productos que importas">
-        </figure>
-      </div>
+      <p class="trust-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+        Acreditado por el Ilustre Colegio de Abogados del Callao
+      </p>
     </div>
   </section>
 
@@ -412,97 +316,87 @@
         <p>Pensado para que no importes solo — y no te arriesgues solo.</p>
       </div>
 
-      <div class="b-grid">
+      <div class="b-list reveal">
 
-        <article class="b-card reveal">
-          <span class="num">01</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M3 20c0-3.3 2.5-6 5-6s5 2.7 5 6"/><path d="M16 4.2c1.5.5 2.5 1.9 2.5 3.5S17.5 10.9 16 11.4"/><path d="M14.5 20c0-2.6 1.6-4.8 3.6-5.6"/><path d="M19 16.5l1.6 1.6 3-3.2"/></svg></span>
           <div>
             <h3>Asesoría 1 a 1 en tu importación</h3>
-            <p>Te guiamos paso a paso, de forma virtual y presencial, durante 1 año completo para que puedas importar con acompañamiento real.</p>
+            <p>Te guiamos paso a paso, virtual y presencial, durante 1 año completo.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">02</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="M15 6l4-2 3 3"/></svg></span>
           <div>
             <h3>Lista de productos con potencial de venta</h3>
-            <p>Accede a productos validados, con demanda real, para que no arriesgues tu capital adivinando qué importar.</p>
+            <p>Productos validados, con demanda real, sin adivinar qué importar.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">03</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 21h8M12 17.5V21"/><path d="M10.2 8.3l3.4 2.2-3.4 2.2V8.3Z" fill="currentColor" stroke="none"/></svg></span>
           <div>
             <h3>Acceso al Campus Virtual Conde School</h3>
-            <p>Más de 20 horas de contenido práctico: 1688, Alibaba, SHEIN, zapatillas, maquinaria, juguetes, importación desde EE. UU. y Panamá, marketing digital y más.</p>
+            <p>+20 horas: 1688, Alibaba, SHEIN, zapatillas, maquinaria, EE. UU. y Panamá.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">04</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="8" cy="19.5" r="2"/><circle cx="16" cy="19.5" r="2"/><path d="M12 6.5v3M6.6 13l4-1.2M17.4 13l-4-1.2M9.5 18l-2-3M14.5 18l2-3"/></svg></span>
           <div>
             <h3>Red de contactos en China</h3>
-            <p>Agentes de compra, almacén propio en Yiwu, inspectores de mercadería y aliados logísticos que reducen errores y te ahorran tiempo.</p>
+            <p>Agentes de compra, almacén propio en Yiwu e inspectores de mercadería.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">05</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V10l5-3 5 3v11"/><path d="M13 21V6l5-3 3 2v16"/><path d="M6 14h1M6 17h1M15 10h1M15 13h1M15 16h1"/></svg></span>
           <div>
-            <h3>Acceso a nuestra lista de proveedores</h3>
-            <p>Proveedores verificados de distintas categorías en China, EE. UU. y Panamá, listos para contactar.</p>
+            <h3>Lista de proveedores</h3>
+            <p>Proveedores verificados en China, EE. UU. y Panamá, listos para contactar.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">06</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg></span>
           <div>
-            <h3>Soporte para productos que requieren permisos</h3>
-            <p>Red de especialistas para gestiones ante DIGESA, DIGEMID, PRODUCE y MTC cuando tu importación lo necesite.</p>
+            <h3>Soporte para productos con permisos</h3>
+            <p>Especialistas para gestiones ante DIGESA, DIGEMID, PRODUCE y MTC.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">07</span>
-          <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l6-3.5L15 8l-6 3.5L3 8Z"/><path d="M15 8l6-3.5" /><path d="M3 8v6.5l6 3.5M15 8v6.5l-6 3.5M21 4.5V11l-6 3.5"/></svg></span>
+        <div class="b-item">
+          <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l6-3.5L15 8l-6 3.5L3 8Z"/><path d="M15 8l6-3.5"/><path d="M3 8v6.5l6 3.5M15 8v6.5l-6 3.5M21 4.5V11l-6 3.5"/></svg></span>
           <div>
             <h3>Acceso a carga compartida</h3>
-            <p>Empieza a importar con poco capital compartiendo espacio de carga con otros importadores y reduce tus costos.</p>
+            <p>Importa con poco capital compartiendo espacio de carga con otros alumnos.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">08</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="2.4"/><circle cx="17" cy="17" r="2.4"/><path d="M18 6 6 18"/></svg></span>
           <div>
-            <h3>Descuentos exclusivos en servicios logísticos</h3>
-            <p>Somos también agentes de carga y aduana: te acompañamos del aprendizaje a la ejecución, con condiciones preferenciales para alumnos.</p>
+            <h3>Descuentos en servicios logísticos</h3>
+            <p>Somos agentes de carga y aduana, con condiciones para alumnos.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">09</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 4V6L7 10H3Z"/><path d="M16 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg></span>
           <div>
             <h3>Aprende a vender lo que importas</h3>
-            <p>Valida el potencial de un producto antes de invertir y usa marketing digital e inteligencia artificial para vender de forma más rentable.</p>
+            <p>Marketing digital e inteligencia artificial para vender más rentable.</p>
           </div>
-        </article>
+        </div>
 
-        <article class="b-card reveal">
-          <span class="num">10</span>
+        <div class="b-item">
           <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="14" height="11" rx="2"/><path d="M16.5 9.5l4.5-2.7v8.4l-4.5-2.7"/></svg></span>
           <div>
             <h3>Clases en vivo con casos reales</h3>
-            <p>Gestionamos más de 200 operaciones al mes en nuestra agencia de carga y aduana: aprenderás casos que normalmente no se enseñan en cursos tradicionales.</p>
+            <p>+200 operaciones al mes: casos que no se enseñan en cursos tradicionales.</p>
           </div>
-        </article>
+        </div>
 
       </div>
 
@@ -510,16 +404,33 @@
         <span class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5.2"/><path d="M8.3 12.6 7 20l5-2.6 5 2.6-1.3-7.4"/></svg></span>
         <div>
           <strong>Además recibes tu diplomado acreditado</strong>
-          <p>Certificación avalada por el Ilustre Colegio de Abogados del Callao, para respaldar tu formación como importador.</p>
+          <p>Certificación avalada por el Ilustre Colegio de Abogados del Callao.</p>
         </div>
       </div>
 
-      <div class="cta-banner reveal">
-        <div>
-          <h3>¿Listo para armar tu negocio de importación?</h3>
-          <p>Escríbenos tu nombre y WhatsApp — sin compromiso, te contamos fechas y cómo empezar.</p>
+      <div class="mid-cta reveal">
+        <p>¿Listo para armar tu negocio de importación?</p>
+        <a class="btn-wa" href="#form">
+          <img src="img/wspicon.png" alt="">
+          Quiero información
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NUESTRO TRABAJO ============ -->
+  <section class="trabajo">
+    <div class="wrap">
+      <div class="trabajo-head reveal">
+        <div class="eyebrow-row">
+          <img src="img/barquito.png" alt="">
+          <span class="eyebrow">Así trabajamos</span>
         </div>
-        <a class="btn btn-cta" href="#form">Quiero información</a>
+        <h2>Nuestra propia operación, no solo la teoría</h2>
+        <p>Fotos reales de nuestro almacén, embarques y asesorías — la misma agencia de carga y aduana que verás en tus clases.</p>
+      </div>
+      <div class="trabajo-photo reveal">
+        <img src="img/nuestrotrabajo.png" width="938" height="716" loading="lazy" alt="Fotos reales del trabajo de Conde School: almacén, embarque de contenedores y asesorías a importadores">
       </div>
     </div>
   </section>
@@ -650,49 +561,50 @@
   <!-- ============ FORMULARIO ============ -->
   <section class="form-sec" id="form">
     <div class="wrap">
-      <div class="form-card" id="formCard">
+      <div class="form-card reveal" id="formCard">
 
-        <div class="form-side">
-          <h2>Solicita información del diplomado</h2>
-          <p>Déjanos tu nombre y WhatsApp. Te contamos fechas de la próxima cohorte, inversión y cómo empezar — sin compromiso.</p>
-          <ul class="mini-list">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Te respondemos por WhatsApp en menos de 24 horas</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Sin costo por la información, sin compromiso de matrícula</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Hablas directo con el equipo de Conde School</li>
-          </ul>
-        </div>
+        <form id="leadForm" novalidate>
+          <h2>Solicita información</h2>
+          <p>Déjanos tu nombre y WhatsApp. Te contamos fechas, inversión y cómo empezar — sin compromiso.</p>
 
-        <div class="form-fields">
-          <form id="leadForm" novalidate>
-            <div class="field">
-              <label for="fNombre">Nombre completo</label>
-              <input type="text" id="fNombre" name="nombre" placeholder="Ej. María Fernández" autocomplete="name" required>
-              <span class="err">Escribe tu nombre completo.</span>
+          <div class="field">
+            <label for="fNombre">Nombre completo</label>
+            <input type="text" id="fNombre" name="nombre" placeholder="Ej. María Fernández" autocomplete="name" required>
+            <span class="err">Escribe tu nombre completo.</span>
+          </div>
+          <div class="field">
+            <label for="fWhatsapp">WhatsApp</label>
+            <div class="phone-input">
+              <span class="prefix">
+                <svg viewBox="0 0 3 2"><rect width="1" height="2" fill="#d91023"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#d91023"/></svg>
+                +51
+              </span>
+              <input type="tel" id="fWhatsapp" name="whatsapp" placeholder="987 654 321" inputmode="numeric" autocomplete="tel-national" maxlength="11" required>
             </div>
-            <div class="field">
-              <label for="fWhatsapp">WhatsApp</label>
-              <div class="phone-input">
-                <span class="prefix">🇵🇪 +51</span>
-                <input type="tel" id="fWhatsapp" name="whatsapp" placeholder="987 654 321" inputmode="numeric" autocomplete="tel-national" maxlength="11" required>
-              </div>
-              <span class="err">Ingresa un número de WhatsApp válido (9 dígitos).</span>
-            </div>
-            <!-- Honeypot: invisible para personas, un bot suele rellenarlo -->
-            <div class="website-field" aria-hidden="true">
-              <label for="fWebsite">No llenar</label>
-              <input type="text" id="fWebsite" name="website" tabindex="-1" autocomplete="off">
-            </div>
-            <button class="btn btn-cta" type="submit" id="submitBtn">Quiero información</button>
-            <p class="form-note">Al enviar, aceptas que Conde School te contacte por WhatsApp para brindarte información del diplomado.</p>
-            <div class="form-msg error" id="formMsg"></div>
-          </form>
-        </div>
+            <span class="err">Ingresa un número de WhatsApp válido (9 dígitos).</span>
+          </div>
+          <!-- Honeypot: invisible para personas, un bot suele rellenarlo -->
+          <div class="website-field" aria-hidden="true">
+            <label for="fWebsite">No llenar</label>
+            <input type="text" id="fWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
+          <button class="btn-wa block" type="submit" id="submitBtn">
+            <img src="img/wspicon.png" alt="">
+            Quiero información
+          </button>
+          <p class="form-note">Al enviar, aceptas que Conde School te contacte por WhatsApp para brindarte información del diplomado.</p>
+          <div class="form-msg error" id="formMsg"></div>
+        </form>
 
         <div class="success-view" id="successView">
           <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
-          <h3 id="successTitle">¡Listo! Ya registramos tu solicitud</h3>
-          <p>Un asesor de Conde School te va a escribir por WhatsApp en menos de 24 horas con la información del diplomado.</p>
-          <a class="btn btn-ghost on-light" id="waLink" href="#" target="_blank" rel="noopener">Escríbenos ahora por WhatsApp</a>
+          <h2 id="successTitle">¡Listo! Ya registramos tu solicitud</h2>
+          <p>Un asesor de Conde School te va a escribir por WhatsApp en menos de 24 horas.</p>
+          <a class="btn-wa" id="waLink" href="#" target="_blank" rel="noopener">
+            <img src="img/wspicon.png" alt="">
+            Escríbenos ahora
+          </a>
         </div>
 
       </div>
@@ -704,12 +616,7 @@
 <footer class="site">
   <div class="wrap">
     <div class="foot-top">
-      <a class="logo" href="#top">
-        <span class="mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#0a1730" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 15V9l8-4 8 4v6l-8 4-8-4Z"/><path d="M4 9l8 4 8-4"/></svg>
-        </span>
-        <span class="word">CONDE<span> SCHOOL</span></span>
-      </a>
+      <a href="#top"><img class="logo-img" src="img/log0.jpg" alt="Conde School"></a>
       <div class="foot-social">
         <!-- Reemplaza los href por las redes reales de Conde School -->
         <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.6h2.6l.4-3H13.5V8.4c0-.9.2-1.5 1.6-1.5h1.7V4.2C16.5 4.1 15.4 4 14.2 4c-2.6 0-4.4 1.6-4.4 4.5v2h-2.6v3h2.6V21h3.7Z"/></svg></a>
@@ -726,7 +633,10 @@
 </footer>
 
 <div class="sticky-cta" id="stickyCta">
-  <a class="btn btn-cta" href="#form">Quiero información</a>
+  <a class="btn-wa block" href="#form">
+    <img src="img/wspicon.png" alt="">
+    Quiero información
+  </a>
 </div>
 
 <script>
@@ -813,7 +723,7 @@
     if (!nombreOk || !whatsappOk) return;
 
     submitBtn.disabled = true;
-    var textoOriginal = submitBtn.textContent;
+    var htmlOriginal = submitBtn.innerHTML;
     submitBtn.textContent = "Enviando…";
 
     fetch("/api/temario-lead", {
@@ -836,7 +746,7 @@
       .catch(function (err) {
         mostrarError(err.message || "No pudimos enviar tu solicitud. Intenta de nuevo en un minuto.");
         submitBtn.disabled = false;
-        submitBtn.textContent = textoOriginal;
+        submitBtn.innerHTML = htmlOriginal;
       });
   });
 

@@ -675,16 +675,17 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Fotos reales de Conde School**: ya están en `public/img/` (`hero-diplomado.jpg`,
-  `beneficios-mockup.jpg`, `bono-shopify.jpg`) — subidas directo al repo, así que a
-  diferencia de una imagen pegada en el chat, esta sí se pudo leer y usar tal cual. El héroe
-  usa la foto del señor del casco con el contenedor; las otras dos van en una franja de
-  "contenido real" entre el héroe y los beneficios.
+- **Fotos reales de Conde School**: en `public/img/`, subidas directo al repo (no pegadas en
+  el chat, que no deja un binario que se pueda leer). En uso: `hero-diplomado.jpg` (el héroe),
+  `log0.jpg` (el logo, en el header y el footer), `nuestrotrabajo.png` (la sección "Nuestra
+  propia operación") y `wspicon.png` (el ícono de WhatsApp de todos los botones). El diseño
+  se simplificó a partir de la segunda versión — más plano, sin tarjetas con degradado —
+  así que `beneficios-mockup.jpg` y `bono-shopify.jpg` quedaron en la carpeta sin usarse por
+  ahora; si quieres que vuelvan a aparecer en la página, dime dónde.
 - **Paleta**: violeta `#6b45fc` → celeste `#0d94ff`, muestreados con Pillow directo sobre
-  `hero-diplomado.jpg` y el botón verde de `bono-shopify.jpg` (`--violet`, `--celeste`,
-  `--green` en el `:root` de `public/temario-diplomado.html`) — ya no son a ojo. Vívido en
-  los bloques de marca (header, banner de CTA, formulario, footer), pero el punto más oscuro
-  del degradado real sigue siendo un azul franco, nunca navy ni negro.
+  `hero-diplomado.jpg`, y el botón verde `#0ba239` real de Conde School — ya no son a ojo.
+  La página en sí es blanca y simple (un registro, no una landing de gradientes); el color
+  queda como acento en el header, la sección de temario y el botón de WhatsApp.
 - **Redes sociales del footer**: los íconos de Facebook/Instagram/TikTok/YouTube apuntan a
   `#` — reemplaza los `href` por las cuentas reales de Conde School.
 - **Credenciales de GHL**: sin `GHL_API_KEY` y `GHL_LOCATION_ID` reales, el formulario
