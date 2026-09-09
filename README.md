@@ -675,13 +675,20 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Fotos reales de Conde School**: en `public/img/`, subidas directo al repo (no pegadas en
-  el chat, que no deja un binario que se pueda leer) y reescaladas al tamaño real que ocupan
-  en la página. En uso: `hero-diplomado.jpg` (el héroe), `nuestrotrabajo.png` (la sección
-  "Nuestra propia operación", pegada justo después del héroe), `log0.jpg` (el logo, header y
-  footer), `wspicon.png` (el ícono de todos los botones de WhatsApp) y `barquito.png` (el
-  adorno de "Así trabajamos"). `beneficios-mockup.jpg` y `bono-shopify.jpg` quedaron sin usar
-  — la landing se recortó a dos fotos-cuerpo en vez de cuatro — pero siguen en la carpeta.
+- **Fotos reales de Conde School**: las 7 en uso viven en `public/img/`, subidas directo al
+  repo (no pegadas en el chat, que no deja un binario que se pueda leer) y reescaladas al
+  tamaño real que ocupan en la página. Orden en que aparecen: `hero-diplomado.jpg` (héroe),
+  `nuestrotrabajo.png`, `beneficios-mockup.jpg` y `bono-shopify.jpg` son las tres
+  secciones-cuerpo después del temario — puro título corto + foto grande, sin texto de más.
+  `log0.jpg` es el logo (header y footer), `wspicon.png` el ícono de todos los botones de
+  WhatsApp y `barquito.png` el adorno de "Así trabajamos".
+- **Sin la lista de beneficios**: la sección de texto con los 10 ítems se sacó entera — la
+  info ya está en la imagen de `beneficios-mockup.jpg`. El temario pasó a ser la segunda
+  sección de la página, antes de las fotos.
+- **CTA más directo**: todos los botones dicen "Quiero inscribirme" en vez de "Quiero
+  información", a propósito — filtra visitas curiosas de gente con intención real de
+  inscribirse. El backend no cambia: sigue siendo un lead (nombre + WhatsApp) hacia GHL, no
+  una matrícula real; el texto de al lado del botón deja eso claro.
 - **Paleta**: violeta `#6b45fc` → celeste `#0d94ff`, muestreados con Pillow directo sobre
   `hero-diplomado.jpg`, y el botón verde `#0ba239` real de Conde School — ya no son a ojo.
   La página en sí es blanca y simple (un registro, no una landing de gradientes); el color
