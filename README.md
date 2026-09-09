@@ -675,16 +675,18 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Fotos reales de Conde School**: las 7 en uso viven en `public/img/`, subidas directo al
-  repo (no pegadas en el chat, que no deja un binario que se pueda leer) y reescaladas al
-  tamaño real que ocupan en la página. Orden en que aparecen: `hero-diplomado.jpg` (héroe),
-  `nuestrotrabajo.png`, `beneficios-mockup.jpg` y `bono-shopify.jpg` son las tres
-  secciones-cuerpo después del temario — puro título corto + foto grande, sin texto de más.
-  `log0.jpg` es el logo (header y footer), `wspicon.png` el ícono de todos los botones de
-  WhatsApp y `barquito.png` el adorno de "Así trabajamos".
+- **Sin header**: se sacó entero, con su logo y su botón — pedido explícito ("con sticky CTA
+  me refería a algo tipo Shopify, no un sticky header"). El único CTA persistente que queda
+  es la barra verde fija abajo en móvil (`.sticky-cta`); en desktop no hay ninguno fijo.
+- **Sin la sección "Nuestro trabajo"**: se sacó entera, con su foto (`nuestrotrabajo.png`) —
+  quedó sin usar en `public/img/`, junto con `log0.jpg` y `barquito.png` (el logo y el
+  adorno que llevaba esa sección).
+- **Fotos en uso**: `hero-diplomado.jpg` (héroe) y las dos secciones-cuerpo después del
+  temario, `beneficios-mockup.jpg` y `bono-shopify.jpg` — título corto + foto grande, sin
+  texto de más. `wspicon.png` sigue siendo el ícono de todos los botones de WhatsApp.
 - **Sin la lista de beneficios**: la sección de texto con los 10 ítems se sacó entera — la
   info ya está en la imagen de `beneficios-mockup.jpg`. El temario pasó a ser la segunda
-  sección de la página, antes de las fotos.
+  sección de la página, justo después del héroe.
 - **CTA más directo**: todos los botones dicen "Quiero inscribirme" en vez de "Quiero
   información", a propósito — filtra visitas curiosas de gente con intención real de
   inscribirse. El backend no cambia: sigue siendo un lead (nombre + WhatsApp) hacia GHL, no

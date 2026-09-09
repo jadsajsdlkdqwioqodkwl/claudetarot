@@ -43,7 +43,7 @@
   a { color: inherit; text-decoration: none; }
   ul { list-style: none; }
   button { font: inherit; cursor: pointer; }
-  section { scroll-margin-top: 76px; }
+  section { scroll-margin-top: 16px; }
 
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
   .eyebrow {
@@ -97,17 +97,7 @@
     .reveal { opacity: 1; transform: none; transition: none; }
   }
 
-  /* ---------- Header ---------- */
-  header.site {
-    position: sticky; top: 0; z-index: 60;
-    background: rgba(255, 255, 255, .92);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--line);
-  }
-  .site-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; gap: 16px; }
   img.logo-img { height: 30px; width: auto; }
-  .hdr-cta { display: none; }
-  @media (min-width: 640px) { .hdr-cta { display: inline-flex; } }
 
   /* ---------- Hero: simple, la foto hace el trabajo ---------- */
   .hero { padding: 32px 0 4px; text-align: center; }
@@ -282,16 +272,6 @@
 </head>
 <body>
 
-<header class="site">
-  <div class="wrap site-bar">
-    <a href="#top"><img class="logo-img" src="img/log0.jpg" alt="Conde School"></a>
-    <a class="btn-wa small hdr-cta" href="#form">
-      <img src="img/wspicon.png" alt="">
-      Quiero inscribirme
-    </a>
-  </div>
-</header>
-
 <main id="top">
 
   <!-- ============ HERO ============ -->
@@ -448,25 +428,8 @@
     </div>
   </section>
 
-  <!-- ============ NUESTRO TRABAJO ============ -->
-  <section class="body-sec soft">
-    <div class="wrap">
-      <div class="body-head reveal">
-        <div class="eyebrow-row">
-          <img src="img/barquito.png" alt="">
-          <span class="eyebrow">Así trabajamos</span>
-        </div>
-        <h2>Nuestra propia operación, no solo la teoría</h2>
-        <p>Fotos reales de nuestro almacén, embarques y asesorías — la misma agencia de carga y aduana que verás en tus clases.</p>
-      </div>
-      <div class="body-photo reveal">
-        <img src="img/nuestrotrabajo.png" width="900" height="687" loading="lazy" alt="Fotos reales del trabajo de Conde School: almacén, embarque de contenedores y asesorías a importadores">
-      </div>
-    </div>
-  </section>
-
   <!-- ============ TODO LO QUE INCLUYE ============ -->
-  <section class="body-sec">
+  <section class="body-sec soft">
     <div class="wrap">
       <div class="body-head reveal">
         <span class="eyebrow">Material incluido</span>
@@ -480,7 +443,7 @@
   </section>
 
   <!-- ============ BONO: TIENDA EN SHOPIFY ============ -->
-  <section class="body-sec soft">
+  <section class="body-sec">
     <div class="wrap">
       <div class="body-head reveal">
         <span class="eyebrow">Bono exclusivo</span>
