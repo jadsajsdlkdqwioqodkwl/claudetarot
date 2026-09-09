@@ -675,13 +675,13 @@ que no crea ni cambia nada). Apagado por defecto sin `DIAG_TOKEN`.
 
 ## Pendiente antes de pasar a producción
 
-- **Fotos reales de Conde School**: las 7 en uso viven en `public/img/`, subidas directo al
-  repo (no pegadas en el chat, que no deja un binario que se pueda leer) y reescaladas al
-  tamaño real que ocupan en la página — de 2.6 MB crudos a 1.3 MB. `hero-diplomado.jpg` es
-  el héroe, `log0.jpg` el logo (header y footer), `wspicon.png` el ícono de todos los
-  botones de WhatsApp, `barquito.png` el adorno de "Así trabajamos", y
-  `beneficios-mockup.jpg` / `nuestrotrabajo.png` / `bono-shopify.jpg` son las tres
-  secciones-cuerpo entre los beneficios y el temario.
+- **Fotos reales de Conde School**: en `public/img/`, subidas directo al repo (no pegadas en
+  el chat, que no deja un binario que se pueda leer) y reescaladas al tamaño real que ocupan
+  en la página. En uso: `hero-diplomado.jpg` (el héroe), `nuestrotrabajo.png` (la sección
+  "Nuestra propia operación", pegada justo después del héroe), `log0.jpg` (el logo, header y
+  footer), `wspicon.png` (el ícono de todos los botones de WhatsApp) y `barquito.png` (el
+  adorno de "Así trabajamos"). `beneficios-mockup.jpg` y `bono-shopify.jpg` quedaron sin usar
+  — la landing se recortó a dos fotos-cuerpo en vez de cuatro — pero siguen en la carpeta.
 - **Paleta**: violeta `#6b45fc` → celeste `#0d94ff`, muestreados con Pillow directo sobre
   `hero-diplomado.jpg`, y el botón verde `#0ba239` real de Conde School — ya no son a ojo.
   La página en sí es blanca y simple (un registro, no una landing de gradientes); el color
