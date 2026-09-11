@@ -38,7 +38,7 @@ check("el formulario llama a /api/order", html.includes("'/api/order'"));
 check("el order bump llama a /api/upsell", html.includes("'/api/upsell'"));
 
 /* 2. Precios sincronizados entre página y servidor */
-check("precio de 1 kit (S/ 79) coincide", VARIANTES["1kit"].precio === 79 && html.includes("79.00"));
+check("precio de 1 kit (S/ 89) coincide", VARIANTES["1kit"].precio === 89 && html.includes("89.00"));
 check("precio de 2 kits (S/ 139) coincide", VARIANTES["2kit"].precio === 139 && html.includes("139.00"));
 
 /* 3. Validación del backend */
@@ -64,7 +64,7 @@ check("Lima sin dirección se rechaza",
 check("provincia sin agencia se rechaza",
   validate({ ...provincia, agencia: "" }).errors.includes("agencia"));
 check("variante desconocida cae a 1 kit",
-  validate({ ...lima, variante: "99kits" }).order.total === 79);
+  validate({ ...lima, variante: "99kits" }).order.total === 89);
 check("el precio del formulario se ignora",
   validate({ ...lima, precio: 1, total: 1 }).order.total === 139);
 
