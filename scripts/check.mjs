@@ -39,7 +39,7 @@ check("el order bump llama a /api/upsell", html.includes("'/api/upsell'"));
 
 /* 2. Precios sincronizados entre página y servidor */
 check("precio de 1 kit (S/ 89) coincide", VARIANTES["1kit"].precio === 89 && html.includes("89.00"));
-check("precio de 2 kits (S/ 139) coincide", VARIANTES["2kit"].precio === 139 && html.includes("139.00"));
+check("precio de 2 kits (S/ 149) coincide", VARIANTES["2kit"].precio === 149 && html.includes("149.00"));
 
 /* 3. Validación del backend */
 check("celular 9 dígitos -> E.164", toE164Peru("987 654 321") === "51987654321");
@@ -52,7 +52,7 @@ const lima = {
 };
 const r1 = validate(lima);
 check("pedido de Lima válido pasa", r1.errors.length === 0, r1.errors.join(", "));
-check("total de 2 kits = 139", r1.order.total === 139, String(r1.order.total));
+check("total de 2 kits = 149", r1.order.total === 149, String(r1.order.total));
 
 const provincia = {
   nombre: "Diego Salas", telefono: "912345678",
@@ -66,7 +66,7 @@ check("provincia sin agencia se rechaza",
 check("variante desconocida cae a 1 kit",
   validate({ ...lima, variante: "99kits" }).order.total === 89);
 check("el precio del formulario se ignora",
-  validate({ ...lima, precio: 1, total: 1 }).order.total === 139);
+  validate({ ...lima, precio: 1, total: 1 }).order.total === 149);
 
 /* 4. Una sola columna de destino */
 check("en Lima el destino es la dirección", r1.order.destino === lima.direccion, r1.order.destino);

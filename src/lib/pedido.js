@@ -8,7 +8,7 @@
 
 export const VARIANTES = {
   "1kit": { etiqueta: "1 Kit de Tarot Completo", cantidad: 1, precio: 89 },
-  "2kit": { etiqueta: "2 Kits de Tarot Completo", cantidad: 2, precio: 139 }
+  "2kit": { etiqueta: "2 Kits de Tarot Completo", cantidad: 2, precio: 149 }
 };
 
 export const UPSELLS = {

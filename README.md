@@ -252,7 +252,7 @@ Pixel `1598655637922566`, instalado en `public/index.html`. El embudo:
 | `PageView` | product page | al cargar | — |
 | `ViewContent` | product page | al cargar | 89 |
 | `AddToCart` | product page | clic en el CTA | 89 |
-| `AddToCart` | product page | si sube a 2 kits | 139 |
+| `AddToCart` | product page | si sube a 2 kits | 149 |
 | `InitiateCheckout` | product page | primer campo que toca | según variante |
 | `AddToCart` | product page | order bump aceptado | 49 |
 | `PageView` | `/gracias` | al cargar | — |
