@@ -24,7 +24,7 @@ async function get({ request, env }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const { results } = await env.CRM_DB.prepare(
-    `SELECT id, direction, type, body, media_id, media_key, media_mime, status, created_at
+    `SELECT id, direction, type, body, media_id, media_key, media_mime, status, sent_by, created_at
      FROM messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 500`
   )
     .bind(conversationId)
@@ -37,7 +37,7 @@ async function get({ request, env }) {
   return json({ messages: results });
 }
 
-async function post({ request, env }) {
+async function post({ request, env, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -60,20 +60,21 @@ async function post({ request, env }) {
   }
 
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
+  const sentBy = agent?.displayName || agent?.username || null;
 
   try {
     if (mediaKey) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);
       const caption = String(payload?.caption || "").slice(0, 1024) || undefined;
-      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption);
+      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
     const texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
-    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto);
+    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     console.error("Enviar WhatsApp:", err.message);

@@ -46,6 +46,32 @@ export async function enviarTexto(env, waId, texto) {
   return datos.messages?.[0]?.id || null;
 }
 
+/** Lista los Message Templates de la cuenta (solo sirven los `APPROVED`). */
+export async function listarTemplates(env) {
+  const res = await fetch(
+    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?fields=name,status,language,category,components&limit=100`),
+    { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
+  );
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos?.error?.message || `HTTP ${res.status}`);
+  return datos.data || [];
+}
+
+/** Manda un template ya aprobado — el único tipo de mensaje válido fuera de la ventana de 24h. */
+export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
+  const components = parametros?.length
+    ? [{ type: "body", parameters: parametros.map((texto) => ({ type: "text", text: texto })) }]
+    : undefined;
+
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "template",
+    template: { name: nombre, language: { code: idioma || "es" }, ...(components ? { components } : {}) }
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
 /** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
 export async function enviarMedia(env, waId, type, mediaId, caption) {
   const cuerpo = { messaging_product: "whatsapp", to: waId, type };

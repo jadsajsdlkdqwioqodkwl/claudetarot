@@ -13,10 +13,15 @@
   <form id="form-login">
     <h1>CRM · WhatsApp</h1>
     <div class="error" id="login-error"></div>
-    <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
-    <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
-    <div class="ayuda" id="ayuda-2fa" style="display:none">Abre tu app de autenticación (Google Authenticator, Authy…)</div>
-    <button type="submit">Entrar</button>
+
+    <div id="paso-credenciales">
+      <input type="text" id="username" placeholder="Usuario" autocomplete="username" style="display:none" />
+      <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
+      <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
+      <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp</div>
+    </div>
+
+    <button type="submit" id="btn-login">Entrar</button>
   </form>
 </div>
 
@@ -25,13 +30,17 @@
     <header>
       <h1>Chats</h1>
       <div class="acciones">
-        <button id="btn-salir">Salir</button>
+        <button id="btn-equipo" title="Equipo"></button>
+        <button id="btn-salir" title="Salir"></button>
       </div>
     </header>
-    <div id="buscador"><input type="text" id="buscar" placeholder="Buscar contacto…" /></div>
+    <div id="buscador">
+      <span class="icono-buscar"></span>
+      <input type="text" id="buscar" placeholder="Buscar contacto…" />
+    </div>
     <div id="filtros">
       <button data-follow="" class="activo">Todos</button>
-      <button data-follow="1">★ Seguimiento</button>
+      <button data-follow="1" id="btn-filtro-seguimiento">Seguimiento</button>
     </div>
     <div id="conversaciones"></div>
   </section>
@@ -56,6 +65,54 @@
   </div>
 </div>
 
+<div class="modal-fondo" id="modal-seguimiento-fondo">
+  <div class="modal">
+    <h2>Programar seguimiento</h2>
+    <input type="datetime-local" id="seg-fecha" />
+    <textarea id="seg-texto" placeholder="Texto del mensaje (o elige una respuesta rápida abajo)"></textarea>
+    <select id="seg-rapida"><option value="">— o una respuesta rápida guardada —</option></select>
+    <div class="acciones">
+      <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
+      <button class="crear" id="seg-crear" type="button">Programar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-equipo-fondo">
+  <div class="modal modal-ancho">
+    <h2>Equipo</h2>
+    <div id="lista-equipo"></div>
+    <hr />
+    <input type="text" id="eq-nombre" placeholder="Nombre del vendedor" />
+    <input type="text" id="eq-usuario" placeholder="Usuario (para entrar)" />
+    <input type="password" id="eq-password" placeholder="Contraseña (mín. 8 caracteres)" />
+    <input type="text" id="eq-wa" placeholder="Su WhatsApp, con código de país (ej. 51987654321)" />
+    <div class="acciones">
+      <button class="cancelar" id="eq-cerrar" type="button">Cerrar</button>
+      <button class="crear" id="eq-crear" type="button">Agregar vendedor</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-templates-fondo">
+  <div class="modal modal-ancho">
+    <h2>Mandar plantilla</h2>
+    <p class="ayuda-modal">Para alguien que no te escribió en las últimas 24h, solo se puede mandar una plantilla aprobada por Meta.</p>
+    <div id="lista-templates"></div>
+    <div id="form-template-params" style="display:none">
+      <div id="template-params"></div>
+      <div class="acciones">
+        <button class="cancelar" id="template-volver" type="button">Volver</button>
+        <button class="crear" id="template-enviar" type="button">Mandar</button>
+      </div>
+    </div>
+    <div class="acciones">
+      <button class="cancelar" id="template-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/crm/icons.js"></script>
 <script src="/crm/app.js"></script>
 </body>
 </html>

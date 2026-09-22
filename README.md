@@ -708,6 +708,38 @@ R2 no está habilitado en la cuenta, `npx wrangler d1`… nada, es R2 el que
 hay que habilitar en **Cloudflare Dashboard → R2 → Enable R2** antes de que
 el bucket se pueda crear.
 
+### Tercera vuelta: equipo, 2FA por WhatsApp, seguimientos programados y plantillas
+
+- **Cuentas por vendedor** (`agents`): reemplaza la contraseña única. Se crean
+  desde el botón de equipo (ícono de personas, arriba a la izquierda) — cada
+  una con su usuario, contraseña y su propio WhatsApp. Mientras no exista
+  ninguna cuenta, el login sigue aceptando `CRM_PASSWORD` como antes, así no
+  se corta el acceso al migrar.
+- **2FA por WhatsApp**: en cuanto existe al menos una cuenta de vendedor, el
+  login pasa a pedir usuario + contraseña y, si son correctos, manda un
+  código de 6 dígitos **por WhatsApp** al número de ese vendedor (tabla
+  `login_challenges`, vence en 5 minutos). No depende de Google Authenticator
+  ni de ningún servicio de correo — reusa la misma Cloud API que ya está
+  conectada. El `CRM_TOTP_SECRET` de la versión anterior sigue funcionando
+  solo en el modo de contraseña única, como alternativa si se prefiere.
+- **`sent_by`** en cada mensaje saliente: queda quién de tu equipo lo mandó
+  (nombre del vendedor, o "Seguimiento automático" si lo mandó el cron).
+- **Seguimientos programados** (`scheduled_messages` + Cron Trigger cada
+  minuto, `src/lib/crm-cron.js`): desde el ícono de reloj en el chat se
+  programa un texto o una respuesta rápida para una fecha/hora futura, se ve
+  la lista de lo programado por conversación y se puede cancelar antes de
+  que salga. Si el envío falla (número inválido, ventana de 24h cerrada)
+  queda marcado `fallido` en vez de reintentarse solo.
+- **Plantillas de Meta** (`/api/crm/templates`, ícono de documento): para
+  contactos que no escribieron en las últimas 24h, WhatsApp solo permite
+  mandar un *Message Template* ya aprobado — el panel lista los aprobados en
+  tu WABA (`WHATSAPP_BUSINESS_ACCOUNT_ID`) y arma el formulario de variables
+  `{{1}}`, `{{2}}`… solo. Las plantillas se crean y aprueban en **WhatsApp
+  Manager → Message Templates**, el CRM no las crea.
+- **Iconos en vez de emojis** para toda la interfaz (`public/crm/icons.js`,
+  SVG inline) y un selector de emojis propio en el composer, sin librerías
+  externas.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
