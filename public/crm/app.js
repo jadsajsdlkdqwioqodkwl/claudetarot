@@ -67,6 +67,7 @@ function iconizar() {
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
   $("#btn-filtro-seguimiento").innerHTML = icon("starOutline") + " Seguimiento";
+  $("#vacio-icono").innerHTML = icon("chat");
 }
 iconizar();
 
@@ -792,19 +793,48 @@ function contenidoMensaje(m) {
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
+/** "Hoy", "Ayer" o la fecha — para separar los mensajes por día, como WhatsApp. */
+function etiquetaDia(iso) {
+  const d = new Date(iso.includes("Z") || iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  const hoy = new Date();
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+  const mismoDia = (a, b) => a.toDateString() === b.toDateString();
+  if (mismoDia(d, hoy)) return "Hoy";
+  if (mismoDia(d, ayer)) return "Ayer";
+  return d.toLocaleDateString("es-PE", { day: "numeric", month: "long", year: d.getFullYear() !== hoy.getFullYear() ? "numeric" : undefined });
+}
+
+/** Los dos palitos de "entregado/leído" — solo tiene sentido en lo que nosotros mandamos. */
+function estadoMensaje(m) {
+  if (m.direction !== "out") return "";
+  if (m.status === "failed") return `<span class="estado-msg fallido" title="No se pudo enviar">${icon("alertCircle")}</span>`;
+  if (m.status === "read") return `<span class="estado-msg leido" title="Leído">${icon("checkDouble")}</span>`;
+  if (m.status === "delivered") return `<span class="estado-msg" title="Entregado">${icon("checkDouble")}</span>`;
+  return `<span class="estado-msg" title="Enviado">${icon("check")}</span>`;
+}
+
 function pintarMensajes() {
   const cont = $("#mensajes");
   if (!cont) return;
   const mensajes = estado.mensajesCargados;
   const abajo = cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 40;
 
-  cont.innerHTML = (estado.hayMasAntiguos
-    ? `<div id="cargar-anteriores"><button type="button">Cargar mensajes anteriores</button></div>`
-    : "") + mensajes.map((m) => `
+  let diaAnterior = null;
+  const filas = mensajes.map((m) => {
+    const dia = etiquetaDia(m.created_at);
+    const separador = dia !== diaAnterior ? `<div class="separador-fecha"><span>${dia}</span></div>` : "";
+    diaAnterior = dia;
+    return `${separador}
     <div class="msg ${m.direction}">
       ${contenidoMensaje(m)}
-      <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}</span>
-    </div>`).join("");
+      <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
+    </div>`;
+  }).join("");
+
+  cont.innerHTML = (estado.hayMasAntiguos
+    ? `<div id="cargar-anteriores"><button type="button">Cargar mensajes anteriores</button></div>`
+    : "") + filas;
 
   $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
   if (abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;

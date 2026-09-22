@@ -186,15 +186,25 @@ button { font-family: inherit; }
 .msg { max-width: 65%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; }
 .msg.in { background: #fff; align-self: flex-start; border-top-left-radius: 0; }
 .msg.out { background: var(--burbuja-out); align-self: flex-end; border-top-right-radius: 0; }
-.msg .hora { display: block; font-size: 10px; color: var(--gris); margin-top: 3px; text-align: right; }
+.msg .hora { display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-size: 10px; color: var(--gris); margin-top: 3px; }
 .msg .tipo { font-style: italic; color: var(--gris); }
+.estado-msg { display: inline-flex; width: 13px; height: 13px; flex-shrink: 0; }
+.estado-msg.leido { color: #4fc3f7; }
+.estado-msg.fallido { color: var(--peligro); }
+
+.separador-fecha { display: flex; justify-content: center; margin: 12px 0; align-self: stretch; }
+.separador-fecha span { background: rgba(255,255,255,.85); color: var(--gris); font-size: 12px; padding: 4px 12px; border-radius: var(--radio-full); box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+
+#vacio-icono { width: 46px; height: 46px; border-radius: 50%; background: var(--fondo); color: var(--gris); display: flex; align-items: center; justify-content: center; }
+#vacio-icono .icono-svg { width: 22px; height: 22px; }
+#vacio p { margin: 0; }
 .tarjeta-especial { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
 .tarjeta-catalogo { color: var(--ad); font-weight: 600; }
 .tarjeta-pedido { flex-direction: column; align-items: flex-start; background: #f6f4ff; border: 1px solid #e0d9ff; border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: #4a3d99; }
 .tarjeta-pedido strong { color: var(--ad); }
 .msg img, .msg video { max-width: 100%; border-radius: var(--radio-s); display: block; }
 .msg .caption { margin-top: 4px; }
-#vacio { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--gris); font-size: 14px; }
+#vacio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gris); font-size: 14px; }
 
 #form-envio { display: flex; gap: 8px; padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--borde); align-items: flex-end; position: relative; }
 #form-envio textarea { flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid var(--borde); font-size: 14px; font-family: inherit; resize: none; max-height: 120px; overflow-y: auto; line-height: 1.3; }
