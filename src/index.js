@@ -20,7 +20,7 @@ import { onRequestPost as crmLogin } from "./api/crm/login.js";
 import { onRequestPost as crmLogout } from "./api/crm/logout.js";
 import { onRequestGet as crmSession } from "./api/crm/session.js";
 import { onRequestGet as crmConversations } from "./api/crm/conversations.js";
-import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost, onRequestDelete as crmMessagesDelete } from "./api/crm/messages.js";
+import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from "./api/crm/messages.js";
 import { onRequestPost as crmContactsPost, onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
 import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
@@ -99,7 +99,7 @@ const ROUTES = {
   "/api/crm/logout": { POST: crmLogout },
   "/api/crm/session": { GET: crmSession },
   "/api/crm/conversations": { GET: crmConversations },
-  "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost, DELETE: crmMessagesDelete },
+  "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
   "/api/crm/contacts": { POST: crmContactsPost, PATCH: crmContactsPatch },
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },

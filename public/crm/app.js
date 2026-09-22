@@ -1151,9 +1151,16 @@ function toggleMasPanel() {
 }
 
 async function cargarMensajes() {
-  if (!estado.conversacionActivaId) return;
+  const conversationId = estado.conversacionActivaId;
+  if (!conversationId) return;
   const yaPagino = estado.mensajesCargados.length > PAGINA_MENSAJES;
-  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${estado.conversacionActivaId}`);
+  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${conversationId}`);
+
+  // Si mientras se esperaba la respuesta el vendedor ya se cambió a otro
+  // chat, estos mensajes son de la conversación vieja — pintarlos ahora
+  // metería mensajes de un chat en otro (el glitch del "Hola" que aparecía
+  // en el chat equivocado y desaparecía solo con el siguiente refresco).
+  if (estado.conversacionActivaId !== conversationId) return;
 
   // Se mezcla con lo ya cargado (en vez de reemplazar) para no perder los
   // mensajes antiguos que el vendedor ya pidió con "Cargar anteriores".
@@ -1163,14 +1170,15 @@ async function cargarMensajes() {
   if (!yaPagino) estado.hayMasAntiguos = hay_mas;
 
   pintarMensajes();
-  const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
+  const c = estado.conversaciones.find((x) => x.conversation_id === conversationId);
   if (c) { c.unread_count = 0; pintarLista(); }
   actualizarPedidosPanel();
   actualizarSeguimientosDetalle();
 }
 
 async function cargarMensajesAnteriores() {
-  if (!estado.conversacionActivaId || !estado.mensajesCargados.length) return;
+  const conversationId = estado.conversacionActivaId;
+  if (!conversationId || !estado.mensajesCargados.length) return;
   const btn = $("#cargar-anteriores button");
   if (btn) { btn.disabled = true; btn.textContent = "Cargando…"; }
 
@@ -1178,7 +1186,8 @@ async function cargarMensajesAnteriores() {
   const cont = $("#mensajes");
   const alturaPrevia = cont.scrollHeight;
 
-  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${estado.conversacionActivaId}&before_id=${primerId}`);
+  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${conversationId}&before_id=${primerId}`);
+  if (estado.conversacionActivaId !== conversationId) return;
   estado.mensajesCargados = [...messages, ...estado.mensajesCargados];
   estado.hayMasAntiguos = hay_mas;
   pintarMensajes();
@@ -1262,7 +1271,6 @@ function vistaUnicaHtml(m) {
 }
 
 function contenidoMensaje(m) {
-  if (m.deleted_at) return `<span class="mensaje-eliminado">${icon("trash")} Mensaje eliminado</span>`;
   if (m.type === "sticker" && (m.media_key || m.media_id)) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
@@ -1291,10 +1299,9 @@ function extractoMensaje(tipo, body) {
 function quoteHtml(m) {
   if (!m.reply_to_message_id) return "";
   const quien = m.reply_direction === "out" ? (m.reply_sent_by || "Tú") : "Cliente";
-  const texto = m.reply_deleted_at ? "Mensaje eliminado" : extractoMensaje(m.reply_type, m.reply_body);
   return `<div class="msg-quote">
     <div class="msg-quote-quien">${escapar(quien)}</div>
-    <div class="msg-quote-texto">${escapar(texto)}</div>
+    <div class="msg-quote-texto">${escapar(extractoMensaje(m.reply_type, m.reply_body))}</div>
   </div>`;
 }
 
@@ -1342,7 +1349,6 @@ function pintarMensajes() {
       <div class="msg-acciones">
         <button type="button" class="msg-reaccionar" title="Reaccionar">${icon("smile")}</button>
         <button type="button" class="msg-responder" title="Responder">${icon("reply")}</button>
-        ${!m.deleted_at ? `<button type="button" class="msg-borrar" title="Eliminar">${icon("trash")}</button>` : ""}
       </div>
       <div class="msg ${m.direction}">
         ${quoteHtml(m)}
@@ -1378,11 +1384,6 @@ function configurarAccionesMensajes() {
     const filaReaccionar = e.target.closest(".msg-reaccionar");
     if (filaReaccionar) {
       abrirPickerReaccion(filaReaccionar);
-      return;
-    }
-    const filaBorrar = e.target.closest(".msg-borrar");
-    if (filaBorrar) {
-      borrarMensajeChat(Number(filaBorrar.closest(".msg-fila").dataset.id));
       return;
     }
   });
@@ -1481,20 +1482,6 @@ async function enviarReaccionMsg(messageId, emoji) {
 }
 
 /** Ojo: esto NO borra el mensaje del WhatsApp del cliente — Meta no da esa opción vía API para negocios — solo deja de mostrarse en el CRM. */
-async function borrarMensajeChat(messageId) {
-  if (!confirm("Esto elimina el mensaje solo de este CRM.\n\nWhatsApp no permite borrarlo del teléfono del cliente si ya lo recibió — eso Meta no lo habilita para cuentas de negocio.\n\n¿Eliminar igual?")) return;
-  try {
-    await pedir("/api/crm/messages", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message_id: messageId })
-    });
-    await cargarMensajes();
-  } catch (err) {
-    alert(err.message);
-  }
-}
-
 /* ---------- Adjuntar y enviar ---------- */
 
 function onArchivoElegido(e) {

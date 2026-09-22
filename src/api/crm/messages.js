@@ -9,7 +9,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada } from "../../lib/crm-send.js";
-import { cancelarSeguimientosPendientes, borrarMensaje } from "../../lib/crm-db.js";
+import { cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -35,9 +35,9 @@ async function get({ request, env }) {
   const beforeId = Number(url.searchParams.get("before_id")) || null;
 
   const { results } = await env.CRM_DB.prepare(
-    `SELECT m.id, m.direction, m.type, m.body, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.deleted_at, m.sent_by, m.created_at,
+    `SELECT m.id, m.direction, m.type, m.body, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
        m.reply_to_message_id, m.client_reaction, m.agent_reaction,
-       r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by, r.deleted_at AS reply_deleted_at
+       r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by
      FROM messages m
      LEFT JOIN messages r ON r.id = m.reply_to_message_id
      WHERE m.conversation_id = ? ${beforeId ? "AND m.id < ?" : ""}
@@ -116,28 +116,5 @@ async function post({ request, env, agent }) {
   }
 }
 
-/**
- * "Elimina" un mensaje del CRM. OJO: esto no es un recall real de WhatsApp
- * — Meta no tiene esa API para mensajes de negocio — solo deja de mostrarse
- * acá; el cliente lo sigue teniendo en su teléfono si ya lo recibió.
- */
-async function del({ request, env }) {
-  let payload;
-  try {
-    payload = JSON.parse(await request.text());
-  } catch {
-    return json({ error: "Solicitud inválida." }, 400);
-  }
-  const messageId = Number(payload?.message_id);
-  if (!messageId) return json({ error: "Falta message_id." }, 400);
-
-  const fila = await env.CRM_DB.prepare("SELECT id FROM messages WHERE id = ?").bind(messageId).first();
-  if (!fila) return json({ error: "Mensaje no encontrado." }, 404);
-
-  await borrarMensaje(env.CRM_DB, messageId);
-  return json({ ok: true });
-}
-
 export const onRequestGet = conAuth(get);
 export const onRequestPost = conAuth(post);
-export const onRequestDelete = conAuth(del);

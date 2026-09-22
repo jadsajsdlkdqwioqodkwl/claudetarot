@@ -100,23 +100,6 @@ export async function actualizarEstadoMensaje(db, waMessageId, status, errorDeta
     .run();
 }
 
-/**
- * "Elimina" un mensaje del lado del CRM — Meta no ofrece un recall real para
- * mensajes de negocio vía Cloud API, así que esto solo deja de mostrarlo acá
- * (el cliente lo sigue teniendo en su WhatsApp). Se limpia el contenido para
- * no dejarlo accesible por la API igual.
- */
-export async function borrarMensaje(db, messageId) {
-  await db
-    .prepare(
-      `UPDATE messages
-       SET deleted_at = datetime('now'), body = NULL, media_id = NULL, media_key = NULL, media_mime = NULL
-       WHERE id = ?`
-    )
-    .bind(messageId)
-    .run();
-}
-
 /** Marca que un agente tiene este chat abierto ahora mismo (se llama cada pocos segundos mientras lo tiene abierto). */
 export async function marcarPresencia(db, conversationId, agentName) {
   await db
