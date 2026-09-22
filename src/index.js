@@ -26,6 +26,7 @@ import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
 import { onRequestGet as crmMedia } from "./api/crm/media.js";
 import { onRequestPatch as crmFollowUp } from "./api/crm/follow-up.js";
+import { onRequestPatch as crmAssignPatch } from "./api/crm/assign.js";
 import {
   onRequestGet as crmQuickRepliesGet,
   onRequestPost as crmQuickRepliesPost,
@@ -80,6 +81,11 @@ import {
   onRequestPost as crmPresencePost,
   onRequestDelete as crmPresenceDelete
 } from "./api/crm/presence.js";
+import {
+  onRequestGet as crmPushSubscribeGet,
+  onRequestPost as crmPushSubscribePost,
+  onRequestDelete as crmPushSubscribeDelete
+} from "./api/crm/push-subscribe.js";
 import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
@@ -104,6 +110,7 @@ const ROUTES = {
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/follow-up": { PATCH: crmFollowUp },
+  "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, DELETE: crmQuickRepliesDelete },
   "/api/crm/login-verify": { POST: crmLoginVerify },
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
@@ -122,6 +129,7 @@ const ROUTES = {
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/presence": { GET: crmPresenceGet, POST: crmPresencePost, DELETE: crmPresenceDelete },
+  "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },
   "/api/crm/export-reset": { POST: crmExportResetPost },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },

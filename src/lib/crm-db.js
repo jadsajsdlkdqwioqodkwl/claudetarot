@@ -214,3 +214,33 @@ export async function registrarPedidoCatalogo(db, conversationId, waMessageId, {
     .bind(conversationId, waMessageId, catalogId || null, JSON.stringify(items || []), total || null, currency || null)
     .run();
 }
+
+/* ---------- Notificaciones push (Web Push) ---------- */
+
+export async function guardarSuscripcionPush(db, agentName, subscription) {
+  await db
+    .prepare(
+      `INSERT INTO push_subscriptions (agent_name, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)
+       ON CONFLICT(endpoint) DO UPDATE SET agent_name = excluded.agent_name, p256dh = excluded.p256dh, auth = excluded.auth`
+    )
+    .bind(agentName || null, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth)
+    .run();
+}
+
+export async function borrarSuscripcionPush(db, endpoint) {
+  await db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").bind(endpoint).run();
+}
+
+/**
+ * A quién avisarle de un mensaje nuevo: si el chat ya tiene asesora
+ * asignada, solo a su dispositivo (no le suena a todo el equipo un chat que
+ * ya es de alguien); si está libre, a todas — cualquiera lo puede atender.
+ */
+export async function suscripcionesParaAvisar(db, assignedAgent) {
+  if (!assignedAgent) {
+    const { results } = await db.prepare("SELECT * FROM push_subscriptions").all();
+    return results;
+  }
+  const { results } = await db.prepare("SELECT * FROM push_subscriptions WHERE agent_name = ?").bind(assignedAgent).all();
+  return results;
+}

@@ -24,6 +24,7 @@ import {
 } from "../lib/crm-db.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
+import { notificarMensajeNuevo } from "../lib/crm-push.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -142,6 +143,7 @@ async function procesarCambio(env, db, value) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }
     await mandarBienvenidaSiAplica(env, contacto, conversacion);
+    await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal }).catch((err) => console.error("Push:", err.message));
   }
 
   for (const st of value.statuses || []) {
@@ -175,6 +177,7 @@ async function procesarLlamadas(env, db, value) {
 
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
     await cancelarSeguimientosPendientes(db, conversacion.id);
+    await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body }).catch((err) => console.error("Push:", err.message));
   }
 }
 

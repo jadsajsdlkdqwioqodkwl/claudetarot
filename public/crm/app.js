@@ -21,6 +21,7 @@ const estado = {
   olvide: { resetId: null },
   templateElegido: null,
   miRol: null,
+  miNombre: null,
   filtroRapidas: "",
   rapidasPorSlash: false,
   mensajesCargados: [],
@@ -79,6 +80,7 @@ function iconizar() {
   $("#btn-bienvenida").innerHTML = icon("megaphone");
   $("#btn-admin").innerHTML = icon("broadcast");
   $("#btn-equipo").innerHTML = icon("users");
+  $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
   $("#btn-filtro-seguimiento").innerHTML = icon("starOutline") + " Seguimiento";
@@ -151,6 +153,7 @@ async function mostrarApp() {
   $("#app").classList.add("activo");
   const { role, displayName, esCuentaDeVendedor } = await pedir("/api/crm/session");
   estado.miRol = role;
+  estado.miNombre = displayName || null;
   // Para que quede clarísimo con qué cuenta estás — el panel de "Probar
   // bienvenida" y de Equipo solo salen con role "admin", y esto evita
   // preguntarse por qué no aparecen si entraste con otra cuenta.
@@ -160,6 +163,7 @@ async function mostrarApp() {
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
   cargarQuickReplies();
+  configurarNotificaciones();
   clearInterval(estado.pollConv);
   estado.pollConv = setInterval(cargarConversaciones, 4000);
 }
@@ -723,6 +727,7 @@ function pintarLista() {
           <button class="btn-star ${c.follow_up ? "marcada" : ""}" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
+        ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}</span>` : ""}
       </div>`;
     div.querySelector(".conv-info").addEventListener("click", (e) => {
       if (e.target.closest(".btn-star")) return;
@@ -835,6 +840,86 @@ function avisarSalidaDeChat(conversationId) {
 window.addEventListener("beforeunload", () => {
   if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
 });
+
+/* ---------- Notificaciones push (mensaje nuevo, con la pestaña de fondo o el celular bloqueado) ---------- */
+
+function urlBase64ToUint8Array(base64) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Normalizado = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64Normalizado);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+async function configurarNotificaciones() {
+  const btn = $("#btn-notificaciones");
+  if (!btn) return;
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.style.display = "none"; // navegador viejo o Safari sin soporte — mejor ni mostrar el botón que uno que nunca funciona
+    return;
+  }
+
+  let registro;
+  try {
+    registro = await navigator.serviceWorker.register("/crm/sw.js");
+  } catch {
+    btn.style.display = "none";
+    return;
+  }
+
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data?.tipo === "abrir-conversacion" && e.data.conversation_id) {
+      cargarConversaciones().then(() => {
+        const c = estado.conversaciones.find((x) => x.conversation_id === e.data.conversation_id);
+        if (c) abrirConversacion(c);
+      });
+    }
+  });
+
+  const pintarEstadoBoton = (activo) => {
+    btn.innerHTML = icon(activo ? "bell" : "bellOff");
+    btn.title = activo ? "Notificaciones activadas — clic para desactivar" : "Activar notificaciones";
+    btn.classList.toggle("notif-activa", activo);
+  };
+
+  const suscripcionActual = await registro.pushManager.getSubscription();
+  pintarEstadoBoton(Boolean(suscripcionActual) && Notification.permission === "granted");
+
+  btn.onclick = async () => {
+    const suscripcion = await registro.pushManager.getSubscription();
+    if (suscripcion) {
+      await pedir("/api/crm/push-subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: suscripcion.endpoint })
+      }).catch(() => {});
+      await suscripcion.unsubscribe();
+      pintarEstadoBoton(false);
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      alert("Bloqueaste las notificaciones para este sitio — para activarlas de nuevo tienes que habilitarlas desde la configuración del navegador.");
+      return;
+    }
+
+    try {
+      const { key } = await pedir("/api/crm/push-subscribe");
+      const nueva = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key)
+      });
+      await pedir("/api/crm/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription: nueva })
+      });
+      pintarEstadoBoton(true);
+    } catch (err) {
+      alert(err.message || "No se pudo activar las notificaciones.");
+    }
+  };
+}
 
 function pintarChatBase(c) {
   const nombre = c.profile_name || c.wa_id;
@@ -2267,6 +2352,9 @@ async function pintarDetalle(c) {
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
 
+    <h2>Asesora asignada</h2>
+    <div id="detalle-asignacion"></div>
+
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
 
@@ -2426,8 +2514,53 @@ async function pintarDetalle(c) {
     }
   });
 
+  pintarAsignacion(c);
+
   await actualizarPedidosPanel();
   await actualizarSeguimientosDetalle();
+}
+
+/** "Asesora asignada" — bandeja compartida por defecto, cualquiera lo reclama con un clic. */
+function pintarAsignacion(c) {
+  const cont = $("#detalle-asignacion");
+  if (!cont) return;
+
+  const miNombre = estado.miNombre;
+  const asignado = c.assigned_agent;
+
+  if (!asignado) {
+    cont.innerHTML = `<button class="crear" id="btn-reclamar" type="button" style="width:100%">${icon("star")} Reclamar este chat</button>`;
+    $("#btn-reclamar").addEventListener("click", () => cambiarAsignacion(c, "reclamar"));
+    return;
+  }
+
+  const esMio = asignado === miNombre;
+  cont.innerHTML = `
+    <div class="ad-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>${icon("star")} ${esMio ? "Es tuyo" : `Lo tiene <strong>${escapar(asignado)}</strong>`}</div>
+    </div>
+    <button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">
+      ${esMio ? "Liberar chat (volver a bandeja compartida)" : "Reclamar para mí (se lo quita a " + escapar(asignado) + ")"}
+    </button>`;
+  $("#btn-desasignar").addEventListener("click", () => cambiarAsignacion(c, esMio ? "liberar" : "reasignar", esMio ? null : asignado));
+}
+
+async function cambiarAsignacion(c, action, deQuien) {
+  if (action === "reasignar" && !confirm(`¿Quitarle este chat a ${deQuien} y asignártelo a ti?`)) return;
+  try {
+    const { assigned_agent } = await pedir("/api/crm/assign", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: c.conversation_id, action })
+    });
+    c.assigned_agent = assigned_agent;
+    const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
+    if (conv) conv.assigned_agent = assigned_agent;
+    pintarAsignacion(c);
+    pintarLista();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 revisarSesion();

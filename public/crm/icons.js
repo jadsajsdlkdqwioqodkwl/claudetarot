@@ -37,7 +37,9 @@ const ICONS = {
   alertCircle: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5"/><circle cx="10" cy="14" r="0.9" fill="currentColor" stroke="none"/></svg>`,
   broadcast: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="1.8" fill="currentColor" stroke="none"/><path d="M6 6a5.6 5.6 0 000 8M14 6a5.6 5.6 0 010 8"/><path d="M3.2 3.2a9.8 9.8 0 000 13.6M16.8 3.2a9.8 9.8 0 010 13.6"/></svg>`,
   reply: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L2.5 9.5 8 14"/><path d="M2.5 9.5h8a6 6 0 016 6v1"/></svg>`,
-  sticker: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3 3h9l5 5v9H3z"/><path d="M12 3v5h5" stroke-linecap="round"/><circle cx="7.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11.5" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M7 14.5c.8.9 1.8 1.3 2.7 1.3s1.9-.4 2.7-1.3" stroke-linecap="round"/></svg>`
+  sticker: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3 3h9l5 5v9H3z"/><path d="M12 3v5h5" stroke-linecap="round"/><circle cx="7.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11.5" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M7 14.5c.8.9 1.8 1.3 2.7 1.3s1.9-.4 2.7-1.3" stroke-linecap="round"/></svg>`,
+  bell: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/></svg>`,
+  bellOff: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/><path d="M2.5 2.5l15 15"/></svg>`
 };
 
 function icon(nombre, claseExtra = "") {

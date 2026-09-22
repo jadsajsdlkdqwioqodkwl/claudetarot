@@ -1,0 +1,14 @@
+{
+  "name": "CRM WhatsApp — Tarot Store Perú",
+  "short_name": "CRM WhatsApp",
+  "start_url": "/crm/",
+  "scope": "/crm/",
+  "display": "standalone",
+  "background_color": "#128C7E",
+  "theme_color": "#128C7E",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/kittarotcod/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/kittarotcod/favicon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -32,6 +32,7 @@ async function handler({ request, env }) {
         conv.status,
         conv.unread_count,
         conv.follow_up,
+        conv.assigned_agent,
         conv.last_message_at,
         c.id AS contact_id,
         c.wa_id,

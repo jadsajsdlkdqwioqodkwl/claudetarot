@@ -45,9 +45,11 @@ body {
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
   background: var(--fondo);
   color: var(--texto);
+  -webkit-tap-highlight-color: transparent; /* sin el flash gris al tocar, como una app de verdad */
 }
 
-button { font-family: inherit; }
+button { font-family: inherit; touch-action: manipulation; }
+#mensajes, #conversaciones { overscroll-behavior-y: contain; } /* que el rebote del scroll no arrastre toda la página en iOS */
 
 /* ---------- Login ---------- */
 
@@ -150,6 +152,7 @@ button { font-family: inherit; }
 #lista header .acciones { display: flex; gap: 2px; align-items: center; }
 #lista header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 17px; opacity: .9; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: background-color .12s; }
 #lista header button:hover { background: rgba(255,255,255,.14); opacity: 1; }
+#btn-notificaciones.notif-activa { opacity: 1; color: #ffe27a; }
 #buscador { padding: 8px 10px; border-bottom: 1px solid var(--borde); position: relative; }
 #buscador .icono-buscar { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--gris); }
 #buscador .icono-buscar svg { width: 100%; height: 100%; }
@@ -171,6 +174,8 @@ button { font-family: inherit; }
 .conv-info .preview { font-size: 13px; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .badge { background: var(--verde); color: #fff; font-size: 11px; border-radius: var(--radio-full); padding: 1px 7px; min-width: 8px; text-align: center; flex-shrink: 0; }
 .badge-ad { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--ad); color: #fff; margin-top: 3px; }
+.badge-asignado { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #fff3cd; color: #8a6500; margin-top: 3px; margin-left: 4px; }
+.badge-asignado .icono-svg { width: 10px; height: 10px; }
 .btn-star { background: transparent; border: 0; cursor: pointer; font-size: 16px; color: #ccc; flex-shrink: 0; }
 .btn-star.marcada { color: #f5b301; }
 
@@ -391,8 +396,11 @@ button { font-family: inherit; }
 
   #lista header h1 { font-size: 15px; }
   #chat header .nombre { font-size: 14px; }
-  #form-envio textarea { font-size: 16px; } /* evita el zoom automático de iOS al tocar */
-  #login input, #login textarea { font-size: 16px; }
+  /* iOS hace zoom automático al enfocar cualquier campo con font-size menor a
+     16px — sin esto, tocar el buscador, las notas o cualquier input de un
+     modal deja la pantalla zoomeada hasta que el vendedor la pellizca de
+     vuelta. Se sube a 16px en todos, pase lo que pase con el diseño de escritorio. */
+  input, textarea, select { font-size: 16px !important; }
 
   .modal, .modal.modal-ancho { width: calc(100vw - 32px); max-width: 380px; }
   #panel-rapidas, #panel-seguimientos, #panel-catalogo, #panel-mas { width: calc(100vw - 32px); max-width: 320px; }
@@ -411,6 +419,7 @@ button { font-family: inherit; }
      visible el botón de reaccionar, siempre a la vista en vez de escondido. */
   .msg-acciones { display: flex; }
   .msg-acciones .msg-responder { display: none; }
+  .msg-acciones button { width: 30px; height: 30px; } /* con el dedo hace falta más área que con el mouse */
 }
 
 @media (max-width: 480px) {
