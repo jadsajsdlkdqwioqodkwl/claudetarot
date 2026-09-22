@@ -63,6 +63,19 @@
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
     "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
-    "TELEGRAM_CHAT_ID": "8780926886"
+    "TELEGRAM_CHAT_ID": "8780926886",
+
+    // WhatsApp Cloud API. El access token va como secret (WHATSAPP_TOKEN);
+    // esto de acá es público, es solo identificadores y el token que Meta
+    // repite de vuelta al verificar la URL del webhook.
+    //   npx wrangler secret put WHATSAPP_TOKEN
+    "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928",
+    "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194",
+    // Cadena inventada por nosotros, no la manda Meta: se pega también en
+    // App Dashboard → WhatsApp → Configuration → Webhook → Verify token.
+    "WHATSAPP_VERIFY_TOKEN": "tarot-wsp-verify-2026",
+    // Pestaña donde el webhook registra los mensajes entrantes (crearla a
+    // mano en el mismo libro, con las columnas de lib/whatsapp-hoja.js).
+    "GOOGLE_WHATSAPP_NAME": "WhatsApp"
   }
 }

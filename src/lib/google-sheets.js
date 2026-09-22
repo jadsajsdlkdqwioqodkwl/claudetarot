@@ -89,12 +89,12 @@ export async function getAccessToken(env) {
  * Agrega una fila al final de la hoja indicada.
  * @param {object} env  Variables de entorno del Worker
  * @param {Array<string|number>} row  Valores en el orden de las columnas
+ * @param {string} [sheetName]  Pestaña destino; por defecto GOOGLE_SHEET_NAME ("Pedidos")
  * @returns {Promise<string>} el rango escrito ("Pedidos!A42:O42"), del que
  *   sale el número de fila que /api/upsell necesita para el order bump.
  */
-export async function appendRow(env, row) {
+export async function appendRow(env, row, sheetName = env.GOOGLE_SHEET_NAME || "Pedidos") {
   const accessToken = await getAccessToken(env);
-  const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
   // Solo la columna A: es la que siempre lleva la Fecha, así que marca sin
   // ambigüedad dónde termina la tabla.
   const range = encodeURIComponent(`${sheetName}!A:A`);
