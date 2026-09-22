@@ -17,6 +17,7 @@ const estado = {
   quickReplies: [],
   login: { mode: "legacy", challengeId: null },
   templateElegido: null,
+  miRol: null,
   pollConv: null,
   pollMsg: null
 };
@@ -63,7 +64,8 @@ iconizar();
 /* ---------- Login ---------- */
 
 async function revisarSesion() {
-  const { authenticated } = await pedir("/api/crm/session");
+  const { authenticated, role } = await pedir("/api/crm/session");
+  estado.miRol = role;
   if (authenticated) return mostrarApp();
   mostrarLogin();
 }
@@ -93,9 +95,11 @@ function mostrarPasoCodigo() {
   $("#code").focus();
 }
 
-function mostrarApp() {
+async function mostrarApp() {
   $("#login").style.display = "none";
   $("#app").classList.add("activo");
+  const { role } = await pedir("/api/crm/session");
+  estado.miRol = role;
   cargarConversaciones();
   cargarQuickReplies();
   clearInterval(estado.pollConv);
@@ -256,6 +260,7 @@ function pintarChatBase(c) {
     <div id="preview-archivo" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
+      <button type="button" class="icono" id="btn-catalogo" title="Mandar catálogo">${icon("bag")}</button>
       <button type="button" class="icono" id="btn-seguimiento" title="Seguimientos programados">${icon("clock")}</button>
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
@@ -278,6 +283,22 @@ function pintarChatBase(c) {
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
+  $("#btn-catalogo").addEventListener("click", enviarCatalogo);
+}
+
+async function enviarCatalogo() {
+  if (!confirm("¿Mandar el catálogo completo a este chat?")) return;
+  try {
+    await pedir("/api/crm/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId })
+    });
+    await cargarMensajes();
+    await cargarConversaciones();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 function cerrarPaneles(excepto = []) {
@@ -302,6 +323,7 @@ function contenidoMensaje(m) {
     return `<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return escapar(m.body || "");
+  if (m.type === "order") return `<span class="tipo">${icon("bag")} Pedido del catálogo: ${escapar(m.body || "")}</span>`;
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
@@ -610,16 +632,20 @@ $("#btn-equipo").addEventListener("click", async () => {
 $("#eq-cerrar").addEventListener("click", () => $("#modal-equipo-fondo").classList.remove("abierto"));
 
 async function pintarEquipo() {
+  const esAdmin = estado.miRol === "admin";
+  document.querySelectorAll("#eq-nombre, #eq-usuario, #eq-password, #eq-wa, #eq-rol, #eq-crear").forEach((el) => {
+    el.style.display = esAdmin ? "" : "none";
+  });
   const { agents } = await pedir("/api/crm/agents");
   const cont = $("#lista-equipo");
   cont.innerHTML = agents.map((a) => `
     <div class="fila-equipo">
       <div>
-        <div class="nombre">${escapar(a.display_name)}${!a.active ? '<span class="pill-inactivo">inactivo</span>' : ""}</div>
+        <div class="nombre">${a.role === "admin" ? icon("shield") + " " : ""}${escapar(a.display_name)}${!a.active ? '<span class="pill-inactivo">inactivo</span>' : ""}</div>
         <div class="sub">@${escapar(a.username)} · WhatsApp +${escapar(a.wa_id)}</div>
       </div>
-      <button data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>
-    </div>`).join("") || `<p class="ayuda-modal">Todavía no hay vendedores — usa el formulario de abajo para crear el primero (puedes crear tu propia cuenta).</p>`;
+      ${esAdmin ? `<button data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>` : ""}
+    </div>`).join("") || `<p class="ayuda-modal">${esAdmin ? "Todavía no hay vendedores — usa el formulario de abajo para crear el primero (puedes crear tu propia cuenta)." : "Todavía no hay vendedores."}</p>`;
 
   cont.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -638,11 +664,12 @@ $("#eq-crear").addEventListener("click", async () => {
   const username = $("#eq-usuario").value.trim();
   const password = $("#eq-password").value;
   const wa_id = $("#eq-wa").value.trim();
+  const role = $("#eq-rol").value;
   try {
     await pedir("/api/crm/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ display_name, username, password, wa_id })
+      body: JSON.stringify({ display_name, username, password, wa_id, role })
     });
     $("#eq-nombre").value = "";
     $("#eq-usuario").value = "";
@@ -725,7 +752,7 @@ $("#template-enviar").addEventListener("click", async () => {
 
 /* ---------- Panel de detalle ---------- */
 
-function pintarDetalle(c) {
+async function pintarDetalle(c) {
   const nombre = c.profile_name || c.wa_id;
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
   $("#detalle").innerHTML = `
@@ -741,7 +768,22 @@ function pintarDetalle(c) {
         ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
         ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}
       </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
+
+    <h2>Pedidos del catálogo</h2>
+    <div id="detalle-pedidos">Cargando…</div>
   `;
+
+  try {
+    const { orders } = await pedir(`/api/crm/catalog?conversation_id=${c.conversation_id}`);
+    const cont = $("#detalle-pedidos");
+    if (!cont) return;
+    cont.innerHTML = orders.length ? orders.map((o) => `
+      <div class="ad-card" style="margin-bottom:8px">
+        <div class="titulo">${icon("bag")} ${fechaCorta(o.created_at)}</div>
+        ${o.items.map((i) => `<div>${i.quantity}× ${escapar(i.product_retailer_id)} — ${i.item_price ?? ""} ${escapar(o.currency || "")}</div>`).join("")}
+        ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
+      </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
+  } catch { /* silencioso: no es crítico si esto no carga */ }
 }
 
 revisarSesion();

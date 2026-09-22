@@ -32,9 +32,24 @@ function codigoOTP() {
   return String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
 }
 
+async function dentroDelLimite(env, ip) {
+  if (!env.LOGIN_LIMIT || !ip) return true;
+  try {
+    const { success } = await env.LOGIN_LIMIT.limit({ key: ip });
+    return success;
+  } catch {
+    return true;
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   if (!env.CRM_PASSWORD) {
     return json({ error: "El CRM no está configurado (falta CRM_PASSWORD)." }, 503);
+  }
+
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  if (!(await dentroDelLimite(env, ip))) {
+    return json({ error: "Demasiados intentos. Espera un minuto." }, 429);
   }
 
   let payload;

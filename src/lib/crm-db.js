@@ -110,3 +110,13 @@ export async function marcarSeguimiento(db, conversationId, followUp) {
 export async function guardarMediaKey(db, messageId, mediaKey) {
   await db.prepare("UPDATE messages SET media_key = ? WHERE id = ?").bind(mediaKey, messageId).run();
 }
+
+export async function registrarPedidoCatalogo(db, conversationId, waMessageId, { catalogId, items, total, currency }) {
+  await db
+    .prepare(
+      `INSERT INTO catalog_orders (conversation_id, wa_message_id, catalog_id, items_json, total_amount, currency)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .bind(conversationId, waMessageId, catalogId || null, JSON.stringify(items || []), total || null, currency || null)
+    .run();
+}

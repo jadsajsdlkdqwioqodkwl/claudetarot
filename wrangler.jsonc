@@ -54,6 +54,16 @@
       "name": "TRACK_LIMIT",
       "namespace_id": "1002",
       "simple": { "limit": 40, "period": 60 }
+    },
+
+    /**
+     * Login del CRM: 10 intentos por minuto y por IP, contra fuerza bruta de
+     * la contraseña o del código de 6 dígitos.
+     */
+    {
+      "name": "LOGIN_LIMIT",
+      "namespace_id": "1003",
+      "simple": { "limit": 10, "period": 60 }
     }
   ],
 

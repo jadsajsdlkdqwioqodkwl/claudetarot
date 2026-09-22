@@ -29,7 +29,15 @@ async function firmar(env, valor) {
 
 export async function crearCookieSesion(env, agente = null) {
   const expira = Date.now() + DURACION_MS;
-  const payload = JSON.stringify({ exp: expira, agentId: agente?.id || null, username: agente?.username || null, displayName: agente?.display_name || null });
+  // El modo de contraseña única (sin agente) es siempre "admin": es el dueño
+  // de la cuenta, el único que puede entrar así.
+  const payload = JSON.stringify({
+    exp: expira,
+    agentId: agente?.id || null,
+    username: agente?.username || null,
+    displayName: agente?.display_name || null,
+    role: agente?.role || "admin"
+  });
   const valorB64 = btoa(unescape(encodeURIComponent(payload)));
   const firma = await firmar(env, valorB64);
   const cookie = `${valorB64}.${firma}`;
@@ -82,6 +90,26 @@ export function conAuth(handler) {
     if (!sesion) {
       return new Response(JSON.stringify({ error: "No autorizado." }), {
         status: 401,
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+      });
+    }
+    return handler({ ...context, agent: sesion });
+  };
+}
+
+/** Como conAuth, pero además exige rol "admin" — para gestionar el equipo. */
+export function conAdmin(handler) {
+  return async (context) => {
+    const sesion = await sesionActual(context.request, context.env);
+    if (!sesion) {
+      return new Response(JSON.stringify({ error: "No autorizado." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+      });
+    }
+    if (sesion.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Solo un administrador puede hacer esto." }), {
+        status: 403,
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
       });
     }

@@ -740,6 +740,35 @@ el bucket se pueda crear.
   SVG inline) y un selector de emojis propio en el composer, sin librerías
   externas.
 
+### Cuarta vuelta: roles, seguridad y catálogo
+
+- **Roles**: cada vendedor es `admin` o `vendedor`. Solo un `admin` puede
+  crear cuentas nuevas, desactivarlas o resetear una contraseña — antes
+  cualquier sesión abierta podía crear vendedores, quedó cerrado.
+- **Fuerza bruta**: el login (contraseña y código de 6 dígitos) tiene un
+  tope de 10 intentos por minuto y por IP (`LOGIN_LIMIT`), y cada código de
+  acceso por WhatsApp se invalida después de 5 intentos fallidos, aunque no
+  haya vencido el plazo de 5 minutos.
+- **Catálogo**: con el catálogo conectado en WhatsApp Manager (ver más
+  abajo), el ícono de bolsa en el chat manda el catálogo completo, y cuando
+  el cliente arma y confirma su pedido desde WhatsApp, llega como mensaje
+  especial y queda guardado en `catalog_orders` — se ve en el panel de
+  detalle de esa conversación con los productos, cantidades y el total.
+
+#### Seguridad — lo que revisé y el estado de cada cosa
+
+| Punto | Estado |
+|---|---|
+| Contraseñas | Hasheadas con PBKDF2-SHA256 (100k iteraciones), nunca en texto plano. |
+| Sesión | Cookie firmada (HMAC), `HttpOnly` + `Secure` + `SameSite=Strict`, expira a las 12h. No se puede falsificar sin el secret del servidor. |
+| SQL | Todas las consultas van parametrizadas (`bind`) — no hay forma de inyectar SQL. |
+| XSS | Todo lo que viene de WhatsApp o de la base se escapa antes de pintarse; nada se inserta como HTML crudo. |
+| Fuerza bruta en login | Limitada por IP y por intentos del código, ver arriba. |
+| Quién administra el equipo | Solo `admin`, reforzado en el servidor (no alcanza con ocultar el botón en el navegador). |
+| **Firma del webhook de WhatsApp** | **Sin `WHATSAPP_APP_SECRET` configurado, el webhook acepta cualquier POST sin verificar que venga de Meta.** Es el hueco más importante ahora mismo — mientras ese secret no esté puesto, alguien que adivine tu URL de webhook podría inyectar mensajes falsos en tus conversaciones. Confírmame si ya lo pusiste. |
+| Token de WhatsApp (`WHATSAPP_TOKEN`) | Vive solo como secret de Cloudflare, nunca en el código ni en el repo. Si alguna vez sospechas que se filtró, revócalo en Meta (System Users → ese token → Revoke) y genera uno nuevo — eso es lo que de verdad "recupera" el número si algo sale mal, más que cualquier cosa del lado del CRM. |
+| Plantillas (gasto) | Cualquier vendedor logueado puede mandarlas hoy. Si quieres limitarlo a admins, es un cambio de una línea — dime y lo hago. |
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
