@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel WhatsApp — Tarot Store Perú</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --teal: #068988;
+    --teal-dark: #056a69;
+    --teal-tint: #e4f4f3;
+    --ink: #111111;
+    --muted: #6b7280;
+    --muted-2: #9299a6;
+    --line: #e5e7eb;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --gold: #f5b400;
+    --danger: #e5484d;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; }
+  ::selection { background: var(--teal-tint); }
+
+  /* ── Gate de acceso ─────────────────────────────────────────────────── */
+  #gate {
+    position: fixed; inset: 0; z-index: 50;
+    background: linear-gradient(160deg, #0c1f1f, #0a1414 60%);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #gate.oculto { display: none; }
+  .gate-card {
+    background: var(--card); border-radius: 20px; padding: 32px 28px;
+    width: 100%; max-width: 360px; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .gate-card h1 { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+  .gate-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .campo { margin-bottom: 14px; }
+  .campo label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .campo input {
+    width: 100%; padding: 11px 13px; border: 1.5px solid var(--line); border-radius: 10px;
+    outline: none; transition: border-color .15s;
+  }
+  .campo input:focus { border-color: var(--teal); }
+  .btn-primario {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: var(--teal); color: #fff; font-weight: 700; font-size: 14px;
+    transition: background .15s;
+  }
+  .btn-primario:hover { background: var(--teal-dark); }
+  .gate-error { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 16px; }
+
+  /* ── Layout principal ───────────────────────────────────────────────── */
+  #app { display: none; height: 100dvh; flex-direction: column; }
+  #app.listo { display: flex; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px; padding: 12px 18px;
+    background: var(--ink); color: #fff; flex-shrink: 0;
+  }
+  .topbar .marca { font-weight: 800; font-size: 15px; letter-spacing: .2px; }
+  .topbar .marca span { color: var(--teal); }
+  .topbar .spacer { flex: 1; }
+  .pill-worker {
+    display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.1);
+    padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  }
+  .icon-btn {
+    background: transparent; border: none; color: #fff; opacity: .8; padding: 6px;
+    border-radius: 8px; display: flex; align-items: center; transition: opacity .15s, background .15s;
+  }
+  .icon-btn:hover { opacity: 1; background: rgba(255,255,255,.12); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .cuerpo { flex: 1; display: flex; min-height: 0; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────── */
+  .sidebar {
+    width: 360px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .buscador { padding: 12px; border-bottom: 1px solid var(--line); }
+  .buscador-caja {
+    display: flex; align-items: center; gap: 8px; background: var(--bg);
+    border-radius: 10px; padding: 9px 12px;
+  }
+  .buscador-caja svg { width: 16px; height: 16px; color: var(--muted-2); flex-shrink: 0; }
+  .buscador-caja input { background: transparent; border: none; outline: none; width: 100%; font-size: 13.5px; }
+
+  .lista { flex: 1; overflow-y: auto; }
+  .lista-vacia { padding: 40px 24px; text-align: center; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+
+  .conv {
+    display: flex; gap: 11px; align-items: flex-start; padding: 12px 14px; cursor: pointer;
+    border-bottom: 1px solid #f0f1f3; transition: background .12s;
+  }
+  .conv:hover { background: #fafbfc; }
+  .conv.activa { background: var(--teal-tint); }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 15px;
+  }
+  .conv-info { flex: 1; min-width: 0; }
+  .conv-fila1 { display: flex; align-items: baseline; gap: 6px; }
+  .conv-nombre { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv-hora { margin-left: auto; font-size: 11px; color: var(--muted-2); flex-shrink: 0; }
+  .conv-fila2 { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .conv-preview { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .estrella-btn { background: none; border: none; padding: 2px; flex-shrink: 0; display: flex; }
+  .estrella-btn svg { width: 16px; height: 16px; }
+  .etiquetas-mini { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+  .chip {
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+    background: var(--teal-tint); color: var(--teal-dark); white-space: nowrap;
+  }
+
+  /* ── Panel de conversación ──────────────────────────────────────────── */
+  .principal { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #ece9e4; }
+  .vacio-central {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--muted); gap: 10px; padding: 20px; text-align: center;
+  }
+  .vacio-central svg { width: 56px; height: 56px; color: var(--muted-2); }
+  .vacio-central p { font-size: 13.5px; max-width: 260px; }
+
+  .conv-header {
+    display: flex; align-items: center; gap: 12px; padding: 11px 18px; background: var(--card);
+    border-bottom: 1px solid var(--line); flex-shrink: 0;
+  }
+  .btn-atras { display: none; }
+  .conv-header .titulos { flex: 1; min-width: 0; }
+  .conv-header .nombre { font-weight: 700; font-size: 15px; }
+  .conv-header .telefono { font-size: 12px; color: var(--muted); }
+  .estrella-header svg { width: 20px; height: 20px; }
+
+  .thread {
+    flex: 1; overflow-y: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 3px;
+    background-image: radial-gradient(rgba(0,0,0,.025) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .fecha-separador {
+    align-self: center; background: rgba(255,255,255,.85); color: var(--muted);
+    font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin: 12px 0 8px;
+  }
+  .burbuja-fila { display: flex; }
+  .burbuja-fila.in { justify-content: flex-start; }
+  .burbuja-fila.out { justify-content: flex-end; }
+  .burbuja {
+    max-width: 64%; padding: 8px 11px; border-radius: 14px; font-size: 13.5px; line-height: 1.45;
+    margin: 2px 0; box-shadow: 0 1px 1px rgba(0,0,0,.05); word-wrap: break-word; white-space: pre-wrap;
+  }
+  .burbuja-fila.in .burbuja { background: #fff; border-bottom-left-radius: 4px; }
+  .burbuja-fila.out .burbuja { background: var(--teal); color: #fff; border-bottom-right-radius: 4px; }
+  .burbuja .worker { display: block; font-size: 10.5px; font-weight: 700; opacity: .8; margin-bottom: 2px; }
+  .burbuja .hora { display: block; font-size: 10px; opacity: .65; margin-top: 3px; text-align: right; }
+
+  .panel-lateral {
+    border-top: 1px solid var(--line); background: var(--card); padding: 12px 18px; flex-shrink: 0;
+  }
+  .campo-mini { margin-bottom: 10px; }
+  .campo-mini label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .campo-mini input, .campo-mini textarea {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; outline: none; font-size: 13px;
+    transition: border-color .15s;
+  }
+  .campo-mini input:focus, .campo-mini textarea:focus { border-color: var(--teal); }
+  .campo-mini textarea { resize: vertical; min-height: 40px; }
+
+  .compositor {
+    display: flex; align-items: flex-end; gap: 10px; padding: 12px 18px; background: var(--card);
+    border-top: 1px solid var(--line); flex-shrink: 0;
+  }
+  .compositor textarea {
+    flex: 1; border: 1.5px solid var(--line); border-radius: 20px; padding: 10px 16px;
+    resize: none; outline: none; max-height: 120px; line-height: 1.4; transition: border-color .15s;
+  }
+  .compositor textarea:focus { border-color: var(--teal); }
+  .btn-enviar {
+    width: 42px; height: 42px; border-radius: 50%; background: var(--teal); border: none; color: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s, transform .1s;
+  }
+  .btn-enviar:hover { background: var(--teal-dark); }
+  .btn-enviar:active { transform: scale(.94); }
+  .btn-enviar:disabled { background: var(--muted-2); cursor: default; }
+  .btn-enviar svg { width: 18px; height: 18px; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; max-width: 90vw;
+  }
+  .toast.mostrar { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Responsive: una columna en móvil ───────────────────────────────── */
+  @media (max-width: 760px) {
+    .sidebar { width: 100%; }
+    .cuerpo.viendo-hilo .sidebar { display: none; }
+    .cuerpo:not(.viendo-hilo) .principal { display: none; }
+    .btn-atras { display: flex; }
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-card">
+    <h1>Panel de WhatsApp</h1>
+    <p>Tarot Store Perú — acceso del equipo</p>
+    <form id="form-gate">
+      <div class="campo">
+        <label for="in-token">Código de acceso</label>
+        <input id="in-token" type="password" autocomplete="off" required>
+      </div>
+      <div class="campo">
+        <label for="in-worker">Tu nombre</label>
+        <input id="in-worker" type="text" autocomplete="off" placeholder="Ej. Ana" required>
+      </div>
+      <button class="btn-primario" type="submit">Entrar</button>
+      <div class="gate-error" id="gate-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="marca">Tarot<span>Store</span> · WhatsApp</div>
+    <div class="spacer"></div>
+    <div class="pill-worker" id="pill-worker"></div>
+    <button class="icon-btn" id="btn-refrescar" title="Refrescar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+    </button>
+    <button class="icon-btn" id="btn-salir" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+    </button>
+  </div>
+
+  <div class="cuerpo" id="cuerpo">
+    <div class="sidebar">
+      <div class="buscador">
+        <div class="buscador-caja">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="in-buscar" type="text" placeholder="Buscar por nombre o número…">
+        </div>
+      </div>
+      <div class="lista" id="lista"></div>
+    </div>
+
+    <div class="principal" id="principal">
+      <div class="vacio-central" id="vacio-central">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+        <p>Elige una conversación de la izquierda para ver los mensajes y responder.</p>
+      </div>
+
+      <div id="hilo" style="display:none; flex:1; flex-direction:column; min-height:0;">
+        <div class="conv-header">
+          <button class="icon-btn btn-atras" id="btn-atras">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="avatar" id="header-avatar" style="width:38px;height:38px;font-size:13px;"></div>
+          <div class="titulos">
+            <div class="nombre" id="header-nombre"></div>
+            <div class="telefono" id="header-telefono"></div>
+          </div>
+          <button class="icon-btn estrella-header" id="btn-estrella-header" title="Destacar pedido"></button>
+        </div>
+
+        <div class="thread" id="thread"></div>
+
+        <div class="panel-lateral">
+          <div class="campo-mini">
+            <label>Etiquetas (separadas por coma)</label>
+            <input id="in-etiquetas" type="text" placeholder="Ej. urgente, agencia, pagado">
+          </div>
+          <div class="campo-mini">
+            <label>Notas internas</label>
+            <textarea id="in-notas" placeholder="Solo la ve el equipo…"></textarea>
+          </div>
+        </div>
+
+        <div class="compositor">
+          <textarea id="in-mensaje" rows="1" placeholder="Escribe una respuesta…"></textarea>
+          <button class="btn-enviar" id="btn-enviar" title="Enviar">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ICONO_ESTRELLA_LLENA = '<svg viewBox="0 0 24 24" fill="#f5b400" stroke="#f5b400" stroke-width="1.5"><polygon points="12 2 15.09 8.63 22 9.24 16.5 14.14 18.18 21 12 17.27 5.82 21 7.5 14.14 2 9.24 8.91 8.63 12 2"></polygon></svg>';
+  var ICONO_ESTRELLA_VACIA = '<svg viewBox="0 0 24 24" fill="none" stroke="#c2c6cc" stroke-width="1.8"><polygon points="12 2 15.09 8.63 22 9.24 16.5 14.14 18.18 21 12 17.27 5.82 21 7.5 14.14 2 9.24 8.91 8.63 12 2"></polygon></svg>';
+
+  var COLORES_AVATAR = ["#068988", "#2D9CDB", "#8E44AD", "#E67E22", "#C0392B", "#16A085", "#2C3E50", "#D35400"];
+
+  var el = {
+    gate: document.getElementById("gate"),
+    formGate: document.getElementById("form-gate"),
+    inToken: document.getElementById("in-token"),
+    inWorker: document.getElementById("in-worker"),
+    gateError: document.getElementById("gate-error"),
+    app: document.getElementById("app"),
+    pillWorker: document.getElementById("pill-worker"),
+    btnRefrescar: document.getElementById("btn-refrescar"),
+    btnSalir: document.getElementById("btn-salir"),
+    cuerpo: document.getElementById("cuerpo"),
+    lista: document.getElementById("lista"),
+    inBuscar: document.getElementById("in-buscar"),
+    vacioCentral: document.getElementById("vacio-central"),
+    hilo: document.getElementById("hilo"),
+    btnAtras: document.getElementById("btn-atras"),
+    headerAvatar: document.getElementById("header-avatar"),
+    headerNombre: document.getElementById("header-nombre"),
+    headerTelefono: document.getElementById("header-telefono"),
+    btnEstrellaHeader: document.getElementById("btn-estrella-header"),
+    thread: document.getElementById("thread"),
+    inEtiquetas: document.getElementById("in-etiquetas"),
+    inNotas: document.getElementById("in-notas"),
+    inMensaje: document.getElementById("in-mensaje"),
+    btnEnviar: document.getElementById("btn-enviar"),
+    toast: document.getElementById("toast")
+  };
+
+  var estado = {
+    token: localStorage.getItem("wsp_token") || "",
+    worker: localStorage.getItem("wsp_worker") || "",
+    conversaciones: [],
+    activa: null,
+    filtro: ""
+  };
+
+  var timers = { lista: null, hilo: null };
+
+  function escapar(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function mostrarToast(msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add("mostrar");
+    clearTimeout(mostrarToast._t);
+    mostrarToast._t = setTimeout(function () { el.toast.classList.remove("mostrar"); }, 3200);
+  }
+
+  function colorDe(waId) {
+    var suma = 0;
+    for (var i = 0; i < waId.length; i++) suma += waId.charCodeAt(i);
+    return COLORES_AVATAR[suma % COLORES_AVATAR.length];
+  }
+
+  function iniciales(nombre, waId) {
+    var base = (nombre || "").trim();
+    if (base) {
+      var partes = base.split(/\s+/);
+      return (partes[0][0] + (partes[1] ? partes[1][0] : "")).toUpperCase();
+    }
+    return (waId || "?").slice(-2);
+  }
+
+  function formatoTelefono(waId) {
+    return "+" + waId;
+  }
+
+  // "Fecha" en Sheets llega como "YYYY-MM-DD HH:MM:SS" (hora de Lima).
+  function parseFecha(f) {
+    if (!f) return null;
+    var m = String(f).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  }
+
+  function horaRelativa(f) {
+    var d = parseFecha(f);
+    if (!d) return "";
+    var ahora = new Date();
+    var diffMin = Math.round((ahora - d) / 60000);
+    if (diffMin < 1) return "ahora";
+    if (diffMin < 60) return diffMin + " min";
+    var mismoDia = d.toDateString() === ahora.toDateString();
+    if (mismoDia) return d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+    var ayer = new Date(ahora); ayer.setDate(ayer.getDate() - 1);
+    if (d.toDateString() === ayer.toDateString()) return "ayer";
+    return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
+  }
+
+  function horaCorta(f) {
+    var d = parseFecha(f);
+    return d ? d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "";
+  }
+
+  function etiquetaFecha(f) {
+    var d = parseFecha(f);
+    if (!d) return "";
+    var ahora = new Date();
+    if (d.toDateString() === ahora.toDateString()) return "Hoy";
+    var ayer = new Date(ahora); ayer.setDate(ayer.getDate() - 1);
+    if (d.toDateString() === ayer.toDateString()) return "Ayer";
+    return d.toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
+  }
+
+  /* ── API ─────────────────────────────────────────────────────────────── */
+
+  function api(ruta, opciones) {
+    opciones = opciones || {};
+    var url = ruta + (ruta.indexOf("?") === -1 ? "?" : "&") + "token=" + encodeURIComponent(estado.token);
+    return fetch(url, opciones).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok || data.error) throw new Error(data.error || ("Error " + res.status));
+        return data;
+      });
+    });
+  }
+
+  /* ── Gate ────────────────────────────────────────────────────────────── */
+
+  function intentarEntrar(token, worker) {
+    return api("/api/whatsapp-panel?accion=conversaciones", { method: "GET" })
+      .then(function () {
+        estado.token = token;
+        estado.worker = worker;
+        localStorage.setItem("wsp_token", token);
+        localStorage.setItem("wsp_worker", worker);
+        arrancar();
+      });
+  }
+
+  el.formGate.addEventListener("submit", function (e) {
+    e.preventDefault();
+    el.gateError.textContent = "";
+    var token = el.inToken.value.trim();
+    var worker = el.inWorker.value.trim();
+    var antes = estado.token;
+    estado.token = token;
+    intentarEntrar(token, worker).catch(function (err) {
+      estado.token = antes;
+      el.gateError.textContent = "No se pudo entrar: " + err.message;
+    });
+  });
+
+  el.btnSalir.addEventListener("click", function () {
+    localStorage.removeItem("wsp_token");
+    location.reload();
+  });
+
+  /* ── Lista de conversaciones ────────────────────────────────────────── */
+
+  function cargarConversaciones() {
+    return api("/api/whatsapp-panel?accion=conversaciones", { method: "GET" }).then(function (data) {
+      estado.conversaciones = data.conversaciones || [];
+      renderLista();
+    }).catch(function (err) { mostrarToast("No se pudo actualizar la lista: " + err.message); });
+  }
+
+  function renderLista() {
+    var filtro = estado.filtro.toLowerCase();
+    var items = estado.conversaciones.filter(function (c) {
+      if (!filtro) return true;
+      return (c.nombre || "").toLowerCase().indexOf(filtro) !== -1 || c.waId.indexOf(filtro) !== -1;
+    });
+
+    if (!items.length) {
+      el.lista.innerHTML = '<div class="lista-vacia">' +
+        (estado.conversaciones.length ? "Nada coincide con tu búsqueda." : "Todavía no llegan mensajes. En cuanto alguien escriba por WhatsApp, aparece aquí.") +
+        "</div>";
+      return;
+    }
+
+    el.lista.innerHTML = items.map(function (c) {
+      var chips = (c.etiquetas || "").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+      var esActiva = estado.activa === c.waId;
+      var preview = c.ultimoMensaje || "";
+      return (
+        '<div class="conv' + (esActiva ? " activa" : "") + '" data-wa="' + escapar(c.waId) + '">' +
+          '<div class="avatar" style="background:' + colorDe(c.waId) + '">' + escapar(iniciales(c.nombre, c.waId)) + "</div>" +
+          '<div class="conv-info">' +
+            '<div class="conv-fila1"><span class="conv-nombre">' + escapar(c.nombre || formatoTelefono(c.waId)) + '</span>' +
+              '<span class="conv-hora">' + horaRelativa(c.ultimaActividad) + "</span></div>" +
+            '<div class="conv-fila2">' +
+              '<span class="conv-preview">' + escapar(preview) + '</span>' +
+              '<button class="estrella-btn" data-estrella="' + escapar(c.waId) + '">' + (c.estrella ? ICONO_ESTRELLA_LLENA : ICONO_ESTRELLA_VACIA) + "</button>" +
+            "</div>" +
+            (chips.length ? '<div class="etiquetas-mini">' + chips.map(function (t) { return '<span class="chip">' + escapar(t) + "</span>"; }).join("") + "</div>" : "") +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  el.lista.addEventListener("click", function (e) {
+    var btnEstrella = e.target.closest("[data-estrella]");
+    if (btnEstrella) {
+      e.stopPropagation();
+      var waId = btnEstrella.getAttribute("data-estrella");
+      var c = estado.conversaciones.find(function (x) { return x.waId === waId; });
+      if (c) alternarEstrella(waId, !c.estrella);
+      return;
+    }
+    var fila = e.target.closest(".conv");
+    if (fila) abrirConversacion(fila.getAttribute("data-wa"));
+  });
+
+  var buscarDebounce;
+  el.inBuscar.addEventListener("input", function () {
+    clearTimeout(buscarDebounce);
+    var v = el.inBuscar.value;
+    buscarDebounce = setTimeout(function () { estado.filtro = v; renderLista(); }, 120);
+  });
+
+  /* ── Conversación abierta ───────────────────────────────────────────── */
+
+  function abrirConversacion(waId) {
+    estado.activa = waId;
+    el.cuerpo.classList.add("viendo-hilo");
+    el.vacioCentral.style.display = "none";
+    el.hilo.style.display = "flex";
+    renderLista();
+    pintarCabecera();
+    cargarMensajes();
+    clearInterval(timers.hilo);
+    timers.hilo = setInterval(cargarMensajes, 8000);
+  }
+
+  function pintarCabecera() {
+    var c = estado.conversaciones.find(function (x) { return x.waId === estado.activa; });
+    if (!c) return;
+    el.headerAvatar.style.background = colorDe(c.waId);
+    el.headerAvatar.textContent = iniciales(c.nombre, c.waId);
+    el.headerNombre.textContent = c.nombre || formatoTelefono(c.waId);
+    el.headerTelefono.textContent = formatoTelefono(c.waId);
+    el.btnEstrellaHeader.innerHTML = c.estrella ? ICONO_ESTRELLA_LLENA : ICONO_ESTRELLA_VACIA;
+    el.inEtiquetas.value = c.etiquetas || "";
+    el.inNotas.value = c.notas || "";
+  }
+
+  el.btnAtras.addEventListener("click", function () {
+    el.cuerpo.classList.remove("viendo-hilo");
+    estado.activa = null;
+    clearInterval(timers.hilo);
+  });
+
+  el.btnEstrellaHeader.addEventListener("click", function () {
+    var c = estado.conversaciones.find(function (x) { return x.waId === estado.activa; });
+    if (c) alternarEstrella(c.waId, !c.estrella);
+  });
+
+  function alternarEstrella(waId, valor) {
+    var c = estado.conversaciones.find(function (x) { return x.waId === waId; });
+    if (c) c.estrella = valor; // optimista
+    renderLista();
+    if (estado.activa === waId) el.btnEstrellaHeader.innerHTML = valor ? ICONO_ESTRELLA_LLENA : ICONO_ESTRELLA_VACIA;
+    api("/api/whatsapp-panel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ waId: waId, estrella: valor })
+    }).catch(function (err) {
+      if (c) c.estrella = !valor;
+      renderLista();
+      mostrarToast("No se pudo guardar la estrella: " + err.message);
+    });
+  }
+
+  var guardarCampoDebounce;
+  function guardarCampo(campo, valor) {
+    clearTimeout(guardarCampoDebounce);
+    guardarCampoDebounce = setTimeout(function () {
+      var waId = estado.activa;
+      if (!waId) return;
+      var payload = { waId: waId };
+      payload[campo] = valor;
+      api("/api/whatsapp-panel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function () {
+        var c = estado.conversaciones.find(function (x) { return x.waId === waId; });
+        if (c) c[campo] = valor;
+        if (campo === "etiquetas") renderLista();
+      }).catch(function (err) { mostrarToast("No se pudo guardar: " + err.message); });
+    }, 600);
+  }
+
+  el.inEtiquetas.addEventListener("input", function () { guardarCampo("etiquetas", el.inEtiquetas.value); });
+  el.inNotas.addEventListener("input", function () { guardarCampo("notas", el.inNotas.value); });
+
+  function cargarMensajes() {
+    if (!estado.activa) return;
+    return api("/api/whatsapp-panel?accion=mensajes&wa_id=" + encodeURIComponent(estado.activa), { method: "GET" })
+      .then(function (data) { renderThread(data.mensajes || []); })
+      .catch(function (err) { mostrarToast("No se pudo cargar la conversación: " + err.message); });
+  }
+
+  function renderThread(mensajes) {
+    var abajoDelTodo = el.thread.scrollTop + el.thread.clientHeight >= el.thread.scrollHeight - 40;
+    var html = "";
+    var fechaAnterior = "";
+    mensajes.forEach(function (m) {
+      var etq = etiquetaFecha(m.fecha);
+      if (etq && etq !== fechaAnterior) {
+        html += '<div class="fecha-separador">' + escapar(etq) + "</div>";
+        fechaAnterior = etq;
+      }
+      var dir = m.direccion === "out" ? "out" : "in";
+      html += '<div class="burbuja-fila ' + dir + '"><div class="burbuja">' +
+        (dir === "out" && m.worker ? '<span class="worker">' + escapar(m.worker) + "</span>" : "") +
+        escapar(m.texto) +
+        '<span class="hora">' + horaCorta(m.fecha) + "</span>" +
+      "</div></div>";
+    });
+    el.thread.innerHTML = html || '<div class="fecha-separador">Sin mensajes todavía</div>';
+    if (abajoDelTodo) el.thread.scrollTop = el.thread.scrollHeight;
+  }
+
+  /* ── Enviar mensaje ──────────────────────────────────────────────────── */
+
+  function autoAltura() {
+    el.inMensaje.style.height = "auto";
+    el.inMensaje.style.height = Math.min(el.inMensaje.scrollHeight, 120) + "px";
+  }
+  el.inMensaje.addEventListener("input", autoAltura);
+  el.inMensaje.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); }
+  });
+  el.btnEnviar.addEventListener("click", enviar);
+
+  function enviar() {
+    var texto = el.inMensaje.value.trim();
+    var waId = estado.activa;
+    if (!texto || !waId) return;
+
+    el.btnEnviar.disabled = true;
+    api("/api/whatsapp-send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: waId, texto: texto, worker: estado.worker })
+    }).then(function () {
+      el.inMensaje.value = "";
+      autoAltura();
+      cargarMensajes();
+      cargarConversaciones();
+    }).catch(function (err) {
+      mostrarToast("No se pudo enviar: " + err.message);
+    }).finally(function () {
+      el.btnEnviar.disabled = false;
+      el.inMensaje.focus();
+    });
+  }
+
+  /* ── Arranque ────────────────────────────────────────────────────────── */
+
+  el.btnRefrescar.addEventListener("click", function () {
+    cargarConversaciones();
+    if (estado.activa) cargarMensajes();
+  });
+
+  function arrancar() {
+    el.gate.classList.add("oculto");
+    el.app.classList.add("listo");
+    el.pillWorker.textContent = estado.worker;
+    cargarConversaciones();
+    clearInterval(timers.lista);
+    timers.lista = setInterval(cargarConversaciones, 20000);
+  }
+
+  if (estado.token && estado.worker) {
+    api("/api/whatsapp-panel?accion=conversaciones", { method: "GET" })
+      .then(arrancar)
+      .catch(function () {
+        localStorage.removeItem("wsp_token");
+        estado.token = "";
+      });
+  }
+})();
+</script>
+</body>
+</html>

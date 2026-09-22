@@ -66,7 +66,7 @@ async function procesarMensaje(env, msg, contactos) {
     // Log crudo primero, contacto después: si el contacto falla, el mensaje
     // ya quedó guardado — lo importante nunca se pierde por lo secundario.
     await registrarMensaje(env, { fecha, direccion: "in", waId: msg.from, nombre, tipo: msg.type, texto: cuerpo, messageId: msg.id });
-    await upsertContacto(env, { waId: msg.from, nombre, fecha });
+    await upsertContacto(env, { waId: msg.from, nombre, fecha, ultimoMensaje: cuerpo.slice(0, 120) });
   } catch (err) {
     // Un fallo de Sheets no puede perder el aviso: igual se manda a Telegram.
     console.error("WhatsApp → Sheets:", err.message);

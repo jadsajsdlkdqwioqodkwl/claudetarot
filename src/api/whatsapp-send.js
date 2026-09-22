@@ -7,8 +7,8 @@
  * escribe el cliente, nunca lo que contesta el vendedor.
  *
  * MVP a propósito: protegido con el mismo DIAG_TOKEN que /api/diag y
- * /api/setup, sin login por trabajador todavía. Cuando exista el panel de
- * respuesta rápida, este es el endpoint que va a llamar.
+ * /api/setup, sin login por trabajador todavía. Lo llama el panel
+ * (public/panel.html) para contestar.
  *
  * Body JSON: {"to":"51987654321","texto":"…","worker":"Ana"}
  */
@@ -53,7 +53,7 @@ export async function onRequestPost({ request, env }) {
     const fecha = fechaLima();
 
     await registrarMensaje(env, { fecha, direccion: "out", waId: para, tipo: "text", texto, messageId, worker });
-    await upsertContacto(env, { waId: para, fecha });
+    await upsertContacto(env, { waId: para, fecha, ultimoMensaje: texto.slice(0, 120) });
 
     return json({ ok: true, messageId });
   } catch (err) {

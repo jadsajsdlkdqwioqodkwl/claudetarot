@@ -29,3 +29,8 @@
 /seguimiento.html
   Cache-Control: public, max-age=0, must-revalidate
   X-Robots-Tag: noindex, nofollow
+
+# Panel interno del equipo: nunca en caché ni en buscadores.
+/panel.html
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow
