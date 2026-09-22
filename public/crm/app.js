@@ -1538,10 +1538,15 @@ async function pintarEquipo() {
         <div class="nombre">${a.role === "admin" ? icon("shield") + " " : ""}${escapar(a.display_name)}${!a.active ? '<span class="pill-inactivo">inactivo</span>' : ""}</div>
         <div class="sub">@${escapar(a.username)} · WhatsApp +${escapar(a.wa_id)}</div>
       </div>
-      ${esAdmin ? `<button data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>` : ""}
+      ${esAdmin ? `
+      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="eq-reset-password" data-id="${a.id}" title="Poner una contraseña temporal">Restablecer contraseña</button>
+        <button class="eq-reset-totp" data-id="${a.id}" title="Apagar su 2FA con app si perdió el celular">Apagar 2FA</button>
+        <button class="eq-toggle-active" data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>
+      </div>` : ""}
     </div>`).join("") || `<p class="ayuda-modal">${esAdmin ? "Todavía no hay vendedores — usa el formulario de abajo para crear el primero (puedes crear tu propia cuenta)." : "Todavía no hay vendedores."}</p>`;
 
-  cont.querySelectorAll("button").forEach((btn) => {
+  cont.querySelectorAll(".eq-toggle-active").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await pedir("/api/crm/agents", {
         method: "PATCH",
@@ -1552,6 +1557,34 @@ async function pintarEquipo() {
     });
   });
 
+  cont.querySelectorAll(".eq-reset-password").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const nueva = prompt("Contraseña temporal para este vendedor (mín. 8 caracteres) — dísela para que la cambie apenas entre:");
+      if (!nueva) return;
+      try {
+        await pedir("/api/crm/agents", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: Number(btn.dataset.id), new_password: nueva })
+        });
+        alert("Contraseña restablecida.");
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
+
+  cont.querySelectorAll(".eq-reset-totp").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Apagar el 2FA con app de este vendedor? Va a volver a recibir el código por WhatsApp hasta que la reactive.")) return;
+      await pedir("/api/crm/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(btn.dataset.id), reset_totp: true })
+      });
+      alert("2FA con app apagado para ese vendedor.");
+    });
+  });
 }
 
 $("#eq-crear").addEventListener("click", async () => {

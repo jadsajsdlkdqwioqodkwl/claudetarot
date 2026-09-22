@@ -1,7 +1,8 @@
 /**
  * GET    /api/crm/agents — lista los vendedores (sin el hash de contraseña). Cualquier sesión.
  * POST   /api/crm/agents — { username, password, display_name, wa_id, role? } → crea uno. Solo admin.
- * PATCH  /api/crm/agents — { id, active? , new_password? } → activa/desactiva o resetea contraseña. Solo admin.
+ * PATCH  /api/crm/agents — { id, active?, new_password?, reset_totp? } → activa/desactiva, resetea contraseña
+ *        o apaga el 2FA con app (por si perdió el celular y quedó sin poder entrar). Solo admin.
  *
  * Crear o administrar vendedores es cosa de administradores: así no puede
  * cualquiera con sesión abierta crearse una cuenta nueva para otra persona.
@@ -76,6 +77,10 @@ async function patch({ request, env }) {
     if (payload.new_password.length < 8) return json({ error: "La contraseña necesita al menos 8 caracteres." }, 422);
     const passwordHash = await hashPassword(payload.new_password);
     await env.CRM_DB.prepare("UPDATE agents SET password_hash = ? WHERE id = ?").bind(passwordHash, id).run();
+  }
+
+  if (payload?.reset_totp === true) {
+    await env.CRM_DB.prepare("UPDATE agents SET totp_secret = NULL, totp_confirmed = 0 WHERE id = ?").bind(id).run();
   }
 
   return json({ ok: true });
