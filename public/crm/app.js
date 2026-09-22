@@ -25,6 +25,7 @@ const estado = {
   filtroRapidas: "",
   rapidasPorSlash: false,
   mensajesCargados: [],
+  firmaMensajesPintados: null,
   hayMasAntiguos: false,
   pollConv: null,
   pollMsg: null,
@@ -780,6 +781,7 @@ async function abrirConversacion(c) {
 
   estado.conversacionActivaId = c.conversation_id;
   estado.mensajesCargados = [];
+  estado.firmaMensajesPintados = null;
   estado.hayMasAntiguos = false;
   estado.respondiendoA = null;
   cancelarAdjunto();
@@ -1278,7 +1280,17 @@ async function cargarMensajes() {
   estado.mensajesCargados = [...mapa.values()].sort((a, b) => a.id - b.id);
   if (!yaPagino) estado.hayMasAntiguos = hay_mas;
 
-  pintarMensajes();
+  // El poll pide esto cada 3s aunque no haya nada nuevo — repintar SIEMPRE
+  // rehace todo el innerHTML de #mensajes, lo que recrea el <audio>/<video>
+  // que el cliente esté escuchando/viendo y lo reinicia desde cero (el bug
+  // de "el audio se corta a los 2 segundos"). Si la firma del contenido no
+  // cambió, no hay nada que repintar.
+  const firma = JSON.stringify(estado.mensajesCargados);
+  if (firma !== estado.firmaMensajesPintados) {
+    estado.firmaMensajesPintados = firma;
+    pintarMensajes();
+  }
+
   const c = estado.conversaciones.find((x) => x.conversation_id === conversationId);
   if (c) { c.unread_count = 0; pintarLista(); }
   actualizarPedidosPanel();
@@ -1299,6 +1311,7 @@ async function cargarMensajesAnteriores() {
   if (estado.conversacionActivaId !== conversationId) return;
   estado.mensajesCargados = [...messages, ...estado.mensajesCargados];
   estado.hayMasAntiguos = hay_mas;
+  estado.firmaMensajesPintados = JSON.stringify(estado.mensajesCargados);
   pintarMensajes();
   cont.scrollTop = cont.scrollHeight - alturaPrevia;
 }
