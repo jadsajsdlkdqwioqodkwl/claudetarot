@@ -853,6 +853,20 @@ producto, etc.) sin depender de Meta.
   dentro del panel ⚡, aunque todavía no hayas marcado ninguna con la
   estrella (antes solo aparecía después de marcarla).
 
+### Novena vuelta: nombre del producto, spinner y fotos en paralelo
+
+- **Nunca más un SKU crudo en el chat**: al mandar un producto del catálogo,
+  el nombre viaja desde el picker (ya lo tenía cargado) y si no, se resuelve
+  del caché — el mensaje dice "Kit Tarot Rider-Waite…", no `nx8l8koiof`.
+- **Spinner mientras se manda** (respuesta rápida, catálogo, producto,
+  mensaje normal): el botón de enviar gira y se bloquea hasta que termina.
+- **Las fotos de una respuesta rápida se mandan todas a la vez**, no una por
+  una — la API las procesa en paralelo, llegan casi juntas. Ojo: WhatsApp
+  igual manda **una notificación por foto** en el celular del cliente; eso
+  lo decide la app de WhatsApp, no algo que la Cloud API deje agrupar en un
+  solo mensaje. Mismo cambio aplicado a la bienvenida automática y al
+  sandbox de prueba.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

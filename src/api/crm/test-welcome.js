@@ -48,9 +48,9 @@ async function post({ request, env, agent }) {
 
   try {
     if (media.results.length) {
-      for (const m of media.results) {
-        await mandarMediaGuardada(env, contacto.conversation_id, waId, m.media_key, m.media_type, quickReply.body, `Prueba de bienvenida (${agent?.displayName || agent?.username})`);
-      }
+      await Promise.all(media.results.map((m) =>
+        mandarMediaGuardada(env, contacto.conversation_id, waId, m.media_key, m.media_type, quickReply.body, `Prueba de bienvenida (${agent?.displayName || agent?.username})`)
+      ));
     } else if (quickReply.body) {
       await mandarTexto(env, contacto.conversation_id, waId, quickReply.body, `Prueba de bienvenida (${agent?.displayName || agent?.username})`);
     }

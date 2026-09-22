@@ -27,6 +27,8 @@
 .icono-svg { display: inline-flex; width: 1em; height: 1em; }
 .icono-svg svg { width: 100%; height: 100%; }
 button:has(.icono-svg) { display: inline-flex; align-items: center; justify-content: center; }
+.icono-svg.girando { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
 
 body {
   margin: 0;
