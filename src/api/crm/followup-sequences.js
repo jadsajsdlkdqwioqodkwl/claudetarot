@@ -21,7 +21,7 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const TIPOS_MEDIA = new Set(["image", "video", "document"]);
+const TIPOS_MEDIA = new Set(["image", "video", "document", "sticker"]);
 
 async function get({ env }) {
   const { results: secuencias } = await env.CRM_DB.prepare(

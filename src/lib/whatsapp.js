@@ -36,12 +36,24 @@ async function llamar(env, path, body) {
 }
 
 /** Manda un mensaje de texto libre. Solo funciona dentro de la ventana de 24h. */
-export async function enviarTexto(env, waId, texto) {
+export async function enviarTexto(env, waId, texto, replyToWaMessageId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
     to: waId,
     type: "text",
-    text: { body: texto, preview_url: true }
+    text: { body: texto, preview_url: true },
+    ...(replyToWaMessageId ? { context: { message_id: replyToWaMessageId } } : {})
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
+/** Reacciona con un emoji a un mensaje ya mandado (de cualquiera de los dos lados). emoji vacío/null quita la reacción. */
+export async function enviarReaccion(env, waId, targetWaMessageId, emoji) {
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "reaction",
+    reaction: { message_id: targetWaMessageId, emoji: emoji || "" }
   });
   return datos.messages?.[0]?.id || null;
 }
@@ -131,9 +143,11 @@ export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
 }
 
 /** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
-export async function enviarMedia(env, waId, type, mediaId, caption) {
+export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId) {
   const cuerpo = { messaging_product: "whatsapp", to: waId, type };
-  cuerpo[type] = caption ? { id: mediaId, caption } : { id: mediaId };
+  // Los stickers no aceptan caption — WhatsApp rechaza el mensaje si se lo mandas.
+  cuerpo[type] = caption && type !== "sticker" ? { id: mediaId, caption } : { id: mediaId };
+  if (replyToWaMessageId) cuerpo.context = { message_id: replyToWaMessageId };
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, cuerpo);
   return datos.messages?.[0]?.id || null;
 }

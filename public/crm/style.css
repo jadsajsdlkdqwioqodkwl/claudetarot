@@ -195,9 +195,34 @@ button { font-family: inherit; }
 #chat header .btn-star { font-size: 20px; }
 #chat header #btn-detalle { display: none; font-size: 20px; border: 0; background: transparent; cursor: pointer; color: var(--gris); }
 #mensajes { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-.msg { max-width: 65%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; }
-.msg.in { background: #fff; align-self: flex-start; border-top-left-radius: 0; }
-.msg.out { background: var(--burbuja-out); align-self: flex-end; border-top-right-radius: 0; }
+.msg-fila { display: flex; max-width: 65%; position: relative; }
+.msg-fila.in { align-self: flex-start; }
+.msg-fila.out { align-self: flex-end; }
+.msg { max-width: 100%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; transition: transform .15s; }
+.msg.in { background: #fff; border-top-left-radius: 0; }
+.msg.out { background: var(--burbuja-out); border-top-right-radius: 0; }
+.msg.sticker-msg { background: transparent; box-shadow: none; padding: 0; }
+
+.msg-acciones { position: absolute; top: -16px; right: 4px; display: none; gap: 1px; background: var(--panel); border-radius: var(--radio-full); box-shadow: 0 1px 4px rgba(0,0,0,.18); padding: 2px; z-index: 5; }
+.msg-fila:hover .msg-acciones { display: flex; }
+.msg-acciones button { border: 0; background: transparent; cursor: pointer; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--gris); }
+.msg-acciones button:hover { background: var(--hover); color: var(--texto); }
+.msg-acciones .icono-svg { width: 14px; height: 14px; }
+
+.msg-quote { border-left: 3px solid var(--verde-osc); background: rgba(0,0,0,.045); border-radius: 4px; padding: 4px 8px; margin-bottom: 4px; font-size: 12px; max-width: 260px; }
+.msg-quote-quien { font-weight: 600; color: var(--verde-osc); }
+.msg-quote-texto { color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.msg-reacciones { position: absolute; bottom: -11px; right: 6px; background: var(--panel); border-radius: var(--radio-full); box-shadow: 0 1px 3px rgba(0,0,0,.18); padding: 1px 5px; font-size: 13px; line-height: 1.4; }
+.reaccion-chip { margin: 0 1px; }
+
+.picker-reaccion { position: absolute; top: -16px; right: 26px; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-full); box-shadow: 0 2px 8px rgba(0,0,0,.18); padding: 4px 6px; display: flex; gap: 4px; z-index: 10; }
+.picker-reaccion button { border: 0; background: transparent; cursor: pointer; font-size: 18px; padding: 2px; line-height: 1; transition: transform .1s; }
+.picker-reaccion button:hover { transform: scale(1.25); }
+
+#preview-respuesta { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--panel); border-top: 1px solid var(--borde); }
+#preview-respuesta button { border: 0; background: transparent; cursor: pointer; color: var(--gris); flex-shrink: 0; }
+.msg .sticker { width: 120px; height: 120px; object-fit: contain; }
 .msg .hora { display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-size: 10px; color: var(--gris); margin-top: 3px; }
 .msg .tipo { font-style: italic; color: var(--gris); }
 .estado-msg { display: inline-flex; width: 13px; height: 13px; flex-shrink: 0; }
@@ -353,7 +378,11 @@ button { font-family: inherit; }
   #btn-mas { display: inline-flex; }
 
   .conv-item { padding: 10px 12px; }
-  .msg { max-width: 82%; }
+  .msg-fila { max-width: 82%; }
+  /* En mobile no hay :hover, y responder ya se hace deslizando — solo dejamos
+     visible el botón de reaccionar, siempre a la vista en vez de escondido. */
+  .msg-acciones { display: flex; }
+  .msg-acciones .msg-responder { display: none; }
 }
 
 @media (max-width: 480px) {

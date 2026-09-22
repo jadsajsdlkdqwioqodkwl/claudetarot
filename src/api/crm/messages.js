@@ -17,7 +17,7 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const TIPOS_MEDIA = new Set(["image", "video", "document"]);
+const TIPOS_MEDIA = new Set(["image", "video", "document", "sticker"]);
 
 const PAGINA = 50;
 
@@ -35,9 +35,13 @@ async function get({ request, env }) {
   const beforeId = Number(url.searchParams.get("before_id")) || null;
 
   const { results } = await env.CRM_DB.prepare(
-    `SELECT id, direction, type, body, media_id, media_key, media_mime, status, sent_by, created_at
-     FROM messages WHERE conversation_id = ? ${beforeId ? "AND id < ?" : ""}
-     ORDER BY id DESC LIMIT ?`
+    `SELECT m.id, m.direction, m.type, m.body, m.media_id, m.media_key, m.media_mime, m.status, m.sent_by, m.created_at,
+       m.reply_to_message_id, m.client_reaction, m.agent_reaction,
+       r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by
+     FROM messages m
+     LEFT JOIN messages r ON r.id = m.reply_to_message_id
+     WHERE m.conversation_id = ? ${beforeId ? "AND m.id < ?" : ""}
+     ORDER BY m.id DESC LIMIT ?`
   )
     .bind(...(beforeId ? [conversationId, beforeId, PAGINA] : [conversationId, PAGINA]))
     .all();
@@ -79,13 +83,23 @@ async function post({ request, env, agent }) {
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
   const sentBy = agent?.displayName || agent?.username || null;
 
+  let replyTo = null;
+  const replyToId = payload?.reply_to_id ? Number(payload.reply_to_id) : null;
+  if (replyToId) {
+    const fila = await env.CRM_DB.prepare("SELECT id, wa_message_id FROM messages WHERE id = ? AND conversation_id = ?")
+      .bind(replyToId, conversationId)
+      .first();
+    if (!fila) return json({ error: "El mensaje al que responde ya no existe." }, 404);
+    replyTo = fila;
+  }
+
   try {
     if (mediaKey) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);
-      const caption = String(payload?.caption || "").slice(0, 1024) || undefined;
+      const caption = type !== "sticker" ? String(payload?.caption || "").slice(0, 1024) || undefined : undefined;
       const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
-      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName);
+      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName, replyTo);
       await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
@@ -93,7 +107,7 @@ async function post({ request, env, agent }) {
     const texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
-    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy);
+    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo);
     await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {

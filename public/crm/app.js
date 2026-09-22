@@ -25,7 +25,8 @@ const estado = {
   mensajesCargados: [],
   hayMasAntiguos: false,
   pollConv: null,
-  pollMsg: null
+  pollMsg: null,
+  respondiendoA: null
 };
 
 function pedir(url, opciones = {}) {
@@ -692,6 +693,7 @@ async function abrirConversacion(c) {
   estado.conversacionActivaId = c.conversation_id;
   estado.mensajesCargados = [];
   estado.hayMasAntiguos = false;
+  estado.respondiendoA = null;
   cancelarAdjunto();
   document.body.classList.add("chat-abierto"); // en móvil: pantalla completa del chat, no la lista
   document.body.classList.remove("detalle-abierto");
@@ -725,6 +727,7 @@ function pintarChatBase(c) {
     </header>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
+    <div id="preview-respuesta" style="display:none"></div>
     <div id="preview-archivo" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
@@ -752,6 +755,7 @@ function pintarChatBase(c) {
   });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
+  configurarAccionesMensajes();
 
   const textoEnvio = $("#texto-envio");
   textoEnvio.addEventListener("keydown", (e) => {
@@ -955,47 +959,13 @@ async function actualizarPedidosPanel() {
   if (!cont || !estado.conversacionActivaId) return;
   try {
     const { orders } = await pedir(`/api/crm/catalog?conversation_id=${estado.conversacionActivaId}`);
-    const esAdmin = estado.miRol === "admin";
     const html = orders.length ? orders.map((o) => `
       <div class="ad-card" style="margin-bottom:8px">
         <div class="titulo">${icon("bag")} ${fechaCorta(o.created_at)}</div>
         ${o.items.map((i) => `<div>${i.quantity}× ${escapar(i.name || i.product_retailer_id)} — ${i.item_price ?? ""} ${escapar(o.currency || "")}</div>`).join("")}
         ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
-        ${esAdmin ? `
-        <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <button class="capi-enviar" data-id="${o.id}" data-total="${o.total_amount || ""}" data-currency="${escapar(o.currency || "")}" style="font-size:11px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--radio-s);background:#fff;cursor:pointer">${o.capi_status === "enviado" ? "Reportar de nuevo" : "Reportar venta a Meta"}</button>
-          ${o.capi_status === "enviado" ? `<span style="font-size:11px;color:var(--verde-osc)">✓ enviado</span>` : o.capi_status === "fallido" ? `<span style="font-size:11px;color:var(--peligro)">falló, reintenta</span>` : ""}
-        </div>` : ""}
       </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
-    if (cont.innerHTML !== html) {
-      cont.innerHTML = html;
-      cont.querySelectorAll(".capi-enviar").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          let valor = btn.dataset.total;
-          if (!valor) {
-            valor = prompt("Este pedido no tiene un total guardado — escribe el monto de la venta:");
-            if (!valor) return;
-          }
-          if (!confirm(`¿Reportar a Meta esta venta de ${valor} ${btn.dataset.currency || "PEN"}? Ayuda a que el algoritmo de anuncios encuentre más clientes como este.`)) return;
-          if (!confirm("Confirma de nuevo: ¿mandar el reporte ahora?")) return;
-          btn.disabled = true;
-          try {
-            await pedir("/api/crm/capi-send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ order_id: Number(btn.dataset.id), value: Number(valor), currency: btn.dataset.currency || undefined })
-            });
-            alert("Evento mandado a Meta.");
-            await actualizarPedidosPanel();
-            await actualizarHistorialCapi(estado.conversacionActivaId);
-          } catch (err) {
-            alert(err.message);
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
-    }
+    if (cont.innerHTML !== html) cont.innerHTML = html;
   } catch { /* silencioso */ }
 }
 
@@ -1055,6 +1025,9 @@ async function actualizarSeguimientosDetalle() {
 }
 
 function contenidoMensaje(m) {
+  if (m.type === "sticker" && (m.media_key || m.media_id)) {
+    return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
+  }
   if (m.type === "image" && (m.media_key || m.media_id)) {
     return `<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
@@ -1066,6 +1039,30 @@ function contenidoMensaje(m) {
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
   if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
+}
+
+/** Un extracto corto de un mensaje, para citarlo en la respuesta o en el "responde a" arriba de una burbuja. */
+function extractoMensaje(tipo, body) {
+  if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
+  const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido" };
+  return nombres[tipo] || "Mensaje";
+}
+
+/** La cajita citada arriba del mensaje, cuando es una respuesta a otro — como WhatsApp. */
+function quoteHtml(m) {
+  if (!m.reply_to_message_id) return "";
+  const quien = m.reply_direction === "out" ? (m.reply_sent_by || "Tú") : "Cliente";
+  return `<div class="msg-quote">
+    <div class="msg-quote-quien">${escapar(quien)}</div>
+    <div class="msg-quote-texto">${escapar(extractoMensaje(m.reply_type, m.reply_body))}</div>
+  </div>`;
+}
+
+/** Chips de reacción (una por lado como mucho, igual que WhatsApp) debajo/al costado de la burbuja. */
+function reaccionesHtml(m) {
+  if (!m.client_reaction && !m.agent_reaction) return "";
+  const chips = [m.client_reaction, m.agent_reaction].filter(Boolean).map((e) => `<span class="reaccion-chip">${escapar(e)}</span>`).join("");
+  return `<div class="msg-reacciones">${chips}</div>`;
 }
 
 /** "Hoy", "Ayer" o la fecha — para separar los mensajes por día, como WhatsApp. */
@@ -1101,9 +1098,17 @@ function pintarMensajes() {
     const separador = dia !== diaAnterior ? `<div class="separador-fecha"><span>${dia}</span></div>` : "";
     diaAnterior = dia;
     return `${separador}
-    <div class="msg ${m.direction}">
-      ${contenidoMensaje(m)}
-      <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
+    <div class="msg-fila ${m.direction}" data-id="${m.id}">
+      <div class="msg-acciones">
+        <button type="button" class="msg-reaccionar" title="Reaccionar">${icon("smile")}</button>
+        <button type="button" class="msg-responder" title="Responder">${icon("reply")}</button>
+      </div>
+      <div class="msg ${m.direction}">
+        ${quoteHtml(m)}
+        ${contenidoMensaje(m)}
+        <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
+        ${reaccionesHtml(m)}
+      </div>
     </div>`;
   }).join("");
 
@@ -1113,6 +1118,120 @@ function pintarMensajes() {
 
   $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
   if (abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
+}
+
+/* ---------- Responder a un mensaje / reaccionar ---------- */
+
+const EMOJIS_REACCION = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+function configurarAccionesMensajes() {
+  const cont = $("#mensajes");
+  if (!cont) return;
+
+  cont.addEventListener("click", (e) => {
+    const filaResponder = e.target.closest(".msg-responder");
+    if (filaResponder) {
+      seleccionarRespuesta(Number(filaResponder.closest(".msg-fila").dataset.id));
+      return;
+    }
+    const filaReaccionar = e.target.closest(".msg-reaccionar");
+    if (filaReaccionar) {
+      abrirPickerReaccion(filaReaccionar);
+      return;
+    }
+  });
+
+  // Deslizar a la derecha para responder, igual que WhatsApp — solo en touch.
+  let touchInicio = null;
+  let filaActual = null;
+  cont.addEventListener("touchstart", (e) => {
+    const fila = e.target.closest(".msg-fila");
+    if (!fila) return;
+    filaActual = fila;
+    touchInicio = e.touches[0].clientX;
+  }, { passive: true });
+  cont.addEventListener("touchmove", (e) => {
+    if (!filaActual || touchInicio === null) return;
+    const delta = Math.max(0, Math.min(70, e.touches[0].clientX - touchInicio));
+    filaActual.querySelector(".msg").style.transform = `translateX(${delta}px)`;
+  }, { passive: true });
+  cont.addEventListener("touchend", (e) => {
+    if (!filaActual) return;
+    const delta = (e.changedTouches[0]?.clientX || 0) - touchInicio;
+    filaActual.querySelector(".msg").style.transform = "";
+    if (delta > 60) seleccionarRespuesta(Number(filaActual.dataset.id));
+    filaActual = null;
+    touchInicio = null;
+  });
+}
+
+function seleccionarRespuesta(id) {
+  const m = estado.mensajesCargados.find((x) => x.id === id);
+  if (!m) return;
+  estado.respondiendoA = { id: m.id, direction: m.direction, sentBy: m.sent_by, type: m.type, body: m.body };
+  pintarPreviewRespuesta();
+  $("#texto-envio")?.focus();
+}
+
+function cancelarRespuesta() {
+  estado.respondiendoA = null;
+  pintarPreviewRespuesta();
+}
+
+function pintarPreviewRespuesta() {
+  const cont = $("#preview-respuesta");
+  if (!cont) return;
+  const r = estado.respondiendoA;
+  if (!r) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  cont.style.display = "flex";
+  cont.innerHTML = `
+    <div class="msg-quote" style="flex:1">
+      <div class="msg-quote-quien">${escapar(r.direction === "out" ? (r.sentBy || "Tú") : "Cliente")}</div>
+      <div class="msg-quote-texto">${escapar(extractoMensaje(r.type, r.body))}</div>
+    </div>
+    <button type="button" id="cancelar-respuesta">${icon("close")}</button>`;
+  $("#cancelar-respuesta").addEventListener("click", cancelarRespuesta);
+}
+
+function abrirPickerReaccion(btn) {
+  document.querySelectorAll(".picker-reaccion").forEach((el) => el.remove());
+  const filaId = Number(btn.closest(".msg-fila").dataset.id);
+  const picker = document.createElement("div");
+  picker.className = "picker-reaccion";
+  picker.innerHTML = EMOJIS_REACCION.map((em) => `<button type="button" data-emoji="${em}">${em}</button>`).join("");
+  btn.closest(".msg-acciones").appendChild(picker);
+
+  picker.querySelectorAll("button").forEach((b) => {
+    b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      picker.remove();
+      await enviarReaccionMsg(filaId, b.dataset.emoji);
+    });
+  });
+
+  setTimeout(() => {
+    document.addEventListener("click", function cerrar(ev) {
+      if (!picker.contains(ev.target)) { picker.remove(); document.removeEventListener("click", cerrar); }
+    });
+  }, 0);
+}
+
+async function enviarReaccionMsg(messageId, emoji) {
+  const m = estado.mensajesCargados.find((x) => x.id === messageId);
+  // agent_reaction es siempre "lo que nosotros pusimos" — sin importar si el
+  // mensaje en sí es de entrada o de salida. Tocar el mismo emoji la quita,
+  // como WhatsApp.
+  const emojiFinal = m?.agent_reaction === emoji ? null : emoji;
+  try {
+    await pedir("/api/crm/react", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: messageId, emoji: emojiFinal })
+    });
+    await cargarMensajes();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 /* ---------- Adjuntar y enviar ---------- */
@@ -1163,6 +1282,8 @@ async function enviarMensaje(e) {
   input.disabled = true;
   mostrarEnviando(true);
 
+  const replyToId = estado.respondiendoA?.id || undefined;
+
   try {
     if (adjunto) {
       const { media_key, type, original_name } = await subirArchivo(adjunto.file);
@@ -1172,17 +1293,18 @@ async function enviarMensaje(e) {
         // `caption` es lo único que ve el cliente en WhatsApp — nunca el
         // nombre del archivo. `file_name` solo queda en el registro interno
         // (y de ahí al reporte de Sheets), el cliente nunca lo ve.
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name })
+        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
       cancelarAdjunto();
     } else {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: texto })
+        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: texto, reply_to_id: replyToId })
       });
     }
     input.value = "";
+    cancelarRespuesta();
     await cargarMensajes();
     await cargarConversaciones();
   } catch (err) {
@@ -1879,6 +2001,11 @@ async function pintarDetalle(c) {
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
 
+    <h2>Notas</h2>
+    <textarea id="detalle-notas" placeholder="Ej. Adelanto, separado, talla, modelo de collar específico, otros productos o múltiples unidades, etc." style="width:100%;min-height:70px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(c.notes || "")}</textarea>
+    <div class="ayuda-modal" id="detalle-notas-estado" style="margin:2px 0 0"></div>
+
+    ${estado.miRol === "admin" ? `
     <h2>Origen</h2>
     ${tieneAd ? `
       <div class="ad-card">
@@ -1887,7 +2014,8 @@ async function pintarDetalle(c) {
         ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
         ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}
       </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
-    ${estado.miRol === "admin" && !tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
+    ${!tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
+    ` : ""}
 
     <h2>Seguimientos programados</h2>
     <div id="detalle-seguimientos">Cargando…</div>
@@ -1917,6 +2045,23 @@ async function pintarDetalle(c) {
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
+
+  $("#detalle-notas").addEventListener("input", debounce(async (e) => {
+    const estadoEl = $("#detalle-notas-estado");
+    estadoEl.textContent = "Guardando…";
+    try {
+      await pedir("/api/crm/contacts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_id: c.contact_id, notes: e.target.value })
+      });
+      c.notes = e.target.value;
+      estadoEl.textContent = "Guardado ✓";
+      setTimeout(() => { if (estadoEl.textContent === "Guardado ✓") estadoEl.textContent = ""; }, 1500);
+    } catch (err) {
+      estadoEl.textContent = `No se guardó: ${err.message}`;
+    }
+  }, 600));
 
   $("#capi-elegir-catalogo-btn")?.addEventListener("click", async () => {
     const cont = $("#capi-catalogo-lista");

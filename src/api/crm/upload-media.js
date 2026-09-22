@@ -19,19 +19,23 @@ const json = (data, status = 200) =>
 const MAX_BYTES = 16 * 1024 * 1024; // el límite de WhatsApp para video/documento
 
 // Lo único que la Cloud API acepta como foto o video de verdad (no como
-// documento). webp, heic, gif, etc. los rechaza con (#100) Invalid parameter
+// documento). heic, gif, etc. los rechaza con (#100) Invalid parameter
 // aunque el navegador los deje elegir — por eso se valida acá, no solo por
-// el `accept` del input.
+// el `accept` del input. webp es un caso aparte: como foto normal WhatsApp
+// también lo rechaza, pero es EL formato de los stickers — se acepta nada
+// más para eso, con el límite de tamaño de Meta para stickers.
 const EXTENSION_POR_MIME = {
-  "image/jpeg": "jpg", "image/png": "png",
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
   "video/mp4": "mp4", "video/3gpp": "3gp",
   "application/pdf": "pdf"
 };
 
 const IMAGENES_VALIDAS = new Set(["image/jpeg", "image/png"]);
 const VIDEOS_VALIDOS = new Set(["video/mp4", "video/3gpp"]);
+const STICKER_MAX_BYTES = 500 * 1024; // límite de Meta para animados; los estáticos piden 100KB (no detectable sin decodificar el webp)
 
 function tipoDeMime(mime) {
+  if (mime === "image/webp") return "sticker";
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/")) return "video";
   return "document";
@@ -55,7 +59,9 @@ async function handler({ request, env }) {
 
   const mime = file.type || "application/octet-stream";
 
-  if (mime.startsWith("image/") && !IMAGENES_VALIDAS.has(mime)) {
+  if (mime === "image/webp") {
+    if (file.size > STICKER_MAX_BYTES) return json({ error: "El sticker pesa demasiado — Meta pide hasta 100KB si es estático o 500KB si es animado." }, 413);
+  } else if (mime.startsWith("image/") && !IMAGENES_VALIDAS.has(mime)) {
     return json({ error: `WhatsApp solo acepta fotos en JPG o PNG (esta es ${mime.replace("image/", "").toUpperCase()}). Conviértela antes de subirla.` }, 415);
   }
   if (mime.startsWith("video/") && !VIDEOS_VALIDOS.has(mime)) {

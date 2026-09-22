@@ -39,6 +39,7 @@ async function handler({ request, env }) {
         c.ctwa_clid,
         c.ad_source_type,
         c.ad_headline,
+        c.notes,
         (SELECT body FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_body,
         (SELECT type FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_type,
         (SELECT direction FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_direction

@@ -69,6 +69,7 @@ import {
 } from "./api/crm/totp-setup.js";
 import { onRequestGet as crmBulkSendGet, onRequestPost as crmBulkSendPost } from "./api/crm/bulk-send.js";
 import { onRequestGet as crmCapiSendGet, onRequestPost as crmCapiSendPost } from "./api/crm/capi-send.js";
+import { onRequestPost as crmReactPost } from "./api/crm/react.js";
 import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
@@ -108,6 +109,7 @@ const ROUTES = {
   "/api/crm/totp-setup": { GET: crmTotpGet, POST: crmTotpPost, PATCH: crmTotpPatch, DELETE: crmTotpDelete },
   "/api/crm/bulk-send": { GET: crmBulkSendGet, POST: crmBulkSendPost },
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
+  "/api/crm/react": { POST: crmReactPost },
   "/api/crm/export-reset": { POST: crmExportResetPost },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },

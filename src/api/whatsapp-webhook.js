@@ -18,7 +18,9 @@ import {
   actualizarEstadoMensaje,
   registrarPedidoCatalogo,
   nombresDeProductos,
-  guardarProductosEnCache
+  guardarProductosEnCache,
+  idPorWaMessageId,
+  registrarReaccionCliente
 } from "../lib/crm-db.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
@@ -111,6 +113,14 @@ async function procesarCambio(env, db, value) {
     const waId = msg.from;
     const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
     const conversacion = await obtenerOCrearConversacion(db, contacto.id);
+
+    // Una reacción no es un mensaje nuevo — solo marca la que ya existe. Un
+    // emoji vacío ("") es al cliente sacándose su reacción anterior.
+    if (msg.type === "reaction") {
+      await registrarReaccionCliente(db, conversacion.id, msg.reaction?.message_id, msg.reaction?.emoji || null);
+      continue;
+    }
+
     const { type, body, mediaId, mediaMime, order } = tipoYCuerpo(msg);
     let bodyFinal = body;
     let ordenResuelta = order;
@@ -118,7 +128,8 @@ async function procesarCambio(env, db, value) {
       ordenResuelta = await resolverNombresPedido(env, order);
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime });
+    const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
+    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId });
     await cancelarSeguimientosPendientes(db, conversacion.id);
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);

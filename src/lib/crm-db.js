@@ -56,13 +56,13 @@ export async function obtenerOCrearConversacion(db, contactId) {
     .first();
 }
 
-export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, mediaId, mediaMime }) {
+export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, mediaId, mediaMime, replyToMessageId }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_id, media_mime, status)
-       VALUES (?, ?, 'in', ?, ?, ?, ?, 'received')`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_id, media_mime, status, reply_to_message_id)
+       VALUES (?, ?, 'in', ?, ?, ?, ?, 'received', ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaId || null, mediaMime || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaId || null, mediaMime || null, replyToMessageId || null)
     .run();
 
   await db
@@ -78,13 +78,13 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy }) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by)
-       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?)`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by, reply_to_message_id)
+       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?, ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null)
     .run();
 
   await db
@@ -98,6 +98,27 @@ export async function actualizarEstadoMensaje(db, waMessageId, status) {
     .prepare("UPDATE messages SET status = ? WHERE wa_message_id = ?")
     .bind(status, waMessageId)
     .run();
+}
+
+/** Busca el id interno de un mensaje por su wa_message_id — para resolver a qué mensaje responde uno entrante. */
+export async function idPorWaMessageId(db, waMessageId) {
+  if (!waMessageId) return null;
+  const fila = await db.prepare("SELECT id FROM messages WHERE wa_message_id = ?").bind(waMessageId).first();
+  return fila?.id || null;
+}
+
+/** Guarda la reacción que puso el CLIENTE a uno de nuestros mensajes (o a uno suyo) — emoji null/"" la quita. */
+export async function registrarReaccionCliente(db, conversationId, targetWaMessageId, emoji) {
+  if (!targetWaMessageId) return;
+  await db
+    .prepare("UPDATE messages SET client_reaction = ? WHERE conversation_id = ? AND wa_message_id = ?")
+    .bind(emoji || null, conversationId, targetWaMessageId)
+    .run();
+}
+
+/** Guarda la reacción que puso EL VENDEDOR a un mensaje — emoji null/"" la quita. */
+export async function guardarReaccionPropia(db, messageId, emoji) {
+  await db.prepare("UPDATE messages SET agent_reaction = ? WHERE id = ?").bind(emoji || null, messageId).run();
 }
 
 /** Cancela los seguimientos programados pendientes de una conversación — se usa cuando el cliente escribe o cuando nosotros le mandamos algo a mano, para no insistir con un mensaje que ya quedó desactualizado. */
