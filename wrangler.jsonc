@@ -15,11 +15,11 @@
     "enabled": true
   },
 
-  // Manda los seguimientos programados del CRM que ya vencieron. Cada minuto
-  // es el mínimo que deja Cloudflare; sobra de margen para algo que se
-  // programa con horas o días de anticipación.
+  // Dos crons con trabajos distintos (se distinguen por `event.cron` en
+  // src/index.js): el de cada minuto manda los seguimientos vencidos, el de
+  // cada 10 minutos vuelca los mensajes nuevos del CRM a Google Sheets.
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": ["* * * * *", "*/10 * * * *"]
   },
 
   // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.
@@ -96,6 +96,12 @@
     "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928",
     // Para listar y mandar Message Templates (mensajes fuera de la ventana
     // de 24h) desde /api/crm/templates.
-    "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194"
+    "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194",
+
+    // Hoja donde el cron vuelca los chats crudos cada 10 min, para que un
+    // LLM los procese después. Usa la MISMA cuenta de servicio de arriba —
+    // solo hay que compartirle esta hoja como Editor.
+    "GOOGLE_CRM_SHEET_ID": "1ksEBDIQg8DEH8px5tTYzGZbR46bYSaCikXYA9czLVys",
+    "GOOGLE_CRM_SHEET_NAME": "Sheet 1"
   }
 }

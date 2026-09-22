@@ -1,10 +1,15 @@
 /**
+ * POST  /api/crm/contacts — { wa_id, name? } → crea un contacto + su
+ *       conversación a mano, para que un vendedor pueda cargar un lead
+ *       antes de que la persona escriba por WhatsApp.
  * PATCH /api/crm/contacts — { contact_id, name?, stage?, notes?, tags? }
- * Actualiza el contacto: la etapa del pipeline, el nombre puesto por el
- * vendedor (distinto del `profile_name` que manda WhatsApp), notas y tags.
+ *       Actualiza el contacto: la etapa del pipeline, el nombre puesto por
+ *       el vendedor (distinto del `profile_name` que manda WhatsApp),
+ *       notas y tags.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { obtenerOCrearContacto, obtenerOCrearConversacion } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -13,6 +18,34 @@ const json = (data, status = 200) =>
   });
 
 const ETAPAS = new Set(["nuevo", "contactado", "negociando", "ganado", "perdido"]);
+
+async function post({ request, env }) {
+  let payload;
+  try {
+    payload = JSON.parse(await request.text());
+  } catch {
+    return json({ error: "Solicitud inválida." }, 400);
+  }
+
+  const waId = String(payload?.wa_id || "").replace(/\D/g, "");
+  const name = String(payload?.name || "").trim().slice(0, 120);
+
+  // Mínimo un celular peruano con código de país: 51 + 9 dígitos = 11.
+  if (waId.length < 10 || waId.length > 15) {
+    return json({ error: "WhatsApp inválido — con código de país y sin +, ej. 51987654321." }, 422);
+  }
+
+  const contacto = await obtenerOCrearContacto(env.CRM_DB, waId, null);
+  if (name && !contacto.name) {
+    await env.CRM_DB.prepare("UPDATE contacts SET name = ?, updated_at = datetime('now') WHERE id = ?")
+      .bind(name, contacto.id)
+      .run();
+    contacto.name = name;
+  }
+  const conversacion = await obtenerOCrearConversacion(env.CRM_DB, contacto.id);
+
+  return json({ ok: true, contact: contacto, conversation_id: conversacion.id });
+}
 
 async function patch({ request, env }) {
   let payload;
@@ -59,4 +92,5 @@ async function patch({ request, env }) {
   return json({ ok: true, contact: contacto });
 }
 
+export const onRequestPost = conAuth(post);
 export const onRequestPatch = conAuth(patch);

@@ -769,6 +769,22 @@ el bucket se pueda crear.
 | Token de WhatsApp (`WHATSAPP_TOKEN`) | Vive solo como secret de Cloudflare, nunca en el código ni en el repo. Si alguna vez sospechas que se filtró, revócalo en Meta (System Users → ese token → Revoke) y genera uno nuevo — eso es lo que de verdad "recupera" el número si algo sale mal, más que cualquier cosa del lado del CRM. |
 | Plantillas (gasto) | Cualquier vendedor logueado puede mandarlas hoy. Si quieres limitarlo a admins, es un cambio de una línea — dime y lo hago. |
 
+### Quinta vuelta: contactos a mano y export de chats a Sheets
+
+- **Nuevo contacto**: ícono "+" arriba a la izquierda — cualquier vendedor
+  carga un WhatsApp (y opcionalmente un nombre) para dejar la ficha lista
+  antes de que la persona escriba. Ojo: WhatsApp igual exige que el primer
+  mensaje *de verdad* sea o bien iniciado por el cliente, o una plantilla
+  aprobada — crear el contacto no manda nada solo, es para que quede
+  registrado y listo para conversar en cuanto haya contacto real.
+- **Export de chats a Google Sheets** (`src/lib/crm-sheets-export.js`, cron
+  cada 10 minutos): vuelca cada mensaje nuevo, sin resumir nada — fecha
+  (hora de Lima), WhatsApp, nombre, si fue el cliente o el vendedor, quién
+  de tu equipo lo mandó, tipo y texto. Guarda hasta dónde ya exportó
+  (`crm_export_state`) para no repetir filas. Reusa la misma cuenta de
+  servicio de Google que ya tenías — solo hubo que compartirle la hoja
+  nueva como Editor, nada de credenciales nuevas.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
