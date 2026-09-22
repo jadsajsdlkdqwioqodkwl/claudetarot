@@ -47,17 +47,26 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Faltan 'to' y/o 'texto'." }, 400);
   }
 
+  let respuesta;
   try {
-    const respuesta = await enviarTexto(env, para, texto);
-    const messageId = respuesta.messages?.[0]?.id || "";
-    const fecha = fechaLima();
-
-    await registrarMensaje(env, { fecha, direccion: "out", waId: para, tipo: "text", texto, messageId, worker });
-    await upsertContacto(env, { waId: para, fecha, ultimoMensaje: texto.slice(0, 120) });
-
-    return json({ ok: true, messageId });
+    respuesta = await enviarTexto(env, para, texto);
   } catch (err) {
+    // Esto sí es un fallo real: el mensaje no salió.
     console.error("WhatsApp send:", err.message);
     return json({ ok: false, error: err.message }, 502);
   }
+
+  const messageId = respuesta.messages?.[0]?.id || "";
+  const fecha = fechaLima();
+
+  try {
+    // El mensaje YA salió por WhatsApp. Que el Sheet no esté listo (o falle)
+    // no puede convertir un envío exitoso en un error para quien lo mandó.
+    await registrarMensaje(env, { fecha, direccion: "out", waId: para, tipo: "text", texto, messageId, worker });
+    await upsertContacto(env, { waId: para, fecha, ultimoMensaje: texto.slice(0, 120) });
+  } catch (err) {
+    console.error("WhatsApp send → Sheets:", err.message);
+  }
+
+  return json({ ok: true, messageId });
 }
