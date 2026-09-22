@@ -10,7 +10,7 @@
  * llamada de red antes de responder.
  */
 
-import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeEntrante, actualizarEstadoMensaje } from "../lib/crm-db.js";
+import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeEntrante, actualizarEstadoMensaje, registrarPedidoCatalogo } from "../lib/crm-db.js";
 import { firmaValida } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
@@ -49,6 +49,12 @@ function tipoYCuerpo(msg) {
       return { type: "location", body: `${msg.location?.latitude},${msg.location?.longitude}` };
     case "button":
       return { type: "text", body: msg.button?.text || "" };
+    case "order": {
+      const items = msg.order?.product_items || [];
+      const total = items.reduce((s, i) => s + (i.item_price || 0) * (i.quantity || 1), 0);
+      const resumen = items.map((i) => `${i.quantity}× ${i.product_retailer_id}`).join(", ");
+      return { type: "order", body: resumen, order: { catalogId: msg.order?.catalog_id, items, total, currency: items[0]?.currency } };
+    }
     case "interactive": {
       const r = msg.interactive?.button_reply || msg.interactive?.list_reply;
       return { type: "text", body: r?.title || "" };
@@ -65,8 +71,11 @@ async function procesarCambio(env, db, value) {
     const waId = msg.from;
     const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
     const conversacion = await obtenerOCrearConversacion(db, contacto.id);
-    const { type, body, mediaId, mediaMime } = tipoYCuerpo(msg);
+    const { type, body, mediaId, mediaMime, order } = tipoYCuerpo(msg);
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body, mediaId, mediaMime });
+    if (type === "order" && order) {
+      await registrarPedidoCatalogo(db, conversacion.id, msg.id, order);
+    }
   }
 
   for (const st of value.statuses || []) {

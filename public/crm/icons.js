@@ -20,7 +20,9 @@ const ICONS = {
   trash: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h14M7.5 5.5V3.5h5v2M5.5 5.5l.7 10a1 1 0 001 .9h5.6a1 1 0 001-.9l.7-10"/></svg>`,
   logout: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4.5a1 1 0 00-1 1v12a1 1 0 001 1H8M13 14l4-4-4-4M17 10H7"/></svg>`,
   search: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="6"/><path d="M17.5 17.5L13.5 13.5" stroke-linecap="round"/></svg>`,
-  doc: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12h-10z"/><path d="M12 2.5V6h3"/></svg>`
+  doc: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12h-10z"/><path d="M12 2.5V6h3"/></svg>`,
+  bag: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 6h10l1 11H4z"/><path d="M7 6V5a3 3 0 016 0v1"/></svg>`,
+  shield: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l6 2.5v5c0 4-2.6 6.8-6 8.5-3.4-1.7-6-4.5-6-8.5v-5z"/></svg>`
 };
 
 function icon(nombre, claseExtra = "") {

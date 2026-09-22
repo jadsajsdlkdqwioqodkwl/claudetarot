@@ -72,6 +72,25 @@ export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
   return datos.messages?.[0]?.id || null;
 }
 
+/**
+ * Manda el catálogo conectado a este número como un mensaje interactivo con
+ * botón "Ver catálogo". No necesita el Catalog ID: usa el que ya está
+ * conectado al número en WhatsApp Manager.
+ */
+export async function enviarCatalogo(env, waId, texto) {
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "interactive",
+    interactive: {
+      type: "catalog_message",
+      body: { text: texto || "Mira nuestro catálogo completo:" },
+      action: { name: "catalog_message" }
+    }
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
 /** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
 export async function enviarMedia(env, waId, type, mediaId, caption) {
   const cuerpo = { messaging_product: "whatsapp", to: waId, type };
