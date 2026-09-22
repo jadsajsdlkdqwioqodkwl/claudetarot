@@ -142,11 +142,16 @@ export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
   return datos.messages?.[0]?.id || null;
 }
 
-/** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
-export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId) {
+/** Manda una imagen, video, documento o sticker ya subido a la Cloud API (ver subirMedia). */
+export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId, fileName) {
   const cuerpo = { messaging_product: "whatsapp", to: waId, type };
-  // Los stickers no aceptan caption — WhatsApp rechaza el mensaje si se lo mandas.
-  cuerpo[type] = caption && type !== "sticker" ? { id: mediaId, caption } : { id: mediaId };
+  // Los stickers no aceptan caption — WhatsApp rechaza el mensaje si se lo
+  // manda. Los documentos sí aceptan filename — sin esto, al cliente le
+  // llega con un nombre genérico (o el hash del archivo) en vez de algo
+  // legible como "Catálogo.pdf".
+  cuerpo[type] = { id: mediaId };
+  if (caption && type !== "sticker") cuerpo[type].caption = caption;
+  if (fileName && type === "document") cuerpo[type].filename = fileName;
   if (replyToWaMessageId) cuerpo.context = { message_id: replyToWaMessageId };
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, cuerpo);
   return datos.messages?.[0]?.id || null;

@@ -783,6 +783,13 @@ async function abrirConversacion(c) {
   estado.hayMasAntiguos = false;
   estado.respondiendoA = null;
   cancelarAdjunto();
+  // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
+  // de chats, no salir del sitio — se logra metiendo un estado en el
+  // historial al entrar a un chat, así el "atrás" del navegador lo consume
+  // a él primero (ver el "popstate" más abajo) en vez de navegar afuera.
+  if (!document.body.classList.contains("chat-abierto")) {
+    history.pushState({ crmChat: true }, "", location.href);
+  }
   document.body.classList.add("chat-abierto"); // en móvil: pantalla completa del chat, no la lista
   document.body.classList.remove("detalle-abierto");
   pintarLista();
@@ -839,6 +846,18 @@ function avisarSalidaDeChat(conversationId) {
 
 window.addEventListener("beforeunload", () => {
   if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
+});
+
+// El "atrás" del teléfono (o el del navegador) dispara esto en vez de salir
+// del sitio cuando hay algo abierto — ver los pushState en abrirConversacion
+// y al abrir "Detalle". Cierra lo de más arriba primero (detalle antes que
+// el chat), igual que la app real.
+window.addEventListener("popstate", () => {
+  if (document.body.classList.contains("detalle-abierto")) {
+    document.body.classList.remove("detalle-abierto");
+  } else if (document.body.classList.contains("chat-abierto")) {
+    volverALaLista();
+  }
 });
 
 /* ---------- Notificaciones push (mensaje nuevo, con la pestaña de fondo o el celular bloqueado) ---------- */
@@ -949,7 +968,7 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-stickers" title="Stickers">${icon("sticker")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
-      <input type="file" id="input-archivo" accept="image/*,video/*" style="display:none" />
+      <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
@@ -962,8 +981,13 @@ function pintarChatBase(c) {
       <div id="panel-stickers"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
-  $("#btn-volver").addEventListener("click", volverALaLista);
-  $("#btn-detalle").addEventListener("click", () => document.body.classList.add("detalle-abierto"));
+  // Consume el estado que se metió al abrir el chat, para que el botón en
+  // pantalla y el "atrás" físico del teléfono hagan exactamente lo mismo.
+  $("#btn-volver").addEventListener("click", () => history.back());
+  $("#btn-detalle").addEventListener("click", () => {
+    history.pushState({ crmDetalle: true }, "", location.href);
+    document.body.classList.add("detalle-abierto");
+  });
   $("#star-header").addEventListener("click", () => {
     const c2 = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
     if (c2) toggleSeguimiento(c2);
@@ -1368,6 +1392,10 @@ function contenidoMensaje(m) {
   if (m.type === "audio" && (m.media_key || m.media_id)) {
     return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>`;
   }
+  if (m.type === "document" && (m.media_key || m.media_id)) {
+    const nombre = m.file_name || m.body || "Documento";
+    return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a>`;
+  }
   if (!m.type || m.type === "text") return escapar(m.body || "");
   if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;
   if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;
@@ -1578,9 +1606,16 @@ function onArchivoElegido(e) {
   elegirArchivo(file);
 }
 
+/** Adivina el tipo solo para la vista previa local — quién manda de verdad es lo que devuelve el servidor al subirlo (ver enviarMensaje). */
+function tipoLocal(file) {
+  if (file.type.startsWith("image/") && file.type !== "image/webp") return "image";
+  if (file.type.startsWith("video/")) return "video";
+  return "document";
+}
+
 function elegirArchivo(file) {
-  const tipo = file.type.startsWith("video/") ? "video" : "image";
-  const previewUrl = URL.createObjectURL(file);
+  const tipo = tipoLocal(file);
+  const previewUrl = tipo === "document" ? null : URL.createObjectURL(file);
   estado.archivoAdjunto = { file, tipo, previewUrl };
   pintarPreviewArchivo();
 }
@@ -1600,15 +1635,18 @@ function pintarPreviewArchivo() {
   const a = estado.archivoAdjunto;
   if (!a) { cont.style.display = "none"; cont.innerHTML = ""; return; }
   cont.style.display = "flex";
+  const previa = a.tipo === "video" ? `<video src="${a.previewUrl}"></video>`
+    : a.tipo === "image" ? `<img src="${a.previewUrl}" />`
+    : `<span class="miniatura">${icon("doc")}</span>`;
   cont.innerHTML = `
-    ${a.tipo === "video" ? `<video src="${a.previewUrl}"></video>` : `<img src="${a.previewUrl}" />`}
+    ${previa}
     <span>${escapar(a.file.name)}</span>
     <button type="button" id="quitar-archivo">Quitar</button>`;
   $("#quitar-archivo").addEventListener("click", cancelarAdjunto);
 }
 
 function cancelarAdjunto() {
-  if (estado.archivoAdjunto) URL.revokeObjectURL(estado.archivoAdjunto.previewUrl);
+  if (estado.archivoAdjunto?.previewUrl) URL.revokeObjectURL(estado.archivoAdjunto.previewUrl);
   estado.archivoAdjunto = null;
   const cont = $("#preview-archivo");
   if (cont) { cont.style.display = "none"; cont.innerHTML = ""; }
@@ -1640,9 +1678,11 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // `caption` es lo único que ve el cliente en WhatsApp — nunca el
-        // nombre del archivo. `file_name` solo queda en el registro interno
-        // (y de ahí al reporte de Sheets), el cliente nunca lo ve.
+        // `caption` es el pie de foto/video/documento. `file_name` queda en
+        // el registro interno y, si es un documento, el cliente SÍ lo ve
+        // como el nombre del archivo (ver enviarMedia en whatsapp.js) —
+        // fotos/videos/stickers de WhatsApp no tienen "nombre" visible, así
+        // que ahí no importa.
         body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
       cancelarAdjunto();
@@ -2021,7 +2061,7 @@ function pintarListaSecuencias() {
           </div>
           <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
           <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
-          <input type="file" class="fs-paso-archivo" accept="image/*,video/*" />
+          <input type="file" class="fs-paso-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
         </div>
       </div>
@@ -2402,7 +2442,7 @@ async function pintarDetalle(c) {
     ` : ""}
   `;
 
-  $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
+  $("#btn-cerrar-detalle").addEventListener("click", () => history.back());
 
   $("#detalle-nuevo-seguimiento").addEventListener("click", abrirModalProgramarSeguimiento);
 

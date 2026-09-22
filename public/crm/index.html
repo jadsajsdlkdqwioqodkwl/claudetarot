@@ -110,7 +110,7 @@
     <h2>Nueva respuesta rápida</h2>
     <input type="text" id="rapida-titulo" placeholder="Título (ej. Precio, Horario…)" />
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
-    <input type="file" id="rapida-archivo" accept="image/*,video/*" multiple />
+    <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
     <div class="acciones">
       <button class="cancelar" id="rapida-cancelar" type="button">Cancelar</button>
@@ -124,7 +124,7 @@
     <h2>Programar seguimiento</h2>
     <input type="datetime-local" id="seg-fecha" />
     <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video, o eliges una respuesta rápida abajo)"></textarea>
-    <input type="file" id="seg-archivo" accept="image/*,video/*" />
+    <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
     <select id="seg-rapida"><option value="">— o una respuesta rápida guardada —</option></select>
     <div class="acciones">
       <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
@@ -227,7 +227,7 @@
     <h2>Agregar un paso nuevo</h2>
     <input type="text" id="seq-titulo" placeholder="Título (solo para ti, ej. Paso 1 — saludo)" />
     <textarea id="seq-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
-    <input type="file" id="seq-archivo" accept="image/*,video/*" multiple />
+    <input type="file" id="seq-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.</div>
     <button class="crear" id="seq-agregar-btn" type="button" style="width:100%">Agregar paso</button>
 

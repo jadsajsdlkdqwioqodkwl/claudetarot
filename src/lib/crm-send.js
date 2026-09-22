@@ -15,9 +15,9 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy, repl
 
 /**
  * `mediaKey` es la clave en R2 (CRM_MEDIA). Sube una copia fresca a WhatsApp
- * y manda. `caption` es lo único que ve el cliente en WhatsApp; `fileName`
- * (opcional) solo queda en el registro interno —para el reporte de
- * Sheets— cuando no hay caption, nunca se manda como texto visible.
+ * y manda. `caption` es el pie de foto/video/documento. `fileName` queda en
+ * el registro interno (Sheets) y, si el tipo es "document", también se
+ * manda como el nombre visible del archivo (ver enviarMedia).
  */
 export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy, fileName, replyTo) {
   const obj = await env.CRM_MEDIA.get(mediaKey);
@@ -26,7 +26,7 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   const blob = await obj.blob();
 
   const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
-  const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id);
+  const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
 
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
     waMessageId,
