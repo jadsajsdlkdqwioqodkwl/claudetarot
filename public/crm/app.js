@@ -990,6 +990,15 @@ async function actualizarPedidosPanel() {
 }
 
 /** Igual que arriba pero con la lista de seguimientos programados, para verla en el panel lateral sin abrir el chat. */
+/** El texto a mostrar de un seguimiento programado — cubre los tres orígenes posibles: texto propio, respuesta rápida, o plantilla (envío masivo). */
+function textoSeguimiento(s) {
+  if (s.body) return s.body;
+  if (s.quick_reply_title) return s.quick_reply_title;
+  if (s.template_name) return `Plantilla: ${s.template_name}`;
+  if (s.media_key) return "Foto/video";
+  return "";
+}
+
 async function actualizarSeguimientosDetalle() {
   const cont = $("#detalle-seguimientos");
   if (!cont || !estado.conversacionActivaId) return;
@@ -998,8 +1007,8 @@ async function actualizarSeguimientosDetalle() {
     const html = scheduled.length ? scheduled.map((s) => `
       <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
         <div>
-          <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}</div>
-          <div>${escapar(s.body || s.quick_reply_title || "")}</div>
+          <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· Envío masivo</span>` : ""}</div>
+          <div>${escapar(textoSeguimiento(s))}</div>
         </div>
         <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
       </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`;
@@ -1371,8 +1380,8 @@ async function pintarSeguimientosPanel() {
   panel.innerHTML = (scheduled.length ? scheduled.map((s) => `
     <div class="item" data-id="${s.id}">
       <div>
-        <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}</div>
-        <div class="cuerpo">${escapar(s.body || s.quick_reply_title || (s.media_key ? "Foto/video" : ""))}</div>
+        <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· masivo</span>` : ""}</div>
+        <div class="cuerpo">${escapar(textoSeguimiento(s))}</div>
       </div>
       <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
     </div>`).join("") : `<div class="item"><div class="cuerpo">Sin seguimientos programados.</div></div>`)
