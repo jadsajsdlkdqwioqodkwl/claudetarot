@@ -17,6 +17,7 @@ import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
 import { onRequestGet as whatsappVerify, onRequestPost as whatsappWebhook } from "./api/whatsapp.js";
 import { onRequestPost as whatsappSetup } from "./api/whatsapp-setup.js";
+import { onRequestPost as whatsappSend } from "./api/whatsapp-send.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -25,7 +26,8 @@ const ROUTES = {
   "/api/setup": { POST: setup },
   "/api/seguimiento": { GET: seguimiento },
   "/api/whatsapp": { GET: whatsappVerify, POST: whatsappWebhook },
-  "/api/whatsapp-setup": { POST: whatsappSetup }
+  "/api/whatsapp-setup": { POST: whatsappSetup },
+  "/api/whatsapp-send": { POST: whatsappSend }
 };
 
 /**

@@ -16,6 +16,7 @@
  */
 import { updateValues, getValues, getSpreadsheet, batchUpdate } from "./google-sheets.js";
 import { COLUMNAS, ESTADOS, ESTADOS_VENDIDOS, RANGO_ENCABEZADOS, indiceDe, letraDe } from "./hoja.js";
+import { COLUMNAS_MENSAJES, COLUMNAS_CONTACTOS, hojaMensajes, hojaContactos } from "./whatsapp-hoja.js";
 
 const PANEL = "Panel";
 
@@ -270,7 +271,75 @@ export async function prepararHoja(env) {
   ]);
 
     registrar(`Pestaña "${PANEL}" creada con el resumen por día.`);
-  
+
+
+  /* ── 4. Pestañas del CRM de WhatsApp ────────────────────────────────────── */
+  // A propósito minimalista: sin colores ni dropdowns como Pedidos, solo
+  // encabezados, fila fija y la Estrella como casillero. El resto (etiquetas
+  // con color, panel de respuesta) es un paso aparte, no de este setup.
+
+  const nombreMensajes = hojaMensajes(env);
+  const nombreContactos = hojaContactos(env);
+  const tablasWsp = [
+    [nombreMensajes, COLUMNAS_MENSAJES],
+    [nombreContactos, COLUMNAS_CONTACTOS]
+  ];
+
+  const porCrear = tablasWsp.filter(([titulo]) => !pestana(titulo));
+  if (porCrear.length) {
+    await batchUpdate(
+      env,
+      porCrear.map(([titulo, columnas]) => ({
+        addSheet: { properties: { title: titulo, gridProperties: { rowCount: 500, columnCount: columnas.length } } }
+      }))
+    );
+    registrar(`Pestañas creadas: ${porCrear.map(([titulo]) => titulo).join(", ")}.`);
+  }
+
+  for (const [titulo, columnas] of tablasWsp) {
+    const rango = `${titulo}!A1:${letraDe(columnas.length - 1)}1`;
+    const [existentes = []] = await getValues(env, rango);
+    if (existentes.join("|") !== columnas.join("|")) {
+      await updateValues(env, rango, [columnas]);
+      registrar(`Encabezados de "${titulo}" escritos.`);
+    }
+  }
+
+  const libroWsp = await getSpreadsheet(env);
+  const idsWsp = tablasWsp.map(([titulo]) => libroWsp.sheets.find((s) => s.properties.title === titulo).properties.sheetId);
+  const colEstrella = COLUMNAS_CONTACTOS.indexOf("Estrella");
+
+  await batchUpdate(env, [
+    ...idsWsp.flatMap((sheetId) => [
+      {
+        updateSheetProperties: {
+          properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+          fields: "gridProperties.frozenRowCount"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
+          cell: {
+            userEnteredFormat: {
+              textFormat: { bold: true, foregroundColor: rgb(255, 255, 255) },
+              backgroundColor: rgb(17, 17, 17)
+            }
+          },
+          fields: "userEnteredFormat(textFormat,backgroundColor)"
+        }
+      }
+    ]),
+    // Estrella como casillero: un clic en vez de escribir texto.
+    {
+      setDataValidation: {
+        range: { sheetId: idsWsp[1], startRowIndex: 1, startColumnIndex: colEstrella, endColumnIndex: colEstrella + 1 },
+        rule: { condition: { type: "BOOLEAN" }, strict: true }
+      }
+    }
+  ]);
+
+  registrar(`Pestañas "${nombreMensajes}" y "${nombreContactos}" listas.`);
 
   return pasos;
 }
