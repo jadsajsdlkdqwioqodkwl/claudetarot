@@ -250,6 +250,28 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
+  /* 10 — ¿La cuenta de servicio puede escribir en la hoja del export del CRM? */
+  if (env.GOOGLE_CRM_SHEET_ID) {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_CRM_SHEET_ID}` +
+      `?fields=properties.title,sheets.properties.title`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const cuerpo = await res.text();
+    if (!res.ok) {
+      anota("acceso a la hoja del export del CRM", false, `${res.status}: ${motivoGoogle(cuerpo)}`);
+    } else {
+      const meta = JSON.parse(cuerpo);
+      const pestanas = (meta.sheets || []).map((s) => s.properties.title);
+      const pestana = env.GOOGLE_CRM_SHEET_NAME || "Sheet 1";
+      anota("acceso a la hoja del export del CRM", pestanas.includes(pestana),
+        pestanas.includes(pestana)
+          ? { titulo: meta.properties?.title, pestana }
+          : { error: `no hay ninguna pestaña "${pestana}"`, pestanas,
+              arreglo: `renombra la pestaña a "${pestana}" o cambia GOOGLE_CRM_SHEET_NAME` });
+    }
+  }
+
   const roto = pasos.find((p) => !p.ok);
   return terminar(roto
     ? `Todo conecta, pero revisa: ${roto.paso}.`
