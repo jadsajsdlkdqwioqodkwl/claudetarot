@@ -785,6 +785,39 @@ el bucket se pueda crear.
   servicio de Google que ya tenías — solo hubo que compartirle la hoja
   nueva como Editor, nada de credenciales nuevas.
 
+### Sexta vuelta: pulido del catálogo, respuestas rápidas y bienvenida automática
+
+- **Se arregló el parpadeo** del panel "Pedidos del catálogo": antes se
+  repintaba entero cada 4s junto con la lista de chats; ahora solo se
+  actualiza su contenido (y solo si cambió).
+- **Nombres de producto reales**, no el SKU crudo: se resuelven contra el
+  catálogo (`catalog_products`, con caché) apenas llega el pedido.
+- **Elegir un producto suelto**: el ícono de bolsa ahora abre un panel con
+  "catálogo completo" arriba y, debajo, los productos del catálogo con
+  miniatura y buscador — clic y se manda la tarjeta de ese producto solo.
+- **Mensajes de catálogo/producto con su propio color** en el chat (morado,
+  como las tarjetas de anuncio), no el gris genérico de "tipo desconocido".
+- **Respuestas rápidas**: ahora aceptan **varias fotos/videos** (se mandan
+  una tras otra, el texto al final), tienen **buscador** arriba del panel, y
+  se abren escribiendo **`/`** solo en el chat, además del botón de rayo.
+  Cada una muestra una miniatura de su primera foto.
+- **Bienvenida automática para anuncios**: un admin marca con la estrella
+  (dentro del panel de respuestas rápidas) cuál se manda sola apenas escribe
+  alguien que vino de un anuncio "Click to WhatsApp" — es gratis, es la
+  misma respuesta dentro de la ventana de 24h que abrió el propio cliente al
+  escribir. Se guarda en `crm_settings`.
+
+**Cómo probar la bienvenida sin gastar de más**: el mensaje en sí nunca
+cobra. Lo único que cuesta es correr el anuncio real, porque el dato que
+activa la bienvenida (`ctwa_clid`, que WhatsApp solo manda cuando alguien
+entra desde un anuncio de verdad) no se puede fabricar desde el CRM.
+Recomendado: crea el anuncio con el presupuesto mínimo posible, actívalo,
+escríbete tú mismo desde ese anuncio, confirma que te llegó la bienvenida, y
+recién ahí súbele presupuesto. Aparte, en cualquier momento puedo simular un
+pedido o una conversación desde un "anuncio" con un mensaje de prueba al
+webhook — sin ningún costo — para probar todo lo demás (pedidos, nombres de
+producto, etc.) sin depender de Meta.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

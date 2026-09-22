@@ -10,8 +10,18 @@
  * llamada de red antes de responder.
  */
 
-import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeEntrante, actualizarEstadoMensaje, registrarPedidoCatalogo } from "../lib/crm-db.js";
-import { firmaValida } from "../lib/whatsapp.js";
+import {
+  obtenerOCrearContacto,
+  obtenerOCrearConversacion,
+  registrarMensajeEntrante,
+  actualizarEstadoMensaje,
+  registrarPedidoCatalogo,
+  nombresDeProductos,
+  guardarProductosEnCache,
+  obtenerAjuste
+} from "../lib/crm-db.js";
+import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
+import { mandarMediaGuardada, mandarTexto } from "../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -64,6 +74,55 @@ function tipoYCuerpo(msg) {
   }
 }
 
+/** Rellena `name` en cada item del pedido, resolviendo contra el caché o Meta. */
+async function resolverNombresPedido(env, order) {
+  const ids = order.items.map((i) => i.product_retailer_id).filter(Boolean);
+  let mapa = await nombresDeProductos(env.CRM_DB, ids);
+  const faltan = ids.filter((id) => !mapa[id]?.name);
+
+  if (faltan.length && (order.catalogId || env.WHATSAPP_CATALOG_ID)) {
+    try {
+      const productos = await listarProductosCatalogo(env, order.catalogId || env.WHATSAPP_CATALOG_ID);
+      await guardarProductosEnCache(env.CRM_DB, order.catalogId || env.WHATSAPP_CATALOG_ID, productos);
+      mapa = await nombresDeProductos(env.CRM_DB, ids);
+    } catch (err) {
+      console.error("Resolver nombres del pedido:", err.message);
+    }
+  }
+
+  order.items = order.items.map((i) => ({ ...i, name: mapa[i.product_retailer_id]?.name || null }));
+  return order;
+}
+
+/** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
+async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
+  if (!contacto._isNew || !contacto.ctwa_clid) return;
+
+  const quickReplyId = await obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id");
+  if (!quickReplyId) return;
+
+  const quickReply = await env.CRM_DB.prepare("SELECT * FROM quick_replies WHERE id = ?").bind(Number(quickReplyId)).first();
+  if (!quickReply) return;
+
+  const media = await env.CRM_DB.prepare(
+    "SELECT * FROM quick_reply_media WHERE quick_reply_id = ? ORDER BY sort_order ASC"
+  )
+    .bind(quickReply.id)
+    .all();
+
+  try {
+    if (media.results.length) {
+      for (const m of media.results) {
+        await mandarMediaGuardada(env, conversacion.id, contacto.wa_id, m.media_key, m.media_type, quickReply.body, "Bienvenida automática");
+      }
+    } else if (quickReply.body) {
+      await mandarTexto(env, conversacion.id, contacto.wa_id, quickReply.body, "Bienvenida automática");
+    }
+  } catch (err) {
+    console.error("Bienvenida automática:", err.message);
+  }
+}
+
 async function procesarCambio(env, db, value) {
   const contactoMeta = value.contacts?.[0];
 
@@ -72,10 +131,17 @@ async function procesarCambio(env, db, value) {
     const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
     const conversacion = await obtenerOCrearConversacion(db, contacto.id);
     const { type, body, mediaId, mediaMime, order } = tipoYCuerpo(msg);
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body, mediaId, mediaMime });
+    let bodyFinal = body;
+    let ordenResuelta = order;
     if (type === "order" && order) {
-      await registrarPedidoCatalogo(db, conversacion.id, msg.id, order);
+      ordenResuelta = await resolverNombresPedido(env, order);
+      bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
+    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime });
+    if (type === "order" && ordenResuelta) {
+      await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
+    }
+    await mandarBienvenidaSiAplica(env, contacto, conversacion);
   }
 
   for (const st of value.statuses || []) {

@@ -15,7 +15,7 @@ export async function obtenerOCrearContacto(db, waId, profileName, referral) {
         .bind(profileName, existente.id)
         .run();
     }
-    return existente;
+    return { ...existente, _isNew: false };
   }
 
   // El `referral` solo viene en el primer mensaje si el chat empezó desde un
@@ -40,7 +40,7 @@ export async function obtenerOCrearContacto(db, waId, profileName, referral) {
       referral?.media_type || null
     )
     .first();
-  return insertado;
+  return { ...insertado, _isNew: true };
 }
 
 export async function obtenerOCrearConversacion(db, contactId) {
@@ -109,6 +109,44 @@ export async function marcarSeguimiento(db, conversationId, followUp) {
 
 export async function guardarMediaKey(db, messageId, mediaKey) {
   await db.prepare("UPDATE messages SET media_key = ? WHERE id = ?").bind(mediaKey, messageId).run();
+}
+
+/** Nombres de producto ya en caché, por retailer_id. Los que falten, `null`. */
+export async function nombresDeProductos(db, retailerIds) {
+  if (!retailerIds.length) return {};
+  const placeholders = retailerIds.map(() => "?").join(",");
+  const { results } = await db
+    .prepare(`SELECT retailer_id, name, image_url FROM catalog_products WHERE retailer_id IN (${placeholders})`)
+    .bind(...retailerIds)
+    .all();
+  const mapa = {};
+  for (const r of results) mapa[r.retailer_id] = r;
+  return mapa;
+}
+
+export async function guardarProductosEnCache(db, catalogId, productos) {
+  for (const p of productos) {
+    await db
+      .prepare(
+        `INSERT INTO catalog_products (retailer_id, catalog_id, name, image_url, cached_at)
+         VALUES (?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(retailer_id) DO UPDATE SET name = excluded.name, image_url = excluded.image_url, cached_at = excluded.cached_at`
+      )
+      .bind(p.retailer_id, catalogId, p.name || null, p.image_url || null)
+      .run();
+  }
+}
+
+export async function obtenerAjuste(db, key) {
+  const fila = await db.prepare("SELECT value FROM crm_settings WHERE key = ?").bind(key).first();
+  return fila?.value ?? null;
+}
+
+export async function guardarAjuste(db, key, value) {
+  await db
+    .prepare("INSERT INTO crm_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .bind(key, value)
+    .run();
 }
 
 export async function registrarPedidoCatalogo(db, conversationId, waMessageId, { catalogId, items, total, currency }) {

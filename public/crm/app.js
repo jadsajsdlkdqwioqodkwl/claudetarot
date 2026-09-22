@@ -18,6 +18,8 @@ const estado = {
   login: { mode: "legacy", challengeId: null },
   templateElegido: null,
   miRol: null,
+  filtroRapidas: "",
+  bienvenidaQuickReplyId: null,
   pollConv: null,
   pollMsg: null
 };
@@ -160,9 +162,6 @@ async function cargarConversaciones() {
   const { conversations } = await pedir(`/api/crm/conversations?${params}`);
   estado.conversaciones = conversations;
   pintarLista();
-
-  const activa = conversations.find((c) => c.conversation_id === estado.conversacionActivaId);
-  if (activa) pintarDetalle(activa);
 }
 
 function pintarLista() {
@@ -272,6 +271,7 @@ function pintarChatBase(c) {
       <div id="panel-rapidas"></div>
       <div id="panel-seguimientos"></div>
       <div id="panel-emojis"></div>
+      <div id="panel-catalogo"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
   $("#star-header").addEventListener("click", () => {
@@ -280,15 +280,22 @@ function pintarChatBase(c) {
   });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
+  $("#texto-envio").addEventListener("input", (e) => {
+    if (e.target.value === "/") {
+      e.target.value = "";
+      cerrarPaneles(["#panel-rapidas"]);
+      toggleQuickPanel();
+    }
+  });
   $("#btn-rapidas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-rapidas"]); toggleQuickPanel(); });
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
-  $("#btn-catalogo").addEventListener("click", enviarCatalogo);
+  $("#btn-catalogo").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-catalogo"]); toggleCatalogoPanel(); });
 }
 
-async function enviarCatalogo() {
-  if (!confirm("¿Mandar el catálogo completo a este chat?")) return;
+async function enviarCatalogoCompleto() {
+  $("#panel-catalogo").classList.remove("abierto");
   try {
     await pedir("/api/crm/catalog", {
       method: "POST",
@@ -302,8 +309,63 @@ async function enviarCatalogo() {
   }
 }
 
+async function enviarProductoElegido(retailerId) {
+  $("#panel-catalogo").classList.remove("abierto");
+  try {
+    await pedir("/api/crm/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, product_retailer_id: retailerId })
+    });
+    await cargarMensajes();
+    await cargarConversaciones();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+let cacheProductosCatalogo = null;
+
+async function toggleCatalogoPanel() {
+  const panel = $("#panel-catalogo");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (!panel.classList.contains("abierto")) return;
+
+  panel.innerHTML = `
+    <div class="item" id="cat-completo"><div class="titulo">${icon("bag")} Mandar catálogo completo</div></div>
+    <div style="padding:8px 10px"><input type="text" id="cat-buscar" placeholder="Buscar producto…" /></div>
+    <div id="cat-lista">Cargando…</div>`;
+  $("#cat-completo").addEventListener("click", enviarCatalogoCompleto);
+  $("#cat-buscar").addEventListener("input", (e) => pintarListaProductos(e.target.value.trim().toLowerCase()));
+
+  try {
+    if (!cacheProductosCatalogo) {
+      const { products } = await pedir("/api/crm/catalog-products");
+      cacheProductosCatalogo = products;
+    }
+    pintarListaProductos("");
+  } catch (err) {
+    $("#cat-lista").innerHTML = `<div class="item"><div class="cuerpo">${escapar(err.message)}</div></div>`;
+  }
+}
+
+function pintarListaProductos(filtro) {
+  const cont = $("#cat-lista");
+  if (!cont) return;
+  const productos = (cacheProductosCatalogo || []).filter((p) => !filtro || p.name?.toLowerCase().includes(filtro));
+  cont.innerHTML = productos.length
+    ? productos.map((p) => `
+      <div class="item" data-id="${escapar(p.retailer_id)}">
+        ${p.image_url ? `<img class="miniatura" src="${escapar(p.image_url)}" alt="" />` : `<div class="miniatura">${icon("tag")}</div>`}
+        <div><div class="titulo">${escapar(p.name || p.retailer_id)}</div></div>
+      </div>`).join("")
+    : `<div class="item"><div class="cuerpo">Sin productos.</div></div>`;
+  cont.querySelectorAll(".item").forEach((el) => el.addEventListener("click", () => enviarProductoElegido(el.dataset.id)));
+}
+
 function cerrarPaneles(excepto = []) {
-  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis"].forEach((sel) => {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo"].forEach((sel) => {
     if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
   });
 }
@@ -314,6 +376,23 @@ async function cargarMensajes() {
   pintarMensajes(messages);
   const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
   if (c) { c.unread_count = 0; pintarLista(); }
+  actualizarPedidosPanel();
+}
+
+/** Actualiza solo el contenido de "Pedidos del catálogo", sin re-pintar el resto del panel (evita el parpadeo). */
+async function actualizarPedidosPanel() {
+  const cont = $("#detalle-pedidos");
+  if (!cont || !estado.conversacionActivaId) return;
+  try {
+    const { orders } = await pedir(`/api/crm/catalog?conversation_id=${estado.conversacionActivaId}`);
+    const html = orders.length ? orders.map((o) => `
+      <div class="ad-card" style="margin-bottom:8px">
+        <div class="titulo">${icon("bag")} ${fechaCorta(o.created_at)}</div>
+        ${o.items.map((i) => `<div>${i.quantity}× ${escapar(i.name || i.product_retailer_id)} — ${i.item_price ?? ""} ${escapar(o.currency || "")}</div>`).join("")}
+        ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
+      </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
+    if (cont.innerHTML !== html) cont.innerHTML = html;
+  } catch { /* silencioso */ }
 }
 
 function contenidoMensaje(m) {
@@ -324,7 +403,9 @@ function contenidoMensaje(m) {
     return `<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return escapar(m.body || "");
-  if (m.type === "order") return `<span class="tipo">${icon("bag")} Pedido del catálogo: ${escapar(m.body || "")}</span>`;
+  if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;
+  if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
+  if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
@@ -434,7 +515,7 @@ function toggleEmojiPanel() {
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji")) {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo")) {
     cerrarPaneles();
   }
 });
@@ -444,30 +525,58 @@ document.addEventListener("click", (e) => {
 async function cargarQuickReplies() {
   const { quick_replies } = await pedir("/api/crm/quick-replies");
   estado.quickReplies = quick_replies;
+  try {
+    const { ad_welcome_quick_reply_id } = await pedir("/api/crm/settings");
+    estado.bienvenidaQuickReplyId = ad_welcome_quick_reply_id;
+  } catch { /* no crítico */ }
 }
 
 function toggleQuickPanel() {
   const panel = $("#panel-rapidas");
   if (!panel) return;
   panel.classList.toggle("abierto");
-  pintarQuickPanel();
+  if (panel.classList.contains("abierto")) { estado.filtroRapidas = ""; pintarQuickPanel(); }
 }
 
 function pintarQuickPanel() {
   const panel = $("#panel-rapidas");
   if (!panel) return;
-  panel.innerHTML = estado.quickReplies.map((q) => `
-    <div class="item" data-id="${q.id}">
-      <div>
-        <div class="titulo">${q.media_type ? icon(q.media_type === "video" ? "video" : "image") + " " : ""}${escapar(q.title)}</div>
-        ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
-      </div>
-      <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
-    </div>`).join("") + `<footer><button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button></footer>`;
 
-  panel.querySelectorAll(".item").forEach((el) => {
+  const filtro = estado.filtroRapidas.toLowerCase();
+  const lista = estado.quickReplies.filter((q) =>
+    !filtro || q.title.toLowerCase().includes(filtro) || (q.body || "").toLowerCase().includes(filtro));
+  const esAdmin = estado.miRol === "admin";
+
+  panel.innerHTML = `
+    <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
+    ${lista.map((q) => {
+      const foto = q.media[0];
+      const esBienvenida = estado.bienvenidaQuickReplyId === q.id;
+      return `
+      <div class="item" data-id="${q.id}">
+        ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
+               : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
+        <div style="flex:1">
+          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
+          ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
+        </div>
+        ${esAdmin ? `<button class="estrella-bienvenida ${esBienvenida ? "activa" : ""}" data-id="${q.id}" title="Usar como bienvenida de anuncios">${icon(esBienvenida ? "star" : "starOutline")}</button>` : ""}
+        <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
+      </div>`;
+    }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
+    <footer><button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button></footer>`;
+
+  $("#rapidas-buscar").addEventListener("input", (e) => {
+    estado.filtroRapidas = e.target.value;
+    pintarQuickPanel();
+    $("#rapidas-buscar").focus();
+    const v = $("#rapidas-buscar").value;
+    $("#rapidas-buscar").setSelectionRange(v.length, v.length);
+  });
+
+  panel.querySelectorAll(".item[data-id]").forEach((el) => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".borrar")) return;
+      if (e.target.closest(".borrar, .estrella-bienvenida")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       if (q) enviarQuickReply(q);
     });
@@ -484,6 +593,20 @@ function pintarQuickPanel() {
       pintarQuickPanel();
     });
   });
+  panel.querySelectorAll(".estrella-bienvenida").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = Number(btn.dataset.id);
+      const nuevo = estado.bienvenidaQuickReplyId === id ? null : id;
+      estado.bienvenidaQuickReplyId = nuevo;
+      pintarQuickPanel();
+      await pedir("/api/crm/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ad_welcome_quick_reply_id: nuevo })
+      }).catch((err) => alert(err.message));
+    });
+  });
   $("#nueva-rapida")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
     $("#modal-rapida-fondo").classList.add("abierto");
@@ -493,15 +616,28 @@ function pintarQuickPanel() {
 async function enviarQuickReply(q) {
   $("#panel-rapidas").classList.remove("abierto");
   try {
-    await pedir("/api/crm/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        q.media_key
-          ? { conversation_id: estado.conversacionActivaId, media_key: q.media_key, media_type: q.media_type, caption: q.body || undefined }
-          : { conversation_id: estado.conversacionActivaId, body: q.body }
-      )
-    });
+    if (q.media.length) {
+      for (const m of q.media) {
+        await pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
+        });
+      }
+      if (q.body) {
+        await pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
+        });
+      }
+    } else {
+      await pedir("/api/crm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
+      });
+    }
     await cargarMensajes();
     await cargarConversaciones();
   } catch (err) {
@@ -519,24 +655,23 @@ $("#rapida-cancelar").addEventListener("click", () => {
 $("#rapida-crear").addEventListener("click", async () => {
   const title = $("#rapida-titulo").value.trim();
   const body = $("#rapida-texto").value.trim();
-  const file = $("#rapida-archivo").files[0];
+  const files = [...$("#rapida-archivo").files];
   if (!title) return alert("Ponle un título.");
-  if (!body && !file) return alert("Necesita texto o un archivo.");
+  if (!body && !files.length) return alert("Necesita texto o al menos un archivo.");
 
   const btn = $("#rapida-crear");
   btn.disabled = true;
+  btn.textContent = "Subiendo…";
   try {
-    let media_key = null, media_type = null, media_mime = null;
-    if (file) {
+    const media_keys = [];
+    for (const file of files) {
       const subida = await subirArchivo(file);
-      media_key = subida.media_key;
-      media_type = subida.type;
-      media_mime = subida.mime;
+      media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
     }
     await pedir("/api/crm/quick-replies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, media_key, media_type, media_mime })
+      body: JSON.stringify({ title, body, media_keys })
     });
     await cargarQuickReplies();
     $("#modal-rapida-fondo").classList.remove("abierto");
@@ -547,6 +682,7 @@ $("#rapida-crear").addEventListener("click", async () => {
     alert(err.message);
   } finally {
     btn.disabled = false;
+    btn.textContent = "Guardar";
   }
 });
 
@@ -810,17 +946,7 @@ async function pintarDetalle(c) {
     <div id="detalle-pedidos">Cargando…</div>
   `;
 
-  try {
-    const { orders } = await pedir(`/api/crm/catalog?conversation_id=${c.conversation_id}`);
-    const cont = $("#detalle-pedidos");
-    if (!cont) return;
-    cont.innerHTML = orders.length ? orders.map((o) => `
-      <div class="ad-card" style="margin-bottom:8px">
-        <div class="titulo">${icon("bag")} ${fechaCorta(o.created_at)}</div>
-        ${o.items.map((i) => `<div>${i.quantity}× ${escapar(i.product_retailer_id)} — ${i.item_price ?? ""} ${escapar(o.currency || "")}</div>`).join("")}
-        ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
-      </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
-  } catch { /* silencioso: no es crítico si esto no carga */ }
+  await actualizarPedidosPanel();
 }
 
 revisarSesion();

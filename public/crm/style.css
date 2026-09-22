@@ -97,6 +97,10 @@ button { font-family: inherit; }
 .msg.out { background: var(--burbuja-out); align-self: flex-end; border-top-right-radius: 0; }
 .msg .hora { display: block; font-size: 10px; color: var(--gris); margin-top: 3px; text-align: right; }
 .msg .tipo { font-style: italic; color: var(--gris); }
+.tarjeta-especial { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+.tarjeta-catalogo { color: var(--ad); font-weight: 600; }
+.tarjeta-pedido { flex-direction: column; align-items: flex-start; background: #f6f4ff; border: 1px solid #e0d9ff; border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: #4a3d99; }
+.tarjeta-pedido strong { color: var(--ad); }
 .msg img, .msg video { max-width: 100%; border-radius: var(--radio-s); display: block; }
 .msg .caption { margin-top: 4px; }
 #vacio { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--gris); font-size: 14px; }
@@ -112,15 +116,22 @@ button { font-family: inherit; }
 
 /* ---------- Respuestas rápidas ---------- */
 
-#panel-rapidas, #panel-seguimientos { position: absolute; bottom: 56px; left: 0; width: 320px; max-height: 360px; overflow-y: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-m); box-shadow: 0 2px 10px rgba(0,0,0,.15); display: none; z-index: 10; }
-#panel-rapidas.abierto, #panel-seguimientos.abierto { display: block; }
-#panel-rapidas .item, #panel-seguimientos .item { padding: 10px 12px; border-bottom: 1px solid var(--borde); cursor: pointer; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-#panel-rapidas .item:hover, #panel-seguimientos .item:hover { background: #f5f6f6; }
-#panel-rapidas .item .titulo, #panel-seguimientos .item .titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+#panel-rapidas, #panel-seguimientos, #panel-catalogo { position: absolute; bottom: 56px; left: 0; width: 320px; max-height: 360px; overflow-y: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-m); box-shadow: 0 2px 10px rgba(0,0,0,.15); display: none; z-index: 10; }
+#panel-rapidas.abierto, #panel-seguimientos.abierto, #panel-catalogo.abierto { display: block; }
+#panel-rapidas .item, #panel-seguimientos .item, #panel-catalogo .item { padding: 10px 12px; border-bottom: 1px solid var(--borde); cursor: pointer; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+#panel-rapidas .item:hover, #panel-seguimientos .item:hover, #panel-catalogo .item:hover { background: #f5f6f6; }
+#panel-rapidas .item .titulo, #panel-seguimientos .item .titulo, #panel-catalogo .item .titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 4px; }
 #panel-rapidas .item .cuerpo, #panel-seguimientos .item .cuerpo { font-size: 12px; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 #panel-rapidas .item button.borrar, #panel-seguimientos .item button.borrar { border: 0; background: transparent; color: var(--peligro); cursor: pointer; font-size: 14px; flex-shrink: 0; }
+#panel-rapidas .item button.estrella-bienvenida { border: 0; background: transparent; color: #ccc; cursor: pointer; font-size: 14px; flex-shrink: 0; }
+#panel-rapidas .item button.estrella-bienvenida.activa { color: #f5b301; }
 #panel-rapidas footer, #panel-seguimientos footer { padding: 8px; }
 #panel-rapidas footer button, #panel-seguimientos footer button { width: 100%; padding: 8px; border: 1px dashed var(--borde); background: transparent; border-radius: var(--radio-s); cursor: pointer; font-size: 12px; color: var(--gris); display: flex; align-items: center; justify-content: center; gap: 6px; }
+#panel-rapidas .buscador-rapidas { padding: 8px 10px; border-bottom: 1px solid var(--borde); }
+#panel-rapidas .buscador-rapidas input { width: 100%; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
+#panel-catalogo input { width: 100%; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
+.miniatura { width: 34px; height: 34px; border-radius: var(--radio-s); object-fit: cover; background: var(--fondo); display: flex; align-items: center; justify-content: center; color: var(--gris); flex-shrink: 0; }
+.miniatura .icono-svg { width: 16px; height: 16px; }
 
 .modal-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 100; }
 .modal-fondo.abierto { display: flex; }
