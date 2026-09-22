@@ -575,7 +575,7 @@ function pintarQuickPanel() {
     }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
     <footer>
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
-      ${esAdmin && estado.bienvenidaQuickReplyId ? `<button id="probar-bienvenida" style="margin-top:6px">${icon("bolt")} Probar bienvenida en un número</button>` : ""}
+      ${esAdmin ? `<button id="probar-bienvenida" style="margin-top:6px">${icon("bolt")} Probar bienvenida en un número</button>` : ""}
     </footer>`;
 
   $("#rapidas-buscar").addEventListener("input", (e) => {
@@ -646,12 +646,21 @@ async function enviarQuickReply(q) {
   if (input) input.value = "";
   try {
     if (q.media.length) {
+      let enviadas = 0;
       for (const m of q.media) {
-        await pedir("/api/crm/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
-        });
+        try {
+          await pedir("/api/crm/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
+          });
+          enviadas++;
+        } catch (err) {
+          await cargarMensajes();
+          await cargarConversaciones();
+          alert(`Se mandaron ${enviadas} de ${q.media.length} — la foto/video #${enviadas + 1} falló: ${err.message}`);
+          return;
+        }
       }
       if (q.body) {
         await pedir("/api/crm/messages", {
