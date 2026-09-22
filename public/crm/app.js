@@ -617,6 +617,84 @@ async function cargarConversaciones() {
   const { conversations } = await pedir(`/api/crm/conversations?${params}`);
   estado.conversaciones = conversations;
   pintarLista();
+  actualizarAvisosNoLeidos();
+}
+
+/* ---------- Aviso de mensajes nuevos: sonido + contador en el título/favicon, como la app real ---------- */
+
+const TITULO_BASE = document.title;
+let totalNoLeidosPrevio = null; // null = todavía no se estableció la base (recién carga la página, no se debe sonar)
+let audioCtx = null;
+
+function reproducirSonidoNuevoMensaje() {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    // Dos tonos cortos ascendentes — un "ping" simple, sin depender de ningún archivo de audio.
+    [[880, t0], [1175, t0 + 0.11]].forEach(([freq, inicio]) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, inicio);
+      gain.gain.exponentialRampToValueAtTime(0.22, inicio + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, inicio + 0.16);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(inicio);
+      osc.stop(inicio + 0.17);
+    });
+  } catch { /* si el navegador bloquea audio sin interacción previa, no pasa nada grave */ }
+}
+
+let faviconBase = null;
+function dibujarFavicon(contador) {
+  const link = $("#favicon");
+  if (!link) return;
+  if (!contador) { if (faviconBase) link.href = faviconBase.src; return; }
+
+  if (!faviconBase) {
+    faviconBase = new Image();
+    faviconBase.src = link.href;
+    faviconBase.onload = () => dibujarFavicon(contador);
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(faviconBase, 0, 0, 64, 64);
+
+  const texto = contador > 99 ? "99+" : String(contador);
+  const radio = texto.length > 2 ? 20 : 16;
+  ctx.beginPath();
+  ctx.arc(64 - radio + 4, radio - 4, radio, 0, Math.PI * 2);
+  ctx.fillStyle = "#e63946";
+  ctx.fill();
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${texto.length > 2 ? 20 : 24}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(texto, 64 - radio + 4, radio - 4 + 1);
+
+  link.href = canvas.toDataURL("image/png");
+}
+
+function actualizarAvisosNoLeidos() {
+  const total = estado.conversaciones.reduce((s, c) => s + (c.unread_count || 0), 0);
+
+  document.title = total > 0 ? `(${total > 99 ? "99+" : total}) ${TITULO_BASE}` : TITULO_BASE;
+  dibujarFavicon(total);
+
+  // No suena en la primerísima carga de la página (evita el "ping" apenas
+  // entras si ya había chats sin leer) — solo cuando el total sube desde ahí.
+  if (totalNoLeidosPrevio !== null && total > totalNoLeidosPrevio) reproducirSonidoNuevoMensaje();
+  totalNoLeidosPrevio = total;
 }
 
 function pintarLista() {
