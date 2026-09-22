@@ -1365,6 +1365,9 @@ function contenidoMensaje(m) {
   if (m.type === "video" && (m.media_key || m.media_id)) {
     return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
+  if (m.type === "audio" && (m.media_key || m.media_id)) {
+    return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>`;
+  }
   if (!m.type || m.type === "text") return escapar(m.body || "");
   if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;
   if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;

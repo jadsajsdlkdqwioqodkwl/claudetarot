@@ -259,6 +259,7 @@ button { font-family: inherit; touch-action: manipulation; }
 .aviso-vista-unica { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 3px; }
 .aviso-vista-unica .icono-svg { width: 13px; height: 13px; }
 .msg img, .msg video { max-width: 100%; border-radius: var(--radio-s); display: block; }
+.msg audio { display: block; width: 240px; max-width: 100%; height: 36px; }
 .msg .caption { margin-top: 4px; }
 #vacio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gris); font-size: 14px; }
 
