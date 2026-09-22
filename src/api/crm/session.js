@@ -8,7 +8,8 @@ export async function onRequestGet({ request, env }) {
     JSON.stringify({
       authenticated: sesion !== null,
       role: sesion?.role || null,
-      displayName: sesion?.displayName || null
+      displayName: sesion?.displayName || null,
+      esCuentaDeVendedor: Boolean(sesion?.agentId)
     }),
     { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } }
   );

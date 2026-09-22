@@ -48,6 +48,7 @@ import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } fr
 import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost, onRequestGetProductos as crmCatalogProductosGet } from "./api/crm/catalog.js";
 import { onRequestGet as crmSettingsGet, onRequestPatch as crmSettingsPatch } from "./api/crm/settings.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
+import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -76,7 +77,8 @@ const ROUTES = {
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },
   "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch },
-  "/api/crm/test-welcome": { POST: crmTestWelcomePost }
+  "/api/crm/test-welcome": { POST: crmTestWelcomePost },
+  "/api/crm/change-password": { POST: crmChangePasswordPost }
 };
 
 /**
