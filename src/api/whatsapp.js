@@ -8,8 +8,7 @@
  *        (Sheets, Telegram) va detrás con waitUntil.
  */
 
-import { appendRow } from "../lib/google-sheets.js";
-import { hojaWhatsapp } from "../lib/whatsapp-hoja.js";
+import { registrarMensaje, upsertContacto } from "../lib/whatsapp-hoja.js";
 import { notificarTelegram } from "../lib/telegram.js";
 import { fechaLima } from "./order.js";
 
@@ -57,15 +56,17 @@ function textoDe(msg) {
   );
 }
 
-// Orden de columnas: ver COLUMNAS_WHATSAPP en ../lib/whatsapp-hoja.js.
 async function procesarMensaje(env, msg, contactos) {
   const contacto = contactos.find((c) => c.wa_id === msg.from);
   const nombre = contacto?.profile?.name || "";
   const cuerpo = textoDe(msg);
-  const fila = [fechaLima(), nombre, msg.from, cuerpo, msg.type, msg.id];
+  const fecha = fechaLima();
 
   try {
-    await appendRow(env, fila, hojaWhatsapp(env));
+    // Log crudo primero, contacto después: si el contacto falla, el mensaje
+    // ya quedó guardado — lo importante nunca se pierde por lo secundario.
+    await registrarMensaje(env, { fecha, direccion: "in", waId: msg.from, nombre, tipo: msg.type, texto: cuerpo, messageId: msg.id });
+    await upsertContacto(env, { waId: msg.from, nombre, fecha });
   } catch (err) {
     // Un fallo de Sheets no puede perder el aviso: igual se manda a Telegram.
     console.error("WhatsApp → Sheets:", err.message);

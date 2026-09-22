@@ -74,8 +74,10 @@
     // Cadena inventada por nosotros, no la manda Meta: se pega también en
     // App Dashboard → WhatsApp → Configuration → Webhook → Verify token.
     "WHATSAPP_VERIFY_TOKEN": "tarot-wsp-verify-2026",
-    // Pestaña donde el webhook registra los mensajes entrantes (crearla a
-    // mano en el mismo libro, con las columnas de lib/whatsapp-hoja.js).
-    "GOOGLE_WHATSAPP_NAME": "WhatsApp"
+    // Las dos pestañas del CRM de WhatsApp (crearlas a mano en el mismo
+    // libro, con las columnas de lib/whatsapp-hoja.js): el log crudo de
+    // mensajes, y una fila por contacto con estrella/etiquetas/notas.
+    "GOOGLE_WHATSAPP_MENSAJES_NAME": "WSP_Mensajes",
+    "GOOGLE_WHATSAPP_CONTACTOS_NAME": "WSP_Contactos"
   }
 }
