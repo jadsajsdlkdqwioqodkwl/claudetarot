@@ -76,6 +76,6 @@
 
     // CRM de WhatsApp — el ID del número de teléfono de la Cloud API (texto,
     // no es secreto). Los secretos van por dashboard/CLI, ver README.
-    "WHATSAPP_PHONE_NUMBER_ID": ""
+    "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928"
   }
 }
