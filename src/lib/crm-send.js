@@ -31,11 +31,12 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
     waMessageId,
     type,
-    body: caption || fileName || null,
+    body: caption || null,
     mediaKey,
     mediaMime: mime,
     sentBy,
-    replyToMessageId: replyTo?.id
+    replyToMessageId: replyTo?.id,
+    fileName
   });
   return waMessageId;
 }

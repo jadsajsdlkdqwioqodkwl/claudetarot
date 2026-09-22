@@ -40,7 +40,7 @@ export async function exportarChatsASheets(env) {
   const desde = estado?.last_message_id || 0;
 
   const { results: mensajes } = await env.CRM_DB.prepare(
-    `SELECT m.id, m.created_at, m.direction, m.type, m.body, m.sent_by,
+    `SELECT m.id, m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name,
             c.ctwa_clid, c.ad_source_type, c.ad_headline, c.notes
      FROM messages m
@@ -69,7 +69,7 @@ export async function exportarChatsASheets(env) {
       m.direction === "in" ? "Cliente" : "Vendedor",
       m.sent_by || "",
       m.type || "text",
-      (m.body || "").slice(0, 2000),
+      (m.body || m.file_name || "").slice(0, 2000),
       m.ad_source_type || "",
       m.ad_headline || "",
       m.ctwa_clid || "",

@@ -20,7 +20,7 @@ import { onRequestPost as crmLogin } from "./api/crm/login.js";
 import { onRequestPost as crmLogout } from "./api/crm/logout.js";
 import { onRequestGet as crmSession } from "./api/crm/session.js";
 import { onRequestGet as crmConversations } from "./api/crm/conversations.js";
-import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from "./api/crm/messages.js";
+import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost, onRequestDelete as crmMessagesDelete } from "./api/crm/messages.js";
 import { onRequestPost as crmContactsPost, onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
 import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
@@ -75,6 +75,11 @@ import {
   onRequestPost as crmStickersPost,
   onRequestDelete as crmStickersDelete
 } from "./api/crm/stickers.js";
+import {
+  onRequestGet as crmPresenceGet,
+  onRequestPost as crmPresencePost,
+  onRequestDelete as crmPresenceDelete
+} from "./api/crm/presence.js";
 import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
@@ -94,7 +99,7 @@ const ROUTES = {
   "/api/crm/logout": { POST: crmLogout },
   "/api/crm/session": { GET: crmSession },
   "/api/crm/conversations": { GET: crmConversations },
-  "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
+  "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost, DELETE: crmMessagesDelete },
   "/api/crm/contacts": { POST: crmContactsPost, PATCH: crmContactsPatch },
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
@@ -116,6 +121,7 @@ const ROUTES = {
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
+  "/api/crm/presence": { GET: crmPresenceGet, POST: crmPresencePost, DELETE: crmPresenceDelete },
   "/api/crm/export-reset": { POST: crmExportResetPost },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },

@@ -26,6 +26,7 @@ const estado = {
   hayMasAntiguos: false,
   pollConv: null,
   pollMsg: null,
+  pollPresencia: null,
   respondiendoA: null
 };
 
@@ -768,6 +769,9 @@ $("#filtros").addEventListener("click", (e) => {
 /* ---------- Conversación abierta ---------- */
 
 async function abrirConversacion(c) {
+  const idAnterior = estado.conversacionActivaId;
+  if (idAnterior && idAnterior !== c.conversation_id) avisarSalidaDeChat(idAnterior);
+
   estado.conversacionActivaId = c.conversation_id;
   estado.mensajesCargados = [];
   estado.hayMasAntiguos = false;
@@ -781,12 +785,55 @@ async function abrirConversacion(c) {
   await cargarMensajes();
   clearInterval(estado.pollMsg);
   estado.pollMsg = setInterval(cargarMensajes, 3000);
+  iniciarPresencia(c.conversation_id);
 }
 
 function volverALaLista() {
+  if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
   document.body.classList.remove("chat-abierto");
   document.body.classList.remove("detalle-abierto");
 }
+
+/* ---------- Presencia: "Fulana también está viendo este chat" ---------- */
+
+function iniciarPresencia(conversationId) {
+  clearInterval(estado.pollPresencia);
+  const latido = async () => {
+    try {
+      await pedir("/api/crm/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId })
+      });
+      const { viendo } = await pedir(`/api/crm/presence?conversation_id=${conversationId}`);
+      pintarPresencia(viendo);
+    } catch { /* silencioso — no vale la pena molestar por esto */ }
+  };
+  latido();
+  estado.pollPresencia = setInterval(latido, 5000);
+}
+
+function pintarPresencia(viendo) {
+  const cont = $("#presencia-chat");
+  if (!cont) return;
+  cont.textContent = viendo?.length ? `${viendo.join(", ")} también está viendo este chat` : "";
+  cont.style.display = viendo?.length ? "flex" : "none";
+}
+
+/** Best-effort: avisa que ya no lo tiene abierto, para que el aviso desaparezca de inmediato en las demás en vez de esperar los ~12s de que expire solo. `keepalive` para que no se corte si es justo al cerrar la pestaña. */
+function avisarSalidaDeChat(conversationId) {
+  clearInterval(estado.pollPresencia);
+  pedir("/api/crm/presence", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationId }),
+    keepalive: true
+  }).catch(() => {});
+}
+
+window.addEventListener("beforeunload", () => {
+  if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
+});
 
 function pintarChatBase(c) {
   const nombre = c.profile_name || c.wa_id;
@@ -797,6 +844,7 @@ function pintarChatBase(c) {
       <div>
         <div class="nombre">${escapar(nombre)}</div>
         <div class="tel">+${escapar(c.wa_id)}</div>
+        <div id="presencia-chat" class="presencia" style="display:none"></div>
       </div>
       <div class="acciones-chat">
         <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
@@ -1213,6 +1261,7 @@ function vistaUnicaHtml(m) {
 }
 
 function contenidoMensaje(m) {
+  if (m.deleted_at) return `<span class="mensaje-eliminado">${icon("trash")} Eliminaste este mensaje</span>`;
   if (m.type === "sticker" && (m.media_key || m.media_id)) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
@@ -1241,9 +1290,10 @@ function extractoMensaje(tipo, body) {
 function quoteHtml(m) {
   if (!m.reply_to_message_id) return "";
   const quien = m.reply_direction === "out" ? (m.reply_sent_by || "Tú") : "Cliente";
+  const texto = m.reply_deleted_at ? "Mensaje eliminado" : extractoMensaje(m.reply_type, m.reply_body);
   return `<div class="msg-quote">
     <div class="msg-quote-quien">${escapar(quien)}</div>
-    <div class="msg-quote-texto">${escapar(extractoMensaje(m.reply_type, m.reply_body))}</div>
+    <div class="msg-quote-texto">${escapar(texto)}</div>
   </div>`;
 }
 
@@ -1291,6 +1341,7 @@ function pintarMensajes() {
       <div class="msg-acciones">
         <button type="button" class="msg-reaccionar" title="Reaccionar">${icon("smile")}</button>
         <button type="button" class="msg-responder" title="Responder">${icon("reply")}</button>
+        ${m.direction === "out" && !m.deleted_at ? `<button type="button" class="msg-borrar" title="Eliminar">${icon("trash")}</button>` : ""}
       </div>
       <div class="msg ${m.direction}">
         ${quoteHtml(m)}
@@ -1326,6 +1377,11 @@ function configurarAccionesMensajes() {
     const filaReaccionar = e.target.closest(".msg-reaccionar");
     if (filaReaccionar) {
       abrirPickerReaccion(filaReaccionar);
+      return;
+    }
+    const filaBorrar = e.target.closest(".msg-borrar");
+    if (filaBorrar) {
+      borrarMensajeChat(Number(filaBorrar.closest(".msg-fila").dataset.id));
       return;
     }
   });
@@ -1416,6 +1472,21 @@ async function enviarReaccionMsg(messageId, emoji) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message_id: messageId, emoji: emojiFinal })
+    });
+    await cargarMensajes();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+/** Ojo: esto NO borra el mensaje del WhatsApp del cliente — Meta no da esa opción vía API para negocios — solo deja de mostrarse en el CRM. */
+async function borrarMensajeChat(messageId) {
+  if (!confirm("Esto elimina el mensaje solo de este CRM.\n\nWhatsApp no permite borrarlo del teléfono del cliente si ya lo recibió — eso Meta no lo habilita para cuentas de negocio.\n\n¿Eliminar igual?")) return;
+  try {
+    await pedir("/api/crm/messages", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: messageId })
     });
     await cargarMensajes();
   } catch (err) {

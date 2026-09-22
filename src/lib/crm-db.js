@@ -78,13 +78,13 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId }) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId, fileName }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by, reply_to_message_id)
-       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?, ?)`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by, reply_to_message_id, file_name)
+       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?, ?, ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null, fileName || null)
     .run();
 
   await db
@@ -98,6 +98,50 @@ export async function actualizarEstadoMensaje(db, waMessageId, status, errorDeta
     .prepare("UPDATE messages SET status = ?, error_detail = ? WHERE wa_message_id = ?")
     .bind(status, errorDetail || null, waMessageId)
     .run();
+}
+
+/**
+ * "Elimina" un mensaje del lado del CRM — Meta no ofrece un recall real para
+ * mensajes de negocio vía Cloud API, así que esto solo deja de mostrarlo acá
+ * (el cliente lo sigue teniendo en su WhatsApp). Se limpia el contenido para
+ * no dejarlo accesible por la API igual.
+ */
+export async function borrarMensaje(db, messageId) {
+  await db
+    .prepare(
+      `UPDATE messages
+       SET deleted_at = datetime('now'), body = NULL, media_id = NULL, media_key = NULL, media_mime = NULL
+       WHERE id = ?`
+    )
+    .bind(messageId)
+    .run();
+}
+
+/** Marca que un agente tiene este chat abierto ahora mismo (se llama cada pocos segundos mientras lo tiene abierto). */
+export async function marcarPresencia(db, conversationId, agentName) {
+  await db
+    .prepare(
+      `INSERT INTO presence (conversation_id, agent_name, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(conversation_id, agent_name) DO UPDATE SET updated_at = datetime('now')`
+    )
+    .bind(conversationId, agentName)
+    .run();
+}
+
+export async function quitarPresencia(db, conversationId, agentName) {
+  await db.prepare("DELETE FROM presence WHERE conversation_id = ? AND agent_name = ?").bind(conversationId, agentName).run();
+}
+
+/** Quién más (aparte de quien pregunta) tiene este chat abierto — "reciente" es en los últimos 12s, para que se apague solo si cierra la pestaña sin avisar. */
+export async function agentesViendoChat(db, conversationId, exceptoAgente) {
+  const { results } = await db
+    .prepare(
+      `SELECT agent_name FROM presence
+       WHERE conversation_id = ? AND agent_name != ? AND updated_at > datetime('now', '-12 seconds')`
+    )
+    .bind(conversationId, exceptoAgente || "")
+    .all();
+  return results.map((r) => r.agent_name);
 }
 
 /** Busca el id interno de un mensaje por su wa_message_id — para resolver a qué mensaje responde uno entrante. */
