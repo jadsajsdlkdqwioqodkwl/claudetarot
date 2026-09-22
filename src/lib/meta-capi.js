@@ -25,9 +25,14 @@ async function sha256Hex(texto) {
  * sola (hashing del teléfono, forma del payload) sin necesitar credenciales
  * reales de Meta.
  */
-export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, testEventCode }) {
+export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, testEventCode }) {
   if (!waId) throw new Error("Falta el WhatsApp del contacto.");
   const telefonoHash = await sha256Hex(String(waId).replace(/\D/g, ""));
+  // fn (nombre) es un extra para el Event Match Quality — ctwa_clid + ph ya
+  // son, por sí solos, el par que Meta documenta como suficiente para un
+  // evento de Click-to-WhatsApp: ctwa_clid conecta directo con el clic al
+  // anuncio, y ph identifica a la persona. El nombre solo suma un poco más.
+  const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
 
   const evento = {
     event_name: eventName,
@@ -36,7 +41,8 @@ export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, event
     messaging_channel: "whatsapp",
     user_data: {
       ph: [telefonoHash],
-      ...(ctwaClid ? { ctwa_clid: ctwaClid } : {})
+      ...(ctwaClid ? { ctwa_clid: ctwaClid } : {}),
+      ...(nombreHash ? { fn: [nombreHash] } : {})
     },
     custom_data: {
       currency: moneda || "PEN",

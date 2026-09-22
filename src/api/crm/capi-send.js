@@ -45,11 +45,11 @@ async function post({ request, env, agent }) {
 
   const orderId = payload?.order_id ? Number(payload.order_id) : null;
   let conversationId = payload?.conversation_id ? Number(payload.conversation_id) : null;
-  let waId, ctwaClid;
+  let waId, ctwaClid, nombreCompleto;
 
   if (orderId) {
     const pedido = await env.CRM_DB.prepare(
-      `SELECT o.*, conv.id AS conversation_id, c.wa_id, c.ctwa_clid
+      `SELECT o.*, conv.id AS conversation_id, c.wa_id, c.ctwa_clid, c.name, c.profile_name
        FROM catalog_orders o
        JOIN conversations conv ON conv.id = o.conversation_id
        JOIN contacts c ON c.id = conv.contact_id
@@ -61,20 +61,27 @@ async function post({ request, env, agent }) {
     conversationId = pedido.conversation_id;
     waId = pedido.wa_id;
     ctwaClid = pedido.ctwa_clid;
+    nombreCompleto = pedido.name || pedido.profile_name;
     if (payload?.value === undefined && pedido.total_amount) payload.value = pedido.total_amount;
     if (!payload?.currency && pedido.currency) payload.currency = pedido.currency;
   } else if (conversationId) {
     const conv = await env.CRM_DB.prepare(
-      `SELECT c.wa_id, c.ctwa_clid FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
+      `SELECT c.wa_id, c.ctwa_clid, c.name, c.profile_name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
     )
       .bind(conversationId)
       .first();
     if (!conv) return json({ error: "Conversación no encontrada." }, 404);
     waId = conv.wa_id;
     ctwaClid = conv.ctwa_clid;
+    nombreCompleto = conv.name || conv.profile_name;
   } else {
     return json({ error: "Falta order_id o conversation_id." }, 400);
   }
+
+  // Primer nombre nada más — es un extra para el match, no hace falta el
+  // apellido, y muchos "profile_name" de WhatsApp ya vienen con emojis o
+  // apodos raros que mejor no mandar completos.
+  const primerNombre = nombreCompleto ? String(nombreCompleto).trim().split(/\s+/)[0].replace(/[^\p{L}]/gu, "") : null;
 
   const valor = Number(payload?.value);
   const moneda = payload?.currency || "PEN";
@@ -91,6 +98,7 @@ async function post({ request, env, agent }) {
       moneda,
       eventId: orderId ? `capi-order-${orderId}` : `capi-conv-${conversationId}-${Date.now()}`,
       contentName: productLabel,
+      firstName: primerNombre || undefined,
       testEventCode: payload?.test_event_code || undefined
     });
     const respuesta = await enviarEventoCapi(env, evento);

@@ -963,7 +963,7 @@ async function actualizarPedidosPanel() {
         ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
         ${esAdmin ? `
         <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <button class="capi-enviar" data-id="${o.id}" data-total="${o.total_amount || ""}" data-currency="${escapar(o.currency || "")}" style="font-size:11px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--radio-s);background:#fff;cursor:pointer">${o.capi_status === "enviado" ? "Reenviar a Meta (CAPI)" : "Mandar a Meta (CAPI)"}</button>
+          <button class="capi-enviar" data-id="${o.id}" data-total="${o.total_amount || ""}" data-currency="${escapar(o.currency || "")}" style="font-size:11px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--radio-s);background:#fff;cursor:pointer">${o.capi_status === "enviado" ? "Reportar de nuevo" : "Reportar venta a Meta"}</button>
           ${o.capi_status === "enviado" ? `<span style="font-size:11px;color:var(--verde-osc)">✓ enviado</span>` : o.capi_status === "fallido" ? `<span style="font-size:11px;color:var(--peligro)">falló, reintenta</span>` : ""}
         </div>` : ""}
       </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
@@ -976,7 +976,8 @@ async function actualizarPedidosPanel() {
             valor = prompt("Este pedido no tiene un total guardado — escribe el monto de la venta:");
             if (!valor) return;
           }
-          if (!confirm(`¿Mandar a Meta que esta venta valió ${valor} ${btn.dataset.currency || "PEN"}? Le da crédito al anuncio que originó la conversación.`)) return;
+          if (!confirm(`¿Reportar a Meta esta venta de ${valor} ${btn.dataset.currency || "PEN"}? Ayuda a que el algoritmo de anuncios encuentre más clientes como este.`)) return;
+          if (!confirm("Confirma de nuevo: ¿mandar el reporte ahora?")) return;
           btn.disabled = true;
           try {
             await pedir("/api/crm/capi-send", {
@@ -1895,46 +1896,103 @@ async function pintarDetalle(c) {
     <div id="detalle-pedidos">Cargando…</div>
 
     ${estado.miRol === "admin" ? `
-    <h2>Meta Ads (CAPI)</h2>
-    <p class="ayuda-modal" style="margin:0 0 8px">Reporta una venta a Meta sin necesidad de un pedido del catálogo — para cuando se cerró por chat. No le manda nada al cliente.</p>
-    <input type="text" id="capi-producto" placeholder="Producto (opcional, ej. Kit de tarot x2)" />
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="number" id="capi-valor" value="89" min="0" step="0.01" style="flex:1" />
-      <select id="capi-moneda" style="width:80px">
-        <option value="PEN" selected>PEN</option>
-        <option value="USD">USD</option>
-      </select>
+    <h2>Meta Ads</h2>
+    <p class="ayuda-modal" style="margin:0 0 8px">Reportar una venta ayuda a que Meta le muestre tus anuncios a más gente parecida a este cliente — no le manda nada a él, ni hace falta un pedido del catálogo.</p>
+    <div id="capi-form">
+      <input type="text" id="capi-producto" placeholder="Producto (opcional, ej. Kit de tarot x2)" />
+      <button class="cancelar" id="capi-elegir-catalogo-btn" type="button" style="width:100%;font-size:12px;margin:6px 0">${icon("bag")} Elegir del catálogo</button>
+      <div id="capi-catalogo-lista" style="display:none;max-height:180px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--radio-s);padding:6px;margin-bottom:8px;font-size:12px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="number" id="capi-valor" value="89" min="0" step="0.01" style="flex:1" />
+        <select id="capi-moneda" style="width:80px">
+          <option value="PEN" selected>PEN</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+      <button class="crear" id="capi-reportar-btn" type="button" style="width:100%">Reportar venta (mejora tus anuncios)</button>
     </div>
-    <button class="crear" id="capi-mandar-btn" type="button" style="width:100%">Mandar a Meta (CAPI)</button>
+    <div id="capi-confirmacion" style="display:none"></div>
     <div id="detalle-capi-historial" style="margin-top:8px"></div>
     ` : ""}
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
 
-  $("#capi-mandar-btn")?.addEventListener("click", async () => {
+  $("#capi-elegir-catalogo-btn")?.addEventListener("click", async () => {
+    const cont = $("#capi-catalogo-lista");
+    const seAbre = cont.style.display === "none";
+    cont.style.display = seAbre ? "block" : "none";
+    if (!seAbre) return;
+    cont.innerHTML = "Cargando…";
+    try {
+      if (!cacheProductosCatalogo) {
+        const { products } = await pedir("/api/crm/catalog-products");
+        cacheProductosCatalogo = products;
+      }
+      cont.innerHTML = (cacheProductosCatalogo || []).map((p, i) => {
+        const precio = parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
+        return `
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer">
+          <input type="checkbox" class="capi-check-producto" data-i="${i}" data-nombre="${escapar(p.name || p.retailer_id)}" data-precio="${precio}" />
+          ${escapar(p.name || p.retailer_id)}${precio ? ` — ${precio}` : ""}
+        </label>`;
+      }).join("") || "Sin productos en el catálogo.";
+      cont.querySelectorAll(".capi-check-producto").forEach((chk) => chk.addEventListener("change", () => {
+        const marcados = [...cont.querySelectorAll(".capi-check-producto:checked")];
+        if (!marcados.length) return;
+        $("#capi-producto").value = marcados.map((m) => m.dataset.nombre).join(", ");
+        const suma = marcados.reduce((s, m) => s + Number(m.dataset.precio || 0), 0);
+        if (suma > 0) $("#capi-valor").value = suma;
+      }));
+    } catch (err) {
+      cont.innerHTML = escapar(err.message);
+    }
+  });
+
+  $("#capi-reportar-btn")?.addEventListener("click", () => {
     const valor = Number($("#capi-valor").value);
     const moneda = $("#capi-moneda").value;
     const producto = $("#capi-producto").value.trim();
     if (!valor || valor <= 0) return alert("Escribe un monto válido.");
-    if (!confirm(`¿Mandar a Meta que esta venta valió ${valor} ${moneda}${producto ? ` (${producto})` : ""}?`)) return;
 
-    const btn = $("#capi-mandar-btn");
-    btn.disabled = true;
-    try {
-      await pedir("/api/crm/capi-send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: c.conversation_id, value: valor, currency: moneda, product_label: producto || undefined })
-      });
-      alert("Evento mandado a Meta.");
-      $("#capi-producto").value = "";
-      await actualizarHistorialCapi(c.conversation_id);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      btn.disabled = false;
-    }
+    $("#capi-form").style.display = "none";
+    const conf = $("#capi-confirmacion");
+    conf.style.display = "block";
+    conf.innerHTML = `
+      <div class="ad-card" style="margin-bottom:8px">
+        <div class="titulo">${icon("send")} Confirmar reporte a Meta</div>
+        <div>${producto ? escapar(producto) + " — " : ""}<strong>${valor} ${escapar(moneda)}</strong></div>
+        <div class="sub" style="margin-top:4px">Ayuda a que el algoritmo de anuncios encuentre más clientes como este. No le manda nada a él.</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="cancelar" id="capi-cancelar-btn" type="button" style="flex:1">Cancelar</button>
+        <button class="crear" id="capi-confirmar-btn" type="button" style="flex:1">Sí, reportar</button>
+      </div>`;
+
+    $("#capi-cancelar-btn").addEventListener("click", () => {
+      conf.style.display = "none";
+      $("#capi-form").style.display = "block";
+    });
+    $("#capi-confirmar-btn").addEventListener("click", async () => {
+      const btn = $("#capi-confirmar-btn");
+      btn.disabled = true;
+      try {
+        await pedir("/api/crm/capi-send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: c.conversation_id, value: valor, currency: moneda, product_label: producto || undefined })
+        });
+        conf.style.display = "none";
+        $("#capi-form").style.display = "block";
+        $("#capi-producto").value = "";
+        $("#capi-catalogo-lista").style.display = "none";
+        await actualizarHistorialCapi(c.conversation_id);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
   });
   if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
 

@@ -96,7 +96,7 @@ export async function enviarCatalogo(env, waId, texto, thumbnailRetailerId) {
 /** Lista los productos del catálogo, para elegir uno y mandarlo suelto. */
 export async function listarProductosCatalogo(env, catalogId) {
   const res = await fetch(
-    graphUrl(env, `${catalogId}/products?fields=name,retailer_id,image_url,availability&limit=200`),
+    graphUrl(env, `${catalogId}/products?fields=name,retailer_id,image_url,availability,price,currency&limit=200`),
     { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
   );
   const datos = await res.json().catch(() => ({}));
