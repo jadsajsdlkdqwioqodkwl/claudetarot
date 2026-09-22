@@ -6,7 +6,7 @@
 
 const $ = (sel) => document.querySelector(sel);
 
-const EMOJIS = "😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 🙌 💪 🎉 🔥 ✨ ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
+const EMOJIS = "☺️ 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 🫶 👍 👎 👏 🙌 💪 🎉 🔥 ✨ ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
 const PAGINA_MENSAJES = 50;
 
 const estado = {
@@ -735,8 +735,10 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-catalogo" title="Mandar catálogo">${icon("bag")}</button>
       <button type="button" class="icono" id="btn-seguimiento" title="Seguimientos programados">${icon("clock")}</button>
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
+      <button type="button" class="icono" id="btn-stickers" title="Stickers">${icon("sticker")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
       <input type="file" id="input-archivo" accept="image/*,video/*" style="display:none" />
+      <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
@@ -745,6 +747,7 @@ function pintarChatBase(c) {
       <div id="panel-seguimientos"></div>
       <div id="panel-emojis"></div>
       <div id="panel-catalogo"></div>
+      <div id="panel-stickers"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
   $("#btn-volver").addEventListener("click", volverALaLista);
@@ -810,6 +813,105 @@ function pintarChatBase(c) {
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
   $("#btn-catalogo").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-catalogo"]); toggleCatalogoPanel(); });
+  $("#btn-stickers").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-stickers"]); toggleStickersPanel(); });
+  $("#input-sticker").addEventListener("change", onStickerElegido);
+}
+
+/* ---------- Stickers ---------- */
+
+let cacheStickers = null;
+
+async function toggleStickersPanel() {
+  const panel = $("#panel-stickers");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (!panel.classList.contains("abierto")) return;
+
+  try {
+    const { stickers } = await pedir("/api/crm/stickers");
+    cacheStickers = stickers;
+    pintarStickersPanel();
+  } catch (err) {
+    panel.innerHTML = `<div class="item"><div class="cuerpo">${escapar(err.message)}</div></div>`;
+  }
+}
+
+function pintarStickersPanel() {
+  const panel = $("#panel-stickers");
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="stickers-grid">
+      ${(cacheStickers || []).map((s) => `
+        <div class="sticker-item" data-id="${s.id}">
+          <img src="/api/crm/media?key=${encodeURIComponent(s.media_key)}" alt="sticker" loading="lazy" />
+          <button type="button" class="sticker-borrar" data-id="${s.id}" title="Borrar sticker">${icon("trash")}</button>
+        </div>`).join("")}
+      <div class="sticker-item sticker-agregar" id="sticker-agregar" title="Agregar sticker">${icon("plus")}</div>
+    </div>`;
+  panel.querySelectorAll(".sticker-item:not(.sticker-agregar)").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".sticker-borrar")) return;
+      enviarSticker(Number(el.dataset.id));
+    });
+  });
+  panel.querySelectorAll(".sticker-borrar").forEach((btn) => {
+    btn.addEventListener("click", (e) => { e.stopPropagation(); borrarSticker(Number(btn.dataset.id)); });
+  });
+  $("#sticker-agregar").addEventListener("click", () => $("#input-sticker").click());
+}
+
+async function enviarSticker(id) {
+  const sticker = (cacheStickers || []).find((s) => s.id === id);
+  if (!sticker) return;
+  $("#panel-stickers").classList.remove("abierto");
+  mostrarEnviando(true);
+  try {
+    await pedir("/api/crm/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: sticker.media_key, media_type: "sticker" })
+    });
+    await cargarMensajes();
+    await cargarConversaciones();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    mostrarEnviando(false);
+  }
+}
+
+async function borrarSticker(id) {
+  if (!confirm("¿Borrar este sticker de la biblioteca?")) return;
+  try {
+    await pedir("/api/crm/stickers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    });
+    cacheStickers = (cacheStickers || []).filter((s) => s.id !== id);
+    pintarStickersPanel();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function onStickerElegido(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  e.target.value = "";
+  try {
+    const { media_key, mime, type } = await subirArchivo(file);
+    if (type !== "sticker") { alert("El archivo debe ser un webp (formato de sticker)."); return; }
+    const { sticker } = await pedir("/api/crm/stickers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ media_key, media_mime: mime })
+    });
+    cacheStickers = [...(cacheStickers || []), sticker];
+    pintarStickersPanel();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 async function enviarCatalogoCompleto() {
@@ -898,7 +1000,7 @@ function mostrarEnviando(activo) {
 }
 
 function cerrarPaneles(excepto = []) {
-  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas"].forEach((sel) => {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas", "#panel-stickers"].forEach((sel) => {
     if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
   });
 }
@@ -912,10 +1014,12 @@ function toggleMasPanel() {
   panel.innerHTML = `
     <div class="item" id="mas-plantillas"><div class="titulo">${icon("doc")} Mandar plantilla</div></div>
     <div class="item" id="mas-catalogo"><div class="titulo">${icon("bag")} Mandar catálogo</div></div>
-    <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>`;
+    <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>
+    <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>`;
   $("#mas-plantillas").addEventListener("click", () => { panel.classList.remove("abierto"); abrirModalTemplates(); });
   $("#mas-catalogo").addEventListener("click", () => { panel.classList.remove("abierto"); toggleCatalogoPanel(); });
   $("#mas-seguimiento").addEventListener("click", () => { panel.classList.remove("abierto"); toggleSeguimientosPanel(); });
+  $("#mas-stickers").addEventListener("click", () => { panel.classList.remove("abierto"); toggleStickersPanel(); });
 }
 
 async function cargarMensajes() {
@@ -1333,7 +1437,7 @@ function toggleEmojiPanel() {
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas")) {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers")) {
     cerrarPaneles();
   }
 });
@@ -1515,6 +1619,13 @@ $("#rapida-crear").addEventListener("click", async () => {
 
 /* ---------- Seguimientos programados ---------- */
 
+function abrirModalProgramarSeguimiento() {
+  const sel = $("#seg-rapida");
+  sel.innerHTML = `<option value="">— o una respuesta rápida guardada —</option>` +
+    estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
+  $("#modal-seguimiento-fondo").classList.add("abierto");
+}
+
 async function toggleSeguimientosPanel() {
   const panel = $("#panel-seguimientos");
   if (!panel) return;
@@ -1552,10 +1663,7 @@ async function pintarSeguimientosPanel() {
   });
   $("#nuevo-seguimiento")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
-    const sel = $("#seg-rapida");
-    sel.innerHTML = `<option value="">— o una respuesta rápida guardada —</option>` +
-      estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
-    $("#modal-seguimiento-fondo").classList.add("abierto");
+    abrirModalProgramarSeguimiento();
   });
   $("#aplicar-secuencia")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
@@ -2001,6 +2109,13 @@ async function pintarDetalle(c) {
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
 
+    <h2>Pedidos del catálogo</h2>
+    <div id="detalle-pedidos">Cargando…</div>
+
+    <h2>Seguimientos programados</h2>
+    <div id="detalle-seguimientos">Cargando…</div>
+    <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
+
     <h2>Notas</h2>
     <textarea id="detalle-notas" placeholder="Ej. Adelanto, separado, talla, modelo de collar específico, otros productos o múltiples unidades, etc." style="width:100%;min-height:70px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(c.notes || "")}</textarea>
     <div class="ayuda-modal" id="detalle-notas-estado" style="margin:2px 0 0"></div>
@@ -2016,12 +2131,6 @@ async function pintarDetalle(c) {
       </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
     ${!tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
     ` : ""}
-
-    <h2>Seguimientos programados</h2>
-    <div id="detalle-seguimientos">Cargando…</div>
-
-    <h2>Pedidos del catálogo</h2>
-    <div id="detalle-pedidos">Cargando…</div>
 
     ${estado.miRol === "admin" ? `
     <h2>Meta Ads</h2>
@@ -2045,6 +2154,8 @@ async function pintarDetalle(c) {
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
+
+  $("#detalle-nuevo-seguimiento").addEventListener("click", abrirModalProgramarSeguimiento);
 
   $("#detalle-notas").addEventListener("input", debounce(async (e) => {
     const estadoEl = $("#detalle-notas-estado");

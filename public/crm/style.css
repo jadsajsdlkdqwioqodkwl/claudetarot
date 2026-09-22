@@ -216,7 +216,11 @@ button { font-family: inherit; }
 .msg-reacciones { position: absolute; bottom: -11px; right: 6px; background: var(--panel); border-radius: var(--radio-full); box-shadow: 0 1px 3px rgba(0,0,0,.18); padding: 1px 5px; font-size: 13px; line-height: 1.4; }
 .reaccion-chip { margin: 0 1px; }
 
-.picker-reaccion { position: absolute; top: -16px; right: 26px; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-full); box-shadow: 0 2px 8px rgba(0,0,0,.18); padding: 4px 6px; display: flex; gap: 4px; z-index: 10; }
+/* Abajo del botón, no arriba: arriba se suma al offset negativo de
+   .msg-acciones y en el primer mensaje de la lista queda cortado por el
+   overflow del contenedor. left en vez de right para que en los mensajes
+   "in" (a la izquierda de la pantalla) no se salga por el borde. */
+.picker-reaccion { position: absolute; top: 26px; left: -4px; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-full); box-shadow: 0 2px 8px rgba(0,0,0,.18); padding: 4px 6px; display: flex; gap: 4px; z-index: 10; }
 .picker-reaccion button { border: 0; background: transparent; cursor: pointer; font-size: 18px; padding: 2px; line-height: 1; transition: transform .1s; }
 .picker-reaccion button:hover { transform: scale(1.25); }
 
@@ -271,6 +275,20 @@ button { font-family: inherit; }
 #panel-rapidas .buscador-rapidas { padding: 8px 10px; border-bottom: 1px solid var(--borde); }
 #panel-rapidas .buscador-rapidas input { width: 100%; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
 #panel-catalogo input { width: 100%; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
+
+/* ---------- Stickers ---------- */
+
+#panel-stickers { position: absolute; bottom: 56px; left: 0; width: 260px; max-height: 300px; overflow-y: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio-m); box-shadow: 0 2px 10px rgba(0,0,0,.15); display: none; z-index: 10; padding: 8px; }
+#panel-stickers.abierto { display: block; }
+.stickers-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sticker-item { position: relative; aspect-ratio: 1; border-radius: var(--radio-s); overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; background: var(--fondo); }
+.sticker-item img { width: 100%; height: 100%; object-fit: contain; }
+.sticker-item.sticker-agregar { border: 1px dashed var(--borde); color: var(--gris); }
+.sticker-item.sticker-agregar .icono-svg { width: 20px; height: 20px; }
+.sticker-borrar { position: absolute; top: 2px; right: 2px; border: 0; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.sticker-borrar .icono-svg { width: 11px; height: 11px; }
+.sticker-item:hover .sticker-borrar { display: flex; }
+
 .miniatura { width: 34px; height: 34px; border-radius: var(--radio-s); object-fit: cover; background: var(--fondo); display: flex; align-items: center; justify-content: center; color: var(--gris); flex-shrink: 0; }
 .miniatura .icono-svg { width: 16px; height: 16px; }
 
@@ -374,7 +392,7 @@ button { font-family: inherit; }
   /* No entran los 5 íconos + textarea en una pantalla angosta: plantilla,
      catálogo y seguimiento se juntan en el menú "⋯" y solo quedan adjuntar,
      respuestas rápidas y emoji sueltos junto al texto. */
-  #btn-plantillas, #btn-catalogo, #btn-seguimiento { display: none; }
+  #btn-plantillas, #btn-catalogo, #btn-seguimiento, #btn-stickers { display: none; }
   #btn-mas { display: inline-flex; }
 
   .conv-item { padding: 10px 12px; }

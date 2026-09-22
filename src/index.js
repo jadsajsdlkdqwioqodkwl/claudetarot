@@ -70,6 +70,11 @@ import {
 import { onRequestGet as crmBulkSendGet, onRequestPost as crmBulkSendPost } from "./api/crm/bulk-send.js";
 import { onRequestGet as crmCapiSendGet, onRequestPost as crmCapiSendPost } from "./api/crm/capi-send.js";
 import { onRequestPost as crmReactPost } from "./api/crm/react.js";
+import {
+  onRequestGet as crmStickersGet,
+  onRequestPost as crmStickersPost,
+  onRequestDelete as crmStickersDelete
+} from "./api/crm/stickers.js";
 import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
@@ -110,6 +115,7 @@ const ROUTES = {
   "/api/crm/bulk-send": { GET: crmBulkSendGet, POST: crmBulkSendPost },
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
   "/api/crm/react": { POST: crmReactPost },
+  "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/export-reset": { POST: crmExportResetPost },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },
