@@ -77,7 +77,7 @@ export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
  * botón "Ver catálogo". No necesita el Catalog ID: usa el que ya está
  * conectado al número en WhatsApp Manager.
  */
-export async function enviarCatalogo(env, waId, texto) {
+export async function enviarCatalogo(env, waId, texto, thumbnailRetailerId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
     to: waId,
@@ -85,7 +85,9 @@ export async function enviarCatalogo(env, waId, texto) {
     interactive: {
       type: "catalog_message",
       body: { text: texto || "Mira nuestro catálogo completo:" },
-      action: { name: "catalog_message" }
+      // `parameters` es obligatorio aunque esté vacío; con un producto de
+      // miniatura, WhatsApp lo usa como portada de la tarjeta del catálogo.
+      action: { name: "catalog_message", parameters: thumbnailRetailerId ? { thumbnail_product_retailer_id: thumbnailRetailerId } : {} }
     }
   });
   return datos.messages?.[0]?.id || null;
@@ -95,6 +97,17 @@ export async function enviarCatalogo(env, waId, texto) {
 export async function listarProductosCatalogo(env, catalogId) {
   const res = await fetch(
     graphUrl(env, `${catalogId}/products?fields=name,retailer_id,image_url,availability&limit=200`),
+    { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
+  );
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos?.error?.message || `HTTP ${res.status}`);
+  return datos.data || [];
+}
+
+/** Los catálogos que WhatsApp Manager tiene REALMENTE conectados a esta cuenta. */
+export async function catalogosConectados(env) {
+  const res = await fetch(
+    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/product_catalogs?fields=name,id`),
     { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
   );
   const datos = await res.json().catch(() => ({}));

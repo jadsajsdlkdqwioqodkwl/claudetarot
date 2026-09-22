@@ -100,7 +100,14 @@ async function post({ request, env, agent }) {
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
-    const waMessageId = await enviarCatalogo(env, conv.wa_id, payload?.text);
+    let thumbnailRetailerId;
+    if (env.WHATSAPP_CATALOG_ID) {
+      try {
+        const productos = await listarProductosCatalogo(env, env.WHATSAPP_CATALOG_ID);
+        thumbnailRetailerId = productos[0]?.retailer_id;
+      } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
+    }
+    const waMessageId = await enviarCatalogo(env, conv.wa_id, payload?.text, thumbnailRetailerId);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "catalog",

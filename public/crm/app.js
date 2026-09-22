@@ -19,6 +19,7 @@ const estado = {
   templateElegido: null,
   miRol: null,
   filtroRapidas: "",
+  rapidasPorSlash: false,
   bienvenidaQuickReplyId: null,
   pollConv: null,
   pollMsg: null
@@ -281,10 +282,18 @@ function pintarChatBase(c) {
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("input", (e) => {
-    if (e.target.value === "/") {
-      e.target.value = "";
-      cerrarPaneles(["#panel-rapidas"]);
-      toggleQuickPanel();
+    const v = e.target.value;
+    if (v.startsWith("/")) {
+      estado.rapidasPorSlash = true;
+      estado.filtroRapidas = v.slice(1);
+      if (!$("#panel-rapidas").classList.contains("abierto")) {
+        cerrarPaneles(["#panel-rapidas"]);
+        $("#panel-rapidas").classList.add("abierto");
+      }
+      pintarQuickPanel();
+    } else if (estado.rapidasPorSlash) {
+      estado.rapidasPorSlash = false;
+      $("#panel-rapidas").classList.remove("abierto");
     }
   });
   $("#btn-rapidas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-rapidas"]); toggleQuickPanel(); });
@@ -564,7 +573,10 @@ function pintarQuickPanel() {
         <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
       </div>`;
     }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
-    <footer><button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button></footer>`;
+    <footer>
+      <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
+      ${esAdmin && estado.bienvenidaQuickReplyId ? `<button id="probar-bienvenida" style="margin-top:6px">${icon("bolt")} Probar bienvenida en un número</button>` : ""}
+    </footer>`;
 
   $("#rapidas-buscar").addEventListener("input", (e) => {
     estado.filtroRapidas = e.target.value;
@@ -611,10 +623,27 @@ function pintarQuickPanel() {
     panel.classList.remove("abierto");
     $("#modal-rapida-fondo").classList.add("abierto");
   });
+  $("#probar-bienvenida")?.addEventListener("click", async () => {
+    const wa = prompt("¿A qué WhatsApp mando la bienvenida de prueba? (con código de país, ej. 51987654321)\n\nOjo: ese número tiene que haberte escrito antes al menos una vez, para que la ventana de 24h esté abierta.");
+    if (!wa) return;
+    try {
+      await pedir("/api/crm/test-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wa_id: wa.replace(/\D/g, "") })
+      });
+      alert("Bienvenida de prueba mandada — revisa ese WhatsApp.");
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 }
 
 async function enviarQuickReply(q) {
   $("#panel-rapidas").classList.remove("abierto");
+  estado.rapidasPorSlash = false;
+  const input = $("#texto-envio");
+  if (input) input.value = "";
   try {
     if (q.media.length) {
       for (const m of q.media) {
