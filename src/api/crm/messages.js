@@ -18,23 +18,39 @@ const json = (data, status = 200) =>
 
 const TIPOS_MEDIA = new Set(["image", "video", "document"]);
 
+const PAGINA = 50;
+
+/**
+ * Sin `before_id`: los últimos 50 mensajes (los más recientes), en orden
+ * cronológico. Con `before_id`: los 50 anteriores a ese id — así el chat no
+ * carga cientos de mensajes de una vez ni crece sin límite en el navegador;
+ * el botón "Cargar mensajes anteriores" va pidiendo de a tandas hacia arriba.
+ */
 async function get({ request, env }) {
   const url = new URL(request.url);
   const conversationId = Number(url.searchParams.get("conversation_id"));
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
+  const beforeId = Number(url.searchParams.get("before_id")) || null;
+
   const { results } = await env.CRM_DB.prepare(
     `SELECT id, direction, type, body, media_id, media_key, media_mime, status, sent_by, created_at
-     FROM messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 500`
+     FROM messages WHERE conversation_id = ? ${beforeId ? "AND id < ?" : ""}
+     ORDER BY id DESC LIMIT ?`
   )
-    .bind(conversationId)
+    .bind(...(beforeId ? [conversationId, beforeId, PAGINA] : [conversationId, PAGINA]))
     .all();
 
-  await env.CRM_DB.prepare("UPDATE conversations SET unread_count = 0 WHERE id = ?")
-    .bind(conversationId)
-    .run();
+  results.reverse();
 
-  return json({ messages: results });
+  if (!beforeId) {
+    await env.CRM_DB.prepare("UPDATE conversations SET unread_count = 0 WHERE id = ?")
+      .bind(conversationId)
+      .run();
+  }
+
+  const hayMas = results.length === PAGINA;
+  return json({ messages: results, hay_mas: hayMas });
 }
 
 async function post({ request, env, agent }) {
