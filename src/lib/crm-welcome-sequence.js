@@ -9,18 +9,16 @@ import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
 
 export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel) {
   const { results: pasos } = await env.CRM_DB.prepare(
-    `SELECT s.step_order, q.id AS quick_reply_id, q.body
-     FROM welcome_sequence s JOIN quick_replies q ON q.id = s.quick_reply_id
-     ORDER BY s.step_order ASC`
+    "SELECT id, step_order, body FROM welcome_steps ORDER BY step_order ASC"
   ).all();
 
   if (!pasos.length) return 0;
 
   for (const paso of pasos) {
     const media = await env.CRM_DB.prepare(
-      "SELECT * FROM quick_reply_media WHERE quick_reply_id = ? ORDER BY sort_order ASC"
+      "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
     )
-      .bind(paso.quick_reply_id)
+      .bind(paso.id)
       .all();
 
     if (media.results.length) {

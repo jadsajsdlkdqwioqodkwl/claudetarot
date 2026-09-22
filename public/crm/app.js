@@ -303,7 +303,7 @@ $("#btn-bienvenida").addEventListener("click", async () => {
 $("#bienvenida-cerrar").addEventListener("click", () => $("#modal-bienvenida-fondo").classList.remove("abierto"));
 
 async function pintarSecuenciaBienvenida() {
-  const [{ steps }] = await Promise.all([pedir("/api/crm/welcome-sequence"), cargarQuickReplies()]);
+  const { steps } = await pedir("/api/crm/welcome-sequence");
 
   const cont = $("#lista-secuencia");
   cont.innerHTML = steps.length ? steps.map((s, i) => `
@@ -315,9 +315,9 @@ async function pintarSecuenciaBienvenida() {
       <div style="display:flex;gap:4px">
         <button class="mover-arriba" data-id="${s.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
         <button class="mover-abajo" data-id="${s.id}" title="Bajar" ${i === steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
-        <button class="trash quitar-paso" data-id="${s.id}" title="Quitar de la secuencia">${icon("trash")}</button>
+        <button class="trash quitar-paso" data-id="${s.id}" title="Borrar paso">${icon("trash")}</button>
       </div>
-    </div>`).join("") : `<p class="ayuda-modal">Todavía no hay ningún paso — agrega respuestas rápidas abajo.</p>`;
+    </div>`).join("") : `<p class="ayuda-modal">Todavía no hay ningún paso — agrégalo abajo.</p>`;
 
   // Rota las flechas de "arrowLeft" para que apunten arriba/abajo sin pedir dos íconos nuevos.
   cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((s) => s.style.transform = "rotate(90deg)");
@@ -335,6 +335,7 @@ async function pintarSecuenciaBienvenida() {
   });
   cont.querySelectorAll(".quitar-paso").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (!confirm("¿Borrar este paso de la bienvenida? No se puede deshacer.")) return;
       await pedir("/api/crm/welcome-sequence", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -343,27 +344,38 @@ async function pintarSecuenciaBienvenida() {
       await pintarSecuenciaBienvenida();
     });
   });
-
-  const yaEnSecuencia = new Set(steps.map((s) => s.quick_reply_id));
-  const disponibles = estado.quickReplies.filter((q) => !yaEnSecuencia.has(q.id));
-  const select = $("#seq-agregar-select");
-  select.innerHTML = disponibles.length
-    ? disponibles.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("")
-    : `<option value="">— crea una respuesta rápida primero —</option>`;
 }
 
 $("#seq-agregar-btn").addEventListener("click", async () => {
-  const id = Number($("#seq-agregar-select").value);
-  if (!id) return;
+  const title = $("#seq-titulo").value.trim();
+  const body = $("#seq-texto").value.trim();
+  const files = [...$("#seq-archivo").files];
+  if (!title) return alert("Ponle un título.");
+  if (!body && !files.length) return alert("Necesita texto o al menos un archivo.");
+
+  const btn = $("#seq-agregar-btn");
+  btn.disabled = true;
+  btn.textContent = "Subiendo…";
   try {
+    const media_keys = [];
+    for (const file of files) {
+      const subida = await subirArchivo(file);
+      media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    }
     await pedir("/api/crm/welcome-sequence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quick_reply_id: id })
+      body: JSON.stringify({ title, body, media_keys })
     });
     await pintarSecuenciaBienvenida();
+    $("#seq-titulo").value = "";
+    $("#seq-texto").value = "";
+    $("#seq-archivo").value = "";
   } catch (err) {
     alert(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Agregar paso";
   }
 });
 

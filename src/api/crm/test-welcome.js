@@ -4,7 +4,7 @@
  * Marca ese contacto como si hubiera llegado desde un anuncio "Click to
  * WhatsApp" (rellena ctwa_clid/ad_source_type con datos de prueba, visibles
  * en el panel de detalle con la etiqueta "Simulado") y manda ahí mismo toda
- * la secuencia de bienvenida configurada (welcome_sequence), un paso detrás
+ * la secuencia de bienvenida configurada (welcome_steps), un paso detrás
  * del otro.
  *
  * WhatsApp igual exige la ventana de 24h: el número tiene que haberte
@@ -42,9 +42,9 @@ async function post({ request, env, agent }) {
     return json({ error: "Ese número no tiene ninguna conversación todavía — mándate un WhatsApp de prueba a ti mismo primero, así se abre la ventana de 24h." }, 404);
   }
 
-  const { results: pasos } = await env.CRM_DB.prepare("SELECT id FROM welcome_sequence").all();
+  const { results: pasos } = await env.CRM_DB.prepare("SELECT id FROM welcome_steps").all();
   if (!pasos.length) {
-    return json({ error: "Todavía no armaste la secuencia de bienvenida — agrega al menos una respuesta rápida." }, 400);
+    return json({ error: "Todavía no armaste la secuencia de bienvenida — agrega al menos un paso." }, 400);
   }
 
   // Marca el chat como "venido de un anuncio" de verdad en la base, para

@@ -177,13 +177,17 @@
 <div class="modal-fondo" id="modal-bienvenida-fondo">
   <div class="modal modal-ancho">
     <h2>Bienvenida de anuncios</h2>
-    <p class="ayuda-modal">Cuando alguien nuevo te escribe desde un anuncio "Click to WhatsApp", se le manda esta secuencia, un mensaje detrás del otro. Arma el orden con respuestas rápidas ya creadas.</p>
+    <p class="ayuda-modal">Cuando alguien nuevo te escribe desde un anuncio "Click to WhatsApp", se le manda esta secuencia, un mensaje detrás del otro. Este contenido es propio de la bienvenida — solo lo ves y lo administras tú (admin), aparte de las respuestas rápidas del chat.</p>
 
     <h2>Secuencia (en este orden)</h2>
     <div id="lista-secuencia">Cargando…</div>
 
-    <select id="seq-agregar-select"></select>
-    <button class="crear" id="seq-agregar-btn" type="button" style="width:100%;margin-top:6px">Agregar paso</button>
+    <h2>Agregar un paso nuevo</h2>
+    <input type="text" id="seq-titulo" placeholder="Título (solo para ti, ej. Paso 1 — saludo)" />
+    <textarea id="seq-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
+    <input type="file" id="seq-archivo" accept="image/*,video/*" multiple />
+    <div class="ayuda-modal">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.</div>
+    <button class="crear" id="seq-agregar-btn" type="button" style="width:100%">Agregar paso</button>
 
     <hr />
 
