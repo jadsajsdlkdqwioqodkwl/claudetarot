@@ -112,9 +112,9 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
 
   try {
     if (media.results.length) {
-      for (const m of media.results) {
-        await mandarMediaGuardada(env, conversacion.id, contacto.wa_id, m.media_key, m.media_type, quickReply.body, "Bienvenida automática");
-      }
+      await Promise.all(media.results.map((m) =>
+        mandarMediaGuardada(env, conversacion.id, contacto.wa_id, m.media_key, m.media_type, quickReply.body, "Bienvenida automática")
+      ));
     } else if (quickReply.body) {
       await mandarTexto(env, conversacion.id, contacto.wa_id, quickReply.body, "Bienvenida automática");
     }

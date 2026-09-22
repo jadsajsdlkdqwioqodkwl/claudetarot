@@ -90,11 +90,20 @@ async function post({ request, env, agent }) {
   try {
     if (retailerId) {
       if (!env.WHATSAPP_CATALOG_ID) return json({ error: "Falta WHATSAPP_CATALOG_ID." }, 503);
+
+      // El nombre viaja desde el picker (ya lo tenía cargado); si no vino,
+      // se resuelve del caché para nunca mostrar el SKU crudo en el chat.
+      let nombre = payload?.product_name ? String(payload.product_name).slice(0, 120) : null;
+      if (!nombre) {
+        const mapa = await nombresDeProductos(env.CRM_DB, [retailerId]);
+        nombre = mapa[retailerId]?.name || null;
+      }
+
       const waMessageId = await enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text);
       await registrarMensajeSaliente(env.CRM_DB, conversationId, {
         waMessageId,
         type: "product",
-        body: `[Producto enviado: ${retailerId}]`,
+        body: nombre || "Producto del catálogo",
         sentBy
       });
       return json({ ok: true, wa_message_id: waMessageId });

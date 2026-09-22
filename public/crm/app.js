@@ -305,6 +305,7 @@ function pintarChatBase(c) {
 
 async function enviarCatalogoCompleto() {
   $("#panel-catalogo").classList.remove("abierto");
+  mostrarEnviando(true);
   try {
     await pedir("/api/crm/catalog", {
       method: "POST",
@@ -315,21 +316,27 @@ async function enviarCatalogoCompleto() {
     await cargarConversaciones();
   } catch (err) {
     alert(err.message);
+  } finally {
+    mostrarEnviando(false);
   }
 }
 
 async function enviarProductoElegido(retailerId) {
   $("#panel-catalogo").classList.remove("abierto");
+  const nombre = cacheProductosCatalogo?.find((p) => p.retailer_id === retailerId)?.name;
+  mostrarEnviando(true);
   try {
     await pedir("/api/crm/catalog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, product_retailer_id: retailerId })
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, product_retailer_id: retailerId, product_name: nombre })
     });
     await cargarMensajes();
     await cargarConversaciones();
   } catch (err) {
     alert(err.message);
+  } finally {
+    mostrarEnviando(false);
   }
 }
 
@@ -371,6 +378,14 @@ function pintarListaProductos(filtro) {
       </div>`).join("")
     : `<div class="item"><div class="cuerpo">Sin productos.</div></div>`;
   cont.querySelectorAll(".item").forEach((el) => el.addEventListener("click", () => enviarProductoElegido(el.dataset.id)));
+}
+
+/** Pone el botón de enviar en spinner mientras algo se está mandando (respuesta rápida, catálogo, producto…). */
+function mostrarEnviando(activo) {
+  const btn = $("#form-envio button.enviar");
+  if (!btn) return;
+  btn.disabled = activo;
+  btn.innerHTML = activo ? icon("spinner", "girando") : icon("send");
 }
 
 function cerrarPaneles(excepto = []) {
@@ -476,8 +491,7 @@ async function enviarMensaje(e) {
   if (!texto && !adjunto) return;
 
   input.disabled = true;
-  const btnEnviar = $("#form-envio button.enviar");
-  btnEnviar.disabled = true;
+  mostrarEnviando(true);
 
   try {
     if (adjunto) {
@@ -502,7 +516,7 @@ async function enviarMensaje(e) {
     alert(err.message);
   } finally {
     input.disabled = false;
-    btnEnviar.disabled = false;
+    mostrarEnviando(false);
     input.focus();
   }
 }
@@ -644,24 +658,21 @@ async function enviarQuickReply(q) {
   estado.rapidasPorSlash = false;
   const input = $("#texto-envio");
   if (input) input.value = "";
+  mostrarEnviando(true);
   try {
     if (q.media.length) {
-      let enviadas = 0;
-      for (const m of q.media) {
-        try {
-          await pedir("/api/crm/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
-          });
-          enviadas++;
-        } catch (err) {
-          await cargarMensajes();
-          await cargarConversaciones();
-          alert(`Se mandaron ${enviadas} de ${q.media.length} — la foto/video #${enviadas + 1} falló: ${err.message}`);
-          return;
-        }
-      }
+      // Todas a la vez, no una por una: la API las procesa en paralelo y
+      // llegan casi juntas — WhatsApp igual manda una notificación por
+      // foto, eso lo decide el celular del cliente, no la API.
+      const resultados = await Promise.allSettled(q.media.map((m) =>
+        pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
+        })
+      ));
+      const fallidas = resultados.filter((r) => r.status === "rejected");
+
       if (q.body) {
         await pedir("/api/crm/messages", {
           method: "POST",
@@ -669,17 +680,25 @@ async function enviarQuickReply(q) {
           body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
         });
       }
-    } else {
-      await pedir("/api/crm/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
-      });
+      await cargarMensajes();
+      await cargarConversaciones();
+      if (fallidas.length) {
+        alert(`Se mandaron ${q.media.length - fallidas.length} de ${q.media.length} — falló: ${fallidas[0].reason.message}`);
+      }
+      return;
     }
+
+    await pedir("/api/crm/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
+    });
     await cargarMensajes();
     await cargarConversaciones();
   } catch (err) {
     alert(err.message);
+  } finally {
+    mostrarEnviando(false);
   }
 }
 
