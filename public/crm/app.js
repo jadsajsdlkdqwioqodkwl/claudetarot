@@ -1184,7 +1184,7 @@ function etiquetaDia(iso) {
 /** Los dos palitos de "entregado/leído" — solo tiene sentido en lo que nosotros mandamos. */
 function estadoMensaje(m) {
   if (m.direction !== "out") return "";
-  if (m.status === "failed") return `<span class="estado-msg fallido" title="No se pudo enviar">${icon("alertCircle")}</span>`;
+  if (m.status === "failed") return `<span class="estado-msg fallido" title="No se pudo enviar${m.error_detail ? `: ${escapar(m.error_detail)}` : ""}">${icon("alertCircle")}</span>`;
   if (m.status === "read") return `<span class="estado-msg leido" title="Leído">${icon("checkDouble")}</span>`;
   if (m.status === "delivered") return `<span class="estado-msg" title="Entregado">${icon("checkDouble")}</span>`;
   return `<span class="estado-msg" title="Enviado">${icon("check")}</span>`;

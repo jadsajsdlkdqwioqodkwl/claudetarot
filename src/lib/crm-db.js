@@ -93,10 +93,10 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .run();
 }
 
-export async function actualizarEstadoMensaje(db, waMessageId, status) {
+export async function actualizarEstadoMensaje(db, waMessageId, status, errorDetail) {
   await db
-    .prepare("UPDATE messages SET status = ? WHERE wa_message_id = ?")
-    .bind(status, waMessageId)
+    .prepare("UPDATE messages SET status = ?, error_detail = ? WHERE wa_message_id = ?")
+    .bind(status, errorDetail || null, waMessageId)
     .run();
 }
 

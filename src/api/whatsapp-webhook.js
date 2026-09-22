@@ -138,7 +138,9 @@ async function procesarCambio(env, db, value) {
   }
 
   for (const st of value.statuses || []) {
-    await actualizarEstadoMensaje(db, st.id, st.status);
+    const err = st.errors?.[0];
+    const errorDetail = err ? `${err.title || err.code || "Error"}${err.error_data?.details ? `: ${err.error_data.details}` : ""}` : null;
+    await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
   }
 }
 
