@@ -15,13 +15,29 @@ import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
+import { onRequestGet as waWebhookGet, onRequestPost as waWebhookPost } from "./api/whatsapp-webhook.js";
+import { onRequestPost as crmLogin } from "./api/crm/login.js";
+import { onRequestPost as crmLogout } from "./api/crm/logout.js";
+import { onRequestGet as crmSession } from "./api/crm/session.js";
+import { onRequestGet as crmConversations } from "./api/crm/conversations.js";
+import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from "./api/crm/messages.js";
+import { onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/upsell": { POST: upsell },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
-  "/api/seguimiento": { GET: seguimiento }
+  "/api/seguimiento": { GET: seguimiento },
+
+  "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
+
+  "/api/crm/login": { POST: crmLogin },
+  "/api/crm/logout": { POST: crmLogout },
+  "/api/crm/session": { GET: crmSession },
+  "/api/crm/conversations": { GET: crmConversations },
+  "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
+  "/api/crm/contacts": { PATCH: crmContactsPatch }
 };
 
 /**

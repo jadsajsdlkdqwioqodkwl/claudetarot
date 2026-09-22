@@ -15,6 +15,15 @@
     "enabled": true
   },
 
+  // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.
+  "d1_databases": [
+    {
+      "binding": "CRM_DB",
+      "database_name": "claudetarot-crm",
+      "database_id": "3b5ef8ee-aac0-4550-826b-f37f9a2f3360"
+    }
+  ],
+
   /**
    * Tope de pedidos por IP: 5 por minuto. Frena el spam sin estorbar a un
    * cliente real, y deja probar el formulario varias veces seguidas.
@@ -63,6 +72,10 @@
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
     "GOOGLE_CLIENT_EMAIL": "crm-sheets-bot-2@tarot-product-page.iam.gserviceaccount.com",
-    "TELEGRAM_CHAT_ID": "8780926886"
+    "TELEGRAM_CHAT_ID": "8780926886",
+
+    // CRM de WhatsApp — el ID del número de teléfono de la Cloud API (texto,
+    // no es secreto). Los secretos van por dashboard/CLI, ver README.
+    "WHATSAPP_PHONE_NUMBER_ID": ""
   }
 }
