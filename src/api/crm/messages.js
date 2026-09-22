@@ -35,7 +35,7 @@ async function get({ request, env }) {
   const beforeId = Number(url.searchParams.get("before_id")) || null;
 
   const { results } = await env.CRM_DB.prepare(
-    `SELECT m.id, m.direction, m.type, m.body, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.sent_by, m.created_at,
+    `SELECT m.id, m.direction, m.type, m.body, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
        m.reply_to_message_id, m.client_reaction, m.agent_reaction,
        r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by
      FROM messages m

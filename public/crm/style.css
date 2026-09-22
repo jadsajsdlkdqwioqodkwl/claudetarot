@@ -243,6 +243,9 @@ button { font-family: inherit; }
 .tarjeta-catalogo { color: var(--ad); font-weight: 600; }
 .tarjeta-pedido { flex-direction: column; align-items: flex-start; background: #f6f4ff; border: 1px solid #e0d9ff; border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: #4a3d99; }
 .tarjeta-pedido strong { color: var(--ad); }
+.tarjeta-llamada { color: var(--peligro); font-weight: 600; }
+.aviso-vista-unica { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 3px; }
+.aviso-vista-unica .icono-svg { width: 13px; height: 13px; }
 .msg img, .msg video { max-width: 100%; border-radius: var(--radio-s); display: block; }
 .msg .caption { margin-top: 4px; }
 #vacio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gris); font-size: 14px; }

@@ -1128,17 +1128,23 @@ async function actualizarSeguimientosDetalle() {
   } catch { /* silencioso */ }
 }
 
+/** El aviso "de una sola vista" — como en la app real, se muestra encima del contenido, no lo reemplaza (el medio igual queda guardado en R2/Meta para el equipo). */
+function vistaUnicaHtml(m) {
+  return m.view_once ? `<div class="aviso-vista-unica">${icon("eye")} Una sola vista</div>` : "";
+}
+
 function contenidoMensaje(m) {
   if (m.type === "sticker" && (m.media_key || m.media_id)) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
   if (m.type === "image" && (m.media_key || m.media_id)) {
-    return `<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
   if (m.type === "video" && (m.media_key || m.media_id)) {
-    return `<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return escapar(m.body || "");
+  if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;
   if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
   if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
@@ -1148,7 +1154,7 @@ function contenidoMensaje(m) {
 /** Un extracto corto de un mensaje, para citarlo en la respuesta o en el "responde a" arriba de una burbuja. */
 function extractoMensaje(tipo, body) {
   if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
-  const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido" };
+  const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "📞 Llamada" };
   return nombres[tipo] || "Mensaje";
 }
 

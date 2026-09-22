@@ -43,6 +43,13 @@ export async function onRequestGet({ request, env }) {
   return json({ error: "Token de verificación inválido." }, 403);
 }
 
+// El aviso de "una sola vista" lo manda Meta como un booleano colgado del
+// propio objeto de media (image/video) — no siempre en el mismo lugar según
+// la versión de la API, así que se revisan las dos formas conocidas.
+function esVistaUnica(msg) {
+  return Boolean(msg.image?.view_once || msg.video?.view_once || msg.view_once);
+}
+
 function tipoYCuerpo(msg) {
   switch (msg.type) {
     case "text":
@@ -129,7 +136,7 @@ async function procesarCambio(env, db, value) {
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId });
+    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
     await cancelarSeguimientosPendientes(db, conversacion.id);
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
@@ -141,6 +148,33 @@ async function procesarCambio(env, db, value) {
     const err = st.errors?.[0];
     const errorDetail = err ? `${err.title || err.code || "Error"}${err.error_data?.details ? `: ${err.error_data.details}` : ""}` : null;
     await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
+  }
+}
+
+/**
+ * Campo "calls" del webhook (llamadas de voz/video al número de WhatsApp
+ * Business). Antes se descartaba junto con cualquier campo que no fuera
+ * "messages" — una llamada perdida real no dejaba ningún rastro en el chat.
+ *
+ * Meta no documenta un único nombre de campo para el estado de la llamada
+ * entre las distintas versiones de la API, así que se revisan los alias más
+ * comunes (`status` y `event`) para reconocer una perdida/rechazada.
+ */
+async function procesarLlamadas(env, db, value) {
+  for (const call of value.calls || []) {
+    const waId = call.from;
+    if (!waId) continue;
+    const contacto = await obtenerOCrearContacto(db, waId, null, null);
+    const conversacion = await obtenerOCrearConversacion(db, contacto.id);
+
+    const estado = String(call.status || call.event || "").toLowerCase();
+    const perdida = /missed|no.?answer|reject|declin|unanswered|timeout/.test(estado);
+    const body = perdida
+      ? "📞 Llamada perdida"
+      : `📞 Llamada${call.duration ? ` (${call.duration}s)` : ""}${estado ? ` — ${estado}` : ""}`;
+
+    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
+    await cancelarSeguimientosPendientes(db, conversacion.id);
   }
 }
 
@@ -166,6 +200,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const tareas = [];
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
+      if (change.field === "calls") {
+        tareas.push(procesarLlamadas(env, env.CRM_DB, change.value));
+        continue;
+      }
       if (change.field !== "messages") continue;
       tareas.push(procesarCambio(env, env.CRM_DB, change.value));
     }

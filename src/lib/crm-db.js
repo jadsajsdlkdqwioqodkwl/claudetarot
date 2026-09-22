@@ -56,13 +56,13 @@ export async function obtenerOCrearConversacion(db, contactId) {
     .first();
 }
 
-export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, mediaId, mediaMime, replyToMessageId }) {
+export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, mediaId, mediaMime, replyToMessageId, viewOnce }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_id, media_mime, status, reply_to_message_id)
-       VALUES (?, ?, 'in', ?, ?, ?, ?, 'received', ?)`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_id, media_mime, status, reply_to_message_id, view_once)
+       VALUES (?, ?, 'in', ?, ?, ?, ?, 'received', ?, ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaId || null, mediaMime || null, replyToMessageId || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaId || null, mediaMime || null, replyToMessageId || null, viewOnce ? 1 : 0)
     .run();
 
   await db
