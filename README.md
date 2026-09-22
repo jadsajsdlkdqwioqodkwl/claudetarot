@@ -890,6 +890,29 @@ producto, etc.) sin depender de Meta.
 - **Export a Sheets** ahora incluye tipo y titular del anuncio y el
   `ctwa_clid` de cada contacto, para poder cruzarlo con los reportes de Meta.
 
+### Onceava vuelta: el bug real del scroll, nombre de archivo y "conectado como"
+
+Investigué contra [`open-bsp-ui`](https://github.com/matiasbattocchia/open-bsp-ui) — un
+panel de WhatsApp/Instagram de código abierto con la misma pinta — para
+confirmar el diagnóstico antes de tocar nada:
+
+- **El bug real del scroll infinito**: en un layout grid/flex, un hijo con
+  contenido largo no se encoge a la altura del padre por defecto
+  (`min-height: auto`) — empuja TODO hacia abajo (o hace scrollear la página
+  entera) en vez de scrollear solo por dentro. Le faltaba `min-height: 0`
+  en cada nivel (`#app`, `#lista`, `#chat`, `#detalle`, `#mensajes`,
+  `#conversaciones`) y `overflow: hidden` en `body`. Ahora el header y el
+  composer se quedan fijos, y solo la lista de mensajes scrollea — igual que
+  WhatsApp Web de verdad.
+- **Nombre del archivo en el reporte**: al mandar una foto sin pie de foto,
+  se guarda el nombre del archivo en el registro interno (y de ahí sale al
+  export de Sheets) — pero **nunca se manda como texto visible al cliente**,
+  eso sería mostrarle "IMG_2043.jpg" en su WhatsApp.
+- **"Conectado como…"** debajo de "Chats": dice tu nombre y tu rol
+  (admin/vendedor). El panel de "Probar bienvenida" y el de Equipo dependen
+  de que entres con una cuenta `admin` — si entraste con la de una
+  vendedora, no van a aparecer, y así se ve de un vistazo por qué.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

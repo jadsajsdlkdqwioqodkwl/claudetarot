@@ -105,8 +105,12 @@ function mostrarPasoCodigo() {
 async function mostrarApp() {
   $("#login").style.display = "none";
   $("#app").classList.add("activo");
-  const { role } = await pedir("/api/crm/session");
+  const { role, displayName } = await pedir("/api/crm/session");
   estado.miRol = role;
+  // Para que quede clarísimo con qué cuenta estás — el panel de "Probar
+  // bienvenida" y de Equipo solo salen con role "admin", y esto evita
+  // preguntarse por qué no aparecen si entraste con otra cuenta.
+  $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
   cargarConversaciones();
   cargarQuickReplies();
   clearInterval(estado.pollConv);
@@ -565,11 +569,14 @@ async function enviarMensaje(e) {
 
   try {
     if (adjunto) {
-      const { media_key, type } = await subirArchivo(adjunto.file);
+      const { media_key, type, original_name } = await subirArchivo(adjunto.file);
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto })
+        // `caption` es lo único que ve el cliente en WhatsApp — nunca el
+        // nombre del archivo. `file_name` solo queda en el registro interno
+        // (y de ahí al reporte de Sheets), el cliente nunca lo ve.
+        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name })
       });
       cancelarAdjunto();
     } else {
