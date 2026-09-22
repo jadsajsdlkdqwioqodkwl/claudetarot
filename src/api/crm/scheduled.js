@@ -1,6 +1,8 @@
 /**
  * GET    /api/crm/scheduled?conversation_id=1 — seguimientos programados de esa conversación (pendientes primero)
- * POST   /api/crm/scheduled — { conversation_id, send_at, body? , quick_reply_id? } → programa uno
+ * POST   /api/crm/scheduled — programa uno:
+ *      { conversation_id, send_at, body?, quick_reply_id? } — texto o una respuesta rápida guardada
+ *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
  */
 
@@ -41,18 +43,21 @@ async function post({ request, env, agent }) {
   const sendAt = payload?.send_at ? new Date(payload.send_at) : null;
   const body = payload?.body ? String(payload.body).trim().slice(0, 4096) : null;
   const quickReplyId = payload?.quick_reply_id ? Number(payload.quick_reply_id) : null;
+  const mediaKey = payload?.media_key ? String(payload.media_key) : null;
+  const mediaType = mediaKey ? String(payload?.media_type || "image") : null;
+  const mediaMime = mediaKey && payload?.media_mime ? String(payload.media_mime) : null;
 
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
   if (!sendAt || Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
-  if (!body && !quickReplyId) return json({ error: "Necesita un texto o una respuesta rápida." }, 400);
+  if (!body && !quickReplyId && !mediaKey) return json({ error: "Necesita un texto, una foto/video o una respuesta rápida." }, 400);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by)
-     VALUES (?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null)
+    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime)
     .first();
 
   return json({ ok: true, scheduled: creado });

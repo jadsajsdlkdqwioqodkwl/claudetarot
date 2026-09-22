@@ -54,6 +54,13 @@ import {
   onRequestDelete as crmWelcomeSeqDelete,
   onRequestPatch as crmWelcomeSeqPatch
 } from "./api/crm/welcome-sequence.js";
+import {
+  onRequestGet as crmFollowupSeqGet,
+  onRequestPost as crmFollowupSeqPost,
+  onRequestDelete as crmFollowupSeqDelete,
+  onRequestPatch as crmFollowupSeqPatch
+} from "./api/crm/followup-sequences.js";
+import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
@@ -81,6 +88,8 @@ const ROUTES = {
   "/api/crm/login-verify": { POST: crmLoginVerify },
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
   "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, DELETE: crmScheduledDelete },
+  "/api/crm/followup-sequences": { GET: crmFollowupSeqGet, POST: crmFollowupSeqPost, DELETE: crmFollowupSeqDelete, PATCH: crmFollowupSeqPatch },
+  "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost },
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },

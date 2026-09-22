@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex, nofollow" />
 <title>CRM WhatsApp</title>
 <link rel="stylesheet" href="/crm/style.css" />
@@ -113,11 +113,30 @@
   <div class="modal">
     <h2>Programar seguimiento</h2>
     <input type="datetime-local" id="seg-fecha" />
-    <textarea id="seg-texto" placeholder="Texto del mensaje (o elige una respuesta rápida abajo)"></textarea>
+    <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video, o eliges una respuesta rápida abajo)"></textarea>
+    <input type="file" id="seg-archivo" accept="image/*,video/*" />
     <select id="seg-rapida"><option value="">— o una respuesta rápida guardada —</option></select>
     <div class="acciones">
       <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
       <button class="crear" id="seg-crear" type="button">Programar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-secuencias-fondo">
+  <div class="modal modal-ancho">
+    <h2>Secuencias de seguimiento</h2>
+    <p class="ayuda-modal">Arma una serie de mensajes con un tiempo de espera entre uno y otro (ej. "1 hora después", "1 día después") y aplícala a cualquier chat con un clic. Se comparten entre todo el equipo, igual que las respuestas rápidas.</p>
+
+    <div id="lista-secuencias-seg">Cargando…</div>
+
+    <hr />
+    <h2>Nueva secuencia</h2>
+    <input type="text" id="fs-titulo-nueva" placeholder="Nombre (ej. Reactivación 3 días)" />
+    <button class="crear" id="fs-crear-btn" type="button" style="width:100%">Crear secuencia</button>
+
+    <div class="acciones">
+      <button class="cancelar" id="fs-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

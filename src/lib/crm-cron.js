@@ -10,20 +10,29 @@ import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
 
+  // El media puede venir de tres lados: subido directo al programar el
+  // seguimiento (s.media_key), o de la respuesta rápida elegida — su primera
+  // foto/video en quick_reply_media (multi-foto) o, si es una respuesta
+  // rápida vieja de antes de esa tabla, su columna suelta qr.media_key.
   const { results: vencidos } = await env.CRM_DB.prepare(
-    `SELECT s.*, conv.id AS conv_id, c.wa_id, q.body AS quick_body, q.media_key, q.media_type
+    `SELECT s.*, conv.id AS conv_id, c.wa_id, q.body AS quick_body,
+       COALESCE(s.media_key, qm.media_key, q.media_key) AS media_key_real,
+       COALESCE(s.media_type, qm.media_type, q.media_type) AS media_type_real
      FROM scheduled_messages s
      JOIN conversations conv ON conv.id = s.conversation_id
      JOIN contacts c ON c.id = conv.contact_id
      LEFT JOIN quick_replies q ON q.id = s.quick_reply_id
+     LEFT JOIN quick_reply_media qm ON qm.quick_reply_id = s.quick_reply_id AND qm.sort_order = (
+       SELECT MIN(sort_order) FROM quick_reply_media WHERE quick_reply_id = s.quick_reply_id
+     )
      WHERE s.status = 'pendiente' AND s.send_at <= datetime('now')
      LIMIT 50`
   ).all();
 
   for (const s of vencidos) {
     try {
-      if (s.media_key) {
-        await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key, s.media_type || "image", s.body || s.quick_body, "Seguimiento automático");
+      if (s.media_key_real) {
+        await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático");
       } else {
         await mandarTexto(env, s.conv_id, s.wa_id, s.body || s.quick_body, "Seguimiento automático");
       }

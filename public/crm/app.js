@@ -38,6 +38,17 @@ function pedir(url, opciones = {}) {
 
 const iniciales = (nombre) => (nombre || "?").trim().slice(0, 2).toUpperCase();
 
+/** Un color estable por contacto (mismo truco que WhatsApp/Slack) en vez de un solo verde para todos los avatares. */
+const COLORES_AVATAR = ["#128C7E", "#7c5cff", "#e17055", "#0984e3", "#d63384", "#00838f", "#6c5ce7", "#c2410c"];
+function colorAvatar(nombre) {
+  let hash = 0;
+  for (const c of String(nombre || "")) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return COLORES_AVATAR[hash % COLORES_AVATAR.length];
+}
+function avatarHtml(nombre) {
+  return `<div class="avatar" style="background:${colorAvatar(nombre)}">${iniciales(nombre)}</div>`;
+}
+
 function horaCorta(iso) {
   if (!iso) return "";
   const d = new Date(iso.includes("Z") || iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
@@ -426,7 +437,7 @@ function pintarLista() {
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
 
     div.innerHTML = `
-      <div class="avatar">${iniciales(nombre)}</div>
+      ${avatarHtml(nombre)}
       <div class="conv-info">
         <div class="fila1">
           <span class="nombre">${escapar(nombre)}</span>
@@ -509,7 +520,7 @@ function pintarChatBase(c) {
   $("#chat").innerHTML = `
     <header>
       <button id="btn-volver" title="Volver a la lista">${icon("arrowLeft")}</button>
-      <div class="avatar">${iniciales(nombre)}</div>
+      ${avatarHtml(nombre)}
       <div>
         <div class="nombre">${escapar(nombre)}</div>
         <div class="tel">+${escapar(c.wa_id)}</div>
@@ -1143,12 +1154,15 @@ async function pintarSeguimientosPanel() {
   panel.innerHTML = (scheduled.length ? scheduled.map((s) => `
     <div class="item" data-id="${s.id}">
       <div>
-        <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}</div>
-        <div class="cuerpo">${escapar(s.body || s.quick_reply_title || "")}</div>
+        <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}</div>
+        <div class="cuerpo">${escapar(s.body || s.quick_reply_title || (s.media_key ? "Foto/video" : ""))}</div>
       </div>
       <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
     </div>`).join("") : `<div class="item"><div class="cuerpo">Sin seguimientos programados.</div></div>`)
-    + `<footer><button id="nuevo-seguimiento">${icon("plus")} Programar seguimiento</button></footer>`;
+    + `<footer>
+        <button id="nuevo-seguimiento">${icon("plus")} Programar seguimiento</button>
+        <button id="aplicar-secuencia">${icon("bolt")} Aplicar una secuencia</button>
+      </footer>`;
 
   panel.querySelectorAll(".borrar").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
@@ -1169,22 +1183,37 @@ async function pintarSeguimientosPanel() {
       estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
     $("#modal-seguimiento-fondo").classList.add("abierto");
   });
+  $("#aplicar-secuencia")?.addEventListener("click", () => {
+    panel.classList.remove("abierto");
+    abrirModalSecuencias();
+  });
 }
 
 $("#seg-cancelar").addEventListener("click", () => {
   $("#modal-seguimiento-fondo").classList.remove("abierto");
   $("#seg-fecha").value = "";
   $("#seg-texto").value = "";
+  $("#seg-archivo").value = "";
 });
 
 $("#seg-crear").addEventListener("click", async () => {
   const fecha = $("#seg-fecha").value;
   const texto = $("#seg-texto").value.trim();
   const quickReplyId = $("#seg-rapida").value;
+  const archivo = $("#seg-archivo").files[0];
   if (!fecha) return alert("Elige fecha y hora.");
-  if (!texto && !quickReplyId) return alert("Escribe un texto o elige una respuesta rápida.");
+  if (!texto && !quickReplyId && !archivo) return alert("Escribe un texto, adjunta una foto/video o elige una respuesta rápida.");
 
+  const btn = $("#seg-crear");
+  btn.disabled = true;
   try {
+    let media_key, media_type, media_mime;
+    if (archivo) {
+      const subida = await subirArchivo(archivo);
+      media_key = subida.media_key;
+      media_type = subida.type;
+      media_mime = subida.mime;
+    }
     await pedir("/api/crm/scheduled", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1192,13 +1221,189 @@ $("#seg-crear").addEventListener("click", async () => {
         conversation_id: estado.conversacionActivaId,
         send_at: new Date(fecha).toISOString(),
         body: texto || undefined,
-        quick_reply_id: quickReplyId || undefined
+        quick_reply_id: !archivo && quickReplyId ? quickReplyId : undefined,
+        media_key, media_type, media_mime
       })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
     $("#seg-fecha").value = "";
     $("#seg-texto").value = "";
+    $("#seg-archivo").value = "";
     await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ---------- Secuencias de seguimiento (varios mensajes con timing, reutilizables) ---------- */
+
+function formatearDelay(minutos) {
+  if (minutos % 1440 === 0) { const d = minutos / 1440; return `${d} día${d === 1 ? "" : "s"}`; }
+  if (minutos % 60 === 0) { const h = minutos / 60; return `${h} hora${h === 1 ? "" : "s"}`; }
+  return `${minutos} min`;
+}
+
+let estadoSecuencias = [];
+
+function abrirModalSecuencias() {
+  $("#modal-secuencias-fondo").classList.add("abierto");
+  cargarYPintarSecuencias();
+}
+$("#fs-cerrar").addEventListener("click", () => $("#modal-secuencias-fondo").classList.remove("abierto"));
+
+async function cargarYPintarSecuencias() {
+  const { sequences } = await pedir("/api/crm/followup-sequences");
+  estadoSecuencias = sequences;
+  pintarListaSecuencias();
+}
+
+function pintarListaSecuencias() {
+  const cont = $("#lista-secuencias-seg");
+  const puedeAplicar = Boolean(estado.conversacionActivaId);
+  cont.innerHTML = estadoSecuencias.length ? estadoSecuencias.map((s) => `
+    <div class="fila-secuencia" data-id="${s.id}">
+      <div class="fila-secuencia-header">
+        <div class="nombre">${escapar(s.title)} <span class="sub">(${s.steps.length} paso${s.steps.length === 1 ? "" : "s"})</span></div>
+        <div style="display:flex;gap:4px">
+          <button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? "Aplicar a este chat" : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>
+          <button class="fs-editar" data-id="${s.id}" title="Ver/editar pasos">${icon("bolt")}</button>
+          <button class="trash fs-borrar" data-id="${s.id}" title="Borrar secuencia">${icon("trash")}</button>
+        </div>
+      </div>
+      <div class="fs-pasos" data-id="${s.id}" style="display:none">
+        ${s.steps.map((p, i) => `
+          <div class="fila-seguimiento">
+            <div>
+              <div class="nombre">${i + 1}. +${formatearDelay(p.delay_minutes)}${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""}</div>
+              ${p.body ? `<div class="sub">${escapar(p.body)}</div>` : ""}
+            </div>
+            <button class="trash fs-borrar-paso" data-id="${p.id}">${icon("trash")}</button>
+          </div>`).join("") || `<p class="ayuda-modal">Sin pasos todavía.</p>`}
+        <div class="fs-agregar-paso">
+          <div class="fs-delay-fila">
+            <span>Mandar</span>
+            <input type="number" min="1" value="1" class="fs-delay-valor" />
+            <select class="fs-delay-unidad">
+              <option value="1">minuto(s)</option>
+              <option value="60">hora(s)</option>
+              <option value="1440" selected>día(s)</option>
+            </select>
+          </div>
+          <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
+          <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
+          <input type="file" class="fs-paso-archivo" accept="image/*,video/*" />
+          <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
+        </div>
+      </div>
+    </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`;
+
+  cont.querySelectorAll(".fs-editar").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pasos = cont.querySelector(`.fs-pasos[data-id="${btn.dataset.id}"]`);
+      pasos.style.display = pasos.style.display === "none" ? "block" : "none";
+    });
+  });
+
+  cont.querySelectorAll(".fs-aplicar").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!estado.conversacionActivaId) return;
+      if (!confirm("¿Aplicar esta secuencia a la conversación abierta? Se programarán todos sus pasos.")) return;
+      btn.disabled = true;
+      try {
+        const { pasos_programados } = await pedir("/api/crm/followup-apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, sequence_id: Number(btn.dataset.id) })
+        });
+        await actualizarSeguimientosDetalle();
+        alert(`Listo — se programaron ${pasos_programados} mensaje(s).`);
+        $("#modal-secuencias-fondo").classList.remove("abierto");
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  cont.querySelectorAll(".fs-borrar").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Borrar esta secuencia entera? No se puede deshacer.")) return;
+      await pedir("/api/crm/followup-sequences", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sequence_id: Number(btn.dataset.id) })
+      });
+      await cargarYPintarSecuencias();
+    });
+  });
+
+  cont.querySelectorAll(".fs-borrar-paso").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await pedir("/api/crm/followup-sequences", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step_id: Number(btn.dataset.id) })
+      });
+      await cargarYPintarSecuencias();
+    });
+  });
+
+  cont.querySelectorAll(".fs-agregar-paso-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const fila = btn.closest(".fs-pasos");
+      const texto = fila.querySelector(".fs-paso-texto").value.trim();
+      const archivo = fila.querySelector(".fs-paso-archivo").files[0];
+      const valor = Number(fila.querySelector(".fs-delay-valor").value) || 1;
+      const unidad = Number(fila.querySelector(".fs-delay-unidad").value);
+      if (!texto && !archivo) return alert("Escribe un texto o adjunta una foto/video.");
+
+      btn.disabled = true;
+      btn.textContent = "Subiendo…";
+      try {
+        let media_key, media_type, media_mime;
+        if (archivo) {
+          const subida = await subirArchivo(archivo);
+          media_key = subida.media_key;
+          media_type = subida.type;
+          media_mime = subida.mime;
+        }
+        await pedir("/api/crm/followup-sequences", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sequence_id: Number(btn.dataset.id),
+            body: texto || undefined,
+            media_key, media_type, media_mime,
+            delay_minutes: valor * unidad
+          })
+        });
+        await cargarYPintarSecuencias();
+        // Vuelve a abrir los pasos de esa secuencia, ya con el nuevo agregado.
+        cont.querySelector(`.fs-pasos[data-id="${btn.dataset.id}"]`).style.display = "block";
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Agregar paso";
+      }
+    });
+  });
+}
+
+$("#fs-crear-btn").addEventListener("click", async () => {
+  const title = $("#fs-titulo-nueva").value.trim();
+  if (!title) return alert("Ponle un nombre.");
+  try {
+    await pedir("/api/crm/followup-sequences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title })
+    });
+    $("#fs-titulo-nueva").value = "";
+    await cargarYPintarSecuencias();
   } catch (err) {
     alert(err.message);
   }
@@ -1375,7 +1580,7 @@ async function pintarDetalle(c) {
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
   $("#detalle").innerHTML = `
     <button type="button" id="btn-cerrar-detalle" title="Cerrar">${icon("close")}</button>
-    <div class="avatar">${iniciales(nombre)}</div>
+    ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
 
