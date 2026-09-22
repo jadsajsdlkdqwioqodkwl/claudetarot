@@ -818,6 +818,26 @@ pedido o una conversación desde un "anuncio" con un mensaje de prueba al
 webhook — sin ningún costo — para probar todo lo demás (pedidos, nombres de
 producto, etc.) sin depender de Meta.
 
+### Séptima vuelta: R2 conectado, fix del envío de catálogo, "/" en vivo y sandbox de bienvenida
+
+- **R2 ya está conectado** (`CRM_MEDIA`, bucket `claudetarot-crm-media`) —
+  fotos/video y respuestas rápidas con media ya funcionan.
+- **Se arregló el error `(#131009) Parameter value is not valid`** al mandar
+  el catálogo completo: a WhatsApp le falta el objeto `action.parameters`
+  aunque esté vacío; ahora además le manda un producto de portada.
+- **`/api/diag` valida el catálogo**: confirma si el `WHATSAPP_CATALOG_ID`
+  configurado es de verdad uno de los catálogos conectados a la cuenta —
+  si no lo es, ese mismo error de "Parameter value is not valid" sale al
+  mandar un producto individual.
+- **`/` funciona como WhatsApp Business**: al escribirla en el chat, el
+  panel de respuestas rápidas se abre y se filtra en vivo con lo que sigas
+  escribiendo, sin borrar el texto.
+- **Sandbox de bienvenida (solo admin)**: dentro del panel de respuestas
+  rápidas (⚡), con una marcada como bienvenida aparece "Probar bienvenida
+  en un número" — la manda de verdad a cualquier WhatsApp que ya te haya
+  escrito antes (para eso existe la ventana de 24h), sin depender de ningún
+  anuncio real ni gastar nada.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

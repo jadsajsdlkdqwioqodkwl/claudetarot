@@ -31,6 +31,16 @@
     }
   ],
 
+  // Archivos del CRM: fotos/video que manda el cliente (se cachean acá la
+  // primera vez que se piden) y los que sube el vendedor para mandar o
+  // guardar en una respuesta rápida.
+  "r2_buckets": [
+    {
+      "binding": "CRM_MEDIA",
+      "bucket_name": "claudetarot-crm-media"
+    }
+  ],
+
   /**
    * Tope de pedidos por IP: 5 por minuto. Frena el spam sin estorbar a un
    * cliente real, y deja probar el formulario varias veces seguidas.

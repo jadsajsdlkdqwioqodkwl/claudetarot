@@ -47,6 +47,7 @@ import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
 import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost, onRequestGetProductos as crmCatalogProductosGet } from "./api/crm/catalog.js";
 import { onRequestGet as crmSettingsGet, onRequestPatch as crmSettingsPatch } from "./api/crm/settings.js";
+import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -74,7 +75,8 @@ const ROUTES = {
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost },
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },
-  "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch }
+  "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch },
+  "/api/crm/test-welcome": { POST: crmTestWelcomePost }
 };
 
 /**

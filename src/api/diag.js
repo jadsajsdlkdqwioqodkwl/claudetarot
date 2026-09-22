@@ -16,6 +16,7 @@
 import { pemToArrayBuffer, getAccessToken } from "../lib/google-sheets.js";
 import { COLUMNAS } from "../lib/hoja.js";
 import { mismoToken } from "../lib/token.js";
+import { catalogosConectados } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data, null, 2), {
@@ -269,6 +270,25 @@ export async function onRequestGet({ request, env }) {
           ? { titulo: meta.properties?.title, pestana }
           : { error: `no hay ninguna pestaña "${pestana}"`, pestanas,
               arreglo: `renombra la pestaña a "${pestana}" o cambia GOOGLE_CRM_SHEET_NAME` });
+    }
+  }
+
+  /* 11 — ¿El WHATSAPP_CATALOG_ID configurado es un catálogo REALMENTE conectado a esta cuenta? */
+  if (env.WHATSAPP_TOKEN && env.WHATSAPP_BUSINESS_ACCOUNT_ID) {
+    try {
+      const catalogos = await catalogosConectados(env);
+      const conectado = catalogos.some((c) => c.id === env.WHATSAPP_CATALOG_ID);
+      anota("catálogo conectado a WhatsApp", conectado, conectado
+        ? { catalogo: catalogos.find((c) => c.id === env.WHATSAPP_CATALOG_ID)?.name }
+        : {
+            usando: env.WHATSAPP_CATALOG_ID || "(no configurado)",
+            conectados: catalogos.map((c) => ({ id: c.id, nombre: c.name })),
+            arreglo: catalogos.length
+              ? "usa uno de los IDs de arriba como WHATSAPP_CATALOG_ID — el que tienes puesto no es uno de los conectados"
+              : "conecta un catálogo en WhatsApp Manager → tu número → Configuración → Catálogo"
+          });
+    } catch (err) {
+      anota("catálogo conectado a WhatsApp", false, err.message);
     }
   }
 
