@@ -6,7 +6,8 @@
 
 const $ = (sel) => document.querySelector(sel);
 
-const EMOJIS = "☺️ 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 🫶 👍 👎 👏 🙌 💪 🎉 🔥 ✨ ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
+// ☺️✨🫶🙌 fijos primero — los cuatro que se piden siempre a la vista, sin scrollear.
+const EMOJIS = "☺️ ✨ 🫶 🙌 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 💪 🎉 🔥 ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
 const PAGINA_MENSAJES = 50;
 
 const estado = {
@@ -1261,7 +1262,7 @@ function vistaUnicaHtml(m) {
 }
 
 function contenidoMensaje(m) {
-  if (m.deleted_at) return `<span class="mensaje-eliminado">${icon("trash")} Eliminaste este mensaje</span>`;
+  if (m.deleted_at) return `<span class="mensaje-eliminado">${icon("trash")} Mensaje eliminado</span>`;
   if (m.type === "sticker" && (m.media_key || m.media_id)) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
@@ -1341,7 +1342,7 @@ function pintarMensajes() {
       <div class="msg-acciones">
         <button type="button" class="msg-reaccionar" title="Reaccionar">${icon("smile")}</button>
         <button type="button" class="msg-responder" title="Responder">${icon("reply")}</button>
-        ${m.direction === "out" && !m.deleted_at ? `<button type="button" class="msg-borrar" title="Eliminar">${icon("trash")}</button>` : ""}
+        ${!m.deleted_at ? `<button type="button" class="msg-borrar" title="Eliminar">${icon("trash")}</button>` : ""}
       </div>
       <div class="msg ${m.direction}">
         ${quoteHtml(m)}
@@ -1362,7 +1363,7 @@ function pintarMensajes() {
 
 /* ---------- Responder a un mensaje / reaccionar ---------- */
 
-const EMOJIS_REACCION = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const EMOJIS_REACCION = ["☺️", "✨", "🫶", "🙌", "❤️"];
 
 function configurarAccionesMensajes() {
   const cont = $("#mensajes");
