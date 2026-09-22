@@ -69,15 +69,27 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "Usuario o contraseña incorrectos." }, 401);
     }
 
+    const challengeId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    // Con la app authenticator activada no hace falta mandar nada por
+    // WhatsApp: el código lo genera la app del vendedor, offline.
+    if (agente.totp_confirmed) {
+      await env.CRM_DB.prepare(
+        "INSERT INTO login_challenges (id, agent_id, code, expires_at, method) VALUES (?, ?, '', ?, 'totp')"
+      )
+        .bind(challengeId, agente.id, expiresAt)
+        .run();
+      return json({ requiere2FA: true, challenge_id: challengeId, metodo2FA: "totp" });
+    }
+
     if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) {
       return json({ error: "No se puede mandar el código: falta configurar WhatsApp." }, 503);
     }
 
     const code = codigoOTP();
-    const challengeId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     await env.CRM_DB.prepare(
-      "INSERT INTO login_challenges (id, agent_id, code, expires_at) VALUES (?, ?, ?, ?)"
+      "INSERT INTO login_challenges (id, agent_id, code, expires_at, method) VALUES (?, ?, ?, ?, 'whatsapp')"
     )
       .bind(challengeId, agente.id, code, expiresAt)
       .run();
@@ -89,7 +101,7 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "No se pudo mandar el código por WhatsApp." }, 502);
     }
 
-    return json({ requiere2FA: true, challenge_id: challengeId });
+    return json({ requiere2FA: true, challenge_id: challengeId, metodo2FA: "whatsapp" });
   }
 
   // Modo compatibilidad: contraseña única.

@@ -8,6 +8,7 @@
  */
 
 import { crearCookieSesion } from "../../lib/crm-auth.js";
+import { codigoValido } from "../../lib/totp.js";
 
 const MAX_INTENTOS = 5;
 
@@ -49,15 +50,19 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "El código venció o se agotaron los intentos. Vuelve a iniciar sesión." }, 401);
   }
 
-  if (challenge.code !== code) {
+  const agente = await env.CRM_DB.prepare("SELECT * FROM agents WHERE id = ?").bind(challenge.agent_id).first();
+  if (!agente || !agente.active) return json({ error: "Cuenta desactivada." }, 401);
+
+  const codigoOk = challenge.method === "totp"
+    ? await codigoValido(agente.totp_secret, code)
+    : challenge.code === code;
+
+  if (!codigoOk) {
     await env.CRM_DB.prepare("UPDATE login_challenges SET attempts = attempts + 1 WHERE id = ?").bind(challengeId).run();
     return json({ error: "Código incorrecto." }, 401);
   }
 
   await env.CRM_DB.prepare("UPDATE login_challenges SET used = 1 WHERE id = ?").bind(challengeId).run();
-
-  const agente = await env.CRM_DB.prepare("SELECT * FROM agents WHERE id = ?").bind(challenge.agent_id).first();
-  if (!agente || !agente.active) return json({ error: "Cuenta desactivada." }, 401);
 
   const cookie = await crearCookieSesion(env, agente);
   return json({ ok: true, display_name: agente.display_name }, 200, { "Set-Cookie": cookie });

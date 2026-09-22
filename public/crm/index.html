@@ -152,6 +152,19 @@
       <button class="cancelar" id="pwd-cancelar" type="button">Cancelar</button>
       <button class="crear" id="pwd-guardar" type="button">Guardar</button>
     </div>
+
+    <hr />
+    <h2>Código de acceso con app (2FA)</h2>
+    <p class="ayuda-modal" id="totp-ayuda">Cargando…</p>
+    <input type="password" id="totp-password" placeholder="Tu contraseña actual" autocomplete="current-password" />
+    <div id="totp-setup-area" style="display:none">
+      <p class="ayuda-modal">Copia esta clave en Google Authenticator, Authy o similar — si tu app no escanea QR, busca la opción "ingresar clave manualmente":</p>
+      <div id="totp-secreto"></div>
+      <input type="text" id="totp-codigo" placeholder="Código de 6 dígitos de la app" inputmode="numeric" maxlength="6" />
+      <button class="crear" id="totp-confirmar-btn" type="button" style="width:100%">Confirmar y activar</button>
+    </div>
+    <button class="cancelar" id="totp-activar-btn" type="button" style="width:100%">Activar 2FA con app</button>
+    <button class="cancelar" id="totp-desactivar-btn" type="button" style="width:100%;display:none">Desactivar 2FA con app</button>
   </div>
 </div>
 

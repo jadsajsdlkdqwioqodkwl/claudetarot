@@ -14,6 +14,8 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
+const TIPOS_MEDIA = new Set(["image", "video", "document"]);
+
 async function get({ request, env }) {
   const url = new URL(request.url);
   const conversationId = Number(url.searchParams.get("conversation_id"));
@@ -44,7 +46,7 @@ async function post({ request, env, agent }) {
   const body = payload?.body ? String(payload.body).trim().slice(0, 4096) : null;
   const quickReplyId = payload?.quick_reply_id ? Number(payload.quick_reply_id) : null;
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
-  const mediaType = mediaKey ? String(payload?.media_type || "image") : null;
+  const mediaType = mediaKey ? (TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "image") : null;
   const mediaMime = mediaKey && payload?.media_mime ? String(payload.media_mime) : null;
 
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);

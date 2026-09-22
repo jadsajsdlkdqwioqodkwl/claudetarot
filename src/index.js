@@ -61,6 +61,12 @@ import {
   onRequestPatch as crmFollowupSeqPatch
 } from "./api/crm/followup-sequences.js";
 import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
+import {
+  onRequestGet as crmTotpGet,
+  onRequestPost as crmTotpPost,
+  onRequestPatch as crmTotpPatch,
+  onRequestDelete as crmTotpDelete
+} from "./api/crm/totp-setup.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
@@ -96,6 +102,7 @@ const ROUTES = {
   "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch },
   "/api/crm/test-welcome": { POST: crmTestWelcomePost },
   "/api/crm/welcome-sequence": { GET: crmWelcomeSeqGet, POST: crmWelcomeSeqPost, DELETE: crmWelcomeSeqDelete, PATCH: crmWelcomeSeqPatch },
+  "/api/crm/totp-setup": { GET: crmTotpGet, POST: crmTotpPost, PATCH: crmTotpPatch, DELETE: crmTotpDelete },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },
   "/api/crm/reset-password": { POST: crmResetPasswordPost }

@@ -130,10 +130,13 @@ function mostrarFormularioOlvide() {
   $("#btn-olvide").textContent = "Mandar código";
 }
 
-function mostrarPasoCodigo() {
+function mostrarPasoCodigo(metodo2FA) {
   $("#username").style.display = "none";
   $("#password").style.display = "none";
   $("#code").style.display = "block";
+  $("#ayuda-2fa").textContent = metodo2FA === "totp"
+    ? "Escribe el código de tu app authenticator"
+    : "Te llegó un código de 6 dígitos por WhatsApp";
   $("#ayuda-2fa").style.display = "block";
   $("#btn-login").textContent = "Verificar código";
   $("#code").focus();
@@ -177,7 +180,7 @@ $("#form-login").addEventListener("submit", async (e) => {
         body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
       });
       estado.login.challengeId = r.challenge_id;
-      mostrarPasoCodigo();
+      mostrarPasoCodigo(r.metodo2FA);
       return;
     }
 
@@ -246,6 +249,8 @@ $("#btn-mi-password").addEventListener("click", () => {
   $("#pwd-confirmar").value = "";
   $("#modal-password-fondo").classList.add("abierto");
   $("#pwd-actual").focus();
+  $("#totp-password").value = "";
+  pintarEstadoTotp();
 });
 
 $("#pwd-cancelar").addEventListener("click", () => $("#modal-password-fondo").classList.remove("abierto"));
@@ -272,6 +277,73 @@ $("#pwd-guardar").addEventListener("click", async () => {
     $("#password-error").textContent = err.message;
   } finally {
     btn.disabled = false;
+  }
+});
+
+/* ---------- 2FA con app authenticator (TOTP) ---------- */
+
+async function pintarEstadoTotp() {
+  $("#totp-setup-area").style.display = "none";
+  $("#totp-ayuda").textContent = "Cargando…";
+  try {
+    const { active } = await pedir("/api/crm/totp-setup");
+    $("#totp-ayuda").textContent = active
+      ? "Activado — el login te pide el código de tu app en vez de mandarte uno por WhatsApp."
+      : "Desactivado — el login te manda el código por WhatsApp, como siempre.";
+    $("#totp-activar-btn").style.display = active ? "none" : "";
+    $("#totp-desactivar-btn").style.display = active ? "" : "none";
+  } catch {
+    $("#totp-ayuda").textContent = "";
+  }
+}
+
+$("#totp-activar-btn").addEventListener("click", async () => {
+  const current_password = $("#totp-password").value;
+  if (!current_password) return alert("Escribe tu contraseña actual primero.");
+  try {
+    const { secret } = await pedir("/api/crm/totp-setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password })
+    });
+    $("#totp-secreto").textContent = secret.match(/.{1,4}/g).join(" ");
+    $("#totp-setup-area").style.display = "block";
+    $("#totp-codigo").value = "";
+    $("#totp-codigo").focus();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("#totp-confirmar-btn").addEventListener("click", async () => {
+  const code = $("#totp-codigo").value.trim();
+  if (!code) return alert("Escribe el código de 6 dígitos que te muestra la app.");
+  try {
+    await pedir("/api/crm/totp-setup", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+    alert("Listo — la próxima vez que entres, el login te va a pedir el código de la app en vez de mandarte uno por WhatsApp.");
+    await pintarEstadoTotp();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("#totp-desactivar-btn").addEventListener("click", async () => {
+  const current_password = $("#totp-password").value;
+  if (!current_password) return alert("Escribe tu contraseña actual primero.");
+  if (!confirm("¿Desactivar el 2FA con app? Volverás a recibir el código por WhatsApp la próxima vez que entres.")) return;
+  try {
+    await pedir("/api/crm/totp-setup", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password })
+    });
+    await pintarEstadoTotp();
+  } catch (err) {
+    alert(err.message);
   }
 });
 
@@ -303,7 +375,7 @@ function activarOjito(id) {
   });
 }
 
-["password", "olvide-nueva", "pwd-actual", "pwd-nueva", "pwd-confirmar"].forEach(activarOjito);
+["password", "olvide-nueva", "pwd-actual", "pwd-nueva", "pwd-confirmar", "totp-password", "eq-password"].forEach(activarOjito);
 
 /* ---------- Bienvenida de anuncios: secuencia + simulación ---------- */
 
