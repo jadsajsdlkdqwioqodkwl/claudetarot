@@ -599,3 +599,87 @@ recién hecho puede tardar hasta 20 s en verse en la página del cliente.
 
 **Precios**: viven en `src/lib/pedido.js`. Si los cambias, actualiza también los textos
 de `public/index.html` — `npm run check` avisa si dejan de coincidir.
+
+## CRM de WhatsApp — `/crm`
+
+Bandeja de entrada tipo WhatsApp Business / Meta Business Suite para la **WhatsApp Cloud
+API**, en `/crm`. Es una tercera cosa en el mismo Worker, independiente de Sheets y
+Telegram: usa su propia base de datos (**D1**, `CRM_DB`) y sigue funcionando aunque Sheets
+o Telegram caigan.
+
+```
+src/api/whatsapp-webhook.js  GET/POST /api/whatsapp/webhook — recibe mensajes y estados
+src/api/crm/login.js         POST /api/crm/login    — contraseña única → cookie de sesión
+src/api/crm/session.js       GET  /api/crm/session   — si la cookie sigue viva
+src/api/crm/conversations.js GET  /api/crm/conversations — la bandeja, con filtros
+src/api/crm/messages.js      GET/POST /api/crm/messages — historial y envío
+src/api/crm/contacts.js      PATCH /api/crm/contacts — etapa del pipeline, notas, tags
+src/lib/whatsapp.js          Cliente de la Cloud API: enviar texto, firma del webhook
+src/lib/crm-auth.js          Sesión con cookie firmada (HMAC), sin tabla de usuarios
+src/lib/crm-db.js            Consultas compartidas contra D1
+migrations/0001_crm.sql      Esquema: contacts, conversations, messages
+public/crm/                  El panel: index.html + app.js, sin build ni dependencias
+```
+
+### Cómo queda armado
+
+- **Un solo número de WhatsApp, un solo vendedor con contraseña compartida** — no hay
+  tabla de usuarios ni roles. Si más adelante hace falta login por persona, es la próxima
+  pieza a añadir.
+- **La ventana de 24 horas de WhatsApp aplica igual que en la app oficial**: solo se puede
+  mandar texto libre si el cliente escribió en las últimas 24h. Pasado ese plazo, la Cloud
+  API rechaza el envío (quedaría para una fase futura con message templates).
+- El panel usa **polling** (conversaciones cada 4s, mensajes de la conversación abierta
+  cada 3s), no WebSockets: es la opción simple que no necesita Durable Objects.
+
+### Paso 1 — Meta: número y credenciales
+
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → crea una app tipo
+   **Business** → añade el producto **WhatsApp**.
+2. En **WhatsApp → Configuración de la API**, copia el **ID del número de teléfono**
+   (`Phone number ID`) — va en `wrangler.jsonc` como `WHATSAPP_PHONE_NUMBER_ID` (texto, no
+   es secreto).
+3. Genera un **token permanente**: **Usuarios del sistema** (Configuración del negocio) →
+   crea uno → asígnale la app y el permiso `whatsapp_business_messaging` → **Generar
+   token**, sin fecha de expiración. Un token temporal de prueba (24h) también sirve para
+   probar, pero se vence.
+4. El **App Secret** está en **Configuración de la app → Básica**.
+
+### Paso 2 — Secrets en Cloudflare
+
+Por dashboard: **Workers & Pages → claudetarot → Settings → Variables and secrets → Add
+→ Type: Secret**. Cuatro nuevos, todos secretos (nunca van en `wrangler.jsonc`):
+
+| Secret | Qué es |
+|---|---|
+| `WHATSAPP_TOKEN` | El token permanente del paso anterior |
+| `WHATSAPP_VERIFY_TOKEN` | Cualquier cadena que inventes — Meta la repite al verificar el webhook |
+| `WHATSAPP_APP_SECRET` | El App Secret, para validar la firma de cada webhook |
+| `CRM_PASSWORD` | La contraseña para entrar a `/crm` |
+
+`WHATSAPP_PHONE_NUMBER_ID` va como texto en `wrangler.jsonc` (ya tiene el campo, solo
+falta rellenarlo) — igual que `GOOGLE_SHEET_ID` arriba.
+
+### Paso 3 — Conectar el webhook
+
+En **WhatsApp → Configuración → Webhook** de la app de Meta:
+
+- **URL de callback**: `https://TU-DOMINIO/api/whatsapp/webhook`
+- **Token de verificación**: el mismo valor que pusiste en `WHATSAPP_VERIFY_TOKEN`
+- **Suscríbete al campo** `messages`
+
+Meta hace un `GET` a esa URL para verificar antes de guardar; si el token coincide,
+responde con el `challenge` y queda activo.
+
+### Entrar al panel
+
+`https://TU-DOMINIO/crm` — pide la contraseña de `CRM_PASSWORD`. La sesión dura 12h
+(cookie firmada, `HttpOnly` + `Secure`, no hay nada que limpiar en el servidor).
+
+### Por qué D1 y no Sheets
+
+Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
+escribir en tiempo real desde un chat — el CRM de leads de arriba lo usa porque el
+vendedor lo revisa cada tanto, no en vivo. Un inbox de WhatsApp necesita respuesta
+inmediata a cada mensaje, así que usa su propia base **D1** (SQLite en el borde de
+Cloudflare), sin tocar ni depender de la hoja de Sheets ni de Telegram.

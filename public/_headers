@@ -8,6 +8,11 @@
 /api/*
   Cache-Control: no-store
 
+# El CRM es privado: nunca cachear y fuera de índices de buscadores.
+/crm/*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
+
 # Las imagenes y el video no cambian de contenido sin cambiar de nombre, asi que
 # el navegador puede guardarlos un ano y no volver a pedirlos nunca.
 /kittarotcod/*
