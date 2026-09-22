@@ -13,8 +13,13 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy) {
   return waMessageId;
 }
 
-/** `mediaKey` es la clave en R2 (CRM_MEDIA). Sube una copia fresca a WhatsApp y manda. */
-export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy) {
+/**
+ * `mediaKey` es la clave en R2 (CRM_MEDIA). Sube una copia fresca a WhatsApp
+ * y manda. `caption` es lo único que ve el cliente en WhatsApp; `fileName`
+ * (opcional) solo queda en el registro interno —para el reporte de
+ * Sheets— cuando no hay caption, nunca se manda como texto visible.
+ */
+export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy, fileName) {
   const obj = await env.CRM_MEDIA.get(mediaKey);
   if (!obj) throw new Error("El archivo ya no está disponible.");
   const mime = obj.httpMetadata?.contentType || "application/octet-stream";
@@ -26,7 +31,7 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
     waMessageId,
     type,
-    body: caption || null,
+    body: caption || fileName || null,
     mediaKey,
     mediaMime: mime,
     sentBy

@@ -64,10 +64,14 @@ async function handler({ request, env }) {
 
   const ext = EXTENSION_POR_MIME[mime] || "bin";
   const key = `chat/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const nombreOriginal = String(file.name || "").slice(0, 200);
 
-  await env.CRM_MEDIA.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: mime } });
+  await env.CRM_MEDIA.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: mime },
+    customMetadata: { originalName: nombreOriginal }
+  });
 
-  return json({ ok: true, media_key: key, mime, type: tipoDeMime(mime) });
+  return json({ ok: true, media_key: key, mime, type: tipoDeMime(mime), original_name: nombreOriginal });
 }
 
 export const onRequestPost = conAuth(handler);

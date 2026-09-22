@@ -83,7 +83,8 @@ async function post({ request, env, agent }) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);
       const caption = String(payload?.caption || "").slice(0, 1024) || undefined;
-      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy);
+      const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
+      const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 

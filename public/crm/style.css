@@ -30,8 +30,13 @@ button:has(.icono-svg) { display: inline-flex; align-items: center; justify-cont
 .icono-svg.girando { animation: girar 0.8s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
 
-body {
+html, body {
+  height: 100%;
   margin: 0;
+  overflow: hidden; /* nunca scroll de página entera: cada panel scrollea el suyo */
+}
+
+body {
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--fondo);
   color: var(--texto);
@@ -52,14 +57,20 @@ button { font-family: inherit; }
 
 /* ---------- Layout general ---------- */
 
-#app { display: none; height: 100vh; grid-template-columns: 340px 1fr 300px; }
+/* En un grid/flex, un item con contenido largo no se encoge a la altura del
+   padre por defecto (min-height:auto) — el hijo empuja todo hacia abajo en
+   vez de scrollear por su cuenta. min-height:0 en cada nivel es lo que deja
+   que #mensajes y #conversaciones scrolleen ADENTRO de su caja, con el
+   header y el composer siempre fijos arriba y abajo. */
+#app { display: none; height: 100vh; grid-template-columns: 340px 1fr 300px; min-height: 0; }
 #app.activo { display: grid; }
 
 /* ---------- Lista de conversaciones ---------- */
 
-#lista { background: var(--panel); border-right: 1px solid var(--borde); display: flex; flex-direction: column; overflow: hidden; }
+#lista { background: var(--panel); border-right: 1px solid var(--borde); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 #lista header { padding: 14px 16px; background: var(--verde-osc); color: #fff; display: flex; justify-content: space-between; align-items: center; }
 #lista header h1 { font-size: 16px; margin: 0; }
+#sesion-actual { font-size: 11px; opacity: .8; margin-top: 2px; }
 #lista header .acciones { display: flex; gap: 14px; align-items: center; }
 #lista header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 17px; opacity: .9; }
 #buscador { padding: 8px 10px; border-bottom: 1px solid var(--borde); position: relative; }
@@ -69,7 +80,7 @@ button { font-family: inherit; }
 #filtros { display: flex; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--borde); }
 #filtros button { border: 1px solid var(--borde); background: #fff; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--gris); }
 #filtros button.activo { background: var(--verde); color: #fff; border-color: var(--verde); }
-#conversaciones { overflow-y: auto; flex: 1; }
+#conversaciones { overflow-y: auto; flex: 1; min-height: 0; }
 
 .conv-item { display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--borde); cursor: pointer; position: relative; }
 .conv-item:hover { background: #f5f6f6; }
@@ -88,7 +99,7 @@ button { font-family: inherit; }
 
 /* ---------- Chat ---------- */
 
-#chat { display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+#chat { display: flex; flex-direction: column; background: #e5ddd5; position: relative; min-height: 0; }
 #zona-arrastre { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(37,211,102,.15); border: 3px dashed var(--verde); z-index: 20; font-size: 16px; font-weight: 600; color: var(--verde-osc); pointer-events: none; }
 #zona-arrastre.visible { display: flex; }
 #cargar-anteriores { display: flex; justify-content: center; padding-bottom: 8px; }
@@ -97,7 +108,7 @@ button { font-family: inherit; }
 #chat header .nombre { font-weight: 600; font-size: 15px; }
 #chat header .tel { font-size: 12px; color: var(--gris); }
 #chat header .btn-star { font-size: 20px; margin-left: auto; }
-#mensajes { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+#mensajes { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .msg { max-width: 65%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
 .msg.in { background: #fff; align-self: flex-start; border-top-left-radius: 0; }
 .msg.out { background: var(--burbuja-out); align-self: flex-end; border-top-right-radius: 0; }
@@ -170,7 +181,7 @@ button { font-family: inherit; }
 
 /* ---------- Detalle ---------- */
 
-#detalle { background: var(--panel); border-left: 1px solid var(--borde); padding: 16px; overflow-y: auto; }
+#detalle { background: var(--panel); border-left: 1px solid var(--borde); padding: 16px; overflow-y: auto; min-height: 0; }
 #detalle h2 { font-size: 14px; color: var(--gris); text-transform: uppercase; margin: 16px 0 6px; }
 #detalle h2:first-child { margin-top: 0; }
 #detalle .avatar { width: 64px; height: 64px; font-size: 22px; margin: 0 auto 10px; }
