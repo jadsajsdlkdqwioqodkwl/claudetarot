@@ -22,6 +22,15 @@ import { onRequestGet as crmSession } from "./api/crm/session.js";
 import { onRequestGet as crmConversations } from "./api/crm/conversations.js";
 import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from "./api/crm/messages.js";
 import { onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
+import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
+import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
+import { onRequestGet as crmMedia } from "./api/crm/media.js";
+import { onRequestPatch as crmFollowUp } from "./api/crm/follow-up.js";
+import {
+  onRequestGet as crmQuickRepliesGet,
+  onRequestPost as crmQuickRepliesPost,
+  onRequestDelete as crmQuickRepliesDelete
+} from "./api/crm/quick-replies.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -33,11 +42,16 @@ const ROUTES = {
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
 
   "/api/crm/login": { POST: crmLogin },
+  "/api/crm/login-info": { GET: crmLoginInfo },
   "/api/crm/logout": { POST: crmLogout },
   "/api/crm/session": { GET: crmSession },
   "/api/crm/conversations": { GET: crmConversations },
   "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
-  "/api/crm/contacts": { PATCH: crmContactsPatch }
+  "/api/crm/contacts": { PATCH: crmContactsPatch },
+  "/api/crm/upload-media": { POST: crmUploadMedia },
+  "/api/crm/media": { GET: crmMedia },
+  "/api/crm/follow-up": { PATCH: crmFollowUp },
+  "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, DELETE: crmQuickRepliesDelete }
 };
 
 /**

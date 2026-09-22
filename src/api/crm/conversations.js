@@ -1,7 +1,7 @@
 /**
  * GET /api/crm/conversations — bandeja de entrada: una fila por conversación,
  * con el contacto y el último mensaje, ordenadas por actividad reciente.
- * Filtros opcionales: ?stage=nuevo&q=texto (busca en nombre/wa_id).
+ * Filtros opcionales: ?follow_up=1 (solo las marcadas con estrella) &q=texto
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -14,18 +14,15 @@ const json = (data, status = 200) =>
 
 async function handler({ request, env }) {
   const url = new URL(request.url);
-  const stage = url.searchParams.get("stage");
+  const soloSeguimiento = url.searchParams.get("follow_up") === "1";
   const q = url.searchParams.get("q");
 
   const condiciones = [];
   const params = [];
-  if (stage) {
-    condiciones.push("c.stage = ?");
-    params.push(stage);
-  }
+  if (soloSeguimiento) condiciones.push("conv.follow_up = 1");
   if (q) {
-    condiciones.push("(c.name LIKE ? OR c.profile_name LIKE ? OR c.wa_id LIKE ?)");
-    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    condiciones.push("(c.profile_name LIKE ? OR c.wa_id LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
   }
   const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
 
@@ -34,14 +31,14 @@ async function handler({ request, env }) {
         conv.id AS conversation_id,
         conv.status,
         conv.unread_count,
+        conv.follow_up,
         conv.last_message_at,
         c.id AS contact_id,
         c.wa_id,
-        c.name,
         c.profile_name,
-        c.stage,
-        c.notes,
-        c.tags,
+        c.ctwa_clid,
+        c.ad_source_type,
+        c.ad_headline,
         (SELECT body FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_body,
         (SELECT type FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_type,
         (SELECT direction FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_direction

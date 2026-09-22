@@ -3,7 +3,7 @@
  * un endpoint vive aquí para no repetir el SQL.
  */
 
-export async function obtenerOCrearContacto(db, waId, profileName) {
+export async function obtenerOCrearContacto(db, waId, profileName, referral) {
   const existente = await db
     .prepare("SELECT * FROM contacts WHERE wa_id = ?")
     .bind(waId)
@@ -18,9 +18,27 @@ export async function obtenerOCrearContacto(db, waId, profileName) {
     return existente;
   }
 
+  // El `referral` solo viene en el primer mensaje si el chat empezó desde un
+  // anuncio "Click to WhatsApp" — así queda guardado desde el primer contacto,
+  // que es el único momento en que WhatsApp lo manda.
   const insertado = await db
-    .prepare("INSERT INTO contacts (wa_id, profile_name) VALUES (?, ?) RETURNING *")
-    .bind(waId, profileName || null)
+    .prepare(
+      `INSERT INTO contacts
+        (wa_id, profile_name, first_seen_at, ctwa_clid, ad_source_type, ad_source_id, ad_source_url, ad_headline, ad_body, ad_media_type)
+       VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)
+       RETURNING *`
+    )
+    .bind(
+      waId,
+      profileName || null,
+      referral?.ctwa_clid || null,
+      referral?.source_type || null,
+      referral?.source_id || null,
+      referral?.source_url || null,
+      referral?.headline || null,
+      referral?.body || null,
+      referral?.media_type || null
+    )
     .first();
   return insertado;
 }
@@ -60,13 +78,13 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body }) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, status)
-       VALUES (?, ?, 'out', ?, ?, 'sent')`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status)
+       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent')`
     )
-    .bind(conversationId, waMessageId || null, type, body || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null)
     .run();
 
   await db
@@ -80,4 +98,15 @@ export async function actualizarEstadoMensaje(db, waMessageId, status) {
     .prepare("UPDATE messages SET status = ? WHERE wa_message_id = ?")
     .bind(status, waMessageId)
     .run();
+}
+
+export async function marcarSeguimiento(db, conversationId, followUp) {
+  await db
+    .prepare("UPDATE conversations SET follow_up = ? WHERE id = ?")
+    .bind(followUp ? 1 : 0, conversationId)
+    .run();
+}
+
+export async function guardarMediaKey(db, messageId, mediaKey) {
+  await db.prepare("UPDATE messages SET media_key = ? WHERE id = ?").bind(mediaKey, messageId).run();
 }

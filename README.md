@@ -676,6 +676,38 @@ responde con el `challenge` y queda activo.
 `https://TU-DOMINIO/crm` — pide la contraseña de `CRM_PASSWORD`. La sesión dura 12h
 (cookie firmada, `HttpOnly` + `Secure`, no hay nada que limpiar en el servidor).
 
+### Segunda vuelta: 2FA, fotos/video, respuestas rápidas y datos de anuncio
+
+- **2FA opcional**: si defines el secret `CRM_TOTP_SECRET` (código base32 de 32
+  caracteres), el login pide además el código de 6 dígitos de una app de
+  autenticación (Google Authenticator, Authy…). Sin ese secret, el login sigue
+  pidiendo solo la contraseña — no se rompe nada al no configurarlo.
+  Para activarlo: genera un secreto, agrégalo como secret en Cloudflare, y
+  carga en tu app de autenticación la cuenta manualmente con ese mismo
+  secreto (opción "clave de configuración" / "setup key", no hace falta QR).
+- **Estrella de seguimiento** (`conversations.follow_up`) reemplaza a la
+  etapa/nombre/notas de la primera versión: un clic en la lista o en el chat
+  marca una conversación para seguirla, y el filtro "★ Seguimiento" la aísla.
+- **Fotos y video**: se pueden mandar desde el chat (📎) y se ven inline en
+  los mensajes entrantes y salientes. Todo pasa por un bucket **R2**
+  (`CRM_MEDIA`): lo que manda el cliente se cachea ahí la primera vez que se
+  pide (la URL de Meta expira en minutos) y lo que sube el vendedor se guarda
+  ahí antes de mandarlo a WhatsApp.
+- **Respuestas rápidas** (`quick_replies`): plantillas de texto y/o foto/video
+  que se mandan con un clic (⚡ en el chat). El archivo vive en R2 y se
+  resube a WhatsApp cada vez que se usa la respuesta, porque el media id de
+  la Cloud API expira pero el archivo en R2 no.
+- **Datos del anuncio** (`ctwa_clid`, `ad_source_type`, `ad_headline`…): si el
+  chat empezó desde un anuncio "Click to WhatsApp" de Meta/Instagram, el
+  primer mensaje trae un objeto `referral` que se guarda tal cual en el
+  contacto — es la base para, más adelante, reportarlo como conversión o
+  automatizar una respuesta según el anuncio de origen.
+
+**Requiere el bucket R2** `claudetarot-crm-media` (binding `CRM_MEDIA`) — si
+R2 no está habilitado en la cuenta, `npx wrangler d1`… nada, es R2 el que
+hay que habilitar en **Cloudflare Dashboard → R2 → Enable R2** antes de que
+el bucket se pueda crear.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

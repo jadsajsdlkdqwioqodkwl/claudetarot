@@ -46,6 +46,39 @@ export async function enviarTexto(env, waId, texto) {
   return datos.messages?.[0]?.id || null;
 }
 
+/** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
+export async function enviarMedia(env, waId, type, mediaId, caption) {
+  const cuerpo = { messaging_product: "whatsapp", to: waId, type };
+  cuerpo[type] = caption ? { id: mediaId, caption } : { id: mediaId };
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, cuerpo);
+  return datos.messages?.[0]?.id || null;
+}
+
+/** Sube un archivo a la Cloud API y devuelve su media id, para mandarlo después. */
+export async function subirMedia(env, blob, mime, nombreArchivo) {
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("file", blob, nombreArchivo || "archivo");
+  form.append("type", mime);
+
+  const res = await fetch(graphUrl(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/media`), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` },
+    body: form
+  });
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos?.error?.message || `HTTP ${res.status}`);
+  return datos.id;
+}
+
+/** Descarga los bytes de un media por su id (ya resuelta la URL temporal). */
+export async function descargarMedia(env, mediaId) {
+  const { url, mime_type } = await urlDeMedia(env, mediaId);
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } });
+  if (!res.ok) throw new Error(`No se pudo descargar el media: HTTP ${res.status}`);
+  return { blob: await res.blob(), mime: mime_type || res.headers.get("Content-Type") || "application/octet-stream" };
+}
+
 /** Marca un mensaje entrante como leído (doble check azul). */
 export async function marcarLeido(env, waMessageId) {
   try {
