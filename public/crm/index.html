@@ -10,19 +10,41 @@
 <body>
 
 <div id="login">
-  <form id="form-login">
-    <h1>CRM · WhatsApp</h1>
-    <div class="error" id="login-error"></div>
-
-    <div id="paso-credenciales">
-      <input type="text" id="username" placeholder="Usuario" autocomplete="username" style="display:none" />
-      <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
-      <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
-      <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp</div>
+  <div id="login-tarjeta">
+    <div id="login-marca">
+      <div id="login-icono"></div>
+      <h1>CRM · WhatsApp</h1>
+      <p id="login-subtitulo">Tarot Store Perú</p>
     </div>
 
-    <button type="submit" id="btn-login">Entrar</button>
-  </form>
+    <form id="form-login">
+      <div class="error" id="login-error"></div>
+
+      <div id="paso-credenciales">
+        <input type="text" id="username" placeholder="Usuario" autocomplete="username" style="display:none" />
+        <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
+        <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
+        <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp</div>
+      </div>
+
+      <button type="submit" id="btn-login">Entrar</button>
+      <button type="button" id="link-olvide" class="link-secundario" style="display:none">¿Olvidaste tu contraseña?</button>
+    </form>
+
+    <form id="form-olvide" style="display:none">
+      <div class="error" id="olvide-error"></div>
+      <p class="ayuda-modal" id="olvide-paso1-ayuda">Escribe tu usuario — te mandamos un código de 6 dígitos por WhatsApp.</p>
+      <input type="text" id="olvide-usuario" placeholder="Usuario" autocomplete="username" />
+
+      <div id="olvide-paso2" style="display:none">
+        <input type="text" id="olvide-codigo" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" />
+        <input type="password" id="olvide-nueva" placeholder="Nueva contraseña (mín. 8 caracteres)" autocomplete="new-password" />
+      </div>
+
+      <button type="submit" id="btn-olvide">Mandar código</button>
+      <button type="button" id="link-volver-login" class="link-secundario">Volver a iniciar sesión</button>
+    </form>
+  </div>
 </div>
 
 <div id="app">

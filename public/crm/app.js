@@ -17,6 +17,7 @@ const estado = {
   archivoAdjunto: null,
   quickReplies: [],
   login: { mode: "legacy", challengeId: null },
+  olvide: { resetId: null },
   templateElegido: null,
   miRol: null,
   filtroRapidas: "",
@@ -81,6 +82,7 @@ async function revisarSesion() {
 async function mostrarLogin() {
   $("#login").style.display = "flex";
   $("#app").classList.remove("activo");
+  mostrarFormularioLogin();
   estado.login = { mode: "legacy", challengeId: null };
   try {
     const info = await pedir("/api/crm/login-info");
@@ -91,7 +93,29 @@ async function mostrarLogin() {
     $("#password").style.display = "block";
     $("#password").placeholder = "Contraseña";
     $("#btn-login").textContent = "Entrar";
+    // "Olvidé mi contraseña" solo tiene sentido con cuentas de vendedor — en
+    // modo de contraseña única no hay una cuenta propia que recuperar.
+    $("#link-olvide").style.display = info.modoAgentes ? "block" : "none";
   } catch { /* si falla, se pide solo la contraseña */ }
+}
+
+function mostrarFormularioLogin() {
+  $("#form-login").style.display = "flex";
+  $("#form-olvide").style.display = "none";
+  $("#login-error").textContent = "";
+}
+
+function mostrarFormularioOlvide() {
+  $("#form-login").style.display = "none";
+  $("#form-olvide").style.display = "flex";
+  $("#olvide-error").textContent = "";
+  estado.olvide = { resetId: null };
+  $("#olvide-usuario").disabled = false;
+  $("#olvide-paso2").style.display = "none";
+  $("#olvide-paso1-ayuda").style.display = "block";
+  $("#olvide-codigo").value = "";
+  $("#olvide-nueva").value = "";
+  $("#btn-olvide").textContent = "Mandar código";
 }
 
 function mostrarPasoCodigo() {
@@ -153,6 +177,46 @@ $("#form-login").addEventListener("submit", async (e) => {
     mostrarApp();
   } catch (err) {
     $("#login-error").textContent = err.message;
+  }
+});
+
+$("#link-olvide").addEventListener("click", mostrarFormularioOlvide);
+$("#link-volver-login").addEventListener("click", mostrarFormularioLogin);
+
+$("#form-olvide").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#olvide-error").textContent = "";
+  try {
+    if (!estado.olvide.resetId) {
+      const username = $("#olvide-usuario").value.trim();
+      if (!username) return;
+      const { reset_id } = await pedir("/api/crm/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username })
+      });
+      estado.olvide.resetId = reset_id;
+      $("#olvide-usuario").disabled = true;
+      $("#olvide-paso1-ayuda").style.display = "none";
+      $("#olvide-paso2").style.display = "block";
+      $("#btn-olvide").textContent = "Cambiar contraseña";
+      $("#olvide-codigo").focus();
+      return;
+    }
+
+    await pedir("/api/crm/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reset_id: estado.olvide.resetId,
+        code: $("#olvide-codigo").value.trim(),
+        new_password: $("#olvide-nueva").value
+      })
+    });
+    alert("Contraseña cambiada. Ya puedes entrar con la nueva.");
+    mostrarFormularioLogin();
+  } catch (err) {
+    $("#olvide-error").textContent = err.message;
   }
 });
 

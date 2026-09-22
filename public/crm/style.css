@@ -46,14 +46,66 @@ button { font-family: inherit; }
 
 /* ---------- Login ---------- */
 
-#login { display: flex; align-items: center; justify-content: center; height: 100vh; }
-#login form { background: var(--panel); padding: 32px; border-radius: var(--radio-m); box-shadow: 0 1px 3px rgba(0,0,0,.15); width: 280px; }
-#login h1 { font-size: 18px; margin: 0 0 16px; }
-#login input { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 14px; margin-bottom: 12px; letter-spacing: normal; }
-#login input#code { letter-spacing: 4px; text-align: center; font-size: 18px; }
-#login button { width: 100%; padding: 10px; border: 0; border-radius: var(--radio-s); background: var(--verde-osc); color: #fff; font-size: 14px; cursor: pointer; }
+#login {
+  display: flex; align-items: center; justify-content: center; height: 100vh;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(37,211,102,.16), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(18,140,126,.16), transparent 40%),
+    var(--fondo);
+  padding: 16px;
+}
+
+#login-tarjeta {
+  background: var(--panel);
+  padding: 36px 32px;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(17,27,33,.12), 0 2px 8px rgba(17,27,33,.06);
+  width: 320px;
+  max-width: 100%;
+  animation: aparecer .35s ease-out;
+}
+@keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+#login-marca { text-align: center; margin-bottom: 24px; }
+#login-icono {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--verde), var(--verde-osc));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(37,211,102,.35);
+}
+#login-icono::before {
+  content: "";
+  width: 24px; height: 24px;
+  background: #fff;
+  mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 2a8 8 0 00-6.9 12L2 18l4.2-1.1A8 8 0 1010 2zm4.6 11.4c-.2.5-1.1 1-1.6 1.1-.4.1-.9.1-1.4-.1-.3-.1-.8-.3-1.3-.6-2.3-1-3.8-3.3-3.9-3.5-.1-.2-.9-1.2-.9-2.3s.6-1.6.8-1.9c.2-.2.5-.3.6-.3h.5c.2 0 .4 0 .5.4.2.5.7 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.1.3-.3.4-.1.2-.3.3-.4.5-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1.2-.2.7-.8.9-1 .2-.3.4-.2.6-.1.2.1 1.5.7 1.7.8.2.1.4.2.4.3.1.2.1.6-.1 1.1z"/></svg>') center / contain no-repeat;
+  mask-repeat: no-repeat;
+}
+#login-marca h1 { font-size: 19px; margin: 0; font-weight: 700; }
+#login-subtitulo { font-size: 12px; color: var(--gris); margin: 2px 0 0; }
+
+#form-login, #form-olvide { display: flex; flex-direction: column; }
+#login input {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--borde); border-radius: 10px;
+  font-size: 14px; margin-bottom: 12px; letter-spacing: normal; transition: border-color .15s, box-shadow .15s;
+}
+#login input:focus { outline: none; border-color: var(--verde-osc); box-shadow: 0 0 0 3px rgba(18,140,126,.12); }
+#login input#code, #login input#olvide-codigo { letter-spacing: 6px; text-align: center; font-size: 18px; font-weight: 600; }
+#login button[type="submit"] {
+  width: 100%; padding: 12px; border: 0; border-radius: 10px;
+  background: linear-gradient(135deg, var(--verde-osc), #0d6e63); color: #fff; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: transform .1s, box-shadow .15s; box-shadow: 0 4px 12px rgba(18,140,126,.25);
+}
+#login button[type="submit"]:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(18,140,126,.32); }
+#login button[type="submit"]:active { transform: translateY(0); }
+#login .link-secundario {
+  background: transparent; border: 0; color: var(--verde-osc); font-size: 13px; cursor: pointer;
+  margin-top: 12px; padding: 4px; text-decoration: none;
+}
+#login .link-secundario:hover { text-decoration: underline; }
 #login .error { color: var(--peligro); font-size: 13px; margin-bottom: 8px; min-height: 16px; }
 #login .ayuda { font-size: 12px; color: var(--gris); margin-top: -6px; margin-bottom: 10px; }
+#login .ayuda-modal { font-size: 12px; color: var(--gris); margin: 0 0 12px; }
 
 /* ---------- Layout general ---------- */
 
