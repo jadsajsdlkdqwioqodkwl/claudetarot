@@ -17,11 +17,10 @@ import {
   actualizarEstadoMensaje,
   registrarPedidoCatalogo,
   nombresDeProductos,
-  guardarProductosEnCache,
-  obtenerAjuste
+  guardarProductosEnCache
 } from "../lib/crm-db.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
-import { mandarMediaGuardada, mandarTexto } from "../lib/crm-send.js";
+import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -97,27 +96,8 @@ async function resolverNombresPedido(env, order) {
 /** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
 async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
   if (!contacto._isNew || !contacto.ctwa_clid) return;
-
-  const quickReplyId = await obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id");
-  if (!quickReplyId) return;
-
-  const quickReply = await env.CRM_DB.prepare("SELECT * FROM quick_replies WHERE id = ?").bind(Number(quickReplyId)).first();
-  if (!quickReply) return;
-
-  const media = await env.CRM_DB.prepare(
-    "SELECT * FROM quick_reply_media WHERE quick_reply_id = ? ORDER BY sort_order ASC"
-  )
-    .bind(quickReply.id)
-    .all();
-
   try {
-    if (media.results.length) {
-      await Promise.all(media.results.map((m) =>
-        mandarMediaGuardada(env, conversacion.id, contacto.wa_id, m.media_key, m.media_type, quickReply.body, "Bienvenida automática")
-      ));
-    } else if (quickReply.body) {
-      await mandarTexto(env, conversacion.id, contacto.wa_id, quickReply.body, "Bienvenida automática");
-    }
+    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática");
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
   }

@@ -21,7 +21,6 @@ const estado = {
   miRol: null,
   filtroRapidas: "",
   rapidasPorSlash: false,
-  bienvenidaQuickReplyId: null,
   mensajesCargados: [],
   hayMasAntiguos: false,
   pollConv: null,
@@ -62,6 +61,7 @@ function debounce(fn, ms) {
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-mi-password").innerHTML = icon("key");
+  $("#btn-bienvenida").innerHTML = icon("megaphone");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -113,6 +113,7 @@ async function mostrarApp() {
   // preguntarse por qué no aparecen si entraste con otra cuenta.
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
+  $("#btn-bienvenida").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
   cargarQuickReplies();
   clearInterval(estado.pollConv);
@@ -180,6 +181,102 @@ $("#btn-mi-password").addEventListener("click", async () => {
     alert("Contraseña cambiada. La próxima vez que entres, usa la nueva.");
   } catch (err) {
     alert(err.message);
+  }
+});
+
+/* ---------- Bienvenida de anuncios: secuencia + simulación ---------- */
+
+$("#btn-bienvenida").addEventListener("click", async () => {
+  $("#modal-bienvenida-fondo").classList.add("abierto");
+  await pintarSecuenciaBienvenida();
+});
+$("#bienvenida-cerrar").addEventListener("click", () => $("#modal-bienvenida-fondo").classList.remove("abierto"));
+
+async function pintarSecuenciaBienvenida() {
+  const [{ steps }] = await Promise.all([pedir("/api/crm/welcome-sequence"), cargarQuickReplies()]);
+
+  const cont = $("#lista-secuencia");
+  cont.innerHTML = steps.length ? steps.map((s, i) => `
+    <div class="fila-seguimiento">
+      <div>
+        <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)}</div>
+        ${s.body ? `<div class="sub">${escapar(s.body)}</div>` : ""}
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="mover-arriba" data-id="${s.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
+        <button class="mover-abajo" data-id="${s.id}" title="Bajar" ${i === steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
+        <button class="trash quitar-paso" data-id="${s.id}" title="Quitar de la secuencia">${icon("trash")}</button>
+      </div>
+    </div>`).join("") : `<p class="ayuda-modal">Todavía no hay ningún paso — agrega respuestas rápidas abajo.</p>`;
+
+  // Rota las flechas de "arrowLeft" para que apunten arriba/abajo sin pedir dos íconos nuevos.
+  cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((s) => s.style.transform = "rotate(90deg)");
+  cont.querySelectorAll(".mover-abajo .icono-svg svg").forEach((s) => s.style.transform = "rotate(-90deg)");
+
+  cont.querySelectorAll(".mover-arriba, .mover-abajo").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await pedir("/api/crm/welcome-sequence", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(btn.dataset.id), direction: btn.classList.contains("mover-arriba") ? "up" : "down" })
+      });
+      await pintarSecuenciaBienvenida();
+    });
+  });
+  cont.querySelectorAll(".quitar-paso").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await pedir("/api/crm/welcome-sequence", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(btn.dataset.id) })
+      });
+      await pintarSecuenciaBienvenida();
+    });
+  });
+
+  const yaEnSecuencia = new Set(steps.map((s) => s.quick_reply_id));
+  const disponibles = estado.quickReplies.filter((q) => !yaEnSecuencia.has(q.id));
+  const select = $("#seq-agregar-select");
+  select.innerHTML = disponibles.length
+    ? disponibles.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("")
+    : `<option value="">— crea una respuesta rápida primero —</option>`;
+}
+
+$("#seq-agregar-btn").addEventListener("click", async () => {
+  const id = Number($("#seq-agregar-select").value);
+  if (!id) return;
+  try {
+    await pedir("/api/crm/welcome-sequence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quick_reply_id: id })
+    });
+    await pintarSecuenciaBienvenida();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("#sim-enviar").addEventListener("click", async () => {
+  const wa = $("#sim-wa").value.trim();
+  if (!wa) return alert("Escribe un WhatsApp.");
+  const btn = $("#sim-enviar");
+  btn.disabled = true;
+  btn.textContent = "Mandando…";
+  try {
+    const { pasos_mandados } = await pedir("/api/crm/test-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa_id: wa.replace(/\D/g, "") })
+    });
+    alert(`Listo — se marcó el chat como venido de un anuncio y se mandaron ${pasos_mandados} paso(s). Revisa ese WhatsApp.`);
+    $("#sim-wa").value = "";
+    await cargarConversaciones();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Simular y mandar la secuencia";
   }
 });
 
@@ -655,10 +752,6 @@ document.addEventListener("click", (e) => {
 async function cargarQuickReplies() {
   const { quick_replies } = await pedir("/api/crm/quick-replies");
   estado.quickReplies = quick_replies;
-  try {
-    const { ad_welcome_quick_reply_id } = await pedir("/api/crm/settings");
-    estado.bienvenidaQuickReplyId = ad_welcome_quick_reply_id;
-  } catch { /* no crítico */ }
 }
 
 async function toggleQuickPanel() {
@@ -689,7 +782,6 @@ function pintarQuickPanel() {
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
     ${lista.map((q) => {
       const foto = q.media[0];
-      const esBienvenida = estado.bienvenidaQuickReplyId === q.id;
       return `
       <div class="item" data-id="${q.id}">
         ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
@@ -698,13 +790,11 @@ function pintarQuickPanel() {
           <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
         </div>
-        ${esAdmin ? `<button class="estrella-bienvenida ${esBienvenida ? "activa" : ""}" data-id="${q.id}" title="Usar como bienvenida de anuncios">${icon(esBienvenida ? "star" : "starOutline")}</button>` : ""}
         <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
       </div>`;
     }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
     <footer>
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
-      ${esAdmin ? `<button id="probar-bienvenida" style="margin-top:6px">${icon("bolt")} Probar bienvenida en un número</button>` : ""}
     </footer>`;
 
   $("#rapidas-buscar").addEventListener("input", (e) => {
@@ -717,7 +807,7 @@ function pintarQuickPanel() {
 
   panel.querySelectorAll(".item[data-id]").forEach((el) => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".borrar, .estrella-bienvenida")) return;
+      if (e.target.closest(".borrar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       if (q) enviarQuickReply(q);
     });
@@ -736,40 +826,10 @@ function pintarQuickPanel() {
       pintarQuickPanel();
     });
   });
-  panel.querySelectorAll(".estrella-bienvenida").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const id = Number(btn.dataset.id);
-      const nuevo = estado.bienvenidaQuickReplyId === id ? null : id;
-      estado.bienvenidaQuickReplyId = nuevo;
-      pintarQuickPanel();
-      await pedir("/api/crm/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ad_welcome_quick_reply_id: nuevo })
-      }).catch((err) => alert(err.message));
-    });
-  });
   $("#nueva-rapida")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
     $("#modal-rapida-fondo").classList.add("abierto");
   });
-  $("#probar-bienvenida")?.addEventListener("click", probarBienvenida);
-}
-
-async function probarBienvenida() {
-  const wa = prompt("¿A qué WhatsApp mando la bienvenida de prueba? (con código de país, ej. 51987654321)\n\nOjo: ese número tiene que haberte escrito antes al menos una vez, para que la ventana de 24h esté abierta.");
-  if (!wa) return;
-  try {
-    await pedir("/api/crm/test-welcome", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wa_id: wa.replace(/\D/g, "") })
-    });
-    alert("Bienvenida de prueba mandada — revisa ese WhatsApp.");
-  } catch (err) {
-    alert(err.message);
-  }
 }
 
 async function enviarQuickReply(q) {
@@ -1007,22 +1067,6 @@ async function pintarEquipo() {
     });
   });
 
-  if (esAdmin) {
-    $("#eq-probar-bienvenida")?.remove();
-    const btn = document.createElement("button");
-    btn.id = "eq-probar-bienvenida";
-    btn.className = "cancelar";
-    btn.type = "button";
-    btn.style.marginTop = "10px";
-    btn.style.width = "100%";
-    btn.innerHTML = `${icon("bolt")} Probar bienvenida de anuncios en un número`;
-    btn.style.display = "flex";
-    btn.style.alignItems = "center";
-    btn.style.justifyContent = "center";
-    btn.style.gap = "6px";
-    btn.addEventListener("click", probarBienvenida);
-    cont.after(btn);
-  }
 }
 
 $("#eq-crear").addEventListener("click", async () => {
@@ -1134,10 +1178,27 @@ async function pintarDetalle(c) {
         ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
         ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}
       </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
+    ${estado.miRol === "admin" && !tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
 
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
   `;
+
+  $("#detalle-simular-ad")?.addEventListener("click", async () => {
+    try {
+      const { pasos_mandados } = await pedir("/api/crm/test-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wa_id: c.wa_id })
+      });
+      alert(`Listo — se marcó y se mandaron ${pasos_mandados} paso(s) de la secuencia de bienvenida.`);
+      await cargarConversaciones();
+      const actualizado = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
+      if (actualizado) pintarDetalle(actualizado);
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 
   await actualizarPedidosPanel();
 }

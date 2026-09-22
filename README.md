@@ -927,6 +927,28 @@ confirmar el diagnóstico antes de tocar nada:
   vendedora cambia la suya sin depender de un admin, pidiendo la actual para
   confirmarlo. Solo aplica en modo cuentas por vendedor.
 
+### Treceava vuelta: secuencia de bienvenida de verdad, no una estrella escondida
+
+Se reemplazó el sistema anterior (una sola respuesta rápida marcada con una
+estrella dentro de un panel desplegable) por algo que se ve de entrada:
+
+- **Ícono de megáfono fijo en el header** (solo admin, siempre visible —
+  nada escondido en un dropdown) → abre el modal **"Bienvenida de anuncios"**.
+- **Secuencia de varios pasos, en orden**: cada paso es una respuesta rápida
+  ya creada (con su texto y sus fotos) — se agregan, se suben/bajan de
+  orden, se quitan. Al llegar un contacto nuevo desde un anuncio, se manda
+  el paso 1, se espera a que termine, el paso 2, y así — no todo junto.
+- **Simular un chat de anuncio**: escribe un WhatsApp (que ya te haya
+  escrito antes) y el botón lo marca en la base como si hubiera llegado de
+  un anuncio de verdad (queda visible en el panel de detalle con la
+  etiqueta "Simulado") y manda la secuencia completa ahí mismo.
+- **Etiquetar el chat que ya tienes abierto**: en el panel de detalle de
+  cualquier conversación sin anuncio detectado, un botón "Marcar este chat
+  como venido de un anuncio" hace lo mismo con un clic, sin escribir el
+  número — justo lo que pediste como alternativa.
+
+`welcome_sequence` reemplaza el ajuste único `crm_settings.ad_welcome_quick_reply_id` (que queda en la base sin usarse, no se borró nada).
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
