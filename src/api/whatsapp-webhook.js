@@ -14,6 +14,7 @@ import {
   obtenerOCrearContacto,
   obtenerOCrearConversacion,
   registrarMensajeEntrante,
+  cancelarSeguimientosPendientes,
   actualizarEstadoMensaje,
   registrarPedidoCatalogo,
   nombresDeProductos,
@@ -118,6 +119,7 @@ async function procesarCambio(env, db, value) {
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime });
+    await cancelarSeguimientosPendientes(db, conversacion.id);
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }

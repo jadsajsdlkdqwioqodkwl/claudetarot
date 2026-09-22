@@ -9,6 +9,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada } from "../../lib/crm-send.js";
+import { cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -85,6 +86,7 @@ async function post({ request, env, agent }) {
       const caption = String(payload?.caption || "").slice(0, 1024) || undefined;
       const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
       const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName);
+      await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -92,6 +94,7 @@ async function post({ request, env, agent }) {
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy);
+    await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     console.error("Enviar WhatsApp:", err.message);

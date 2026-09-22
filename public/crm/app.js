@@ -227,26 +227,71 @@ $("#btn-salir").addEventListener("click", async () => {
   mostrarLogin();
 });
 
-$("#btn-mi-password").addEventListener("click", async () => {
-  const actual = prompt("Tu contraseña actual:");
-  if (!actual) return;
-  const nueva = prompt("Nueva contraseña (mínimo 8 caracteres):");
-  if (!nueva) return;
-  if (nueva !== prompt("Repite la nueva contraseña, para confirmar:")) {
-    alert("No coinciden — no se cambió nada.");
-    return;
-  }
+$("#btn-mi-password").addEventListener("click", () => {
+  $("#password-error").textContent = "";
+  $("#pwd-actual").value = "";
+  $("#pwd-nueva").value = "";
+  $("#pwd-confirmar").value = "";
+  $("#modal-password-fondo").classList.add("abierto");
+  $("#pwd-actual").focus();
+});
+
+$("#pwd-cancelar").addEventListener("click", () => $("#modal-password-fondo").classList.remove("abierto"));
+
+$("#pwd-guardar").addEventListener("click", async () => {
+  const actual = $("#pwd-actual").value;
+  const nueva = $("#pwd-nueva").value;
+  const confirmar = $("#pwd-confirmar").value;
+  $("#password-error").textContent = "";
+  if (!actual || !nueva) { $("#password-error").textContent = "Completa ambos campos."; return; }
+  if (nueva !== confirmar) { $("#password-error").textContent = "Las contraseñas nuevas no coinciden."; return; }
+
+  const btn = $("#pwd-guardar");
+  btn.disabled = true;
   try {
     await pedir("/api/crm/change-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ current_password: actual, new_password: nueva })
     });
+    $("#modal-password-fondo").classList.remove("abierto");
     alert("Contraseña cambiada. La próxima vez que entres, usa la nueva.");
   } catch (err) {
-    alert(err.message);
+    $("#password-error").textContent = err.message;
+  } finally {
+    btn.disabled = false;
   }
 });
+
+/* ---------- Ojito para mostrar/ocultar contraseñas ---------- */
+
+function activarOjito(id) {
+  const input = document.getElementById(id);
+  if (!input || input.dataset.ojito) return;
+  input.dataset.ojito = "1";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "campo-password";
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ojito";
+  btn.tabIndex = -1;
+  btn.title = "Mostrar contraseña";
+  btn.innerHTML = icon("eye");
+  wrapper.appendChild(btn);
+
+  btn.addEventListener("click", () => {
+    const mostrar = input.type === "password";
+    input.type = mostrar ? "text" : "password";
+    btn.innerHTML = icon(mostrar ? "eyeOff" : "eye");
+    btn.title = mostrar ? "Ocultar contraseña" : "Mostrar contraseña";
+  });
+}
+
+["password", "olvide-nueva", "pwd-actual", "pwd-nueva", "pwd-confirmar"].forEach(activarOjito);
 
 /* ---------- Bienvenida de anuncios: secuencia + simulación ---------- */
 
@@ -432,6 +477,7 @@ async function abrirConversacion(c) {
   estado.hayMasAntiguos = false;
   cancelarAdjunto();
   document.body.classList.add("chat-abierto"); // en móvil: pantalla completa del chat, no la lista
+  document.body.classList.remove("detalle-abierto");
   pintarLista();
   pintarChatBase(c);
   pintarDetalle(c);
@@ -442,6 +488,7 @@ async function abrirConversacion(c) {
 
 function volverALaLista() {
   document.body.classList.remove("chat-abierto");
+  document.body.classList.remove("detalle-abierto");
 }
 
 function pintarChatBase(c) {
@@ -455,11 +502,13 @@ function pintarChatBase(c) {
         <div class="tel">+${escapar(c.wa_id)}</div>
       </div>
       <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
+      <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
     </header>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-archivo" style="display:none"></div>
     <form id="form-envio">
+      <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
       <button type="button" class="icono" id="btn-catalogo" title="Mandar catálogo">${icon("bag")}</button>
       <button type="button" class="icono" id="btn-seguimiento" title="Seguimientos programados">${icon("clock")}</button>
@@ -469,6 +518,7 @@ function pintarChatBase(c) {
       <textarea id="texto-envio" placeholder="Escribe un mensaje — Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
+      <div id="panel-mas"></div>
       <div id="panel-rapidas"></div>
       <div id="panel-seguimientos"></div>
       <div id="panel-emojis"></div>
@@ -476,6 +526,7 @@ function pintarChatBase(c) {
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
   $("#btn-volver").addEventListener("click", volverALaLista);
+  $("#btn-detalle").addEventListener("click", () => document.body.classList.add("detalle-abierto"));
   $("#star-header").addEventListener("click", () => {
     const c2 = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
     if (c2) toggleSeguimiento(c2);
@@ -532,6 +583,7 @@ function pintarChatBase(c) {
     if (file) onArchivoElegido({ target: { files: [file] } });
   });
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
+  $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
   $("#btn-catalogo").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-catalogo"]); toggleCatalogoPanel(); });
@@ -623,9 +675,24 @@ function mostrarEnviando(activo) {
 }
 
 function cerrarPaneles(excepto = []) {
-  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo"].forEach((sel) => {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas"].forEach((sel) => {
     if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
   });
+}
+
+/** Menú "⋯" que en el celular junta plantilla/catálogo/seguimiento — en pantallas angostas no entran los 5 íconos junto al textarea. */
+function toggleMasPanel() {
+  const panel = $("#panel-mas");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (!panel.classList.contains("abierto")) return;
+  panel.innerHTML = `
+    <div class="item" id="mas-plantillas"><div class="titulo">${icon("doc")} Mandar plantilla</div></div>
+    <div class="item" id="mas-catalogo"><div class="titulo">${icon("bag")} Mandar catálogo</div></div>
+    <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>`;
+  $("#mas-plantillas").addEventListener("click", () => { panel.classList.remove("abierto"); abrirModalTemplates(); });
+  $("#mas-catalogo").addEventListener("click", () => { panel.classList.remove("abierto"); toggleCatalogoPanel(); });
+  $("#mas-seguimiento").addEventListener("click", () => { panel.classList.remove("abierto"); toggleSeguimientosPanel(); });
 }
 
 async function cargarMensajes() {
@@ -644,6 +711,7 @@ async function cargarMensajes() {
   const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
   if (c) { c.unread_count = 0; pintarLista(); }
   actualizarPedidosPanel();
+  actualizarSeguimientosDetalle();
 }
 
 async function cargarMensajesAnteriores() {
@@ -675,6 +743,36 @@ async function actualizarPedidosPanel() {
         ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
       </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
     if (cont.innerHTML !== html) cont.innerHTML = html;
+  } catch { /* silencioso */ }
+}
+
+/** Igual que arriba pero con la lista de seguimientos programados, para verla en el panel lateral sin abrir el chat. */
+async function actualizarSeguimientosDetalle() {
+  const cont = $("#detalle-seguimientos");
+  if (!cont || !estado.conversacionActivaId) return;
+  try {
+    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
+    const html = scheduled.length ? scheduled.map((s) => `
+      <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div>
+          <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}</div>
+          <div>${escapar(s.body || s.quick_reply_title || "")}</div>
+        </div>
+        <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
+      </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`;
+    if (cont.innerHTML !== html) {
+      cont.innerHTML = html;
+      cont.querySelectorAll(".borrar-seguimiento-detalle").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          await pedir("/api/crm/scheduled", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: Number(btn.dataset.id) })
+          });
+          await actualizarSeguimientosDetalle();
+        });
+      });
+    }
   } catch { /* silencioso */ }
 }
 
@@ -806,7 +904,7 @@ function toggleEmojiPanel() {
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo")) {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas")) {
     cerrarPaneles();
   }
 });
@@ -1017,6 +1115,7 @@ async function pintarSeguimientosPanel() {
         body: JSON.stringify({ id: Number(btn.dataset.id) })
       });
       await pintarSeguimientosPanel();
+      await actualizarSeguimientosDetalle();
     });
   });
   $("#nuevo-seguimiento")?.addEventListener("click", () => {
@@ -1055,6 +1154,7 @@ $("#seg-crear").addEventListener("click", async () => {
     $("#modal-seguimiento-fondo").classList.remove("abierto");
     $("#seg-fecha").value = "";
     $("#seg-texto").value = "";
+    await actualizarSeguimientosDetalle();
   } catch (err) {
     alert(err.message);
   }
@@ -1230,6 +1330,7 @@ async function pintarDetalle(c) {
   const nombre = c.profile_name || c.wa_id;
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
   $("#detalle").innerHTML = `
+    <button type="button" id="btn-cerrar-detalle" title="Cerrar">${icon("close")}</button>
     <div class="avatar">${iniciales(nombre)}</div>
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
@@ -1244,9 +1345,14 @@ async function pintarDetalle(c) {
       </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
     ${estado.miRol === "admin" && !tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
 
+    <h2>Seguimientos programados</h2>
+    <div id="detalle-seguimientos">Cargando…</div>
+
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
   `;
+
+  $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {
     try {
@@ -1265,6 +1371,7 @@ async function pintarDetalle(c) {
   });
 
   await actualizarPedidosPanel();
+  await actualizarSeguimientosDetalle();
 }
 
 revisarSesion();

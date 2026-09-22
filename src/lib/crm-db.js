@@ -100,6 +100,14 @@ export async function actualizarEstadoMensaje(db, waMessageId, status) {
     .run();
 }
 
+/** Cancela los seguimientos programados pendientes de una conversación — se usa cuando el cliente escribe o cuando nosotros le mandamos algo a mano, para no insistir con un mensaje que ya quedó desactualizado. */
+export async function cancelarSeguimientosPendientes(db, conversationId) {
+  await db
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'")
+    .bind(conversationId)
+    .run();
+}
+
 export async function marcarSeguimiento(db, conversationId, followUp) {
   await db
     .prepare("UPDATE conversations SET follow_up = ? WHERE id = ?")
