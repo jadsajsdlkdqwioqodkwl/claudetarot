@@ -758,6 +758,7 @@ function pintarChatBase(c) {
   });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
+  $("#texto-envio").addEventListener("paste", onPegarImagen);
   configurarAccionesMensajes();
 
   const textoEnvio = $("#texto-envio");
@@ -1349,10 +1350,24 @@ async function enviarReaccionMsg(messageId, emoji) {
 function onArchivoElegido(e) {
   const file = e.target.files[0];
   if (!file) return;
+  elegirArchivo(file);
+}
+
+function elegirArchivo(file) {
   const tipo = file.type.startsWith("video/") ? "video" : "image";
   const previewUrl = URL.createObjectURL(file);
   estado.archivoAdjunto = { file, tipo, previewUrl };
   pintarPreviewArchivo();
+}
+
+/** Pegar una captura de pantalla o una imagen copiada directo en el mensaje — como en WhatsApp Web, sin tener que guardarla y luego adjuntarla con el clip. */
+function onPegarImagen(e) {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+  if (!item) return;
+  const file = item.getAsFile();
+  if (!file) return;
+  e.preventDefault();
+  elegirArchivo(file);
 }
 
 function pintarPreviewArchivo() {
