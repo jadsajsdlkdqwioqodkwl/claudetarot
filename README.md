@@ -949,6 +949,18 @@ estrella dentro de un panel desplegable) por algo que se ve de entrada:
 
 `welcome_sequence` reemplaza el ajuste único `crm_settings.ad_welcome_quick_reply_id` (que queda en la base sin usarse, no se borró nada).
 
+### Catorceava vuelta: "olvidé mi contraseña" y login con más cara
+
+- **"¿Olvidaste tu contraseña?"** en la pantalla de login (solo aparece en
+  modo cuentas por vendedor): pide el usuario, manda un código de 6 dígitos
+  por WhatsApp al número registrado de esa cuenta — igual que el 2FA del
+  login normal — y con el código deja poner una nueva. Probado de punta a
+  punta: código incorrecto rechaza, código correcto cambia la contraseña de
+  verdad, y el login vuelve a funcionar con la nueva.
+- **Login con diseño de verdad**: tarjeta con sombra e ícono de WhatsApp en
+  degradado, fondo con un dejo de color en vez de gris plano, inputs con
+  foco animado, botón con gradiente — nada de JavaScript nuevo, solo CSS.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
