@@ -501,8 +501,10 @@ function pintarChatBase(c) {
         <div class="nombre">${escapar(nombre)}</div>
         <div class="tel">+${escapar(c.wa_id)}</div>
       </div>
-      <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
-      <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
+      <div class="acciones-chat">
+        <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
+        <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
+      </div>
     </header>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
@@ -515,7 +517,7 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
       <input type="file" id="input-archivo" accept="image/*,video/*" style="display:none" />
-      <textarea id="texto-envio" placeholder="Escribe un mensaje — Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
+      <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
       <div id="panel-mas"></div>

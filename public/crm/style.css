@@ -125,9 +125,16 @@ button { font-family: inherit; }
    padre por defecto (min-height:auto) — el hijo empuja todo hacia abajo en
    vez de scrollear por su cuenta. min-height:0 en cada nivel es lo que deja
    que #mensajes y #conversaciones scrolleen ADENTRO de su caja, con el
-   header y el composer siempre fijos arriba y abajo. */
+   header y el composer siempre fijos arriba y abajo.
+
+   El mismo problema pasa en el eje horizontal: un item de grid no se encoge
+   más angosto que el ancho de su contenido (min-width:auto por defecto). Un
+   mensaje largo sin espacios podía estirar #chat (y con él, toda la página)
+   más ancho que la pantalla — min-width:0 en cada columna es lo que deja
+   que el texto haga wrap adentro en vez de forzar scroll horizontal. */
 #app { display: none; height: 100vh; grid-template-columns: 340px 1fr 300px; min-height: 0; }
 #app.activo { display: grid; }
+#app > #lista, #app > #chat, #app > #detalle { min-width: 0; }
 
 /* ---------- Lista de conversaciones ---------- */
 
@@ -172,10 +179,11 @@ button { font-family: inherit; }
 #chat header > div { min-width: 0; overflow: hidden; }
 #chat header .nombre { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #chat header .tel { font-size: 12px; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#chat header .btn-star { font-size: 20px; margin-left: auto; flex-shrink: 0; }
-#chat header #btn-detalle { display: none; font-size: 20px; flex-shrink: 0; }
+#chat header .acciones-chat { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
+#chat header .btn-star { font-size: 20px; }
+#chat header #btn-detalle { display: none; font-size: 20px; border: 0; background: transparent; cursor: pointer; color: var(--gris); }
 #mensajes { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-.msg { max-width: 65%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.msg { max-width: 65%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; }
 .msg.in { background: #fff; align-self: flex-start; border-top-left-radius: 0; }
 .msg.out { background: var(--burbuja-out); align-self: flex-end; border-top-right-radius: 0; }
 .msg .hora { display: block; font-size: 10px; color: var(--gris); margin-top: 3px; text-align: right; }
