@@ -867,6 +867,29 @@ producto, etc.) sin depender de Meta.
   solo mensaje. Mismo cambio aplicado a la bienvenida automática y al
   sandbox de prueba.
 
+### Décima vuelta: composer real, chat paginado, y respuestas rápidas más confiables
+
+- **El campo de texto era un `<input>` de una sola línea** — por eso
+  Shift+Enter no podía funcionar nunca, físicamente no soporta saltos de
+  línea. Ahora es un `<textarea>` que crece solo: **Enter manda, Shift+Enter
+  hace un salto de línea**, como cualquier chat de verdad.
+- **Arrastrar y soltar** una foto o video directo sobre el chat también
+  manda, igual que el botón de clip.
+- **El chat ya no crece infinito**: carga los últimos 50 mensajes y un botón
+  "Cargar mensajes anteriores" arriba trae la tanda de antes, sin perder los
+  que ya se cargaron ni el lugar del scroll.
+- **Confirmación antes de borrar** una respuesta rápida.
+- **El panel de respuestas rápidas se refresca del servidor cada vez que se
+  abre** (antes solo se cargaba una vez al iniciar sesión) — ya estaban
+  compartidas entre todo el equipo, pero una vendedora no veía la que otra
+  acababa de crear sin recargar toda la página.
+- Borrar una respuesta rápida **ya borraba sus fotos del bucket R2** (esto ya
+  estaba hecho, solo faltaba que el panel mostrara los cambios al toque).
+- **"Probar bienvenida"** ahora también está dentro del modal de Equipo, como
+  segundo acceso además del panel ⚡ — por si en algún chat puntual no se ve.
+- **Export a Sheets** ahora incluye tipo y titular del anuncio y el
+  `ctwa_clid` de cada contacto, para poder cruzarlo con los reportes de Meta.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y

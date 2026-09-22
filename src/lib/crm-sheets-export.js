@@ -28,7 +28,8 @@ export async function exportarChatsASheets(env) {
 
   const { results: mensajes } = await env.CRM_DB.prepare(
     `SELECT m.id, m.created_at, m.direction, m.type, m.body, m.sent_by,
-            c.wa_id, c.profile_name, c.name AS contact_name
+            c.wa_id, c.profile_name, c.name AS contact_name,
+            c.ctwa_clid, c.ad_source_type, c.ad_headline
      FROM messages m
      JOIN conversations conv ON conv.id = m.conversation_id
      JOIN contacts c ON c.id = conv.contact_id
@@ -41,7 +42,7 @@ export async function exportarChatsASheets(env) {
 
   if (!mensajes.length) return;
 
-  const sheetName = env.GOOGLE_CRM_SHEET_NAME || "Sheet 1";
+  const sheetName = env.GOOGLE_CRM_SHEET_NAME || "Sheet1";
   const filas = mensajes.map((m) => [
     fechaLima(m.created_at),
     m.wa_id,
@@ -49,7 +50,10 @@ export async function exportarChatsASheets(env) {
     m.direction === "in" ? "Cliente" : "Vendedor",
     m.sent_by || "",
     m.type || "text",
-    (m.body || "").slice(0, 2000)
+    (m.body || "").slice(0, 2000),
+    m.ad_source_type || "",
+    m.ad_headline || "",
+    m.ctwa_clid || ""
   ]);
 
   try {

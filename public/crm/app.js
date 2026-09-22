@@ -7,6 +7,7 @@
 const $ = (sel) => document.querySelector(sel);
 
 const EMOJIS = "😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 🙌 💪 🎉 🔥 ✨ ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
+const PAGINA_MENSAJES = 50;
 
 const estado = {
   conversaciones: [],
@@ -21,6 +22,8 @@ const estado = {
   filtroRapidas: "",
   rapidasPorSlash: false,
   bienvenidaQuickReplyId: null,
+  mensajesCargados: [],
+  hayMasAntiguos: false,
   pollConv: null,
   pollMsg: null
 };
@@ -237,6 +240,8 @@ $("#filtros").addEventListener("click", (e) => {
 
 async function abrirConversacion(c) {
   estado.conversacionActivaId = c.conversation_id;
+  estado.mensajesCargados = [];
+  estado.hayMasAntiguos = false;
   cancelarAdjunto();
   pintarLista();
   pintarChatBase(c);
@@ -258,6 +263,7 @@ function pintarChatBase(c) {
       <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
     </header>
     <div id="mensajes"></div>
+    <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-archivo" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
@@ -266,7 +272,7 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
       <input type="file" id="input-archivo" accept="image/*,video/*" style="display:none" />
-      <input type="text" id="texto-envio" placeholder="Escribe un mensaje" autocomplete="off" />
+      <textarea id="texto-envio" placeholder="Escribe un mensaje — Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
       <div id="panel-rapidas"></div>
@@ -281,7 +287,18 @@ function pintarChatBase(c) {
   });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
-  $("#texto-envio").addEventListener("input", (e) => {
+
+  const textoEnvio = $("#texto-envio");
+  textoEnvio.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $("#form-envio").requestSubmit();
+    }
+  });
+  textoEnvio.addEventListener("input", (e) => {
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+
     const v = e.target.value;
     if (v.startsWith("/")) {
       estado.rapidasPorSlash = true;
@@ -290,13 +307,35 @@ function pintarChatBase(c) {
         cerrarPaneles(["#panel-rapidas"]);
         $("#panel-rapidas").classList.add("abierto");
       }
-      pintarQuickPanel();
+      cargarQuickReplies().then(pintarQuickPanel);
     } else if (estado.rapidasPorSlash) {
       estado.rapidasPorSlash = false;
       $("#panel-rapidas").classList.remove("abierto");
     }
   });
   $("#btn-rapidas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-rapidas"]); toggleQuickPanel(); });
+
+  // Arrastrar y soltar una foto/video directo sobre el chat.
+  const chat = $("#chat");
+  let dragCounter = 0;
+  chat.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    if (![...e.dataTransfer.items].some((i) => i.kind === "file")) return;
+    dragCounter++;
+    $("#zona-arrastre").classList.add("visible");
+  });
+  chat.addEventListener("dragover", (e) => e.preventDefault());
+  chat.addEventListener("dragleave", () => {
+    dragCounter = Math.max(0, dragCounter - 1);
+    if (dragCounter === 0) $("#zona-arrastre").classList.remove("visible");
+  });
+  chat.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    $("#zona-arrastre").classList.remove("visible");
+    const file = e.dataTransfer.files?.[0];
+    if (file) onArchivoElegido({ target: { files: [file] } });
+  });
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
@@ -396,11 +435,36 @@ function cerrarPaneles(excepto = []) {
 
 async function cargarMensajes() {
   if (!estado.conversacionActivaId) return;
-  const { messages } = await pedir(`/api/crm/messages?conversation_id=${estado.conversacionActivaId}`);
-  pintarMensajes(messages);
+  const yaPagino = estado.mensajesCargados.length > PAGINA_MENSAJES;
+  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${estado.conversacionActivaId}`);
+
+  // Se mezcla con lo ya cargado (en vez de reemplazar) para no perder los
+  // mensajes antiguos que el vendedor ya pidió con "Cargar anteriores".
+  const mapa = new Map(estado.mensajesCargados.map((m) => [m.id, m]));
+  for (const m of messages) mapa.set(m.id, m);
+  estado.mensajesCargados = [...mapa.values()].sort((a, b) => a.id - b.id);
+  if (!yaPagino) estado.hayMasAntiguos = hay_mas;
+
+  pintarMensajes();
   const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
   if (c) { c.unread_count = 0; pintarLista(); }
   actualizarPedidosPanel();
+}
+
+async function cargarMensajesAnteriores() {
+  if (!estado.conversacionActivaId || !estado.mensajesCargados.length) return;
+  const btn = $("#cargar-anteriores button");
+  if (btn) { btn.disabled = true; btn.textContent = "Cargando…"; }
+
+  const primerId = estado.mensajesCargados[0].id;
+  const cont = $("#mensajes");
+  const alturaPrevia = cont.scrollHeight;
+
+  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${estado.conversacionActivaId}&before_id=${primerId}`);
+  estado.mensajesCargados = [...messages, ...estado.mensajesCargados];
+  estado.hayMasAntiguos = hay_mas;
+  pintarMensajes();
+  cont.scrollTop = cont.scrollHeight - alturaPrevia;
 }
 
 /** Actualiza solo el contenido de "Pedidos del catálogo", sin re-pintar el resto del panel (evita el parpadeo). */
@@ -433,15 +497,21 @@ function contenidoMensaje(m) {
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
-function pintarMensajes(mensajes) {
+function pintarMensajes() {
   const cont = $("#mensajes");
   if (!cont) return;
+  const mensajes = estado.mensajesCargados;
   const abajo = cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 40;
-  cont.innerHTML = mensajes.map((m) => `
+
+  cont.innerHTML = (estado.hayMasAntiguos
+    ? `<div id="cargar-anteriores"><button type="button">Cargar mensajes anteriores</button></div>`
+    : "") + mensajes.map((m) => `
     <div class="msg ${m.direction}">
       ${contenidoMensaje(m)}
       <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}</span>
     </div>`).join("");
+
+  $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
   if (abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
 }
 
@@ -554,11 +624,19 @@ async function cargarQuickReplies() {
   } catch { /* no crítico */ }
 }
 
-function toggleQuickPanel() {
+async function toggleQuickPanel() {
   const panel = $("#panel-rapidas");
   if (!panel) return;
+  const seAbre = !panel.classList.contains("abierto");
   panel.classList.toggle("abierto");
-  if (panel.classList.contains("abierto")) { estado.filtroRapidas = ""; pintarQuickPanel(); }
+  if (seAbre) {
+    estado.filtroRapidas = "";
+    pintarQuickPanel();
+    // Se refresca del servidor cada vez que se abre, para ver al toque las
+    // que haya creado otra vendedora — no solo lo que se cargó al iniciar sesión.
+    await cargarQuickReplies();
+    if (panel.classList.contains("abierto")) pintarQuickPanel();
+  }
 }
 
 function pintarQuickPanel() {
@@ -610,6 +688,8 @@ function pintarQuickPanel() {
   panel.querySelectorAll(".borrar").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
+      const q = estado.quickReplies.find((x) => x.id === Number(btn.dataset.id));
+      if (!confirm(`¿Borrar la respuesta rápida "${q?.title || ""}"? No se puede deshacer.`)) return;
       await pedir("/api/crm/quick-replies", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -637,20 +717,22 @@ function pintarQuickPanel() {
     panel.classList.remove("abierto");
     $("#modal-rapida-fondo").classList.add("abierto");
   });
-  $("#probar-bienvenida")?.addEventListener("click", async () => {
-    const wa = prompt("¿A qué WhatsApp mando la bienvenida de prueba? (con código de país, ej. 51987654321)\n\nOjo: ese número tiene que haberte escrito antes al menos una vez, para que la ventana de 24h esté abierta.");
-    if (!wa) return;
-    try {
-      await pedir("/api/crm/test-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wa_id: wa.replace(/\D/g, "") })
-      });
-      alert("Bienvenida de prueba mandada — revisa ese WhatsApp.");
-    } catch (err) {
-      alert(err.message);
-    }
-  });
+  $("#probar-bienvenida")?.addEventListener("click", probarBienvenida);
+}
+
+async function probarBienvenida() {
+  const wa = prompt("¿A qué WhatsApp mando la bienvenida de prueba? (con código de país, ej. 51987654321)\n\nOjo: ese número tiene que haberte escrito antes al menos una vez, para que la ventana de 24h esté abierta.");
+  if (!wa) return;
+  try {
+    await pedir("/api/crm/test-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa_id: wa.replace(/\D/g, "") })
+    });
+    alert("Bienvenida de prueba mandada — revisa ese WhatsApp.");
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 async function enviarQuickReply(q) {
@@ -887,6 +969,23 @@ async function pintarEquipo() {
       await pintarEquipo();
     });
   });
+
+  if (esAdmin) {
+    $("#eq-probar-bienvenida")?.remove();
+    const btn = document.createElement("button");
+    btn.id = "eq-probar-bienvenida";
+    btn.className = "cancelar";
+    btn.type = "button";
+    btn.style.marginTop = "10px";
+    btn.style.width = "100%";
+    btn.innerHTML = `${icon("bolt")} Probar bienvenida de anuncios en un número`;
+    btn.style.display = "flex";
+    btn.style.alignItems = "center";
+    btn.style.justifyContent = "center";
+    btn.style.gap = "6px";
+    btn.addEventListener("click", probarBienvenida);
+    cont.after(btn);
+  }
 }
 
 $("#eq-crear").addEventListener("click", async () => {
