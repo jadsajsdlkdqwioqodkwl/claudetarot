@@ -114,10 +114,10 @@
     "GOOGLE_CRM_SHEET_ID": "1ksEBDIQg8DEH8px5tTYzGZbR46bYSaCikXYA9czLVys",
     "GOOGLE_CRM_SHEET_NAME": "Sheet1",
 
-    // El catálogo de Commerce Manager (Kit Tarot Rider-Waite de aprendizaje).
-    // El botón "Ver catálogo" del chat no lo necesita — usa el que ya está
-    // conectado al número — pero queda listo para cuando mandemos productos
-    // sueltos (mensajes tipo product/product_list).
-    "WHATSAPP_CATALOG_ID": "785861823961723"
+    // El catálogo REALMENTE conectado a este número ("API Catálogo Tarots"),
+    // confirmado con /api/diag → "catálogo conectado a WhatsApp". El de
+    // Commerce Manager (785861823961723) existe pero no está enlazado al
+    // número, por eso mandar un producto individual daba (#131009).
+    "WHATSAPP_CATALOG_ID": "1610775203147241"
   }
 }

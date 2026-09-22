@@ -18,11 +18,18 @@ const json = (data, status = 200) =>
 
 const MAX_BYTES = 16 * 1024 * 1024; // el límite de WhatsApp para video/documento
 
+// Lo único que la Cloud API acepta como foto o video de verdad (no como
+// documento). webp, heic, gif, etc. los rechaza con (#100) Invalid parameter
+// aunque el navegador los deje elegir — por eso se valida acá, no solo por
+// el `accept` del input.
 const EXTENSION_POR_MIME = {
-  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
+  "image/jpeg": "jpg", "image/png": "png",
   "video/mp4": "mp4", "video/3gpp": "3gp",
   "application/pdf": "pdf"
 };
+
+const IMAGENES_VALIDAS = new Set(["image/jpeg", "image/png"]);
+const VIDEOS_VALIDOS = new Set(["video/mp4", "video/3gpp"]);
 
 function tipoDeMime(mime) {
   if (mime.startsWith("image/")) return "image";
@@ -47,6 +54,14 @@ async function handler({ request, env }) {
   if (file.size > MAX_BYTES) return json({ error: "El archivo pesa más de 16 MB." }, 413);
 
   const mime = file.type || "application/octet-stream";
+
+  if (mime.startsWith("image/") && !IMAGENES_VALIDAS.has(mime)) {
+    return json({ error: `WhatsApp solo acepta fotos en JPG o PNG (esta es ${mime.replace("image/", "").toUpperCase()}). Conviértela antes de subirla.` }, 415);
+  }
+  if (mime.startsWith("video/") && !VIDEOS_VALIDOS.has(mime)) {
+    return json({ error: `WhatsApp solo acepta video en MP4 (este es ${mime.replace("video/", "").toUpperCase()}). Conviértelo antes de subirlo.` }, 415);
+  }
+
   const ext = EXTENSION_POR_MIME[mime] || "bin";
   const key = `chat/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 

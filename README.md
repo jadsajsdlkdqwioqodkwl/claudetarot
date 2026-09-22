@@ -838,6 +838,21 @@ producto, etc.) sin depender de Meta.
   escrito antes (para eso existe la ventana de 24h), sin depender de ningún
   anuncio real ni gastar nada.
 
+### Octava vuelta: catalog ID correcto, formatos de foto/video y sandbox más visible
+
+- **`WHATSAPP_CATALOG_ID` corregido**: el de Commerce Manager
+  (`785861823961723`) no era el conectado de verdad al número — `/api/diag`
+  identificó el real (`1610775203147241`, "API Catálogo Tarots").
+- **`(#100) Invalid parameter` al mandar varias fotos**: WhatsApp solo acepta
+  **JPG/PNG** para fotos y **MP4** para video — webp, heic, gif, etc. los
+  rechaza a mitad de un envío múltiple. Ahora se valida al subir el archivo,
+  con un error claro en vez de fallar a la mitad sin avisar cuál.
+- Si aun así falla una foto de una respuesta rápida con varias, el CRM dice
+  exactamente cuántas sí llegaron y cuál fue la que falló.
+- **"Probar bienvenida en un número"** ahora siempre visible para el admin
+  dentro del panel ⚡, aunque todavía no hayas marcado ninguna con la
+  estrella (antes solo aparecía después de marcarla).
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
