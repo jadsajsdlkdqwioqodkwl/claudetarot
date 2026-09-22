@@ -15,6 +15,13 @@
     "enabled": true
   },
 
+  // Manda los seguimientos programados del CRM que ya vencieron. Cada minuto
+  // es el mínimo que deja Cloudflare; sobra de margen para algo que se
+  // programa con horas o días de anticipación.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+
   // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.
   "d1_databases": [
     {
@@ -76,6 +83,9 @@
 
     // CRM de WhatsApp — el ID del número de teléfono de la Cloud API (texto,
     // no es secreto). Los secretos van por dashboard/CLI, ver README.
-    "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928"
+    "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928",
+    // Para listar y mandar Message Templates (mensajes fuera de la ventana
+    // de 24h) desde /api/crm/templates.
+    "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194"
   }
 }

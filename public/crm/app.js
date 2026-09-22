@@ -6,13 +6,17 @@
 
 const $ = (sel) => document.querySelector(sel);
 
+const EMOJIS = "😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 🙌 💪 🎉 🔥 ✨ ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
+
 const estado = {
   conversaciones: [],
   conversacionActivaId: null,
   filtroSeguimiento: false,
   filtroTexto: "",
-  archivoAdjunto: null, // { file, tipo, previewUrl }
+  archivoAdjunto: null,
   quickReplies: [],
+  login: { mode: "legacy", challengeId: null },
+  templateElegido: null,
   pollConv: null,
   pollMsg: null
 };
@@ -25,14 +29,18 @@ function pedir(url, opciones = {}) {
   });
 }
 
-function iniciales(nombre) {
-  return (nombre || "?").trim().slice(0, 2).toUpperCase();
-}
+const iniciales = (nombre) => (nombre || "?").trim().slice(0, 2).toUpperCase();
 
 function horaCorta(iso) {
   if (!iso) return "";
   const d = new Date(iso.includes("Z") || iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
   return d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fechaCorta(iso) {
+  if (!iso) return "";
+  const d = new Date(iso.includes("Z") || iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  return d.toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function escapar(s) {
@@ -43,6 +51,14 @@ function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
+
+function iconizar() {
+  $("#btn-equipo").innerHTML = icon("users");
+  $("#btn-salir").innerHTML = icon("logout");
+  $(".icono-buscar").innerHTML = icon("search");
+  $("#btn-filtro-seguimiento").innerHTML = icon("starOutline") + " Seguimiento";
+}
+iconizar();
 
 /* ---------- Login ---------- */
 
@@ -55,11 +71,26 @@ async function revisarSesion() {
 async function mostrarLogin() {
   $("#login").style.display = "flex";
   $("#app").classList.remove("activo");
+  estado.login = { mode: "legacy", challengeId: null };
   try {
-    const { requiere2FA } = await pedir("/api/crm/login-info");
-    $("#code").style.display = requiere2FA ? "block" : "none";
-    $("#ayuda-2fa").style.display = requiere2FA ? "block" : "none";
+    const info = await pedir("/api/crm/login-info");
+    estado.login.mode = info.modoAgentes ? "agents" : "legacy";
+    $("#username").style.display = info.modoAgentes ? "block" : "none";
+    $("#code").style.display = info.modoAgentes ? "none" : (info.requiere2FA ? "block" : "none");
+    $("#ayuda-2fa").style.display = "none";
+    $("#password").style.display = "block";
+    $("#password").placeholder = "Contraseña";
+    $("#btn-login").textContent = "Entrar";
   } catch { /* si falla, se pide solo la contraseña */ }
+}
+
+function mostrarPasoCodigo() {
+  $("#username").style.display = "none";
+  $("#password").style.display = "none";
+  $("#code").style.display = "block";
+  $("#ayuda-2fa").style.display = "block";
+  $("#btn-login").textContent = "Verificar código";
+  $("#code").focus();
 }
 
 function mostrarApp() {
@@ -75,13 +106,32 @@ $("#form-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("#login-error").textContent = "";
   try {
+    if (estado.login.mode === "agents" && estado.login.challengeId) {
+      await pedir("/api/crm/login-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_id: estado.login.challengeId, code: $("#code").value.trim() })
+      });
+      mostrarApp();
+      return;
+    }
+
+    if (estado.login.mode === "agents") {
+      const r = await pedir("/api/crm/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
+      });
+      estado.login.challengeId = r.challenge_id;
+      mostrarPasoCodigo();
+      return;
+    }
+
     await pedir("/api/crm/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: $("#password").value, code: $("#code").value })
     });
-    $("#password").value = "";
-    $("#code").value = "";
     mostrarApp();
   } catch (err) {
     $("#login-error").textContent = err.message;
@@ -118,7 +168,7 @@ function pintarLista() {
     const div = document.createElement("div");
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "");
 
-    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `📎 ${c.last_type}`;
+    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
 
     div.innerHTML = `
@@ -131,9 +181,9 @@ function pintarLista() {
         <div class="fila2">
           <span class="preview">${escapar(prefijoYo + previewTexto)}</span>
           ${c.unread_count > 0 ? `<span class="badge">${c.unread_count}</span>` : ""}
-          <button class="btn-star ${c.follow_up ? "marcada" : ""}" data-id="${c.conversation_id}" title="Marcar seguimiento">★</button>
+          <button class="btn-star ${c.follow_up ? "marcada" : ""}" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
         </div>
-        ${c.ctwa_clid ? `<span class="badge-ad">📢 ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
+        ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
       </div>`;
     div.querySelector(".conv-info").addEventListener("click", (e) => {
       if (e.target.closest(".btn-star")) return;
@@ -151,7 +201,8 @@ async function toggleSeguimiento(c) {
   const nuevo = !c.follow_up;
   c.follow_up = nuevo ? 1 : 0;
   pintarLista();
-  if (estado.conversacionActivaId === c.conversation_id) pintarDetalle(c);
+  const starHeader = $("#star-header");
+  if (starHeader && estado.conversacionActivaId === c.conversation_id) starHeader.innerHTML = icon(nuevo ? "star" : "starOutline");
   try {
     await pedir("/api/crm/follow-up", {
       method: "PATCH",
@@ -199,17 +250,22 @@ function pintarChatBase(c) {
         <div class="nombre">${escapar(nombre)}</div>
         <div class="tel">+${escapar(c.wa_id)}</div>
       </div>
-      <button class="btn-star ${c.follow_up ? "marcada" : ""}" id="star-header" title="Marcar seguimiento">★</button>
+      <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
     </header>
     <div id="mensajes"></div>
     <div id="preview-archivo" style="display:none"></div>
     <form id="form-envio">
-      <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">⚡</button>
-      <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">📎</button>
+      <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
+      <button type="button" class="icono" id="btn-seguimiento" title="Seguimientos programados">${icon("clock")}</button>
+      <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
+      <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
       <input type="file" id="input-archivo" accept="image/*,video/*" style="display:none" />
       <input type="text" id="texto-envio" placeholder="Escribe un mensaje" autocomplete="off" />
-      <button type="submit" class="enviar">➤</button>
+      <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
+      <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
       <div id="panel-rapidas"></div>
+      <div id="panel-seguimientos"></div>
+      <div id="panel-emojis"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
   $("#star-header").addEventListener("click", () => {
@@ -218,7 +274,16 @@ function pintarChatBase(c) {
   });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
-  $("#btn-rapidas").addEventListener("click", (e) => { e.stopPropagation(); toggleQuickPanel(); });
+  $("#btn-rapidas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-rapidas"]); toggleQuickPanel(); });
+  $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
+  $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
+  $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
+}
+
+function cerrarPaneles(excepto = []) {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis"].forEach((sel) => {
+    if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
+  });
 }
 
 async function cargarMensajes() {
@@ -237,7 +302,7 @@ function contenidoMensaje(m) {
     return `<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return escapar(m.body || "");
-  return `<span class="tipo">📎 ${escapar(m.type)}${m.body ? ": " + escapar(m.body) : ""}</span>`;
+  return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
 function pintarMensajes(mensajes) {
@@ -247,7 +312,7 @@ function pintarMensajes(mensajes) {
   cont.innerHTML = mensajes.map((m) => `
     <div class="msg ${m.direction}">
       ${contenidoMensaje(m)}
-      <span class="hora">${horaCorta(m.created_at)}</span>
+      <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}</span>
     </div>`).join("");
   if (abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
 }
@@ -329,6 +394,28 @@ async function enviarMensaje(e) {
   }
 }
 
+/* ---------- Emojis ---------- */
+
+function toggleEmojiPanel() {
+  const panel = $("#panel-emojis");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (panel.classList.contains("abierto")) {
+    panel.innerHTML = EMOJIS.map((em) => `<button type="button">${em}</button>`).join("");
+    panel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+      const input = $("#texto-envio");
+      input.value += b.textContent;
+      input.focus();
+    }));
+  }
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji")) {
+    cerrarPaneles();
+  }
+});
+
 /* ---------- Respuestas rápidas ---------- */
 
 async function cargarQuickReplies() {
@@ -349,11 +436,11 @@ function pintarQuickPanel() {
   panel.innerHTML = estado.quickReplies.map((q) => `
     <div class="item" data-id="${q.id}">
       <div>
-        <div class="titulo">${q.media_type ? (q.media_type === "video" ? "🎬 " : "🖼️ ") : ""}${escapar(q.title)}</div>
+        <div class="titulo">${q.media_type ? icon(q.media_type === "video" ? "video" : "image") + " " : ""}${escapar(q.title)}</div>
         ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
       </div>
-      <button class="borrar" data-id="${q.id}" title="Borrar">✕</button>
-    </div>`).join("") + `<footer><button id="nueva-rapida">+ Nueva respuesta rápida</button></footer>`;
+      <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
+    </div>`).join("") + `<footer><button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button></footer>`;
 
   panel.querySelectorAll(".item").forEach((el) => {
     el.addEventListener("click", (e) => {
@@ -399,13 +486,6 @@ async function enviarQuickReply(q) {
   }
 }
 
-document.addEventListener("click", (e) => {
-  const panel = $("#panel-rapidas");
-  if (panel && panel.classList.contains("abierto") && !e.target.closest("#panel-rapidas") && !e.target.closest("#btn-rapidas")) {
-    panel.classList.remove("abierto");
-  }
-});
-
 $("#rapida-cancelar").addEventListener("click", () => {
   $("#modal-rapida-fondo").classList.remove("abierto");
   $("#rapida-titulo").value = "";
@@ -447,6 +527,202 @@ $("#rapida-crear").addEventListener("click", async () => {
   }
 });
 
+/* ---------- Seguimientos programados ---------- */
+
+async function toggleSeguimientosPanel() {
+  const panel = $("#panel-seguimientos");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (panel.classList.contains("abierto")) await pintarSeguimientosPanel();
+}
+
+async function pintarSeguimientosPanel() {
+  const panel = $("#panel-seguimientos");
+  const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
+  panel.innerHTML = (scheduled.length ? scheduled.map((s) => `
+    <div class="item" data-id="${s.id}">
+      <div>
+        <div class="titulo">${icon("clock")} ${fechaCorta(s.send_at)}</div>
+        <div class="cuerpo">${escapar(s.body || s.quick_reply_title || "")}</div>
+      </div>
+      <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
+    </div>`).join("") : `<div class="item"><div class="cuerpo">Sin seguimientos programados.</div></div>`)
+    + `<footer><button id="nuevo-seguimiento">${icon("plus")} Programar seguimiento</button></footer>`;
+
+  panel.querySelectorAll(".borrar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await pedir("/api/crm/scheduled", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(btn.dataset.id) })
+      });
+      await pintarSeguimientosPanel();
+    });
+  });
+  $("#nuevo-seguimiento")?.addEventListener("click", () => {
+    panel.classList.remove("abierto");
+    const sel = $("#seg-rapida");
+    sel.innerHTML = `<option value="">— o una respuesta rápida guardada —</option>` +
+      estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
+    $("#modal-seguimiento-fondo").classList.add("abierto");
+  });
+}
+
+$("#seg-cancelar").addEventListener("click", () => {
+  $("#modal-seguimiento-fondo").classList.remove("abierto");
+  $("#seg-fecha").value = "";
+  $("#seg-texto").value = "";
+});
+
+$("#seg-crear").addEventListener("click", async () => {
+  const fecha = $("#seg-fecha").value;
+  const texto = $("#seg-texto").value.trim();
+  const quickReplyId = $("#seg-rapida").value;
+  if (!fecha) return alert("Elige fecha y hora.");
+  if (!texto && !quickReplyId) return alert("Escribe un texto o elige una respuesta rápida.");
+
+  try {
+    await pedir("/api/crm/scheduled", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: estado.conversacionActivaId,
+        send_at: new Date(fecha).toISOString(),
+        body: texto || undefined,
+        quick_reply_id: quickReplyId || undefined
+      })
+    });
+    $("#modal-seguimiento-fondo").classList.remove("abierto");
+    $("#seg-fecha").value = "";
+    $("#seg-texto").value = "";
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+/* ---------- Equipo ---------- */
+
+$("#btn-equipo").addEventListener("click", async () => {
+  $("#modal-equipo-fondo").classList.add("abierto");
+  await pintarEquipo();
+});
+$("#eq-cerrar").addEventListener("click", () => $("#modal-equipo-fondo").classList.remove("abierto"));
+
+async function pintarEquipo() {
+  const { agents } = await pedir("/api/crm/agents");
+  const cont = $("#lista-equipo");
+  cont.innerHTML = agents.map((a) => `
+    <div class="fila-equipo">
+      <div>
+        <div class="nombre">${escapar(a.display_name)}${!a.active ? '<span class="pill-inactivo">inactivo</span>' : ""}</div>
+        <div class="sub">@${escapar(a.username)} · WhatsApp +${escapar(a.wa_id)}</div>
+      </div>
+      <button data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>
+    </div>`).join("") || `<p class="ayuda-modal">Todavía no hay vendedores — usa el formulario de abajo para crear el primero (puedes crear tu propia cuenta).</p>`;
+
+  cont.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await pedir("/api/crm/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(btn.dataset.id), active: btn.dataset.active === "1" })
+      });
+      await pintarEquipo();
+    });
+  });
+}
+
+$("#eq-crear").addEventListener("click", async () => {
+  const display_name = $("#eq-nombre").value.trim();
+  const username = $("#eq-usuario").value.trim();
+  const password = $("#eq-password").value;
+  const wa_id = $("#eq-wa").value.trim();
+  try {
+    await pedir("/api/crm/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name, username, password, wa_id })
+    });
+    $("#eq-nombre").value = "";
+    $("#eq-usuario").value = "";
+    $("#eq-password").value = "";
+    $("#eq-wa").value = "";
+    await pintarEquipo();
+    alert("Vendedor creado. Desde ahora el login pide usuario + contraseña + el código que le llega por WhatsApp.");
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+/* ---------- Plantillas (fuera de la ventana de 24h) ---------- */
+
+async function abrirModalTemplates() {
+  $("#modal-templates-fondo").classList.add("abierto");
+  $("#form-template-params").style.display = "none";
+  const cont = $("#lista-templates");
+  cont.innerHTML = "Cargando…";
+  try {
+    const { templates } = await pedir("/api/crm/templates");
+    if (!templates.length) {
+      cont.innerHTML = `<p class="ayuda-modal">No hay plantillas aprobadas todavía. Créalas en WhatsApp Manager → Message Templates.</p>`;
+      return;
+    }
+    cont.innerHTML = templates.map((t, i) => `
+      <div class="fila-template" data-i="${i}" style="cursor:pointer">
+        <div>
+          <div class="nombre">${escapar(t.name)}</div>
+          <div class="sub">${escapar(t.category)} · ${escapar(t.language)}</div>
+        </div>
+      </div>`).join("");
+    cont.querySelectorAll(".fila-template").forEach((el) => {
+      el.addEventListener("click", () => elegirTemplate(templates[Number(el.dataset.i)]));
+    });
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
+
+function elegirTemplate(t) {
+  estado.templateElegido = t;
+  const body = (t.components || []).find((c) => c.type === "BODY");
+  const nParams = body?.text ? (body.text.match(/{{\d+}}/g) || []).length : 0;
+
+  $("#lista-templates").style.display = "none";
+  $("#form-template-params").style.display = "block";
+  $("#template-params").innerHTML = `
+    <p class="ayuda-modal">${body ? escapar(body.text) : t.name}</p>
+    ${Array.from({ length: nParams }, (_, i) => `<input type="text" class="param-template" placeholder="Variable {{${i + 1}}}" />`).join("")}`;
+}
+
+$("#template-volver").addEventListener("click", () => {
+  $("#lista-templates").style.display = "block";
+  $("#form-template-params").style.display = "none";
+});
+$("#template-cerrar").addEventListener("click", () => {
+  $("#modal-templates-fondo").classList.remove("abierto");
+  $("#lista-templates").style.display = "block";
+  $("#form-template-params").style.display = "none";
+});
+
+$("#template-enviar").addEventListener("click", async () => {
+  const t = estado.templateElegido;
+  if (!t) return;
+  const parameters = [...document.querySelectorAll(".param-template")].map((i) => i.value);
+  try {
+    await pedir("/api/crm/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, name: t.name, language: t.language, parameters })
+    });
+    $("#modal-templates-fondo").classList.remove("abierto");
+    await cargarMensajes();
+    await cargarConversaciones();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 /* ---------- Panel de detalle ---------- */
 
 function pintarDetalle(c) {
@@ -460,7 +736,7 @@ function pintarDetalle(c) {
     <h2>Origen</h2>
     ${tieneAd ? `
       <div class="ad-card">
-        <div class="titulo">📢 Vino de un anuncio</div>
+        <div class="titulo">${icon("megaphone")} Vino de un anuncio</div>
         ${c.ad_headline ? `<div>${escapar(c.ad_headline)}</div>` : ""}
         ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
         ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}

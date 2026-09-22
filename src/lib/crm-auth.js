@@ -1,15 +1,18 @@
 /**
- * Sesión del CRM: una sola contraseña compartida (`CRM_PASSWORD`), sin tabla
- * de usuarios. La sesión es una cookie firmada (HMAC-SHA256) con expiración,
- * sin estado en el servidor — no hay nada que limpiar ni ninguna tabla de
- * sesiones que se pueda llenar.
+ * Sesión del CRM: cookie firmada (HMAC-SHA256) con expiración, sin estado en
+ * el servidor. Lleva el agente adentro (id, usuario, nombre) para que quede
+ * registrado quién manda cada mensaje.
+ *
+ * Compatibilidad: mientras no exista ningún agente en la tabla `agents`, el
+ * login sigue aceptando la contraseña única `CRM_PASSWORD` (+ TOTP si está
+ * configurado) — así no se corta el acceso al migrar a cuentas por vendedor.
  */
 
 const NOMBRE_COOKIE = "crm_session";
 const DURACION_MS = 12 * 3600 * 1000; // 12 horas
 
 function claveSecreta(env) {
-  return env.CRM_SESSION_SECRET || env.CRM_PASSWORD || "";
+  return env.CRM_SESSION_SECRET || env.CRM_PASSWORD || "clave-de-sesion-sin-configurar";
 }
 
 async function firmar(env, valor) {
@@ -24,11 +27,12 @@ async function firmar(env, valor) {
   return [...new Uint8Array(firma)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function crearCookieSesion(env) {
+export async function crearCookieSesion(env, agente = null) {
   const expira = Date.now() + DURACION_MS;
-  const valor = `${expira}`;
-  const firma = await firmar(env, valor);
-  const cookie = `${valor}.${firma}`;
+  const payload = JSON.stringify({ exp: expira, agentId: agente?.id || null, username: agente?.username || null, displayName: agente?.display_name || null });
+  const valorB64 = btoa(unescape(encodeURIComponent(payload)));
+  const firma = await firmar(env, valorB64);
+  const cookie = `${valorB64}.${firma}`;
   return `${NOMBRE_COOKIE}=${cookie}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${DURACION_MS / 1000}`;
 }
 
@@ -42,31 +46,45 @@ function leerCookie(request) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export async function sesionValida(request, env) {
-  if (!env.CRM_PASSWORD) return false; // CRM apagado hasta que se configure la contraseña
+/** Devuelve la sesión ({ exp, agentId, username, displayName }) o null si no es válida. */
+export async function sesionActual(request, env) {
+  if (!env.CRM_PASSWORD) return null; // CRM apagado hasta que se configure la contraseña inicial
   const cookie = leerCookie(request);
-  if (!cookie) return false;
+  if (!cookie) return null;
 
-  const [valor, firma] = cookie.split(".");
-  if (!valor || !firma) return false;
-  if (Number(valor) < Date.now()) return false;
+  const [valorB64, firma] = cookie.split(".");
+  if (!valorB64 || !firma) return null;
 
-  const esperado = await firmar(env, valor);
-  if (esperado.length !== firma.length) return false;
+  const esperado = await firmar(env, valorB64);
+  if (esperado.length !== firma.length) return null;
   let diff = 0;
   for (let i = 0; i < esperado.length; i++) diff |= esperado.charCodeAt(i) ^ firma.charCodeAt(i);
-  return diff === 0;
+  if (diff !== 0) return null;
+
+  let payload;
+  try {
+    payload = JSON.parse(decodeURIComponent(escape(atob(valorB64))));
+  } catch {
+    return null;
+  }
+  if (!payload.exp || payload.exp < Date.now()) return null;
+  return payload;
 }
 
-/** Envuelve un handler para que responda 401 si no hay sesión válida. */
+export async function sesionValida(request, env) {
+  return (await sesionActual(request, env)) !== null;
+}
+
+/** Envuelve un handler para que responda 401 si no hay sesión válida, y le pasa `agent`. */
 export function conAuth(handler) {
   return async (context) => {
-    if (!(await sesionValida(context.request, context.env))) {
+    const sesion = await sesionActual(context.request, context.env);
+    if (!sesion) {
       return new Response(JSON.stringify({ error: "No autorizado." }), {
         status: 401,
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
       });
     }
-    return handler(context);
+    return handler({ ...context, agent: sesion });
   };
 }

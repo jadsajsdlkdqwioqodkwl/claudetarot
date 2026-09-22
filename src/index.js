@@ -31,6 +31,19 @@ import {
   onRequestPost as crmQuickRepliesPost,
   onRequestDelete as crmQuickRepliesDelete
 } from "./api/crm/quick-replies.js";
+import { onRequestPost as crmLoginVerify } from "./api/crm/login-verify.js";
+import {
+  onRequestGet as crmAgentsGet,
+  onRequestPost as crmAgentsPost,
+  onRequestPatch as crmAgentsPatch
+} from "./api/crm/agents.js";
+import {
+  onRequestGet as crmScheduledGet,
+  onRequestPost as crmScheduledPost,
+  onRequestDelete as crmScheduledDelete
+} from "./api/crm/scheduled.js";
+import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
+import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -51,7 +64,11 @@ const ROUTES = {
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/follow-up": { PATCH: crmFollowUp },
-  "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, DELETE: crmQuickRepliesDelete }
+  "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, DELETE: crmQuickRepliesDelete },
+  "/api/crm/login-verify": { POST: crmLoginVerify },
+  "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
+  "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, DELETE: crmScheduledDelete },
+  "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost }
 };
 
 /**
@@ -117,5 +134,11 @@ export default {
     // Mismo contexto que recibían las Pages Functions, así los handlers
     // siguen siendo idénticos a como estaban en `functions/api/`.
     return handler({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  },
+
+  // Corre cada minuto (ver wrangler.jsonc → triggers.crons): manda los
+  // seguimientos programados que ya vencieron.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(procesarSeguimientosVencidos(env));
   }
 };

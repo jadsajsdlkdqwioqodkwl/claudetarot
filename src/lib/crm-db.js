@@ -78,13 +78,13 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime }) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy }) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status)
-       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent')`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by)
+       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null)
     .run();
 
   await db
