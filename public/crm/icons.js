@@ -25,7 +25,9 @@ const ICONS = {
   shield: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l6 2.5v5c0 4-2.6 6.8-6 8.5-3.4-1.7-6-4.5-6-8.5v-5z"/></svg>`,
   tag: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 10.5L9.5 3H16a1 1 0 011 1v6.5L9.5 18 2 10.5z"/><circle cx="12.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>`,
   slash: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13 3L7 17"/></svg>`,
-  spinner: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 2.5a7.5 7.5 0 105.3 2.2" opacity="0.85"/></svg>`
+  spinner: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 2.5a7.5 7.5 0 105.3 2.2" opacity="0.85"/></svg>`,
+  arrowLeft: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4L6 10l6.5 6"/></svg>`,
+  key: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="13.5" r="3.5"/><path d="M9 11l7-7M13 7l2 2M16 4l2 2"/></svg>`
 };
 
 function icon(nombre, claseExtra = "") {

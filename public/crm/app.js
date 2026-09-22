@@ -61,6 +61,7 @@ function debounce(fn, ms) {
 
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
+  $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -105,12 +106,13 @@ function mostrarPasoCodigo() {
 async function mostrarApp() {
   $("#login").style.display = "none";
   $("#app").classList.add("activo");
-  const { role, displayName } = await pedir("/api/crm/session");
+  const { role, displayName, esCuentaDeVendedor } = await pedir("/api/crm/session");
   estado.miRol = role;
   // Para que quede clarísimo con qué cuenta estás — el panel de "Probar
   // bienvenida" y de Equipo solo salen con role "admin", y esto evita
   // preguntarse por qué no aparecen si entraste con otra cuenta.
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
+  $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   cargarConversaciones();
   cargarQuickReplies();
   clearInterval(estado.pollConv);
@@ -158,6 +160,27 @@ $("#btn-salir").addEventListener("click", async () => {
   clearInterval(estado.pollConv);
   clearInterval(estado.pollMsg);
   mostrarLogin();
+});
+
+$("#btn-mi-password").addEventListener("click", async () => {
+  const actual = prompt("Tu contraseña actual:");
+  if (!actual) return;
+  const nueva = prompt("Nueva contraseña (mínimo 8 caracteres):");
+  if (!nueva) return;
+  if (nueva !== prompt("Repite la nueva contraseña, para confirmar:")) {
+    alert("No coinciden — no se cambió nada.");
+    return;
+  }
+  try {
+    await pedir("/api/crm/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: actual, new_password: nueva })
+    });
+    alert("Contraseña cambiada. La próxima vez que entres, usa la nueva.");
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 /* ---------- Lista de conversaciones ---------- */
@@ -247,6 +270,7 @@ async function abrirConversacion(c) {
   estado.mensajesCargados = [];
   estado.hayMasAntiguos = false;
   cancelarAdjunto();
+  document.body.classList.add("chat-abierto"); // en móvil: pantalla completa del chat, no la lista
   pintarLista();
   pintarChatBase(c);
   pintarDetalle(c);
@@ -255,10 +279,15 @@ async function abrirConversacion(c) {
   estado.pollMsg = setInterval(cargarMensajes, 3000);
 }
 
+function volverALaLista() {
+  document.body.classList.remove("chat-abierto");
+}
+
 function pintarChatBase(c) {
   const nombre = c.profile_name || c.wa_id;
   $("#chat").innerHTML = `
     <header>
+      <button id="btn-volver" title="Volver a la lista">${icon("arrowLeft")}</button>
       <div class="avatar">${iniciales(nombre)}</div>
       <div>
         <div class="nombre">${escapar(nombre)}</div>
@@ -285,6 +314,7 @@ function pintarChatBase(c) {
       <div id="panel-catalogo"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
+  $("#btn-volver").addEventListener("click", volverALaLista);
   $("#star-header").addEventListener("click", () => {
     const c2 = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
     if (c2) toggleSeguimiento(c2);

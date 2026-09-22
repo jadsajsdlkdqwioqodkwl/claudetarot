@@ -913,6 +913,20 @@ confirmar el diagnóstico antes de tocar nada:
   de que entres con una cuenta `admin` — si entraste con la de una
   vendedora, no van a aparecer, y así se ve de un vistazo por qué.
 
+### Doceava vuelta: móvil de verdad, y cada vendedora cambia su propia contraseña
+
+- **Responsive real, no solo achicar letras**: en pantallas chicas el CRM se
+  comporta como una app de chat — se ve la lista de chats O el chat abierto,
+  nunca las dos encimadas. Al abrir un chat aparece un botón de volver
+  (flecha) en el header; antes en el celular las dos columnas quedaban
+  apiladas una sobre otra, inusable.
+- Tamaños de letra, modales y paneles ajustados para que quepan sin
+  desbordar en una pantalla de celular (el `16px` en los campos de texto
+  evita además que iOS haga zoom solo al tocarlos).
+- **Cambiar mi contraseña**: ícono de llave, junto a "+ contacto" — cualquier
+  vendedora cambia la suya sin depender de un admin, pidiendo la actual para
+  confirmarlo. Solo aplica en modo cuentas por vendedor.
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
