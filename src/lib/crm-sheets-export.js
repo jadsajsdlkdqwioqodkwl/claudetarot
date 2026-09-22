@@ -14,7 +14,7 @@
 
 import { appendRowsTo, asegurarPestana } from "./google-sheets.js";
 
-const ENCABEZADOS = ["Fecha (Lima)", "WhatsApp", "Contacto", "Quién", "Vendedor", "Tipo", "Mensaje", "Origen anuncio", "Título anuncio", "ctwa_clid"];
+const ENCABEZADOS = ["Fecha (Lima)", "WhatsApp", "Contacto", "Quién", "Vendedor", "Tipo", "Mensaje", "Origen anuncio", "Título anuncio", "ctwa_clid", "Notas"];
 
 /** "2026-09-22 05:47:46" (UTC, como lo guarda D1) -> Date ya en hora de Lima. */
 function fechaLimaDate(fechaUTC) {
@@ -42,7 +42,7 @@ export async function exportarChatsASheets(env) {
   const { results: mensajes } = await env.CRM_DB.prepare(
     `SELECT m.id, m.created_at, m.direction, m.type, m.body, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name,
-            c.ctwa_clid, c.ad_source_type, c.ad_headline
+            c.ctwa_clid, c.ad_source_type, c.ad_headline, c.notes
      FROM messages m
      JOIN conversations conv ON conv.id = m.conversation_id
      JOIN contacts c ON c.id = conv.contact_id
@@ -72,7 +72,8 @@ export async function exportarChatsASheets(env) {
       (m.body || "").slice(0, 2000),
       m.ad_source_type || "",
       m.ad_headline || "",
-      m.ctwa_clid || ""
+      m.ctwa_clid || "",
+      m.notes || ""
     ];
     if (!porDia.has(pestana)) porDia.set(pestana, []);
     porDia.get(pestana).push(fila);

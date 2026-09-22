@@ -39,7 +39,10 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Sin una fuente de emojis en la lista, el navegador a veces no sabe con
+     cuál dibujar un emoji nuevo o compuesto (☺️, 🫶) y lo deja en blanco o
+     como un cuadrito — esto es puro CSS, no toca el envío de mensajes. */
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
   background: var(--fondo);
   color: var(--texto);
 }
@@ -213,8 +216,10 @@ button { font-family: inherit; }
 .msg-quote-quien { font-weight: 600; color: var(--verde-osc); }
 .msg-quote-texto { color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.msg-reacciones { position: absolute; bottom: -11px; right: 6px; background: var(--panel); border-radius: var(--radio-full); box-shadow: 0 1px 3px rgba(0,0,0,.18); padding: 1px 5px; font-size: 13px; line-height: 1.4; }
+.msg-reacciones { position: absolute; bottom: -11px; right: 6px; background: var(--panel); border-radius: var(--radio-full); box-shadow: 0 1px 3px rgba(0,0,0,.18); padding: 1px 5px; font-size: 13px; line-height: 1.4; z-index: 2; }
 .reaccion-chip { margin: 0 1px; }
+/* Sin este margen, el globito de la reacción (que sobresale a propósito, como en WhatsApp) queda tapado por el siguiente mensaje cuando están pegados. */
+.msg-fila:has(.msg-reacciones) { margin-bottom: 8px; }
 
 /* Abajo del botón, no arriba: arriba se suma al offset negativo de
    .msg-acciones y en el primer mensaje de la lista queda cortado por el
