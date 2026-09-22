@@ -25,7 +25,7 @@ async function sha256Hex(texto) {
  * sola (hashing del teléfono, forma del payload) sin necesitar credenciales
  * reales de Meta.
  */
-export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, testEventCode }) {
+export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, testEventCode }) {
   if (!waId) throw new Error("Falta el WhatsApp del contacto.");
   const telefonoHash = await sha256Hex(String(waId).replace(/\D/g, ""));
 
@@ -40,7 +40,8 @@ export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, event
     },
     custom_data: {
       currency: moneda || "PEN",
-      value: Number(valor) || 0
+      value: Number(valor) || 0,
+      ...(contentName ? { content_name: contentName } : {})
     }
   };
   if (eventId) evento.event_id = String(eventId);

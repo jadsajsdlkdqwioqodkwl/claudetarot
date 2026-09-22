@@ -509,16 +509,24 @@ $("#bulk-modo").addEventListener("change", () => {
 async function cargarPlantillasBulk() {
   const sel = $("#bulk-template");
   sel.innerHTML = `<option value="">Cargando…</option>`;
+  $("#bulk-template-aviso").textContent = "";
   try {
     const { templates } = await pedir("/api/crm/templates");
-    if (!templates.length) {
-      sel.innerHTML = `<option value="">Sin plantillas aprobadas — créalas en WhatsApp Manager</option>`;
+    const aprobadas = templates.filter((t) => t.status === "APPROVED");
+    const noAprobadas = templates.length - aprobadas.length;
+
+    if (!aprobadas.length) {
+      sel.innerHTML = `<option value="">Sin plantillas aprobadas todavía</option>`;
+      $("#bulk-template-aviso").textContent = templates.length
+        ? `Tienes ${templates.length} plantilla(s) creada(s), pero ninguna está "Aprobada" todavía — revisa el estado en WhatsApp Manager → Message Templates (Meta tarda de minutos a ~24h en aprobarlas).`
+        : "Todavía no creaste ninguna plantilla — créala en WhatsApp Manager → Message Templates.";
+      pintarParametrosBulk(null);
       return;
     }
-    sel.innerHTML = templates.map((t, i) => `<option value="${i}">${escapar(t.name)} (${escapar(t.language)})</option>`).join("");
-    sel.dataset.templates = JSON.stringify(templates);
-    sel.onchange = () => pintarParametrosBulk(templates[Number(sel.value)]);
-    pintarParametrosBulk(templates[0]);
+    sel.innerHTML = aprobadas.map((t, i) => `<option value="${i}">${escapar(t.name)} (${escapar(t.language)})</option>`).join("");
+    if (noAprobadas) $("#bulk-template-aviso").textContent = `(${noAprobadas} plantilla(s) más está(n) en revisión o rechazada — no aparecen acá hasta que Meta las apruebe.)`;
+    sel.onchange = () => pintarParametrosBulk(aprobadas[Number(sel.value)]);
+    pintarParametrosBulk(aprobadas[0]);
   } catch (err) {
     sel.innerHTML = `<option value="">${escapar(err.message)}</option>`;
   }
@@ -978,6 +986,7 @@ async function actualizarPedidosPanel() {
             });
             alert("Evento mandado a Meta.");
             await actualizarPedidosPanel();
+            await actualizarHistorialCapi(estado.conversacionActivaId);
           } catch (err) {
             alert(err.message);
           } finally {
@@ -986,6 +995,22 @@ async function actualizarPedidosPanel() {
         });
       });
     }
+  } catch { /* silencioso */ }
+}
+
+/** Historial de eventos CAPI mandados en este chat (con o sin pedido del catálogo detrás). */
+async function actualizarHistorialCapi(conversationId) {
+  const cont = $("#detalle-capi-historial");
+  if (!cont) return;
+  try {
+    const { events } = await pedir(`/api/crm/capi-send?conversation_id=${conversationId}`);
+    cont.innerHTML = events.length
+      ? `<div class="ayuda-modal" style="margin-bottom:4px">Enviados antes:</div>` + events.map((e) => `
+        <div style="font-size:11px;color:var(--gris);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--borde)">
+          <span>${fechaCorta(e.created_at)}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
+          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}">${e.value} ${escapar(e.currency)} ${e.status === "enviado" ? "✓" : "✗"}</span>
+        </div>`).join("")
+      : "";
   } catch { /* silencioso */ }
 }
 
@@ -1766,6 +1791,14 @@ $("#eq-crear").addEventListener("click", async () => {
 
 /* ---------- Plantillas (fuera de la ventana de 24h) ---------- */
 
+/** Badge de estado de una plantilla — para que "no aparece" nunca sea un misterio: se ve si está aprobada, en revisión o rechazada. */
+function badgeEstadoPlantilla(status) {
+  if (status === "APPROVED") return "";
+  const texto = status === "PENDING" ? "En revisión de Meta" : status === "REJECTED" ? "Rechazada por Meta" : (status || "Desconocido");
+  const color = status === "PENDING" ? "#b8860b" : "var(--peligro)";
+  return ` <span style="font-size:11px;color:${color}">· ${escapar(texto)}</span>`;
+}
+
 async function abrirModalTemplates() {
   $("#modal-templates-fondo").classList.add("abierto");
   $("#form-template-params").style.display = "none";
@@ -1774,18 +1807,20 @@ async function abrirModalTemplates() {
   try {
     const { templates } = await pedir("/api/crm/templates");
     if (!templates.length) {
-      cont.innerHTML = `<p class="ayuda-modal">No hay plantillas aprobadas todavía. Créalas en WhatsApp Manager → Message Templates.</p>`;
+      cont.innerHTML = `<p class="ayuda-modal">Todavía no creaste ninguna plantilla. Créalas en WhatsApp Manager → Message Templates (Meta tarda de minutos a ~24h en aprobarlas).</p>`;
       return;
     }
     cont.innerHTML = templates.map((t, i) => `
-      <div class="fila-template" data-i="${i}" style="cursor:pointer">
+      <div class="fila-template" data-i="${i}" style="${t.status === "APPROVED" ? "cursor:pointer" : "opacity:.55;cursor:default"}">
         <div>
-          <div class="nombre">${escapar(t.name)}</div>
+          <div class="nombre">${escapar(t.name)}${badgeEstadoPlantilla(t.status)}</div>
           <div class="sub">${escapar(t.category)} · ${escapar(t.language)}</div>
         </div>
       </div>`).join("");
     cont.querySelectorAll(".fila-template").forEach((el) => {
-      el.addEventListener("click", () => elegirTemplate(templates[Number(el.dataset.i)]));
+      const t = templates[Number(el.dataset.i)];
+      if (t.status !== "APPROVED") return;
+      el.addEventListener("click", () => elegirTemplate(t));
     });
   } catch (err) {
     cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
@@ -1858,9 +1893,50 @@ async function pintarDetalle(c) {
 
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
+
+    ${estado.miRol === "admin" ? `
+    <h2>Meta Ads (CAPI)</h2>
+    <p class="ayuda-modal" style="margin:0 0 8px">Reporta una venta a Meta sin necesidad de un pedido del catálogo — para cuando se cerró por chat. No le manda nada al cliente.</p>
+    <input type="text" id="capi-producto" placeholder="Producto (opcional, ej. Kit de tarot x2)" />
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="number" id="capi-valor" value="89" min="0" step="0.01" style="flex:1" />
+      <select id="capi-moneda" style="width:80px">
+        <option value="PEN" selected>PEN</option>
+        <option value="USD">USD</option>
+      </select>
+    </div>
+    <button class="crear" id="capi-mandar-btn" type="button" style="width:100%">Mandar a Meta (CAPI)</button>
+    <div id="detalle-capi-historial" style="margin-top:8px"></div>
+    ` : ""}
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => document.body.classList.remove("detalle-abierto"));
+
+  $("#capi-mandar-btn")?.addEventListener("click", async () => {
+    const valor = Number($("#capi-valor").value);
+    const moneda = $("#capi-moneda").value;
+    const producto = $("#capi-producto").value.trim();
+    if (!valor || valor <= 0) return alert("Escribe un monto válido.");
+    if (!confirm(`¿Mandar a Meta que esta venta valió ${valor} ${moneda}${producto ? ` (${producto})` : ""}?`)) return;
+
+    const btn = $("#capi-mandar-btn");
+    btn.disabled = true;
+    try {
+      await pedir("/api/crm/capi-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: c.conversation_id, value: valor, currency: moneda, product_label: producto || undefined })
+      });
+      alert("Evento mandado a Meta.");
+      $("#capi-producto").value = "";
+      await actualizarHistorialCapi(c.conversation_id);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {
     try {

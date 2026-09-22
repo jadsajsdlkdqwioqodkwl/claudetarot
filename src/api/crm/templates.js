@@ -1,5 +1,8 @@
 /**
- * GET  /api/crm/templates — lista los Message Templates aprobados en Meta.
+ * GET  /api/crm/templates — TODOS los Message Templates de la cuenta, con su
+ *      status real (APPROVED/PENDING/REJECTED) — antes solo devolvía los
+ *      aprobados y sin decir por qué faltaba el resto, así que uno recién
+ *      creado (todavía en revisión de Meta) parecía simplemente no existir.
  * POST /api/crm/templates — { conversation_id, name, language, parameters? }
  *      manda un template — el único tipo de mensaje válido con alguien que
  *      no escribió en las últimas 24h.
@@ -19,7 +22,7 @@ async function get({ env }) {
   if (!env.WHATSAPP_BUSINESS_ACCOUNT_ID) return json({ error: "Falta WHATSAPP_BUSINESS_ACCOUNT_ID." }, 503);
   try {
     const templates = await listarTemplates(env);
-    return json({ templates: templates.filter((t) => t.status === "APPROVED") });
+    return json({ templates });
   } catch (err) {
     return json({ error: err.message }, 502);
   }
