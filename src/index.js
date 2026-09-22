@@ -45,7 +45,8 @@ import {
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
 import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
-import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost } from "./api/crm/catalog.js";
+import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost, onRequestGetProductos as crmCatalogProductosGet } from "./api/crm/catalog.js";
+import { onRequestGet as crmSettingsGet, onRequestPatch as crmSettingsPatch } from "./api/crm/settings.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -71,7 +72,9 @@ const ROUTES = {
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
   "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, DELETE: crmScheduledDelete },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost },
-  "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost }
+  "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
+  "/api/crm/catalog-products": { GET: crmCatalogProductosGet },
+  "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch }
 };
 
 /**

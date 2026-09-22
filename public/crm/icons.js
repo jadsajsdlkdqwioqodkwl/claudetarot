@@ -22,7 +22,9 @@ const ICONS = {
   search: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="6"/><path d="M17.5 17.5L13.5 13.5" stroke-linecap="round"/></svg>`,
   doc: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12h-10z"/><path d="M12 2.5V6h3"/></svg>`,
   bag: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 6h10l1 11H4z"/><path d="M7 6V5a3 3 0 016 0v1"/></svg>`,
-  shield: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l6 2.5v5c0 4-2.6 6.8-6 8.5-3.4-1.7-6-4.5-6-8.5v-5z"/></svg>`
+  shield: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l6 2.5v5c0 4-2.6 6.8-6 8.5-3.4-1.7-6-4.5-6-8.5v-5z"/></svg>`,
+  tag: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 10.5L9.5 3H16a1 1 0 011 1v6.5L9.5 18 2 10.5z"/><circle cx="12.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>`,
+  slash: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13 3L7 17"/></svg>`
 };
 
 function icon(nombre, claseExtra = "") {

@@ -91,6 +91,32 @@ export async function enviarCatalogo(env, waId, texto) {
   return datos.messages?.[0]?.id || null;
 }
 
+/** Lista los productos del catálogo, para elegir uno y mandarlo suelto. */
+export async function listarProductosCatalogo(env, catalogId) {
+  const res = await fetch(
+    graphUrl(env, `${catalogId}/products?fields=name,retailer_id,image_url,availability&limit=200`),
+    { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
+  );
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos?.error?.message || `HTTP ${res.status}`);
+  return datos.data || [];
+}
+
+/** Manda la tarjeta de un solo producto del catálogo. */
+export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "interactive",
+    interactive: {
+      type: "product",
+      body: texto ? { text: texto } : undefined,
+      action: { catalog_id: catalogId, product_retailer_id: retailerId }
+    }
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
 /** Manda una imagen o video ya subido a la Cloud API (ver subirMedia). */
 export async function enviarMedia(env, waId, type, mediaId, caption) {
   const cuerpo = { messaging_product: "whatsapp", to: waId, type };

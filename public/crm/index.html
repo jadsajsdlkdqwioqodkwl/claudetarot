@@ -70,7 +70,8 @@
     <h2>Nueva respuesta rápida</h2>
     <input type="text" id="rapida-titulo" placeholder="Título (ej. Precio, Horario…)" />
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
-    <input type="file" id="rapida-archivo" accept="image/*,video/*" />
+    <input type="file" id="rapida-archivo" accept="image/*,video/*" multiple />
+    <div class="ayuda-modal">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
     <div class="acciones">
       <button class="cancelar" id="rapida-cancelar" type="button">Cancelar</button>
       <button class="crear" id="rapida-crear" type="button">Guardar</button>
