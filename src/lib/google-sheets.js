@@ -86,20 +86,17 @@ export async function getAccessToken(env) {
 }
 
 /**
- * Agrega una fila al final de la hoja indicada.
- * @param {object} env  Variables de entorno del Worker
- * @param {Array<string|number>} row  Valores en el orden de las columnas
- * @returns {Promise<string>} el rango escrito ("Pedidos!A42:O42"), del que
- *   sale el número de fila que /api/upsell necesita para el order bump.
+ * Agrega filas al final de una hoja y pestaña cualquiera — no necesariamente
+ * el libro de Pedidos. La usa tanto appendRow (abajo) como el export de
+ * chats del CRM, que manda a otro spreadsheetId por completo.
  */
-export async function appendRow(env, row) {
+export async function appendRowsTo(env, spreadsheetId, sheetName, rows) {
   const accessToken = await getAccessToken(env);
-  const sheetName = env.GOOGLE_SHEET_NAME || "Pedidos";
   // Solo la columna A: es la que siempre lleva la Fecha, así que marca sin
   // ambigüedad dónde termina la tabla.
   const range = encodeURIComponent(`${sheetName}!A:A`);
   const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}` +
     // OVERWRITE, no INSERT_ROWS: insertar filas desplaza las referencias de
     // las fórmulas del Panel (Pedidos!$A$2 pasa a $A$3, $A$4...) y la fila
     // nueva hereda el formato del encabezado en vez del de fecha y moneda.
@@ -111,17 +108,28 @@ export async function appendRow(env, row) {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ values: [row] })
+    body: JSON.stringify({ values: rows })
   });
 
   if (!res.ok) {
     // Un token revocado invalida el cache: el siguiente intento pedirá uno nuevo.
     if (res.status === 401) cachedToken = null;
-    throw new Error(`Google Sheets rechazó la fila (${res.status}): ${await res.text()}`);
+    throw new Error(`Google Sheets rechazó las filas (${res.status}): ${await res.text()}`);
   }
 
   const body = await res.json();
   return body.updates?.updatedRange || "";
+}
+
+/**
+ * Agrega una fila al final de la hoja de Pedidos.
+ * @param {object} env  Variables de entorno del Worker
+ * @param {Array<string|number>} row  Valores en el orden de las columnas
+ * @returns {Promise<string>} el rango escrito ("Pedidos!A42:O42"), del que
+ *   sale el número de fila que /api/upsell necesita para el order bump.
+ */
+export async function appendRow(env, row) {
+  return appendRowsTo(env, env.GOOGLE_SHEET_ID, env.GOOGLE_SHEET_NAME || "Pedidos", [row]);
 }
 
 /**

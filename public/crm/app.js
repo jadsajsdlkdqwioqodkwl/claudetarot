@@ -54,6 +54,7 @@ function debounce(fn, ms) {
 }
 
 function iconizar() {
+  $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -620,6 +621,42 @@ $("#seg-crear").addEventListener("click", async () => {
     $("#seg-texto").value = "";
   } catch (err) {
     alert(err.message);
+  }
+});
+
+/* ---------- Nuevo contacto ---------- */
+
+$("#btn-nuevo-contacto").addEventListener("click", () => {
+  $("#modal-contacto-fondo").classList.add("abierto");
+  $("#nc-wa").focus();
+});
+$("#nc-cancelar").addEventListener("click", () => {
+  $("#modal-contacto-fondo").classList.remove("abierto");
+  $("#nc-nombre").value = "";
+  $("#nc-wa").value = "";
+});
+
+$("#nc-crear").addEventListener("click", async () => {
+  const name = $("#nc-nombre").value.trim();
+  const wa_id = $("#nc-wa").value.trim();
+  const btn = $("#nc-crear");
+  btn.disabled = true;
+  try {
+    const { conversation_id } = await pedir("/api/crm/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, wa_id })
+    });
+    $("#modal-contacto-fondo").classList.remove("abierto");
+    $("#nc-nombre").value = "";
+    $("#nc-wa").value = "";
+    await cargarConversaciones();
+    const c = estado.conversaciones.find((x) => x.conversation_id === conversation_id);
+    if (c) abrirConversacion(c);
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
   }
 });
 

@@ -21,7 +21,7 @@ import { onRequestPost as crmLogout } from "./api/crm/logout.js";
 import { onRequestGet as crmSession } from "./api/crm/session.js";
 import { onRequestGet as crmConversations } from "./api/crm/conversations.js";
 import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from "./api/crm/messages.js";
-import { onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
+import { onRequestPost as crmContactsPost, onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
 import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
 import { onRequestGet as crmMedia } from "./api/crm/media.js";
@@ -43,6 +43,7 @@ import {
   onRequestDelete as crmScheduledDelete
 } from "./api/crm/scheduled.js";
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
+import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
 import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost } from "./api/crm/catalog.js";
 
@@ -61,7 +62,7 @@ const ROUTES = {
   "/api/crm/session": { GET: crmSession },
   "/api/crm/conversations": { GET: crmConversations },
   "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
-  "/api/crm/contacts": { PATCH: crmContactsPatch },
+  "/api/crm/contacts": { POST: crmContactsPost, PATCH: crmContactsPatch },
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/follow-up": { PATCH: crmFollowUp },
@@ -138,9 +139,14 @@ export default {
     return handler({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   },
 
-  // Corre cada minuto (ver wrangler.jsonc → triggers.crons): manda los
-  // seguimientos programados que ya vencieron.
+  // Dos crons (ver wrangler.jsonc → triggers.crons), distinguidos por
+  // event.cron: el de cada minuto manda los seguimientos vencidos, el de
+  // cada 10 min vuelca los chats nuevos a Sheets.
   async scheduled(event, env, ctx) {
+    if (event.cron === "*/10 * * * *") {
+      ctx.waitUntil(exportarChatsASheets(env));
+      return;
+    }
     ctx.waitUntil(procesarSeguimientosVencidos(env));
   }
 };

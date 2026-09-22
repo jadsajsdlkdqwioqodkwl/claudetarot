@@ -30,6 +30,7 @@
     <header>
       <h1>Chats</h1>
       <div class="acciones">
+        <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-equipo" title="Equipo"></button>
         <button id="btn-salir" title="Salir"></button>
       </div>
@@ -50,6 +51,18 @@
   </section>
 
   <aside id="detalle"></aside>
+</div>
+
+<div class="modal-fondo" id="modal-contacto-fondo">
+  <div class="modal">
+    <h2>Nuevo contacto</h2>
+    <input type="text" id="nc-nombre" placeholder="Nombre (opcional)" />
+    <input type="text" id="nc-wa" placeholder="WhatsApp con código de país (ej. 51987654321)" />
+    <div class="acciones">
+      <button class="cancelar" id="nc-cancelar" type="button">Cancelar</button>
+      <button class="crear" id="nc-crear" type="button">Crear</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-fondo" id="modal-rapida-fondo">
