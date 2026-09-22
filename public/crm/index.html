@@ -58,6 +58,7 @@
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-mi-password" title="Cambiar mi contraseña"></button>
         <button id="btn-bienvenida" title="Bienvenida de anuncios" style="display:none"></button>
+        <button id="btn-admin" title="Mensaje masivo, costos y herramientas" style="display:none"></button>
         <button id="btn-equipo" title="Equipo"></button>
         <button id="btn-salir" title="Salir"></button>
       </div>
@@ -230,6 +231,49 @@
 
     <div class="acciones">
       <button class="cancelar" id="bienvenida-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-admin-fondo">
+  <div class="modal modal-ancho">
+    <h2>Mensaje masivo</h2>
+    <p class="ayuda-modal">Un mismo mensaje a varios números — para avisos como "cambié de WhatsApp". Si la lista es de contactos que no te escribieron en las últimas 24h (lo normal en una lista vieja), WhatsApp exige que sea una <strong>plantilla aprobada</strong> — el texto libre se va a rechazar uno por uno.</p>
+
+    <textarea id="bulk-numeros" placeholder="Un número por línea, con código de país (ej. 51987654321)" style="min-height:110px"></textarea>
+
+    <select id="bulk-modo">
+      <option value="template">Plantilla aprobada (recomendado)</option>
+      <option value="text">Texto libre (solo si te escribieron hace poco)</option>
+    </select>
+
+    <div id="bulk-modo-plantilla">
+      <select id="bulk-template"><option value="">Cargando plantillas…</option></select>
+      <div id="bulk-template-params"></div>
+    </div>
+    <textarea id="bulk-texto" placeholder="Texto del mensaje" style="display:none"></textarea>
+
+    <button class="crear" id="bulk-enviar-btn" type="button" style="width:100%">Mandar</button>
+    <p class="ayuda-modal" id="bulk-resultado"></p>
+
+    <hr />
+    <h2>Envíos masivos recientes</h2>
+    <div id="lista-bulk-batches">Cargando…</div>
+
+    <hr />
+    <h2>Costos de WhatsApp</h2>
+    <p class="ayuda-modal">
+      <strong>Gratis siempre:</strong> recibir mensajes, responder dentro de las 24h desde que el cliente escribió (texto, fotos, catálogo, producto), y los códigos de acceso (2FA / recuperar contraseña) — se mandan como texto libre, no como plantilla.<br /><br />
+      <strong>Cobra Meta:</strong> las plantillas usadas fuera de esa ventana de 24h — como este envío masivo, o "Mandar plantilla" en un chat viejo. El precio depende de la categoría (marketing/utilidad/autenticación) y del país; la tarifa exacta está en WhatsApp Manager → Configuración de la cuenta → Facturación (cambia con el tiempo, no la repito acá para no mostrar un número viejo).
+    </p>
+
+    <hr />
+    <h2>Exportación a Sheets</h2>
+    <p class="ayuda-modal">Los chats se vuelcan a Sheets cada 10 minutos, una pestaña por día. Si necesitas que reexporte todo desde el principio (ej. armaste una hoja nueva), usa esto — ojo que duplica filas si la pestaña de ese día ya tiene datos.</p>
+    <button class="cancelar" id="export-reset-btn" type="button" style="width:100%">Reiniciar exportación a Sheets</button>
+
+    <div class="acciones">
+      <button class="cancelar" id="admin-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

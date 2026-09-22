@@ -74,6 +74,7 @@ function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-bienvenida").innerHTML = icon("megaphone");
+  $("#btn-admin").innerHTML = icon("broadcast");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -153,6 +154,7 @@ async function mostrarApp() {
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-bienvenida").style.display = role === "admin" ? "" : "none";
+  $("#btn-admin").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
   cargarQuickReplies();
   clearInterval(estado.pollConv);
@@ -482,6 +484,117 @@ $("#sim-enviar").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
     btn.textContent = "Simular y mandar la secuencia";
+  }
+});
+
+/* ---------- Panel de admin: mensaje masivo, costos, exportación ---------- */
+
+let bulkTemplateElegida = null;
+
+$("#btn-admin").addEventListener("click", () => {
+  $("#modal-admin-fondo").classList.add("abierto");
+  $("#bulk-numeros").value = "";
+  $("#bulk-resultado").textContent = "";
+  cargarPlantillasBulk();
+  cargarBatchesBulk();
+});
+$("#admin-cerrar").addEventListener("click", () => $("#modal-admin-fondo").classList.remove("abierto"));
+
+$("#bulk-modo").addEventListener("change", () => {
+  const esPlantilla = $("#bulk-modo").value === "template";
+  $("#bulk-modo-plantilla").style.display = esPlantilla ? "block" : "none";
+  $("#bulk-texto").style.display = esPlantilla ? "none" : "block";
+});
+
+async function cargarPlantillasBulk() {
+  const sel = $("#bulk-template");
+  sel.innerHTML = `<option value="">Cargando…</option>`;
+  try {
+    const { templates } = await pedir("/api/crm/templates");
+    if (!templates.length) {
+      sel.innerHTML = `<option value="">Sin plantillas aprobadas — créalas en WhatsApp Manager</option>`;
+      return;
+    }
+    sel.innerHTML = templates.map((t, i) => `<option value="${i}">${escapar(t.name)} (${escapar(t.language)})</option>`).join("");
+    sel.dataset.templates = JSON.stringify(templates);
+    sel.onchange = () => pintarParametrosBulk(templates[Number(sel.value)]);
+    pintarParametrosBulk(templates[0]);
+  } catch (err) {
+    sel.innerHTML = `<option value="">${escapar(err.message)}</option>`;
+  }
+}
+
+function pintarParametrosBulk(t) {
+  bulkTemplateElegida = t;
+  const cont = $("#bulk-template-params");
+  if (!t) { cont.innerHTML = ""; return; }
+  const body = (t.components || []).find((c) => c.type === "BODY");
+  const nParams = body?.text ? (body.text.match(/{{\d+}}/g) || []).length : 0;
+  cont.innerHTML = `
+    ${body ? `<p class="ayuda-modal">${escapar(body.text)}</p>` : ""}
+    ${Array.from({ length: nParams }, (_, i) => `<input type="text" class="bulk-param" placeholder="Variable {{${i + 1}}}" />`).join("")}`;
+}
+
+$("#bulk-enviar-btn").addEventListener("click", async () => {
+  const numbers = $("#bulk-numeros").value.trim();
+  const modo = $("#bulk-modo").value;
+  if (!numbers) return alert("Pega al menos un número.");
+
+  const payload = { numbers, mode: modo };
+  if (modo === "template") {
+    if (!bulkTemplateElegida) return alert("Elige una plantilla.");
+    payload.template_name = bulkTemplateElegida.name;
+    payload.template_language = bulkTemplateElegida.language;
+    payload.template_params = [...document.querySelectorAll(".bulk-param")].map((i) => i.value);
+  } else {
+    const texto = $("#bulk-texto").value.trim();
+    if (!texto) return alert("Escribe el texto del mensaje.");
+    payload.body = texto;
+  }
+
+  if (!confirm(`¿Programar este mensaje para todos los números de la lista? Van a salir a los pocos minutos, de a poco.`)) return;
+
+  const btn = $("#bulk-enviar-btn");
+  btn.disabled = true;
+  try {
+    const { total, invalidos, batch_id } = await pedir("/api/crm/bulk-send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    $("#bulk-resultado").textContent = `Listo — ${total} número(s) programado(s)${invalidos.length ? `, ${invalidos.length} inválido(s) ignorado(s)` : ""}. Se van mandando solos en los próximos minutos.`;
+    $("#bulk-numeros").value = "";
+    await cargarBatchesBulk();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function cargarBatchesBulk() {
+  const cont = $("#lista-bulk-batches");
+  try {
+    const { batches } = await pedir("/api/crm/bulk-send");
+    cont.innerHTML = batches.length ? batches.map((b) => `
+      <div class="fila-seguimiento">
+        <div>
+          <div class="nombre">${fechaCorta(b.created_at)} — ${escapar(b.template_name || b.body || "")}</div>
+          <div class="sub">${b.total} en total · ${b.enviados} enviado(s) · ${b.pendientes} pendiente(s)${b.fallidos ? ` · ${b.fallidos} fallido(s)` : ""}</div>
+        </div>
+      </div>`).join("") : `<p class="ayuda-modal">Todavía no hiciste ningún envío masivo.</p>`;
+  } catch {
+    cont.innerHTML = "";
+  }
+}
+
+$("#export-reset-btn").addEventListener("click", async () => {
+  if (!confirm("¿Reiniciar la exportación a Sheets? Va a volver a mandar todo el historial desde el principio — si la pestaña de algún día ya tiene datos, van a quedar duplicados ahí.")) return;
+  try {
+    await pedir("/api/crm/export-reset", { method: "POST" });
+    alert("Listo — el próximo export (dentro de los próximos 10 minutos) va a arrancar desde el principio.");
+  } catch (err) {
+    alert(err.message);
   }
 });
 
@@ -834,13 +947,45 @@ async function actualizarPedidosPanel() {
   if (!cont || !estado.conversacionActivaId) return;
   try {
     const { orders } = await pedir(`/api/crm/catalog?conversation_id=${estado.conversacionActivaId}`);
+    const esAdmin = estado.miRol === "admin";
     const html = orders.length ? orders.map((o) => `
       <div class="ad-card" style="margin-bottom:8px">
         <div class="titulo">${icon("bag")} ${fechaCorta(o.created_at)}</div>
         ${o.items.map((i) => `<div>${i.quantity}× ${escapar(i.name || i.product_retailer_id)} — ${i.item_price ?? ""} ${escapar(o.currency || "")}</div>`).join("")}
         ${o.total_amount ? `<div><strong>Total: ${o.total_amount} ${escapar(o.currency || "")}</strong></div>` : ""}
+        ${esAdmin ? `
+        <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <button class="capi-enviar" data-id="${o.id}" data-total="${o.total_amount || ""}" data-currency="${escapar(o.currency || "")}" style="font-size:11px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--radio-s);background:#fff;cursor:pointer">${o.capi_status === "enviado" ? "Reenviar a Meta (CAPI)" : "Mandar a Meta (CAPI)"}</button>
+          ${o.capi_status === "enviado" ? `<span style="font-size:11px;color:var(--verde-osc)">✓ enviado</span>` : o.capi_status === "fallido" ? `<span style="font-size:11px;color:var(--peligro)">falló, reintenta</span>` : ""}
+        </div>` : ""}
       </div>`).join("") : `<div class="sin-ad">Sin pedidos de catálogo todavía.</div>`;
-    if (cont.innerHTML !== html) cont.innerHTML = html;
+    if (cont.innerHTML !== html) {
+      cont.innerHTML = html;
+      cont.querySelectorAll(".capi-enviar").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          let valor = btn.dataset.total;
+          if (!valor) {
+            valor = prompt("Este pedido no tiene un total guardado — escribe el monto de la venta:");
+            if (!valor) return;
+          }
+          if (!confirm(`¿Mandar a Meta que esta venta valió ${valor} ${btn.dataset.currency || "PEN"}? Le da crédito al anuncio que originó la conversación.`)) return;
+          btn.disabled = true;
+          try {
+            await pedir("/api/crm/capi-send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order_id: Number(btn.dataset.id), value: Number(valor), currency: btn.dataset.currency || undefined })
+            });
+            alert("Evento mandado a Meta.");
+            await actualizarPedidosPanel();
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    }
   } catch { /* silencioso */ }
 }
 

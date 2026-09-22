@@ -174,10 +174,10 @@ export async function updateValues(env, rangeA1, values) {
 
 
 /** Metadatos de la hoja: título del libro y de cada pestaña con su id. */
-export async function getSpreadsheet(env) {
+export async function getSpreadsheet(env, spreadsheetId = env.GOOGLE_SHEET_ID) {
   const accessToken = await getAccessToken(env);
   const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}` +
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}` +
     // conditionalFormats hace falta para poder borrar las reglas viejas antes
     // de reescribirlas: sin ellas, cada setup duplicaría los colores.
     `?fields=properties.title,sheets(properties(sheetId,title,gridProperties),conditionalFormats)`;
@@ -190,10 +190,10 @@ export async function getSpreadsheet(env) {
 }
 
 /** Cambios estructurales: formatos, validaciones, filtros, pestañas nuevas. */
-export async function batchUpdate(env, requests) {
+export async function batchUpdate(env, requests, spreadsheetId = env.GOOGLE_SHEET_ID) {
   const accessToken = await getAccessToken(env);
   const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}:batchUpdate`;
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -204,4 +204,18 @@ export async function batchUpdate(env, requests) {
     throw new Error(`Google Sheets rechazó los cambios (${res.status}): ${await res.text()}`);
   }
   return res.json();
+}
+
+/**
+ * Crea la pestaña si todavía no existe (idempotente) — para el export del
+ * CRM, que arma una pestaña nueva por día. Devuelve sin hacer nada si ya está.
+ */
+export async function asegurarPestana(env, spreadsheetId, sheetName, encabezados) {
+  const libro = await getSpreadsheet(env, spreadsheetId);
+  if (libro.sheets?.some((s) => s.properties.title === sheetName)) return;
+
+  await batchUpdate(env, [{ addSheet: { properties: { title: sheetName } } }], spreadsheetId);
+  if (encabezados?.length) {
+    await appendRowsTo(env, spreadsheetId, sheetName, [encabezados]);
+  }
 }

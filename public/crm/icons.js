@@ -34,7 +34,8 @@ const ICONS = {
   chat: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2.5 4.5h15v9h-8.5L5 16.5V13.5H2.5v-9z"/></svg>`,
   check: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l4 4L17 5.5"/></svg>`,
   checkDouble: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 10.5l3.5 3.5L12 6.5"/><path d="M6.5 10.5l3.5 3.5L19 6.5"/></svg>`,
-  alertCircle: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5"/><circle cx="10" cy="14" r="0.9" fill="currentColor" stroke="none"/></svg>`
+  alertCircle: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5"/><circle cx="10" cy="14" r="0.9" fill="currentColor" stroke="none"/></svg>`,
+  broadcast: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="1.8" fill="currentColor" stroke="none"/><path d="M6 6a5.6 5.6 0 000 8M14 6a5.6 5.6 0 010 8"/><path d="M3.2 3.2a9.8 9.8 0 000 13.6M16.8 3.2a9.8 9.8 0 010 13.6"/></svg>`
 };
 
 function icon(nombre, claseExtra = "") {

@@ -12,12 +12,25 @@
  * dónde se quedó.
  */
 
-import { appendRowsTo } from "./google-sheets.js";
+import { appendRowsTo, asegurarPestana } from "./google-sheets.js";
 
-/** "2026-09-22 05:47:46" (UTC, como lo guarda D1) -> fecha-hora de Lima como texto. */
-function fechaLima(fechaUTC) {
+const ENCABEZADOS = ["Fecha (Lima)", "WhatsApp", "Contacto", "Quién", "Vendedor", "Tipo", "Mensaje", "Origen anuncio", "Título anuncio", "ctwa_clid"];
+
+/** "2026-09-22 05:47:46" (UTC, como lo guarda D1) -> Date ya en hora de Lima. */
+function fechaLimaDate(fechaUTC) {
   const iso = fechaUTC.includes("T") ? fechaUTC : fechaUTC.replace(" ", "T") + "Z";
-  return new Date(new Date(iso).getTime() - 5 * 3600 * 1000).toISOString().slice(0, 19).replace("T", " ");
+  return new Date(new Date(iso).getTime() - 5 * 3600 * 1000);
+}
+
+function fechaLimaTexto(d) {
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+/** "22-09-2026" — nombre de pestaña, una por día, para poder filtrar/revisar un día a la vez. */
+function nombrePestanaDelDia(d) {
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${d.getUTCFullYear()}`;
 }
 
 export async function exportarChatsASheets(env) {
@@ -42,22 +55,34 @@ export async function exportarChatsASheets(env) {
 
   if (!mensajes.length) return;
 
-  const sheetName = env.GOOGLE_CRM_SHEET_NAME || "Sheet1";
-  const filas = mensajes.map((m) => [
-    fechaLima(m.created_at),
-    m.wa_id,
-    m.contact_name || m.profile_name || "",
-    m.direction === "in" ? "Cliente" : "Vendedor",
-    m.sent_by || "",
-    m.type || "text",
-    (m.body || "").slice(0, 2000),
-    m.ad_source_type || "",
-    m.ad_headline || "",
-    m.ctwa_clid || ""
-  ]);
+  // Una pestaña por día (así se puede revisar o filtrar un día sin scrollear
+  // meses de historial) — se agrupa antes de mandar, para no crear/escribir
+  // la pestaña de un día por cada mensaje suyo.
+  const porDia = new Map();
+  for (const m of mensajes) {
+    const fecha = fechaLimaDate(m.created_at);
+    const pestana = nombrePestanaDelDia(fecha);
+    const fila = [
+      fechaLimaTexto(fecha),
+      m.wa_id,
+      m.contact_name || m.profile_name || "",
+      m.direction === "in" ? "Cliente" : "Vendedor",
+      m.sent_by || "",
+      m.type || "text",
+      (m.body || "").slice(0, 2000),
+      m.ad_source_type || "",
+      m.ad_headline || "",
+      m.ctwa_clid || ""
+    ];
+    if (!porDia.has(pestana)) porDia.set(pestana, []);
+    porDia.get(pestana).push(fila);
+  }
 
   try {
-    await appendRowsTo(env, env.GOOGLE_CRM_SHEET_ID, sheetName, filas);
+    for (const [pestana, filas] of porDia) {
+      await asegurarPestana(env, env.GOOGLE_CRM_SHEET_ID, pestana, ENCABEZADOS);
+      await appendRowsTo(env, env.GOOGLE_CRM_SHEET_ID, pestana, filas);
+    }
   } catch (err) {
     console.error("Export a Sheets:", err.message);
     return; // no avanza el marcador: se reintenta en el próximo cron
@@ -69,4 +94,11 @@ export async function exportarChatsASheets(env) {
   )
     .bind(ultimoId, ultimoId)
     .run();
+}
+
+/** Vuelve a exportar todo desde cero (para cuando se quiere rearmar la hoja) — el próximo cron re-manda desde el mensaje 0. */
+export async function reiniciarExportacion(env) {
+  await env.CRM_DB.prepare(
+    "INSERT INTO crm_export_state (id, last_message_id) VALUES (1, 0) ON CONFLICT(id) DO UPDATE SET last_message_id = 0"
+  ).run();
 }

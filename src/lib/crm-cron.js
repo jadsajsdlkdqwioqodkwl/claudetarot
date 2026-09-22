@@ -6,6 +6,8 @@
  */
 
 import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
+import { enviarTemplate } from "./whatsapp.js";
+import { registrarMensajeSaliente } from "./crm-db.js";
 
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
@@ -31,7 +33,18 @@ export async function procesarSeguimientosVencidos(env) {
 
   for (const s of vencidos) {
     try {
-      if (s.media_key_real) {
+      if (s.template_name) {
+        // Plantilla: para escribirle a alguien fuera de la ventana de 24h
+        // (típico de un envío masivo a contactos viejos que no escribieron).
+        const parametros = s.template_params ? JSON.parse(s.template_params) : [];
+        const waMessageId = await enviarTemplate(env, s.wa_id, s.template_name, s.template_language || "es", parametros);
+        await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
+          waMessageId,
+          type: "template",
+          body: `Plantilla: ${s.template_name}`,
+          sentBy: s.created_by || "Envío masivo"
+        });
+      } else if (s.media_key_real) {
         await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático");
       } else {
         await mandarTexto(env, s.conv_id, s.wa_id, s.body || s.quick_body, "Seguimiento automático");
