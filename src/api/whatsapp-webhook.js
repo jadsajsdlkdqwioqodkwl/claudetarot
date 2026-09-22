@@ -63,7 +63,7 @@ async function procesarCambio(env, db, value) {
 
   for (const msg of value.messages || []) {
     const waId = msg.from;
-    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name);
+    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
     const conversacion = await obtenerOCrearConversacion(db, contacto.id);
     const { type, body, mediaId, mediaMime } = tipoYCuerpo(msg);
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body, mediaId, mediaMime });
