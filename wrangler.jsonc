@@ -102,7 +102,7 @@
     // LLM los procese después. Usa la MISMA cuenta de servicio de arriba —
     // solo hay que compartirle esta hoja como Editor.
     "GOOGLE_CRM_SHEET_ID": "1ksEBDIQg8DEH8px5tTYzGZbR46bYSaCikXYA9czLVys",
-    "GOOGLE_CRM_SHEET_NAME": "Sheet 1",
+    "GOOGLE_CRM_SHEET_NAME": "Sheet1",
 
     // El catálogo de Commerce Manager (Kit Tarot Rider-Waite de aprendizaje).
     // El botón "Ver catálogo" del chat no lo necesita — usa el que ya está
