@@ -5,7 +5,7 @@
  * No disponible en el modo de contraseña única (no hay una "cuenta propia").
  */
 
-import { conAuth } from "../../lib/crm-auth.js";
+import { conAuth, crearCookieSesion } from "../../lib/crm-auth.js";
 import { verificarPassword, hashPassword } from "../../lib/password.js";
 
 const json = (data, status = 200) =>
@@ -38,7 +38,12 @@ async function post({ request, env, agent }) {
   const passwordHash = await hashPassword(nueva);
   await env.CRM_DB.prepare("UPDATE agents SET password_hash = ? WHERE id = ?").bind(passwordHash, agent.agentId).run();
 
-  return json({ ok: true });
+  // La contraseña nueva invalida todas las sesiones abiertas (ver crm-auth.js);
+  // este dispositivo recibe una cookie nueva para no tener que volver a entrar.
+  const cookie = await crearCookieSesion(env, { ...cuenta, password_hash: passwordHash });
+  const respuesta = json({ ok: true });
+  respuesta.headers.append("Set-Cookie", cookie);
+  return respuesta;
 }
 
 export const onRequestPost = conAuth(post);
