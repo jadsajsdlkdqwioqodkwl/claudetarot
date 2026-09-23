@@ -88,9 +88,11 @@ function escapar(s) {
 function formatearTextoWA(s) {
   return escapar(s)
     .replace(/```([^`]+)```/g, (_, c) => `<code>${c}</code>`)
-    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<strong>$1</strong>")
-    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, "<em>$1</em>")
-    .replace(/(?<!~)~([^~\n]+)~(?!~)/g, "<s>$1</s>")
+    // Como WhatsApp: el símbolo no puede ir pegado a una letra/número por
+    // fuera (si no, "utm_source_x" o un link con _ quedaban en cursiva).
+    .replace(/(?<![\p{L}\p{N}_*])\*(?=\S)([^*\n]+?)(?<=\S)\*(?![\p{L}\p{N}_*])/gu, "<strong>$1</strong>")
+    .replace(/(?<![\p{L}\p{N}_])_(?=\S)([^_\n]+?)(?<=\S)_(?![\p{L}\p{N}_])/gu, "<em>$1</em>")
+    .replace(/(?<![\p{L}\p{N}_~])~(?=\S)([^~\n]+?)(?<=\S)~(?![\p{L}\p{N}_~])/gu, "<s>$1</s>")
     .replace(/\n/g, "<br>");
 }
 
@@ -103,6 +105,7 @@ function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-admin").innerHTML = icon("broadcast");
+  $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
@@ -183,6 +186,7 @@ async function mostrarApp() {
   // "admin", y esto evita preguntarse por qué no aparecen si entraste
   // con otra cuenta.
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
+  $("#sesion-actual").title = $("#sesion-actual").textContent;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
@@ -963,6 +967,33 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+/* ---------- Menú "⋯" del encabezado: en pantallas angostas junta las acciones secundarias ---------- */
+
+const ETIQUETAS_MENU_LISTA = {
+  "btn-instalar": "Instalar como app",
+  "btn-mi-password": "Cambiar mi contraseña",
+  "btn-admin": "Mensaje masivo y herramientas",
+  "btn-equipo": "Equipo",
+  "btn-salir": "Salir"
+};
+
+$("#btn-menu-lista").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = $("#menu-lista");
+  if (menu.classList.toggle("abierto")) {
+    // Solo las que están habilitadas para este usuario (las que el rol oculta traen display:none inline).
+    const botones = [...document.querySelectorAll("#lista header .accion-secundaria")].filter((b) => b.style.display !== "none");
+    menu.innerHTML = botones.map((b) => `<button type="button" data-para="${b.id}">${b.innerHTML}<span>${escapar(ETIQUETAS_MENU_LISTA[b.id] || b.title)}</span></button>`).join("");
+    menu.querySelectorAll("button").forEach((item) => item.addEventListener("click", () => {
+      menu.classList.remove("abierto");
+      document.getElementById(item.dataset.para).click();
+    }));
+  }
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#menu-lista, #btn-menu-lista")) $("#menu-lista")?.classList.remove("abierto");
+});
+
 /* ---------- Instalar como app (PWA) ---------- */
 
 // Instalada igual se actualiza sola: no cachea nada (no-store + el service
@@ -1520,7 +1551,11 @@ function toggleMasPanel() {
     <div class="item" id="mas-plantillas"><div class="titulo">${icon("doc")} Mandar plantilla</div></div>
     <div class="item" id="mas-catalogo"><div class="titulo">${icon("bag")} Mandar catálogo</div></div>
     <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>
-    <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>`;
+    <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>
+    <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Adjuntar foto, video o archivo</div></div>
+    <div class="item mas-solo-angosto" id="mas-emojis"><div class="titulo">${icon("smile")} Emojis</div></div>`;
+  $("#mas-adjuntar").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
+  $("#mas-emojis").addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("abierto"); toggleEmojiPanel(); });
   $("#mas-plantillas").addEventListener("click", () => { panel.classList.remove("abierto"); abrirModalTemplates(); });
   $("#mas-catalogo").addEventListener("click", () => { panel.classList.remove("abierto"); toggleCatalogoPanel(); });
   $("#mas-seguimiento").addEventListener("click", () => { panel.classList.remove("abierto"); toggleSeguimientosPanel(); });
@@ -2872,7 +2907,7 @@ async function pintarDetalle(c) {
       <button class="cancelar" id="capi-elegir-catalogo-btn" type="button" style="width:100%;font-size:12px;margin:6px 0">${icon("bag")} Elegir del catálogo</button>
       <div id="capi-catalogo-lista" style="display:none;max-height:180px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--radio-s);padding:6px;margin-bottom:8px;font-size:12px"></div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="number" id="capi-valor" value="89" min="0" step="0.01" style="flex:1" />
+        <input type="number" id="capi-valor" value="89" min="0" step="0.01" style="flex:1;min-width:0" />
         <select id="capi-moneda" style="width:80px">
           <option value="PEN" selected>PEN</option>
           <option value="USD">USD</option>
