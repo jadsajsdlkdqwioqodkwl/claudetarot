@@ -20,12 +20,11 @@ const PAGINA_MENSAJES = 50;
 // espaciado sin que se sienta lento.
 const INTERVALO_CONVERSACIONES = 25000;
 const INTERVALO_MENSAJES = 15000;
-const INTERVALO_PRESENCIA = 10000;
 
 const estado = {
   conversaciones: [],
   conversacionActivaId: null,
-  filtroSeguimiento: false,
+  filtroMias: false,
   filtroTexto: "",
   archivoAdjunto: null,
   quickReplies: [],
@@ -41,7 +40,6 @@ const estado = {
   hayMasAntiguos: false,
   pollConv: null,
   pollMsg: null,
-  pollPresencia: null,
   respondiendoA: null
 };
 
@@ -96,7 +94,7 @@ function iconizar() {
   $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
-  $("#btn-filtro-seguimiento").innerHTML = icon("starOutline") + " Seguimiento";
+  $("#btn-filtro-mias").innerHTML = icon("star") + " Mis chats";
   $("#vacio-icono").innerHTML = icon("chat");
 }
 iconizar();
@@ -630,7 +628,7 @@ $("#export-reset-btn").addEventListener("click", async () => {
 
 async function cargarConversaciones() {
   const params = new URLSearchParams();
-  if (estado.filtroSeguimiento) params.set("follow_up", "1");
+  if (estado.filtroMias) params.set("mine", "1");
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
 
   const { conversations } = await pedir(`/api/crm/conversations?${params}`);
@@ -737,10 +735,10 @@ function pintarLista() {
         <div class="fila2">
           <span class="preview">${escapar(prefijoYo + previewTexto)}</span>
           ${c.unread_count > 0 ? `<span class="badge">${c.unread_count}</span>` : ""}
-          <button class="btn-star ${c.follow_up ? "marcada" : ""}" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
+          <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${!c.assigned_agent ? "Reclamar este chat" : c.assigned_agent === estado.miNombre ? "Es tuyo — clic para liberar" : `Lo tiene ${escapar(c.assigned_agent)} — clic para reclamarlo`}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
-        ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}</span>` : ""}
+        ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}${c.shared_with ? ` + ${escapar(c.shared_with)}` : ""}</span>` : ""}
       </div>`;
     div.querySelector(".conv-info").addEventListener("click", (e) => {
       if (e.target.closest(".btn-star")) return;
@@ -748,27 +746,28 @@ function pintarLista() {
     });
     div.querySelector(".btn-star").addEventListener("click", (e) => {
       e.stopPropagation();
-      toggleSeguimiento(c);
+      clicEstrella(c);
     });
     cont.appendChild(div);
   }
 }
 
-async function toggleSeguimiento(c) {
-  const nuevo = !c.follow_up;
-  c.follow_up = nuevo ? 1 : 0;
-  pintarLista();
-  const starHeader = $("#star-header");
-  if (starHeader && estado.conversacionActivaId === c.conversation_id) starHeader.innerHTML = icon(nuevo ? "star" : "starOutline");
-  try {
-    await pedir("/api/crm/follow-up", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: c.conversation_id, follow_up: nuevo })
-    });
-  } catch (err) {
-    alert(err.message);
-  }
+/** Clic en la estrella (lista, header, o el botón del sidebar) — reclamar/liberar/reasignar según de quién sea ahora mismo. */
+function clicEstrella(c) {
+  if (!c.assigned_agent) return cambiarAsignacion(c, "reclamar");
+  if (c.assigned_agent === estado.miNombre) return cambiarAsignacion(c, "liberar");
+  return cambiarAsignacion(c, "reasignar", c.assigned_agent);
+}
+
+/** Actualiza solo el ícono/título de la estrella del header, sin repintar todo el chat. */
+function pintarEstrellaHeader(c) {
+  const btn = $("#star-header");
+  if (!btn || estado.conversacionActivaId !== c.conversation_id) return;
+  btn.innerHTML = icon(c.assigned_agent ? "star" : "starOutline");
+  btn.classList.toggle("marcada", Boolean(c.assigned_agent));
+  btn.title = !c.assigned_agent ? "Reclamar este chat"
+    : c.assigned_agent === estado.miNombre ? "Es tuyo — clic para liberar"
+    : `Lo tiene ${c.assigned_agent} — clic para reclamarlo`;
 }
 
 $("#buscar").addEventListener("input", debounce((e) => {
@@ -777,20 +776,17 @@ $("#buscar").addEventListener("input", debounce((e) => {
 }, 300));
 
 $("#filtros").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-follow]");
+  const btn = e.target.closest("button[data-mine]");
   if (!btn) return;
   document.querySelectorAll("#filtros button").forEach((b) => b.classList.remove("activo"));
   btn.classList.add("activo");
-  estado.filtroSeguimiento = btn.dataset.follow === "1";
+  estado.filtroMias = btn.dataset.mine === "1";
   cargarConversaciones();
 });
 
 /* ---------- Conversación abierta ---------- */
 
 async function abrirConversacion(c) {
-  const idAnterior = estado.conversacionActivaId;
-  if (idAnterior && idAnterior !== c.conversation_id) avisarSalidaDeChat(idAnterior);
-
   estado.conversacionActivaId = c.conversation_id;
   estado.mensajesCargados = [];
   estado.firmaMensajesPintados = null;
@@ -812,56 +808,36 @@ async function abrirConversacion(c) {
   await cargarMensajes();
   clearInterval(estado.pollMsg);
   estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
-  iniciarPresencia(c.conversation_id);
+  registrarEntradaChat(c);
 }
 
 function volverALaLista() {
-  if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
   document.body.classList.remove("chat-abierto");
   document.body.classList.remove("detalle-abierto");
 }
 
-/* ---------- Presencia: "Fulana también está viendo este chat" ---------- */
-
-function iniciarPresencia(conversationId) {
-  clearInterval(estado.pollPresencia);
-  const latido = async () => {
-    try {
-      // Un solo request: el POST ya marca presencia Y devuelve quién más
-      // está viendo el chat — antes eran dos (POST + GET) cada vuelta.
-      const { viendo } = await pedir("/api/crm/presence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId })
-      });
-      pintarPresencia(viendo);
-    } catch { /* silencioso — no vale la pena molestar por esto */ }
-  };
-  latido();
-  estado.pollPresencia = setInterval(latido, INTERVALO_PRESENCIA);
+/**
+ * Se llama solo cada vez que se abre un chat — no es un botón. Si el chat ya
+ * es de otra persona y todavía nadie más lo compartía, deja a quien entró
+ * como quien comparte la comisión de esa venta, sin que nadie tenga que
+ * tocar nada aparte de abrir el chat.
+ */
+async function registrarEntradaChat(c) {
+  try {
+    const { assigned_agent, shared_with } = await pedir("/api/crm/assign", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: c.conversation_id, action: "entrar" })
+    });
+    c.assigned_agent = assigned_agent;
+    c.shared_with = shared_with;
+    const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
+    if (conv) { conv.assigned_agent = assigned_agent; conv.shared_with = shared_with; }
+    pintarEstrellaHeader(c);
+    pintarAsignacion(c);
+    pintarLista();
+  } catch { /* silencioso — no vale la pena molestar por esto */ }
 }
-
-function pintarPresencia(viendo) {
-  const cont = $("#presencia-chat");
-  if (!cont) return;
-  cont.textContent = viendo?.length ? `${viendo.join(", ")} también está viendo este chat` : "";
-  cont.style.display = viendo?.length ? "flex" : "none";
-}
-
-/** Best-effort: avisa que ya no lo tiene abierto, para que el aviso desaparezca de inmediato en las demás en vez de esperar los ~12s de que expire solo. `keepalive` para que no se corte si es justo al cerrar la pestaña. */
-function avisarSalidaDeChat(conversationId) {
-  clearInterval(estado.pollPresencia);
-  pedir("/api/crm/presence", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ conversation_id: conversationId }),
-    keepalive: true
-  }).catch(() => {});
-}
-
-window.addEventListener("beforeunload", () => {
-  if (estado.conversacionActivaId) avisarSalidaDeChat(estado.conversacionActivaId);
-});
 
 // El "atrás" del teléfono (o el del navegador) dispara esto en vez de salir
 // del sitio cuando hay algo abierto — ver los pushState en abrirConversacion
@@ -884,7 +860,6 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     clearInterval(estado.pollConv);
     clearInterval(estado.pollMsg);
-    clearInterval(estado.pollPresencia);
     return;
   }
   if (!estado.miRol) return; // todavía no inició sesión
@@ -893,7 +868,6 @@ document.addEventListener("visibilitychange", () => {
   if (estado.conversacionActivaId) {
     cargarMensajes();
     estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
-    iniciarPresencia(estado.conversacionActivaId);
   }
 });
 
@@ -996,10 +970,9 @@ function pintarChatBase(c) {
       <div>
         <div class="nombre">${escapar(nombre)}</div>
         <div class="tel">+${escapar(c.wa_id)}</div>
-        <div id="presencia-chat" class="presencia" style="display:none"></div>
       </div>
       <div class="acciones-chat">
-        <button class="btn-star" id="star-header" title="Marcar seguimiento">${icon(c.follow_up ? "star" : "starOutline")}</button>
+        <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
     </header>
@@ -1037,8 +1010,9 @@ function pintarChatBase(c) {
   });
   $("#star-header").addEventListener("click", () => {
     const c2 = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
-    if (c2) toggleSeguimiento(c2);
+    if (c2) clicEstrella(c2);
   });
+  pintarEstrellaHeader(c);
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("paste", onPegarImagen);
@@ -2621,13 +2595,14 @@ async function pintarDetalle(c) {
   await actualizarSeguimientosDetalle();
 }
 
-/** "Asesora asignada" — bandeja compartida por defecto, cualquiera lo reclama con un clic. */
+/** "Asesora asignada" — bandeja compartida por defecto, la estrella (lista/header/acá) lo reclama con un clic. */
 function pintarAsignacion(c) {
   const cont = $("#detalle-asignacion");
   if (!cont) return;
 
   const miNombre = estado.miNombre;
   const asignado = c.assigned_agent;
+  const compartido = c.shared_with;
 
   if (!asignado) {
     cont.innerHTML = `<button class="crear" id="btn-reclamar" type="button" style="width:100%">${icon("star")} Reclamar este chat</button>`;
@@ -2640,6 +2615,7 @@ function pintarAsignacion(c) {
     <div class="ad-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div>${icon("star")} ${esMio ? "Es tuyo" : `Lo tiene <strong>${escapar(asignado)}</strong>`}</div>
     </div>
+    ${compartido ? `<div class="ayuda-modal" style="margin-top:4px">${icon("users")} Comisión compartida con <strong>${escapar(compartido)}</strong> — entró a este chat después de que ya era de ${escapar(asignado)}.</div>` : ""}
     <button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">
       ${esMio ? "Liberar chat (volver a bandeja compartida)" : "Reclamar para mí (se lo quita a " + escapar(asignado) + ")"}
     </button>`;
@@ -2649,15 +2625,17 @@ function pintarAsignacion(c) {
 async function cambiarAsignacion(c, action, deQuien) {
   if (action === "reasignar" && !confirm(`¿Quitarle este chat a ${deQuien} y asignártelo a ti?`)) return;
   try {
-    const { assigned_agent } = await pedir("/api/crm/assign", {
+    const { assigned_agent, shared_with } = await pedir("/api/crm/assign", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conversation_id: c.conversation_id, action })
     });
     c.assigned_agent = assigned_agent;
+    c.shared_with = shared_with ?? null;
     const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
-    if (conv) conv.assigned_agent = assigned_agent;
+    if (conv) { conv.assigned_agent = assigned_agent; conv.shared_with = c.shared_with; }
     pintarAsignacion(c);
+    pintarEstrellaHeader(c);
     pintarLista();
   } catch (err) {
     alert(err.message);

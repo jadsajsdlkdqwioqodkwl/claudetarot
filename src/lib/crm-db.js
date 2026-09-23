@@ -100,33 +100,6 @@ export async function actualizarEstadoMensaje(db, waMessageId, status, errorDeta
     .run();
 }
 
-/** Marca que un agente tiene este chat abierto ahora mismo (se llama cada pocos segundos mientras lo tiene abierto). */
-export async function marcarPresencia(db, conversationId, agentName) {
-  await db
-    .prepare(
-      `INSERT INTO presence (conversation_id, agent_name, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(conversation_id, agent_name) DO UPDATE SET updated_at = datetime('now')`
-    )
-    .bind(conversationId, agentName)
-    .run();
-}
-
-export async function quitarPresencia(db, conversationId, agentName) {
-  await db.prepare("DELETE FROM presence WHERE conversation_id = ? AND agent_name = ?").bind(conversationId, agentName).run();
-}
-
-/** Quién más (aparte de quien pregunta) tiene este chat abierto — "reciente" es en los últimos 25s (el heartbeat manda cada 10s), para que se apague solo si cierra la pestaña sin avisar sin parpadear por un solo request tardío. */
-export async function agentesViendoChat(db, conversationId, exceptoAgente) {
-  const { results } = await db
-    .prepare(
-      `SELECT agent_name FROM presence
-       WHERE conversation_id = ? AND agent_name != ? AND updated_at > datetime('now', '-25 seconds')`
-    )
-    .bind(conversationId, exceptoAgente || "")
-    .all();
-  return results.map((r) => r.agent_name);
-}
-
 /** Busca el id interno de un mensaje por su wa_message_id — para resolver a qué mensaje responde uno entrante. */
 export async function idPorWaMessageId(db, waMessageId) {
   if (!waMessageId) return null;
@@ -153,13 +126,6 @@ export async function cancelarSeguimientosPendientes(db, conversationId) {
   await db
     .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'")
     .bind(conversationId)
-    .run();
-}
-
-export async function marcarSeguimiento(db, conversationId, followUp) {
-  await db
-    .prepare("UPDATE conversations SET follow_up = ? WHERE id = ?")
-    .bind(followUp ? 1 : 0, conversationId)
     .run();
 }
 

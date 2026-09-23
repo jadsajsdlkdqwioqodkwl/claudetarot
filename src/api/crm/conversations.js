@@ -1,7 +1,7 @@
 /**
  * GET /api/crm/conversations — bandeja de entrada: una fila por conversación,
  * con el contacto y el último mensaje, ordenadas por actividad reciente.
- * Filtros opcionales: ?follow_up=1 (solo las marcadas con estrella) &q=texto
+ * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta) &q=texto
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -12,14 +12,17 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-async function handler({ request, env }) {
+async function handler({ request, env, agent }) {
   const url = new URL(request.url);
-  const soloSeguimiento = url.searchParams.get("follow_up") === "1";
+  const soloMias = url.searchParams.get("mine") === "1";
   const q = url.searchParams.get("q");
 
   const condiciones = [];
   const params = [];
-  if (soloSeguimiento) condiciones.push("conv.follow_up = 1");
+  if (soloMias) {
+    condiciones.push("conv.assigned_agent = ?");
+    params.push(agent?.displayName || agent?.username || "");
+  }
   if (q) {
     condiciones.push("(c.profile_name LIKE ? OR c.wa_id LIKE ?)");
     params.push(`%${q}%`, `%${q}%`);
@@ -31,8 +34,8 @@ async function handler({ request, env }) {
         conv.id AS conversation_id,
         conv.status,
         conv.unread_count,
-        conv.follow_up,
         conv.assigned_agent,
+        conv.shared_with,
         conv.last_message_at,
         c.id AS contact_id,
         c.wa_id,
