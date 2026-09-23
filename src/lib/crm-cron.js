@@ -3,6 +3,11 @@
  * seguimientos programados que ya vencieron. Si el envío falla (número
  * bloqueado, ventana de 24h cerrada, etc.) queda marcado `fallido` en vez de
  * reintentarse solo — evita un bucle de reintentos contra un número inválido.
+ *
+ * Este cron nunca manda plantilla salvo que `s.template_name` venga seteado
+ * (solo lo pone bulk-send) — un seguimiento sin eso es texto libre y por
+ * eso falla en silencio fuera de ventana en vez de cobrar. Ver
+ * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
 import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";

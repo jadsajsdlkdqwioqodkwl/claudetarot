@@ -6,6 +6,12 @@
  * POST /api/crm/templates — { conversation_id, name, language, parameters? }
  *      manda un template — el único tipo de mensaje válido con alguien que
  *      no escribió en las últimas 24h.
+ *
+ * Cobra según categoría (marketing siempre, utility/authentication solo
+ * fuera de ventana) salvo que caiga dentro del free entry point de 72h de
+ * un anuncio. Un botón de quick-reply en la plantilla es la forma de que,
+ * en cuanto el cliente lo toque, se reabran 24h gratis. Ver
+ * docs/whatsapp-ventanas-y-costos.md.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";

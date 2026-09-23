@@ -12,6 +12,9 @@
  *
  * `test_event_code` (opcional): lo da Events Manager → Test Events, para
  * confirmar que el evento llega bien antes de mandarlo "de verdad".
+ *
+ * Conversions API, no es un mensaje de WhatsApp — nunca cobra, sea con
+ * ctwa_clid o en modo manual. Ver docs/whatsapp-ventanas-y-costos.md.
  */
 
 import { conAdmin } from "../../lib/crm-auth.js";

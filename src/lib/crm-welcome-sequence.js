@@ -3,6 +3,11 @@
  * conversación, un paso detrás del otro, en orden — las fotos de un mismo
  * paso van en paralelo, pero un paso espera a que termine el anterior para
  * que lleguen en el orden que armó el admin.
+ *
+ * Siempre texto libre, nunca plantilla. Cuando la dispara
+ * `mandarBienvenidaSiAplica` (contacto nuevo con ctwa_clid), responder acá
+ * dentro del primer minuto es justo lo que abre el free entry point de 72h
+ * de Meta — ver docs/whatsapp-ventanas-y-costos.md.
  */
 
 import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";

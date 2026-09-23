@@ -4,6 +4,13 @@
  *      { conversation_id, send_at, body?, quick_reply_id? } — texto o una respuesta rápida guardada
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
+ *
+ * Siempre texto libre — no acepta template_name (eso solo lo maneja
+ * bulk-send.js). Para un seguimiento que sabes que caerá fuera de la
+ * ventana de 24h/72h (típico de provincia, cobro días después), no uses
+ * esto: usa bulk-send en modo plantilla o mándala a mano desde el chat,
+ * o este seguimiento va a fallar en silencio en vez de llegar. Ver
+ * docs/whatsapp-ventanas-y-costos.md.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
