@@ -75,7 +75,7 @@ export async function exportarChatsASheets(env) {
       m.ctwa_clid || "",
       m.notes || "",
       m.assigned_agent || "",
-      m.shared_with || ""
+      (m.shared_with || "").split("\n").filter(Boolean).join(", ")
     ];
     if (!porDia.has(pestana)) porDia.set(pestana, []);
     porDia.get(pestana).push(fila);

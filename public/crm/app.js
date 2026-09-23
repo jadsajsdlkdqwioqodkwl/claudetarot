@@ -1195,7 +1195,7 @@ function pintarLista() {
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
-        ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}${c.shared_with ? ` + ${escapar(c.shared_with)}` : ""}</span>` : ""}
+        ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1259,18 +1259,29 @@ $("#seleccion-aplicar-secuencia").addEventListener("click", () => {
  * si está libre o es de otro y todavía nadie lo comparte, liberar/dejar de
  * compartir si es tuyo de alguna forma, y sin acción si ya lo tienen dos.
  */
+/** Quienes comparten la comisión además del dueño — `shared_with` los guarda uno por línea. */
+function compartidosDe(c) {
+  return c.shared_with ? c.shared_with.split("\n").filter(Boolean) : [];
+}
+
+/** "A", "A y B", "A, B y C". */
+function unirNombres(nombres) {
+  return nombres.length > 1 ? `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}` : (nombres[0] || "");
+}
+
 function tituloEstrella(c) {
   const miNombre = estado.miNombre;
+  const otros = compartidosDe(c);
   if (!c.assigned_agent) return "Reclamar este chat";
-  if (c.assigned_agent === miNombre) return c.shared_with ? `Es tuyo, compartido con ${c.shared_with} — clic para liberar` : "Es tuyo — clic para liberar";
-  if (c.shared_with === miNombre) return `Lo tiene ${c.assigned_agent}, lo compartís vos — clic para dejar de compartir`;
-  if (!c.shared_with) return `Lo tiene ${c.assigned_agent} — clic para reclamar la comisión compartida`;
-  return `Lo tienen ${c.assigned_agent} y ${c.shared_with}`;
+  if (c.assigned_agent === miNombre) return otros.length ? `Es tuyo, compartido con ${unirNombres(otros)} — clic para liberar` : "Es tuyo — clic para liberar";
+  if (otros.includes(miNombre)) return `Lo tiene ${c.assigned_agent}, lo compartís vos — clic para dejar de compartir`;
+  if (!otros.length) return `Lo tiene ${c.assigned_agent} — clic para reclamar la comisión compartida`;
+  return `Lo tienen ${unirNombres([c.assigned_agent, ...otros])}`;
 }
 
 /** Clic en la estrella (lista, header, o el botón del sidebar) — reclama o se saca (nunca le quita el lugar al otro). */
 function clicEstrella(c) {
-  const tengoParte = c.assigned_agent === estado.miNombre || c.shared_with === estado.miNombre;
+  const tengoParte = c.assigned_agent === estado.miNombre || compartidosDe(c).includes(estado.miNombre);
   cambiarAsignacion(c, tengoParte ? "liberar" : "reclamar");
 }
 
@@ -3823,32 +3834,34 @@ function pintarAsignacion(c) {
 
   const miNombre = estado.miNombre;
   const asignado = c.assigned_agent;
-  const compartido = c.shared_with;
+  const otros = compartidosDe(c);
   const esAdmin = estado.miRol === "admin";
-  const btnQuitar = esAdmin && asignado
-    ? `<button class="cancelar" id="btn-quitar-asignacion" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("close")} Vaciar asignación (admin)</button>`
+  const btnAdmin = esAdmin
+    ? `<button class="cancelar" id="btn-editar-asignacion" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("users")} Elegir a quién se asigna (admin)</button>`
     : "";
 
   if (!asignado) {
-    cont.innerHTML = `<button class="crear" id="btn-reclamar" type="button" style="width:100%">${icon("star")} Reclamar este chat</button>`;
+    cont.innerHTML = `<button class="crear" id="btn-reclamar" type="button" style="width:100%">${icon("star")} Reclamar este chat</button>${btnAdmin}`;
     $("#btn-reclamar").addEventListener("click", () => cambiarAsignacion(c, "reclamar"));
+    $("#btn-editar-asignacion")?.addEventListener("click", () => abrirModalAsignar(c));
     return;
   }
 
   const esMio = asignado === miNombre;
-  const loComparto = compartido === miNombre;
+  const loComparto = otros.includes(miNombre);
+  const nombresHtml = (arr) => unirNombres(arr.map((n) => `<strong>${escapar(n)}</strong>`));
   let linea, boton;
   if (esMio) {
-    linea = compartido ? `Es tuyo, compartido con <strong>${escapar(compartido)}</strong>` : "Es tuyo";
-    boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">${compartido ? `Liberar (${escapar(compartido)} pasa a ser el dueño)` : "Liberar chat (volver a bandeja compartida)"}</button>`;
+    linea = otros.length ? `Es tuyo, compartido con ${nombresHtml(otros)}` : "Es tuyo";
+    boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">${otros.length ? `Liberar (${escapar(otros[0])} pasa a ser el dueño)` : "Liberar chat (volver a bandeja compartida)"}</button>`;
   } else if (loComparto) {
-    linea = `Lo tiene <strong>${escapar(asignado)}</strong>, lo compartís vos`;
+    linea = `Lo tiene <strong>${escapar(asignado)}</strong>, lo compartís vos${otros.length > 1 ? ` con ${nombresHtml(otros.filter((n) => n !== miNombre))}` : ""}`;
     boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">Dejar de compartir</button>`;
-  } else if (!compartido) {
+  } else if (!otros.length) {
     linea = `Lo tiene <strong>${escapar(asignado)}</strong>`;
     boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">Reclamar comisión compartida</button>`;
   } else {
-    linea = `Lo tienen <strong>${escapar(asignado)}</strong> y <strong>${escapar(compartido)}</strong>`;
+    linea = `Lo tienen ${nombresHtml([asignado, ...otros])}`;
     boton = "";
   }
 
@@ -3857,19 +3870,107 @@ function pintarAsignacion(c) {
       <div>${icon("star")} ${linea}</div>
     </div>
     ${boton}
-    ${btnQuitar}`;
+    ${btnAdmin}`;
   $("#btn-desasignar")?.addEventListener("click", () => cambiarAsignacion(c, esMio || loComparto ? "liberar" : "reclamar"));
-  $("#btn-quitar-asignacion")?.addEventListener("click", () => {
-    if (confirm(`¿Vaciar la asignación de este chat${asignado ? ` (lo tiene ${asignado}${compartido ? ` + ${compartido}` : ""})` : ""}?`)) cambiarAsignacion(c, "quitar");
-  });
+  $("#btn-editar-asignacion")?.addEventListener("click", () => abrirModalAsignar(c));
 }
 
-async function cambiarAsignacion(c, action) {
+/* ---------- Modal de asignación (admin): dueño + quienes comparten ---------- */
+
+let chatAsignando = null;
+
+async function abrirModalAsignar(c) {
+  chatAsignando = c;
+  $("#asignar-contacto").textContent = c.profile_name || `+${c.wa_id}`;
+  $("#asignar-lista").innerHTML = "Cargando…";
+  $("#modal-asignar-fondo").classList.add("abierto");
+  let agentes = [];
+  try {
+    ({ agents: agentes } = await pedir("/api/crm/agents"));
+  } catch (err) {
+    $("#asignar-lista").textContent = err.message;
+    return;
+  }
+  const actuales = [c.assigned_agent, ...compartidosDe(c)].filter(Boolean);
+  // Los activos, más cualquiera que ya lo tenga aunque hoy esté inactivo (para no perderlo sin querer).
+  const nombres = [...new Set([
+    ...agentes.filter((a) => a.active).map((a) => a.display_name),
+    ...actuales
+  ])];
+  if (!nombres.length) {
+    $("#asignar-lista").innerHTML = `<p class="ayuda-modal">Todavía no hay vendedores — créalos en "Equipo".</p>`;
+    return;
+  }
+  $("#asignar-lista").innerHTML = nombres.map((n) => `
+    <div class="asignar-fila">
+      <label class="asignar-incluir">
+        <input type="checkbox" class="asignar-check" value="${escapar(n)}" ${actuales.includes(n) ? "checked" : ""} />
+        <span>${escapar(n)}${n === estado.miNombre ? ` <span class="sub">(tú)</span>` : ""}</span>
+      </label>
+      <label class="asignar-dueno" title="La persona principal del chat">
+        <input type="radio" name="asignar-dueno" value="${escapar(n)}" ${n === c.assigned_agent ? "checked" : ""} />
+        Dueño
+      </label>
+    </div>`).join("");
+  sincronizarModalAsignar();
+  $("#asignar-lista").querySelectorAll("input").forEach((el) => el.addEventListener("change", (e) => {
+    // Marcar a alguien como dueño lo incluye; sacarlo de la lista le quita lo de dueño.
+    if (e.target.type === "radio") e.target.closest(".asignar-fila").querySelector(".asignar-check").checked = true;
+    sincronizarModalAsignar();
+  }));
+}
+
+function sincronizarModalAsignar() {
+  const filas = [...document.querySelectorAll("#asignar-lista .asignar-fila")];
+  for (const f of filas) {
+    const incluido = f.querySelector(".asignar-check").checked;
+    const radio = f.querySelector('input[type="radio"]');
+    if (!incluido) radio.checked = false;
+    f.classList.toggle("incluido", incluido);
+  }
+  const incluidos = filas.filter((f) => f.querySelector(".asignar-check").checked);
+  if (incluidos.length && !incluidos.some((f) => f.querySelector('input[type="radio"]').checked)) {
+    incluidos[0].querySelector('input[type="radio"]').checked = true;
+  }
+  const dueno = document.querySelector('#asignar-lista input[type="radio"]:checked')?.value;
+  const otros = incluidos.map((f) => f.querySelector(".asignar-check").value).filter((n) => n !== dueno);
+  $("#asignar-resumen").textContent = !incluidos.length
+    ? "Queda libre (bandeja compartida)."
+    : `Dueño: ${dueno}${otros.length ? ` · comparten: ${unirNombres(otros)}` : ""}`;
+}
+
+$("#asignar-cancelar").addEventListener("click", () => {
+  $("#modal-asignar-fondo").classList.remove("abierto");
+  chatAsignando = null;
+});
+
+$("#asignar-libre").addEventListener("click", () => {
+  document.querySelectorAll("#asignar-lista .asignar-check").forEach((el) => { el.checked = false; });
+  sincronizarModalAsignar();
+});
+
+$("#asignar-guardar").addEventListener("click", async () => {
+  const c = chatAsignando;
+  if (!c) return;
+  const dueno = document.querySelector('#asignar-lista input[type="radio"]:checked')?.value || null;
+  const shared = [...document.querySelectorAll("#asignar-lista .asignar-check:checked")].map((el) => el.value).filter((n) => n !== dueno);
+  const btn = $("#asignar-guardar");
+  btn.disabled = true;
+  try {
+    await cambiarAsignacion(c, "definir", { owner: dueno, shared });
+    $("#modal-asignar-fondo").classList.remove("abierto");
+    chatAsignando = null;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function cambiarAsignacion(c, action, extra) {
   try {
     const { assigned_agent, shared_with } = await pedir("/api/crm/assign", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: c.conversation_id, action })
+      body: JSON.stringify({ conversation_id: c.conversation_id, action, ...extra })
     });
     c.assigned_agent = assigned_agent;
     c.shared_with = shared_with ?? null;

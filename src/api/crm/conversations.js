@@ -25,8 +25,10 @@ async function handler({ request, env, agent }) {
   const condiciones = [];
   const params = [];
   if (soloMias) {
-    condiciones.push("conv.assigned_agent = ?");
-    params.push(agent?.displayName || agent?.username || "");
+    // Los que el chat tiene asignados como dueño o compartiendo (uno por línea en shared_with).
+    const yo = agent?.displayName || agent?.username || "";
+    condiciones.push("(conv.assigned_agent = ? OR (? <> '' AND instr(char(10) || COALESCE(conv.shared_with, '') || char(10), char(10) || ? || char(10)) > 0))");
+    params.push(yo, yo, yo);
   }
   if (q) {
     condiciones.push("(c.profile_name LIKE ? OR c.wa_id LIKE ?)");

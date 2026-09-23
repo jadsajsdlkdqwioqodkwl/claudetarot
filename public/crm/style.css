@@ -438,6 +438,14 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .fs-delay-valor, .fs-delay-unidad { padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
 
 /* ---------- Selector de emojis ---------- */
+#asignar-lista { display: flex; flex-direction: column; gap: 6px; }
+.asignar-fila { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
+.asignar-fila.incluido { border-color: var(--verde); background: #f1fbf4; }
+.asignar-incluir { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; }
+.asignar-incluir span { overflow-wrap: anywhere; }
+.asignar-incluir .sub { color: var(--gris); font-size: 12px; }
+.asignar-dueno { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--gris); cursor: pointer; flex-shrink: 0; }
+.asignar-fila input { accent-color: var(--verde-osc); margin: 0; }
 .emoji-barra { margin: -6px 0 10px; }
 .emoji-toggle { border: 0; background: transparent; color: var(--gris); font-size: 12px; font-family: inherit; cursor: pointer; padding: 4px 6px; border-radius: var(--radio-s); display: inline-flex; align-items: center; gap: 4px; }
 .emoji-toggle:hover, .emoji-barra.abierta .emoji-toggle { background: var(--fondo); color: var(--texto); }
