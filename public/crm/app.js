@@ -188,6 +188,7 @@ async function mostrarApp() {
   cargarConversaciones();
   cargarQuickReplies();
   configurarNotificaciones();
+  configurarInstalacion();
   clearInterval(estado.pollConv);
   estado.pollConv = setInterval(cargarConversaciones, INTERVALO_CONVERSACIONES);
 }
@@ -930,6 +931,46 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+/* ---------- Instalar como app (PWA) ---------- */
+
+// Instalada igual se actualiza sola: no cachea nada (no-store + el service
+// worker no intercepta fetch), así que cada apertura trae la última versión.
+let promptInstalacion = null;
+const appInstalada = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  promptInstalacion = e;
+});
+window.addEventListener("appinstalled", () => {
+  promptInstalacion = null;
+  const btn = $("#btn-instalar");
+  if (btn) btn.style.display = "none";
+});
+
+function configurarInstalacion() {
+  const btn = $("#btn-instalar");
+  if (!btn || appInstalada()) return;
+  btn.innerHTML = icon("install");
+  btn.style.display = "";
+  btn.onclick = async () => {
+    if (promptInstalacion) {
+      promptInstalacion.prompt();
+      await promptInstalacion.userChoice.catch(() => {});
+      promptInstalacion = null;
+      return;
+    }
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+      alert("Para instalarla en iPhone: abre el CRM en Safari → botón Compartir (cuadrado con flecha) → \"Agregar a pantalla de inicio\". Después ábrela siempre desde ese ícono.");
+    } else if (/Android/i.test(ua)) {
+      alert("Para instalarla: toca el menú ⋮ del navegador → \"Instalar app\" o \"Agregar a pantalla de inicio\". Después ábrela desde el ícono en tu pantalla.");
+    } else {
+      alert("Para instalarla: busca el ícono de instalar (monitor con flecha) al final de la barra de direcciones, o menú ⋮ → \"Guardar y compartir\" / \"Instalar CRM WhatsApp\".");
+    }
+  };
+}
+
 /* ---------- Notificaciones push (mensaje nuevo, con la pestaña de fondo o el celular bloqueado) ---------- */
 
 function urlBase64ToUint8Array(base64) {
@@ -1087,7 +1128,15 @@ function ayudaPermisoNotificaciones(permiso) {
       "3. Recarga la página y toca la campana otra vez.";
   }
   if (!ios) pasos += "\n\nOjo: en modo incógnito o en un perfil de invitado las notificaciones push nunca funcionan — abre el CRM en una ventana normal.";
-  if (brave) pasos += "\n\nEn Brave además: brave://settings/privacy → activa \"Usar los servicios de Google para la mensajería push\" y reinicia Brave.";
+
+  if (brave) {
+    // Brave trae apagado el servicio push de Google: con eso apagado falla
+    // siempre con "permission denied", aunque el permiso del sitio esté bien.
+    const braveFix = android
+      ? "BRAVE (esto es casi seguro lo que falla): abre Brave → ⋮ → Configuración → Privacidad y seguridad → activa \"Usar los servicios de Google para la mensajería push\". Cierra Brave por completo (quítalo de las apps recientes), ábrelo y toca la campana otra vez."
+      : "BRAVE (esto es casi seguro lo que falla): escribe brave://settings/privacy en la barra de direcciones → activa \"Usar los servicios de Google para la mensajería push\" → clic en \"Reiniciar\". Después toca la campana otra vez.";
+    return `${braveFix}\n\nSi después de eso sigue igual:\n${pasos}`;
+  }
 
   return `${intro}\n\n${pasos}`;
 }
