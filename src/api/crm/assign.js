@@ -48,6 +48,12 @@ async function patch({ request, env, agent }) {
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   if (accion === "liberar") {
+    // Si alguien más ya entró a compartir la comisión, no se le borra su
+    // reclamo al liberar — el chat pasa a ser suyo en vez de quedar libre.
+    if (conv.shared_with) {
+      await env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = ?, shared_with = NULL WHERE id = ?").bind(conv.shared_with, conversationId).run();
+      return json({ ok: true, assigned_agent: conv.shared_with, shared_with: null });
+    }
     await env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = NULL, shared_with = NULL WHERE id = ?").bind(conversationId).run();
     return json({ ok: true, assigned_agent: null, shared_with: null });
   }
