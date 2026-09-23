@@ -282,7 +282,7 @@ button { font-family: inherit; touch-action: manipulation; }
 #panel-rapidas .item, #panel-seguimientos .item, #panel-catalogo .item, #panel-mas .item { padding: 10px 12px; border-bottom: 1px solid var(--borde); cursor: pointer; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 #panel-rapidas .item:hover, #panel-seguimientos .item:hover, #panel-catalogo .item:hover, #panel-mas .item:hover { background: #f5f6f6; }
 #panel-rapidas .item .titulo, #panel-seguimientos .item .titulo, #panel-catalogo .item .titulo, #panel-mas .item .titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 4px; }
-#panel-rapidas .item .cuerpo, #panel-seguimientos .item .cuerpo { font-size: 12px; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+#panel-rapidas .item .cuerpo, #panel-seguimientos .item .cuerpo { font-size: 12px; color: var(--gris); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 #panel-rapidas .item button.borrar, #panel-seguimientos .item button.borrar { border: 0; background: transparent; color: var(--peligro); cursor: pointer; font-size: 14px; flex-shrink: 0; }
 #panel-rapidas .item button.estrella-bienvenida { border: 0; background: transparent; color: #ccc; cursor: pointer; font-size: 14px; flex-shrink: 0; }
 #panel-rapidas .item button.estrella-bienvenida.activa { color: #f5b301; }
