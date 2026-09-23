@@ -975,49 +975,121 @@ async function configurarNotificaciones() {
     }
   });
 
-  const pintarEstadoBoton = (activo) => {
-    btn.innerHTML = icon(activo ? "bell" : "bellOff");
-    btn.title = activo ? "Notificaciones activadas — clic para desactivar" : "Activar notificaciones";
-    btn.classList.toggle("notif-activa", activo);
+  let activo = false;
+  const pintarEstadoBoton = (a) => {
+    activo = a;
+    btn.innerHTML = icon(a ? "bell" : "bellOff");
+    btn.title = a ? "Notificaciones activadas — clic para desactivar" : "Activar notificaciones";
+    btn.classList.toggle("notif-activa", a);
   };
 
   const suscripcionActual = await registro.pushManager.getSubscription();
   pintarEstadoBoton(Boolean(suscripcionActual) && Notification.permission === "granted");
 
+  // La clave se pide de antemano: entre el clic y el permiso/subscribe no
+  // puede haber un fetch, o el navegador deja de considerarlo "gesto del
+  // usuario" y rechaza con "permission denied" sin mostrar el aviso.
+  let vapidKey = null;
+  pedir("/api/crm/push-subscribe").then(({ key }) => { vapidKey = key; }).catch(() => {});
+
   btn.onclick = async () => {
-    const suscripcion = await registro.pushManager.getSubscription();
-    if (suscripcion) {
-      await pedir("/api/crm/push-subscribe", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: suscripcion.endpoint })
-      }).catch(() => {});
-      await suscripcion.unsubscribe();
+    if (activo) {
+      const suscripcion = await registro.pushManager.getSubscription();
+      if (suscripcion) {
+        await pedir("/api/crm/push-subscribe", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: suscripcion.endpoint })
+        }).catch(() => {});
+        await suscripcion.unsubscribe();
+      }
       pintarEstadoBoton(false);
       return;
     }
 
-    if (Notification.permission === "denied") {
-      alert("Bloqueaste las notificaciones para este sitio — para activarlas de nuevo tienes que habilitarlas desde la configuración del navegador.");
+    // Primero el permiso, pedido directo desde el clic.
+    let permiso = Notification.permission;
+    if (permiso !== "granted") {
+      try {
+        permiso = await Notification.requestPermission();
+      } catch {
+        permiso = await new Promise((r) => Notification.requestPermission(r)); // Safari viejo: solo callback
+      }
+    }
+    if (permiso !== "granted") {
+      alert(ayudaPermisoNotificaciones(permiso));
       return;
     }
 
     try {
-      const { key } = await pedir("/api/crm/push-subscribe");
-      const nueva = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(key)
-      });
+      if (!vapidKey) vapidKey = (await pedir("/api/crm/push-subscribe")).key;
+      // Si el servicio push del navegador no responde (Brave sin servicios de
+      // Google, red que bloquea a Google), subscribe() se cuelga para siempre.
+      const suscribir = () => Promise.race([
+        registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidKey) }),
+        new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("El servicio push del navegador no respondió en 20 s."), { name: "TimeoutError" })), 20000))
+      ]);
+      let nueva;
+      try {
+        nueva = await suscribir();
+      } catch (err) {
+        // Una suscripción vieja hecha con otra clave VAPID bloquea la nueva.
+        const vieja = await registro.pushManager.getSubscription();
+        if (!vieja) throw err;
+        await vieja.unsubscribe();
+        nueva = await suscribir();
+      }
       await pedir("/api/crm/push-subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: nueva })
       });
       pintarEstadoBoton(true);
+      registro.showNotification("CRM WhatsApp", {
+        body: "Listo — las notificaciones quedaron activadas en este dispositivo.",
+        icon: "/kittarotcod/favicon-180.png"
+      }).catch(() => {});
     } catch (err) {
-      alert(err.message || "No se pudo activar las notificaciones.");
+      const esPermiso = err?.name === "NotAllowedError" || /permission/i.test(err?.message || "");
+      alert((esPermiso ? ayudaPermisoNotificaciones("bloqueado") : "No se pudo activar las notificaciones.") +
+        `\n\n(Detalle técnico: ${err?.name || "Error"} — ${err?.message || ""} · permiso=${Notification.permission})`);
     }
   };
+}
+
+/** Instrucciones según el dispositivo — casi siempre el bloqueo está en la configuración del sitio o del sistema, no en el CRM. */
+function ayudaPermisoNotificaciones(permiso) {
+  const ua = navigator.userAgent;
+  const android = /Android/i.test(ua);
+  const ios = /iPhone|iPad|iPod/i.test(ua);
+  const brave = Boolean(navigator.brave);
+  const firefox = /Firefox/i.test(ua);
+  const edge = /Edg\//.test(ua);
+  const mac = /Macintosh/.test(ua);
+
+  const intro = permiso === "default"
+    ? "No se aceptó el aviso de notificaciones."
+    : "El navegador tiene bloqueadas las notificaciones para este sitio.";
+
+  let pasos;
+  if (ios) {
+    pasos = "En iPhone solo funcionan si el CRM está instalado: en Safari toca Compartir → \"Agregar a pantalla de inicio\", ábrelo desde ese ícono y vuelve a tocar la campana (necesita iOS 16.4 o más nuevo).";
+  } else if (android) {
+    pasos = "1. Toca el candado (o los 3 puntos → ⓘ Información del sitio) al lado de la dirección → Permisos → Notificaciones → Permitir.\n" +
+      "2. Si ya decía Permitir: Ajustes del teléfono → Aplicaciones → " + (brave ? "Brave" : edge ? "Edge" : firefox ? "Firefox" : "Chrome") + " → Notificaciones → activadas.\n" +
+      "3. Recarga la página y toca la campana otra vez.";
+  } else {
+    const nav = brave ? "Brave" : edge ? "Edge" : firefox ? "Firefox" : "Chrome";
+    pasos = "1. Clic en el ícono a la izquierda de la dirección (candado/ajustes) → Notificaciones → Permitir (o \"Restablecer permisos\").\n" +
+      (mac
+        ? `2. Si sigue igual: Ajustes del Sistema del Mac → Notificaciones → ${nav} → Permitir notificaciones.\n`
+        : `2. Si sigue igual: Configuración de Windows → Sistema → Notificaciones → activadas, y ${nav} activado en la lista.\n`) +
+      "3. Recarga la página y toca la campana otra vez.";
+  }
+  if (!ios) pasos += "\n\nOjo: en modo incógnito o en un perfil de invitado las notificaciones push nunca funcionan — abre el CRM en una ventana normal.";
+  if (brave) pasos += "\n\nEn Brave además: brave://settings/privacy → activa \"Usar los servicios de Google para la mensajería push\" y reinicia Brave.";
+
+  return `${intro}\n\n${pasos}`;
 }
 
 function pintarChatBase(c) {
