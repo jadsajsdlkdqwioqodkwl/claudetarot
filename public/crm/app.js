@@ -772,6 +772,38 @@ function actualizarAvisosNoLeidos() {
   // entras si ya había chats sin leer) — solo cuando el total sube desde ahí.
   if (totalNoLeidosPrevio !== null && total > totalNoLeidosPrevio) reproducirSonidoNuevoMensaje();
   totalNoLeidosPrevio = total;
+  avisarLocalmente();
+}
+
+/* Plan B cuando el navegador no tiene servicio push (Brave suele fallar con
+   "push service error"): con el permiso de notificaciones concedido, el
+   propio CRM muestra el aviso al detectar mensajes nuevos en el poll. Solo
+   funciona mientras el CRM esté abierto (aunque sea de fondo/minimizado). */
+const NOTIF_LOCAL_KEY = "crm-notif-local";
+let noLeidosPorChat = null;
+
+function notifLocalActiva() {
+  try { return localStorage.getItem(NOTIF_LOCAL_KEY) === "1"; } catch { return false; }
+}
+
+function avisarLocalmente() {
+  const actuales = new Map(estado.conversaciones.map((c) => [c.conversation_id, c.unread_count || 0]));
+  const previos = noLeidosPorChat;
+  noLeidosPorChat = actuales;
+  if (!previos || !notifLocalActiva() || Notification.permission !== "granted") return;
+
+  for (const c of estado.conversaciones) {
+    if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
+    if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
+    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : ({ image: "📷 Foto", video: "🎥 Video", audio: "🎵 Audio", document: "📄 Documento", sticker: "Sticker" }[c.last_type] || "Mensaje nuevo");
+    navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
+      body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
+      tag: `chat-${c.conversation_id}`,
+      renotify: true,
+      icon: "/crm/icons/icon-192.png",
+      data: { conversation_id: c.conversation_id }
+    })).catch(() => {});
+  }
 }
 
 function pintarLista() {
@@ -1025,7 +1057,7 @@ async function configurarNotificaciones() {
   };
 
   const suscripcionActual = await registro.pushManager.getSubscription();
-  pintarEstadoBoton(Boolean(suscripcionActual) && Notification.permission === "granted");
+  pintarEstadoBoton((Boolean(suscripcionActual) || notifLocalActiva()) && Notification.permission === "granted");
 
   // La clave se pide de antemano: entre el clic y el permiso/subscribe no
   // puede haber un fetch, o el navegador deja de considerarlo "gesto del
@@ -1035,6 +1067,7 @@ async function configurarNotificaciones() {
 
   btn.onclick = async () => {
     if (activo) {
+      try { localStorage.removeItem(NOTIF_LOCAL_KEY); } catch {}
       const suscripcion = await registro.pushManager.getSubscription();
       if (suscripcion) {
         await pedir("/api/crm/push-subscribe", {
@@ -1085,6 +1118,7 @@ async function configurarNotificaciones() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: nueva })
       });
+      try { localStorage.removeItem(NOTIF_LOCAL_KEY); } catch {} // con push real, el modo local duplicaría los avisos
       pintarEstadoBoton(true);
       registro.showNotification("CRM WhatsApp", {
         body: "Listo — las notificaciones quedaron activadas en este dispositivo.",
@@ -1101,10 +1135,18 @@ async function configurarNotificaciones() {
       if (problemaClave) {
         return alert(`La clave VAPID_PUBLIC_KEY configurada en el servidor no es válida (${problemaClave}). Hay que regenerar el par de claves VAPID y cargarlo en Cloudflare.` + detalle);
       }
+      // Sin servicio push, pero con permiso: se activa el plan B local.
+      try { localStorage.setItem(NOTIF_LOCAL_KEY, "1"); } catch {}
+      pintarEstadoBoton(true);
+      registro.showNotification("CRM WhatsApp", {
+        body: "Notificaciones activadas (mientras el CRM esté abierto).",
+        icon: "/crm/icons/icon-192.png"
+      }).catch(() => {});
       const brave = Boolean(navigator.brave);
-      alert((brave
-        ? "Brave no está pudiendo hablar con el servicio push. Revisa que esté activado \"Usar los servicios de Google para la mensajería push\" (brave://settings/privacy en PC; ⋮ → Configuración → Privacidad y seguridad en Android) y luego CIERRA Brave por completo y vuelve a abrirlo — sin reiniciar no toma el cambio."
-        : "El servicio push del navegador rechazó la suscripción. Revisa que no haya un bloqueador/VPN/antivirus cortando la conexión a Google y vuelve a intentar.") + detalle);
+      alert("Activé las notificaciones en modo local: te van a llegar mientras el CRM esté abierto (aunque sea minimizado o en otra pestaña), pero no con el CRM cerrado.\n\n" +
+        (brave
+          ? "Para que lleguen incluso con todo cerrado, Brave necesita su servicio push, que ahora está fallando. Opciones: asegúrate de tener activado \"Usar los servicios de Google para la mensajería push\" y reinicia Brave; o usa el CRM en Chrome, donde funciona sin configurar nada."
+          : "Para que lleguen con el CRM cerrado, el navegador necesita su servicio push, que está fallando (puede ser un bloqueador, VPN o antivirus cortando la conexión a Google).") + detalle);
     }
   };
 }
