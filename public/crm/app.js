@@ -13,11 +13,13 @@ const PAGINA_MENSAJES = 50;
 // Cuánto se espacían los polls — el plan gratis de Cloudflare tiene un tope
 // de requests por día, y con el CRM abierto toda la jornada entre varias
 // vendedoras, sondear muy seguido lo agota rápido. Se complementa con pausar
-// todo cuando la pestaña está de fondo (ver el listener de visibilitychange)
-// y con las notificaciones push, que ya avisan de lo urgente — el poll ya no
-// tiene que ser tan agresivo, es más que nada para no depender solo de eso.
-const INTERVALO_CONVERSACIONES = 9000;
-const INTERVALO_MENSAJES = 6000;
+// todo cuando la pestaña está de fondo (ver visibilitychange) y, sobre todo,
+// con las notificaciones push: cada mensaje/llamada nueva ya empuja un
+// refresco inmediato (ver el "mensaje-nuevo" del service worker), así que
+// este poll de acá es solo la red de seguridad — por eso puede ser bien
+// espaciado sin que se sienta lento.
+const INTERVALO_CONVERSACIONES = 25000;
+const INTERVALO_MENSAJES = 15000;
 const INTERVALO_PRESENCIA = 10000;
 
 const estado = {
@@ -927,6 +929,16 @@ async function configurarNotificaciones() {
         const c = estado.conversaciones.find((x) => x.conversation_id === e.data.conversation_id);
         if (c) abrirConversacion(c);
       });
+      return;
+    }
+    // Llega uno de estos por cada mensaje/llamada nueva, con o sin la
+    // pestaña en foco — el poll de fondo es solo la red de seguridad
+    // (reacciones, checks de leído, y por si el push no llegó), así que
+    // puede ser bien espaciado; esto es lo que de verdad mantiene la
+    // sensación de tiempo real.
+    if (e.data?.tipo === "mensaje-nuevo") {
+      cargarConversaciones();
+      if (estado.conversacionActivaId === e.data.conversation_id) cargarMensajes();
     }
   });
 

@@ -12,14 +12,24 @@ self.addEventListener("push", (e) => {
   try { datos = e.data.json(); } catch { datos = { title: "CRM WhatsApp", body: e.data?.text() || "Mensaje nuevo" }; }
 
   e.waitUntil(
-    self.registration.showNotification(datos.title || "CRM WhatsApp", {
-      body: datos.body || "",
-      tag: datos.tag,
-      renotify: Boolean(datos.tag),
-      icon: "/kittarotcod/favicon-180.png",
-      badge: "/kittarotcod/favicon-32.png",
-      data: { conversation_id: datos.conversation_id }
-    })
+    Promise.all([
+      self.registration.showNotification(datos.title || "CRM WhatsApp", {
+        body: datos.body || "",
+        tag: datos.tag,
+        renotify: Boolean(datos.tag),
+        icon: "/kittarotcod/favicon-180.png",
+        badge: "/kittarotcod/favicon-32.png",
+        data: { conversation_id: datos.conversation_id }
+      }),
+      // Aviso a cualquier pestaña del CRM ya abierta para que refresque al
+      // toque — así el polling de fondo puede ser mucho más espaciado (es
+      // solo la red de seguridad) sin perder la sensación de tiempo real:
+      // lo real-time ya lo cubre el push mismo.
+      (async () => {
+        const clientes = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        for (const c of clientes) c.postMessage({ tipo: "mensaje-nuevo", conversation_id: datos.conversation_id });
+      })()
+    ])
   );
 });
 
