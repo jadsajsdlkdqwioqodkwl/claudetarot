@@ -1117,7 +1117,15 @@ async function registrarEntradaChat(c) {
 // estado en el historial, así el "atrás" físico del teléfono lo cierra en
 // vez de salir del sitio. Se engancha una sola vez acá, sin tocar cada
 // abrirModalX/botón "cerrar" por separado.
+//
+// Algunos modales abren otro encima sin cerrarse (ej. "Configurar
+// bienvenida de anuncios" desde dentro de Admin), así que puede haber más
+// de uno con `.abierto` a la vez — por eso se lleva una pila con el orden
+// real de apertura, y un z-index creciente para que el último abierto
+// siempre se vea (y se pueda clickear) por encima de los de abajo.
 let sincronizandoModalHistorial = false;
+let zIndexModalSiguiente = 100;
+const pilaModales = [];
 document.querySelectorAll(".modal-fondo").forEach((el) => {
   let estabaAbierto = el.classList.contains("abierto");
   new MutationObserver(() => {
@@ -1125,14 +1133,21 @@ document.querySelectorAll(".modal-fondo").forEach((el) => {
     if (abierto === estabaAbierto) return;
     estabaAbierto = abierto;
     if (abierto) {
+      el.style.zIndex = String(++zIndexModalSiguiente);
+      pilaModales.push(el);
       if (!sincronizandoModalHistorial) history.pushState({ crmModal: el.id }, "", location.href);
       return;
     }
+    const i = pilaModales.indexOf(el);
+    if (i !== -1) pilaModales.splice(i, 1);
     if (sincronizandoModalHistorial) {
       // Se cerró porque el "atrás" ya consumió el estado — nada más que hacer.
       sincronizandoModalHistorial = false;
     } else {
       // Se cerró con su botón/click afuera — hay que consumir el estado pendiente.
+      // Este history.back() dispara un popstate propio, que el handler de abajo
+      // debe ignorar (con la bandera) para no cerrar además el modal de abajo
+      // en la pila, si había uno abierto detrás de este.
       sincronizandoModalHistorial = true;
       history.back();
     }
@@ -1142,15 +1157,22 @@ document.querySelectorAll(".modal-fondo").forEach((el) => {
 // El "atrás" del teléfono (o el del navegador) dispara esto en vez de salir
 // del sitio cuando hay algo abierto — ver los pushState en abrirConversacion,
 // al abrir "Detalle" y en el observer de modales de más arriba. Cierra lo de
-// más arriba primero (modal, luego detalle, luego el chat), igual que la app real.
+// más arriba primero (el modal por encima de la pila, luego detalle, luego
+// el chat), igual que la app real.
 window.addEventListener("popstate", () => {
-  const modalAbierto = document.querySelector(".modal-fondo.abierto");
-  if (modalAbierto) {
-    sincronizandoModalHistorial = true;
-    modalAbierto.classList.remove("abierto");
+  if (sincronizandoModalHistorial) {
+    // Este popstate es el resultado de nuestro propio history.back() al
+    // cerrar un modal con su botón/click afuera — el estado ya se consumió,
+    // no hay que cerrar nada más (en particular, no el modal de abajo).
+    sincronizandoModalHistorial = false;
     return;
   }
-  if (sincronizandoModalHistorial) { sincronizandoModalHistorial = false; return; }
+  const ultimo = pilaModales[pilaModales.length - 1];
+  if (ultimo) {
+    sincronizandoModalHistorial = true;
+    ultimo.classList.remove("abierto");
+    return;
+  }
   if (document.body.classList.contains("detalle-abierto")) {
     document.body.classList.remove("detalle-abierto");
   } else if (document.body.classList.contains("chat-abierto")) {
