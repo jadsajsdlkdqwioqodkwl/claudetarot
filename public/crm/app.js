@@ -2592,6 +2592,13 @@ async function subirArchivo(file) {
 
 async function enviarMensaje(e) {
   e.preventDefault();
+  // Los paneles (respuestas rápidas, seguimientos, catálogo, etc.) viven
+  // dentro de este <form>, y un <button> sin type="button" lo envía: tocar
+  // "editar" una respuesta rápida mandaba lo que hubiera escrito (ej. "/").
+  // Solo manda el botón de enviar o Enter (requestSubmit, sin submitter).
+  if (e.submitter && !e.submitter.classList.contains("enviar")) return;
+  // Enter en un buscador de un panel (ej. el de respuestas rápidas) también envía el form.
+  if (document.activeElement?.closest("#panel-mas, #panel-rapidas, #panel-seguimientos, #panel-emojis, #panel-catalogo, #panel-stickers")) return;
   const input = $("#texto-envio");
   const texto = input.value.trim();
   const adjunto = estado.archivoAdjunto;
