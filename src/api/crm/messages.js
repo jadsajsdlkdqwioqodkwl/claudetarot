@@ -33,7 +33,11 @@ async function get({ request, env }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const beforeId = Number(url.searchParams.get("before_id")) || null;
+  return json(await leerMensajes(env, conversationId, beforeId));
+}
 
+/** También lo usa /api/crm/conversations?chat=<id>, para que el poll sea un solo request. */
+export async function leerMensajes(env, conversationId, beforeId = null) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT m.id, m.direction, m.type, m.body, m.file_name, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
        m.reply_to_message_id, m.client_reaction, m.agent_reaction,
@@ -49,13 +53,12 @@ async function get({ request, env }) {
   results.reverse();
 
   if (!beforeId) {
-    await env.CRM_DB.prepare("UPDATE conversations SET unread_count = 0 WHERE id = ?")
+    await env.CRM_DB.prepare("UPDATE conversations SET unread_count = 0 WHERE id = ? AND unread_count != 0")
       .bind(conversationId)
       .run();
   }
 
-  const hayMas = results.length === PAGINA;
-  return json({ messages: results, hay_mas: hayMas });
+  return { messages: results, hay_mas: results.length === PAGINA };
 }
 
 async function post({ request, env, agent }) {

@@ -18,8 +18,15 @@ const PAGINA_MENSAJES = 50;
 // refresco inmediato (ver el "mensaje-nuevo" del service worker), así que
 // este poll de acá es solo la red de seguridad — por eso puede ser bien
 // espaciado sin que se sienta lento.
-const INTERVALO_CONVERSACIONES = 25000;
-const INTERVALO_MENSAJES = 15000;
+// Un solo request por ciclo trae la lista Y el chat abierto (antes eran 3-4:
+// lista, mensajes, pedidos y seguimientos). El ritmo se adapta: rápido si la
+// vendedora está usando el CRM, lento si no toca nada o si las
+// notificaciones push ya empujan cada mensaje nuevo al toque.
+const RITMO_ACTIVO = 20000;
+const RITMO_CON_PUSH = 60000;           // el push avisa de lo nuevo; esto es solo red de seguridad
+const RITMO_INACTIVO = 60000;           // 3+ minutos sin tocar nada
+const RITMO_MUY_INACTIVO = 180000;      // 15+ minutos sin tocar nada
+const RITMO_FONDO_NOTIF_LOCAL = 120000; // pestaña oculta: solo si hacen falta las notificaciones locales (Brave)
 
 const estado = {
   conversaciones: [],
@@ -42,8 +49,7 @@ const estado = {
   mensajesCargados: [],
   firmaMensajesPintados: null,
   hayMasAntiguos: false,
-  pollConv: null,
-  pollMsg: null,
+  syncTimer: null,
   respondiendoA: null
 };
 
@@ -193,8 +199,7 @@ async function mostrarApp() {
   cargarQuickReplies();
   configurarNotificaciones();
   configurarInstalacion();
-  clearInterval(estado.pollConv);
-  estado.pollConv = setInterval(cargarConversaciones, INTERVALO_CONVERSACIONES);
+  programarSync();
 }
 
 $("#form-login").addEventListener("submit", async (e) => {
@@ -275,8 +280,7 @@ $("#form-olvide").addEventListener("submit", async (e) => {
 
 $("#btn-salir").addEventListener("click", async () => {
   await pedir("/api/crm/logout", { method: "POST" });
-  clearInterval(estado.pollConv);
-  clearInterval(estado.pollMsg);
+  clearTimeout(estado.syncTimer);
   mostrarLogin();
 });
 
@@ -690,16 +694,72 @@ $("#export-reset-btn").addEventListener("click", async () => {
 
 /* ---------- Lista de conversaciones ---------- */
 
-async function cargarConversaciones() {
+/**
+ * Lista + chat abierto en un solo request. Llamadas seguidas se juntan: si ya
+ * hay una en vuelo se reusa, y si una idéntica terminó hace menos de 1,5 s
+ * (ej. "cargarMensajes(); cargarConversaciones();" después de mandar algo)
+ * no se repite.
+ */
+let syncEnVuelo = null;
+let ultimoSync = { clave: "", t: 0 };
+
+function sincronizar() {
   const params = new URLSearchParams();
   if (estado.filtroMias) params.set("mine", "1");
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
+  // Con la pestaña oculta no se pide el chat: eso lo marcaría leído sin que nadie lo vea.
+  const chatId = document.hidden ? null : estado.conversacionActivaId;
+  if (chatId) params.set("chat", chatId);
+  const clave = params.toString();
 
-  const { conversations } = await pedir(`/api/crm/conversations?${params}`);
-  estado.conversaciones = conversations;
-  pintarLista();
-  actualizarAvisosNoLeidos();
+  if (syncEnVuelo?.clave === clave) return syncEnVuelo.promesa;
+  if (ultimoSync.clave === clave && Date.now() - ultimoSync.t < 1500) return Promise.resolve();
+
+  const promesa = (async () => {
+    const data = await pedir(`/api/crm/conversations?${clave}`);
+    estado.conversaciones = data.conversations;
+    if (data.chat && data.chat.conversation_id === estado.conversacionActivaId) aplicarMensajes(data.chat.conversation_id, data.chat);
+    pintarLista();
+    actualizarAvisosNoLeidos();
+    ultimoSync = { clave, t: Date.now() };
+  })().finally(() => { if (syncEnVuelo?.promesa === promesa) syncEnVuelo = null; });
+  syncEnVuelo = { clave, promesa };
+  return promesa;
 }
+
+function cargarConversaciones() { return sincronizar(); }
+
+/* ---------- Ritmo del poll ---------- */
+
+let ultimaInteraccion = Date.now();
+let pushRealActivo = false;
+
+function siguienteRitmo() {
+  if (document.hidden) {
+    return notifLocalActiva() && Notification.permission === "granted" ? RITMO_FONDO_NOTIF_LOCAL : null;
+  }
+  const inactivo = Date.now() - ultimaInteraccion;
+  if (inactivo > 15 * 60000) return RITMO_MUY_INACTIVO;
+  if (inactivo > 3 * 60000 || pushRealActivo) return RITMO_INACTIVO;
+  return RITMO_ACTIVO;
+}
+
+function programarSync(demora) {
+  clearTimeout(estado.syncTimer);
+  const d = demora ?? siguienteRitmo();
+  if (d == null || !estado.miRol) return;
+  estado.syncTimer = setTimeout(async () => {
+    try { await sincronizar(); } catch { /* red caída: el próximo ciclo reintenta */ }
+    programarSync();
+  }, d);
+}
+
+// Volver a tocar la pantalla después de un rato quieto refresca al toque.
+["pointerdown", "keydown", "wheel", "touchstart"].forEach((ev) => document.addEventListener(ev, () => {
+  const estabaInactivo = Date.now() - ultimaInteraccion > 3 * 60000;
+  ultimaInteraccion = Date.now();
+  if (estabaInactivo && !document.hidden) programarSync(0);
+}, { passive: true, capture: true }));
 
 /* ---------- Aviso de mensajes nuevos: sonido + contador en el título/favicon, como la app real ---------- */
 
@@ -902,8 +962,7 @@ async function abrirConversacion(c) {
   pintarChatBase(c);
   pintarDetalle(c);
   await cargarMensajes();
-  clearInterval(estado.pollMsg);
-  estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
+  programarSync();
   registrarEntradaChat(c);
 }
 
@@ -953,18 +1012,10 @@ window.addEventListener("popstate", () => {
 // tenerlos corriendo — las notificaciones push ya avisan de lo urgente. Al
 // volver, se refresca una vez al toque y se retoma el ritmo normal.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    clearInterval(estado.pollConv);
-    clearInterval(estado.pollMsg);
-    return;
-  }
   if (!estado.miRol) return; // todavía no inició sesión
-  cargarConversaciones();
-  estado.pollConv = setInterval(cargarConversaciones, INTERVALO_CONVERSACIONES);
-  if (estado.conversacionActivaId) {
-    cargarMensajes();
-    estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
-  }
+  if (document.hidden) { programarSync(); return; } // se detiene, salvo notificaciones locales
+  ultimaInteraccion = Date.now();
+  programarSync(0);
 });
 
 /* ---------- Menú "⋯" del encabezado: en pantallas angostas junta las acciones secundarias ---------- */
@@ -1073,9 +1124,10 @@ async function configurarNotificaciones() {
     // (reacciones, checks de leído, y por si el push no llegó), así que
     // puede ser bien espaciado; esto es lo que de verdad mantiene la
     // sensación de tiempo real.
-    if (e.data?.tipo === "mensaje-nuevo") {
-      cargarConversaciones();
-      if (estado.conversacionActivaId === e.data.conversation_id) cargarMensajes();
+    if (e.data?.tipo === "mensaje-nuevo" && !document.hidden) {
+      // Varios mensajes seguidos = un solo refresco.
+      clearTimeout(estado.syncPorPush);
+      estado.syncPorPush = setTimeout(() => sincronizar().catch(() => {}), 400);
     }
   });
 
@@ -1088,6 +1140,7 @@ async function configurarNotificaciones() {
   };
 
   const suscripcionActual = await registro.pushManager.getSubscription();
+  pushRealActivo = Boolean(suscripcionActual) && !notifLocalActiva() && Notification.permission === "granted";
   pintarEstadoBoton((Boolean(suscripcionActual) || notifLocalActiva()) && Notification.permission === "granted");
 
   // La clave se pide de antemano: entre el clic y el permiso/subscribe no
@@ -1099,6 +1152,7 @@ async function configurarNotificaciones() {
   btn.onclick = async () => {
     if (activo) {
       try { localStorage.removeItem(NOTIF_LOCAL_KEY); } catch {}
+      pushRealActivo = false;
       const suscripcion = await registro.pushManager.getSubscription();
       if (suscripcion) {
         await pedir("/api/crm/push-subscribe", {
@@ -1150,6 +1204,7 @@ async function configurarNotificaciones() {
         body: JSON.stringify({ subscription: nueva })
       });
       try { localStorage.removeItem(NOTIF_LOCAL_KEY); } catch {} // con push real, el modo local duplicaría los avisos
+      pushRealActivo = true;
       pintarEstadoBoton(true);
       registro.showNotification("CRM WhatsApp", {
         body: "Listo — las notificaciones quedaron activadas en este dispositivo.",
@@ -1575,16 +1630,17 @@ function toggleMasPanel() {
 }
 
 async function cargarMensajes() {
-  const conversationId = estado.conversacionActivaId;
-  if (!conversationId) return;
-  const yaPagino = estado.mensajesCargados.length > PAGINA_MENSAJES;
-  const { messages, hay_mas } = await pedir(`/api/crm/messages?conversation_id=${conversationId}`);
+  if (!estado.conversacionActivaId) return;
+  await sincronizar();
+}
 
+function aplicarMensajes(conversationId, { messages, hay_mas }) {
   // Si mientras se esperaba la respuesta el vendedor ya se cambió a otro
   // chat, estos mensajes son de la conversación vieja — pintarlos ahora
   // metería mensajes de un chat en otro (el glitch del "Hola" que aparecía
   // en el chat equivocado y desaparecía solo con el siguiente refresco).
   if (estado.conversacionActivaId !== conversationId) return;
+  const yaPagino = estado.mensajesCargados.length > PAGINA_MENSAJES;
 
   // Se mezcla con lo ya cargado (en vez de reemplazar) para no perder los
   // mensajes antiguos que el vendedor ya pidió con "Cargar anteriores".
@@ -1599,15 +1655,21 @@ async function cargarMensajes() {
   // de "el audio se corta a los 2 segundos"). Si la firma del contenido no
   // cambió, no hay nada que repintar.
   const firma = JSON.stringify(estado.mensajesCargados);
-  if (firma !== estado.firmaMensajesPintados) {
+  const cambio = firma !== estado.firmaMensajesPintados;
+  if (cambio) {
     estado.firmaMensajesPintados = firma;
     pintarMensajes();
   }
 
   const c = estado.conversaciones.find((x) => x.conversation_id === conversationId);
-  if (c) { c.unread_count = 0; pintarLista(); }
-  actualizarPedidosPanel();
-  actualizarSeguimientosDetalle();
+  if (c) c.unread_count = 0;
+  // Pedidos y seguimientos solo cambian cuando pasa algo en el chat: se
+  // piden al abrirlo y cuando llegan mensajes, no en cada ciclo del poll.
+  if (cambio || estado.panelesCargadosPara !== conversationId) {
+    estado.panelesCargadosPara = conversationId;
+    actualizarPedidosPanel();
+    actualizarSeguimientosDetalle();
+  }
 }
 
 async function cargarMensajesAnteriores() {

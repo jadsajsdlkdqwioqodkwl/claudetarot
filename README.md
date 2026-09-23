@@ -629,8 +629,11 @@ public/crm/                  El panel: index.html + app.js, sin build ni depende
 - **La ventana de 24 horas de WhatsApp aplica igual que en la app oficial**: solo se puede
   mandar texto libre si el cliente escribió en las últimas 24h. Pasado ese plazo, la Cloud
   API rechaza el envío (quedaría para una fase futura con message templates).
-- El panel usa **polling** (conversaciones cada 4s, mensajes de la conversación abierta
-  cada 3s), no WebSockets: es la opción simple que no necesita Durable Objects.
+- El panel usa **polling**, no WebSockets: un solo request (`/api/crm/conversations?chat=<id>`)
+  trae la lista y el chat abierto, cada 20 s si se está usando, 60 s si hay push activo o
+  3+ min sin tocar nada, 3 min tras 15 min quieto, y nada con la pestaña oculta (salvo el
+  modo de notificaciones locales, cada 2 min). Pensado para el tope de 100k requests/día
+  del plan gratis de Workers.
 
 ### Paso 1 — Meta: número y credenciales
 

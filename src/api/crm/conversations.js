@@ -2,9 +2,13 @@
  * GET /api/crm/conversations — bandeja de entrada: una fila por conversación,
  * con el contacto y el último mensaje, ordenadas por actividad reciente.
  * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta) &q=texto
+ * Con &chat=<id> trae además los últimos mensajes de ese chat (y lo marca
+ * leído): el poll del CRM es un solo request en vez de dos — el plan gratis
+ * de Workers tiene tope de requests por día.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { leerMensajes } from "./messages.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -16,6 +20,7 @@ async function handler({ request, env, agent }) {
   const url = new URL(request.url);
   const soloMias = url.searchParams.get("mine") === "1";
   const q = url.searchParams.get("q");
+  const chatId = Number(url.searchParams.get("chat")) || null;
 
   const condiciones = [];
   const params = [];
@@ -28,6 +33,9 @@ async function handler({ request, env, agent }) {
     params.push(`%${q}%`, `%${q}%`);
   }
   const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+
+  // Primero el chat (marca leído), así la lista ya sale con su unread_count en 0.
+  const chat = chatId ? await leerMensajes(env, chatId) : null;
 
   const { results } = await env.CRM_DB.prepare(
     `SELECT
@@ -44,11 +52,14 @@ async function handler({ request, env, agent }) {
         c.ad_source_type,
         c.ad_headline,
         c.notes,
-        (SELECT body FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_body,
-        (SELECT type FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_type,
-        (SELECT direction FROM messages m WHERE m.conversation_id = conv.id ORDER BY m.id DESC LIMIT 1) AS last_direction
+        lm.body AS last_body,
+        lm.type AS last_type,
+        lm.direction AS last_direction
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
+     -- Un solo salto al último mensaje (índice conversation_id, id) en vez de
+     -- 3 subconsultas que recorrían todo el historial de cada chat.
+     LEFT JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
      ${where}
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT 200`
@@ -56,7 +67,7 @@ async function handler({ request, env, agent }) {
     .bind(...params)
     .all();
 
-  return json({ conversations: results });
+  return json(chat ? { conversations: results, chat: { conversation_id: chatId, ...chat } } : { conversations: results });
 }
 
 export const onRequestGet = conAuth(handler);
