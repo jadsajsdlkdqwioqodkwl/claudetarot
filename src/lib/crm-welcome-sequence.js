@@ -10,7 +10,7 @@
  * de Meta — ver docs/whatsapp-ventanas-y-costos.md.
  */
 
-import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 
 export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null) {
   const { results: todos } = await env.CRM_DB.prepare(
@@ -21,6 +21,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   if (!pasos.length) return 0;
 
   for (const paso of pasos) {
+    await pausaEnvio();
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
     )

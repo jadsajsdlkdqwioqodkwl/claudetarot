@@ -17,6 +17,7 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
+import { pausaEnvio } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -57,6 +58,7 @@ async function post({ request, env, agent }) {
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   try {
+    await pausaEnvio();
     const waMessageId = await enviarTemplate(env, conv.wa_id, name, language, parametros);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,

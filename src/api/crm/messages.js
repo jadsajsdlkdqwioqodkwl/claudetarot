@@ -8,7 +8,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { mandarTexto, mandarMediaGuardada } from "../../lib/crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "../../lib/crm-send.js";
 import { cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -97,6 +97,7 @@ async function post({ request, env, agent }) {
   }
 
   try {
+    await pausaEnvio();
     if (mediaKey) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);

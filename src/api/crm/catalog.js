@@ -8,6 +8,7 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { enviarCatalogo, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache } from "../../lib/crm-db.js";
+import { pausaEnvio } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -99,6 +100,7 @@ async function post({ request, env, agent }) {
         nombre = mapa[retailerId]?.name || null;
       }
 
+      await pausaEnvio();
       const waMessageId = await enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text);
       await registrarMensajeSaliente(env.CRM_DB, conversationId, {
         waMessageId,
@@ -117,6 +119,7 @@ async function post({ request, env, agent }) {
         thumbnailRetailerId = productos[0]?.retailer_id;
       } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
     }
+    await pausaEnvio();
     const waMessageId = await enviarCatalogo(env, conv.wa_id, payload?.text, thumbnailRetailerId);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,

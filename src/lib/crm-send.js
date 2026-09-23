@@ -7,6 +7,14 @@
 import { enviarTexto, enviarMedia, enviarReaccion, subirMedia } from "./whatsapp.js";
 import { registrarMensajeSaliente, guardarReaccionPropia } from "./crm-db.js";
 
+/**
+ * Pausa antes de mandarle algo al cliente (respuestas a mano y bienvenida),
+ * para que no llegue al instante como un bot. Es tiempo de espera, no de
+ * CPU: no suma requests ni subrequests en Cloudflare.
+ */
+export const PAUSA_ENVIO_MS = 1000;
+export const pausaEnvio = () => new Promise((r) => setTimeout(r, PAUSA_ENVIO_MS));
+
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo) {
   const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);
   await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id });
