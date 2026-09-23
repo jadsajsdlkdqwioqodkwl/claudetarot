@@ -994,11 +994,46 @@ async function registrarEntradaChat(c) {
   } catch { /* silencioso — no vale la pena molestar por esto */ }
 }
 
+// Mismo truco que con el chat/detalle, pero genérico para los modales
+// (admin, equipo, plantillas, secuencias, respuestas rápidas, seguimiento,
+// contacto, contraseña, bienvenida): al abrirse cualquiera se mete un
+// estado en el historial, así el "atrás" físico del teléfono lo cierra en
+// vez de salir del sitio. Se engancha una sola vez acá, sin tocar cada
+// abrirModalX/botón "cerrar" por separado.
+let sincronizandoModalHistorial = false;
+document.querySelectorAll(".modal-fondo").forEach((el) => {
+  let estabaAbierto = el.classList.contains("abierto");
+  new MutationObserver(() => {
+    const abierto = el.classList.contains("abierto");
+    if (abierto === estabaAbierto) return;
+    estabaAbierto = abierto;
+    if (abierto) {
+      if (!sincronizandoModalHistorial) history.pushState({ crmModal: el.id }, "", location.href);
+      return;
+    }
+    if (sincronizandoModalHistorial) {
+      // Se cerró porque el "atrás" ya consumió el estado — nada más que hacer.
+      sincronizandoModalHistorial = false;
+    } else {
+      // Se cerró con su botón/click afuera — hay que consumir el estado pendiente.
+      sincronizandoModalHistorial = true;
+      history.back();
+    }
+  }).observe(el, { attributes: true, attributeFilter: ["class"] });
+});
+
 // El "atrás" del teléfono (o el del navegador) dispara esto en vez de salir
-// del sitio cuando hay algo abierto — ver los pushState en abrirConversacion
-// y al abrir "Detalle". Cierra lo de más arriba primero (detalle antes que
-// el chat), igual que la app real.
+// del sitio cuando hay algo abierto — ver los pushState en abrirConversacion,
+// al abrir "Detalle" y en el observer de modales de más arriba. Cierra lo de
+// más arriba primero (modal, luego detalle, luego el chat), igual que la app real.
 window.addEventListener("popstate", () => {
+  const modalAbierto = document.querySelector(".modal-fondo.abierto");
+  if (modalAbierto) {
+    sincronizandoModalHistorial = true;
+    modalAbierto.classList.remove("abierto");
+    return;
+  }
+  if (sincronizandoModalHistorial) { sincronizandoModalHistorial = false; return; }
   if (document.body.classList.contains("detalle-abierto")) {
     document.body.classList.remove("detalle-abierto");
   } else if (document.body.classList.contains("chat-abierto")) {
@@ -1902,22 +1937,30 @@ function configurarAccionesMensajes() {
   });
 
   // Deslizar a la derecha para responder, igual que WhatsApp — solo en touch.
+  // Ojo: mantener presionado un mensaje para seleccionar texto y copiarlo
+  // también empieza con un touchstart+touchmove ahí adentro, así que hay que
+  // esperar a que el gesto sea claramente horizontal (y no un toquecito
+  // apenas perceptible) antes de mover la burbuja — si no, le pisa la
+  // selección nativa al que solo quería copiar.
   let touchInicio = null;
   let filaActual = null;
   cont.addEventListener("touchstart", (e) => {
     const fila = e.target.closest(".msg-fila");
     if (!fila) return;
     filaActual = fila;
-    touchInicio = e.touches[0].clientX;
+    touchInicio = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, { passive: true });
   cont.addEventListener("touchmove", (e) => {
     if (!filaActual || touchInicio === null) return;
-    const delta = Math.max(0, Math.min(70, e.touches[0].clientX - touchInicio));
+    const dx = e.touches[0].clientX - touchInicio.x;
+    const dy = e.touches[0].clientY - touchInicio.y;
+    if (Math.abs(dx) < 10 || Math.abs(dy) > Math.abs(dx)) return;
+    const delta = Math.max(0, Math.min(70, dx));
     filaActual.querySelector(".msg").style.transform = `translateX(${delta}px)`;
   }, { passive: true });
   cont.addEventListener("touchend", (e) => {
     if (!filaActual) return;
-    const delta = (e.changedTouches[0]?.clientX || 0) - touchInicio;
+    const delta = (e.changedTouches[0]?.clientX || 0) - touchInicio.x;
     filaActual.querySelector(".msg").style.transform = "";
     if (delta > 60) seleccionarRespuesta(Number(filaActual.dataset.id));
     filaActual = null;

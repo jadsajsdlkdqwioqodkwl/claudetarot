@@ -215,7 +215,7 @@ button { font-family: inherit; touch-action: manipulation; }
 .msg-fila { display: flex; max-width: 65%; position: relative; }
 .msg-fila.in { align-self: flex-start; }
 .msg-fila.out { align-self: flex-end; }
-.msg { max-width: 100%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; transition: transform .15s; }
+.msg { max-width: 100%; padding: 7px 10px; border-radius: var(--radio-m); font-size: 14px; line-height: 1.4; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; transition: transform .15s; user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
 .msg.in { background: #fff; border-top-left-radius: 0; }
 .msg.out { background: var(--burbuja-out); border-top-right-radius: 0; }
 .msg.sticker-msg { background: transparent; box-shadow: none; padding: 0; }
