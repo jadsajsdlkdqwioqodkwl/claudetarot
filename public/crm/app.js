@@ -35,6 +35,7 @@ const estado = {
   filtroTexto: "",
   archivoAdjunto: null,
   rapidaPendiente: null,
+  segRapidaMedia: null,
   editandoRapidaId: null,
   editandoPasoId: null,
   editandoSeguimientoId: null,
@@ -2819,9 +2820,54 @@ function abrirModalProgramarSeguimiento() {
   $("#seg-archivo").style.display = "";
   const sel = $("#seg-rapida");
   sel.style.display = "";
-  sel.innerHTML = `<option value="">— o una respuesta rápida guardada —</option>` +
+  sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
     estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
+  estado.segRapidaMedia = null;
+  pintarPreviewSegRapida();
   $("#modal-seguimiento-fondo").classList.add("abierto");
+}
+
+// Igual que en el chat: elegir una respuesta rápida carga su texto en el
+// campo para editarlo antes de programar, y su foto/video queda adjunta
+// (se puede quitar). Al programar va el texto editado + el quick_reply_id
+// solo si se dejó su archivo — el cron usa `body` antes que el de la rápida.
+$("#seg-rapida").addEventListener("change", (e) => {
+  const q = estado.quickReplies.find((x) => String(x.id) === e.target.value);
+  estado.segRapidaMedia = q?.media?.length ? q.media : null;
+  if (q) {
+    const txt = $("#seg-texto");
+    txt.value = q.body || "";
+    txt.focus();
+    txt.setSelectionRange(txt.value.length, txt.value.length);
+  }
+  pintarPreviewSegRapida();
+});
+
+function pintarPreviewSegRapida() {
+  const cont = $("#seg-rapida-preview");
+  const media = estado.segRapidaMedia;
+  if (!media) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  const primero = media[0];
+  const src = `/api/crm/media?key=${encodeURIComponent(primero.media_key)}`;
+  cont.style.display = "flex";
+  cont.innerHTML = `
+    ${primero.media_type === "video" ? `<video src="${src}"></video>` : `<img src="${src}" alt="" />`}
+    <span>${media.length > 1 ? `Incluye la 1ª de sus ${media.length} fotos/videos` : "Incluye la foto/video de la respuesta rápida"}</span>
+    <button type="button" id="seg-quitar-rapida-media">Quitar</button>`;
+  $("#seg-quitar-rapida-media").addEventListener("click", () => {
+    estado.segRapidaMedia = null;
+    pintarPreviewSegRapida();
+  });
+}
+
+function limpiarFormSeguimiento() {
+  estado.editandoSeguimientoId = null;
+  estado.segRapidaMedia = null;
+  $("#seg-fecha").value = "";
+  $("#seg-texto").value = "";
+  $("#seg-archivo").value = "";
+  $("#seg-rapida").value = "";
+  pintarPreviewSegRapida();
 }
 
 /** Solo los de texto libre — los que llevan respuesta rápida o foto/video propia se cancelan y se vuelven a programar. */
@@ -2832,6 +2878,8 @@ function abrirModalEditarSeguimiento(s) {
   $("#seg-archivo").style.display = "none";
   $("#seg-rapida").style.display = "none";
   $("#seg-rapida").value = "";
+  estado.segRapidaMedia = null;
+  pintarPreviewSegRapida();
   const d = new Date(s.send_at);
   $("#seg-fecha").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   $("#seg-texto").value = s.body || "";
@@ -2899,17 +2947,14 @@ async function pintarSeguimientosPanel() {
 
 $("#seg-cancelar").addEventListener("click", () => {
   $("#modal-seguimiento-fondo").classList.remove("abierto");
-  estado.editandoSeguimientoId = null;
-  $("#seg-fecha").value = "";
-  $("#seg-texto").value = "";
-  $("#seg-archivo").value = "";
+  limpiarFormSeguimiento();
 });
 
 $("#seg-crear").addEventListener("click", async () => {
   const fecha = $("#seg-fecha").value;
   const texto = $("#seg-texto").value.trim();
-  const quickReplyId = $("#seg-rapida").value;
   const archivo = $("#seg-archivo").files[0];
+  const quickReplyId = !archivo && estado.segRapidaMedia ? $("#seg-rapida").value : "";
   const editandoId = estado.editandoSeguimientoId;
   if (!fecha) return alert("Elige fecha y hora.");
   if (editandoId && !texto) return alert("Escribe un texto.");
@@ -2925,9 +2970,7 @@ $("#seg-crear").addEventListener("click", async () => {
         body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto })
       });
       $("#modal-seguimiento-fondo").classList.remove("abierto");
-      estado.editandoSeguimientoId = null;
-      $("#seg-fecha").value = "";
-      $("#seg-texto").value = "";
+      limpiarFormSeguimiento();
       await actualizarSeguimientosDetalle();
     } catch (err) {
       alert(err.message);
@@ -2951,14 +2994,12 @@ $("#seg-crear").addEventListener("click", async () => {
         conversation_id: estado.conversacionActivaId,
         send_at: new Date(fecha).toISOString(),
         body: texto || undefined,
-        quick_reply_id: !archivo && quickReplyId ? quickReplyId : undefined,
+        quick_reply_id: quickReplyId || undefined,
         media_key, media_type, media_mime
       })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
-    $("#seg-fecha").value = "";
-    $("#seg-texto").value = "";
-    $("#seg-archivo").value = "";
+    limpiarFormSeguimiento();
     await actualizarSeguimientosDetalle();
   } catch (err) {
     alert(err.message);

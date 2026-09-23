@@ -133,9 +133,10 @@
   <div class="modal">
     <h2 id="seg-modal-titulo">Programar seguimiento</h2>
     <input type="datetime-local" id="seg-fecha" />
-    <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video, o eliges una respuesta rápida abajo)"></textarea>
+    <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
+    <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
+    <div id="seg-rapida-preview" style="display:none"></div>
     <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
-    <select id="seg-rapida"><option value="">— o una respuesta rápida guardada —</option></select>
     <div class="acciones">
       <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
       <button class="crear" id="seg-crear" type="button">Programar</button>

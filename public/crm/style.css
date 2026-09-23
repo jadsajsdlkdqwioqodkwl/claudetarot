@@ -429,6 +429,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   .leads-paso { flex-direction: column; }
   .leads-paso-acciones { align-self: flex-end; }
 }
+#seg-rapida-preview { align-items: center; gap: 8px; padding: 6px; margin: -4px 0 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; color: var(--gris); }
+#seg-rapida-preview img, #seg-rapida-preview video { width: 44px; height: 44px; object-fit: cover; border-radius: var(--radio-s); flex-shrink: 0; }
+#seg-rapida-preview span { flex: 1; min-width: 0; }
+#seg-rapida-preview button { border: 0; background: var(--fondo); border-radius: var(--radio-s); padding: 5px 8px; font-size: 12px; cursor: pointer; }
 .fs-delay-fila { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 12px; color: var(--gris); }
 .fs-delay-valor { width: 56px; }
 .fs-delay-valor, .fs-delay-unidad { padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
