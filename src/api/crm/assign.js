@@ -1,9 +1,23 @@
 /**
  * PATCH /api/crm/assign — { conversation_id, action }
- *   action: "reclamar" — se lo asigna a quien pide, solo si está libre
- *           "liberar"   — lo vuelve a dejar sin asignar
+ *   action: "reclamar" — según cómo esté el chat:
+ *             - libre → se lo asigna a quien pide.
+ *             - ya es de otra persona y todavía nadie más lo comparte → deja
+ *               a quien pide como el que comparte la comisión (no se lo
+ *               quita al dueño, queda entre los dos).
+ *             - ya lo tiene el que pide, o ya lo comparte → no hace nada.
+ *             - ya lo tienen dos personas (dueño + quien comparte, ninguno
+ *               es quien pide) → 409, no hay lugar para un tercero.
+ *           "liberar"   — quien pide se saca a sí mismo:
+ *             - si es el dueño y alguien lo comparte, ese pasa a ser el dueño.
+ *             - si es el dueño y nadie más lo comparte, queda libre.
+ *             - si solo lo comparte (no es el dueño), se saca y el dueño
+ *               sigue igual.
  *           "reasignar" — se lo asigna a quien pide aunque ya sea de otra
- *                         persona (transferir el chat/venta a propósito)
+ *                         persona, sacando a quien lo tuviera (transferir el
+ *                         chat/venta a propósito).
+ *           "quitar"    — solo un administrador: vacía el chat (dueño y
+ *                         compartido) sin importar de quién sea.
  *           "entrar"    — se llama solo, cada vez que alguien ABRE un chat
  *                         (no es una acción que el vendedor elija a
  *                         propósito): si ya es de otra persona y todavía no
@@ -11,9 +25,9 @@
  *                         el que la comparte — sin botones, solo por haber
  *                         entrado al chat.
  *
- * "Reclamar" un chat ya tomado por otra persona devuelve 409 con quién lo
- * tiene, para que el frontend pregunte "¿se lo quitas a Fulana?" antes de
- * mandar "reasignar" — así no se pisan sin darse cuenta.
+ * "Reclamar" un chat que ya tienen dos personas devuelve 409 con quiénes lo
+ * tienen, para que el frontend avise antes de que alguien mande "reasignar"
+ * y le quite el lugar a uno de los dos.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -36,7 +50,7 @@ async function patch({ request, env, agent }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const accion = String(payload?.action || "");
-  if (!["reclamar", "liberar", "reasignar", "entrar"].includes(accion)) {
+  if (!["reclamar", "liberar", "reasignar", "quitar", "entrar"].includes(accion)) {
     return json({ error: "Acción inválida." }, 400);
   }
 
@@ -47,15 +61,33 @@ async function patch({ request, env, agent }) {
     .first();
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
-  if (accion === "liberar") {
-    // Si alguien más ya entró a compartir la comisión, no se le borra su
-    // reclamo al liberar — el chat pasa a ser suyo en vez de quedar libre.
-    if (conv.shared_with) {
-      await env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = ?, shared_with = NULL WHERE id = ?").bind(conv.shared_with, conversationId).run();
-      return json({ ok: true, assigned_agent: conv.shared_with, shared_with: null });
-    }
-    await env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = NULL, shared_with = NULL WHERE id = ?").bind(conversationId).run();
+  const set = (assignedAgent, sharedWith) =>
+    env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = ?, shared_with = ? WHERE id = ?")
+      .bind(assignedAgent, sharedWith, conversationId).run();
+
+  if (accion === "quitar") {
+    if (agent?.role !== "admin") return json({ error: "Solo un administrador puede hacer esto." }, 403);
+    await set(null, null);
     return json({ ok: true, assigned_agent: null, shared_with: null });
+  }
+
+  if (accion === "liberar") {
+    if (conv.assigned_agent === nombre) {
+      // Dueño se saca: si alguien lo comparte, pasa a ser el dueño; si no, queda libre.
+      if (conv.shared_with) {
+        await set(conv.shared_with, null);
+        return json({ ok: true, assigned_agent: conv.shared_with, shared_with: null });
+      }
+      await set(null, null);
+      return json({ ok: true, assigned_agent: null, shared_with: null });
+    }
+    if (conv.shared_with === nombre) {
+      // Solo lo compartía: se saca, el dueño sigue igual.
+      await set(conv.assigned_agent, null);
+      return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: null });
+    }
+    // No tenía nada que liberar acá — nada que hacer.
+    return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with });
   }
 
   if (accion === "entrar") {
@@ -63,18 +95,33 @@ async function patch({ request, env, agent }) {
     // chat. Solo se anota la PRIMERA vez — si un tercero lo abre después, no
     // se pisa la comisión ya compartida.
     if (conv.assigned_agent && conv.assigned_agent !== nombre && !conv.shared_with) {
-      await env.CRM_DB.prepare("UPDATE conversations SET shared_with = ? WHERE id = ?").bind(nombre, conversationId).run();
+      await set(conv.assigned_agent, nombre);
       return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: nombre });
     }
     return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with });
   }
 
-  if (accion === "reclamar" && conv.assigned_agent && conv.assigned_agent !== nombre) {
-    return json({ error: `Este chat ya lo tiene ${conv.assigned_agent}.`, assigned_agent: conv.assigned_agent }, 409);
+  if (accion === "reasignar") {
+    await set(nombre, null);
+    return json({ ok: true, assigned_agent: nombre, shared_with: null });
   }
 
-  await env.CRM_DB.prepare("UPDATE conversations SET assigned_agent = ?, shared_with = NULL WHERE id = ?").bind(nombre, conversationId).run();
-  return json({ ok: true, assigned_agent: nombre, shared_with: null });
+  // "reclamar"
+  if (!conv.assigned_agent) {
+    await set(nombre, null);
+    return json({ ok: true, assigned_agent: nombre, shared_with: null });
+  }
+  if (conv.assigned_agent === nombre || conv.shared_with === nombre) {
+    // Ya es suyo (dueño o compartido) — no hay nada que cambiar.
+    return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with });
+  }
+  if (conv.shared_with) {
+    // Ya lo tienen dos personas y ninguna es quien pide — no hay lugar para un tercero.
+    return json({ error: `Este chat ya lo tienen ${conv.assigned_agent} y ${conv.shared_with}.`, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with }, 409);
+  }
+  // Es de otra persona pero todavía nadie más lo comparte: se suma, no se lo quita.
+  await set(conv.assigned_agent, nombre);
+  return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: nombre });
 }
 
 export const onRequestPatch = conAuth(patch);

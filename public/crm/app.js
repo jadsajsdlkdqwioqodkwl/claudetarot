@@ -911,7 +911,7 @@ function pintarLista() {
         <div class="fila2">
           <span class="preview">${escapar(prefijoYo + previewTexto)}</span>
           ${c.unread_count > 0 ? `<span class="badge">${c.unread_count}</span>` : ""}
-          <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${!c.assigned_agent ? "Reclamar este chat" : c.assigned_agent === estado.miNombre ? "Es tuyo — clic para liberar" : `Lo tiene ${escapar(c.assigned_agent)} — clic para reclamarlo`}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
+          <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}${c.shared_with ? ` + ${escapar(c.shared_with)}` : ""}</span>` : ""}
@@ -928,11 +928,24 @@ function pintarLista() {
   }
 }
 
-/** Clic en la estrella (lista, header, o el botón del sidebar) — reclamar/liberar/reasignar según de quién sea ahora mismo. */
+/**
+ * Título de la estrella (lista y header comparten el mismo texto): reclamar
+ * si está libre o es de otro y todavía nadie lo comparte, liberar/dejar de
+ * compartir si es tuyo de alguna forma, y sin acción si ya lo tienen dos.
+ */
+function tituloEstrella(c) {
+  const miNombre = estado.miNombre;
+  if (!c.assigned_agent) return "Reclamar este chat";
+  if (c.assigned_agent === miNombre) return c.shared_with ? `Es tuyo, compartido con ${c.shared_with} — clic para liberar` : "Es tuyo — clic para liberar";
+  if (c.shared_with === miNombre) return `Lo tiene ${c.assigned_agent}, lo compartís vos — clic para dejar de compartir`;
+  if (!c.shared_with) return `Lo tiene ${c.assigned_agent} — clic para reclamar la comisión compartida`;
+  return `Lo tienen ${c.assigned_agent} y ${c.shared_with}`;
+}
+
+/** Clic en la estrella (lista, header, o el botón del sidebar) — reclama o se saca (nunca le quita el lugar al otro). */
 function clicEstrella(c) {
-  if (!c.assigned_agent) return cambiarAsignacion(c, "reclamar");
-  if (c.assigned_agent === estado.miNombre) return cambiarAsignacion(c, "liberar");
-  return cambiarAsignacion(c, "reasignar", c.assigned_agent);
+  const tengoParte = c.assigned_agent === estado.miNombre || c.shared_with === estado.miNombre;
+  cambiarAsignacion(c, tengoParte ? "liberar" : "reclamar");
 }
 
 /** Actualiza solo el ícono/título de la estrella del header, sin repintar todo el chat. */
@@ -941,9 +954,7 @@ function pintarEstrellaHeader(c) {
   if (!btn || estado.conversacionActivaId !== c.conversation_id) return;
   btn.innerHTML = icon(c.assigned_agent ? "star" : "starOutline");
   btn.classList.toggle("marcada", Boolean(c.assigned_agent));
-  btn.title = !c.assigned_agent ? "Reclamar este chat"
-    : c.assigned_agent === estado.miNombre ? "Es tuyo — clic para liberar"
-    : `Lo tiene ${c.assigned_agent} — clic para reclamarlo`;
+  btn.title = tituloEstrella(c);
 }
 
 $("#buscar").addEventListener("input", debounce((e) => {
@@ -3233,7 +3244,14 @@ async function pintarDetalle(c) {
   await actualizarSeguimientosDetalle();
 }
 
-/** "Asesora asignada" — bandeja compartida por defecto, la estrella (lista/header/acá) lo reclama con un clic. */
+/**
+ * "Asesora asignada" — bandeja compartida por defecto, la estrella (lista/header/acá) lo reclama con un clic.
+ * Cada quien ve un botón distinto según su propia relación con el chat: lo
+ * reclama si está libre o si es de otro y todavía nadie lo comparte, y se
+ * saca (con "liberar") si es suyo o lo comparte — nunca "quitárselo" al
+ * otro a la fuerza. Aparte, un administrador siempre puede vaciar la
+ * asignación entera, sea de quien sea.
+ */
 function pintarAsignacion(c) {
   const cont = $("#detalle-asignacion");
   if (!cont) return;
@@ -3241,6 +3259,10 @@ function pintarAsignacion(c) {
   const miNombre = estado.miNombre;
   const asignado = c.assigned_agent;
   const compartido = c.shared_with;
+  const esAdmin = estado.miRol === "admin";
+  const btnQuitar = esAdmin && asignado
+    ? `<button class="cancelar" id="btn-quitar-asignacion" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("close")} Vaciar asignación (admin)</button>`
+    : "";
 
   if (!asignado) {
     cont.innerHTML = `<button class="crear" id="btn-reclamar" type="button" style="width:100%">${icon("star")} Reclamar este chat</button>`;
@@ -3249,19 +3271,35 @@ function pintarAsignacion(c) {
   }
 
   const esMio = asignado === miNombre;
+  const loComparto = compartido === miNombre;
+  let linea, boton;
+  if (esMio) {
+    linea = compartido ? `Es tuyo, compartido con <strong>${escapar(compartido)}</strong>` : "Es tuyo";
+    boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">${compartido ? `Liberar (${escapar(compartido)} pasa a ser el dueño)` : "Liberar chat (volver a bandeja compartida)"}</button>`;
+  } else if (loComparto) {
+    linea = `Lo tiene <strong>${escapar(asignado)}</strong>, lo compartís vos`;
+    boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">Dejar de compartir</button>`;
+  } else if (!compartido) {
+    linea = `Lo tiene <strong>${escapar(asignado)}</strong>`;
+    boton = `<button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">Reclamar comisión compartida</button>`;
+  } else {
+    linea = `Lo tienen <strong>${escapar(asignado)}</strong> y <strong>${escapar(compartido)}</strong>`;
+    boton = "";
+  }
+
   cont.innerHTML = `
     <div class="ad-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <div>${icon("star")} ${esMio ? "Es tuyo" : `Lo tiene <strong>${escapar(asignado)}</strong>`}</div>
+      <div>${icon("star")} ${linea}</div>
     </div>
-    ${compartido ? `<div class="ayuda-modal" style="margin-top:4px">${icon("users")} Comisión compartida con <strong>${escapar(compartido)}</strong> — entró a este chat después de que ya era de ${escapar(asignado)}.</div>` : ""}
-    <button class="cancelar" id="btn-desasignar" type="button" style="width:100%;font-size:12px;margin-top:6px">
-      ${esMio ? "Liberar chat (volver a bandeja compartida)" : "Reclamar para mí (se lo quita a " + escapar(asignado) + ")"}
-    </button>`;
-  $("#btn-desasignar").addEventListener("click", () => cambiarAsignacion(c, esMio ? "liberar" : "reasignar", esMio ? null : asignado));
+    ${boton}
+    ${btnQuitar}`;
+  $("#btn-desasignar")?.addEventListener("click", () => cambiarAsignacion(c, esMio || loComparto ? "liberar" : "reclamar"));
+  $("#btn-quitar-asignacion")?.addEventListener("click", () => {
+    if (confirm(`¿Vaciar la asignación de este chat${asignado ? ` (lo tiene ${asignado}${compartido ? ` + ${compartido}` : ""})` : ""}?`)) cambiarAsignacion(c, "quitar");
+  });
 }
 
-async function cambiarAsignacion(c, action, deQuien) {
-  if (action === "reasignar" && !confirm(`¿Quitarle este chat a ${deQuien} y asignártelo a ti?`)) return;
+async function cambiarAsignacion(c, action) {
   try {
     const { assigned_agent, shared_with } = await pedir("/api/crm/assign", {
       method: "PATCH",
