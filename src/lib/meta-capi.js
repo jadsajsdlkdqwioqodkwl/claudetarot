@@ -26,21 +26,29 @@ async function sha256Hex(texto) {
  * reales de Meta.
  */
 export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, testEventCode }) {
-  if (!waId) throw new Error("Falta el WhatsApp del contacto.");
-  const telefonoHash = await sha256Hex(String(waId).replace(/\D/g, ""));
+  const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
   // fn (nombre) es un extra para el Event Match Quality — ctwa_clid + ph ya
   // son, por sí solos, el par que Meta documenta como suficiente para un
   // evento de Click-to-WhatsApp: ctwa_clid conecta directo con el clic al
   // anuncio, y ph identifica a la persona. El nombre solo suma un poco más.
   const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
 
+  if (!telefonoHash && !nombreHash) throw new Error("Necesita al menos el WhatsApp o el nombre del contacto para poder mandarlo.");
+
+  // Sin ctwa_clid no es un clic a un anuncio real — "business_messaging" con
+  // messaging_channel "whatsapp" exige ese campo y Meta lo rechaza
+  // ("Invalid parameter") si falta. Para un reporte manual (venta que no
+  // vino de un anuncio, o donde no se guardó el ctwa_clid) se manda como
+  // "system_generated": mismo dataset, sin pedir el clic al anuncio, solo
+  // sirve para atribución/optimización general en vez de para el anuncio
+  // puntual que originó la conversación.
   const evento = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
-    action_source: "business_messaging",
-    messaging_channel: "whatsapp",
+    action_source: ctwaClid ? "business_messaging" : "system_generated",
+    ...(ctwaClid ? { messaging_channel: "whatsapp" } : {}),
     user_data: {
-      ph: [telefonoHash],
+      ...(telefonoHash ? { ph: [telefonoHash] } : {}),
       ...(ctwaClid ? { ctwa_clid: ctwaClid } : {}),
       ...(nombreHash ? { fn: [nombreHash] } : {})
     },
