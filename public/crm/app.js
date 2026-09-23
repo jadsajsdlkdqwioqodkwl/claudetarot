@@ -27,6 +27,7 @@ const estado = {
   filtroMias: false,
   filtroTexto: "",
   archivoAdjunto: null,
+  rapidaPendiente: null,
   quickReplies: [],
   login: { mode: "legacy", challengeId: null },
   olvide: { resetId: null },
@@ -1664,16 +1665,31 @@ function onPegarImagen(e) {
 function pintarPreviewArchivo() {
   const cont = $("#preview-archivo");
   const a = estado.archivoAdjunto;
-  if (!a) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  const r = estado.rapidaPendiente;
+  if (!a && !r) { cont.style.display = "none"; cont.innerHTML = ""; return; }
   cont.style.display = "flex";
-  const previa = a.tipo === "video" ? `<video src="${a.previewUrl}"></video>`
-    : a.tipo === "image" ? `<img src="${a.previewUrl}" />`
-    : `<span class="miniatura">${icon("doc")}</span>`;
+
+  if (a) {
+    const previa = a.tipo === "video" ? `<video src="${a.previewUrl}"></video>`
+      : a.tipo === "image" ? `<img src="${a.previewUrl}" />`
+      : `<span class="miniatura">${icon("doc")}</span>`;
+    cont.innerHTML = `
+      ${previa}
+      <span>${escapar(a.file.name)}</span>
+      <button type="button" id="quitar-archivo">Quitar</button>`;
+    $("#quitar-archivo").addEventListener("click", cancelarAdjunto);
+    return;
+  }
+
+  const primero = r.media[0];
+  const previa = primero.media_type === "video"
+    ? `<video src="/api/crm/media?key=${encodeURIComponent(primero.media_key)}"></video>`
+    : `<img src="/api/crm/media?key=${encodeURIComponent(primero.media_key)}" />`;
   cont.innerHTML = `
     ${previa}
-    <span>${escapar(a.file.name)}</span>
+    <span>${r.media.length > 1 ? `${r.media.length} archivos de la respuesta rápida` : "Archivo de la respuesta rápida"}</span>
     <button type="button" id="quitar-archivo">Quitar</button>`;
-  $("#quitar-archivo").addEventListener("click", cancelarAdjunto);
+  $("#quitar-archivo").addEventListener("click", () => { estado.rapidaPendiente = null; pintarPreviewArchivo(); });
 }
 
 function cancelarAdjunto() {
@@ -1696,7 +1712,8 @@ async function enviarMensaje(e) {
   const input = $("#texto-envio");
   const texto = input.value.trim();
   const adjunto = estado.archivoAdjunto;
-  if (!texto && !adjunto) return;
+  const rapida = estado.rapidaPendiente;
+  if (!texto && !adjunto && !rapida) return;
 
   input.disabled = true;
   mostrarEnviando(true);
@@ -1717,6 +1734,30 @@ async function enviarMensaje(e) {
         body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
       cancelarAdjunto();
+    } else if (rapida) {
+      // Todas a la vez, no una por una: la API las procesa en paralelo y
+      // llegan casi juntas — WhatsApp igual manda una notificación por
+      // foto, eso lo decide el celular del cliente, no la API.
+      const resultados = await Promise.allSettled(rapida.media.map((m) =>
+        pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
+        })
+      ));
+      const fallidas = resultados.filter((r) => r.status === "rejected");
+      if (texto) {
+        await pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: texto, reply_to_id: replyToId })
+        });
+      }
+      estado.rapidaPendiente = null;
+      pintarPreviewArchivo();
+      if (fallidas.length) {
+        alert(`Se mandaron ${rapida.media.length - fallidas.length} de ${rapida.media.length} — falló: ${fallidas[0].reason.message}`);
+      }
     } else {
       await pedir("/api/crm/messages", {
         method: "POST",
@@ -1821,7 +1862,7 @@ function pintarQuickPanel() {
     el.addEventListener("click", (e) => {
       if (e.target.closest(".borrar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
-      if (q) enviarQuickReply(q);
+      if (q) usarQuickReply(q);
     });
   });
   panel.querySelectorAll(".borrar").forEach((btn) => {
@@ -1844,53 +1885,22 @@ function pintarQuickPanel() {
   });
 }
 
-async function enviarQuickReply(q) {
+/** Elegir una respuesta rápida ya no la manda al toque — la pone en el escribidor (texto y/o adjunto pendiente) para que el vendedor la revise/edite y mande con Enter o el botón, como cualquier otro mensaje. */
+function usarQuickReply(q) {
   $("#panel-rapidas").classList.remove("abierto");
   estado.rapidasPorSlash = false;
+
   const input = $("#texto-envio");
-  if (input) input.value = "";
-  mostrarEnviando(true);
-  try {
-    if (q.media.length) {
-      // Todas a la vez, no una por una: la API las procesa en paralelo y
-      // llegan casi juntas — WhatsApp igual manda una notificación por
-      // foto, eso lo decide el celular del cliente, no la API.
-      const resultados = await Promise.allSettled(q.media.map((m) =>
-        pedir("/api/crm/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
-        })
-      ));
-      const fallidas = resultados.filter((r) => r.status === "rejected");
-
-      if (q.body) {
-        await pedir("/api/crm/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
-        });
-      }
-      await cargarMensajes();
-      await cargarConversaciones();
-      if (fallidas.length) {
-        alert(`Se mandaron ${q.media.length - fallidas.length} de ${q.media.length} — falló: ${fallidas[0].reason.message}`);
-      }
-      return;
-    }
-
-    await pedir("/api/crm/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: q.body })
-    });
-    await cargarMensajes();
-    await cargarConversaciones();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    mostrarEnviando(false);
+  if (input) {
+    input.value = q.body || "";
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
   }
+
+  estado.rapidaPendiente = q.media.length ? { media: q.media } : null;
+  pintarPreviewArchivo();
 }
 
 $("#rapida-cancelar").addEventListener("click", () => {
@@ -2358,13 +2368,17 @@ async function abrirModalTemplates() {
       cont.innerHTML = `<p class="ayuda-modal">Todavía no creaste ninguna plantilla. Créalas en WhatsApp Manager → Message Templates (Meta tarda de minutos a ~24h en aprobarlas).</p>`;
       return;
     }
-    cont.innerHTML = templates.map((t, i) => `
+    cont.innerHTML = templates.map((t, i) => {
+      const body = (t.components || []).find((c) => c.type === "BODY");
+      return `
       <div class="fila-template" data-i="${i}" style="${t.status === "APPROVED" ? "cursor:pointer" : "opacity:.55;cursor:default"}">
         <div>
           <div class="nombre">${escapar(t.name)}${badgeEstadoPlantilla(t.status)}</div>
           <div class="sub">${escapar(t.category)} · ${escapar(t.language)}</div>
+          ${body?.text ? `<div class="sub">${escapar(body.text)}</div>` : ""}
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
     cont.querySelectorAll(".fila-template").forEach((el) => {
       const t = templates[Number(el.dataset.i)];
       if (t.status !== "APPROVED") return;
