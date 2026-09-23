@@ -44,7 +44,7 @@ async function del({ request, env }) {
 
 async function get({ env }) {
   if (!env.VAPID_PUBLIC_KEY) return json({ error: "Notificaciones push no configuradas." }, 503);
-  return json({ key: env.VAPID_PUBLIC_KEY });
+  return json({ key: env.VAPID_PUBLIC_KEY.trim() });
 }
 
 export const onRequestGet = conAuth(get);

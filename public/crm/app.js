@@ -1031,7 +1031,7 @@ async function configurarNotificaciones() {
   // puede haber un fetch, o el navegador deja de considerarlo "gesto del
   // usuario" y rechaza con "permission denied" sin mostrar el aviso.
   let vapidKey = null;
-  pedir("/api/crm/push-subscribe").then(({ key }) => { vapidKey = key; }).catch(() => {});
+  pedir("/api/crm/push-subscribe").then(({ key }) => { vapidKey = String(key || "").trim(); }).catch(() => {});
 
   btn.onclick = async () => {
     if (activo) {
@@ -1063,7 +1063,7 @@ async function configurarNotificaciones() {
     }
 
     try {
-      if (!vapidKey) vapidKey = (await pedir("/api/crm/push-subscribe")).key;
+      if (!vapidKey) vapidKey = String((await pedir("/api/crm/push-subscribe")).key || "").trim();
       // Si el servicio push del navegador no responde (Brave sin servicios de
       // Google, red que bloquea a Google), subscribe() se cuelga para siempre.
       const suscribir = () => Promise.race([
@@ -1091,11 +1091,36 @@ async function configurarNotificaciones() {
         icon: "/kittarotcod/favicon-180.png"
       }).catch(() => {});
     } catch (err) {
+      const detalle = `\n\n(Detalle técnico: ${err?.name || "Error"} — ${err?.message || ""} · permiso=${Notification.permission})`;
       const esPermiso = err?.name === "NotAllowedError" || /permission/i.test(err?.message || "");
-      alert((esPermiso ? ayudaPermisoNotificaciones("bloqueado") : "No se pudo activar las notificaciones.") +
-        `\n\n(Detalle técnico: ${err?.name || "Error"} — ${err?.message || ""} · permiso=${Notification.permission})`);
+      if (esPermiso) return alert(ayudaPermisoNotificaciones("bloqueado") + detalle);
+
+      // "push service error" = el servicio push (Google) rechazó la suscripción.
+      // La causa más común es una clave VAPID mal armada en el servidor.
+      const problemaClave = await validarClaveVapid(vapidKey);
+      if (problemaClave) {
+        return alert(`La clave VAPID_PUBLIC_KEY configurada en el servidor no es válida (${problemaClave}). Hay que regenerar el par de claves VAPID y cargarlo en Cloudflare.` + detalle);
+      }
+      const brave = Boolean(navigator.brave);
+      alert((brave
+        ? "Brave no está pudiendo hablar con el servicio push. Revisa que esté activado \"Usar los servicios de Google para la mensajería push\" (brave://settings/privacy en PC; ⋮ → Configuración → Privacidad y seguridad en Android) y luego CIERRA Brave por completo y vuelve a abrirlo — sin reiniciar no toma el cambio."
+        : "El servicio push del navegador rechazó la suscripción. Revisa que no haya un bloqueador/VPN/antivirus cortando la conexión a Google y vuelve a intentar.") + detalle);
     }
   };
+}
+
+/** null si la clave pública VAPID es un punto P-256 válido; si no, una descripción corta del problema. */
+async function validarClaveVapid(key) {
+  if (!key) return "está vacía";
+  let bytes;
+  try { bytes = urlBase64ToUint8Array(String(key).trim()); } catch { return "no es base64url"; }
+  if (bytes.length !== 65 || bytes[0] !== 4) return `mide ${bytes.length} bytes y empieza con 0x${(bytes[0] ?? 0).toString(16)}; debe medir 65 y empezar con 0x04`;
+  try {
+    await crypto.subtle.importKey("raw", bytes, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  } catch {
+    return "no es un punto válido de la curva P-256";
+  }
+  return null;
 }
 
 /** Instrucciones según el dispositivo — casi siempre el bloqueo está en la configuración del sitio o del sistema, no en el CRM. */

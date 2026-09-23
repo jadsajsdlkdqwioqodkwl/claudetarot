@@ -36,10 +36,10 @@ async function hkdf(salt, ikm, info, length) {
 }
 
 async function importarVapidPrivada(env) {
-  const pub = b64urlToBytes(env.VAPID_PUBLIC_KEY); // 0x04 + x(32) + y(32)
+  const pub = b64urlToBytes(env.VAPID_PUBLIC_KEY.trim()); // 0x04 + x(32) + y(32)
   const x = pub.slice(1, 33);
   const y = pub.slice(33, 65);
-  const d = env.VAPID_PRIVATE_KEY;
+  const d = env.VAPID_PRIVATE_KEY.trim();
   const jwk = { kty: "EC", crv: "P-256", d, x: bytesToB64url(x), y: bytesToB64url(y), ext: true };
   return crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
 }
@@ -107,7 +107,7 @@ export async function mandarPush(env, subscripcion, datos) {
       "Content-Type": "application/octet-stream",
       "Content-Encoding": "aes128gcm",
       "TTL": "86400",
-      "Authorization": `vapid t=${jwt}, k=${env.VAPID_PUBLIC_KEY}`
+      "Authorization": `vapid t=${jwt}, k=${env.VAPID_PUBLIC_KEY.trim()}`
     },
     body: cuerpo
   });
