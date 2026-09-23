@@ -88,7 +88,6 @@ function debounce(fn, ms) {
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-mi-password").innerHTML = icon("key");
-  $("#btn-bienvenida").innerHTML = icon("megaphone");
   $("#btn-admin").innerHTML = icon("broadcast");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-notificaciones").innerHTML = icon("bell");
@@ -165,12 +164,12 @@ async function mostrarApp() {
   const { role, displayName, esCuentaDeVendedor } = await pedir("/api/crm/session");
   estado.miRol = role;
   estado.miNombre = displayName || null;
-  // Para que quede clarísimo con qué cuenta estás — el panel de "Probar
-  // bienvenida" y de Equipo solo salen con role "admin", y esto evita
-  // preguntarse por qué no aparecen si entraste con otra cuenta.
+  // Para que quede clarísimo con qué cuenta estás — el panel de admin
+  // (bienvenida, mensaje masivo, etc) y de Equipo solo salen con role
+  // "admin", y esto evita preguntarse por qué no aparecen si entraste
+  // con otra cuenta.
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
-  $("#btn-bienvenida").style.display = role === "admin" ? "" : "none";
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
   cargarQuickReplies();
@@ -399,7 +398,7 @@ function activarOjito(id) {
 
 /* ---------- Bienvenida de anuncios: secuencia + simulación ---------- */
 
-$("#btn-bienvenida").addEventListener("click", async () => {
+$("#btn-abrir-bienvenida").addEventListener("click", async () => {
   $("#modal-bienvenida-fondo").classList.add("abierto");
   await pintarSecuenciaBienvenida();
 });
