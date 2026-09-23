@@ -16,10 +16,12 @@
   },
 
   // Dos crons con trabajos distintos (se distinguen por `event.cron` en
-  // src/index.js): el de cada minuto manda los seguimientos vencidos, el de
-  // cada 10 minutos vuelca los mensajes nuevos del CRM a Google Sheets.
+  // src/index.js): el de cada 5 minutos manda los seguimientos vencidos (un
+  // seguimiento programado puede salir hasta 5 min tarde — nadie lo nota, y
+  // baja este cron de 1440 a 288 requests/día), el de cada 10 minutos vuelca
+  // los mensajes nuevos del CRM a Google Sheets.
   "triggers": {
-    "crons": ["* * * * *", "*/10 * * * *"]
+    "crons": ["*/5 * * * *", "*/10 * * * *"]
   },
 
   // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.

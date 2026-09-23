@@ -115,12 +115,12 @@ export async function quitarPresencia(db, conversationId, agentName) {
   await db.prepare("DELETE FROM presence WHERE conversation_id = ? AND agent_name = ?").bind(conversationId, agentName).run();
 }
 
-/** Quién más (aparte de quien pregunta) tiene este chat abierto — "reciente" es en los últimos 12s, para que se apague solo si cierra la pestaña sin avisar. */
+/** Quién más (aparte de quien pregunta) tiene este chat abierto — "reciente" es en los últimos 25s (el heartbeat manda cada 10s), para que se apague solo si cierra la pestaña sin avisar sin parpadear por un solo request tardío. */
 export async function agentesViendoChat(db, conversationId, exceptoAgente) {
   const { results } = await db
     .prepare(
       `SELECT agent_name FROM presence
-       WHERE conversation_id = ? AND agent_name != ? AND updated_at > datetime('now', '-12 seconds')`
+       WHERE conversation_id = ? AND agent_name != ? AND updated_at > datetime('now', '-25 seconds')`
     )
     .bind(conversationId, exceptoAgente || "")
     .all();

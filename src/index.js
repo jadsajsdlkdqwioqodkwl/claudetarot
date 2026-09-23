@@ -202,7 +202,7 @@ export default {
   },
 
   // Dos crons (ver wrangler.jsonc → triggers.crons), distinguidos por
-  // event.cron: el de cada minuto manda los seguimientos vencidos, el de
+  // event.cron: el de cada 5 min manda los seguimientos vencidos, el de
   // cada 10 min vuelca los chats nuevos a Sheets.
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {

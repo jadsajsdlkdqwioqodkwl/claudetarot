@@ -13,10 +13,12 @@ const PAGINA_MENSAJES = 50;
 // Cuánto se espacían los polls — el plan gratis de Cloudflare tiene un tope
 // de requests por día, y con el CRM abierto toda la jornada entre varias
 // vendedoras, sondear muy seguido lo agota rápido. Se complementa con pausar
-// todo cuando la pestaña está de fondo (ver el listener de visibilitychange).
-const INTERVALO_CONVERSACIONES = 6000;
-const INTERVALO_MENSAJES = 4000;
-const INTERVALO_PRESENCIA = 8000;
+// todo cuando la pestaña está de fondo (ver el listener de visibilitychange)
+// y con las notificaciones push, que ya avisan de lo urgente — el poll ya no
+// tiene que ser tan agresivo, es más que nada para no depender solo de eso.
+const INTERVALO_CONVERSACIONES = 9000;
+const INTERVALO_MENSAJES = 6000;
+const INTERVALO_PRESENCIA = 10000;
 
 const estado = {
   conversaciones: [],
