@@ -2617,6 +2617,39 @@ function toggleEmojiPanel() {
   }
 }
 
+/** Mete texto donde está el cursor (o reemplaza lo seleccionado), no al final. */
+function insertarEnCursor(el, texto) {
+  const ini = el.selectionStart ?? el.value.length;
+  const fin = el.selectionEnd ?? el.value.length;
+  el.value = el.value.slice(0, ini) + texto + el.value.slice(fin);
+  el.focus();
+  el.setSelectionRange(ini + texto.length, ini + texto.length);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/**
+ * Botón "Emojis" debajo de un campo de texto de un modal: despliega la
+ * grilla en línea (no flotante, para que no la corte el scroll del modal)
+ * y mete el emoji donde está el cursor.
+ */
+function agregarEmojisA(el) {
+  if (!el || el.dataset.conEmojis) return;
+  el.dataset.conEmojis = "1";
+  const barra = document.createElement("div");
+  barra.className = "emoji-barra";
+  barra.innerHTML = `<button type="button" class="emoji-toggle">${icon("smile")} Emojis</button>
+    <div class="emoji-grid">${EMOJIS.map((em) => `<button type="button">${em}</button>`).join("")}</div>`;
+  el.after(barra);
+  barra.querySelector(".emoji-toggle").addEventListener("click", () => barra.classList.toggle("abierta"));
+  const grid = barra.querySelector(".emoji-grid");
+  // Sin esto, tocar un emoji le saca el foco al campo y en el celular se
+  // cierra y vuelve a abrir el teclado con cada uno.
+  grid.addEventListener("mousedown", (e) => e.preventDefault());
+  grid.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => insertarEnCursor(el, b.textContent)));
+}
+
+["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto"].forEach((sel) => agregarEmojisA($(sel)));
+
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers")) {
     cerrarPaneles();
@@ -3083,6 +3116,8 @@ function pintarListaSecuencias() {
         </div>
       </div>
     </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`);
+
+  cont.querySelectorAll(".fs-paso-texto").forEach(agregarEmojisA);
 
   cont.querySelectorAll(".fs-editar").forEach((btn) => {
     btn.addEventListener("click", () => {
