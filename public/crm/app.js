@@ -703,6 +703,20 @@ $("#export-reset-btn").addEventListener("click", async () => {
 let syncEnVuelo = null;
 let ultimoSync = { clave: "", t: 0 };
 
+/**
+ * Reclamar/liberar/reasignar (o el "entrar" silencioso) es un PATCH liviano
+ * que suele volver antes que el GET de la lista que ya estaba en vuelo — si
+ * ese GET se lanzó ANTES del click, trae una foto vieja y, al aplicarla,
+ * pisaba la estrella/etiqueta recién puesta con el estado de antes (el
+ * "glitch": reclamás y por un toque parece que no pasó nada, o vuelve a
+ * aparecer "libre"). Acá se recuerda la última asignación local con su hora
+ * para no dejar que un GET más viejo la pise.
+ */
+const asignacionesLocales = new Map(); // conversation_id -> { assigned_agent, shared_with, t }
+function marcarAsignacionLocal(conversationId, assignedAgent, sharedWith) {
+  asignacionesLocales.set(conversationId, { assigned_agent: assignedAgent, shared_with: sharedWith ?? null, t: Date.now() });
+}
+
 function sincronizar() {
   const params = new URLSearchParams();
   if (estado.filtroMias) params.set("mine", "1");
@@ -715,9 +729,15 @@ function sincronizar() {
   if (syncEnVuelo?.clave === clave) return syncEnVuelo.promesa;
   if (ultimoSync.clave === clave && Date.now() - ultimoSync.t < 1500) return Promise.resolve();
 
+  const inicio = Date.now();
   const promesa = (async () => {
     const data = await pedir(`/api/crm/conversations?${clave}`);
     estado.conversaciones = data.conversations;
+    for (const [id, local] of asignacionesLocales) {
+      if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
+      const conv = estado.conversaciones.find((x) => x.conversation_id === id);
+      if (conv) { conv.assigned_agent = local.assigned_agent; conv.shared_with = local.shared_with; }
+    }
     if (data.chat && data.chat.conversation_id === estado.conversacionActivaId) aplicarMensajes(data.chat.conversation_id, data.chat);
     pintarLista();
     actualizarAvisosNoLeidos();
@@ -988,6 +1008,7 @@ async function registrarEntradaChat(c) {
     c.shared_with = shared_with;
     const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
     if (conv) { conv.assigned_agent = assigned_agent; conv.shared_with = shared_with; }
+    marcarAsignacionLocal(c.conversation_id, assigned_agent, shared_with);
     pintarEstrellaHeader(c);
     pintarAsignacion(c);
     pintarLista();
@@ -3251,6 +3272,7 @@ async function cambiarAsignacion(c, action, deQuien) {
     c.shared_with = shared_with ?? null;
     const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
     if (conv) { conv.assigned_agent = assigned_agent; conv.shared_with = c.shared_with; }
+    marcarAsignacionLocal(c.conversation_id, assigned_agent, c.shared_with);
     pintarAsignacion(c);
     pintarEstrellaHeader(c);
     pintarLista();
