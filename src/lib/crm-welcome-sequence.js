@@ -12,10 +12,11 @@
 
 import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
 
-export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel) {
-  const { results: pasos } = await env.CRM_DB.prepare(
+export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null) {
+  const { results: todos } = await env.CRM_DB.prepare(
     "SELECT id, step_order, body FROM welcome_steps ORDER BY step_order ASC"
   ).all();
+  const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : todos;
 
   if (!pasos.length) return 0;
 

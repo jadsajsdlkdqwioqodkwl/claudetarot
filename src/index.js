@@ -48,6 +48,7 @@ import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } fr
 import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost, onRequestGetProductos as crmCatalogProductosGet } from "./api/crm/catalog.js";
 import { onRequestGet as crmSettingsGet, onRequestPatch as crmSettingsPatch } from "./api/crm/settings.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
+import { onRequestPost as crmWelcomeSendPost } from "./api/crm/welcome-send.js";
 import {
   onRequestGet as crmWelcomeSeqGet,
   onRequestPost as crmWelcomeSeqPost,
@@ -115,6 +116,7 @@ const ROUTES = {
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },
   "/api/crm/settings": { GET: crmSettingsGet, PATCH: crmSettingsPatch },
   "/api/crm/test-welcome": { POST: crmTestWelcomePost },
+  "/api/crm/welcome-send": { POST: crmWelcomeSendPost },
   "/api/crm/welcome-sequence": { GET: crmWelcomeSeqGet, POST: crmWelcomeSeqPost, DELETE: crmWelcomeSeqDelete, PATCH: crmWelcomeSeqPatch },
   "/api/crm/totp-setup": { GET: crmTotpGet, POST: crmTotpPost, PATCH: crmTotpPatch, DELETE: crmTotpDelete },
   "/api/crm/bulk-send": { GET: crmBulkSendGet, POST: crmBulkSendPost },

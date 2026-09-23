@@ -3,12 +3,14 @@
  *       - ad_welcome_quick_reply_id: respuesta rápida de bienvenida automática
  *         para contactos que vienen de un anuncio (hoy sin uso — la
  *         bienvenida real vive en /api/crm/welcome-sequence).
- *       - ad_followup_sequence_id: secuencia de seguimiento (de
- *         /api/crm/followup-sequences) que se programa sola cuando un
- *         contacto NUEVO escribe por primera vez desde un anuncio "Click to
- *         WhatsApp" — además de la bienvenida instantánea, para insistir
- *         días después si no contestó.
- * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null } → solo admin
+ *       - ad_followup_sequence_id: la "secuencia para leads" (de
+ *         /api/crm/followup-sequences). Los vendedores la ven y la aplican
+ *         con un botón desde el panel derecho de cada chat.
+ *       - ad_followup_auto: si además se programa sola en cada contacto
+ *         NUEVO que escribe por primera vez desde un anuncio "Click to
+ *         WhatsApp". Sin valor guardado cuenta como encendido (así se
+ *         comportaba antes de existir este ajuste).
+ * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean } → solo admin
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -21,13 +23,15 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
-    obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id")
+    obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
+    obtenerAjuste(env.CRM_DB, "ad_followup_auto")
   ]);
   return json({
     ad_welcome_quick_reply_id: adWelcomeQuickReplyId ? Number(adWelcomeQuickReplyId) : null,
-    ad_followup_sequence_id: adFollowupSequenceId ? Number(adFollowupSequenceId) : null
+    ad_followup_sequence_id: adFollowupSequenceId ? Number(adFollowupSequenceId) : null,
+    ad_followup_auto: adFollowupAuto !== "0"
   });
 }
 
@@ -46,6 +50,9 @@ async function patch({ request, env }) {
   if ("ad_followup_sequence_id" in payload) {
     const id = payload.ad_followup_sequence_id;
     await guardarAjuste(env.CRM_DB, "ad_followup_sequence_id", id ? String(Number(id)) : "");
+  }
+  if ("ad_followup_auto" in payload) {
+    await guardarAjuste(env.CRM_DB, "ad_followup_auto", payload.ad_followup_auto ? "1" : "0");
   }
   return json({ ok: true });
 }

@@ -289,11 +289,10 @@
     <button class="cancelar" id="btn-abrir-bienvenida" type="button" style="width:100%">Configurar bienvenida de anuncios</button>
 
     <hr />
-    <h2>Seguimiento automático para leads de anuncios</h2>
-    <p class="ayuda-modal">Aparte de la bienvenida instantánea de arriba, podés elegir una secuencia de seguimiento (de "Seguimientos programados" → "Aplicar una secuencia") para que se programe sola en cada chat NUEVO que llegue desde un anuncio — por si no contesta, para insistir días después. Como cualquier seguimiento programado, se cancela solo en cuanto el cliente escribe o le mandás algo a mano.</p>
-    <select id="admin-ad-followup-sequence"><option value="">Sin seguimiento automático</option></select>
-    <button class="cancelar" id="admin-ad-followup-guardar" type="button" style="width:100%">Guardar</button>
-    <p class="ayuda-modal" id="admin-ad-followup-resultado"></p>
+    <h2>Seguimiento para leads</h2>
+    <p class="ayuda-modal">Mensajes que se mandan solos horas o días después, por si el lead no contesta. Tus vendedores lo ven y lo aplican con un botón desde el panel derecho de cada chat, y si quieres también se programa solo en cada lead nuevo de un anuncio.</p>
+    <div class="ad-card" id="admin-leads-resumen" style="margin-bottom:8px">Cargando…</div>
+    <button class="cancelar" id="btn-abrir-leads" type="button" style="width:100%">Configurar seguimiento para leads</button>
 
     <hr />
     <h2>Costos de WhatsApp</h2>
@@ -309,6 +308,53 @@
 
     <div class="acciones">
       <button class="cancelar" id="admin-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-leads-fondo">
+  <div class="modal modal-ancho">
+    <h2>Seguimiento para leads</h2>
+    <p class="ayuda-modal">Arma acá los mensajes de insistencia y cuándo sale cada uno. Todos se cancelan solos en cuanto el cliente escribe o alguien le manda algo a mano — nunca le llegan a alguien que ya está conversando.</p>
+
+    <h3 class="leads-paso-titulo"><span>1</span> Secuencia de leads</h3>
+    <div class="leads-fila">
+      <select id="leads-secuencia"></select>
+      <button class="cancelar" id="leads-nueva" type="button">Nueva</button>
+    </div>
+
+    <h3 class="leads-paso-titulo"><span>2</span> Mensajes y cuándo salen</h3>
+    <div id="leads-pasos"></div>
+
+    <div id="leads-form">
+      <div class="leads-fila leads-fila-delay">
+        <span>Mandar</span>
+        <input type="number" id="leads-delay-valor" min="1" value="1" />
+        <select id="leads-delay-unidad">
+          <option value="60">hora(s)</option>
+          <option value="1440" selected>día(s)</option>
+          <option value="1">minuto(s)</option>
+        </select>
+        <span id="leads-delay-ref">después de aplicarlo</span>
+      </div>
+      <textarea id="leads-texto" placeholder="Texto del mensaje (opcional si adjuntas foto/video)"></textarea>
+      <input type="file" id="leads-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+      <div class="acciones">
+        <button class="cancelar" id="leads-cancelar-edicion" type="button" style="display:none">Cancelar edición</button>
+        <button class="crear" id="leads-agregar" type="button">Agregar mensaje</button>
+      </div>
+    </div>
+
+    <h3 class="leads-paso-titulo"><span>3</span> ¿Cuándo se aplica?</h3>
+    <label class="leads-check">
+      <input type="checkbox" id="leads-auto" />
+      <span><strong>Solo, en cada lead nuevo de un anuncio.</strong> Se programa en cuanto escribe por primera vez, justo después de la bienvenida.</span>
+    </label>
+    <p class="ayuda-modal">Siempre, además, tus vendedores tienen el botón "Programar seguimiento de leads" en el panel derecho de cada chat — para leads que llegaron por otro lado o antes de armar esto.</p>
+    <p class="ayuda-modal" id="leads-estado"></p>
+
+    <div class="acciones">
+      <button class="cancelar" id="leads-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

@@ -430,6 +430,7 @@ $("#btn-abrir-bienvenida").addEventListener("click", async () => {
 $("#bienvenida-cerrar").addEventListener("click", () => {
   $("#modal-bienvenida-fondo").classList.remove("abierto");
   cancelarEdicionPaso();
+  refrescarVistasLead();
 });
 
 async function pintarSecuenciaBienvenida() {
@@ -585,43 +586,282 @@ $("#btn-admin").addEventListener("click", () => {
   $("#bulk-resultado").textContent = "";
   cargarPlantillasBulk();
   cargarBatchesBulk();
-  cargarAjusteSeguimientoAutomatico();
+  pintarResumenLeadsAdmin();
 });
 
-/** Selector de "secuencia automática para leads de anuncios" en el panel de admin. */
-async function cargarAjusteSeguimientoAutomatico() {
-  const sel = $("#admin-ad-followup-sequence");
-  if (!sel) return;
-  sel.innerHTML = `<option value="">Sin seguimiento automático</option>`;
-  try {
-    const [{ sequences }, { ad_followup_sequence_id }] = await Promise.all([
-      pedir("/api/crm/followup-sequences"),
-      pedir("/api/crm/settings")
-    ]);
-    for (const s of sequences) {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = `${s.title} (${s.steps.length} paso${s.steps.length === 1 ? "" : "s"})`;
-      sel.appendChild(opt);
-    }
-    sel.value = ad_followup_sequence_id || "";
-  } catch { /* si falla, queda solo la opción "sin seguimiento" */ }
+/* ---------- Bienvenida + seguimiento para leads: datos compartidos ---------- */
+
+// Lo que usan el modal de "Seguimiento para leads", el resumen del panel de
+// admin y las dos secciones del panel derecho de cada chat. Cambia poco
+// (solo cuando el admin lo edita), así que se cachea un minuto para no
+// pedirlo de nuevo en cada chat que se abre.
+let datosLead = null;
+
+async function cargarDatosLead(forzar) {
+  if (!forzar && datosLead && Date.now() - datosLead.at < 60000) return datosLead;
+  const [{ steps }, { sequences }, settings] = await Promise.all([
+    pedir("/api/crm/welcome-sequence"),
+    pedir("/api/crm/followup-sequences"),
+    pedir("/api/crm/settings")
+  ]);
+  datosLead = { at: Date.now(), welcomeSteps: steps, sequences, settings };
+  return datosLead;
 }
-$("#admin-ad-followup-guardar")?.addEventListener("click", async () => {
-  const aviso = $("#admin-ad-followup-resultado");
-  const valor = $("#admin-ad-followup-sequence").value;
+
+function secuenciaDeLeads(d) {
+  return d.sequences.find((s) => s.id === d.settings.ad_followup_sequence_id) || null;
+}
+
+/** Tiempo total desde que se aplica, ej. 1500 → "1 día 1 h". */
+function formatearMomento(minutos) {
+  const d = Math.floor(minutos / 1440);
+  const h = Math.floor((minutos % 1440) / 60);
+  const m = minutos % 60;
+  return [d && `${d} día${d === 1 ? "" : "s"}`, h && `${h} h`, m && `${m} min`].filter(Boolean).join(" ") || "0 min";
+}
+
+const recortarTexto = (t, n) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
+
+/** Cambió algo del lead (lo editó el admin): refresca lo que esté a la vista. */
+function refrescarVistasLead() {
+  datosLead = null;
+  if ($("#modal-admin-fondo").classList.contains("abierto")) pintarResumenLeadsAdmin();
+  const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
+  if (c && $("#detalle-leads")) pintarLeadDetalle(c);
+}
+
+async function pintarResumenLeadsAdmin() {
+  const cont = $("#admin-leads-resumen");
+  try {
+    const d = await cargarDatosLead(true);
+    const seq = secuenciaDeLeads(d);
+    if (!seq) {
+      cont.innerHTML = `<div class="sin-ad">Todavía no configurado.</div>`;
+      return;
+    }
+    let acum = 0;
+    cont.innerHTML = `
+      <div class="titulo">${icon("clock")} ${escapar(seq.title)} · ${d.settings.ad_followup_auto ? "automático en leads nuevos" : "solo a mano"}</div>
+      ${seq.steps.length ? seq.steps.map((p) => { acum += p.delay_minutes; return `<div>En ${formatearMomento(acum)}: ${escapar(recortarTexto(p.body || "Foto/video", 50))}</div>`; }).join("") : "<div>Sin mensajes todavía.</div>"}`;
+  } catch (err) {
+    cont.textContent = err.message;
+  }
+}
+
+/* ---------- Modal "Seguimiento para leads" (admin) ---------- */
+
+let leadsEditandoPasoId = null;
+
+$("#btn-abrir-leads").addEventListener("click", abrirModalLeads);
+
+async function abrirModalLeads() {
+  $("#modal-leads-fondo").classList.add("abierto");
+  $("#leads-estado").textContent = "";
+  cancelarEdicionPasoLead();
+  await pintarModalLeads(true);
+}
+
+$("#leads-cerrar").addEventListener("click", () => {
+  $("#modal-leads-fondo").classList.remove("abierto");
+  cancelarEdicionPasoLead();
+  refrescarVistasLead();
+});
+
+function avisoLeads(texto) {
+  const el = $("#leads-estado");
+  el.textContent = texto;
+  if (texto === "Guardado ✓") setTimeout(() => { if (el.textContent === texto) el.textContent = ""; }, 2000);
+}
+
+function cancelarEdicionPasoLead() {
+  leadsEditandoPasoId = null;
+  $("#leads-texto").value = "";
+  $("#leads-archivo").value = "";
+  $("#leads-delay-valor").value = "1";
+  $("#leads-delay-unidad").value = "1440";
+  $("#leads-agregar").textContent = "Agregar mensaje";
+  $("#leads-cancelar-edicion").style.display = "none";
+  document.querySelectorAll("#leads-pasos .leads-paso.editando").forEach((el) => el.classList.remove("editando"));
+  actualizarReferenciaDelayLead();
+}
+
+/** "después de aplicarlo" para el primer mensaje, "después del anterior" para el resto. */
+function actualizarReferenciaDelayLead() {
+  const seq = datosLead && secuenciaDeLeads(datosLead);
+  const pasos = seq?.steps || [];
+  const esPrimero = leadsEditandoPasoId ? pasos[0]?.id === leadsEditandoPasoId : !pasos.length;
+  $("#leads-delay-ref").textContent = esPrimero ? "después de aplicarlo" : "después del mensaje anterior";
+}
+
+async function pintarModalLeads(forzar) {
+  let d;
+  try {
+    d = await cargarDatosLead(forzar);
+  } catch (err) {
+    avisoLeads(err.message);
+    return;
+  }
+  const sel = $("#leads-secuencia");
+  sel.innerHTML = `<option value="">— Elige una secuencia —</option>` +
+    d.sequences.map((s) => `<option value="${s.id}">${escapar(s.title)} (${s.steps.length} mensaje${s.steps.length === 1 ? "" : "s"})</option>`).join("");
+  const seq = secuenciaDeLeads(d);
+  sel.value = seq ? String(seq.id) : "";
+  $("#leads-auto").checked = Boolean(seq) && d.settings.ad_followup_auto;
+  $("#leads-auto").disabled = !seq;
+  $("#leads-form").style.display = seq ? "" : "none";
+
+  const cont = $("#leads-pasos");
+  if (!seq) {
+    cont.innerHTML = `<p class="ayuda-modal">Elige una secuencia arriba, o crea una con "Nueva".</p>`;
+    return;
+  }
+  let acum = 0;
+  cont.innerHTML = seq.steps.length ? seq.steps.map((p, i) => {
+    acum += p.delay_minutes;
+    return `
+    <div class="leads-paso${leadsEditandoPasoId === p.id ? " editando" : ""}" data-id="${p.id}">
+      <div class="leads-paso-info">
+        <div class="leads-paso-cuando">${icon("clock")} <strong>En ${formatearMomento(acum)}</strong><span class="sub"> · ${formatearDelay(p.delay_minutes)} ${i === 0 ? "después de aplicarlo" : "después del anterior"}</span></div>
+        <div class="leads-paso-cuerpo">${p.media_key ? icon(p.media_type === "video" ? "video" : "image") + " " : ""}${escapar(p.body || (p.media_key ? "Foto/video" : ""))}</div>
+      </div>
+      <div class="leads-paso-acciones">
+        <button class="mover-arriba" data-id="${p.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
+        <button class="mover-abajo" data-id="${p.id}" title="Bajar" ${i === seq.steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft")}</button>
+        <button class="editar-paso" data-id="${p.id}" title="Editar">${icon("pencil")}</button>
+        <button class="trash quitar-paso" data-id="${p.id}" title="Borrar">${icon("trash")}</button>
+      </div>
+    </div>`;
+  }).join("") : `<p class="ayuda-modal">Sin mensajes todavía — agrega el primero abajo.</p>`;
+
+  cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((s) => s.style.transform = "rotate(90deg)");
+  cont.querySelectorAll(".mover-abajo .icono-svg svg").forEach((s) => s.style.transform = "rotate(-90deg)");
+
+  cont.querySelectorAll(".mover-arriba, .mover-abajo").forEach((btn) => btn.addEventListener("click", async () => {
+    try {
+      await pedir("/api/crm/followup-sequences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step_id: Number(btn.dataset.id), direction: btn.classList.contains("mover-arriba") ? "up" : "down" })
+      });
+      await pintarModalLeads(true);
+    } catch (err) { avisoLeads(err.message); }
+  }));
+  cont.querySelectorAll(".quitar-paso").forEach((btn) => btn.addEventListener("click", async () => {
+    if (!confirm("¿Borrar este mensaje del seguimiento? Los que ya estén programados en chats no se tocan.")) return;
+    try {
+      await pedir("/api/crm/followup-sequences", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step_id: Number(btn.dataset.id) })
+      });
+      if (leadsEditandoPasoId === Number(btn.dataset.id)) cancelarEdicionPasoLead();
+      await pintarModalLeads(true);
+    } catch (err) { avisoLeads(err.message); }
+  }));
+  cont.querySelectorAll(".editar-paso").forEach((btn) => btn.addEventListener("click", () => {
+    const p = seq.steps.find((x) => x.id === Number(btn.dataset.id));
+    if (!p) return;
+    leadsEditandoPasoId = p.id;
+    const unidad = p.delay_minutes % 1440 === 0 ? 1440 : p.delay_minutes % 60 === 0 ? 60 : 1;
+    $("#leads-delay-valor").value = p.delay_minutes / unidad;
+    $("#leads-delay-unidad").value = String(unidad);
+    $("#leads-texto").value = p.body || "";
+    $("#leads-archivo").value = "";
+    $("#leads-agregar").textContent = "Guardar cambios";
+    $("#leads-cancelar-edicion").style.display = "";
+    cont.querySelectorAll(".leads-paso").forEach((el) => el.classList.toggle("editando", Number(el.dataset.id) === p.id));
+    actualizarReferenciaDelayLead();
+    $("#leads-texto").focus();
+  }));
+  actualizarReferenciaDelayLead();
+}
+
+$("#leads-cancelar-edicion").addEventListener("click", cancelarEdicionPasoLead);
+
+$("#leads-secuencia").addEventListener("change", async (e) => {
+  const id = e.target.value ? Number(e.target.value) : null;
   try {
     await pedir("/api/crm/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ad_followup_sequence_id: valor ? Number(valor) : null })
+      body: JSON.stringify({ ad_followup_sequence_id: id })
     });
-    aviso.textContent = "Guardado.";
-    setTimeout(() => { if (aviso.textContent === "Guardado.") aviso.textContent = ""; }, 3000);
+    cancelarEdicionPasoLead();
+    await pintarModalLeads(true);
+    avisoLeads("Guardado ✓");
+  } catch (err) { avisoLeads(err.message); }
+});
+
+$("#leads-nueva").addEventListener("click", async () => {
+  const title = prompt("Nombre de la secuencia:", "Seguimiento leads");
+  if (!title || !title.trim()) return;
+  try {
+    const { sequence } = await pedir("/api/crm/followup-sequences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title.trim() })
+    });
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ad_followup_sequence_id: sequence.id })
+    });
+    cancelarEdicionPasoLead();
+    await pintarModalLeads(true);
+    $("#leads-texto").focus();
+  } catch (err) { avisoLeads(err.message); }
+});
+
+$("#leads-auto").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ad_followup_auto: e.target.checked })
+    });
+    if (datosLead) datosLead.settings.ad_followup_auto = e.target.checked;
+    avisoLeads("Guardado ✓");
   } catch (err) {
-    aviso.textContent = err.message;
+    e.target.checked = !e.target.checked;
+    avisoLeads(err.message);
   }
 });
+
+$("#leads-agregar").addEventListener("click", async () => {
+  const seq = datosLead && secuenciaDeLeads(datosLead);
+  if (!seq) return;
+  const valor = Number($("#leads-delay-valor").value);
+  const unidad = Number($("#leads-delay-unidad").value);
+  const texto = $("#leads-texto").value.trim();
+  const archivo = $("#leads-archivo").files[0];
+  const editandoId = leadsEditandoPasoId;
+  const pasoEditado = editandoId ? seq.steps.find((x) => x.id === editandoId) : null;
+  if (!valor || valor < 1) return alert("Pon cuánto tiempo esperar (1 o más).");
+  if (!texto && !archivo && !pasoEditado?.media_key) return alert("Escribe un texto o adjunta una foto/video.");
+
+  const btn = $("#leads-agregar");
+  btn.disabled = true;
+  try {
+    const cuerpo = { body: texto || null, delay_minutes: valor * unidad };
+    if (archivo) {
+      const subida = await subirArchivo(archivo);
+      Object.assign(cuerpo, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    }
+    await pedir("/api/crm/followup-sequences", {
+      method: editandoId ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editandoId ? { step_id: editandoId, ...cuerpo } : { sequence_id: seq.id, ...cuerpo })
+    });
+    cancelarEdicionPasoLead();
+    await pintarModalLeads(true);
+    avisoLeads("Guardado ✓");
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 $("#admin-cerrar").addEventListener("click", () => $("#modal-admin-fondo").classList.remove("abierto"));
 
 $("#bulk-modo").addEventListener("change", () => {
@@ -2748,6 +2988,7 @@ function abrirModalSecuencias(idsBulk) {
 $("#fs-cerrar").addEventListener("click", () => {
   idsBulkSecuencia = null;
   $("#modal-secuencias-fondo").classList.remove("abierto");
+  refrescarVistasLead();
 });
 
 async function cargarYPintarSecuencias() {
@@ -3189,6 +3430,12 @@ async function pintarDetalle(c) {
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
 
+    <h2>Bienvenida de anuncios</h2>
+    <div id="detalle-bienvenida">Cargando…</div>
+
+    <h2>Seguimiento para leads</h2>
+    <div id="detalle-leads">Cargando…</div>
+
     <h2>Seguimientos programados</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
@@ -3367,9 +3614,123 @@ async function pintarDetalle(c) {
   });
 
   pintarAsignacion(c);
+  pintarLeadDetalle(c);
 
   await actualizarPedidosPanel();
   await actualizarSeguimientosDetalle();
+}
+
+/**
+ * "Bienvenida de anuncios" y "Seguimiento para leads" del panel derecho:
+ * lo que armó el admin, listo para que cualquier vendedor lo mande o lo
+ * programe en este chat con un botón.
+ */
+async function pintarLeadDetalle(c) {
+  const contB = $("#detalle-bienvenida");
+  const contL = $("#detalle-leads");
+  if (!contB || !contL) return;
+  let d;
+  try {
+    d = await cargarDatosLead();
+  } catch (err) {
+    contB.innerHTML = contL.innerHTML = `<div class="sin-ad">${escapar(err.message)}</div>`;
+    return;
+  }
+  if (estado.conversacionActivaId !== c.conversation_id) return;
+  const esAdmin = estado.miRol === "admin";
+  const nombre = c.profile_name || `+${c.wa_id}`;
+
+  if (!d.welcomeSteps.length) {
+    contB.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no armaste la bienvenida." : "El admin todavía no armó la bienvenida."}</div>`
+      + (esAdmin ? `<button class="cancelar lead-config" id="detalle-config-bienvenida" type="button">${icon("pencil")} Armar bienvenida</button>` : "");
+  } else {
+    contB.innerHTML = `
+      <div class="lead-lista">${d.welcomeSteps.map((p, i) => `
+        <label class="lead-check">
+          <input type="checkbox" class="bienv-paso" value="${p.id}" checked />
+          <span><strong>${i + 1}. ${escapar(p.title)}</strong>${p.media.length ? ` ${icon(p.media.length === 1 && p.media[0].media_type === "video" ? "video" : "image")}${p.media.length > 1 ? ` ×${p.media.length}` : ""}` : ""}
+          ${p.body ? `<span class="sub">${escapar(recortarTexto(p.body, 80))}</span>` : ""}</span>
+        </label>`).join("")}
+      </div>
+      <button class="crear" id="btn-mandar-bienvenida" type="button" style="width:100%;margin-top:6px"></button>
+      ${esAdmin ? `<button class="cancelar lead-config" id="detalle-config-bienvenida" type="button">${icon("pencil")} Editar bienvenida</button>` : ""}
+      <div class="ayuda-modal" id="bienvenida-estado" style="margin:4px 0 0"></div>`;
+
+    const checks = [...contB.querySelectorAll(".bienv-paso")];
+    const btn = $("#btn-mandar-bienvenida");
+    const actualizarBoton = () => {
+      const n = checks.filter((x) => x.checked).length;
+      btn.disabled = !n;
+      btn.innerHTML = `${icon("send")} ${n === checks.length ? "Mandar bienvenida completa" : `Mandar ${n} de ${checks.length} paso${checks.length === 1 ? "" : "s"}`}`;
+    };
+    checks.forEach((x) => x.addEventListener("change", actualizarBoton));
+    actualizarBoton();
+
+    btn.addEventListener("click", async () => {
+      const elegidos = checks.filter((x) => x.checked).map((x) => Number(x.value));
+      if (!elegidos.length) return;
+      if (!confirm(`¿Mandarle a ${nombre} ${elegidos.length === checks.length ? "la bienvenida completa" : `${elegidos.length} paso(s) de la bienvenida`}? Sale ahora mismo, en orden.`)) return;
+      const aviso = $("#bienvenida-estado");
+      btn.disabled = true;
+      aviso.textContent = "Mandando…";
+      try {
+        const { pasos_mandados } = await pedir("/api/crm/welcome-send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: c.conversation_id, step_ids: elegidos.length === checks.length ? undefined : elegidos })
+        });
+        aviso.textContent = `Listo — ${pasos_mandados} paso(s) mandado(s) ✓`;
+        programarSync(0);
+      } catch (err) {
+        aviso.textContent = err.message;
+      } finally {
+        actualizarBoton();
+      }
+    });
+  }
+  $("#detalle-config-bienvenida")?.addEventListener("click", () => $("#btn-abrir-bienvenida").click());
+
+  const seq = secuenciaDeLeads(d);
+  if (!seq || !seq.steps.length) {
+    contL.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no configuraste el seguimiento para leads." : "El admin todavía no configuró el seguimiento para leads."}</div>`
+      + (esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : "");
+  } else {
+    let acum = 0;
+    contL.innerHTML = `
+      <div class="ad-card lead-card">
+        <div class="titulo">${icon("clock")} ${escapar(seq.title)}${d.settings.ad_followup_auto ? ` <span class="pill-auto">automático en leads nuevos</span>` : ""}</div>
+        <ol class="lead-timeline">${seq.steps.map((p) => {
+          acum += p.delay_minutes;
+          return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
+        }).join("")}</ol>
+      </div>
+      <button class="crear" id="btn-aplicar-leads" type="button" style="width:100%;margin-top:6px">${icon("bolt")} Programar seguimiento de leads</button>
+      ${esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : ""}
+      <div class="ayuda-modal" style="margin:4px 0 0">Se cancela solo si el cliente contesta o le escribes a mano.</div>`;
+
+    $("#btn-aplicar-leads").addEventListener("click", async () => {
+      const btn = $("#btn-aplicar-leads");
+      btn.disabled = true;
+      try {
+        const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${c.conversation_id}`);
+        const pregunta = scheduled.length
+          ? `Este chat ya tiene ${scheduled.length} seguimiento(s) pendiente(s). ¿Programar además los ${seq.steps.length} de leads?`
+          : `¿Programar los ${seq.steps.length} mensaje(s) de seguimiento en este chat? El primero sale en ${formatearMomento(seq.steps[0].delay_minutes)}.`;
+        if (!confirm(pregunta)) return;
+        await pedir("/api/crm/followup-apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: c.conversation_id, sequence_id: seq.id })
+        });
+        await actualizarSeguimientosDetalle();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  $("#detalle-config-leads")?.addEventListener("click", abrirModalLeads);
 }
 
 /**

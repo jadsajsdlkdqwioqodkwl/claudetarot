@@ -118,8 +118,9 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
 
 /**
  * Si el contacto es nuevo y vino de un anuncio, y un admin configuró una
- * secuencia de seguimiento para eso (ajuste `ad_followup_sequence_id`), la
- * programa sola — aparte de la bienvenida instantánea de arriba, para
+ * secuencia para leads (ajuste `ad_followup_sequence_id`) con lo automático
+ * encendido (`ad_followup_auto`), la programa sola — aparte de la
+ * bienvenida instantánea de arriba, para
  * insistir días después si no contestó. Como cualquier seguimiento
  * programado, se cancela sola en cuanto el cliente escribe o alguien le
  * manda algo a mano (ver cancelarSeguimientosPendientes).
@@ -127,8 +128,11 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
 async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion) {
   if (!contacto._isNew || !contacto.ctwa_clid) return;
   try {
-    const sequenceId = await obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id");
-    if (!sequenceId) return;
+    const [sequenceId, auto] = await Promise.all([
+      obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
+      obtenerAjuste(env.CRM_DB, "ad_followup_auto")
+    ]);
+    if (!sequenceId || auto === "0") return;
     await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), "Seguimiento automático (anuncio)");
   } catch (err) {
     console.error("Seguimiento automático de anuncio:", err.message);

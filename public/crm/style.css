@@ -376,6 +376,59 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .fs-agregar-paso textarea { width: 100%; min-height: 50px; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; font-family: inherit; resize: vertical; margin-bottom: 6px; }
 .fs-agregar-paso input[type="file"] { font-size: 11px; width: 100%; }
 #totp-secreto { font-family: monospace; font-size: 15px; letter-spacing: 2px; background: var(--fondo); padding: 10px; border-radius: var(--radio-s); text-align: center; word-break: break-all; margin-bottom: 10px; }
+/* Botones de acción del panel derecho y de los modales (fuera de .acciones también). */
+#detalle button.crear, #detalle button.cancelar, .modal button.crear, .modal button.cancelar { padding: 8px 10px; border: 0; border-radius: var(--radio-s); cursor: pointer; font-size: 13px; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.3; }
+#detalle button.crear, .modal button.crear { background: var(--verde-osc); color: #fff; }
+#detalle button.cancelar, .modal button.cancelar { background: var(--fondo); color: var(--texto); }
+#detalle button.crear:hover:not(:disabled), .modal button.crear:hover:not(:disabled) { filter: brightness(1.08); }
+#detalle button.cancelar:hover:not(:disabled), .modal button.cancelar:hover:not(:disabled) { background: #e4e7eb; }
+#detalle button:disabled, .modal button.crear:disabled, .modal button.cancelar:disabled { opacity: .5; cursor: default; }
+#detalle button .icono-svg, .modal button.crear .icono-svg, .modal button.cancelar .icono-svg { width: 15px; height: 15px; }
+
+/* Panel derecho: bienvenida y seguimiento para leads */
+.lead-lista { display: flex; flex-direction: column; gap: 4px; }
+.lead-check { display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; cursor: pointer; }
+.lead-check:has(input:checked) { border-color: var(--verde); background: #f1fbf4; }
+.lead-check input { margin: 2px 0 0; flex-shrink: 0; accent-color: var(--verde-osc); }
+.lead-check > span { min-width: 0; }
+.lead-check .sub { display: block; font-size: 12px; color: var(--gris); margin-top: 2px; }
+.lead-check .icono-svg { width: 13px; height: 13px; vertical-align: -2px; color: var(--gris); }
+#detalle button.lead-config { width: 100%; font-size: 12px; margin-top: 6px; }
+.lead-timeline { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--texto); }
+.lead-timeline li { margin-bottom: 3px; }
+.lead-timeline .icono-svg { width: 12px; height: 12px; vertical-align: -2px; }
+#detalle .ayuda-modal { font-size: 12px; color: var(--gris); }
+#detalle .ad-card.lead-card { background: #f4fbf6; border-color: #cdeed8; color: var(--texto); }
+#detalle .ad-card.lead-card .titulo { color: var(--verde-osc); }
+.pill-auto { font-size: 10px; font-weight: 500; background: #e7f8ee; color: var(--verde-osc); padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+
+/* Modal "Seguimiento para leads" */
+.leads-paso-titulo { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 16px 0 8px; }
+.leads-paso-titulo span { width: 20px; height: 20px; border-radius: 50%; background: var(--verde-osc); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.leads-fila { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+.modal .leads-fila select { flex: 1; min-width: 0; margin-bottom: 0; }
+.leads-fila-delay { flex-wrap: wrap; font-size: 13px; color: var(--gris); }
+.modal .leads-fila-delay select { flex: 0 0 auto; width: auto; }
+.modal .leads-fila-delay input[type="number"] { width: 64px; padding: 7px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
+#leads-pasos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.leads-paso { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
+.leads-paso.editando { border-color: var(--verde-osc); background: #f1fbf4; }
+.leads-paso-info { min-width: 0; }
+.leads-paso-cuando { font-size: 12px; }
+.leads-paso-cuando .sub { color: var(--gris); }
+.leads-paso-cuando .icono-svg { width: 13px; height: 13px; vertical-align: -2px; color: var(--verde-osc); }
+.leads-paso-cuerpo { margin-top: 3px; white-space: pre-wrap; }
+.leads-paso-acciones { display: flex; gap: 2px; flex-shrink: 0; }
+.leads-paso-acciones button { padding: 4px; border: 0; background: transparent; cursor: pointer; color: var(--gris); border-radius: var(--radio-s); }
+.leads-paso-acciones button:hover:not(:disabled) { background: var(--hover); }
+.leads-paso-acciones button:disabled { opacity: .3; cursor: default; }
+.leads-check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); cursor: pointer; margin-bottom: 8px; }
+.leads-check input { margin-top: 2px; flex-shrink: 0; accent-color: var(--verde-osc); }
+.leads-check:has(input:disabled) { opacity: .55; cursor: default; }
+@media (max-width: 480px) {
+  .leads-paso { flex-direction: column; }
+  .leads-paso-acciones { align-self: flex-end; }
+}
 .fs-delay-fila { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 12px; color: var(--gris); }
 .fs-delay-valor { width: 56px; }
 .fs-delay-valor, .fs-delay-unidad { padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; }
