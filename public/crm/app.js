@@ -10,6 +10,14 @@ const $ = (sel) => document.querySelector(sel);
 const EMOJIS = "☺️ ✨ 🫶 🙌 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 💪 🎉 🔥 ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
 const PAGINA_MENSAJES = 50;
 
+// Cuánto se espacían los polls — el plan gratis de Cloudflare tiene un tope
+// de requests por día, y con el CRM abierto toda la jornada entre varias
+// vendedoras, sondear muy seguido lo agota rápido. Se complementa con pausar
+// todo cuando la pestaña está de fondo (ver el listener de visibilitychange).
+const INTERVALO_CONVERSACIONES = 6000;
+const INTERVALO_MENSAJES = 4000;
+const INTERVALO_PRESENCIA = 8000;
+
 const estado = {
   conversaciones: [],
   conversacionActivaId: null,
@@ -166,7 +174,7 @@ async function mostrarApp() {
   cargarQuickReplies();
   configurarNotificaciones();
   clearInterval(estado.pollConv);
-  estado.pollConv = setInterval(cargarConversaciones, 4000);
+  estado.pollConv = setInterval(cargarConversaciones, INTERVALO_CONVERSACIONES);
 }
 
 $("#form-login").addEventListener("submit", async (e) => {
@@ -799,7 +807,7 @@ async function abrirConversacion(c) {
   pintarDetalle(c);
   await cargarMensajes();
   clearInterval(estado.pollMsg);
-  estado.pollMsg = setInterval(cargarMensajes, 3000);
+  estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
   iniciarPresencia(c.conversation_id);
 }
 
@@ -815,17 +823,18 @@ function iniciarPresencia(conversationId) {
   clearInterval(estado.pollPresencia);
   const latido = async () => {
     try {
-      await pedir("/api/crm/presence", {
+      // Un solo request: el POST ya marca presencia Y devuelve quién más
+      // está viendo el chat — antes eran dos (POST + GET) cada vuelta.
+      const { viendo } = await pedir("/api/crm/presence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversation_id: conversationId })
       });
-      const { viendo } = await pedir(`/api/crm/presence?conversation_id=${conversationId}`);
       pintarPresencia(viendo);
     } catch { /* silencioso — no vale la pena molestar por esto */ }
   };
   latido();
-  estado.pollPresencia = setInterval(latido, 5000);
+  estado.pollPresencia = setInterval(latido, INTERVALO_PRESENCIA);
 }
 
 function pintarPresencia(viendo) {
@@ -859,6 +868,28 @@ window.addEventListener("popstate", () => {
     document.body.classList.remove("detalle-abierto");
   } else if (document.body.classList.contains("chat-abierto")) {
     volverALaLista();
+  }
+});
+
+// Pausar el polling con la pestaña de fondo: son el grueso de los requests
+// del día (varias vendedoras con el CRM abierto todo el turno, aunque estén
+// mirando otra pestaña o el celular bloqueado) y de fondo no hace falta
+// tenerlos corriendo — las notificaciones push ya avisan de lo urgente. Al
+// volver, se refresca una vez al toque y se retoma el ritmo normal.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    clearInterval(estado.pollConv);
+    clearInterval(estado.pollMsg);
+    clearInterval(estado.pollPresencia);
+    return;
+  }
+  if (!estado.miRol) return; // todavía no inició sesión
+  cargarConversaciones();
+  estado.pollConv = setInterval(cargarConversaciones, INTERVALO_CONVERSACIONES);
+  if (estado.conversacionActivaId) {
+    cargarMensajes();
+    estado.pollMsg = setInterval(cargarMensajes, INTERVALO_MENSAJES);
+    iniciarPresencia(estado.conversacionActivaId);
   }
 });
 

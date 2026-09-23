@@ -31,6 +31,10 @@ async function get({ request, env, agent }) {
   return json({ viendo });
 }
 
+// El heartbeat marca presencia Y devuelve quién más está — antes eran dos
+// requests separados (POST + GET) cada vez que tocaba avisar; con el CRM
+// abierto todo el día entre varias vendedoras, esos requests de más se
+// sienten en la cuota diaria del plan gratis de Cloudflare.
 async function post({ request, env, agent }) {
   let payload;
   try {
@@ -41,8 +45,10 @@ async function post({ request, env, agent }) {
   const conversationId = Number(payload?.conversation_id);
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
-  await marcarPresencia(env.CRM_DB, conversationId, nombreDe(agent));
-  return json({ ok: true });
+  const nombre = nombreDe(agent);
+  await marcarPresencia(env.CRM_DB, conversationId, nombre);
+  const viendo = await agentesViendoChat(env.CRM_DB, conversationId, nombre);
+  return json({ ok: true, viendo });
 }
 
 async function del({ request, env, agent }) {

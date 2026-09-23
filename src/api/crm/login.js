@@ -98,7 +98,13 @@ export async function onRequestPost({ request, env }) {
       await enviarTexto(env, agente.wa_id, `Tu código de acceso al CRM es: ${code}\nVence en 5 minutos.`);
     } catch (err) {
       console.error("OTP WhatsApp:", err.message);
-      return json({ error: "No se pudo mandar el código por WhatsApp." }, 502);
+      // El motivo real de Meta importa acá — el típico es "más de 24h desde
+      // que escribiste" (el texto libre solo funciona dentro de esa ventana,
+      // aunque el vendedor SÍ le haya escrito al negocio, si fue hace más de
+      // un día). Antes esto se perdía en el console.error y a la vendedora
+      // solo le llegaba un "no se pudo mandar" genérico, imposible de
+      // diagnosticar sin acceso a los logs del Worker.
+      return json({ error: `No se pudo mandar el código por WhatsApp: ${err.message}` }, 502);
     }
 
     return json({ requiere2FA: true, challenge_id: challengeId, metodo2FA: "whatsapp" });
