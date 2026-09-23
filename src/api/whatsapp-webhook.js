@@ -22,7 +22,8 @@ import {
   idPorWaMessageId,
   registrarReaccionCliente,
   obtenerAjuste,
-  programarSecuenciaSeguimiento
+  programarSecuenciaSeguimiento,
+  ORIGEN_SEGUIMIENTO_AUTO
 } from "../lib/crm-db.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
@@ -133,7 +134,7 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
       obtenerAjuste(env.CRM_DB, "ad_followup_auto")
     ]);
     if (!sequenceId || auto === "0") return;
-    await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), "Seguimiento automático (anuncio)");
+    await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), ORIGEN_SEGUIMIENTO_AUTO);
   } catch (err) {
     console.error("Seguimiento automático de anuncio:", err.message);
   }

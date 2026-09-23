@@ -36,6 +36,7 @@ const estado = {
   archivoAdjunto: null,
   rapidaPendiente: null,
   segRapidaMedia: null,
+  segModo: "mensaje",
   editandoRapidaId: null,
   editandoPasoId: null,
   editandoSeguimientoId: null,
@@ -996,6 +997,31 @@ function marcarAsignacionLocal(conversationId, assignedAgent, sharedWith) {
   asignacionesLocales.set(conversationId, { assigned_agent: assignedAgent, shared_with: sharedWith ?? null, t: Date.now() });
 }
 
+// Igual que asignacionesLocales, para la etiqueta de "Seguimiento" de la
+// lista: al programar/cancelar en el chat abierto se actualiza al toque, y
+// un GET que ya iba en camino con el dato viejo no la pisa.
+const seguimientosLocales = new Map(); // conversation_id -> { seg_pendientes, seg_proximo, t }
+const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
+
+function esSeguimientoManual(s) {
+  return !s.batch_id && s.created_by !== ORIGEN_SEGUIMIENTO_AUTO;
+}
+
+/** Recalcula la etiqueta de la lista para un chat a partir de sus pendientes. */
+function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
+  const manuales = scheduled.filter(esSeguimientoManual);
+  const seg = {
+    seg_pendientes: manuales.length || null,
+    seg_proximo: manuales.length ? manuales.map((x) => x.send_at).sort()[0] : null
+  };
+  const conv = estado.conversaciones.find((x) => x.conversation_id === conversationId);
+  seguimientosLocales.set(conversationId, { ...seg, t: Date.now() });
+  if (conv && (conv.seg_pendientes !== seg.seg_pendientes || conv.seg_proximo !== seg.seg_proximo)) {
+    Object.assign(conv, seg);
+    pintarLista();
+  }
+}
+
 function sincronizar() {
   const params = new URLSearchParams();
   if (estado.filtroMias) params.set("mine", "1");
@@ -1016,6 +1042,11 @@ function sincronizar() {
       if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
       const conv = estado.conversaciones.find((x) => x.conversation_id === id);
       if (conv) { conv.assigned_agent = local.assigned_agent; conv.shared_with = local.shared_with; }
+    }
+    for (const [id, local] of seguimientosLocales) {
+      if (local.t <= inicio) { seguimientosLocales.delete(id); continue; }
+      const conv = estado.conversaciones.find((x) => x.conversation_id === id);
+      if (conv) { conv.seg_pendientes = local.seg_pendientes; conv.seg_proximo = local.seg_proximo; }
     }
     if (data.chat && data.chat.conversation_id === estado.conversacionActivaId) aplicarMensajes(data.chat.conversation_id, data.chat);
     pintarLista();
@@ -1196,6 +1227,7 @@ function pintarLista() {
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
+        ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2161,22 +2193,39 @@ function textoSeguimiento(s) {
 
 async function actualizarSeguimientosDetalle() {
   const cont = $("#detalle-seguimientos");
-  if (!cont || !estado.conversacionActivaId) return;
+  const conversationId = estado.conversacionActivaId;
+  if (!cont || !conversationId) return;
   try {
-    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
-    const html = scheduled.length ? scheduled.map((s) => `
+    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${conversationId}`);
+    actualizarEtiquetaSeguimiento(conversationId, scheduled);
+    if (estado.conversacionActivaId !== conversationId) return;
+    const html = (scheduled.length ? scheduled.map((s) => `
       <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
         <div>
-          <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· Envío masivo</span>` : ""}</div>
+          <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· Envío masivo</span>` : ""}${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? ` <span style="font-weight:400;color:var(--gris)">· Automático (lead)</span>` : ""}</div>
           <div>${escapar(textoSeguimiento(s))}</div>
         </div>
         <div style="display:flex;gap:4px">
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`;
+      </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`)
+      + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
+      $("#detalle-cancelar-todos")?.addEventListener("click", async () => {
+        if (!confirm(`¿Cancelar los ${scheduled.length} seguimientos programados de este chat?`)) return;
+        try {
+          await pedir("/api/crm/scheduled", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_id: conversationId, all: true })
+          });
+        } catch (err) {
+          alert(err.message);
+        }
+        await actualizarSeguimientosDetalle();
+      });
       cont.querySelectorAll(".editar-seguimiento-detalle").forEach((btn) => {
         btn.addEventListener("click", () => {
           const s = scheduled.find((x) => x.id === Number(btn.dataset.id));
@@ -2857,19 +2906,127 @@ $("#rapida-crear").addEventListener("click", async () => {
 
 /* ---------- Seguimientos programados ---------- */
 
-function abrirModalProgramarSeguimiento() {
-  estado.editandoSeguimientoId = null;
+/** `modo`: "mensaje" (uno suelto) o "secuencia" (varios con su espera). Desde un addEventListener llega el Event, no un string. */
+function abrirModalProgramarSeguimiento(modo) {
+  limpiarFormSeguimiento();
   $("#seg-modal-titulo").textContent = "Programar seguimiento";
-  $("#seg-crear").textContent = "Programar";
+  $("#seg-tabs").style.display = "";
   $("#seg-archivo").style.display = "";
   const sel = $("#seg-rapida");
   sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
     estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
-  estado.segRapidaMedia = null;
-  pintarPreviewSegRapida();
+  elegirCuando($('#seg-chips button[data-manana]'));
+  ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
+
+/* Cuándo sale: botones rápidos en vez del calendario (queda en "Otra fecha…"). */
+
+function aInputLocal(d) {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+/** La fecha que representa un botón rápido, calculada contra el momento actual. */
+function fechaDeChip(btn) {
+  if (btn.dataset.min) return new Date(Date.now() + Number(btn.dataset.min) * 60000);
+  if (btn.dataset.manana) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(Number(btn.dataset.manana), 0, 0, 0);
+    return d;
+  }
+  return null;
+}
+
+function elegirCuando(btn) {
+  if (!btn) return;
+  document.querySelectorAll("#seg-chips button").forEach((b) => b.classList.toggle("activo", b === btn));
+  const input = $("#seg-fecha");
+  const esOtra = btn.dataset.otra !== undefined;
+  input.style.display = esOtra ? "" : "none";
+  if (esOtra) {
+    if (!input.value) input.value = aInputLocal(new Date(Date.now() + 86400000));
+    input.focus();
+  } else {
+    input.value = aInputLocal(fechaDeChip(btn));
+  }
+  pintarCuando();
+}
+
+function pintarCuando() {
+  const v = $("#seg-fecha").value;
+  const el = $("#seg-cuando");
+  if (!v) { el.textContent = "Elige cuándo."; el.classList.remove("error"); return; }
+  const d = new Date(v);
+  const pasada = d.getTime() <= Date.now();
+  el.classList.toggle("error", pasada);
+  el.textContent = pasada
+    ? "Esa hora ya pasó — elige una futura."
+    : `Se manda el ${d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`;
+}
+
+$("#seg-chips").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (btn) elegirCuando(btn);
+});
+$("#seg-fecha").addEventListener("input", pintarCuando);
+
+/* Pestañas "Un mensaje" / "Una secuencia". */
+
+function ponerModoSeguimiento(modo) {
+  estado.segModo = modo;
+  document.querySelectorAll("#seg-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.modo === modo));
+  $("#seg-modo-mensaje").style.display = modo === "mensaje" ? "" : "none";
+  $("#seg-modo-secuencia").style.display = modo === "secuencia" ? "" : "none";
+  $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
+  if (modo === "secuencia") cargarSecuenciasSeguimiento();
+}
+
+$("#seg-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-modo]");
+  if (btn) ponerModoSeguimiento(btn.dataset.modo);
+});
+
+let secuenciasSeguimiento = [];
+
+async function cargarSecuenciasSeguimiento() {
+  const sel = $("#seg-secuencia");
+  const previa = sel.value;
+  $("#seg-secuencia-preview").innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    ({ sequences: secuenciasSeguimiento } = await pedir("/api/crm/followup-sequences"));
+  } catch (err) {
+    $("#seg-secuencia-preview").innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+    return;
+  }
+  const conPasos = secuenciasSeguimiento.filter((x) => x.steps.length);
+  sel.innerHTML = conPasos.length
+    ? conPasos.map((x) => `<option value="${x.id}">${escapar(x.title)} (${x.steps.length} mensaje${x.steps.length === 1 ? "" : "s"})</option>`).join("")
+    : `<option value="">Todavía no hay secuencias con mensajes</option>`;
+  sel.disabled = !conPasos.length;
+  if (conPasos.some((x) => String(x.id) === previa)) sel.value = previa;
+  pintarPreviewSecuenciaSeg();
+}
+
+function pintarPreviewSecuenciaSeg() {
+  const cont = $("#seg-secuencia-preview");
+  const seq = secuenciasSeguimiento.find((x) => String(x.id) === $("#seg-secuencia").value);
+  if (!seq) {
+    cont.innerHTML = `<p class="ayuda-modal">Crea una con el botón de abajo: varios mensajes, cada uno con su espera en horas o días.</p>`;
+    return;
+  }
+  const ahora = Date.now();
+  let acum = 0;
+  cont.innerHTML = `<ol class="lead-timeline seg-timeline">${seq.steps.map((p) => {
+    acum += p.delay_minutes;
+    const cuando = new Date(ahora + acum * 60000).toLocaleString("es-PE", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
+  }).join("")}</ol>`;
+}
+
+$("#seg-secuencia").addEventListener("change", pintarPreviewSecuenciaSeg);
+$("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuencias(null, true));
 
 // Igual que en el chat: elegir una respuesta rápida carga su texto en el
 // campo para editarlo antes de programar, y su foto/video queda adjunta
@@ -2907,6 +3064,8 @@ function pintarPreviewSegRapida() {
 function limpiarFormSeguimiento() {
   estado.editandoSeguimientoId = null;
   estado.segRapidaMedia = null;
+  document.querySelectorAll("#seg-chips button").forEach((b) => b.classList.remove("activo"));
+  $("#seg-fecha").style.display = "none";
   $("#seg-fecha").value = "";
   $("#seg-texto").value = "";
   $("#seg-archivo").value = "";
@@ -2916,16 +3075,15 @@ function limpiarFormSeguimiento() {
 
 /** Solo los de texto libre — los que llevan respuesta rápida o foto/video propia se cancelan y se vuelven a programar. */
 function abrirModalEditarSeguimiento(s) {
+  limpiarFormSeguimiento();
   estado.editandoSeguimientoId = s.id;
   $("#seg-modal-titulo").textContent = "Editar seguimiento";
-  $("#seg-crear").textContent = "Guardar cambios";
+  $("#seg-tabs").style.display = "none";
+  ponerModoSeguimiento("mensaje");
   $("#seg-archivo").style.display = "none";
   $("#seg-rapida").style.display = "none";
-  $("#seg-rapida").value = "";
-  estado.segRapidaMedia = null;
-  pintarPreviewSegRapida();
-  const d = new Date(s.send_at);
-  $("#seg-fecha").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
+  elegirCuando($("#seg-chips button[data-otra]"));
   $("#seg-texto").value = s.body || "";
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
@@ -2985,7 +3143,7 @@ async function pintarSeguimientosPanel() {
   });
   $("#aplicar-secuencia")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
-    abrirModalSecuencias();
+    abrirModalProgramarSeguimiento("secuencia");
   });
 }
 
@@ -2994,13 +3152,39 @@ $("#seg-cancelar").addEventListener("click", () => {
   limpiarFormSeguimiento();
 });
 
+async function programarSecuenciaDesdeModal() {
+  const sequenceId = Number($("#seg-secuencia").value);
+  if (!sequenceId) return alert("Elige una secuencia (o créala con \"Crear / editar secuencias\").");
+  const btn = $("#seg-crear");
+  btn.disabled = true;
+  try {
+    await pedir("/api/crm/followup-apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, sequence_id: sequenceId })
+    });
+    $("#modal-seguimiento-fondo").classList.remove("abierto");
+    limpiarFormSeguimiento();
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 $("#seg-crear").addEventListener("click", async () => {
+  if (estado.segModo === "secuencia") return programarSecuenciaDesdeModal();
+  // Un botón rápido ("En 1 hora") se cuenta desde que se programa, no desde que se tocó.
+  const chip = $("#seg-chips button.activo");
+  if (chip && chip.dataset.otra === undefined) $("#seg-fecha").value = aInputLocal(fechaDeChip(chip));
   const fecha = $("#seg-fecha").value;
+  if (fecha && new Date(fecha).getTime() <= Date.now()) { pintarCuando(); return alert("Esa hora ya pasó — elige una futura."); }
   const texto = $("#seg-texto").value.trim();
   const archivo = $("#seg-archivo").files[0];
   const quickReplyId = !archivo && estado.segRapidaMedia ? $("#seg-rapida").value : "";
   const editandoId = estado.editandoSeguimientoId;
-  if (!fecha) return alert("Elige fecha y hora.");
+  if (!fecha) return alert("Elige cuándo se manda.");
   if (editandoId && !texto) return alert("Escribe un texto.");
   if (!texto && !quickReplyId && !archivo) return alert("Escribe un texto, adjunta una foto/video o elige una respuesta rápida.");
 
@@ -3065,8 +3249,13 @@ let estadoSecuencias = [];
 // barra de selección de la lista) en vez de al chat abierto.
 let idsBulkSecuencia = null;
 
-function abrirModalSecuencias(idsBulk) {
+// Abierto desde "Crear / editar secuencias" del modal de programar: solo
+// para armarlas — se aplican desde ese modal, así no se programa dos veces.
+let secuenciasSoloEditar = false;
+
+function abrirModalSecuencias(idsBulk, soloEditar = false) {
   idsBulkSecuencia = idsBulk || null;
+  secuenciasSoloEditar = soloEditar;
   $("#modal-secuencias-fondo").classList.add("abierto");
   cargarYPintarSecuencias();
 }
@@ -3074,6 +3263,7 @@ $("#fs-cerrar").addEventListener("click", () => {
   idsBulkSecuencia = null;
   $("#modal-secuencias-fondo").classList.remove("abierto");
   refrescarVistasLead();
+  if ($("#modal-seguimiento-fondo").classList.contains("abierto") && estado.segModo === "secuencia") cargarSecuenciasSeguimiento();
 });
 
 async function cargarYPintarSecuencias() {
@@ -3092,7 +3282,7 @@ function pintarListaSecuencias() {
       <div class="fila-secuencia-header">
         <div class="nombre">${escapar(s.title)} <span class="sub">(${s.steps.length} paso${s.steps.length === 1 ? "" : "s"})</span></div>
         <div style="display:flex;gap:4px">
-          <button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? (nBulk ? `Aplicar a los ${nBulk} chats seleccionados` : "Aplicar a este chat") : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>
+          ${secuenciasSoloEditar ? "" : `<button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? (nBulk ? `Aplicar a los ${nBulk} chats seleccionados` : "Aplicar a este chat") : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>`}
           <button class="fs-editar" data-id="${s.id}" title="Ver/editar pasos">${icon("bolt")}</button>
           <button class="fs-renombrar" data-id="${s.id}" title="Renombrar">${icon("pencil")}</button>
           <button class="trash fs-borrar" data-id="${s.id}" title="Borrar secuencia">${icon("trash")}</button>
@@ -3158,6 +3348,7 @@ function pintarListaSecuencias() {
         if (nBulk) {
           alert(`Listo — se programaron ${pasos_programados} mensaje(s) en ${chats_aplicados} chat(s).`);
           salirModoSeleccion();
+          programarSync(0);
         } else {
           await actualizarSeguimientosDetalle();
           alert(`Listo — se programaron ${pasos_programados} mensaje(s).`);

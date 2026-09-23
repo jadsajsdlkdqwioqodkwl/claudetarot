@@ -7,6 +7,7 @@
  *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
  *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
+ *                              { conversation_id, all: true } → cancela todos los pendientes de ese chat
  *
  * Siempre texto libre — no acepta template_name (eso solo lo maneja
  * bulk-send.js). Para un seguimiento que sabes que caerá fuera de la
@@ -112,6 +113,14 @@ async function del({ request, env }) {
   } catch {
     return json({ error: "Solicitud inválida." }, 400);
   }
+  // { conversation_id, all: true } → cancela todos los pendientes de ese chat de una.
+  if (payload?.all && Number(payload?.conversation_id)) {
+    const r = await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'")
+      .bind(Number(payload.conversation_id))
+      .run();
+    return json({ ok: true, cancelados: r.meta?.changes ?? 0 });
+  }
+
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 

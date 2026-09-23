@@ -129,6 +129,9 @@ export async function cancelarSeguimientosPendientes(db, conversationId) {
     .run();
 }
 
+/** `created_by` de los seguimientos que programa solo el webhook (lead nuevo de anuncio) — lo distingue de los manuales. */
+export const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
+
 /**
  * Programa todos los pasos de una secuencia de seguimiento en una
  * conversación: el primero se manda `delay_minutes` después de ahora, el

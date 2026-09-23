@@ -9,6 +9,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
+import { ORIGEN_SEGUIMIENTO_AUTO } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -56,9 +57,20 @@ async function handler({ request, env, agent }) {
         c.notes,
         lm.body AS last_body,
         lm.type AS last_type,
-        lm.direction AS last_direction
+        lm.direction AS last_direction,
+        seg.pendientes AS seg_pendientes,
+        seg.proximo AS seg_proximo
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
+     -- Seguimientos manuales pendientes (ni envío masivo ni el automático de
+     -- leads) para la etiqueta de la lista: una sola pasada por los
+     -- pendientes (índice status, send_at), no una subconsulta por chat.
+     LEFT JOIN (
+       SELECT conversation_id, COUNT(*) AS pendientes, MIN(send_at) AS proximo
+       FROM scheduled_messages
+       WHERE status = 'pendiente' AND batch_id IS NULL AND COALESCE(created_by, '') <> ?
+       GROUP BY conversation_id
+     ) seg ON seg.conversation_id = conv.id
      -- Un solo salto al último mensaje (índice conversation_id, id) en vez de
      -- 3 subconsultas que recorrían todo el historial de cada chat.
      LEFT JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
@@ -66,7 +78,7 @@ async function handler({ request, env, agent }) {
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT 200`
   )
-    .bind(...params)
+    .bind(ORIGEN_SEGUIMIENTO_AUTO, ...params)
     .all();
 
   return json(chat ? { conversations: results, chat: { conversation_id: chatId, ...chat } } : { conversations: results });

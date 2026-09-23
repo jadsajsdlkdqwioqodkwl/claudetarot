@@ -190,6 +190,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .badge { background: var(--verde); color: #fff; font-size: 11px; border-radius: var(--radio-full); padding: 1px 7px; min-width: 8px; text-align: center; flex-shrink: 0; }
 .badge-ad { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--ad); color: #fff; margin-top: 3px; }
 .badge-asignado { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #fff3cd; color: #8a6500; margin-top: 3px; margin-left: 4px; }
+.badge-seguimiento { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #e3f2fd; color: #0b5cad; margin-top: 3px; margin-left: 4px; }
+.badge-seguimiento .icono-svg { width: 10px; height: 10px; }
 .badge-asignado .icono-svg { width: 10px; height: 10px; }
 .btn-star { background: transparent; border: 0; cursor: pointer; font-size: 16px; color: #ccc; flex-shrink: 0; }
 .btn-star.marcada { color: #f5b301; }
@@ -446,6 +448,21 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .asignar-incluir .sub { color: var(--gris); font-size: 12px; }
 .asignar-dueno { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--gris); cursor: pointer; flex-shrink: 0; }
 .asignar-fila input { accent-color: var(--verde-osc); margin: 0; }
+/* Modal "Programar seguimiento" */
+.seg-tabs { display: flex; gap: 4px; padding: 3px; background: var(--fondo); border-radius: var(--radio-m); margin-bottom: 14px; }
+.seg-tabs button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: var(--radio-s); font-size: 13px; font-family: inherit; cursor: pointer; color: var(--gris); }
+.seg-tabs button.activo { background: var(--panel); color: var(--texto); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.seg-label { font-size: 12px; font-weight: 600; color: var(--gris); margin: 0 0 6px; }
+.seg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.seg-chips button { border: 1px solid var(--borde); background: var(--panel); padding: 6px 10px; border-radius: var(--radio-full); font-size: 12px; font-family: inherit; cursor: pointer; color: var(--texto); }
+.seg-chips button:hover { background: var(--hover); }
+.seg-chips button.activo { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
+.seg-cuando { font-size: 12px; color: var(--verde-osc); margin: 0 0 14px; }
+.seg-cuando::first-letter { text-transform: uppercase; }
+.seg-cuando.error { color: var(--peligro); }
+#seg-secuencia-preview { margin-bottom: 10px; }
+.seg-timeline { margin-top: 0; }
+.seg-timeline .sub { color: var(--gris); }
 .emoji-barra { margin: -6px 0 10px; }
 .emoji-toggle { border: 0; background: transparent; color: var(--gris); font-size: 12px; font-family: inherit; cursor: pointer; padding: 4px 6px; border-radius: var(--radio-s); display: inline-flex; align-items: center; gap: 4px; }
 .emoji-toggle:hover, .emoji-barra.abierta .emoji-toggle { background: var(--fondo); color: var(--texto); }

@@ -29,6 +29,7 @@ import { onRequestPatch as crmAssignPatch } from "./api/crm/assign.js";
 import {
   onRequestGet as crmQuickRepliesGet,
   onRequestPost as crmQuickRepliesPost,
+  onRequestPatch as crmQuickRepliesPatch,
   onRequestDelete as crmQuickRepliesDelete
 } from "./api/crm/quick-replies.js";
 import { onRequestPost as crmLoginVerify } from "./api/crm/login-verify.js";
@@ -40,6 +41,7 @@ import {
 import {
   onRequestGet as crmScheduledGet,
   onRequestPost as crmScheduledPost,
+  onRequestPatch as crmScheduledPatch,
   onRequestDelete as crmScheduledDelete
 } from "./api/crm/scheduled.js";
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
@@ -105,10 +107,10 @@ const ROUTES = {
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
-  "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, DELETE: crmQuickRepliesDelete },
+  "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, PATCH: crmQuickRepliesPatch, DELETE: crmQuickRepliesDelete },
   "/api/crm/login-verify": { POST: crmLoginVerify },
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
-  "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, DELETE: crmScheduledDelete },
+  "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, PATCH: crmScheduledPatch, DELETE: crmScheduledDelete },
   "/api/crm/followup-sequences": { GET: crmFollowupSeqGet, POST: crmFollowupSeqPost, DELETE: crmFollowupSeqDelete, PATCH: crmFollowupSeqPatch },
   "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost },

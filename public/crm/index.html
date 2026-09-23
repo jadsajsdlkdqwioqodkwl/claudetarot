@@ -132,11 +132,38 @@
 <div class="modal-fondo" id="modal-seguimiento-fondo">
   <div class="modal">
     <h2 id="seg-modal-titulo">Programar seguimiento</h2>
-    <input type="datetime-local" id="seg-fecha" />
-    <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
-    <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
-    <div id="seg-rapida-preview" style="display:none"></div>
-    <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+    <div class="seg-tabs" id="seg-tabs">
+      <button type="button" data-modo="mensaje" class="activo">Un mensaje</button>
+      <button type="button" data-modo="secuencia">Una secuencia</button>
+    </div>
+
+    <div id="seg-modo-mensaje">
+      <div class="seg-label">¿Cuándo?</div>
+      <div class="seg-chips" id="seg-chips">
+        <button type="button" data-min="60">En 1 hora</button>
+        <button type="button" data-min="180">En 3 horas</button>
+        <button type="button" data-manana="10">Mañana 10 a. m.</button>
+        <button type="button" data-min="2880">En 2 días</button>
+        <button type="button" data-min="10080">En 1 semana</button>
+        <button type="button" data-otra>Otra fecha…</button>
+      </div>
+      <input type="datetime-local" id="seg-fecha" style="display:none" />
+      <div class="seg-cuando" id="seg-cuando"></div>
+
+      <div class="seg-label">¿Qué le mandas?</div>
+      <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
+      <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
+      <div id="seg-rapida-preview" style="display:none"></div>
+      <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+    </div>
+
+    <div id="seg-modo-secuencia" style="display:none">
+      <div class="seg-label">Secuencia</div>
+      <select id="seg-secuencia"></select>
+      <div id="seg-secuencia-preview"></div>
+      <button class="cancelar" id="seg-gestionar-secuencias" type="button" style="width:100%;font-size:12px;margin-bottom:10px">Crear / editar secuencias</button>
+    </div>
+
     <div class="acciones">
       <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
       <button class="crear" id="seg-crear" type="button">Programar</button>
