@@ -2455,6 +2455,7 @@ async function pintarDetalle(c) {
 
     ${estado.miRol === "admin" ? `
     <h2>Meta Ads</h2>
+    ${tieneAd ? `
     <p class="ayuda-modal" style="margin:0 0 8px">Reportar una venta ayuda a que Meta le muestre tus anuncios a más gente parecida a este cliente — no le manda nada a él, ni hace falta un pedido del catálogo.</p>
     <div id="capi-form">
       <input type="text" id="capi-producto" placeholder="Producto (opcional, ej. Kit de tarot x2)" />
@@ -2470,6 +2471,10 @@ async function pintarDetalle(c) {
       <button class="crear" id="capi-reportar-btn" type="button" style="width:100%">Reportar venta (mejora tus anuncios)</button>
     </div>
     <div id="capi-confirmacion" style="display:none"></div>
+    ` : `
+    <div class="sin-ad">Este chat no vino de un anuncio — Meta siempre rechaza el reporte de venta sin ese origen ("Invalid parameter"), así que no se puede reportar aquí.</div>
+    <button class="cancelar" id="capi-ir-a-origen-btn" type="button" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Ver opciones de origen</button>
+    `}
     <div id="detalle-capi-historial" style="margin-top:8px"></div>
     ` : ""}
   `;
@@ -2572,6 +2577,10 @@ async function pintarDetalle(c) {
     });
   });
   if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
+
+  $("#capi-ir-a-origen-btn")?.addEventListener("click", () => {
+    $("#detalle-simular-ad")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {
     try {
