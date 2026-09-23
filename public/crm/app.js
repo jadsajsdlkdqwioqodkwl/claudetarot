@@ -1244,10 +1244,12 @@ function pintarChatBase(c) {
   $("#chat").innerHTML = `
     <header>
       <button id="btn-volver" title="Volver a la lista">${icon("arrowLeft")}</button>
-      ${avatarHtml(nombre)}
-      <div>
-        <div class="nombre">${escapar(nombre)}</div>
-        <div class="tel">+${escapar(c.wa_id)}</div>
+      <div id="chat-contacto" title="Ver datos del contacto">
+        ${avatarHtml(nombre)}
+        <div>
+          <div class="nombre">${escapar(nombre)}</div>
+          <div class="tel">+${escapar(c.wa_id)}</div>
+        </div>
       </div>
       <div class="acciones-chat">
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
@@ -1282,9 +1284,16 @@ function pintarChatBase(c) {
   // Consume el estado que se metió al abrir el chat, para que el botón en
   // pantalla y el "atrás" físico del teléfono hagan exactamente lo mismo.
   $("#btn-volver").addEventListener("click", () => history.back());
-  $("#btn-detalle").addEventListener("click", () => {
+  const abrirDetalle = () => {
+    if (document.body.classList.contains("detalle-abierto")) return;
     history.pushState({ crmDetalle: true }, "", location.href);
     document.body.classList.add("detalle-abierto");
+  };
+  $("#btn-detalle").addEventListener("click", abrirDetalle);
+  // Como en WhatsApp: tocar la foto o el nombre/número abre los datos del
+  // contacto. Solo en celular — en escritorio el panel ya está siempre a la vista.
+  $("#chat-contacto").addEventListener("click", () => {
+    if (getComputedStyle($("#btn-detalle")).display !== "none") abrirDetalle();
   });
   $("#star-header").addEventListener("click", () => {
     const c2 = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
@@ -1294,6 +1303,7 @@ function pintarChatBase(c) {
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("paste", onPegarImagen);
+  $("#texto-envio").addEventListener("beforeinput", onImagenDelTeclado);
   configurarAccionesMensajes();
 
   const textoEnvio = $("#texto-envio");
@@ -1552,8 +1562,10 @@ function toggleMasPanel() {
     <div class="item" id="mas-catalogo"><div class="titulo">${icon("bag")} Mandar catálogo</div></div>
     <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>
     <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>
+    <div class="item" id="mas-pegar-imagen"><div class="titulo">${icon("image")} Pegar imagen copiada</div></div>
     <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Adjuntar foto, video o archivo</div></div>
     <div class="item mas-solo-angosto" id="mas-emojis"><div class="titulo">${icon("smile")} Emojis</div></div>`;
+  $("#mas-pegar-imagen").addEventListener("click", () => { panel.classList.remove("abierto"); pegarImagenDelPortapapeles(); });
   $("#mas-adjuntar").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
   $("#mas-emojis").addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("abierto"); toggleEmojiPanel(); });
   $("#mas-plantillas").addEventListener("click", () => { panel.classList.remove("abierto"); abrirModalTemplates(); });
@@ -1945,12 +1957,47 @@ function elegirArchivo(file) {
 
 /** Pegar una captura de pantalla o una imagen copiada directo en el mensaje — como en WhatsApp Web, sin tener que guardarla y luego adjuntarla con el clip. */
 function onPegarImagen(e) {
-  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
-  if (!item) return;
-  const file = item.getAsFile();
+  // Algunos navegadores de celular solo la exponen en `files`, no en `items`.
+  const file = [...(e.clipboardData?.items || [])].find((i) => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile()
+    || [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith("image/"));
   if (!file) return;
   e.preventDefault();
   elegirArchivo(file);
+}
+
+/** Imagen que mete el teclado del celular (Gboard/Samsung: portapapeles, stickers, GIFs) — llega como beforeinput, no como paste. */
+function onImagenDelTeclado(e) {
+  const file = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith("image/"));
+  if (!file) return;
+  e.preventDefault();
+  elegirArchivo(file);
+}
+
+/**
+ * En el celular no hay Ctrl+V, y el menú "Pegar" del teclado casi nunca
+ * ofrece imágenes en un campo de texto: esto lee el portapapeles directo.
+ * Tiene que llamarse desde un toque (el navegador puede pedir permiso).
+ */
+async function pegarImagenDelPortapapeles() {
+  if (!navigator.clipboard?.read) {
+    alert("Este navegador no deja leer imágenes del portapapeles. Usa \"Adjuntar\" y elige la imagen de tu galería.");
+    return;
+  }
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      const tipo = item.types.find((t) => t.startsWith("image/"));
+      if (!tipo) continue;
+      const blob = await item.getType(tipo);
+      elegirArchivo(new File([blob], `imagen-pegada.${(tipo.split("/")[1] || "png").replace("jpeg", "jpg")}`, { type: tipo }));
+      $("#texto-envio")?.focus();
+      return;
+    }
+    alert("No hay ninguna imagen copiada. Mantén presionada la imagen → \"Copiar imagen\" y vuelve a intentar.");
+  } catch (err) {
+    alert(err?.name === "NotAllowedError"
+      ? "El navegador no dio permiso para leer el portapapeles. Toca de nuevo y acepta \"Permitir\" (o \"Pegar\" en iPhone). Si lo bloqueaste: candado de la barra de direcciones → Permisos → Portapapeles → Permitir."
+      : "No se pudo leer la imagen copiada: " + (err?.message || err));
+  }
 }
 
 function pintarPreviewArchivo() {
