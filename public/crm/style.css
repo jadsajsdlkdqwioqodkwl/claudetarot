@@ -167,11 +167,19 @@ button { font-family: inherit; touch-action: manipulation; }
 #filtros { display: flex; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--borde); }
 #filtros button { border: 1px solid var(--borde); background: #fff; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--gris); }
 #filtros button.activo { background: var(--verde); color: #fff; border-color: var(--verde); }
+#btn-seleccionar-chats { margin-left: auto; }
 #conversaciones { overflow-y: auto; flex: 1; min-height: 0; }
 
 .conv-item { display: flex; gap: 10px; padding: 12px 14px 12px 17px; border-bottom: 1px solid var(--borde); cursor: pointer; position: relative; border-left: 3px solid transparent; }
 .conv-item:hover { background: #f5f6f6; }
 .conv-item.activo { background: #e9edef; border-left-color: var(--verde-osc); }
+.conv-item .conv-check { display: none; width: 20px; height: 20px; flex-shrink: 0; align-self: center; accent-color: var(--verde); }
+body.modo-seleccion .conv-item .conv-check { display: block; }
+body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
+
+#barra-seleccion { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--borde); background: var(--panel); }
+#barra-seleccion-cuenta { font-size: 13px; color: var(--gris); }
+#barra-seleccion .acciones, #barra-seleccion > div { display: flex; gap: 8px; }
 .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--verde-osc); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
 .conv-info { flex: 1; min-width: 0; }
 .conv-info .fila1 { display: flex; justify-content: space-between; font-size: 14px; gap: 6px; }

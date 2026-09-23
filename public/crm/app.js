@@ -50,7 +50,9 @@ const estado = {
   firmaMensajesPintados: null,
   hayMasAntiguos: false,
   syncTimer: null,
-  respondiendoA: null
+  respondiendoA: null,
+  modoSeleccion: false,
+  seleccionados: new Set()
 };
 
 function pedir(url, opciones = {}) {
@@ -583,6 +585,42 @@ $("#btn-admin").addEventListener("click", () => {
   $("#bulk-resultado").textContent = "";
   cargarPlantillasBulk();
   cargarBatchesBulk();
+  cargarAjusteSeguimientoAutomatico();
+});
+
+/** Selector de "secuencia automática para leads de anuncios" en el panel de admin. */
+async function cargarAjusteSeguimientoAutomatico() {
+  const sel = $("#admin-ad-followup-sequence");
+  if (!sel) return;
+  sel.innerHTML = `<option value="">Sin seguimiento automático</option>`;
+  try {
+    const [{ sequences }, { ad_followup_sequence_id }] = await Promise.all([
+      pedir("/api/crm/followup-sequences"),
+      pedir("/api/crm/settings")
+    ]);
+    for (const s of sequences) {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = `${s.title} (${s.steps.length} paso${s.steps.length === 1 ? "" : "s"})`;
+      sel.appendChild(opt);
+    }
+    sel.value = ad_followup_sequence_id || "";
+  } catch { /* si falla, queda solo la opción "sin seguimiento" */ }
+}
+$("#admin-ad-followup-guardar")?.addEventListener("click", async () => {
+  const aviso = $("#admin-ad-followup-resultado");
+  const valor = $("#admin-ad-followup-sequence").value;
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ad_followup_sequence_id: valor ? Number(valor) : null })
+    });
+    aviso.textContent = "Guardado.";
+    setTimeout(() => { if (aviso.textContent === "Guardado.") aviso.textContent = ""; }, 3000);
+  } catch (err) {
+    aviso.textContent = err.message;
+  }
 });
 $("#admin-cerrar").addEventListener("click", () => $("#modal-admin-fondo").classList.remove("abierto"));
 
@@ -896,12 +934,14 @@ function pintarLista() {
   for (const c of estado.conversaciones) {
     const nombre = c.profile_name || c.wa_id;
     const div = document.createElement("div");
-    div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "");
+    const seleccionado = estado.seleccionados.has(c.conversation_id);
+    div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "");
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
 
     div.innerHTML = `
+      <input type="checkbox" class="conv-check" ${seleccionado ? "checked" : ""} />
       ${avatarHtml(nombre)}
       <div class="conv-info">
         <div class="fila1">
@@ -916,8 +956,13 @@ function pintarLista() {
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${escapar(c.assigned_agent)}${c.shared_with ? ` + ${escapar(c.shared_with)}` : ""}</span>` : ""}
       </div>`;
+    div.querySelector(".conv-check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSeleccionChat(c.conversation_id);
+    });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
       if (e.target.closest(".btn-star")) return;
+      if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
     });
     div.querySelector(".btn-star").addEventListener("click", (e) => {
@@ -927,6 +972,46 @@ function pintarLista() {
     cont.appendChild(div);
   }
 }
+
+/* ---------- Selección múltiple de chats (para aplicarles una secuencia en bulk) ---------- */
+
+function toggleSeleccionChat(conversationId) {
+  if (estado.seleccionados.has(conversationId)) estado.seleccionados.delete(conversationId);
+  else estado.seleccionados.add(conversationId);
+  pintarLista();
+  actualizarBarraSeleccion();
+}
+
+function actualizarBarraSeleccion() {
+  const barra = $("#barra-seleccion");
+  if (!barra) return;
+  const n = estado.seleccionados.size;
+  barra.style.display = estado.modoSeleccion && n > 0 ? "flex" : "none";
+  $("#barra-seleccion-cuenta").textContent = `${n} chat${n === 1 ? "" : "s"} seleccionado${n === 1 ? "" : "s"}`;
+}
+
+function salirModoSeleccion() {
+  estado.modoSeleccion = false;
+  estado.seleccionados.clear();
+  document.body.classList.remove("modo-seleccion");
+  $("#btn-seleccionar-chats").classList.remove("activo");
+  actualizarBarraSeleccion();
+  pintarLista();
+}
+
+$("#btn-seleccionar-chats").addEventListener("click", () => {
+  estado.modoSeleccion = !estado.modoSeleccion;
+  document.body.classList.toggle("modo-seleccion", estado.modoSeleccion);
+  $("#btn-seleccionar-chats").classList.toggle("activo", estado.modoSeleccion);
+  if (!estado.modoSeleccion) estado.seleccionados.clear();
+  actualizarBarraSeleccion();
+  pintarLista();
+});
+$("#seleccion-cancelar").addEventListener("click", salirModoSeleccion);
+$("#seleccion-aplicar-secuencia").addEventListener("click", () => {
+  if (!estado.seleccionados.size) return;
+  abrirModalSecuencias([...estado.seleccionados]);
+});
 
 /**
  * Título de la estrella (lista y header comparten el mismo texto): reclamar
@@ -2629,12 +2714,19 @@ function formatearDelay(minutos) {
 }
 
 let estadoSecuencias = [];
+// Si no es null, el modal está en modo "aplicar a varios chats de una" (ver
+// barra de selección de la lista) en vez de al chat abierto.
+let idsBulkSecuencia = null;
 
-function abrirModalSecuencias() {
+function abrirModalSecuencias(idsBulk) {
+  idsBulkSecuencia = idsBulk || null;
   $("#modal-secuencias-fondo").classList.add("abierto");
   cargarYPintarSecuencias();
 }
-$("#fs-cerrar").addEventListener("click", () => $("#modal-secuencias-fondo").classList.remove("abierto"));
+$("#fs-cerrar").addEventListener("click", () => {
+  idsBulkSecuencia = null;
+  $("#modal-secuencias-fondo").classList.remove("abierto");
+});
 
 async function cargarYPintarSecuencias() {
   const { sequences } = await pedir("/api/crm/followup-sequences");
@@ -2644,13 +2736,15 @@ async function cargarYPintarSecuencias() {
 
 function pintarListaSecuencias() {
   const cont = $("#lista-secuencias-seg");
-  const puedeAplicar = Boolean(estado.conversacionActivaId);
-  cont.innerHTML = estadoSecuencias.length ? estadoSecuencias.map((s) => `
+  const nBulk = idsBulkSecuencia?.length || 0;
+  const puedeAplicar = nBulk > 0 || Boolean(estado.conversacionActivaId);
+  cont.innerHTML = (nBulk ? `<p class="ayuda-modal"><strong>Aplicando a ${nBulk} chat${nBulk === 1 ? "" : "s"} seleccionado${nBulk === 1 ? "" : "s"}.</strong></p>` : "")
+    + (estadoSecuencias.length ? estadoSecuencias.map((s) => `
     <div class="fila-secuencia" data-id="${s.id}">
       <div class="fila-secuencia-header">
         <div class="nombre">${escapar(s.title)} <span class="sub">(${s.steps.length} paso${s.steps.length === 1 ? "" : "s"})</span></div>
         <div style="display:flex;gap:4px">
-          <button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? "Aplicar a este chat" : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>
+          <button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? (nBulk ? `Aplicar a los ${nBulk} chats seleccionados` : "Aplicar a este chat") : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>
           <button class="fs-editar" data-id="${s.id}" title="Ver/editar pasos">${icon("bolt")}</button>
           <button class="fs-renombrar" data-id="${s.id}" title="Renombrar">${icon("pencil")}</button>
           <button class="trash fs-borrar" data-id="${s.id}" title="Borrar secuencia">${icon("trash")}</button>
@@ -2684,7 +2778,7 @@ function pintarListaSecuencias() {
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
         </div>
       </div>
-    </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`;
+    </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`);
 
   cont.querySelectorAll(".fs-editar").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2695,17 +2789,29 @@ function pintarListaSecuencias() {
 
   cont.querySelectorAll(".fs-aplicar").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!estado.conversacionActivaId) return;
-      if (!confirm("¿Aplicar esta secuencia a la conversación abierta? Se programarán todos sus pasos.")) return;
+      const nBulk = idsBulkSecuencia?.length || 0;
+      if (!nBulk && !estado.conversacionActivaId) return;
+      const mensaje = nBulk
+        ? `¿Aplicar esta secuencia a los ${nBulk} chats seleccionados? Se programarán todos sus pasos en cada uno.`
+        : "¿Aplicar esta secuencia a la conversación abierta? Se programarán todos sus pasos.";
+      if (!confirm(mensaje)) return;
       btn.disabled = true;
       try {
-        const { pasos_programados } = await pedir("/api/crm/followup-apply", {
+        const body = nBulk
+          ? { conversation_ids: idsBulkSecuencia, sequence_id: Number(btn.dataset.id) }
+          : { conversation_id: estado.conversacionActivaId, sequence_id: Number(btn.dataset.id) };
+        const { pasos_programados, chats_aplicados } = await pedir("/api/crm/followup-apply", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, sequence_id: Number(btn.dataset.id) })
+          body: JSON.stringify(body)
         });
-        await actualizarSeguimientosDetalle();
-        alert(`Listo — se programaron ${pasos_programados} mensaje(s).`);
+        if (nBulk) {
+          alert(`Listo — se programaron ${pasos_programados} mensaje(s) en ${chats_aplicados} chat(s).`);
+          salirModoSeleccion();
+        } else {
+          await actualizarSeguimientosDetalle();
+          alert(`Listo — se programaron ${pasos_programados} mensaje(s).`);
+        }
         $("#modal-secuencias-fondo").classList.remove("abierto");
       } catch (err) {
         alert(err.message);

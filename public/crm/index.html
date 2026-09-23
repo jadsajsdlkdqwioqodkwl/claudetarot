@@ -81,8 +81,16 @@
     <div id="filtros">
       <button data-mine="" class="activo">Todos</button>
       <button data-mine="1" id="btn-filtro-mias">Mis chats</button>
+      <button id="btn-seleccionar-chats" title="Elegir varios chats para aplicarles una secuencia">Seleccionar</button>
     </div>
     <div id="conversaciones"></div>
+    <div id="barra-seleccion" style="display:none">
+      <span id="barra-seleccion-cuenta"></span>
+      <div>
+        <button class="cancelar" id="seleccion-cancelar" type="button">Cancelar</button>
+        <button class="crear" id="seleccion-aplicar-secuencia" type="button">Aplicar secuencia</button>
+      </div>
+    </div>
   </section>
 
   <section id="chat">
@@ -279,6 +287,13 @@
     <h2>Bienvenida de anuncios</h2>
     <p class="ayuda-modal">Cuando alguien nuevo te escribe desde un anuncio "Click to WhatsApp", se le manda una secuencia de mensajes. Se configura una vez y no cambia seguido, por eso vive acá en vez de tener su propio ícono siempre visible.</p>
     <button class="cancelar" id="btn-abrir-bienvenida" type="button" style="width:100%">Configurar bienvenida de anuncios</button>
+
+    <hr />
+    <h2>Seguimiento automático para leads de anuncios</h2>
+    <p class="ayuda-modal">Aparte de la bienvenida instantánea de arriba, podés elegir una secuencia de seguimiento (de "Seguimientos programados" → "Aplicar una secuencia") para que se programe sola en cada chat NUEVO que llegue desde un anuncio — por si no contesta, para insistir días después. Como cualquier seguimiento programado, se cancela solo en cuanto el cliente escribe o le mandás algo a mano.</p>
+    <select id="admin-ad-followup-sequence"><option value="">Sin seguimiento automático</option></select>
+    <button class="cancelar" id="admin-ad-followup-guardar" type="button" style="width:100%">Guardar</button>
+    <p class="ayuda-modal" id="admin-ad-followup-resultado"></p>
 
     <hr />
     <h2>Costos de WhatsApp</h2>

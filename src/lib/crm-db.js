@@ -129,6 +129,35 @@ export async function cancelarSeguimientosPendientes(db, conversationId) {
     .run();
 }
 
+/**
+ * Programa todos los pasos de una secuencia de seguimiento en una
+ * conversación: el primero se manda `delay_minutes` después de ahora, el
+ * segundo `delay_minutes` después del primero, y así — se acumulan para
+ * sacar el send_at real de cada uno. La usan tanto "Aplicar una secuencia"
+ * a mano (un chat o varios de una) como la que se dispara sola con un lead
+ * nuevo de un anuncio.
+ */
+export async function programarSecuenciaSeguimiento(db, conversationId, sequenceId, createdBy) {
+  const { results: pasos } = await db
+    .prepare("SELECT * FROM followup_sequence_steps WHERE sequence_id = ? ORDER BY step_order ASC")
+    .bind(sequenceId)
+    .all();
+  if (!pasos.length) return 0;
+
+  const ahora = Date.now();
+  let acumuladoMs = 0;
+  const inserts = pasos.map((p) => {
+    acumuladoMs += p.delay_minutes * 60 * 1000;
+    const sendAt = new Date(ahora + acumuladoMs).toISOString();
+    return db.prepare(
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime);
+  });
+  await db.batch(inserts);
+  return pasos.length;
+}
+
 export async function guardarMediaKey(db, messageId, mediaKey) {
   await db.prepare("UPDATE messages SET media_key = ? WHERE id = ?").bind(mediaKey, messageId).run();
 }
