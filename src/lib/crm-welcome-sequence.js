@@ -27,9 +27,15 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       .all();
 
     if (media.results.length) {
+      // Sin `caption` en cada foto/video — si no, el texto del paso sale
+      // repetido una vez por archivo. El texto se manda una sola vez,
+      // aparte, después de que lleguen todos los archivos.
       await Promise.all(media.results.map((m) =>
-        mandarMediaGuardada(env, conversationId, waId, m.media_key, m.media_type, paso.body, sentByLabel)
+        mandarMediaGuardada(env, conversationId, waId, m.media_key, m.media_type, undefined, sentByLabel)
       ));
+      if (paso.body) {
+        await mandarTexto(env, conversationId, waId, paso.body, sentByLabel);
+      }
     } else if (paso.body) {
       await mandarTexto(env, conversationId, waId, paso.body, sentByLabel);
     }
