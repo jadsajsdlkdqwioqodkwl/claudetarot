@@ -195,6 +195,11 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .badge-asignado .icono-svg { width: 10px; height: 10px; }
 .btn-star { background: transparent; border: 0; cursor: pointer; font-size: 16px; color: #ccc; flex-shrink: 0; }
 .btn-star.marcada { color: #f5b301; }
+/* En la lista: un cuadrado de 34px alrededor de la estrella para que no haya que atinarle al milímetro. El margen negativo evita que la fila crezca. */
+.conv-item .btn-star { width: 34px; height: 34px; margin: -8px 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); transition: background-color .12s, border-color .12s; }
+.conv-item .btn-star .icono-svg { width: 18px; height: 18px; }
+.conv-item .btn-star:hover { background: var(--hover); }
+.conv-item .btn-star.marcada { background: #fff8e1; border-color: #f5d77a; }
 
 /* ---------- Chat ---------- */
 

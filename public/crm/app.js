@@ -1313,7 +1313,8 @@ function tituloEstrella(c) {
 
 /** Clic en la estrella (lista, header, o el botón del sidebar) — reclama o se saca (nunca le quita el lugar al otro). */
 function clicEstrella(c) {
-  const tengoParte = c.assigned_agent === estado.miNombre || compartidosDe(c).includes(estado.miNombre);
+  const yo = estado.miNombre;
+  const tengoParte = Boolean(yo) && (c.assigned_agent === yo || compartidosDe(c).includes(yo));
   cambiarAsignacion(c, tengoParte ? "liberar" : "reclamar");
 }
 
