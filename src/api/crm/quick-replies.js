@@ -1,6 +1,8 @@
 /**
  * GET    /api/crm/quick-replies — lista todas, cada una con su array `media` (0 o más fotos/videos)
  * POST   /api/crm/quick-replies — crea { title, body?, media_keys?: [{media_key, media_type, media_mime}] }
+ * PATCH  /api/crm/quick-replies — edita { id, title, body?, media_keys? } — si no mandas media_keys se
+ *        conserva la media que ya tenía (no hace falta volver a subir fotos/videos solo para cambiar el texto)
  * DELETE /api/crm/quick-replies — borra { id }
  */
 
@@ -63,6 +65,59 @@ async function post({ request, env }) {
   return json({ ok: true, quick_reply: { ...creada, media: media.results } });
 }
 
+async function patch({ request, env }) {
+  let payload;
+  try {
+    payload = JSON.parse(await request.text());
+  } catch {
+    return json({ error: "Solicitud inválida." }, 400);
+  }
+
+  const id = Number(payload?.id);
+  if (!id) return json({ error: "Falta id." }, 400);
+
+  const existente = await env.CRM_DB.prepare("SELECT id FROM quick_replies WHERE id = ?").bind(id).first();
+  if (!existente) return json({ error: "No encontrado." }, 404);
+
+  const title = String(payload?.title || "").trim().slice(0, 80);
+  const body = String(payload?.body || "").trim().slice(0, 4096) || null;
+  // `null` = no la mandaron, así que se conserva la media que ya tenía.
+  const mediaKeys = Array.isArray(payload?.media_keys) ? payload.media_keys.slice(0, 10) : null;
+
+  if (!title) return json({ error: "Falta un título." }, 400);
+  if (!body && mediaKeys !== null && !mediaKeys.length) {
+    return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  }
+  if (!body && mediaKeys === null) {
+    const tieneMedia = await env.CRM_DB.prepare("SELECT 1 FROM quick_reply_media WHERE quick_reply_id = ? LIMIT 1").bind(id).first();
+    if (!tieneMedia) return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  }
+
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
+
+  if (mediaKeys !== null) {
+    const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();
+    await env.CRM_DB.prepare("DELETE FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).run();
+    let i = 0;
+    for (const m of mediaKeys) {
+      await env.CRM_DB.prepare(
+        "INSERT INTO quick_reply_media (quick_reply_id, media_key, media_mime, media_type, sort_order) VALUES (?, ?, ?, ?, ?)"
+      )
+        .bind(id, String(m.media_key), m.media_mime ? String(m.media_mime) : null, String(m.media_type), i++)
+        .run();
+    }
+    if (env.CRM_MEDIA) {
+      for (const m of vieja) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+    }
+  }
+
+  const media = await env.CRM_DB.prepare("SELECT * FROM quick_reply_media WHERE quick_reply_id = ? ORDER BY sort_order ASC")
+    .bind(id)
+    .all();
+
+  return json({ ok: true, quick_reply: { id, title, body, media: media.results } });
+}
+
 async function del({ request, env }) {
   let payload;
   try {
@@ -89,4 +144,5 @@ async function del({ request, env }) {
 
 export const onRequestGet = conAuth(get);
 export const onRequestPost = conAuth(post);
+export const onRequestPatch = conAuth(patch);
 export const onRequestDelete = conAuth(del);

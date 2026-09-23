@@ -9,6 +9,8 @@
  * POST   /api/crm/welcome-sequence — { title, body?, media_keys? } → crea un paso nuevo al final
  * DELETE /api/crm/welcome-sequence — { id } → borra un paso (y su media de R2)
  * PATCH  /api/crm/welcome-sequence — { id, direction: "up"|"down" } → lo mueve
+ *                                  — { id, title, body?, media_keys? } → lo edita (sin media_keys
+ *                                    conserva la media que ya tenía)
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -103,24 +105,66 @@ async function patch({ request, env }) {
     return json({ error: "Solicitud inválida." }, 400);
   }
   const id = Number(payload?.id);
-  const direction = payload?.direction;
-  if (!id || !["up", "down"].includes(direction)) return json({ error: "Falta id o direction." }, 400);
+  if (!id) return json({ error: "Falta id." }, 400);
 
-  const actual = await env.CRM_DB.prepare("SELECT * FROM welcome_steps WHERE id = ?").bind(id).first();
-  if (!actual) return json({ error: "No encontrado." }, 404);
+  if (payload?.direction) {
+    const direction = payload.direction;
+    if (!["up", "down"].includes(direction)) return json({ error: "direction inválido." }, 400);
 
-  const vecino = await env.CRM_DB.prepare(
-    `SELECT * FROM welcome_steps WHERE step_order ${direction === "up" ? "<" : ">"} ?
-     ORDER BY step_order ${direction === "up" ? "DESC" : "ASC"} LIMIT 1`
-  )
-    .bind(actual.step_order)
-    .first();
-  if (!vecino) return json({ ok: true }); // ya está en la punta, no hay nada que mover
+    const actual = await env.CRM_DB.prepare("SELECT * FROM welcome_steps WHERE id = ?").bind(id).first();
+    if (!actual) return json({ error: "No encontrado." }, 404);
 
-  await env.CRM_DB.batch([
-    env.CRM_DB.prepare("UPDATE welcome_steps SET step_order = ? WHERE id = ?").bind(vecino.step_order, actual.id),
-    env.CRM_DB.prepare("UPDATE welcome_steps SET step_order = ? WHERE id = ?").bind(actual.step_order, vecino.id)
-  ]);
+    const vecino = await env.CRM_DB.prepare(
+      `SELECT * FROM welcome_steps WHERE step_order ${direction === "up" ? "<" : ">"} ?
+       ORDER BY step_order ${direction === "up" ? "DESC" : "ASC"} LIMIT 1`
+    )
+      .bind(actual.step_order)
+      .first();
+    if (!vecino) return json({ ok: true }); // ya está en la punta, no hay nada que mover
+
+    await env.CRM_DB.batch([
+      env.CRM_DB.prepare("UPDATE welcome_steps SET step_order = ? WHERE id = ?").bind(vecino.step_order, actual.id),
+      env.CRM_DB.prepare("UPDATE welcome_steps SET step_order = ? WHERE id = ?").bind(actual.step_order, vecino.id)
+    ]);
+
+    return json({ ok: true });
+  }
+
+  // Edición de título/texto/media — sin `direction`.
+  const existente = await env.CRM_DB.prepare("SELECT id FROM welcome_steps WHERE id = ?").bind(id).first();
+  if (!existente) return json({ error: "No encontrado." }, 404);
+
+  const title = String(payload?.title || "").trim().slice(0, 80);
+  const body = String(payload?.body || "").trim().slice(0, 4096) || null;
+  // `null` = no la mandaron, así que se conserva la media que ya tenía.
+  const mediaKeys = Array.isArray(payload?.media_keys) ? payload.media_keys.slice(0, 10) : null;
+
+  if (!title) return json({ error: "Falta un título." }, 400);
+  if (!body && mediaKeys !== null && !mediaKeys.length) {
+    return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  }
+  if (!body && mediaKeys === null) {
+    const tieneMedia = await env.CRM_DB.prepare("SELECT 1 FROM welcome_step_media WHERE welcome_step_id = ? LIMIT 1").bind(id).first();
+    if (!tieneMedia) return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  }
+
+  await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
+
+  if (mediaKeys !== null) {
+    const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM welcome_step_media WHERE welcome_step_id = ?").bind(id).all();
+    await env.CRM_DB.prepare("DELETE FROM welcome_step_media WHERE welcome_step_id = ?").bind(id).run();
+    let i = 0;
+    for (const m of mediaKeys) {
+      await env.CRM_DB.prepare(
+        "INSERT INTO welcome_step_media (welcome_step_id, media_key, media_mime, media_type, sort_order) VALUES (?, ?, ?, ?, ?)"
+      )
+        .bind(id, String(m.media_key), m.media_mime ? String(m.media_mime) : null, String(m.media_type), i++)
+        .run();
+    }
+    if (env.CRM_MEDIA) {
+      for (const m of vieja) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+    }
+  }
 
   return json({ ok: true });
 }

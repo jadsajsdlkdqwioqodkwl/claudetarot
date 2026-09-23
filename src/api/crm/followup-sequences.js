@@ -11,6 +11,8 @@
  * DELETE /api/crm/followup-sequences — { sequence_id } → borra la secuencia entera
  *                                       { step_id } → borra un solo paso
  * PATCH  /api/crm/followup-sequences — { step_id, direction: "up"|"down" } → reordena un paso
+ *                                       { step_id, body?, delay_minutes, media_key?, ... } → edita un paso (sin media_key conserva la que tenía)
+ *                                       { sequence_id, title } → renombra la secuencia
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -122,12 +124,39 @@ async function patch({ request, env }) {
   } catch {
     return json({ error: "Solicitud inválida." }, 400);
   }
+  const sequenceId = Number(payload?.sequence_id);
+  if (sequenceId && !payload?.step_id) {
+    const title = String(payload?.title || "").trim().slice(0, 80);
+    if (!title) return json({ error: "Falta un título." }, 400);
+    await env.CRM_DB.prepare("UPDATE followup_sequences SET title = ? WHERE id = ?").bind(title, sequenceId).run();
+    return json({ ok: true });
+  }
+
   const stepId = Number(payload?.step_id);
   const direction = payload?.direction;
-  if (!stepId || !["up", "down"].includes(direction)) return json({ error: "Falta step_id o direction." }, 400);
+  if (!stepId) return json({ error: "Falta step_id." }, 400);
 
   const actual = await env.CRM_DB.prepare("SELECT * FROM followup_sequence_steps WHERE id = ?").bind(stepId).first();
   if (!actual) return json({ error: "No encontrado." }, 404);
+
+  if (!direction) {
+    const body = payload?.body ? String(payload.body).trim().slice(0, 4096) : null;
+    const delayMinutes = Math.max(1, Number(payload?.delay_minutes) || actual.delay_minutes);
+    const nuevaMedia = payload?.media_key ? String(payload.media_key) : null;
+    const mediaKey = nuevaMedia || actual.media_key;
+    const mediaType = nuevaMedia ? (TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "image") : actual.media_type;
+    const mediaMime = nuevaMedia ? (payload?.media_mime ? String(payload.media_mime) : null) : actual.media_mime;
+    if (!body && !mediaKey) return json({ error: "Necesita un texto o una foto/video." }, 400);
+
+    await env.CRM_DB.prepare(
+      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ? WHERE id = ?"
+    )
+      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, stepId)
+      .run();
+    if (nuevaMedia && actual.media_key && env.CRM_MEDIA) await env.CRM_MEDIA.delete(actual.media_key).catch(() => {});
+    return json({ ok: true });
+  }
+  if (!["up", "down"].includes(direction)) return json({ error: "direction inválido." }, 400);
 
   const vecino = await env.CRM_DB.prepare(
     `SELECT * FROM followup_sequence_steps WHERE sequence_id = ? AND step_order ${direction === "up" ? "<" : ">"} ?

@@ -285,6 +285,7 @@ button { font-family: inherit; touch-action: manipulation; }
 #panel-rapidas .item .titulo, #panel-seguimientos .item .titulo, #panel-catalogo .item .titulo, #panel-mas .item .titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 4px; }
 #panel-rapidas .item .cuerpo, #panel-seguimientos .item .cuerpo { font-size: 12px; color: var(--gris); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 #panel-rapidas .item button.borrar, #panel-seguimientos .item button.borrar { border: 0; background: transparent; color: var(--peligro); cursor: pointer; font-size: 14px; flex-shrink: 0; }
+#panel-rapidas .item button.editar, #panel-seguimientos .item button.editar { border: 0; background: transparent; color: var(--gris); cursor: pointer; font-size: 14px; flex-shrink: 0; }
 #panel-rapidas .item button.estrella-bienvenida { border: 0; background: transparent; color: #ccc; cursor: pointer; font-size: 14px; flex-shrink: 0; }
 #panel-rapidas .item button.estrella-bienvenida.activa { color: #f5b301; }
 #panel-rapidas footer, #panel-seguimientos footer { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -327,7 +328,7 @@ button { font-family: inherit; touch-action: manipulation; }
 .fila-equipo, .fila-template, .fila-seguimiento { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
 .fila-equipo .nombre, .fila-template .nombre { font-weight: 600; }
 .fila-equipo .sub, .fila-template .sub, .fila-seguimiento .sub { font-size: 11px; color: var(--gris); }
-.fila-equipo button, .fila-template button, .fila-seguimiento button.trash { border: 0; background: transparent; cursor: pointer; font-size: 15px; color: var(--gris); }
+.fila-equipo button, .fila-template button, .fila-seguimiento button.trash, .fila-seguimiento button.editar-paso { border: 0; background: transparent; cursor: pointer; font-size: 15px; color: var(--gris); }
 .fila-equipo button.inactiva { color: var(--peligro); }
 .pill-inactivo { font-size: 10px; background: #fde2e2; color: var(--peligro); padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
 

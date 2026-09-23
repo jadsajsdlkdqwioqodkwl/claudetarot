@@ -28,6 +28,9 @@ const estado = {
   filtroTexto: "",
   archivoAdjunto: null,
   rapidaPendiente: null,
+  editandoRapidaId: null,
+  editandoPasoId: null,
+  editandoSeguimientoId: null,
   quickReplies: [],
   login: { mode: "legacy", challengeId: null },
   olvide: { resetId: null },
@@ -413,7 +416,10 @@ $("#btn-abrir-bienvenida").addEventListener("click", async () => {
   $("#modal-bienvenida-fondo").classList.add("abierto");
   await pintarSecuenciaBienvenida();
 });
-$("#bienvenida-cerrar").addEventListener("click", () => $("#modal-bienvenida-fondo").classList.remove("abierto"));
+$("#bienvenida-cerrar").addEventListener("click", () => {
+  $("#modal-bienvenida-fondo").classList.remove("abierto");
+  cancelarEdicionPaso();
+});
 
 async function pintarSecuenciaBienvenida() {
   const { steps } = await pedir("/api/crm/welcome-sequence");
@@ -428,6 +434,7 @@ async function pintarSecuenciaBienvenida() {
       <div style="display:flex;gap:4px">
         <button class="mover-arriba" data-id="${s.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
         <button class="mover-abajo" data-id="${s.id}" title="Bajar" ${i === steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
+        <button class="editar-paso" data-id="${s.id}" title="Editar">${icon("pencil")}</button>
         <button class="trash quitar-paso" data-id="${s.id}" title="Borrar paso">${icon("trash")}</button>
       </div>
     </div>`).join("") : `<p class="ayuda-modal">Todavía no hay ningún paso — agrégalo abajo.</p>`;
@@ -457,38 +464,80 @@ async function pintarSecuenciaBienvenida() {
       await pintarSecuenciaBienvenida();
     });
   });
+  cont.querySelectorAll(".editar-paso").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = steps.find((x) => x.id === Number(btn.dataset.id));
+      if (s) editarPasoBienvenida(s);
+    });
+  });
 }
+
+function editarPasoBienvenida(s) {
+  estado.editandoPasoId = s.id;
+  $("#seq-form-titulo").textContent = "Editar paso";
+  $("#seq-titulo").value = s.title;
+  $("#seq-texto").value = s.body || "";
+  $("#seq-archivo").value = "";
+  $("#seq-archivo-ayuda").textContent = s.media.length
+    ? `Ya tiene ${s.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
+    : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
+  $("#seq-agregar-btn").textContent = "Guardar cambios";
+  $("#seq-cancelar-edicion").style.display = "";
+  $("#seq-titulo").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelarEdicionPaso() {
+  estado.editandoPasoId = null;
+  $("#seq-form-titulo").textContent = "Agregar un paso nuevo";
+  $("#seq-titulo").value = "";
+  $("#seq-texto").value = "";
+  $("#seq-archivo").value = "";
+  $("#seq-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
+  $("#seq-agregar-btn").textContent = "Agregar paso";
+  $("#seq-cancelar-edicion").style.display = "none";
+}
+$("#seq-cancelar-edicion").addEventListener("click", cancelarEdicionPaso);
 
 $("#seq-agregar-btn").addEventListener("click", async () => {
   const title = $("#seq-titulo").value.trim();
   const body = $("#seq-texto").value.trim();
   const files = [...$("#seq-archivo").files];
+  const editandoId = estado.editandoPasoId;
   if (!title) return alert("Ponle un título.");
-  if (!body && !files.length) return alert("Necesita texto o al menos un archivo.");
+  if (!body && !files.length && !editandoId) return alert("Necesita texto o al menos un archivo.");
 
   const btn = $("#seq-agregar-btn");
   btn.disabled = true;
-  btn.textContent = "Subiendo…";
+  btn.textContent = files.length ? "Subiendo…" : "Guardando…";
   try {
-    const media_keys = [];
-    for (const file of files) {
-      const subida = await subirArchivo(file);
-      media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    let media_keys;
+    if (files.length) {
+      media_keys = [];
+      for (const file of files) {
+        const subida = await subirArchivo(file);
+        media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+      }
     }
-    await pedir("/api/crm/welcome-sequence", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, media_keys })
-    });
+    if (editandoId) {
+      await pedir("/api/crm/welcome-sequence", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editandoId, title, body, media_keys })
+      });
+    } else {
+      await pedir("/api/crm/welcome-sequence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, media_keys: media_keys || [] })
+      });
+    }
     await pintarSecuenciaBienvenida();
-    $("#seq-titulo").value = "";
-    $("#seq-texto").value = "";
-    $("#seq-archivo").value = "";
+    cancelarEdicionPaso();
   } catch (err) {
     alert(err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "Agregar paso";
+    btn.textContent = estado.editandoPasoId ? "Guardar cambios" : "Agregar paso";
   }
 });
 
@@ -1398,10 +1447,19 @@ async function actualizarSeguimientosDetalle() {
           <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· Envío masivo</span>` : ""}</div>
           <div>${escapar(textoSeguimiento(s))}</div>
         </div>
-        <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
+        <div style="display:flex;gap:4px">
+          ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
+          <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
+        </div>
       </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`;
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
+      cont.querySelectorAll(".editar-seguimiento-detalle").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const s = scheduled.find((x) => x.id === Number(btn.dataset.id));
+          if (s) abrirModalEditarSeguimiento(s);
+        });
+      });
       cont.querySelectorAll(".borrar-seguimiento-detalle").forEach((btn) => {
         btn.addEventListener("click", async () => {
           await pedir("/api/crm/scheduled", {
@@ -1853,6 +1911,7 @@ function pintarQuickPanel() {
           <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
         </div>
+        <button class="editar" data-id="${q.id}" title="Editar">${icon("pencil")}</button>
         <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
       </div>`;
     }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
@@ -1870,9 +1929,16 @@ function pintarQuickPanel() {
 
   panel.querySelectorAll(".item[data-id]").forEach((el) => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".borrar")) return;
+      if (e.target.closest(".borrar") || e.target.closest(".editar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       if (q) usarQuickReply(q);
+    });
+  });
+  panel.querySelectorAll(".editar").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const q = estado.quickReplies.find((x) => x.id === Number(btn.dataset.id));
+      if (q) { panel.classList.remove("abierto"); abrirModalRapidaEdicion(q); }
     });
   });
   panel.querySelectorAll(".borrar").forEach((btn) => {
@@ -1891,7 +1957,7 @@ function pintarQuickPanel() {
   });
   $("#nueva-rapida")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
-    $("#modal-rapida-fondo").classList.add("abierto");
+    abrirModalRapidaNueva();
   });
 }
 
@@ -1913,8 +1979,31 @@ function usarQuickReply(q) {
   pintarPreviewArchivo();
 }
 
+function abrirModalRapidaNueva() {
+  estado.editandoRapidaId = null;
+  $("#rapida-modal-titulo").textContent = "Nueva respuesta rápida";
+  $("#rapida-titulo").value = "";
+  $("#rapida-texto").value = "";
+  $("#rapida-archivo").value = "";
+  $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  $("#modal-rapida-fondo").classList.add("abierto");
+}
+
+function abrirModalRapidaEdicion(q) {
+  estado.editandoRapidaId = q.id;
+  $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
+  $("#rapida-titulo").value = q.title;
+  $("#rapida-texto").value = q.body || "";
+  $("#rapida-archivo").value = "";
+  $("#rapida-archivo-ayuda").textContent = q.media.length
+    ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
+    : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  $("#modal-rapida-fondo").classList.add("abierto");
+}
+
 $("#rapida-cancelar").addEventListener("click", () => {
   $("#modal-rapida-fondo").classList.remove("abierto");
+  estado.editandoRapidaId = null;
   $("#rapida-titulo").value = "";
   $("#rapida-texto").value = "";
   $("#rapida-archivo").value = "";
@@ -1924,25 +2013,38 @@ $("#rapida-crear").addEventListener("click", async () => {
   const title = $("#rapida-titulo").value.trim();
   const body = $("#rapida-texto").value.trim();
   const files = [...$("#rapida-archivo").files];
+  const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
-  if (!body && !files.length) return alert("Necesita texto o al menos un archivo.");
+  if (!body && !files.length && !editandoId) return alert("Necesita texto o al menos un archivo.");
 
   const btn = $("#rapida-crear");
   btn.disabled = true;
-  btn.textContent = "Subiendo…";
+  btn.textContent = files.length ? "Subiendo…" : "Guardando…";
   try {
-    const media_keys = [];
-    for (const file of files) {
-      const subida = await subirArchivo(file);
-      media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    let media_keys;
+    if (files.length) {
+      media_keys = [];
+      for (const file of files) {
+        const subida = await subirArchivo(file);
+        media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+      }
     }
-    await pedir("/api/crm/quick-replies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, media_keys })
-    });
+    if (editandoId) {
+      await pedir("/api/crm/quick-replies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editandoId, title, body, media_keys })
+      });
+    } else {
+      await pedir("/api/crm/quick-replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, media_keys: media_keys || [] })
+      });
+    }
     await cargarQuickReplies();
     $("#modal-rapida-fondo").classList.remove("abierto");
+    estado.editandoRapidaId = null;
     $("#rapida-titulo").value = "";
     $("#rapida-texto").value = "";
     $("#rapida-archivo").value = "";
@@ -1957,10 +2059,33 @@ $("#rapida-crear").addEventListener("click", async () => {
 /* ---------- Seguimientos programados ---------- */
 
 function abrirModalProgramarSeguimiento() {
+  estado.editandoSeguimientoId = null;
+  $("#seg-modal-titulo").textContent = "Programar seguimiento";
+  $("#seg-crear").textContent = "Programar";
+  $("#seg-archivo").style.display = "";
   const sel = $("#seg-rapida");
+  sel.style.display = "";
   sel.innerHTML = `<option value="">— o una respuesta rápida guardada —</option>` +
     estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
   $("#modal-seguimiento-fondo").classList.add("abierto");
+}
+
+/** Solo los de texto libre — los que llevan respuesta rápida o foto/video propia se cancelan y se vuelven a programar. */
+function abrirModalEditarSeguimiento(s) {
+  estado.editandoSeguimientoId = s.id;
+  $("#seg-modal-titulo").textContent = "Editar seguimiento";
+  $("#seg-crear").textContent = "Guardar cambios";
+  $("#seg-archivo").style.display = "none";
+  $("#seg-rapida").style.display = "none";
+  $("#seg-rapida").value = "";
+  const d = new Date(s.send_at);
+  $("#seg-fecha").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  $("#seg-texto").value = s.body || "";
+  $("#modal-seguimiento-fondo").classList.add("abierto");
+}
+
+function seguimientoEditable(s) {
+  return !s.media_key && !s.quick_reply_id && !s.template_name;
 }
 
 async function toggleSeguimientosPanel() {
@@ -1979,6 +2104,7 @@ async function pintarSeguimientosPanel() {
         <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· masivo</span>` : ""}</div>
         <div class="cuerpo">${escapar(textoSeguimiento(s))}</div>
       </div>
+      ${seguimientoEditable(s) ? `<button class="editar" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
       <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
     </div>`).join("") : `<div class="item"><div class="cuerpo">Sin seguimientos programados.</div></div>`)
     + `<footer>
@@ -1998,6 +2124,15 @@ async function pintarSeguimientosPanel() {
       await actualizarSeguimientosDetalle();
     });
   });
+  panel.querySelectorAll(".editar").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const s = scheduled.find((x) => x.id === Number(btn.dataset.id));
+      if (!s) return;
+      panel.classList.remove("abierto");
+      abrirModalEditarSeguimiento(s);
+    });
+  });
   $("#nuevo-seguimiento")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
     abrirModalProgramarSeguimiento();
@@ -2010,6 +2145,7 @@ async function pintarSeguimientosPanel() {
 
 $("#seg-cancelar").addEventListener("click", () => {
   $("#modal-seguimiento-fondo").classList.remove("abierto");
+  estado.editandoSeguimientoId = null;
   $("#seg-fecha").value = "";
   $("#seg-texto").value = "";
   $("#seg-archivo").value = "";
@@ -2020,11 +2156,32 @@ $("#seg-crear").addEventListener("click", async () => {
   const texto = $("#seg-texto").value.trim();
   const quickReplyId = $("#seg-rapida").value;
   const archivo = $("#seg-archivo").files[0];
+  const editandoId = estado.editandoSeguimientoId;
   if (!fecha) return alert("Elige fecha y hora.");
+  if (editandoId && !texto) return alert("Escribe un texto.");
   if (!texto && !quickReplyId && !archivo) return alert("Escribe un texto, adjunta una foto/video o elige una respuesta rápida.");
 
   const btn = $("#seg-crear");
   btn.disabled = true;
+  if (editandoId) {
+    try {
+      await pedir("/api/crm/scheduled", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto })
+      });
+      $("#modal-seguimiento-fondo").classList.remove("abierto");
+      estado.editandoSeguimientoId = null;
+      $("#seg-fecha").value = "";
+      $("#seg-texto").value = "";
+      await actualizarSeguimientosDetalle();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
   try {
     let media_key, media_type, media_mime;
     if (archivo) {
@@ -2088,6 +2245,7 @@ function pintarListaSecuencias() {
         <div style="display:flex;gap:4px">
           <button class="fs-aplicar" data-id="${s.id}" title="${puedeAplicar ? "Aplicar a este chat" : "Abre una conversación primero"}" ${puedeAplicar ? "" : "disabled"}>${icon("send")}</button>
           <button class="fs-editar" data-id="${s.id}" title="Ver/editar pasos">${icon("bolt")}</button>
+          <button class="fs-renombrar" data-id="${s.id}" title="Renombrar">${icon("pencil")}</button>
           <button class="trash fs-borrar" data-id="${s.id}" title="Borrar secuencia">${icon("trash")}</button>
         </div>
       </div>
@@ -2098,7 +2256,10 @@ function pintarListaSecuencias() {
               <div class="nombre">${i + 1}. +${formatearDelay(p.delay_minutes)}${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""}</div>
               ${p.body ? `<div class="sub">${escapar(p.body)}</div>` : ""}
             </div>
-            <button class="trash fs-borrar-paso" data-id="${p.id}">${icon("trash")}</button>
+            <div style="display:flex;gap:4px">
+              <button class="editar-paso fs-editar-paso" data-id="${p.id}" data-seq="${s.id}" title="Editar">${icon("pencil")}</button>
+              <button class="trash fs-borrar-paso" data-id="${p.id}">${icon("trash")}</button>
+            </div>
           </div>`).join("") || `<p class="ayuda-modal">Sin pasos todavía.</p>`}
         <div class="fs-agregar-paso">
           <div class="fs-delay-fila">
@@ -2159,6 +2320,42 @@ function pintarListaSecuencias() {
     });
   });
 
+  cont.querySelectorAll(".fs-renombrar").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const s = estadoSecuencias.find((x) => x.id === Number(btn.dataset.id));
+      const title = prompt("Nuevo nombre de la secuencia:", s?.title || "");
+      if (!title || !title.trim()) return;
+      try {
+        await pedir("/api/crm/followup-sequences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sequence_id: Number(btn.dataset.id), title: title.trim() })
+        });
+        await cargarYPintarSecuencias();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
+
+  cont.querySelectorAll(".fs-editar-paso").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = estadoSecuencias.find((x) => x.id === Number(btn.dataset.seq));
+      const p = s?.steps.find((x) => x.id === Number(btn.dataset.id));
+      if (!p) return;
+      const fila = cont.querySelector(`.fs-pasos[data-id="${s.id}"]`);
+      const unidad = p.delay_minutes % 1440 === 0 ? 1440 : p.delay_minutes % 60 === 0 ? 60 : 1;
+      fila.querySelector(".fs-paso-texto").value = p.body || "";
+      fila.querySelector(".fs-paso-archivo").value = "";
+      fila.querySelector(".fs-delay-valor").value = p.delay_minutes / unidad;
+      fila.querySelector(".fs-delay-unidad").value = String(unidad);
+      const guardar = fila.querySelector(".fs-agregar-paso-btn");
+      guardar.dataset.editando = String(p.id);
+      guardar.textContent = "Guardar cambios";
+      fila.querySelector(".fs-paso-texto").focus();
+    });
+  });
+
   cont.querySelectorAll(".fs-borrar-paso").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await pedir("/api/crm/followup-sequences", {
@@ -2177,10 +2374,11 @@ function pintarListaSecuencias() {
       const archivo = fila.querySelector(".fs-paso-archivo").files[0];
       const valor = Number(fila.querySelector(".fs-delay-valor").value) || 1;
       const unidad = Number(fila.querySelector(".fs-delay-unidad").value);
-      if (!texto && !archivo) return alert("Escribe un texto o adjunta una foto/video.");
+      const editando = Number(btn.dataset.editando) || null;
+      if (!texto && !archivo && !editando) return alert("Escribe un texto o adjunta una foto/video.");
 
       btn.disabled = true;
-      btn.textContent = "Subiendo…";
+      btn.textContent = archivo ? "Subiendo…" : "Guardando…";
       try {
         let media_key, media_type, media_mime;
         if (archivo) {
@@ -2190,23 +2388,23 @@ function pintarListaSecuencias() {
           media_mime = subida.mime;
         }
         await pedir("/api/crm/followup-sequences", {
-          method: "POST",
+          method: editando ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sequence_id: Number(btn.dataset.id),
+            ...(editando ? { step_id: editando } : { sequence_id: Number(btn.dataset.id) }),
             body: texto || undefined,
             media_key, media_type, media_mime,
             delay_minutes: valor * unidad
           })
         });
+        const seqId = btn.dataset.id;
         await cargarYPintarSecuencias();
-        // Vuelve a abrir los pasos de esa secuencia, ya con el nuevo agregado.
-        cont.querySelector(`.fs-pasos[data-id="${btn.dataset.id}"]`).style.display = "block";
+        // Vuelve a abrir los pasos de esa secuencia, ya con el cambio.
+        $("#lista-secuencias-seg").querySelector(`.fs-pasos[data-id="${seqId}"]`).style.display = "block";
       } catch (err) {
         alert(err.message);
-      } finally {
         btn.disabled = false;
-        btn.textContent = "Agregar paso";
+        btn.textContent = editando ? "Guardar cambios" : "Agregar paso";
       }
     });
   });

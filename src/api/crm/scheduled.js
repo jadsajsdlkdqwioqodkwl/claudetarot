@@ -3,6 +3,9 @@
  * POST   /api/crm/scheduled — programa uno:
  *      { conversation_id, send_at, body?, quick_reply_id? } — texto o una respuesta rápida guardada
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
+ * PATCH  /api/crm/scheduled — { id, send_at?, body? } → edita un pendiente de texto libre
+ *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
+ *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
  *
  * Siempre texto libre — no acepta template_name (eso solo lo maneja
@@ -72,6 +75,36 @@ async function post({ request, env, agent }) {
   return json({ ok: true, scheduled: creado });
 }
 
+async function patch({ request, env }) {
+  let payload;
+  try {
+    payload = JSON.parse(await request.text());
+  } catch {
+    return json({ error: "Solicitud inválida." }, 400);
+  }
+  const id = Number(payload?.id);
+  if (!id) return json({ error: "Falta id." }, 400);
+
+  const actual = await env.CRM_DB.prepare("SELECT * FROM scheduled_messages WHERE id = ? AND status = 'pendiente'").bind(id).first();
+  if (!actual) return json({ error: "No encontrado o ya no está pendiente." }, 404);
+  if (actual.quick_reply_id || actual.media_key || actual.template_name) {
+    return json({ error: "Este seguimiento no se puede editar — cancélalo y programa uno nuevo." }, 400);
+  }
+
+  const sendAt = payload?.send_at !== undefined ? new Date(payload.send_at) : new Date(actual.send_at);
+  if (Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
+    return json({ error: "La fecha tiene que ser futura." }, 422);
+  }
+  const body = payload?.body !== undefined ? (String(payload.body).trim().slice(0, 4096) || null) : actual.body;
+  if (!body) return json({ error: "Necesita un texto." }, 400);
+
+  await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ? WHERE id = ?")
+    .bind(body, sendAt.toISOString(), id)
+    .run();
+
+  return json({ ok: true });
+}
+
 async function del({ request, env }) {
   let payload;
   try {
@@ -90,4 +123,5 @@ async function del({ request, env }) {
 
 export const onRequestGet = conAuth(get);
 export const onRequestPost = conAuth(post);
+export const onRequestPatch = conAuth(patch);
 export const onRequestDelete = conAuth(del);
