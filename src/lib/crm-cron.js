@@ -27,7 +27,7 @@ export async function procesarSeguimientosVencidos(env) {
      LEFT JOIN quick_reply_media qm ON qm.quick_reply_id = s.quick_reply_id AND qm.sort_order = (
        SELECT MIN(sort_order) FROM quick_reply_media WHERE quick_reply_id = s.quick_reply_id
      )
-     WHERE s.status = 'pendiente' AND s.send_at <= datetime('now')
+     WHERE s.status = 'pendiente' AND datetime(s.send_at) <= datetime('now')
      LIMIT 50`
   ).all();
 
