@@ -81,6 +81,16 @@ function escapar(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/** Los mismos estilos que WhatsApp ya renderiza en el celular del cliente (negrita, cursiva, tachado, monoespaciado) — acá se ven igual en vez de con los símbolos sueltos. Escapa primero para que no sea una puerta de HTML. */
+function formatearTextoWA(s) {
+  return escapar(s)
+    .replace(/```([^`]+)```/g, (_, c) => `<code>${c}</code>`)
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<strong>$1</strong>")
+    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, "<em>$1</em>")
+    .replace(/(?<!~)~([^~\n]+)~(?!~)/g, "<s>$1</s>")
+    .replace(/\n/g, "<br>");
+}
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -1416,10 +1426,10 @@ function contenidoMensaje(m) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
   if (m.type === "image" && (m.media_key || m.media_id)) {
-    return `${vistaUnicaHtml(m)}<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "video" && (m.media_key || m.media_id)) {
-    return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${escapar(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "audio" && (m.media_key || m.media_id)) {
     return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>`;
@@ -1428,7 +1438,7 @@ function contenidoMensaje(m) {
     const nombre = m.file_name || m.body || "Documento";
     return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a>`;
   }
-  if (!m.type || m.type === "text") return escapar(m.body || "");
+  if (!m.type || m.type === "text") return formatearTextoWA(m.body || "");
   if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;
   if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;

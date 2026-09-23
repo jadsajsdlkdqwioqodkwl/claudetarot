@@ -261,6 +261,7 @@ button { font-family: inherit; touch-action: manipulation; }
 .msg img, .msg video { max-width: 100%; border-radius: var(--radio-s); display: block; }
 .msg audio { display: block; width: 240px; max-width: 100%; height: 36px; }
 .msg .caption { margin-top: 4px; }
+.msg code { font-family: ui-monospace, monospace; background: rgba(0,0,0,.06); padding: 0 3px; border-radius: 3px; }
 #vacio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gris); font-size: 14px; }
 
 #form-envio { display: flex; gap: 8px; padding: 10px 14px; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--borde); align-items: flex-end; position: relative; }
