@@ -78,10 +78,15 @@ async function post({ request, env, agent }) {
     return json({ error: "Falta order_id o conversation_id." }, 400);
   }
 
-  // Primer nombre nada más — es un extra para el match, no hace falta el
-  // apellido, y muchos "profile_name" de WhatsApp ya vienen con emojis o
-  // apodos raros que mejor no mandar completos.
+  // Primer nombre del contacto como base — muchos "profile_name" de
+  // WhatsApp ya vienen con emojis o apodos raros que mejor no mandar
+  // completos. El agente puede pisarlo a mano desde el form (mejora el
+  // Event Match Quality, sobre todo útil en el reporte manual sin
+  // ctwa_clid, donde no hay más que ph para hacer match).
   const primerNombre = nombreCompleto ? String(nombreCompleto).trim().split(/\s+/)[0].replace(/[^\p{L}]/gu, "") : null;
+  const nombreManual = payload?.first_name ? String(payload.first_name).trim().slice(0, 100) : null;
+  const apellidoManual = payload?.last_name ? String(payload.last_name).trim().slice(0, 100) : null;
+  const emailManual = payload?.email ? String(payload.email).trim().slice(0, 200) : null;
 
   const valor = Number(payload?.value);
   const moneda = payload?.currency || "PEN";
@@ -98,7 +103,9 @@ async function post({ request, env, agent }) {
       moneda,
       eventId: orderId ? `capi-order-${orderId}` : `capi-conv-${conversationId}-${Date.now()}`,
       contentName: productLabel,
-      firstName: primerNombre || undefined,
+      firstName: nombreManual || primerNombre || undefined,
+      lastName: apellidoManual || undefined,
+      email: emailManual || undefined,
       testEventCode: payload?.test_event_code || undefined
     });
     const respuesta = await enviarEventoCapi(env, evento);

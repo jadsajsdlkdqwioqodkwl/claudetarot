@@ -25,15 +25,18 @@ async function sha256Hex(texto) {
  * sola (hashing del teléfono, forma del payload) sin necesitar credenciales
  * reales de Meta.
  */
-export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, testEventCode }) {
+export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, lastName, email, testEventCode }) {
   const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
-  // fn (nombre) es un extra para el Event Match Quality — ctwa_clid + ph ya
-  // son, por sí solos, el par que Meta documenta como suficiente para un
-  // evento de Click-to-WhatsApp: ctwa_clid conecta directo con el clic al
-  // anuncio, y ph identifica a la persona. El nombre solo suma un poco más.
+  // fn/ln/em son extra para el Event Match Quality — ctwa_clid + ph ya son,
+  // por sí solos, el par que Meta documenta como suficiente para un evento
+  // de Click-to-WhatsApp: ctwa_clid conecta directo con el clic al anuncio,
+  // y ph identifica a la persona. El resto solo suma un poco más de EMQ,
+  // y es lo único con lo que cuenta un reporte manual sin ctwa_clid.
   const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
+  const apellidoHash = lastName ? await sha256Hex(String(lastName).trim().toLowerCase()) : null;
+  const emailHash = email ? await sha256Hex(String(email).trim().toLowerCase()) : null;
 
-  if (!telefonoHash && !nombreHash) throw new Error("Necesita al menos el WhatsApp o el nombre del contacto para poder mandarlo.");
+  if (!telefonoHash && !nombreHash && !emailHash) throw new Error("Necesita al menos el WhatsApp, el nombre o el email del contacto para poder mandarlo.");
 
   // Sin ctwa_clid no es un clic a un anuncio real — "business_messaging" con
   // messaging_channel "whatsapp" exige ese campo y Meta lo rechaza
@@ -50,7 +53,9 @@ export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, event
     user_data: {
       ...(telefonoHash ? { ph: [telefonoHash] } : {}),
       ...(ctwaClid ? { ctwa_clid: ctwaClid } : {}),
-      ...(nombreHash ? { fn: [nombreHash] } : {})
+      ...(nombreHash ? { fn: [nombreHash] } : {}),
+      ...(apellidoHash ? { ln: [apellidoHash] } : {}),
+      ...(emailHash ? { em: [emailHash] } : {})
     },
     custom_data: {
       currency: moneda || "PEN",

@@ -2469,6 +2469,14 @@ async function pintarDetalle(c) {
           <option value="USD">USD</option>
         </select>
       </div>
+      <details style="margin-bottom:8px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--texto-tenue,#666)">Mejorar match con Meta (opcional)</summary>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+          <input type="text" id="capi-nombre" placeholder="Nombre" value="${escapar((c.name || c.profile_name || "").trim().split(/\s+/)[0] || "")}" />
+          <input type="text" id="capi-apellido" placeholder="Apellido (opcional)" />
+          <input type="email" id="capi-email" placeholder="Email (opcional)" />
+        </div>
+      </details>
       <button class="crear" id="capi-reportar-btn" type="button" style="width:100%">${tieneAd ? "Reportar venta (mejora tus anuncios)" : "Reportar venta manual"}</button>
     </div>
     <div id="capi-confirmacion" style="display:none"></div>
@@ -2532,6 +2540,9 @@ async function pintarDetalle(c) {
     const valor = Number($("#capi-valor").value);
     const moneda = $("#capi-moneda").value;
     const producto = $("#capi-producto").value.trim();
+    const nombreEmq = $("#capi-nombre").value.trim();
+    const apellidoEmq = $("#capi-apellido").value.trim();
+    const emailEmq = $("#capi-email").value.trim();
     if (!valor || valor <= 0) return alert("Escribe un monto válido.");
 
     $("#capi-form").style.display = "none";
@@ -2559,7 +2570,15 @@ async function pintarDetalle(c) {
         await pedir("/api/crm/capi-send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: c.conversation_id, value: valor, currency: moneda, product_label: producto || undefined })
+          body: JSON.stringify({
+            conversation_id: c.conversation_id,
+            value: valor,
+            currency: moneda,
+            product_label: producto || undefined,
+            first_name: nombreEmq || undefined,
+            last_name: apellidoEmq || undefined,
+            email: emailEmq || undefined
+          })
         });
         conf.style.display = "none";
         $("#capi-form").style.display = "block";
