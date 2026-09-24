@@ -1,18 +1,30 @@
 /**
- * Meta Conversions API para "Click to WhatsApp": manda un evento de compra
- * usando el ctwa_clid del contacto, para que el anuncio que originó la
- * conversación se lleve el crédito de la venta en Ads Manager. Disparado a
- * mano desde el CRM (nunca automático) — un admin revisa el pedido y decide.
+ * Meta Conversions API para WhatsApp: le cuenta a Meta qué pasó en el chat
+ * (conversación iniciada, intención de compra, venta) para que optimice a
+ * quién mostrarle los anuncios.
  *
- * Dos secrets nuevos: META_CAPI_ACCESS_TOKEN y META_CAPI_DATASET_ID (el
- * dataset de "Business messaging" en Events Manager — NO es el Pixel ID de
- * la web, ese es para otra cosa).
- *
- * La forma exacta de este payload es la que documenta Meta para "Click to
- * WhatsApp Ads" hoy, pero Meta cambia estas cosas entre versiones — antes de
- * confiar en esto en producción, mándate una venta de prueba con
- * test_event_code y confírmala en Events Manager → Test Events.
+ * Dos caminos:
+ *  - "anuncio": el contacto trae ctwa_clid (vino de un Click-to-WhatsApp).
+ *    Meta solo acepta estos eventos (action_source "business_messaging") en
+ *    el dataset vinculado a la WABA, que se obtiene con GET/POST
+ *    /{WABA_ID}/dataset — NO en cualquier dataset/pixel. Mandarlos a otro
+ *    dataset da "no hay ninguna cuenta de WhatsApp Business vinculada a este
+ *    conjunto de datos" (así fallaron todos los reportes con ctwa_clid).
+ *  - "manual": sin ctwa_clid (o si el camino de anuncio falla), se manda como
+ *    "system_generated" con el teléfono hasheado a META_CAPI_DATASET_ID.
  */
+
+import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
+
+const GRAPH = "https://graph.facebook.com/v21.0";
+const AJUSTE_DATASET_WABA = "capi_waba_dataset";
+
+/** Nombres que acepta Meta en cada camino (business_messaging no acepta Contact ni Lead). */
+export const EVENTOS = {
+  conversacion: { anuncio: "LeadSubmitted", manual: "Contact" },
+  intencion: { anuncio: "InitiateCheckout", manual: "InitiateCheckout" },
+  venta: { anuncio: "Purchase", manual: "Purchase" }
+};
 
 async function sha256Hex(texto) {
   const bytes = new TextEncoder().encode(texto);
@@ -20,51 +32,34 @@ async function sha256Hex(texto) {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * Arma el cuerpo del evento — función pura, sin red, para poder probarla
- * sola (hashing del teléfono, forma del payload) sin necesitar credenciales
- * reales de Meta.
- */
-export async function construirEventoCapi({ waId, ctwaClid, wabaId, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, lastName, email, testEventCode }) {
-  const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
-  // fn/ln/em son extra para el Event Match Quality — ctwa_clid + ph ya son,
-  // por sí solos, el par que Meta documenta como suficiente para un evento
-  // de Click-to-WhatsApp: ctwa_clid conecta directo con el clic al anuncio,
-  // y ph identifica a la persona. El resto solo suma un poco más de EMQ,
-  // y es lo único con lo que cuenta un reporte manual sin ctwa_clid.
-  const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
-  const apellidoHash = lastName ? await sha256Hex(String(lastName).trim().toLowerCase()) : null;
-  const emailHash = email ? await sha256Hex(String(email).trim().toLowerCase()) : null;
+const esClicReal = (ctwaClid) => Boolean(ctwaClid) && !String(ctwaClid).startsWith("SIMULADO");
 
-  if (!telefonoHash && !nombreHash && !emailHash) throw new Error("Necesita al menos el WhatsApp, el nombre o el email del contacto para poder mandarlo.");
+/** Arma el cuerpo del evento — función pura, sin red. */
+export async function construirEventoCapi({ modo, waId, ctwaClid, wabaId, valor, moneda, eventName, eventId, contentName, firstName, lastName, email, testEventCode }) {
+  let user_data;
+  if (modo === "anuncio") {
+    if (!wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID.");
+    user_data = { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid };
+  } else {
+    const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
+    const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
+    const apellidoHash = lastName ? await sha256Hex(String(lastName).trim().toLowerCase()) : null;
+    const emailHash = email ? await sha256Hex(String(email).trim().toLowerCase()) : null;
+    if (!telefonoHash && !nombreHash && !emailHash) throw new Error("Necesita al menos el WhatsApp, el nombre o el email del contacto para poder mandarlo.");
+    user_data = {
+      ...(telefonoHash ? { ph: [telefonoHash] } : {}),
+      ...(nombreHash ? { fn: [nombreHash] } : {}),
+      ...(apellidoHash ? { ln: [apellidoHash] } : {}),
+      ...(emailHash ? { em: [emailHash] } : {})
+    };
+  }
 
-  // Sin ctwa_clid no es un clic a un anuncio real — "business_messaging" con
-  // messaging_channel "whatsapp" exige ese campo y Meta lo rechaza
-  // ("Invalid parameter") si falta. Para un reporte manual (venta que no
-  // vino de un anuncio, o donde no se guardó el ctwa_clid) se manda como
-  // "system_generated": mismo dataset, sin pedir el clic al anuncio, solo
-  // sirve para atribución/optimización general en vez de para el anuncio
-  // puntual que originó la conversación.
-  //
-  // Con ctwa_clid, el user_data es exactamente el que documenta Meta para
-  // "Conversions API for Business Messaging": whatsapp_business_account_id +
-  // ctwa_clid (sin el WABA id, Meta responde "Invalid parameter"). El clic
-  // ya identifica a la persona, así que no se mezclan ph/fn/ln/em ahí.
-  if (!wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID — el dataset de Business Messaging lo exige en todos los eventos, tengan o no ctwa_clid.");
   const evento = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
-    action_source: ctwaClid ? "business_messaging" : "system_generated",
-    ...(ctwaClid ? { messaging_channel: "whatsapp" } : {}),
-    user_data: ctwaClid
-      ? { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid }
-      : {
-          whatsapp_business_account_id: String(wabaId),
-          ...(telefonoHash ? { ph: [telefonoHash] } : {}),
-          ...(nombreHash ? { fn: [nombreHash] } : {}),
-          ...(apellidoHash ? { ln: [apellidoHash] } : {}),
-          ...(emailHash ? { em: [emailHash] } : {})
-        },
+    action_source: modo === "anuncio" ? "business_messaging" : "system_generated",
+    ...(modo === "anuncio" ? { messaging_channel: "whatsapp" } : {}),
+    user_data,
     custom_data: {
       currency: moneda || "PEN",
       value: Number(valor) || 0,
@@ -78,15 +73,12 @@ export async function construirEventoCapi({ waId, ctwaClid, wabaId, valor, moned
   return payload;
 }
 
-export async function enviarEventoCapi(env, payload) {
-  if (!env.META_CAPI_ACCESS_TOKEN || !env.META_CAPI_DATASET_ID) {
-    throw new Error("Falta configurar META_CAPI_ACCESS_TOKEN o META_CAPI_DATASET_ID.");
-  }
-  const url = `https://graph.facebook.com/v21.0/${env.META_CAPI_DATASET_ID}/events?access_token=${encodeURIComponent(env.META_CAPI_ACCESS_TOKEN)}`;
+async function graph(metodo, ruta, token, cuerpo) {
+  const url = `${GRAPH}/${ruta}${ruta.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(token)}`;
   const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    method: metodo,
+    headers: cuerpo ? { "Content-Type": "application/json" } : {},
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined
   });
   const texto = await res.text();
   let datos;
@@ -95,12 +87,83 @@ export async function enviarEventoCapi(env, payload) {
   } catch {
     datos = { raw: texto };
   }
-  if (!res.ok) {
-    // "Invalid parameter" solo no dice nada — Meta pone el motivo real en
-    // error_user_title / error_user_msg.
+  if (!res.ok || datos?.error) {
+    // "Invalid parameter" solo no dice nada — el motivo real viene en error_user_title / error_user_msg.
     const e = datos?.error || {};
     const detalle = [e.error_user_title, e.error_user_msg].filter(Boolean).join(": ");
     throw new Error([e.message || texto || `HTTP ${res.status}`, detalle].filter(Boolean).join(" — "));
   }
   return datos;
+}
+
+const tokensDisponibles = (env) =>
+  [
+    ["WHATSAPP_TOKEN", env.WHATSAPP_TOKEN],
+    ["META_CAPI_ACCESS_TOKEN", env.META_CAPI_ACCESS_TOKEN]
+  ].filter(([, t]) => t);
+
+/**
+ * Dataset vinculado a la WABA (lo crea si todavía no existe). Se guarda en
+ * crm_settings para no preguntarle a Meta en cada evento.
+ */
+async function datasetDeWaba(env) {
+  const guardado = await obtenerAjuste(env.CRM_DB, AJUSTE_DATASET_WABA);
+  if (guardado) {
+    try {
+      return JSON.parse(guardado);
+    } catch { /* se vuelve a resolver */ }
+  }
+  const waba = env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+  if (!waba) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID.");
+
+  const errores = [];
+  for (const [nombreToken, token] of tokensDisponibles(env)) {
+    try {
+      let datos = await graph("GET", `${waba}/dataset`, token);
+      let id = datos?.id || datos?.data?.[0]?.id;
+      if (!id) {
+        datos = await graph("POST", `${waba}/dataset`, token);
+        id = datos?.id || datos?.data?.[0]?.id;
+      }
+      if (!id) throw new Error(`Meta no devolvió el dataset: ${JSON.stringify(datos)}`);
+      const resuelto = { id: String(id), token: nombreToken };
+      await guardarAjuste(env.CRM_DB, AJUSTE_DATASET_WABA, JSON.stringify(resuelto));
+      return resuelto;
+    } catch (err) {
+      errores.push(`${nombreToken}: ${err.message}`);
+    }
+  }
+  throw new Error(`No se pudo obtener el dataset de la WABA (${errores.join(" | ") || "sin tokens"})`);
+}
+
+/**
+ * Manda un evento eligiendo solo el camino. `tipo` es una clave de EVENTOS.
+ * Devuelve { modo, eventName, respuesta, aviso } — `aviso` explica por qué
+ * un contacto con ctwa_clid terminó yendo como manual.
+ */
+export async function reportarEventoMeta(env, { tipo, waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode }) {
+  const nombres = EVENTOS[tipo];
+  if (!nombres) throw new Error(`Tipo de evento desconocido: ${tipo}`);
+  const base = { waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode };
+
+  let aviso = null;
+  if (esClicReal(ctwaClid)) {
+    try {
+      const dataset = await datasetDeWaba(env);
+      const payload = await construirEventoCapi({ ...base, modo: "anuncio", wabaId: env.WHATSAPP_BUSINESS_ACCOUNT_ID, eventName: nombres.anuncio });
+      const respuesta = await graph("POST", `${dataset.id}/events`, env[dataset.token], payload);
+      return { modo: "anuncio", eventName: nombres.anuncio, respuesta, aviso: null };
+    } catch (err) {
+      aviso = `Vía anuncio falló (${err.message}); se mandó como manual.`;
+      // Por si el dataset/token guardado dejó de servir: la próxima vez se vuelve a resolver.
+      await guardarAjuste(env.CRM_DB, AJUSTE_DATASET_WABA, "").catch(() => {});
+    }
+  }
+
+  if (!env.META_CAPI_ACCESS_TOKEN || !env.META_CAPI_DATASET_ID) {
+    throw new Error(aviso || "Falta configurar META_CAPI_ACCESS_TOKEN o META_CAPI_DATASET_ID.");
+  }
+  const payload = await construirEventoCapi({ ...base, modo: "manual", eventName: nombres.manual });
+  const respuesta = await graph("POST", `${env.META_CAPI_DATASET_ID}/events`, env.META_CAPI_ACCESS_TOKEN, payload);
+  return { modo: "manual", eventName: nombres.manual, respuesta, aviso };
 }

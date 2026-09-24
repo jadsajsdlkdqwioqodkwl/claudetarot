@@ -23,8 +23,10 @@ import {
   registrarReaccionCliente,
   obtenerAjuste,
   programarSecuenciaSeguimiento,
+  registrarEventoCapi,
   ORIGEN_SEGUIMIENTO_AUTO
 } from "../lib/crm-db.js";
+import { reportarEventoMeta } from "../lib/meta-capi.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
@@ -140,6 +142,29 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
   }
 }
 
+/**
+ * Contacto nuevo desde un anuncio: le avisa a Meta que la conversación
+ * empezó (LeadSubmitted), la señal que antes daba "Ads Data Sharing" de la
+ * app. Va dentro del mismo request del webhook, no suma requests.
+ */
+async function reportarConversacionSiAplica(env, contacto, conversacion) {
+  if (!contacto._isNew || !contacto.ctwa_clid || String(contacto.ctwa_clid).startsWith("SIMULADO")) return;
+  const base = { conversationId: conversacion.id, valor: 0, moneda: "PEN", createdBy: "Automático" };
+  try {
+    const r = await reportarEventoMeta(env, {
+      tipo: "conversacion",
+      waId: contacto.wa_id,
+      ctwaClid: contacto.ctwa_clid,
+      valor: 0,
+      eventId: `capi-conversacion-${conversacion.id}`
+    });
+    await registrarEventoCapi(env.CRM_DB, { ...base, status: "enviado", eventName: r.eventName, modo: r.modo, error: r.aviso });
+  } catch (err) {
+    console.error("CAPI conversación:", err.message);
+    await registrarEventoCapi(env.CRM_DB, { ...base, status: "fallido", eventName: "LeadSubmitted", error: err.message.slice(0, 500) }).catch(() => {});
+  }
+}
+
 async function procesarCambio(env, db, value) {
   const contactoMeta = value.contacts?.[0];
 
@@ -170,6 +195,7 @@ async function procesarCambio(env, db, value) {
     }
     await mandarBienvenidaSiAplica(env, contacto, conversacion);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion);
+    await reportarConversacionSiAplica(env, contacto, conversacion);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal }).catch((err) => console.error("Push:", err.message));
   }
 

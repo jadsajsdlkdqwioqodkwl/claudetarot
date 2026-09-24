@@ -1,24 +1,18 @@
 /**
- * GET  /api/crm/capi-send?conversation_id=1 — historial de eventos CAPI mandados en ese chat
- * POST /api/crm/capi-send — manda a mano el evento de Purchase a Meta:
- *      { order_id, value?, currency? } — a partir de un pedido real del catálogo
- *      { conversation_id, value, currency?, product_label? } — sin catálogo,
- *        para la mayoría de ventas que se cierran por chat y nunca pasan por
- *        el checkout nativo de WhatsApp (no hace falta armar un pedido falso
- *        ni mandarle al cliente ninguna notificación para poder reportarla)
+ * GET  /api/crm/capi-send?conversation_id=1 — historial de eventos a Meta de ese chat
+ * POST /api/crm/capi-send — le reporta a Meta lo que pasó en el chat:
+ *      { conversation_id, tipo: "venta" | "intencion", value?, currency?, product_label? }
+ *      { order_id, value?, currency? } — venta a partir de un pedido del catálogo
  *
- * Nunca automático — un admin lo dispara después de revisar que la venta es
- * real. Solo admin.
- *
- * `test_event_code` (opcional): lo da Events Manager → Test Events, para
- * confirmar que el evento llega bien antes de mandarlo "de verdad".
- *
- * Conversions API, no es un mensaje de WhatsApp — nunca cobra, sea con
- * ctwa_clid o en modo manual. Ver docs/whatsapp-ventanas-y-costos.md.
+ * Lo dispara la asesora o un admin a mano, desde los botones del header del
+ * chat (carrito = intención de compra, bolsa = venta) o el panel de detalle.
+ * Conversions API, no es un mensaje de WhatsApp: nunca cobra ni le manda
+ * nada al cliente. Ver src/lib/meta-capi.js para cómo elige el camino.
  */
 
-import { conAdmin } from "../../lib/crm-auth.js";
-import { construirEventoCapi, enviarEventoCapi } from "../../lib/meta-capi.js";
+import { conAuth } from "../../lib/crm-auth.js";
+import { reportarEventoMeta } from "../../lib/meta-capi.js";
+import { registrarEventoCapi } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -46,6 +40,7 @@ async function post({ request, env, agent }) {
     return json({ error: "Solicitud inválida." }, 400);
   }
 
+  const tipo = payload?.tipo === "intencion" ? "intencion" : "venta";
   const orderId = payload?.order_id ? Number(payload.order_id) : null;
   let conversationId = payload?.conversation_id ? Number(payload.conversation_id) : null;
   let waId, ctwaClid, nombreCompleto;
@@ -81,65 +76,51 @@ async function post({ request, env, agent }) {
     return json({ error: "Falta order_id o conversation_id." }, 400);
   }
 
-  // Primer nombre del contacto como base — muchos "profile_name" de
-  // WhatsApp ya vienen con emojis o apodos raros que mejor no mandar
-  // completos. El agente puede pisarlo a mano desde el form (mejora el
-  // Event Match Quality, sobre todo útil en el reporte manual sin
-  // ctwa_clid, donde no hay más que ph para hacer match).
+  // Primer nombre del contacto como base — muchos "profile_name" de WhatsApp
+  // traen emojis o apodos que mejor no mandar completos.
   const primerNombre = nombreCompleto ? String(nombreCompleto).trim().split(/\s+/)[0].replace(/[^\p{L}]/gu, "") : null;
   const nombreManual = payload?.first_name ? String(payload.first_name).trim().slice(0, 100) : null;
   const apellidoManual = payload?.last_name ? String(payload.last_name).trim().slice(0, 100) : null;
   const emailManual = payload?.email ? String(payload.email).trim().slice(0, 200) : null;
 
-  const valor = Number(payload?.value);
+  const valor = Number(payload?.value) || 0;
   const moneda = payload?.currency || "PEN";
-  if (!valor || Number.isNaN(valor) || valor <= 0) return json({ error: "Necesita un monto (value) mayor a 0." }, 400);
+  if (tipo === "venta" && valor <= 0) return json({ error: "Necesita un monto (value) mayor a 0." }, 400);
 
   const productLabel = payload?.product_label ? String(payload.product_label).trim().slice(0, 200) : null;
   const createdBy = agent?.displayName || agent?.username || null;
+  const eventId = orderId ? `capi-order-${orderId}` : `capi-${tipo}-${conversationId}-${Date.now()}`;
 
   try {
-    const evento = await construirEventoCapi({
+    const r = await reportarEventoMeta(env, {
+      tipo,
       waId,
       ctwaClid,
-      wabaId: env.WHATSAPP_BUSINESS_ACCOUNT_ID,
       valor,
       moneda,
-      eventId: orderId ? `capi-order-${orderId}` : `capi-conv-${conversationId}-${Date.now()}`,
+      eventId,
       contentName: productLabel,
       firstName: nombreManual || primerNombre || undefined,
       lastName: apellidoManual || undefined,
       email: emailManual || undefined,
       testEventCode: payload?.test_event_code || undefined
     });
-    const respuesta = await enviarEventoCapi(env, evento);
 
     if (orderId) {
       await env.CRM_DB.prepare("UPDATE catalog_orders SET capi_status = 'enviado', capi_sent_at = datetime('now') WHERE id = ?")
         .bind(orderId)
         .run();
     }
-    await env.CRM_DB.prepare(
-      `INSERT INTO capi_events (conversation_id, order_id, product_label, value, currency, status, created_by)
-       VALUES (?, ?, ?, ?, ?, 'enviado', ?)`
-    )
-      .bind(conversationId, orderId, productLabel, valor, moneda, createdBy)
-      .run();
-
-    return json({ ok: true, meta_response: respuesta });
+    await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "enviado", createdBy, eventName: r.eventName, modo: r.modo, error: r.aviso });
+    return json({ ok: true, modo: r.modo, event_name: r.eventName, aviso: r.aviso, meta_response: r.respuesta });
   } catch (err) {
     if (orderId) {
       await env.CRM_DB.prepare("UPDATE catalog_orders SET capi_status = 'fallido' WHERE id = ?").bind(orderId).run();
     }
-    await env.CRM_DB.prepare(
-      `INSERT INTO capi_events (conversation_id, order_id, product_label, value, currency, status, created_by)
-       VALUES (?, ?, ?, ?, ?, 'fallido', ?)`
-    )
-      .bind(conversationId, orderId, productLabel, valor, moneda, createdBy)
-      .run();
+    await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "fallido", createdBy, eventName: tipo === "venta" ? "Purchase" : "InitiateCheckout", error: err.message.slice(0, 500) });
     return json({ error: `Meta rechazó el evento: ${err.message}` }, 502);
   }
 }
 
-export const onRequestGet = conAdmin(get);
-export const onRequestPost = conAdmin(post);
+export const onRequestGet = conAuth(get);
+export const onRequestPost = conAuth(post);

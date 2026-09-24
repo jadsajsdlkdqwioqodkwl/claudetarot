@@ -268,3 +268,13 @@ export async function suscripcionesParaAvisar(db, assignedAgent) {
   const { results } = await db.prepare("SELECT * FROM push_subscriptions WHERE agent_name = ?").bind(assignedAgent).all();
   return results;
 }
+
+export async function registrarEventoCapi(db, { conversationId, orderId = null, productLabel = null, valor, moneda, status, createdBy, eventName, modo = null, error = null }) {
+  await db
+    .prepare(
+      `INSERT INTO capi_events (conversation_id, order_id, product_label, value, currency, status, created_by, event_name, mode, error)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(conversationId, orderId, productLabel, valor, moneda, status, createdBy, eventName, modo, error)
+    .run();
+}

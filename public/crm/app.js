@@ -1831,6 +1831,8 @@ function pintarChatBase(c) {
         </div>
       </div>
       <div class="acciones-chat">
+        <button class="btn-meta ${eventosMetaDe(c.conversation_id).intencion ? "enviado" : ""}" id="btn-intencion" type="button" title="Intención de compra (avisa a Meta)">${icon("cart")}</button>
+        <button class="btn-meta btn-venta ${eventosMetaDe(c.conversation_id).venta ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
@@ -1885,6 +1887,8 @@ function pintarChatBase(c) {
     if (c2) clicEstrella(c2);
   });
   pintarEstrellaHeader(c);
+  $("#btn-intencion").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverMeta(c, "intencion"); });
+  $("#btn-venta").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverMeta(c, "venta"); });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("paste", onPegarImagen);
@@ -2208,6 +2212,122 @@ async function actualizarPedidosPanel() {
   } catch { /* silencioso */ }
 }
 
+/* ---------- Botones de Meta del header (intención de compra / venta) ---------- */
+
+const KIT_DEFAULT = { nombre: "Kit Tarot Rider-Waite de aprendizaje", precio: 89 };
+const precioProducto = (p) => parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
+const eventosMetaEnviados = {};
+const eventosMetaDe = (conversationId) => eventosMetaEnviados[conversationId] || {};
+
+async function productosDelCatalogo() {
+  if (!cacheProductosCatalogo) {
+    const { products } = await pedir("/api/crm/catalog-products");
+    cacheProductosCatalogo = products;
+  }
+  return cacheProductosCatalogo || [];
+}
+
+function cerrarPopoverMeta() {
+  $("#popover-meta")?.remove();
+  document.removeEventListener("pointerdown", cerrarPopoverMetaAfuera, true);
+}
+
+function cerrarPopoverMetaAfuera(e) {
+  if (!e.target.closest("#popover-meta, #btn-intencion, #btn-venta")) cerrarPopoverMeta();
+}
+
+function abrirPopoverMeta(c, tipo) {
+  const mismo = $("#popover-meta")?.dataset.tipo === tipo;
+  cerrarPopoverMeta();
+  if (mismo) return;
+
+  const pop = document.createElement("div");
+  pop.id = "popover-meta";
+  pop.dataset.tipo = tipo;
+  const items = [{ ...KIT_DEFAULT }];
+
+  if (tipo === "intencion") {
+    pop.innerHTML = `
+      <div class="pm-titulo">${icon("cart")} Intención de compra</div>
+      <p class="pm-ayuda">Avisa a Meta que este cliente está por comprar, para que busque más gente así. Al cliente no le llega nada.</p>
+      <button type="button" class="pm-confirmar">Marcar intención</button>
+      <div class="pm-estado"></div>`;
+  } else {
+    pop.innerHTML = `
+      <div class="pm-titulo">${icon("bag")} Reportar venta</div>
+      <div class="pm-items"></div>
+      <select class="pm-agregar"><option value="">+ ¿Compró algo más?</option></select>
+      <label class="pm-total">Total S/ <input type="number" class="pm-valor" min="0" step="0.01" /></label>
+      <button type="button" class="pm-confirmar">Reportar venta</button>
+      <div class="pm-estado"></div>`;
+
+    const pintarItems = () => {
+      pop.querySelector(".pm-items").innerHTML = items.map((it, i) => `
+        <div class="pm-item"><span>${escapar(it.nombre)}</span><span class="pm-precio">${it.precio}</span><button type="button" data-i="${i}" title="Quitar">${icon("close")}</button></div>`).join("")
+        || `<div class="pm-ayuda">Sin productos — escribe el total.</div>`;
+      pop.querySelector(".pm-valor").value = items.reduce((s, it) => s + it.precio, 0) || "";
+    };
+    pintarItems();
+    pop.querySelector(".pm-items").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-i]");
+      if (!b) return;
+      items.splice(Number(b.dataset.i), 1);
+      pintarItems();
+    });
+    const select = pop.querySelector(".pm-agregar");
+    productosDelCatalogo().then((productos) => {
+      productos.forEach((p, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = `${p.name || p.retailer_id}${precioProducto(p) ? ` — ${precioProducto(p)}` : ""}`;
+        select.appendChild(opt);
+      });
+    }).catch(() => {});
+    select.addEventListener("change", () => {
+      const p = cacheProductosCatalogo?.[Number(select.value)];
+      select.value = "";
+      if (!p) return;
+      items.push({ nombre: p.name || p.retailer_id, precio: precioProducto(p) });
+      pintarItems();
+    });
+  }
+
+  pop.querySelector(".pm-confirmar").addEventListener("click", async () => {
+    const btn = pop.querySelector(".pm-confirmar");
+    const estadoEl = pop.querySelector(".pm-estado");
+    const valor = tipo === "venta" ? Number(pop.querySelector(".pm-valor").value) : KIT_DEFAULT.precio;
+    if (tipo === "venta" && !(valor > 0)) return alert("Escribe un monto válido.");
+    const producto = tipo === "venta" ? items.map((it) => it.nombre).join(", ") : KIT_DEFAULT.nombre;
+    btn.disabled = true;
+    estadoEl.className = "pm-estado";
+    estadoEl.textContent = "Enviando…";
+    try {
+      const r = await pedir("/api/crm/capi-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: c.conversation_id, tipo, value: valor, currency: "PEN", product_label: producto || undefined })
+      });
+      eventosMetaEnviados[c.conversation_id] = { ...eventosMetaDe(c.conversation_id), [tipo]: true };
+      $(tipo === "venta" ? "#btn-venta" : "#btn-intencion")?.classList.add("enviado");
+      estadoEl.className = "pm-estado ok";
+      estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
+      if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
+      setTimeout(() => { if ($("#popover-meta") === pop) cerrarPopoverMeta(); }, 1600);
+    } catch (err) {
+      estadoEl.className = "pm-estado error";
+      estadoEl.textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+
+  $("#chat").appendChild(pop);
+  document.addEventListener("pointerdown", cerrarPopoverMetaAfuera, true);
+}
+
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarPopoverMeta(); });
+
+const NOMBRE_EVENTO_META = { Purchase: "Venta", InitiateCheckout: "Intención", LeadSubmitted: "Conversación", Contact: "Conversación" };
+
 /** Historial de eventos CAPI mandados en este chat (con o sin pedido del catálogo detrás). */
 async function actualizarHistorialCapi(conversationId) {
   const cont = $("#detalle-capi-historial");
@@ -2217,8 +2337,8 @@ async function actualizarHistorialCapi(conversationId) {
     cont.innerHTML = events.length
       ? `<div class="ayuda-modal" style="margin-bottom:4px">Enviados antes:</div>` + events.map((e) => `
         <div style="font-size:11px;color:var(--gris);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--borde)">
-          <span>${fechaCorta(e.created_at)}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
-          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}">${e.value} ${escapar(e.currency)} ${e.status === "enviado" ? "✓" : "✗"}</span>
+          <span>${fechaCorta(e.created_at)} · ${escapar(NOMBRE_EVENTO_META[e.event_name] || e.event_name || "Venta")}${e.mode === "anuncio" ? " (anuncio)" : ""}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
+          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : "✗"}</span>
         </div>`).join("")
       : "";
   } catch { /* silencioso */ }
