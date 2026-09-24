@@ -632,7 +632,7 @@ function refrescarVistasLead() {
   datosLead = null;
   if ($("#modal-admin-fondo").classList.contains("abierto")) pintarResumenLeadsAdmin();
   const c = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId);
-  if (c && $("#detalle-leads")) pintarLeadDetalle(c);
+  if (c && $("#detalle-bienvenida")) pintarLeadDetalle(c);
 }
 
 async function pintarResumenLeadsAdmin() {
@@ -4046,12 +4046,14 @@ async function pintarDetalle(c) {
     </div>
     <div id="detalle-venta-form"></div>
 
-    <h2>Seguimiento para leads</h2>
-    <div id="detalle-leads">Cargando…</div>
-
     <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
+
+    ${estado.miRol === "admin" ? `
+    <h2>Seguimiento para leads</h2>
+    <div id="detalle-leads">Cargando…</div>
+    ` : ""}
 
 
     <h2>Notas</h2>
@@ -4266,12 +4268,13 @@ function pintarEstadoLead() {
 async function pintarLeadDetalle(c) {
   const contB = $("#detalle-bienvenida");
   const contL = $("#detalle-leads");
-  if (!contB || !contL) return;
+  if (!contB) return;
   let d;
   try {
     d = await cargarDatosLead();
   } catch (err) {
-    contB.innerHTML = contL.innerHTML = `<div class="sin-ad">${escapar(err.message)}</div>`;
+    contB.innerHTML = `<div class="sin-ad">${escapar(err.message)}</div>`;
+    if (contL) contL.innerHTML = contB.innerHTML;
     return;
   }
   if (estado.conversacionActivaId !== c.conversation_id) return;
@@ -4328,6 +4331,7 @@ async function pintarLeadDetalle(c) {
   }
   $("#detalle-config-bienvenida")?.addEventListener("click", () => $("#btn-abrir-bienvenida").click());
 
+  if (!contL) return; // "Seguimiento para leads" es solo admin
   const seq = secuenciaDeLeads(d);
   if (!seq || !seq.steps.length) {
     contL.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no configuraste el seguimiento para leads." : "El admin todavía no configuró el seguimiento para leads."}</div>`
