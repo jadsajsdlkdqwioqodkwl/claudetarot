@@ -5,18 +5,21 @@
  */
 
 import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
-import { registrarMensajeSaliente, guardarReaccionPropia } from "./crm-db.js";
+import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "./crm-db.js";
 
 /**
- * Antes de mandarle algo al cliente (respuestas a mano y bienvenida): le
- * muestra "escribiendo…" y espera 1 s, para que no llegue al instante como
- * un bot. La espera no es CPU ni suma requests del Worker; el "escribiendo"
- * es una llamada más a Meta (subrequest, sin costo), solo si el cliente
- * escribió en las últimas 24 h (si no, WhatsApp no lo muestra igual).
+ * Antes de mandarle algo al cliente (respuestas a mano, bienvenida y
+ * seguimientos): le muestra "escribiendo…" y espera 2 s, para que no llegue
+ * al instante como un bot. La espera no es CPU ni suma requests del Worker;
+ * el "escribiendo" es una llamada más a Meta (subrequest, sin costo), solo
+ * si el cliente escribió en las últimas 24 h (si no, WhatsApp no lo muestra).
+ * Con `escribiendo: false` es solo la espera (ej. antes de un grupo de fotos).
  */
-export const PAUSA_ENVIO_MS = 1000;
-export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS) {
-  if (env?.CRM_DB && conversationId) {
+export const PAUSA_ENVIO_MS = 2000;
+export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true } = {}) {
+  if (escribiendo && env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
         `SELECT wa_message_id FROM messages
@@ -28,10 +31,13 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS) {
         .first();
       if (ultimo?.wa_message_id) await mostrarEscribiendo(env, ultimo.wa_message_id);
     } catch (err) {
-      console.error("Escribiendo:", err.message); // nunca frena el envío
+      // Nunca frena el envío. Queda el último error guardado para poder
+      // diagnosticar sin acceso a los logs del Worker.
+      console.error("Escribiendo:", err.message);
+      await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
     }
   }
-  await new Promise((r) => setTimeout(r, ms));
+  await esperar(ms);
 }
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo) {

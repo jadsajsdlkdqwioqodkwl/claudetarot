@@ -10,7 +10,7 @@
  * de Meta — ver docs/whatsapp-ventanas-y-costos.md.
  */
 
-import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, esperar } from "./crm-send.js";
 
 export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null) {
   const { results: todos } = await env.CRM_DB.prepare(
@@ -20,10 +20,14 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
 
   if (!pasos.length) return 0;
 
-  for (const [i, paso] of pasos.entries()) {
-    // El primero sale apenas el cliente escribió: 2 s de "escribiendo…" para
-    // que alcance a verse (con 1 s casi no se nota). Los siguientes, 1 s.
-    await pausaEnvio(env, conversationId, i === 0 ? 2000 : undefined);
+  // La automática arranca apenas llega el mensaje del cliente: un segundo
+  // antes de marcarlo leído / "escribiendo…", que pegado a su mensaje
+  // WhatsApp no llegaba a mostrarlo.
+  await esperar(1000);
+
+  // Cada texto con su propio "escribiendo…" (2 s); las fotos/videos de un
+  // paso van todas juntas, con 2 s de espacio antes y sin "escribiendo".
+  for (const paso of pasos) {
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
     )
@@ -34,13 +38,13 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       // Sin `caption` en cada foto/video — si no, el texto del paso sale
       // repetido una vez por archivo. El texto se manda una sola vez,
       // aparte, después de que lleguen todos los archivos.
+      await pausaEnvio(env, conversationId, undefined, { escribiendo: false });
       await Promise.all(media.results.map((m) =>
         mandarMediaGuardada(env, conversationId, waId, m.media_key, m.media_type, undefined, sentByLabel)
       ));
-      if (paso.body) {
-        await mandarTexto(env, conversationId, waId, paso.body, sentByLabel);
-      }
-    } else if (paso.body) {
+    }
+    if (paso.body) {
+      await pausaEnvio(env, conversationId);
       await mandarTexto(env, conversationId, waId, paso.body, sentByLabel);
     }
   }
