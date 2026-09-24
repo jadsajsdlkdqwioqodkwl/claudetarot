@@ -1349,6 +1349,7 @@ async function abrirConversacion(c) {
   estado.firmaMensajesPintados = null;
   estado.hayMasAntiguos = false;
   estado.respondiendoA = null;
+  estado.rapidaPendiente = null;
   cancelarAdjunto();
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
   // de chats, no salir del sitio — se logra metiendo un estado en el
@@ -1795,6 +1796,12 @@ function pintarChatBase(c) {
       <div id="panel-stickers"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
+  // Enter en un buscador de un panel (catálogo, respuestas rápidas) no debe
+  // enviar el form: el navegador lo convierte en un "clic" en Enviar, que
+  // además cerraba el panel.
+  $("#form-envio").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.matches("input") && e.target.closest('[id^="panel-"]')) e.preventDefault();
+  });
   // Consume el estado que se metió al abrir el chat, para que el botón en
   // pantalla y el "atrás" físico del teléfono hagan exactamente lo mismo.
   $("#btn-volver").addEventListener("click", () => history.back());
@@ -1924,12 +1931,13 @@ async function enviarSticker(id) {
   const sticker = (cacheStickers || []).find((s) => s.id === id);
   if (!sticker) return;
   $("#panel-stickers").classList.remove("abierto");
+  const conversationId = estado.conversacionActivaId;
   mostrarEnviando(true);
   try {
     await pedir("/api/crm/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: sticker.media_key, media_type: "sticker" })
+      body: JSON.stringify({ conversation_id: conversationId, media_key: sticker.media_key, media_type: "sticker" })
     });
     await cargarMensajes();
     await cargarConversaciones();
@@ -2605,6 +2613,11 @@ async function enviarMensaje(e) {
   const adjunto = estado.archivoAdjunto;
   const rapida = estado.rapidaPendiente;
   if (!texto && !adjunto && !rapida) return;
+  // El chat se fija acá: si la asesora cambia de chat mientras suben las
+  // fotos, el resto (ej. el texto de una respuesta rápida) tiene que ir al
+  // MISMO cliente, no al chat que quedó abierto después.
+  const conversationId = estado.conversacionActivaId;
+  const sigoEnElChat = () => estado.conversacionActivaId === conversationId;
 
   input.disabled = true;
   mostrarEnviando(true);
@@ -2622,9 +2635,9 @@ async function enviarMensaje(e) {
         // como el nombre del archivo (ver enviarMedia en whatsapp.js) —
         // fotos/videos/stickers de WhatsApp no tienen "nombre" visible, así
         // que ahí no importa.
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
+        body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
-      cancelarAdjunto();
+      if (sigoEnElChat()) cancelarAdjunto();
     } else if (rapida) {
       // Todas a la vez, no una por una: la API las procesa en paralelo y
       // llegan casi juntas — WhatsApp igual manda una notificación por
@@ -2633,7 +2646,7 @@ async function enviarMensaje(e) {
         pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, media_key: m.media_key, media_type: m.media_type })
+          body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type })
         })
       ));
       const fallidas = resultados.filter((r) => r.status === "rejected");
@@ -2641,11 +2654,13 @@ async function enviarMensaje(e) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: texto, reply_to_id: replyToId })
+          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
         });
       }
-      estado.rapidaPendiente = null;
-      pintarPreviewArchivo();
+      if (sigoEnElChat()) {
+        estado.rapidaPendiente = null;
+        pintarPreviewArchivo();
+      }
       if (fallidas.length) {
         alert(`Se mandaron ${rapida.media.length - fallidas.length} de ${rapida.media.length} — falló: ${fallidas[0].reason.message}`);
       }
@@ -2653,12 +2668,14 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: estado.conversacionActivaId, body: texto, reply_to_id: replyToId })
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
       });
     }
     input.value = "";
-    cancelarRespuesta();
-    await cargarMensajes();
+    if (sigoEnElChat()) {
+      cancelarRespuesta();
+      await cargarMensajes();
+    }
     await cargarConversaciones();
   } catch (err) {
     alert(err.message);
@@ -2917,6 +2934,7 @@ $("#rapida-crear").addEventListener("click", async () => {
 /** `modo`: "mensaje" (uno suelto) o "secuencia" (varios con su espera). Desde un addEventListener llega el Event, no un string. */
 function abrirModalProgramarSeguimiento(modo) {
   limpiarFormSeguimiento();
+  estado.segConversacionId = estado.conversacionActivaId;
   $("#seg-modal-titulo").textContent = "Programar seguimiento";
   $("#seg-tabs").style.display = "";
   $("#seg-archivo").style.display = "";
@@ -3084,6 +3102,7 @@ function limpiarFormSeguimiento() {
 /** Solo los de texto libre — los que llevan respuesta rápida o foto/video propia se cancelan y se vuelven a programar. */
 function abrirModalEditarSeguimiento(s) {
   limpiarFormSeguimiento();
+  estado.segConversacionId = estado.conversacionActivaId;
   estado.editandoSeguimientoId = s.id;
   $("#seg-modal-titulo").textContent = "Editar seguimiento";
   $("#seg-tabs").style.display = "none";
@@ -3169,7 +3188,7 @@ async function programarSecuenciaDesdeModal() {
     await pedir("/api/crm/followup-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, sequence_id: sequenceId })
+      body: JSON.stringify({ conversation_id: estado.segConversacionId, sequence_id: sequenceId })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
     limpiarFormSeguimiento();
@@ -3227,7 +3246,7 @@ $("#seg-crear").addEventListener("click", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        conversation_id: estado.conversacionActivaId,
+        conversation_id: estado.segConversacionId,
         send_at: new Date(fecha).toISOString(),
         body: texto || undefined,
         quick_reply_id: quickReplyId || undefined,
@@ -3263,6 +3282,7 @@ let secuenciasSoloEditar = false;
 
 function abrirModalSecuencias(idsBulk, soloEditar = false) {
   idsBulkSecuencia = idsBulk || null;
+  estado.secuenciasConversacionId = estado.conversacionActivaId;
   secuenciasSoloEditar = soloEditar;
   $("#modal-secuencias-fondo").classList.add("abierto");
   cargarYPintarSecuencias();
@@ -3347,7 +3367,7 @@ function pintarListaSecuencias() {
       try {
         const body = nBulk
           ? { conversation_ids: idsBulkSecuencia, sequence_id: Number(btn.dataset.id) }
-          : { conversation_id: estado.conversacionActivaId, sequence_id: Number(btn.dataset.id) };
+          : { conversation_id: estado.secuenciasConversacionId, sequence_id: Number(btn.dataset.id) };
         const { pasos_programados, chats_aplicados } = await pedir("/api/crm/followup-apply", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3628,6 +3648,7 @@ function badgeEstadoPlantilla(status) {
 }
 
 async function abrirModalTemplates() {
+  estado.templateConversacionId = estado.conversacionActivaId;
   $("#modal-templates-fondo").classList.add("abierto");
   $("#form-template-params").style.display = "none";
   const cont = $("#lista-templates");
@@ -3689,7 +3710,7 @@ $("#template-enviar").addEventListener("click", async () => {
     await pedir("/api/crm/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, name: t.name, language: t.language, parameters })
+      body: JSON.stringify({ conversation_id: estado.templateConversacionId, name: t.name, language: t.language, parameters })
     });
     $("#modal-templates-fondo").classList.remove("abierto");
     await cargarMensajes();
