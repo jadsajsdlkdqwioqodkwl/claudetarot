@@ -630,24 +630,30 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #chat header .acciones-chat .btn-meta:hover { background: var(--hover); }
 #chat header .acciones-chat .btn-meta.enviando { opacity: .5; }
 #chat header .acciones-chat .btn-meta.enviado { color: var(--verde-osc); border-color: var(--verde); background: #eafaf0; }
-#popover-meta { position: absolute; top: 60px; right: 12px; z-index: 25; width: 290px; max-width: calc(100% - 24px); background: var(--panel); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
-#popover-meta .pm-titulo { font-weight: 600; display: flex; align-items: center; gap: 6px; }
-#popover-meta .pm-titulo .icono-svg { width: 16px; height: 16px; color: var(--verde-osc); }
-#popover-meta .pm-ayuda { margin: 0; font-size: 12px; color: var(--gris); }
-#popover-meta .pm-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); margin-bottom: 4px; }
-#popover-meta .pm-item span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-#popover-meta .pm-precio { font-weight: 600; white-space: nowrap; }
-#popover-meta .pm-item button { border: 0; background: transparent; color: var(--gris); cursor: pointer; padding: 2px; width: 20px; height: 20px; }
-#popover-meta .pm-item button .icono-svg { width: 12px; height: 12px; }
-#popover-meta .pm-agregar { font-size: 12px; padding: 5px 6px; border: 1px dashed var(--borde); border-radius: var(--radio-s); background: transparent; color: var(--gris); width: 100%; }
-#popover-meta .pm-total { display: flex; align-items: center; gap: 6px; font-weight: 600; }
-#popover-meta .pm-valor { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 14px; }
-#popover-meta .pm-confirmar { padding: 9px 10px; border: 0; border-radius: var(--radio-s); background: var(--verde-osc); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-#popover-meta .pm-confirmar:disabled { opacity: .5; cursor: default; }
-#popover-meta .pm-estado:empty { display: none; }
-#popover-meta .pm-estado { font-size: 12px; color: var(--gris); overflow-wrap: anywhere; }
-#popover-meta .pm-estado.ok { color: var(--verde-osc); }
-#popover-meta .pm-estado.error { color: var(--peligro); }
+#popover-meta { position: absolute; top: 60px; right: 12px; z-index: 25; width: 290px; max-width: calc(100% - 24px); background: var(--panel); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); padding: 12px; }
+.form-venta { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+#detalle-venta-form .form-venta { margin-top: 8px; padding: 10px; border: 1px solid var(--borde); border-radius: var(--radio-m); }
+.detalle-reportar { display: flex; gap: 6px; }
+#detalle .detalle-reportar button { flex: 1; min-width: 0; }
+#detalle .detalle-reportar button.enviado { background: #e8f5e9; color: #1b7a3a; box-shadow: inset 0 0 0 1px #9fd5ae; }
+#detalle .detalle-reportar button.enviando { opacity: .5; }
+.form-venta .pm-titulo { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.form-venta .pm-titulo .icono-svg { width: 16px; height: 16px; color: var(--verde-osc); }
+.form-venta .pm-ayuda { margin: 0; font-size: 12px; color: var(--gris); }
+.form-venta .pm-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); margin-bottom: 4px; }
+.form-venta .pm-item span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.form-venta .pm-precio { font-weight: 600; white-space: nowrap; }
+.form-venta .pm-item button { border: 0; background: transparent; color: var(--gris); cursor: pointer; padding: 2px; width: 20px; height: 20px; }
+.form-venta .pm-item button .icono-svg { width: 12px; height: 12px; }
+.form-venta .pm-agregar { font-size: 12px; padding: 5px 6px; border: 1px dashed var(--borde); border-radius: var(--radio-s); background: transparent; color: var(--gris); width: 100%; }
+.form-venta .pm-total { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.form-venta .pm-valor { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 14px; }
+.form-venta .pm-confirmar { padding: 9px 10px; border: 0; border-radius: var(--radio-s); background: var(--verde-osc); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.form-venta .pm-confirmar:disabled { opacity: .5; cursor: default; }
+.form-venta .pm-estado:empty { display: none; }
+.form-venta .pm-estado { font-size: 12px; color: var(--gris); overflow-wrap: anywhere; }
+.form-venta .pm-estado.ok { color: var(--verde-osc); }
+.form-venta .pm-estado.error { color: var(--peligro); }
 @media (max-width: 480px) {
   #chat header { padding: 10px 10px; gap: 8px; }
   #chat header .acciones-chat { gap: 2px; }

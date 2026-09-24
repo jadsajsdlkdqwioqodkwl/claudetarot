@@ -1850,8 +1850,8 @@ function pintarChatBase(c) {
         </div>
       </div>
       <div class="acciones-chat">
-        <button class="btn-meta ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Marcar como Lead (avisa a Meta)">Lead</button>
-        <button class="btn-meta btn-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
+        <button class="btn-meta accion-lead ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Cliente interesado (Lead, avisa a Meta)">Lead</button>
+        <button class="btn-meta btn-venta accion-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
@@ -2255,11 +2255,10 @@ function ponerEtiquetaLocal(c, etiqueta) {
 
 /** Botón Lead: un toque, sin confirmación. */
 async function marcarLead(c) {
-  const btn = $("#btn-lead");
-  if (!btn || btn.disabled) return;
-  if (tieneEtiqueta(c, "lead") && !confirm("Este chat ya está marcado como Lead. ¿Mandarlo de nuevo a Meta?")) return;
-  btn.disabled = true;
-  btn.classList.add("enviando");
+  const botones = () => document.querySelectorAll(".accion-lead");
+  if ([...botones()].some((b) => b.disabled)) return;
+  if (tieneEtiqueta(c, "lead") && !confirm("Este chat ya está marcado como cliente interesado (Lead). ¿Mandarlo de nuevo a Meta?")) return;
+  botones().forEach((b) => { b.disabled = true; b.classList.add("enviando"); });
   try {
     await pedir("/api/crm/capi-send", {
       method: "POST",
@@ -2272,9 +2271,7 @@ async function marcarLead(c) {
   } finally {
     // La etiqueta queda aunque Meta rechace (el backend la guarda igual).
     ponerEtiquetaLocal(c, "lead");
-    btn.disabled = false;
-    btn.classList.remove("enviando");
-    $("#btn-lead")?.classList.add("enviado");
+    botones().forEach((b) => { b.disabled = false; b.classList.remove("enviando"); b.classList.add("enviado"); });
   }
 }
 
@@ -2295,13 +2292,10 @@ function cerrarPopoverMetaAfuera(e) {
   if (!e.target.closest("#popover-meta, #btn-venta")) cerrarPopoverMeta();
 }
 
-function abrirPopoverVenta(c) {
-  const yaAbierto = Boolean($("#popover-meta"));
-  cerrarPopoverMeta();
-  if (yaAbierto) return;
-
+/** Formulario de venta (kit por defecto + "¿compró algo más?"): en el popover del header y en el panel de detalle. */
+function formVenta(c, alTerminar) {
   const pop = document.createElement("div");
-  pop.id = "popover-meta";
+  pop.className = "form-venta";
   const items = [{ ...KIT_DEFAULT }];
 
   pop.innerHTML = `
@@ -2358,11 +2352,11 @@ function abrirPopoverVenta(c) {
         body: JSON.stringify({ conversation_id: c.conversation_id, tipo: "venta", value: valor, currency: "PEN", product_label: producto || undefined })
       });
       ponerEtiquetaLocal(c, "purchase");
-      $("#btn-venta")?.classList.add("enviado");
+      document.querySelectorAll(".accion-venta").forEach((b) => b.classList.add("enviado"));
       estadoEl.className = "pm-estado ok";
       estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
       if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
-      setTimeout(() => { if ($("#popover-meta") === pop) cerrarPopoverMeta(); }, 1600);
+      setTimeout(() => { if (pop.isConnected) alTerminar(); }, 1600);
     } catch (err) {
       estadoEl.className = "pm-estado error";
       estadoEl.textContent = err.message;
@@ -2370,6 +2364,16 @@ function abrirPopoverVenta(c) {
     }
   });
 
+  return pop;
+}
+
+function abrirPopoverVenta(c) {
+  const yaAbierto = Boolean($("#popover-meta"));
+  cerrarPopoverMeta();
+  if (yaAbierto) return;
+  const pop = document.createElement("div");
+  pop.id = "popover-meta";
+  pop.appendChild(formVenta(c, cerrarPopoverMeta));
   $("#chat").appendChild(pop);
   document.addEventListener("pointerdown", cerrarPopoverMetaAfuera, true);
 }
@@ -4035,24 +4039,27 @@ async function pintarDetalle(c) {
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
 
-    <h2>Pedidos del catálogo</h2>
-    <div id="detalle-pedidos">Cargando…</div>
+    <h2>Pedidos</h2>
+    <div class="detalle-reportar">
+      <button class="crear accion-lead ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="detalle-btn-lead" type="button">${icon("check")} Cliente interesado</button>
+      <button class="crear accion-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="detalle-btn-venta" type="button">${icon("bag")} Compra</button>
+    </div>
+    <div id="detalle-venta-form"></div>
+
+    <h2>Seguimiento para leads</h2>
+    <div id="detalle-leads">Cargando…</div>
+
+    <h2>Seguimientos activos</h2>
+    <div id="detalle-seguimientos">Cargando…</div>
+    <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
+
 
     <h2>Notas</h2>
     <textarea id="detalle-notas" placeholder="Ej. Adelanto, separado, talla, modelo de collar específico, otros productos o múltiples unidades, etc." style="width:100%;min-height:70px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(c.notes || "")}</textarea>
     <div class="ayuda-modal" id="detalle-notas-estado" style="margin:2px 0 0"></div>
 
-    ${estado.miRol === "admin" ? `
-    <h2>Origen</h2>
-    ${tieneAd ? `
-      <div class="ad-card">
-        <div class="titulo">${icon("megaphone")} Vino de un anuncio</div>
-        ${c.ad_headline ? `<div>${escapar(c.ad_headline)}</div>` : ""}
-        ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
-        ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}
-      </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
-    ${!tieneAd ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
-    ` : ""}
+    <h2>Pedidos del catálogo</h2>
+    <div id="detalle-pedidos">Cargando…</div>
 
     ${estado.miRol === "admin" ? `
     <h2>Meta Ads</h2>
@@ -4084,20 +4091,29 @@ async function pintarDetalle(c) {
     <div id="detalle-capi-historial" style="margin-top:8px"></div>
     ` : ""}
 
-    <h2>Seguimiento para leads</h2>
-    <div id="detalle-leads">Cargando…</div>
-
-    <h2>Seguimientos activos</h2>
-    <div id="detalle-seguimientos">Cargando…</div>
-    <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
-
     <h2>Bienvenida de anuncios</h2>
     <div id="detalle-bienvenida">Cargando…</div>
+
+    <h2>Origen</h2>
+    ${tieneAd ? `
+      <div class="ad-card">
+        <div class="titulo">${icon("megaphone")} Vino de un anuncio</div>
+        ${c.ad_headline ? `<div>${escapar(c.ad_headline)}</div>` : ""}
+        ${c.ad_source_type ? `<div>Tipo: ${escapar(c.ad_source_type)}</div>` : ""}
+        ${c.ctwa_clid ? `<div style="word-break:break-all">ctwa_clid: ${escapar(c.ctwa_clid)}</div>` : ""}
+      </div>` : `<div class="sin-ad">Chat directo, sin anuncio detectado.</div>`}
+    ${!tieneAd && estado.miRol === "admin" ? `<button class="cancelar" id="detalle-simular-ad" style="width:100%;margin-top:8px;font-size:12px">${icon("megaphone")} Marcar este chat como venido de un anuncio</button>` : ""}
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => history.back());
 
   $("#detalle-nuevo-seguimiento").addEventListener("click", abrirModalProgramarSeguimiento);
+  $("#detalle-btn-lead").addEventListener("click", () => marcarLead(c));
+  $("#detalle-btn-venta").addEventListener("click", () => {
+    const cont = $("#detalle-venta-form");
+    if (cont.firstChild) { cont.innerHTML = ""; return; }
+    cont.appendChild(formVenta(c, () => { cont.innerHTML = ""; }));
+  });
 
   $("#detalle-notas").addEventListener("input", debounce(async (e) => {
     const estadoEl = $("#detalle-notas-estado");
