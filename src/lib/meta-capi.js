@@ -50,7 +50,7 @@ export async function construirEventoCapi({ waId, ctwaClid, wabaId, valor, moned
   // "Conversions API for Business Messaging": whatsapp_business_account_id +
   // ctwa_clid (sin el WABA id, Meta responde "Invalid parameter"). El clic
   // ya identifica a la persona, así que no se mezclan ph/fn/ln/em ahí.
-  if (ctwaClid && !wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID para reportar una venta de un anuncio.");
+  if (!wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID — el dataset de Business Messaging lo exige en todos los eventos, tengan o no ctwa_clid.");
   const evento = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
@@ -59,6 +59,7 @@ export async function construirEventoCapi({ waId, ctwaClid, wabaId, valor, moned
     user_data: ctwaClid
       ? { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid }
       : {
+          whatsapp_business_account_id: String(wabaId),
           ...(telefonoHash ? { ph: [telefonoHash] } : {}),
           ...(nombreHash ? { fn: [nombreHash] } : {}),
           ...(apellidoHash ? { ln: [apellidoHash] } : {}),
