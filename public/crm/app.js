@@ -1001,10 +1001,24 @@ function marcarAsignacionLocal(conversationId, assignedAgent, sharedWith) {
 // lista: al programar/cancelar en el chat abierto se actualiza al toque, y
 // un GET que ya iba en camino con el dato viejo no la pisa.
 const seguimientosLocales = new Map(); // conversation_id -> { seg_pendientes, seg_proximo, t }
+// Igual que en crm-db.js: "tras no respuesta" (secuencia de leads, automática
+// o aplicada a mano) vs. manual. Ver cancelarSeguimientosDeLead.
 const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
+const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
+
+function esSeguimientoLead(s) {
+  return s.created_by === ORIGEN_SEGUIMIENTO_AUTO || (s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_LEAD);
+}
 
 function esSeguimientoManual(s) {
-  return !s.batch_id && s.created_by !== ORIGEN_SEGUIMIENTO_AUTO;
+  return !s.batch_id && !esSeguimientoLead(s);
+}
+
+/** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
+function etiquetaTipoSeguimiento(s) {
+  if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
+  if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
+  return `<span class="tipo-seg manual">Manual</span>`;
 }
 
 /** Recalcula la etiqueta de la lista para un chat a partir de sus pendientes. */
@@ -2250,17 +2264,19 @@ async function actualizarSeguimientosDetalle() {
     const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${conversationId}`);
     actualizarEtiquetaSeguimiento(conversationId, scheduled);
     if (estado.conversacionActivaId !== conversationId) return;
+    estado.seguimientosDelChat = { conversationId, scheduled };
+    pintarEstadoLead();
     const html = (scheduled.length ? scheduled.map((s) => `
       <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
         <div>
-          <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· Envío masivo</span>` : ""}${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? ` <span style="font-weight:400;color:var(--gris)">· Automático (lead)</span>` : ""}</div>
+          <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)} ${etiquetaTipoSeguimiento(s)}</div>
           <div>${escapar(textoSeguimiento(s))}</div>
         </div>
         <div style="display:flex;gap:4px">
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") : `<div class="sin-ad">Sin seguimientos programados.</div>`)
+      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">"Tras no respuesta" se cancela si el cliente escribe o si le escribes. "Manual" se cancela solo si el cliente escribe.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
       + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
@@ -3051,6 +3067,17 @@ $("#seg-fecha").addEventListener("input", pintarCuando);
 
 /* Pestañas "Un mensaje" / "Una secuencia". */
 
+/** Recordatorio de cuándo se cancela lo que se está por programar. */
+function pintarReglaSeguimiento() {
+  const el = $("#seg-regla");
+  if (!el) return;
+  const leadId = datosLead?.settings?.ad_followup_sequence_id;
+  const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
+  el.textContent = esLead
+    ? "Es la secuencia de leads (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
+    : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
+}
+
 function ponerModoSeguimiento(modo) {
   estado.segModo = modo;
   document.querySelectorAll("#seg-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.modo === modo));
@@ -3058,6 +3085,7 @@ function ponerModoSeguimiento(modo) {
   $("#seg-modo-secuencia").style.display = modo === "secuencia" ? "" : "none";
   $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
   if (modo === "secuencia") cargarSecuenciasSeguimiento();
+  pintarReglaSeguimiento();
 }
 
 $("#seg-tabs").addEventListener("click", (e) => {
@@ -3084,6 +3112,7 @@ async function cargarSecuenciasSeguimiento() {
   sel.disabled = !conPasos.length;
   if (conPasos.some((x) => String(x.id) === previa)) sel.value = previa;
   pintarPreviewSecuenciaSeg();
+  cargarDatosLead().then(pintarReglaSeguimiento).catch(() => {});
 }
 
 function pintarPreviewSecuenciaSeg() {
@@ -3102,7 +3131,7 @@ function pintarPreviewSecuenciaSeg() {
   }).join("")}</ol>`;
 }
 
-$("#seg-secuencia").addEventListener("change", pintarPreviewSecuenciaSeg);
+$("#seg-secuencia").addEventListener("change", () => { pintarPreviewSecuenciaSeg(); pintarReglaSeguimiento(); });
 $("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuencias(null, true));
 
 // Igual que en el chat: elegir una respuesta rápida carga su texto en el
@@ -3794,7 +3823,7 @@ async function pintarDetalle(c) {
     <h2>Seguimiento para leads</h2>
     <div id="detalle-leads">Cargando…</div>
 
-    <h2>Seguimientos programados</h2>
+    <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
 
@@ -3978,6 +4007,20 @@ async function pintarDetalle(c) {
   await actualizarSeguimientosDetalle();
 }
 
+/** Si el seguimiento de leads está activo en el chat abierto, y cuándo sale el próximo. */
+function pintarEstadoLead() {
+  const el = $("#detalle-leads-estado");
+  const datos = estado.seguimientosDelChat;
+  if (!el || !datos || datos.conversationId !== estado.conversacionActivaId) return;
+  const activos = datos.scheduled.filter(esSeguimientoLead).sort((a, b) => a.send_at.localeCompare(b.send_at));
+  el.classList.toggle("activo", activos.length > 0);
+  el.innerHTML = activos.length
+    ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}`
+    : "No activo en este chat.";
+  const btn = $("#btn-aplicar-leads");
+  if (btn) btn.innerHTML = `${icon("bolt")} ${activos.length ? "Reprogramar seguimiento de leads" : "Programar seguimiento de leads"}`;
+}
+
 /**
  * "Bienvenida de anuncios" y "Seguimiento para leads" del panel derecho:
  * lo que armó el admin, listo para que cualquier vendedor lo mande o lo
@@ -4061,18 +4104,21 @@ async function pintarLeadDetalle(c) {
           acum += p.delay_minutes;
           return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
         }).join("")}</ol>
+        <div class="lead-estado" id="detalle-leads-estado"></div>
       </div>
       <button class="crear" id="btn-aplicar-leads" type="button" style="width:100%;margin-top:6px">${icon("bolt")} Programar seguimiento de leads</button>
       ${esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : ""}
-      <div class="ayuda-modal" style="margin:4px 0 0">Se cancela solo si el cliente contesta o le escribes a mano.</div>`;
+      <div class="ayuda-modal" style="margin:4px 0 0">Se cancela si el cliente contesta o si le escribes.</div>`;
+    pintarEstadoLead();
 
     $("#btn-aplicar-leads").addEventListener("click", async () => {
       const btn = $("#btn-aplicar-leads");
       btn.disabled = true;
       try {
         const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${c.conversation_id}`);
-        const pregunta = scheduled.length
-          ? `Este chat ya tiene ${scheduled.length} seguimiento(s) pendiente(s). ¿Programar además los ${seq.steps.length} de leads?`
+        const activos = scheduled.filter(esSeguimientoLead);
+        const pregunta = activos.length
+          ? `Este chat ya tiene el seguimiento de leads activo. ¿Reprogramarlo desde ahora? Se reemplaza, no se duplica (el primero saldría en ${formatearMomento(seq.steps[0].delay_minutes)}).`
           : `¿Programar los ${seq.steps.length} mensaje(s) de seguimiento en este chat? El primero sale en ${formatearMomento(seq.steps[0].delay_minutes)}.`;
         if (!confirm(pregunta)) return;
         await pedir("/api/crm/followup-apply", {

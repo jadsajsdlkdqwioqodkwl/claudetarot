@@ -129,8 +129,31 @@ export async function cancelarSeguimientosPendientes(db, conversationId) {
     .run();
 }
 
-/** `created_by` de los seguimientos que programa solo el webhook (lead nuevo de anuncio) — lo distingue de los manuales. */
+/**
+ * Dos clases de seguimiento, que se distinguen por `created_by`:
+ * - "Tras no respuesta" (la secuencia de leads): la que programa solo el
+ *   webhook con un lead nuevo de anuncio (ORIGEN_SEGUIMIENTO_AUTO) y la
+ *   misma secuencia aplicada a mano ("Seguimiento de leads · Nombre").
+ *   Se cancela si el cliente escribe O si nosotros le escribimos.
+ * - Manual (cualquier otro mensaje o secuencia que programa una asesora):
+ *   se cancela solo si el cliente escribe — los mensajes de la propia
+ *   asesora no la borran (antes sí: programar un recordatorio y seguir
+ *   escribiendo lo cancelaba sin avisar).
+ */
 export const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
+export const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
+export const origenSeguimientoLead = (nombre) => (nombre ? `${PREFIJO_SEGUIMIENTO_LEAD} · ${nombre}` : PREFIJO_SEGUIMIENTO_LEAD);
+
+/** Cancela solo los "tras no respuesta" (secuencia de leads) pendientes — lo que corresponde cuando nosotros le escribimos. */
+export async function cancelarSeguimientosDeLead(db, conversationId) {
+  await db
+    .prepare(
+      `UPDATE scheduled_messages SET status = 'cancelado'
+       WHERE conversation_id = ? AND status = 'pendiente' AND (created_by = ? OR created_by LIKE ?)`
+    )
+    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`)
+    .run();
+}
 
 /**
  * Programa todos los pasos de una secuencia de seguimiento en una

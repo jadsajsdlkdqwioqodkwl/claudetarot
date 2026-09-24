@@ -9,7 +9,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
-import { ORIGEN_SEGUIMIENTO_AUTO } from "../../lib/crm-db.js";
+import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -68,7 +68,7 @@ async function handler({ request, env, agent }) {
      LEFT JOIN (
        SELECT conversation_id, COUNT(*) AS pendientes, MIN(send_at) AS proximo
        FROM scheduled_messages
-       WHERE status = 'pendiente' AND batch_id IS NULL AND COALESCE(created_by, '') <> ?
+       WHERE status = 'pendiente' AND batch_id IS NULL AND COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
        GROUP BY conversation_id
      ) seg ON seg.conversation_id = conv.id
      -- Un solo salto al último mensaje (índice conversation_id, id) en vez de
@@ -78,7 +78,7 @@ async function handler({ request, env, agent }) {
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT 200`
   )
-    .bind(ORIGEN_SEGUIMIENTO_AUTO, ...params)
+    .bind(ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ...params)
     .all();
 
   return json(chat ? { conversations: results, chat: { conversation_id: chatId, ...chat } } : { conversations: results });

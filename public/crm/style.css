@@ -196,7 +196,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .btn-star { background: transparent; border: 0; cursor: pointer; font-size: 16px; color: #ccc; flex-shrink: 0; }
 .btn-star.marcada { color: #f5b301; }
 /* En la lista: un cuadrado de 34px alrededor de la estrella para que no haya que atinarle al milímetro. El margen negativo evita que la fila crezca. */
-.conv-item .btn-star { width: 34px; height: 34px; margin: -8px 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); transition: background-color .12s, border-color .12s; }
+.conv-item .btn-star { width: 34px; height: 34px; margin: 2px 0 -6px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); transition: background-color .12s, border-color .12s; }
 .conv-item .btn-star .icono-svg { width: 18px; height: 18px; }
 .conv-item .btn-star:hover { background: var(--hover); }
 .conv-item .btn-star.marcada { background: #fff8e1; border-color: #f5d77a; }
@@ -407,6 +407,13 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #detalle .ayuda-modal { font-size: 12px; color: var(--gris); }
 #detalle .ad-card.lead-card { background: #f4fbf6; border-color: #cdeed8; color: var(--texto); }
 #detalle .ad-card.lead-card .titulo { color: var(--verde-osc); }
+.tipo-seg { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+.tipo-seg.lead { background: #e7f8ee; color: var(--verde-osc); }
+.tipo-seg.manual { background: #e3f2fd; color: #0b5cad; }
+.tipo-seg.masivo { background: #efeaff; color: var(--ad); }
+.lead-estado { margin-top: 6px; font-size: 12px; color: var(--gris); }
+.lead-estado.activo { color: var(--verde-osc); font-weight: 600; }
+.lead-estado .icono-svg { width: 13px; height: 13px; vertical-align: -2px; }
 .pill-auto { font-size: 10px; font-weight: 500; background: #e7f8ee; color: var(--verde-osc); padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
 
 /* Modal "Seguimiento para leads" */

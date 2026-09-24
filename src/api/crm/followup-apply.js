@@ -9,7 +9,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { programarSecuenciaSeguimiento } from "../../lib/crm-db.js";
+import { programarSecuenciaSeguimiento, obtenerAjuste, cancelarSeguimientosDeLead, origenSeguimientoLead } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -41,9 +41,16 @@ async function post({ request, env, agent }) {
   const pasoUno = await env.CRM_DB.prepare("SELECT id FROM followup_sequence_steps WHERE sequence_id = ? LIMIT 1").bind(sequenceId).first();
   if (!pasoUno) return json({ error: "Esa secuencia todavía no tiene pasos." }, 400);
 
-  const createdBy = agent?.displayName || agent?.username || null;
+  const nombre = agent?.displayName || agent?.username || null;
+  // La secuencia de leads (la de "tras no respuesta") se marca como tal —
+  // así nuestros mensajes la cancelan — y reemplaza a la que ya hubiera
+  // pendiente en ese chat en vez de duplicarse.
+  const secuenciaLeads = Number(await obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id")) || null;
+  const esLead = sequenceId === secuenciaLeads;
+  const createdBy = esLead ? origenSeguimientoLead(nombre) : nombre;
   let pasosProgramados = 0;
   for (const conv of existentes) {
+    if (esLead) await cancelarSeguimientosDeLead(env.CRM_DB, conv.id);
     pasosProgramados += await programarSecuenciaSeguimiento(env.CRM_DB, conv.id, sequenceId, createdBy);
   }
 

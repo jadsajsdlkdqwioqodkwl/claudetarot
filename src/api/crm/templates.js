@@ -16,7 +16,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
-import { registrarMensajeSaliente, cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
+import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { pausaEnvio } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
@@ -66,7 +66,7 @@ async function post({ request, env, agent }) {
       body: `Plantilla: ${name}`,
       sentBy: agent?.displayName || agent?.username || null
     });
-    await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
+    await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     console.error("Enviar template:", err.message);

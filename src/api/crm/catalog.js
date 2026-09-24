@@ -6,7 +6,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { enviarCatalogo, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
-import { registrarMensajeSaliente, cancelarSeguimientosPendientes } from "../../lib/crm-db.js";
+import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache } from "../../lib/crm-db.js";
 import { pausaEnvio } from "../../lib/crm-send.js";
 
@@ -108,7 +108,7 @@ async function post({ request, env, agent }) {
         body: nombre || "Producto del catálogo",
         sentBy
       });
-      await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
+      await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -127,7 +127,7 @@ async function post({ request, env, agent }) {
       body: "[Catálogo enviado]",
       sentBy
     });
-    await cancelarSeguimientosPendientes(env.CRM_DB, conversationId);
+    await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     return json({ error: `WhatsApp rechazó el envío: ${err.message}` }, 502);

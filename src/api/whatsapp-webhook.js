@@ -123,7 +123,7 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
  * encendido (`ad_followup_auto`), la programa sola — aparte de la
  * bienvenida instantánea de arriba, para
  * insistir días después si no contestó. Como cualquier seguimiento
- * programado, se cancela sola en cuanto el cliente escribe o alguien le
+ * "tras no respuesta", se cancela sola en cuanto el cliente escribe o alguien le
  * manda algo a mano (ver cancelarSeguimientosPendientes).
  */
 async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion) {
