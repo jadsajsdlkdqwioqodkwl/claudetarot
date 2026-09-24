@@ -102,6 +102,7 @@ async function post({ request, env, agent }) {
     const evento = await construirEventoCapi({
       waId,
       ctwaClid,
+      wabaId: env.WHATSAPP_BUSINESS_ACCOUNT_ID,
       valor,
       moneda,
       eventId: orderId ? `capi-order-${orderId}` : `capi-conv-${conversationId}-${Date.now()}`,

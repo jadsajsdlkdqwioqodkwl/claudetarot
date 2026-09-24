@@ -479,6 +479,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #seg-secuencia-preview { margin-bottom: 10px; }
 .seg-timeline { margin-top: 0; }
 .seg-timeline .sub { color: var(--gris); }
+/* Mensaje propio todavía en cola / en camino (ver encolarEnvio). */
+.msg-fila.pendiente .msg { opacity: .75; }
+.msg-fila.pendiente .hora { font-style: italic; }
 .emoji-barra { margin: -6px 0 10px; }
 .emoji-toggle { border: 0; background: transparent; color: var(--gris); font-size: 12px; font-family: inherit; cursor: pointer; padding: 4px 6px; border-radius: var(--radio-s); display: inline-flex; align-items: center; gap: 4px; }
 .emoji-toggle:hover, .emoji-barra.abierta .emoji-toggle { background: var(--fondo); color: var(--texto); }

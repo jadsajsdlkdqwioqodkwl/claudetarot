@@ -1373,12 +1373,10 @@ $("#filtros").addEventListener("click", (e) => {
  * de un chat y vuelven al entrar de nuevo — nunca pasan a otro chat.
  */
 const borradores = new Map(); // conversation_id -> { texto, adjunto, rapida, respondiendoA }
-const enviandoEn = new Set(); // chats con un envío en curso (lo del cuadro es lo que se está mandando)
 
 function guardarBorrador() {
   const id = estado.conversacionActivaId;
   if (!id) return;
-  if (enviandoEn.has(id)) { borradores.delete(id); return; }
   const b = {
     texto: $("#texto-envio")?.value || "",
     adjunto: estado.archivoAdjunto,
@@ -1998,20 +1996,12 @@ async function enviarSticker(id) {
   if (!sticker) return;
   $("#panel-stickers").classList.remove("abierto");
   const conversationId = estado.conversacionActivaId;
-  mostrarEnviando(true);
-  try {
-    await pedir("/api/crm/messages", {
+  encolarEnvio(conversationId, [{ type: "sticker", mediaKey: sticker.media_key }], () =>
+    pedir("/api/crm/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conversation_id: conversationId, media_key: sticker.media_key, media_type: "sticker" })
-    });
-    await cargarMensajes();
-    await cargarConversaciones();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    mostrarEnviando(false);
-  }
+    }), (err) => alert(err.message));
 }
 
 async function borrarSticker(id) {
@@ -2050,39 +2040,25 @@ async function onStickerElegido(e) {
 
 async function enviarCatalogoCompleto() {
   $("#panel-catalogo").classList.remove("abierto");
-  mostrarEnviando(true);
-  try {
-    await pedir("/api/crm/catalog", {
+  const conversationId = estado.conversacionActivaId;
+  encolarEnvio(conversationId, [{ type: "text", body: "[Catálogo]" }], () =>
+    pedir("/api/crm/catalog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId })
-    });
-    await cargarMensajes();
-    await cargarConversaciones();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    mostrarEnviando(false);
-  }
+      body: JSON.stringify({ conversation_id: conversationId })
+    }), (err) => alert(err.message));
 }
 
 async function enviarProductoElegido(retailerId) {
   $("#panel-catalogo").classList.remove("abierto");
   const nombre = cacheProductosCatalogo?.find((p) => p.retailer_id === retailerId)?.name;
-  mostrarEnviando(true);
-  try {
-    await pedir("/api/crm/catalog", {
+  const conversationId = estado.conversacionActivaId;
+  encolarEnvio(conversationId, [{ type: "text", body: `🛍️ ${nombre || "Producto del catálogo"}` }], () =>
+    pedir("/api/crm/catalog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.conversacionActivaId, product_retailer_id: retailerId, product_name: nombre })
-    });
-    await cargarMensajes();
-    await cargarConversaciones();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    mostrarEnviando(false);
-  }
+      body: JSON.stringify({ conversation_id: conversationId, product_retailer_id: retailerId, product_name: nombre })
+    }), (err) => alert(err.message));
 }
 
 let cacheProductosCatalogo = null;
@@ -2123,14 +2099,6 @@ function pintarListaProductos(filtro) {
       </div>`).join("")
     : `<div class="item"><div class="cuerpo">Sin productos.</div></div>`;
   cont.querySelectorAll(".item").forEach((el) => el.addEventListener("click", () => enviarProductoElegido(el.dataset.id)));
-}
-
-/** Pone el botón de enviar en spinner mientras algo se está mandando (respuesta rápida, catálogo, producto…). */
-function mostrarEnviando(activo) {
-  const btn = $("#form-envio button.enviar");
-  if (!btn) return;
-  btn.disabled = activo;
-  btn.innerHTML = activo ? icon("spinner", "girando") : icon("send");
 }
 
 function cerrarPaneles(excepto = []) {
@@ -2398,7 +2366,7 @@ function estadoMensaje(m) {
   return `<span class="estado-msg" title="Enviado">${icon("check")}</span>`;
 }
 
-function pintarMensajes() {
+function pintarMensajes({ alFinal = false } = {}) {
   const cont = $("#mensajes");
   if (!cont) return;
   const mensajes = estado.mensajesCargados;
@@ -2424,12 +2392,22 @@ function pintarMensajes() {
     </div>`;
   }).join("");
 
+  const pendientes = estado.enviosPendientes
+    .filter((p) => p.conversationId === estado.conversacionActivaId)
+    .map((p) => `
+    <div class="msg-fila out pendiente" data-temp="${p.tempId}">
+      <div class="msg out">
+        ${contenidoPendiente(p)}
+        <span class="hora">Enviando… <span class="estado-msg" title="Enviando">${icon("clock")}</span></span>
+      </div>
+    </div>`).join("");
+
   cont.innerHTML = (estado.hayMasAntiguos
     ? `<div id="cargar-anteriores"><button type="button">Cargar mensajes anteriores</button></div>`
-    : "") + filas;
+    : "") + filas + pendientes;
 
   $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
-  if (abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
+  if (alFinal || abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
 }
 
 /* ---------- Responder a un mensaje / reaccionar ---------- */
@@ -2667,6 +2645,58 @@ async function subirArchivo(file) {
   return pedir("/api/crm/upload-media", { method: "POST", body: form });
 }
 
+/*
+ * Envío en segundo plano: el mensaje aparece en el chat como "enviando" y el
+ * cuadro queda libre al instante; la pausa de 2 s con "escribiendo…" (ver
+ * pausaEnvio en el servidor) la ve solo el cliente. Una cola por chat para
+ * que varios envíos seguidos lleguen en el mismo orden en que se mandaron.
+ */
+const colasEnvio = new Map(); // conversation_id -> promesa del último envío en cola
+let siguienteIdPendiente = 1;
+estado.enviosPendientes = [];
+
+function encolarEnvio(conversationId, burbujas, trabajo, alFallar) {
+  const items = burbujas.map((b) => ({ ...b, tempId: siguienteIdPendiente++, conversationId }));
+  estado.enviosPendientes.push(...items);
+  if (conversationId === estado.conversacionActivaId) pintarMensajes({ alFinal: true });
+
+  const quitar = () => {
+    estado.enviosPendientes = estado.enviosPendientes.filter((p) => !items.includes(p));
+    if (conversationId === estado.conversacionActivaId) pintarMensajes();
+  };
+  const anterior = colasEnvio.get(conversationId) || Promise.resolve();
+  const promesa = anterior.then(async () => {
+    try {
+      await trabajo();
+      // Primero se trae el mensaje real y después se quita la burbuja, en el
+      // mismo tick: no parpadea ni queda duplicado.
+      if (conversationId === estado.conversacionActivaId) await cargarMensajes().catch(() => {});
+      quitar();
+      cargarConversaciones().catch(() => {});
+    } catch (err) {
+      quitar();
+      alFallar?.(err);
+    }
+  });
+  colasEnvio.set(conversationId, promesa);
+  promesa.finally(() => { if (colasEnvio.get(conversationId) === promesa) colasEnvio.delete(conversationId); });
+  return promesa;
+}
+
+// Cerrar/recargar la pestaña con envíos en cola los perdería.
+window.addEventListener("beforeunload", (e) => {
+  if (estado.enviosPendientes.length) { e.preventDefault(); e.returnValue = ""; }
+});
+
+function contenidoPendiente(p) {
+  const src = p.previewUrl || (p.mediaKey ? `/api/crm/media?key=${encodeURIComponent(p.mediaKey)}` : null);
+  const pie = p.body && p.type !== "text" ? `<div class="caption">${formatearTextoWA(p.body)}</div>` : "";
+  if ((p.type === "image" || p.type === "sticker") && src) return `<img ${p.type === "sticker" ? 'class="sticker" ' : ""}src="${escapar(src)}" alt="" />${pie}`;
+  if (p.type === "video" && src) return `<video src="${escapar(src)}" muted></video>${pie}`;
+  if (p.type === "text") return `<div>${formatearTextoWA(p.body || "")}</div>`;
+  return `<div>${icon("doc")} ${escapar(p.fileName || p.body || "Archivo")}</div>${pie}`;
+}
+
 async function enviarMensaje(e) {
   e.preventDefault();
   // Los paneles (respuestas rápidas, seguimientos, catálogo, etc.) viven
@@ -2681,20 +2711,30 @@ async function enviarMensaje(e) {
   const adjunto = estado.archivoAdjunto;
   const rapida = estado.rapidaPendiente;
   if (!texto && !adjunto && !rapida) return;
-  // El chat se fija acá: si la asesora cambia de chat mientras suben las
-  // fotos, el resto (ej. el texto de una respuesta rápida) tiene que ir al
-  // MISMO cliente, no al chat que quedó abierto después.
+  // El chat se fija acá: el envío corre en segundo plano y tiene que ir al
+  // MISMO cliente aunque la asesora ya esté en otro chat.
   const conversationId = estado.conversacionActivaId;
-  const sigoEnElChat = () => estado.conversacionActivaId === conversationId;
   const respondiendoA = estado.respondiendoA;
-  enviandoEn.add(conversationId);
+  const replyToId = respondiendoA?.id || undefined;
 
-  input.disabled = true;
-  mostrarEnviando(true);
+  // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
+  // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
+  input.value = "";
+  input.style.height = "auto";
+  estado.archivoAdjunto = null; // sin revocar la vista previa: la usa la burbuja "enviando"
+  estado.rapidaPendiente = null;
+  if ($("#input-archivo")) $("#input-archivo").value = "";
+  pintarPreviewArchivo();
+  cancelarRespuesta();
+  input.focus();
 
-  const replyToId = estado.respondiendoA?.id || undefined;
+  const burbujas = adjunto
+    ? [{ type: adjunto.tipo, previewUrl: adjunto.previewUrl, fileName: adjunto.file.name, body: texto }]
+    : rapida
+      ? [...rapida.media.map((m) => ({ type: m.media_type, mediaKey: m.media_key })), ...(texto ? [{ type: "text", body: texto }] : [])]
+      : [{ type: "text", body: texto }];
 
-  try {
+  encolarEnvio(conversationId, burbujas, async () => {
     if (adjunto) {
       const { media_key, type, original_name } = await subirArchivo(adjunto.file);
       await pedir("/api/crm/messages", {
@@ -2702,17 +2742,12 @@ async function enviarMensaje(e) {
         headers: { "Content-Type": "application/json" },
         // `caption` es el pie de foto/video/documento. `file_name` queda en
         // el registro interno y, si es un documento, el cliente SÍ lo ve
-        // como el nombre del archivo (ver enviarMedia en whatsapp.js) —
-        // fotos/videos/stickers de WhatsApp no tienen "nombre" visible, así
-        // que ahí no importa.
+        // como el nombre del archivo (ver enviarMedia en whatsapp.js).
         body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
-      if (estado.archivoAdjunto === adjunto) cancelarAdjunto();
-      else if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
+      if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
     } else if (rapida) {
-      // Todas a la vez, no una por una: la API las procesa en paralelo y
-      // llegan casi juntas — WhatsApp igual manda una notificación por
-      // foto, eso lo decide el celular del cliente, no la API.
+      // Todas a la vez: la API las procesa en paralelo y llegan casi juntas.
       const resultados = await Promise.allSettled(rapida.media.map((m) =>
         pedir("/api/crm/messages", {
           method: "POST",
@@ -2721,16 +2756,13 @@ async function enviarMensaje(e) {
         })
       ));
       const fallidas = resultados.filter((r) => r.status === "rejected");
+      if (fallidas.length === rapida.media.length && rapida.media.length) throw fallidas[0].reason;
       if (texto) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
         });
-      }
-      if (estado.rapidaPendiente === rapida) {
-        estado.rapidaPendiente = null;
-        pintarPreviewArchivo();
       }
       if (fallidas.length) {
         alert(`Se mandaron ${rapida.media.length - fallidas.length} de ${rapida.media.length} — falló: ${fallidas[0].reason.message}`);
@@ -2742,25 +2774,18 @@ async function enviarMensaje(e) {
         body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
       });
     }
-    input.value = "";
-    if (sigoEnElChat()) {
-      if (estado.respondiendoA === respondiendoA) cancelarRespuesta();
-      await cargarMensajes();
-    }
-    await cargarConversaciones();
-  } catch (err) {
-    // Si ya se fue a otro chat, lo que no salió queda como borrador de ESTE
-    // chat para reintentar al volver (en vez de perderse).
-    if (!sigoEnElChat() && !borradores.has(conversationId)) {
-      borradores.set(conversationId, { texto: input.value, adjunto, rapida, respondiendoA });
-    }
+  }, (err) => {
     alert(err.message);
-  } finally {
-    enviandoEn.delete(conversationId);
-    input.disabled = false;
-    mostrarEnviando(false);
-    input.focus();
-  }
+    // Lo que no salió vuelve como borrador de SU chat para reintentar.
+    const b = { texto, adjunto, rapida, respondiendoA };
+    const cuadroLibre = estado.conversacionActivaId === conversationId && !$("#texto-envio")?.value && !estado.archivoAdjunto && !estado.rapidaPendiente;
+    if (cuadroLibre) {
+      borradores.set(conversationId, b);
+      restaurarBorrador(conversationId);
+    } else if (!borradores.has(conversationId)) {
+      borradores.set(conversationId, b);
+    }
+  });
 }
 
 /* ---------- Emojis ---------- */
@@ -3796,18 +3821,14 @@ $("#template-enviar").addEventListener("click", async () => {
   const t = estado.templateElegido;
   if (!t) return;
   const parameters = [...document.querySelectorAll(".param-template")].map((i) => i.value);
-  try {
-    await pedir("/api/crm/templates", {
+  const conversationId = estado.templateConversacionId;
+  $("#modal-templates-fondo").classList.remove("abierto");
+  encolarEnvio(conversationId, [{ type: "text", body: `Plantilla: ${t.name}` }], () =>
+    pedir("/api/crm/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.templateConversacionId, name: t.name, language: t.language, parameters })
-    });
-    $("#modal-templates-fondo").classList.remove("abierto");
-    await cargarMensajes();
-    await cargarConversaciones();
-  } catch (err) {
-    alert(err.message);
-  }
+      body: JSON.stringify({ conversation_id: conversationId, name: t.name, language: t.language, parameters })
+    }), (err) => alert(err.message));
 });
 
 /* ---------- Panel de detalle ---------- */

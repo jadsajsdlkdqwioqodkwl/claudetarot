@@ -25,7 +25,7 @@ async function sha256Hex(texto) {
  * sola (hashing del teléfono, forma del payload) sin necesitar credenciales
  * reales de Meta.
  */
-export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, lastName, email, testEventCode }) {
+export async function construirEventoCapi({ waId, ctwaClid, wabaId, valor, moneda, eventName = "Purchase", eventId, contentName, firstName, lastName, email, testEventCode }) {
   const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
   // fn/ln/em son extra para el Event Match Quality — ctwa_clid + ph ya son,
   // por sí solos, el par que Meta documenta como suficiente para un evento
@@ -45,18 +45,25 @@ export async function construirEventoCapi({ waId, ctwaClid, valor, moneda, event
   // "system_generated": mismo dataset, sin pedir el clic al anuncio, solo
   // sirve para atribución/optimización general en vez de para el anuncio
   // puntual que originó la conversación.
+  //
+  // Con ctwa_clid, el user_data es exactamente el que documenta Meta para
+  // "Conversions API for Business Messaging": whatsapp_business_account_id +
+  // ctwa_clid (sin el WABA id, Meta responde "Invalid parameter"). El clic
+  // ya identifica a la persona, así que no se mezclan ph/fn/ln/em ahí.
+  if (ctwaClid && !wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID para reportar una venta de un anuncio.");
   const evento = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
     action_source: ctwaClid ? "business_messaging" : "system_generated",
     ...(ctwaClid ? { messaging_channel: "whatsapp" } : {}),
-    user_data: {
-      ...(telefonoHash ? { ph: [telefonoHash] } : {}),
-      ...(ctwaClid ? { ctwa_clid: ctwaClid } : {}),
-      ...(nombreHash ? { fn: [nombreHash] } : {}),
-      ...(apellidoHash ? { ln: [apellidoHash] } : {}),
-      ...(emailHash ? { em: [emailHash] } : {})
-    },
+    user_data: ctwaClid
+      ? { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid }
+      : {
+          ...(telefonoHash ? { ph: [telefonoHash] } : {}),
+          ...(nombreHash ? { fn: [nombreHash] } : {}),
+          ...(apellidoHash ? { ln: [apellidoHash] } : {}),
+          ...(emailHash ? { em: [emailHash] } : {})
+        },
     custom_data: {
       currency: moneda || "PEN",
       value: Number(valor) || 0,
@@ -88,7 +95,11 @@ export async function enviarEventoCapi(env, payload) {
     datos = { raw: texto };
   }
   if (!res.ok) {
-    throw new Error(datos?.error?.message || texto || `HTTP ${res.status}`);
+    // "Invalid parameter" solo no dice nada — Meta pone el motivo real en
+    // error_user_title / error_user_msg.
+    const e = datos?.error || {};
+    const detalle = [e.error_user_title, e.error_user_msg].filter(Boolean).join(": ");
+    throw new Error([e.message || texto || `HTTP ${res.status}`, detalle].filter(Boolean).join(" — "));
   }
   return datos;
 }
