@@ -1170,8 +1170,17 @@ function dibujarFavicon(contador) {
   link.href = canvas.toDataURL("image/png");
 }
 
+/**
+ * Cuántos mensajes del cliente hay sin leer — solo si el último mensaje del
+ * chat es SUYO. Si lo último lo mandamos nosotros (a mano, la bienvenida o
+ * un seguimiento), ya está respondido y no cuenta.
+ */
+function sinLeer(c) {
+  return c.last_direction === "in" ? (c.unread_count || 0) : 0;
+}
+
 function actualizarAvisosNoLeidos() {
-  const total = estado.conversaciones.reduce((s, c) => s + (c.unread_count || 0), 0);
+  const total = estado.conversaciones.reduce((s, c) => s + sinLeer(c), 0);
 
   document.title = total > 0 ? `(${total > 99 ? "99+" : total}) ${TITULO_BASE}` : TITULO_BASE;
   dibujarFavicon(total);
@@ -1221,7 +1230,8 @@ function pintarLista() {
     const nombre = c.profile_name || c.wa_id;
     const div = document.createElement("div");
     const seleccionado = estado.seleccionados.has(c.conversation_id);
-    div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "");
+    const noLeidos = sinLeer(c);
+    div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
@@ -1236,7 +1246,7 @@ function pintarLista() {
         </div>
         <div class="fila2">
           <span class="preview">${escapar(prefijoYo + previewTexto)}</span>
-          ${c.unread_count > 0 ? `<span class="badge">${c.unread_count}</span>` : ""}
+          ${noLeidos ? `<span class="badge">${noLeidos}</span>` : ""}
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}

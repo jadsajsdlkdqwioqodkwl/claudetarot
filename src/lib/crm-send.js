@@ -4,16 +4,35 @@
  * un archivo de R2 a la Cloud API y guardando el mensaje saliente igual.
  */
 
-import { enviarTexto, enviarMedia, enviarReaccion, subirMedia } from "./whatsapp.js";
+import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
 import { registrarMensajeSaliente, guardarReaccionPropia } from "./crm-db.js";
 
 /**
- * Pausa antes de mandarle algo al cliente (respuestas a mano y bienvenida),
- * para que no llegue al instante como un bot. Es tiempo de espera, no de
- * CPU: no suma requests ni subrequests en Cloudflare.
+ * Antes de mandarle algo al cliente (respuestas a mano y bienvenida): le
+ * muestra "escribiendo…" y espera 1 s, para que no llegue al instante como
+ * un bot. La espera no es CPU ni suma requests del Worker; el "escribiendo"
+ * es una llamada más a Meta (subrequest, sin costo), solo si el cliente
+ * escribió en las últimas 24 h (si no, WhatsApp no lo muestra igual).
  */
 export const PAUSA_ENVIO_MS = 1000;
-export const pausaEnvio = () => new Promise((r) => setTimeout(r, PAUSA_ENVIO_MS));
+export async function pausaEnvio(env, conversationId) {
+  if (env?.CRM_DB && conversationId) {
+    try {
+      const ultimo = await env.CRM_DB.prepare(
+        `SELECT wa_message_id FROM messages
+         WHERE conversation_id = ? AND direction = 'in' AND type <> 'call' AND wa_message_id IS NOT NULL
+           AND created_at >= datetime('now', '-1 day')
+         ORDER BY id DESC LIMIT 1`
+      )
+        .bind(conversationId)
+        .first();
+      if (ultimo?.wa_message_id) await mostrarEscribiendo(env, ultimo.wa_message_id);
+    } catch (err) {
+      console.error("Escribiendo:", err.message); // nunca frena el envío
+    }
+  }
+  await new Promise((r) => setTimeout(r, PAUSA_ENVIO_MS));
+}
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo) {
   const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);

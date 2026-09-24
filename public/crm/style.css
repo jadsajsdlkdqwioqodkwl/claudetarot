@@ -183,7 +183,11 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--verde-osc); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
 .conv-info { flex: 1; min-width: 0; }
 .conv-info .fila1 { display: flex; justify-content: space-between; font-size: 14px; gap: 6px; }
-.conv-info .nombre { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-info .nombre { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Sin leer (el último mensaje es del cliente): en negrita, como WhatsApp. */
+.conv-item.no-leido .conv-info .nombre { font-weight: 700; }
+.conv-item.no-leido .conv-info .preview { color: var(--texto); font-weight: 600; }
+.conv-item.no-leido .conv-info .hora { color: var(--verde-osc); font-weight: 600; }
 .conv-info .hora { font-size: 11px; color: var(--gris); flex-shrink: 0; }
 .conv-info .fila2 { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; gap: 6px; }
 .conv-info .preview { font-size: 13px; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }

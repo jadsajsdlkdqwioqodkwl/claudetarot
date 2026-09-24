@@ -88,7 +88,10 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .run();
 
   await db
-    .prepare(`UPDATE conversations SET last_message_at = datetime('now') WHERE id = ?`)
+    // Si le respondimos (a mano, la bienvenida o un seguimiento), lo que el
+    // cliente mandó antes ya no cuenta como "sin leer": el (1) vuelve a
+    // aparecer recién cuando el cliente escriba de nuevo.
+    .prepare(`UPDATE conversations SET last_message_at = datetime('now'), unread_count = 0 WHERE id = ?`)
     .bind(conversationId)
     .run();
 }

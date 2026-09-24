@@ -195,6 +195,20 @@ export async function marcarLeido(env, waMessageId) {
   }
 }
 
+/**
+ * "Escribiendo…" en el chat del cliente. WhatsApp solo lo permite junto con
+ * marcar como leído (doble check azul) un mensaje que el cliente mandó; se
+ * apaga solo al llegar nuestra respuesta o a los 25 s.
+ */
+export async function mostrarEscribiendo(env, waMessageId) {
+  await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    status: "read",
+    message_id: waMessageId,
+    typing_indicator: { type: "text" }
+  });
+}
+
 /** Resuelve la URL temporal de un media (foto, audio, documento…) por su id. */
 export async function urlDeMedia(env, mediaId) {
   const res = await fetch(graphUrl(env, mediaId), {

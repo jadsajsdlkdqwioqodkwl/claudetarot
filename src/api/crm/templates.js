@@ -58,7 +58,7 @@ async function post({ request, env, agent }) {
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   try {
-    await pausaEnvio();
+    await pausaEnvio(env, conversationId);
     const waMessageId = await enviarTemplate(env, conv.wa_id, name, language, parametros);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,

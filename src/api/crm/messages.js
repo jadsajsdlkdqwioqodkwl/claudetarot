@@ -97,7 +97,7 @@ async function post({ request, env, agent }) {
   }
 
   try {
-    await pausaEnvio();
+    await pausaEnvio(env, conversationId);
     if (mediaKey) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);

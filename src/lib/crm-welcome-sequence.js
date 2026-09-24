@@ -21,7 +21,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   if (!pasos.length) return 0;
 
   for (const paso of pasos) {
-    await pausaEnvio();
+    await pausaEnvio(env, conversationId);
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
     )

@@ -100,7 +100,7 @@ async function post({ request, env, agent }) {
         nombre = mapa[retailerId]?.name || null;
       }
 
-      await pausaEnvio();
+      await pausaEnvio(env, conversationId);
       const waMessageId = await enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text);
       await registrarMensajeSaliente(env.CRM_DB, conversationId, {
         waMessageId,
@@ -119,7 +119,7 @@ async function post({ request, env, agent }) {
         thumbnailRetailerId = productos[0]?.retailer_id;
       } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
     }
-    await pausaEnvio();
+    await pausaEnvio(env, conversationId);
     const waMessageId = await enviarCatalogo(env, conv.wa_id, payload?.text, thumbnailRetailerId);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
