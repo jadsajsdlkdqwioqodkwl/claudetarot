@@ -15,7 +15,7 @@ import { registrarMensajeSaliente, guardarReaccionPropia } from "./crm-db.js";
  * escribió en las últimas 24 h (si no, WhatsApp no lo muestra igual).
  */
 export const PAUSA_ENVIO_MS = 1000;
-export async function pausaEnvio(env, conversationId) {
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS) {
   if (env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
@@ -31,7 +31,7 @@ export async function pausaEnvio(env, conversationId) {
       console.error("Escribiendo:", err.message); // nunca frena el envío
     }
   }
-  await new Promise((r) => setTimeout(r, PAUSA_ENVIO_MS));
+  await new Promise((r) => setTimeout(r, ms));
 }
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo) {

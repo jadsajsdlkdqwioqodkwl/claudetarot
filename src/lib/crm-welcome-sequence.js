@@ -20,8 +20,10 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
 
   if (!pasos.length) return 0;
 
-  for (const paso of pasos) {
-    await pausaEnvio(env, conversationId);
+  for (const [i, paso] of pasos.entries()) {
+    // El primero sale apenas el cliente escribió: 2 s de "escribiendo…" para
+    // que alcance a verse (con 1 s casi no se nota). Los siguientes, 1 s.
+    await pausaEnvio(env, conversationId, i === 0 ? 2000 : undefined);
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
     )

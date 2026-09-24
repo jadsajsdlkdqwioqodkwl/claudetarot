@@ -205,6 +205,9 @@ export default {
       ctx.waitUntil(exportarChatsASheets(env));
       return;
     }
-    ctx.waitUntil(procesarSeguimientosVencidos(env));
+    // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
+    // "escribiendo…" de 1 s por mensaje, un lote grande de seguimientos
+    // vencidos a la vez puede tardar más que eso.
+    await procesarSeguimientosVencidos(env);
   }
 };

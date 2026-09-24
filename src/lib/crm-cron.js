@@ -10,7 +10,7 @@
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
-import { mandarTexto, mandarMediaGuardada } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 import { enviarTemplate } from "./whatsapp.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 
@@ -50,8 +50,10 @@ export async function procesarSeguimientosVencidos(env) {
           sentBy: s.created_by || "Envío masivo"
         });
       } else if (s.media_key_real) {
+        await pausaEnvio(env, s.conv_id);
         await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático");
       } else {
+        await pausaEnvio(env, s.conv_id);
         await mandarTexto(env, s.conv_id, s.wa_id, s.body || s.quick_body, "Seguimiento automático");
       }
       await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'enviado', sent_at = datetime('now') WHERE id = ?")
