@@ -1,7 +1,9 @@
 /**
  * GET /api/crm/conversations — bandeja de entrada: una fila por conversación,
  * con el contacto y el último mensaje, ordenadas por actividad reciente.
- * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta) &q=texto
+ * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta)
+ * &agente=Nombre (las de esa asesora, dueña o compartiendo)
+ * &etiqueta=contact|lead|purchase &q=texto
  * Con &chat=<id> trae además los últimos mensajes de ese chat (y lo marca
  * leído): el poll del CRM es un solo request en vez de dos — el plan gratis
  * de Workers tiene tope de requests por día.
@@ -22,14 +24,19 @@ async function handler({ request, env, agent }) {
   const soloMias = url.searchParams.get("mine") === "1";
   const q = url.searchParams.get("q");
   const chatId = Number(url.searchParams.get("chat")) || null;
+  const etiqueta = ["contact", "lead", "purchase"].includes(url.searchParams.get("etiqueta")) ? url.searchParams.get("etiqueta") : null;
+  const agente = soloMias ? agent?.displayName || agent?.username || "" : (url.searchParams.get("agente") || "").trim();
 
   const condiciones = [];
   const params = [];
-  if (soloMias) {
+  if (soloMias || agente) {
     // Los que el chat tiene asignados como dueño o compartiendo (uno por línea en shared_with).
-    const yo = agent?.displayName || agent?.username || "";
     condiciones.push("(conv.assigned_agent = ? OR (? <> '' AND instr(char(10) || COALESCE(conv.shared_with, '') || char(10), char(10) || ? || char(10)) > 0))");
-    params.push(yo, yo, yo);
+    params.push(agente, agente, agente);
+  }
+  if (etiqueta) {
+    condiciones.push("instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ?) > 0");
+    params.push(` ${etiqueta} `);
   }
   if (q) {
     condiciones.push("(c.profile_name LIKE ? OR c.wa_id LIKE ?)");
@@ -47,6 +54,7 @@ async function handler({ request, env, agent }) {
         conv.unread_count,
         conv.assigned_agent,
         conv.shared_with,
+        conv.meta_tags,
         conv.last_message_at,
         c.id AS contact_id,
         c.wa_id,

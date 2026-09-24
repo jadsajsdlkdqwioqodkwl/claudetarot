@@ -164,7 +164,15 @@ button { font-family: inherit; touch-action: manipulation; }
 #buscador .icono-buscar { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--gris); }
 #buscador .icono-buscar svg { width: 100%; height: 100%; }
 #buscador input { width: 100%; padding: 8px 10px 8px 30px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--fondo); font-size: 13px; }
-#filtros { display: flex; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--borde); }
+#filtros { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--borde); }
+#filtros select { border: 1px solid var(--borde); background: #fff; border-radius: 14px; padding: 3px 6px; font-size: 12px; color: var(--gris); max-width: 130px; cursor: pointer; font-family: inherit; }
+#filtros select.activo { background: #fff8e1; border-color: #f5d77a; color: #8a6500; }
+#filtros button[data-etiqueta].activo { background: var(--verde-osc); border-color: var(--verde-osc); }
+#btn-seleccionar-chats { margin-left: auto; }
+.badge-etapa { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; margin-left: 4px; font-weight: 600; }
+.etapa-contact { background: #eceff1; color: #455a64; }
+.etapa-lead { background: #fff3e0; color: #b35c00; }
+.etapa-purchase { background: #e8f5e9; color: #1b7a3a; }
 #filtros button { border: 1px solid var(--borde); background: #fff; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--gris); }
 #filtros button.activo { background: var(--verde); color: #fff; border-color: var(--verde); }
 #btn-seleccionar-chats { margin-left: auto; }
@@ -584,7 +592,6 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 }
 
 @media (max-width: 480px) {
-  #filtros { overflow-x: auto; }
   #login-tarjeta { padding: 28px 20px; }
   .modal { padding: 16px; }
   #panel-emojis { width: calc(100vw - 20px); max-width: 300px; }
@@ -621,6 +628,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #chat header .acciones-chat .btn-meta { width: auto; height: 32px; min-width: 32px; padding: 0 7px; gap: 3px; border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); color: var(--gris); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1; flex-shrink: 0; }
 #chat header .acciones-chat .btn-meta .icono-svg { width: 17px; height: 17px; }
 #chat header .acciones-chat .btn-meta:hover { background: var(--hover); }
+#chat header .acciones-chat .btn-meta.enviando { opacity: .5; }
 #chat header .acciones-chat .btn-meta.enviado { color: var(--verde-osc); border-color: var(--verde); background: #eafaf0; }
 #popover-meta { position: absolute; top: 60px; right: 12px; z-index: 25; width: 290px; max-width: calc(100% - 24px); background: var(--panel); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
 #popover-meta .pm-titulo { font-weight: 600; display: flex; align-items: center; gap: 6px; }

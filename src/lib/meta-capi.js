@@ -19,11 +19,14 @@ import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 const GRAPH = "https://graph.facebook.com/v21.0";
 const AJUSTE_DATASET_WABA = "capi_waba_dataset";
 
-/** Nombres que acepta Meta en cada camino (business_messaging no acepta Contact ni Lead). */
+/**
+ * Nombres que acepta Meta en cada camino (business_messaging no acepta
+ * Contact ni Lead). `etiqueta` es la que queda en el chat para filtrar.
+ */
 export const EVENTOS = {
-  conversacion: { anuncio: "LeadSubmitted", manual: "Contact" },
-  intencion: { anuncio: "InitiateCheckout", manual: "InitiateCheckout" },
-  venta: { anuncio: "Purchase", manual: "Purchase" }
+  conversacion: { anuncio: "LeadSubmitted", manual: "Contact", etiqueta: "contact" },
+  lead: { anuncio: "QualifiedLead", manual: "Lead", etiqueta: "lead" },
+  venta: { anuncio: "Purchase", manual: "Purchase", etiqueta: "purchase" }
 };
 
 async function sha256Hex(texto) {

@@ -1,18 +1,20 @@
 /**
  * GET  /api/crm/capi-send?conversation_id=1 — historial de eventos a Meta de ese chat
  * POST /api/crm/capi-send — le reporta a Meta lo que pasó en el chat:
- *      { conversation_id, tipo: "venta" | "intencion", value?, currency?, product_label? }
+ *      { conversation_id, tipo: "venta" | "lead", value?, currency?, product_label? }
  *      { order_id, value?, currency? } — venta a partir de un pedido del catálogo
  *
  * Lo dispara la asesora o un admin a mano, desde los botones del header del
- * chat (carrito = intención de compra, bolsa = venta) o el panel de detalle.
+ * chat (Lead, bolsa = venta) o el panel de detalle. El chat queda con la
+ * etiqueta (lead / purchase) aunque Meta rechace el evento: la venta pasó
+ * igual, y la etiqueta es para filtrar en el CRM.
  * Conversions API, no es un mensaje de WhatsApp: nunca cobra ni le manda
  * nada al cliente. Ver src/lib/meta-capi.js para cómo elige el camino.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { reportarEventoMeta } from "../../lib/meta-capi.js";
-import { registrarEventoCapi } from "../../lib/crm-db.js";
+import { reportarEventoMeta, EVENTOS } from "../../lib/meta-capi.js";
+import { registrarEventoCapi, agregarEtiquetaMeta } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -40,7 +42,7 @@ async function post({ request, env, agent }) {
     return json({ error: "Solicitud inválida." }, 400);
   }
 
-  const tipo = payload?.tipo === "intencion" ? "intencion" : "venta";
+  const tipo = payload?.tipo === "lead" ? "lead" : "venta";
   const orderId = payload?.order_id ? Number(payload.order_id) : null;
   let conversationId = payload?.conversation_id ? Number(payload.conversation_id) : null;
   let waId, ctwaClid, nombreCompleto;
@@ -91,6 +93,8 @@ async function post({ request, env, agent }) {
   const createdBy = agent?.displayName || agent?.username || null;
   const eventId = orderId ? `capi-order-${orderId}` : `capi-${tipo}-${conversationId}-${Date.now()}`;
 
+  await agregarEtiquetaMeta(env.CRM_DB, conversationId, EVENTOS[tipo].etiqueta);
+
   try {
     const r = await reportarEventoMeta(env, {
       tipo,
@@ -117,7 +121,7 @@ async function post({ request, env, agent }) {
     if (orderId) {
       await env.CRM_DB.prepare("UPDATE catalog_orders SET capi_status = 'fallido' WHERE id = ?").bind(orderId).run();
     }
-    await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "fallido", createdBy, eventName: tipo === "venta" ? "Purchase" : "InitiateCheckout", error: err.message.slice(0, 500) });
+    await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "fallido", createdBy, eventName: tipo === "venta" ? "Purchase" : "QualifiedLead", error: err.message.slice(0, 500) });
     return json({ error: `Meta rechazó el evento: ${err.message}` }, 502);
   }
 }

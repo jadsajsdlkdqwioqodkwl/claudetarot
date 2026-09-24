@@ -278,3 +278,15 @@ export async function registrarEventoCapi(db, { conversationId, orderId = null, 
     .bind(conversationId, orderId, productLabel, valor, moneda, status, createdBy, eventName, modo, error)
     .run();
 }
+
+/** Suma una etiqueta (contact / lead / purchase) al chat, sin repetirla. */
+export async function agregarEtiquetaMeta(db, conversationId, etiqueta) {
+  await db
+    .prepare(
+      `UPDATE conversations
+       SET meta_tags = trim(COALESCE(meta_tags, '') || ' ' || ?1)
+       WHERE id = ?2 AND instr(' ' || COALESCE(meta_tags, '') || ' ', ' ' || ?1 || ' ') = 0`
+    )
+    .bind(etiqueta, conversationId)
+    .run();
+}

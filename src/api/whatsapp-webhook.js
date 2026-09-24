@@ -24,6 +24,7 @@ import {
   obtenerAjuste,
   programarSecuenciaSeguimiento,
   registrarEventoCapi,
+  agregarEtiquetaMeta,
   ORIGEN_SEGUIMIENTO_AUTO
 } from "../lib/crm-db.js";
 import { reportarEventoMeta } from "../lib/meta-capi.js";
@@ -147,12 +148,13 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
 }
 
 /**
- * Contacto nuevo desde un anuncio: le avisa a Meta que la conversación
- * empezó (LeadSubmitted), la señal que antes daba "Ads Data Sharing" de la
- * app. Va dentro del mismo request del webhook, no suma requests.
+ * Contacto nuevo: le avisa a Meta que la conversación empezó (LeadSubmitted
+ * si vino de un anuncio, Contact si no) y deja el chat con la etiqueta
+ * "contact". Va dentro del mismo request del webhook, no suma requests.
  */
 async function reportarConversacionSiAplica(env, contacto, conversacion) {
-  if (!contacto._isNew || !contacto.ctwa_clid || String(contacto.ctwa_clid).startsWith("SIMULADO")) return;
+  if (!contacto._isNew) return;
+  await agregarEtiquetaMeta(env.CRM_DB, conversacion.id, "contact").catch((err) => console.error("Etiqueta contact:", err.message));
   const base = { conversationId: conversacion.id, valor: 0, moneda: "PEN", createdBy: "Automático" };
   try {
     const r = await reportarEventoMeta(env, {
@@ -165,7 +167,7 @@ async function reportarConversacionSiAplica(env, contacto, conversacion) {
     await registrarEventoCapi(env.CRM_DB, { ...base, status: "enviado", eventName: r.eventName, modo: r.modo, error: r.aviso });
   } catch (err) {
     console.error("CAPI conversación:", err.message);
-    await registrarEventoCapi(env.CRM_DB, { ...base, status: "fallido", eventName: "LeadSubmitted", error: err.message.slice(0, 500) }).catch(() => {});
+    await registrarEventoCapi(env.CRM_DB, { ...base, status: "fallido", eventName: contacto.ctwa_clid ? "LeadSubmitted" : "Contact", error: err.message.slice(0, 500) }).catch(() => {});
   }
 }
 

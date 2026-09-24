@@ -32,6 +32,8 @@ const estado = {
   conversaciones: [],
   conversacionActivaId: null,
   filtroMias: false,
+  filtroAgente: "",
+  filtroEtiqueta: "",
   filtroTexto: "",
   archivoAdjunto: null,
   rapidaPendiente: null,
@@ -200,6 +202,7 @@ async function mostrarApp() {
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   cargarConversaciones();
+  cargarAsesorasFiltro();
   cargarQuickReplies();
   configurarNotificaciones();
   configurarInstalacion();
@@ -1039,6 +1042,8 @@ function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
 function sincronizar() {
   const params = new URLSearchParams();
   if (estado.filtroMias) params.set("mine", "1");
+  else if (estado.filtroAgente) params.set("agente", estado.filtroAgente);
+  if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
   // Con la pestaña oculta no se pide el chat: eso lo marcaría leído sin que nadie lo vea.
   const chatId = document.hidden ? null : estado.conversacionActivaId;
@@ -1056,6 +1061,11 @@ function sincronizar() {
       if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
       const conv = estado.conversaciones.find((x) => x.conversation_id === id);
       if (conv) { conv.assigned_agent = local.assigned_agent; conv.shared_with = local.shared_with; }
+    }
+    for (const [id, local] of etiquetasLocales) {
+      if (local.t <= inicio) { etiquetasLocales.delete(id); continue; }
+      const conv = estado.conversaciones.find((x) => x.conversation_id === id);
+      if (conv) conv.meta_tags = local.meta_tags;
     }
     for (const [id, local] of seguimientosLocales) {
       if (local.t <= inicio) { seguimientosLocales.delete(id); continue; }
@@ -1250,6 +1260,7 @@ function pintarLista() {
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
+        ${badgeEtapa(c)}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
       </div>`;
@@ -1356,14 +1367,47 @@ $("#buscar").addEventListener("input", debounce((e) => {
   cargarConversaciones();
 }, 300));
 
+function pintarFiltros() {
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta);
+  $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
+  $("#filtro-agente").value = estado.filtroAgente;
+  $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
+  document.querySelectorAll("#filtros button[data-etiqueta]").forEach((b) => b.classList.toggle("activo", b.dataset.etiqueta === estado.filtroEtiqueta));
+}
+
 $("#filtros").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-mine]");
+  const btn = e.target.closest("button[data-mine], button[data-etiqueta]");
   if (!btn) return;
-  document.querySelectorAll("#filtros button").forEach((b) => b.classList.remove("activo"));
-  btn.classList.add("activo");
-  estado.filtroMias = btn.dataset.mine === "1";
+  if (btn.dataset.etiqueta) {
+    estado.filtroEtiqueta = estado.filtroEtiqueta === btn.dataset.etiqueta ? "" : btn.dataset.etiqueta;
+  } else if (btn.dataset.mine === "1") {
+    estado.filtroMias = !estado.filtroMias;
+    if (estado.filtroMias) estado.filtroAgente = "";
+  } else {
+    estado.filtroMias = false;
+    estado.filtroAgente = "";
+    estado.filtroEtiqueta = "";
+  }
+  pintarFiltros();
   cargarConversaciones();
 });
+
+$("#filtro-agente").addEventListener("change", (e) => {
+  estado.filtroAgente = e.target.value;
+  if (estado.filtroAgente) estado.filtroMias = false;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+/** Las asesoras para el filtro por estrella — lo ven todas, no solo el admin. */
+async function cargarAsesorasFiltro() {
+  try {
+    const { agents } = await pedir("/api/crm/agents");
+    const nombres = [...new Set((agents || []).filter((a) => a.active !== 0).map((a) => a.display_name || a.username).filter(Boolean))];
+    $("#filtro-agente").innerHTML = `<option value="">Asesora…</option>` + nombres.map((n) => `<option value="${escapar(n)}">★ ${escapar(n)}</option>`).join("");
+    pintarFiltros();
+  } catch { /* sin lista: el filtro queda vacío */ }
+}
 
 /* ---------- Conversación abierta ---------- */
 
@@ -1806,8 +1850,8 @@ function pintarChatBase(c) {
         </div>
       </div>
       <div class="acciones-chat">
-        <button class="btn-meta ${eventosMetaDe(c.conversation_id).intencion ? "enviado" : ""}" id="btn-intencion" type="button" title="Intención de compra (avisa a Meta)">${icon("cart")}</button>
-        <button class="btn-meta btn-venta ${eventosMetaDe(c.conversation_id).venta ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
+        <button class="btn-meta ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Marcar como Lead (avisa a Meta)">Lead</button>
+        <button class="btn-meta btn-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
@@ -1862,8 +1906,8 @@ function pintarChatBase(c) {
     if (c2) clicEstrella(c2);
   });
   pintarEstrellaHeader(c);
-  $("#btn-intencion").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverMeta(c, "intencion"); });
-  $("#btn-venta").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverMeta(c, "venta"); });
+  $("#btn-lead").addEventListener("click", (e) => { e.stopPropagation(); marcarLead(c); });
+  $("#btn-venta").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverVenta(c); });
   $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
   $("#input-archivo").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("paste", onPegarImagen);
@@ -2191,8 +2235,48 @@ async function actualizarPedidosPanel() {
 
 const KIT_DEFAULT = { nombre: "Kit Tarot Rider-Waite de aprendizaje", precio: 89 };
 const precioProducto = (p) => parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
-const eventosMetaEnviados = {};
-const eventosMetaDe = (conversationId) => eventosMetaEnviados[conversationId] || {};
+const etiquetasLocales = new Map(); // conversation_id -> { meta_tags, t } — que un GET viejo no borre la etiqueta recién puesta
+const tieneEtiqueta = (c, etiqueta) => ` ${c.meta_tags || ""} `.includes(` ${etiqueta} `);
+const ETAPAS = [["purchase", "Compra"], ["lead", "Lead"], ["contact", "Contacto"]];
+
+/** La etapa más avanzada del chat, como etiqueta en la lista. */
+function badgeEtapa(c) {
+  const etapa = ETAPAS.find(([e]) => tieneEtiqueta(c, e));
+  return etapa ? `<span class="badge-etapa etapa-${etapa[0]}">${etapa[1]}</span>` : "";
+}
+
+function ponerEtiquetaLocal(c, etiqueta) {
+  if (tieneEtiqueta(c, etiqueta)) return;
+  const meta_tags = `${c.meta_tags || ""} ${etiqueta}`.trim();
+  for (const x of [c, estado.conversaciones.find((y) => y.conversation_id === c.conversation_id)]) if (x) x.meta_tags = meta_tags;
+  etiquetasLocales.set(c.conversation_id, { meta_tags, t: Date.now() });
+  pintarLista();
+}
+
+/** Botón Lead: un toque, sin confirmación. */
+async function marcarLead(c) {
+  const btn = $("#btn-lead");
+  if (!btn || btn.disabled) return;
+  if (tieneEtiqueta(c, "lead") && !confirm("Este chat ya está marcado como Lead. ¿Mandarlo de nuevo a Meta?")) return;
+  btn.disabled = true;
+  btn.classList.add("enviando");
+  try {
+    await pedir("/api/crm/capi-send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: c.conversation_id, tipo: "lead", value: KIT_DEFAULT.precio, currency: "PEN", product_label: KIT_DEFAULT.nombre })
+    });
+    if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    // La etiqueta queda aunque Meta rechace (el backend la guarda igual).
+    ponerEtiquetaLocal(c, "lead");
+    btn.disabled = false;
+    btn.classList.remove("enviando");
+    $("#btn-lead")?.classList.add("enviado");
+  }
+}
 
 async function productosDelCatalogo() {
   if (!cacheProductosCatalogo) {
@@ -2208,71 +2292,62 @@ function cerrarPopoverMeta() {
 }
 
 function cerrarPopoverMetaAfuera(e) {
-  if (!e.target.closest("#popover-meta, #btn-intencion, #btn-venta")) cerrarPopoverMeta();
+  if (!e.target.closest("#popover-meta, #btn-venta")) cerrarPopoverMeta();
 }
 
-function abrirPopoverMeta(c, tipo) {
-  const mismo = $("#popover-meta")?.dataset.tipo === tipo;
+function abrirPopoverVenta(c) {
+  const yaAbierto = Boolean($("#popover-meta"));
   cerrarPopoverMeta();
-  if (mismo) return;
+  if (yaAbierto) return;
 
   const pop = document.createElement("div");
   pop.id = "popover-meta";
-  pop.dataset.tipo = tipo;
   const items = [{ ...KIT_DEFAULT }];
 
-  if (tipo === "intencion") {
-    pop.innerHTML = `
-      <div class="pm-titulo">${icon("cart")} Intención de compra</div>
-      <p class="pm-ayuda">Avisa a Meta que este cliente está por comprar, para que busque más gente así. Al cliente no le llega nada.</p>
-      <button type="button" class="pm-confirmar">Marcar intención</button>
-      <div class="pm-estado"></div>`;
-  } else {
-    pop.innerHTML = `
-      <div class="pm-titulo">${icon("bag")} Reportar venta</div>
-      <div class="pm-items"></div>
-      <select class="pm-agregar"><option value="">+ ¿Compró algo más?</option></select>
-      <label class="pm-total">Total S/ <input type="number" class="pm-valor" min="0" step="0.01" /></label>
-      <button type="button" class="pm-confirmar">Reportar venta</button>
-      <div class="pm-estado"></div>`;
+  pop.innerHTML = `
+    <div class="pm-titulo">${icon("bag")} Reportar venta</div>
+    <div class="pm-items"></div>
+    <select class="pm-agregar"><option value="">+ ¿Compró algo más?</option></select>
+    <label class="pm-total">Total S/ <input type="number" class="pm-valor" min="0" step="0.01" /></label>
+    <button type="button" class="pm-confirmar">Reportar venta</button>
+    <div class="pm-estado"></div>`;
 
-    const pintarItems = () => {
-      pop.querySelector(".pm-items").innerHTML = items.map((it, i) => `
-        <div class="pm-item"><span>${escapar(it.nombre)}</span><span class="pm-precio">${it.precio}</span><button type="button" data-i="${i}" title="Quitar">${icon("close")}</button></div>`).join("")
-        || `<div class="pm-ayuda">Sin productos — escribe el total.</div>`;
-      pop.querySelector(".pm-valor").value = items.reduce((s, it) => s + it.precio, 0) || "";
-    };
+  const pintarItems = () => {
+    pop.querySelector(".pm-items").innerHTML = items.map((it, i) => `
+      <div class="pm-item"><span>${escapar(it.nombre)}</span><span class="pm-precio">${it.precio}</span><button type="button" data-i="${i}" title="Quitar">${icon("close")}</button></div>`).join("")
+      || `<div class="pm-ayuda">Sin productos — escribe el total.</div>`;
+    pop.querySelector(".pm-valor").value = items.reduce((s, it) => s + it.precio, 0) || "";
+  };
+  pintarItems();
+  pop.querySelector(".pm-items").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-i]");
+    if (!b) return;
+    items.splice(Number(b.dataset.i), 1);
     pintarItems();
-    pop.querySelector(".pm-items").addEventListener("click", (e) => {
-      const b = e.target.closest("button[data-i]");
-      if (!b) return;
-      items.splice(Number(b.dataset.i), 1);
-      pintarItems();
+  });
+  const select = pop.querySelector(".pm-agregar");
+  productosDelCatalogo().then((productos) => {
+    productos.forEach((p, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `${p.name || p.retailer_id}${precioProducto(p) ? ` — ${precioProducto(p)}` : ""}`;
+      select.appendChild(opt);
     });
-    const select = pop.querySelector(".pm-agregar");
-    productosDelCatalogo().then((productos) => {
-      productos.forEach((p, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = `${p.name || p.retailer_id}${precioProducto(p) ? ` — ${precioProducto(p)}` : ""}`;
-        select.appendChild(opt);
-      });
-    }).catch(() => {});
-    select.addEventListener("change", () => {
-      const p = cacheProductosCatalogo?.[Number(select.value)];
-      select.value = "";
-      if (!p) return;
-      items.push({ nombre: p.name || p.retailer_id, precio: precioProducto(p) });
-      pintarItems();
-    });
-  }
+  }).catch(() => {});
+  select.addEventListener("change", () => {
+    const p = cacheProductosCatalogo?.[Number(select.value)];
+    select.value = "";
+    if (!p) return;
+    items.push({ nombre: p.name || p.retailer_id, precio: precioProducto(p) });
+    pintarItems();
+  });
 
   pop.querySelector(".pm-confirmar").addEventListener("click", async () => {
     const btn = pop.querySelector(".pm-confirmar");
     const estadoEl = pop.querySelector(".pm-estado");
-    const valor = tipo === "venta" ? Number(pop.querySelector(".pm-valor").value) : KIT_DEFAULT.precio;
-    if (tipo === "venta" && !(valor > 0)) return alert("Escribe un monto válido.");
-    const producto = tipo === "venta" ? items.map((it) => it.nombre).join(", ") : KIT_DEFAULT.nombre;
+    const valor = Number(pop.querySelector(".pm-valor").value);
+    if (!(valor > 0)) return alert("Escribe un monto válido.");
+    const producto = items.map((it) => it.nombre).join(", ");
     btn.disabled = true;
     estadoEl.className = "pm-estado";
     estadoEl.textContent = "Enviando…";
@@ -2280,10 +2355,10 @@ function abrirPopoverMeta(c, tipo) {
       const r = await pedir("/api/crm/capi-send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: c.conversation_id, tipo, value: valor, currency: "PEN", product_label: producto || undefined })
+        body: JSON.stringify({ conversation_id: c.conversation_id, tipo: "venta", value: valor, currency: "PEN", product_label: producto || undefined })
       });
-      eventosMetaEnviados[c.conversation_id] = { ...eventosMetaDe(c.conversation_id), [tipo]: true };
-      $(tipo === "venta" ? "#btn-venta" : "#btn-intencion")?.classList.add("enviado");
+      ponerEtiquetaLocal(c, "purchase");
+      $("#btn-venta")?.classList.add("enviado");
       estadoEl.className = "pm-estado ok";
       estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
       if (estado.miRol === "admin") actualizarHistorialCapi(c.conversation_id);
@@ -2301,7 +2376,7 @@ function abrirPopoverMeta(c, tipo) {
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarPopoverMeta(); });
 
-const NOMBRE_EVENTO_META = { Purchase: "Venta", InitiateCheckout: "Intención", LeadSubmitted: "Conversación", Contact: "Conversación" };
+const NOMBRE_EVENTO_META = { Purchase: "Venta", InitiateCheckout: "Intención", QualifiedLead: "Lead", Lead: "Lead", LeadSubmitted: "Conversación", Contact: "Conversación" };
 
 /** Historial de eventos CAPI mandados en este chat (con o sin pedido del catálogo detrás). */
 async function actualizarHistorialCapi(conversationId) {
@@ -3963,16 +4038,6 @@ async function pintarDetalle(c) {
     <h2>Pedidos del catálogo</h2>
     <div id="detalle-pedidos">Cargando…</div>
 
-    <h2>Bienvenida de anuncios</h2>
-    <div id="detalle-bienvenida">Cargando…</div>
-
-    <h2>Seguimiento para leads</h2>
-    <div id="detalle-leads">Cargando…</div>
-
-    <h2>Seguimientos activos</h2>
-    <div id="detalle-seguimientos">Cargando…</div>
-    <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
-
     <h2>Notas</h2>
     <textarea id="detalle-notas" placeholder="Ej. Adelanto, separado, talla, modelo de collar específico, otros productos o múltiples unidades, etc." style="width:100%;min-height:70px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(c.notes || "")}</textarea>
     <div class="ayuda-modal" id="detalle-notas-estado" style="margin:2px 0 0"></div>
@@ -4018,6 +4083,16 @@ async function pintarDetalle(c) {
     <div id="capi-confirmacion" style="display:none"></div>
     <div id="detalle-capi-historial" style="margin-top:8px"></div>
     ` : ""}
+
+    <h2>Seguimiento para leads</h2>
+    <div id="detalle-leads">Cargando…</div>
+
+    <h2>Seguimientos activos</h2>
+    <div id="detalle-seguimientos">Cargando…</div>
+    <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
+
+    <h2>Bienvenida de anuncios</h2>
+    <div id="detalle-bienvenida">Cargando…</div>
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => history.back());
