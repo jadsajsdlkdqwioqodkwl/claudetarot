@@ -1343,14 +1343,55 @@ $("#filtros").addEventListener("click", (e) => {
 
 /* ---------- Conversación abierta ---------- */
 
+/*
+ * Borrador por chat, como en WhatsApp: lo escrito, la foto/video adjunta,
+ * la respuesta rápida elegida y el "respondiendo a" se guardan al salir
+ * de un chat y vuelven al entrar de nuevo — nunca pasan a otro chat.
+ */
+const borradores = new Map(); // conversation_id -> { texto, adjunto, rapida, respondiendoA }
+const enviandoEn = new Set(); // chats con un envío en curso (lo del cuadro es lo que se está mandando)
+
+function guardarBorrador() {
+  const id = estado.conversacionActivaId;
+  if (!id) return;
+  if (enviandoEn.has(id)) { borradores.delete(id); return; }
+  const b = {
+    texto: $("#texto-envio")?.value || "",
+    adjunto: estado.archivoAdjunto,
+    rapida: estado.rapidaPendiente,
+    respondiendoA: estado.respondiendoA
+  };
+  if (b.texto.trim() || b.adjunto || b.rapida || b.respondiendoA) borradores.set(id, b);
+  else borradores.delete(id);
+}
+
+function restaurarBorrador(id) {
+  const b = borradores.get(id);
+  borradores.delete(id);
+  if (!b) return;
+  const input = $("#texto-envio");
+  if (input && b.texto) {
+    input.value = b.texto;
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  }
+  estado.archivoAdjunto = b.adjunto;
+  estado.rapidaPendiente = b.rapida;
+  estado.respondiendoA = b.respondiendoA;
+  pintarPreviewArchivo();
+  pintarPreviewRespuesta();
+}
+
 async function abrirConversacion(c) {
+  guardarBorrador();
   estado.conversacionActivaId = c.conversation_id;
   estado.mensajesCargados = [];
   estado.firmaMensajesPintados = null;
   estado.hayMasAntiguos = false;
+  // Sin revocar la vista previa del adjunto: puede haber quedado en el borrador del chat anterior.
   estado.respondiendoA = null;
   estado.rapidaPendiente = null;
-  cancelarAdjunto();
+  estado.archivoAdjunto = null;
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
   // de chats, no salir del sitio — se logra metiendo un estado en el
   // historial al entrar a un chat, así el "atrás" del navegador lo consume
@@ -1362,6 +1403,7 @@ async function abrirConversacion(c) {
   document.body.classList.remove("detalle-abierto");
   pintarLista();
   pintarChatBase(c);
+  restaurarBorrador(c.conversation_id);
   pintarDetalle(c);
   await cargarMensajes();
   programarSync();
@@ -2618,6 +2660,8 @@ async function enviarMensaje(e) {
   // MISMO cliente, no al chat que quedó abierto después.
   const conversationId = estado.conversacionActivaId;
   const sigoEnElChat = () => estado.conversacionActivaId === conversationId;
+  const respondiendoA = estado.respondiendoA;
+  enviandoEn.add(conversationId);
 
   input.disabled = true;
   mostrarEnviando(true);
@@ -2637,7 +2681,8 @@ async function enviarMensaje(e) {
         // que ahí no importa.
         body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
       });
-      if (sigoEnElChat()) cancelarAdjunto();
+      if (estado.archivoAdjunto === adjunto) cancelarAdjunto();
+      else if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
     } else if (rapida) {
       // Todas a la vez, no una por una: la API las procesa en paralelo y
       // llegan casi juntas — WhatsApp igual manda una notificación por
@@ -2657,7 +2702,7 @@ async function enviarMensaje(e) {
           body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
         });
       }
-      if (sigoEnElChat()) {
+      if (estado.rapidaPendiente === rapida) {
         estado.rapidaPendiente = null;
         pintarPreviewArchivo();
       }
@@ -2673,13 +2718,19 @@ async function enviarMensaje(e) {
     }
     input.value = "";
     if (sigoEnElChat()) {
-      cancelarRespuesta();
+      if (estado.respondiendoA === respondiendoA) cancelarRespuesta();
       await cargarMensajes();
     }
     await cargarConversaciones();
   } catch (err) {
+    // Si ya se fue a otro chat, lo que no salió queda como borrador de ESTE
+    // chat para reintentar al volver (en vez de perderse).
+    if (!sigoEnElChat() && !borradores.has(conversationId)) {
+      borradores.set(conversationId, { texto: input.value, adjunto, rapida, respondiendoA });
+    }
     alert(err.message);
   } finally {
+    enviandoEn.delete(conversationId);
     input.disabled = false;
     mostrarEnviando(false);
     input.focus();
