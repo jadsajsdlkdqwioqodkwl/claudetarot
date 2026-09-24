@@ -23,6 +23,7 @@ const ICONS = {
   logout: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4.5a1 1 0 00-1 1v12a1 1 0 001 1H8M13 14l4-4-4-4M17 10H7"/></svg>`,
   search: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="6"/><path d="M17.5 17.5L13.5 13.5" stroke-linecap="round"/></svg>`,
   doc: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12h-10z"/><path d="M12 2.5V6h3"/></svg>`,
+  map: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M2 4l5-1.5 6 1.5 5-1.5v13l-5 1.5-6-1.5-5 1.5z"/><path d="M7 2.5v13M13 4v13"/><circle cx="10" cy="9" r="1.6" fill="currentColor" stroke="none"/></svg>`,
   cart: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 2.5h2.5l2.2 10h9.3l1.8-7H5"/><circle cx="7.5" cy="16" r="1.3"/><circle cx="14.5" cy="16" r="1.3"/></svg>`,
   bag: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 6h10l1 11H4z"/><path d="M7 6V5a3 3 0 016 0v1"/></svg>`,
   shield: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l6 2.5v5c0 4-2.6 6.8-6 8.5-3.4-1.7-6-4.5-6-8.5v-5z"/></svg>`,

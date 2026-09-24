@@ -23,12 +23,6 @@
  *                         a sí mismo, a varios a la vez, o libre (owner null
  *                         y shared vacío). Sin owner pero con shared, el
  *                         primero de la lista pasa a ser el dueño.
- *           "entrar"    — se llama solo, cada vez que alguien ABRE un chat
- *                         (no es una acción que el vendedor elija a
- *                         propósito): si ya es de otra persona y todavía no
- *                         hay comisión compartida, deja a quien entró como
- *                         el que la comparte — sin botones, solo por haber
- *                         entrado al chat.
  *
  * `shared_with` guarda a todos los que comparten, uno por línea (el admin
  * puede sumar a varios con "definir"). Por su cuenta, un vendedor solo
@@ -62,7 +56,7 @@ async function patch({ request, env, agent }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const accion = String(payload?.action || "");
-  if (!["reclamar", "liberar", "reasignar", "quitar", "entrar", "definir"].includes(accion)) {
+  if (!["reclamar", "liberar", "reasignar", "quitar", "definir"].includes(accion)) {
     return json({ error: "Acción inválida." }, 400);
   }
 
@@ -110,17 +104,6 @@ async function patch({ request, env, agent }) {
       return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: resto });
     }
     // No tenía nada que liberar acá — nada que hacer.
-    return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with });
-  }
-
-  if (accion === "entrar") {
-    // Silencioso: no es un botón, es que alguien distinto al dueño abrió el
-    // chat. Solo se anota la PRIMERA vez — si un tercero lo abre después, no
-    // se pisa la comisión ya compartida.
-    if (conv.assigned_agent && conv.assigned_agent !== nombre && !conv.shared_with) {
-      await set(conv.assigned_agent, nombre);
-      return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: nombre });
-    }
     return json({ ok: true, assigned_agent: conv.assigned_agent, shared_with: conv.shared_with });
   }
 

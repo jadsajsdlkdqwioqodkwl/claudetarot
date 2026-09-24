@@ -984,7 +984,7 @@ let syncEnVuelo = null;
 let ultimoSync = { clave: "", t: 0 };
 
 /**
- * Reclamar/liberar/reasignar (o el "entrar" silencioso) es un PATCH liviano
+ * Reclamar/liberar/reasignar es un PATCH liviano
  * que suele volver antes que el GET de la lista que ya estaba en vuelo — si
  * ese GET se lanzó ANTES del click, trae una foto vieja y, al aplicarla,
  * pisaba la estrella/etiqueta recién puesta con el estado de antes (el
@@ -1429,36 +1429,11 @@ async function abrirConversacion(c) {
   pintarDetalle(c);
   await cargarMensajes();
   programarSync();
-  registrarEntradaChat(c);
 }
 
 function volverALaLista() {
   document.body.classList.remove("chat-abierto");
   document.body.classList.remove("detalle-abierto");
-}
-
-/**
- * Se llama solo cada vez que se abre un chat — no es un botón. Si el chat ya
- * es de otra persona y todavía nadie más lo compartía, deja a quien entró
- * como quien comparte la comisión de esa venta, sin que nadie tenga que
- * tocar nada aparte de abrir el chat.
- */
-async function registrarEntradaChat(c) {
-  try {
-    const { assigned_agent, shared_with } = await pedir("/api/crm/assign", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: c.conversation_id, action: "entrar" })
-    });
-    c.assigned_agent = assigned_agent;
-    c.shared_with = shared_with;
-    const conv = estado.conversaciones.find((x) => x.conversation_id === c.conversation_id);
-    if (conv) { conv.assigned_agent = assigned_agent; conv.shared_with = shared_with; }
-    marcarAsignacionLocal(c.conversation_id, assigned_agent, shared_with);
-    pintarEstrellaHeader(c);
-    pintarAsignacion(c);
-    pintarLista();
-  } catch { /* silencioso — no vale la pena molestar por esto */ }
 }
 
 // Mismo truco que con el chat/detalle, pero genérico para los modales
@@ -2438,11 +2413,31 @@ function contenidoMensaje(m) {
   if (m.type === "order") return `<div class="tarjeta-especial tarjeta-pedido">${icon("bag")} <strong>Pedido del catálogo</strong><div>${escapar(m.body || "")}</div></div>`;
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
   if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
+  if (m.type === "location") return ubicacionHtml(m.body);
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
+}
+
+/** Tarjeta de ubicación — body es "lat|lng|nombre|dirección" (nombre/dirección solo si el cliente compartió un lugar guardado). */
+function ubicacionHtml(body) {
+  const [lat, lng, nombre, direccion] = (body || "").split("|");
+  if (!lat || !lng) return `<div class="tarjeta-especial tarjeta-ubicacion">${icon("map")} Ubicación (sin coordenadas)</div>`;
+  const url = `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+  return `<a class="tarjeta-especial tarjeta-ubicacion" href="${escapar(url)}" target="_blank" rel="noopener">
+    ${icon("map")}
+    <div>
+      <strong>${escapar(nombre || "Ubicación compartida")}</strong>
+      ${direccion ? `<div class="sub">${escapar(direccion)}</div>` : ""}
+      <div class="sub">Ver en Google Maps</div>
+    </div>
+  </a>`;
 }
 
 /** Un extracto corto de un mensaje, para citarlo en la respuesta o en el "responde a" arriba de una burbuja. */
 function extractoMensaje(tipo, body) {
+  if (tipo === "location") {
+    const nombre = (body || "").split("|")[2];
+    return nombre ? `📍 ${nombre}` : "📍 Ubicación";
+  }
   if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
   const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "📞 Llamada" };
   return nombres[tipo] || "Mensaje";

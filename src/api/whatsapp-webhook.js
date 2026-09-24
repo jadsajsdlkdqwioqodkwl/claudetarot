@@ -70,8 +70,12 @@ function tipoYCuerpo(msg) {
       return { type: "document", body: msg.document?.filename || "", mediaId: msg.document?.id, mediaMime: msg.document?.mime_type };
     case "sticker":
       return { type: "sticker", mediaId: msg.sticker?.id, mediaMime: msg.sticker?.mime_type };
-    case "location":
-      return { type: "location", body: `${msg.location?.latitude},${msg.location?.longitude}` };
+    case "location": {
+      // lat|lng|nombre|dirección — el nombre/dirección solo viene cuando el
+      // cliente comparte un lugar guardado, no su ubicación en vivo.
+      const loc = msg.location || {};
+      return { type: "location", body: [loc.latitude, loc.longitude, loc.name || "", loc.address || ""].join("|") };
+    }
     case "button":
       return { type: "text", body: msg.button?.text || "" };
     case "order": {
