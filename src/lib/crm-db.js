@@ -269,6 +269,34 @@ export async function suscripcionesParaAvisar(db, assignedAgent) {
   return results;
 }
 
+/** Asesoras activas con Telegram vinculado y elegido como canal ('telegram' o 'ambos'). */
+export async function agentesConAvisoTelegram(db) {
+  const { results } = await db
+    .prepare(
+      `SELECT display_name, username, notify_channel, telegram_chat_id FROM agents
+       WHERE active = 1 AND telegram_chat_id IS NOT NULL AND notify_channel IN ('telegram', 'ambos')`
+    )
+    .all();
+  return results;
+}
+
+/**
+ * Reserva el aviso de Telegram de este chat: devuelve false si ya salió uno
+ * hace menos de `ventanaMs` (el cliente mandó varios mensajes seguidos).
+ * Atómico, así dos webhooks casi simultáneos no mandan dos avisos.
+ */
+export async function reservarAvisoTelegram(db, conversationId, ventanaMs) {
+  const ahora = Date.now();
+  const { meta } = await db
+    .prepare(
+      `UPDATE conversations SET telegram_notified_at = ?1
+       WHERE id = ?2 AND (telegram_notified_at IS NULL OR telegram_notified_at < ?3)`
+    )
+    .bind(ahora, conversationId, ahora - ventanaMs)
+    .run();
+  return meta.changes > 0;
+}
+
 export async function registrarEventoCapi(db, { conversationId, orderId = null, productLabel = null, valor, moneda, status, createdBy, eventName, modo = null, error = null }) {
   await db
     .prepare(

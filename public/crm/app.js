@@ -116,6 +116,7 @@ function debounce(fn, ms) {
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-mi-password").innerHTML = icon("key");
+  $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
   $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
@@ -200,8 +201,9 @@ async function mostrarApp() {
   $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
   $("#sesion-actual").title = $("#sesion-actual").textContent;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
+  $("#btn-avisos").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
-  cargarConversaciones();
+  abrirChatDelLink(cargarConversaciones());
   cargarAsesorasFiltro();
   cargarQuickReplies();
   configurarNotificaciones();
@@ -1561,10 +1563,119 @@ document.addEventListener("visibilitychange", () => {
   programarSync(0);
 });
 
+/* ---------- Avisos por Telegram (además de, o en vez de, la push) ---------- */
+
+// El link de Telegram se pide al abrir el modal y no al tocar "Vincular":
+// con un fetch en medio, el celular bloquea el window.open como popup.
+let linkTelegram = null;
+let esperandoStartTelegram = false;
+
+function pintarAvisos({ available, channel, linked }) {
+  $("#avisos-canal").value = channel;
+  $("#avisos-canal").disabled = !linked;
+  $("#avisos-estado").textContent = !available
+    ? "El bot de Telegram no está configurado en el servidor."
+    : linked
+      ? "Telegram vinculado ✓"
+      : "Vincula tu Telegram para elegirlo: se abre el bot, tocas \"Iniciar\" y vuelves acá.";
+  $("#avisos-vincular").style.display = available && !linked ? "" : "none";
+  $("#avisos-comprobar").style.display = available && !linked && esperandoStartTelegram ? "" : "none";
+  $("#avisos-probar").style.display = linked ? "" : "none";
+  $("#avisos-desvincular").style.display = linked ? "" : "none";
+}
+
+async function accionAvisos(cuerpo, btn) {
+  $("#avisos-error").textContent = "";
+  if (btn) btn.disabled = true;
+  try {
+    return await pedir("/api/crm/notify-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo)
+    });
+  } catch (err) {
+    $("#avisos-error").textContent = err.message;
+    return null;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+$("#btn-avisos").addEventListener("click", async () => {
+  $("#avisos-error").textContent = "";
+  $("#avisos-estado").textContent = "Cargando…";
+  $("#modal-avisos-fondo").classList.add("abierto");
+  linkTelegram = null;
+  esperandoStartTelegram = false;
+  try {
+    const datos = await pedir("/api/crm/notify-settings");
+    pintarAvisos(datos);
+    if (datos.available && !datos.linked) linkTelegram = (await accionAvisos({ action: "link" }))?.url || null;
+  } catch (err) {
+    $("#avisos-error").textContent = err.message;
+  }
+});
+
+$("#avisos-cerrar").addEventListener("click", () => $("#modal-avisos-fondo").classList.remove("abierto"));
+
+$("#avisos-canal").addEventListener("change", async (e) => {
+  const datos = await accionAvisos({ channel: e.target.value }, e.target);
+  if (datos) pintarAvisos(datos);
+});
+
+$("#avisos-vincular").addEventListener("click", () => {
+  if (!linkTelegram) { $("#avisos-error").textContent = "Todavía no está listo el link, prueba en un segundo."; return; }
+  if (!window.open(linkTelegram, "_blank")) location.href = linkTelegram;
+  esperandoStartTelegram = true;
+  $("#avisos-comprobar").style.display = "";
+});
+
+async function comprobarVinculoTelegram(btn) {
+  const datos = await accionAvisos({ action: "check" }, btn);
+  if (!datos) return;
+  if (datos.linked) esperandoStartTelegram = false;
+  pintarAvisos(datos);
+  if (!datos.linked && btn) $("#avisos-error").textContent = "Todavía no veo tu \"Iniciar\" en el bot. Ábrelo, tócalo y vuelve a intentar.";
+}
+
+$("#avisos-comprobar").addEventListener("click", (e) => comprobarVinculoTelegram(e.currentTarget));
+
+// Al volver de Telegram al CRM se comprueba solo, sin tener que tocar nada.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && esperandoStartTelegram && $("#modal-avisos-fondo").classList.contains("abierto")) comprobarVinculoTelegram(null);
+});
+
+$("#avisos-probar").addEventListener("click", async (e) => {
+  if (await accionAvisos({ action: "test" }, e.currentTarget)) $("#avisos-estado").textContent = "Aviso de prueba enviado — revisa tu Telegram.";
+});
+
+$("#avisos-desvincular").addEventListener("click", async (e) => {
+  if (!confirm("¿Desvincular Telegram? Los avisos vuelven a llegar solo por push.")) return;
+  const datos = await accionAvisos({ action: "unlink" }, e.currentTarget);
+  if (datos) {
+    pintarAvisos(datos);
+    linkTelegram = (await accionAvisos({ action: "link" }))?.url || null;
+  }
+});
+
+/** El botón "Abrir chat" de Telegram llega con /crm/?chat=<id>. */
+function abrirChatDelLink(cargando) {
+  const params = new URLSearchParams(location.search);
+  const id = Number(params.get("chat"));
+  if (!id) return;
+  params.delete("chat");
+  history.replaceState(history.state, "", location.pathname + (params.toString() ? `?${params}` : "") + location.hash);
+  Promise.resolve(cargando).then(() => {
+    const c = estado.conversaciones.find((x) => x.conversation_id === id);
+    if (c) abrirConversacion(c);
+  }).catch(() => {});
+}
+
 /* ---------- Menú "⋯" del encabezado: en pantallas angostas junta las acciones secundarias ---------- */
 
 const ETIQUETAS_MENU_LISTA = {
   "btn-instalar": "Instalar como app",
+  "btn-avisos": "Avisos por Telegram",
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
   "btn-equipo": "Equipo",

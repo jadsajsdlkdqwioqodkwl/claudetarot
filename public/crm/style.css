@@ -400,6 +400,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .fs-agregar-paso textarea { width: 100%; min-height: 50px; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; font-family: inherit; resize: vertical; margin-bottom: 6px; }
 .fs-agregar-paso input[type="file"] { font-size: 11px; width: 100%; }
 #totp-secreto { font-family: monospace; font-size: 15px; letter-spacing: 2px; background: var(--fondo); padding: 10px; border-radius: var(--radio-s); text-align: center; word-break: break-all; margin-bottom: 10px; }
+#modal-avisos-fondo .modal > button { margin-bottom: 8px; }
 /* Botones de acción del panel derecho y de los modales (fuera de .acciones también). */
 #detalle button.crear, #detalle button.cancelar, .modal button.crear, .modal button.cancelar { padding: 8px 10px; border: 0; border-radius: var(--radio-s); cursor: pointer; font-size: 13px; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.3; }
 #detalle button.crear, .modal button.crear { background: var(--verde-osc); color: #fff; }

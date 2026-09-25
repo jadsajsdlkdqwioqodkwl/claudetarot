@@ -171,7 +171,7 @@ async function reportarConversacionSiAplica(env, contacto, conversacion) {
   }
 }
 
-async function procesarCambio(env, db, value) {
+async function procesarCambio(env, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
 
   for (const msg of value.messages || []) {
@@ -202,7 +202,7 @@ async function procesarCambio(env, db, value) {
     await mandarBienvenidaSiAplica(env, contacto, conversacion);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion);
     await reportarConversacionSiAplica(env, contacto, conversacion);
-    await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal }).catch((err) => console.error("Push:", err.message));
+    await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
   }
 
   for (const st of value.statuses || []) {
@@ -221,7 +221,7 @@ async function procesarCambio(env, db, value) {
  * entre las distintas versiones de la API, así que se revisan los alias más
  * comunes (`status` y `event`) para reconocer una perdida/rechazada.
  */
-async function procesarLlamadas(env, db, value) {
+async function procesarLlamadas(env, db, value, origen) {
   for (const call of value.calls || []) {
     const waId = call.from;
     if (!waId) continue;
@@ -236,7 +236,7 @@ async function procesarLlamadas(env, db, value) {
 
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
     await cancelarSeguimientosPendientes(db, conversacion.id);
-    await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body }).catch((err) => console.error("Push:", err.message));
+    await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body, origen }).catch((err) => console.error("Push:", err.message));
   }
 }
 
@@ -259,15 +259,18 @@ export async function onRequestPost({ request, env, waitUntil }) {
     return json({ ok: true }); // 200 igual: no queremos que Meta reintente sin parar
   }
 
+  // Meta llama al mismo Worker que sirve /crm: con esto el aviso de
+  // Telegram trae un botón que abre el chat.
+  const origen = new URL(request.url).origin;
   const tareas = [];
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
       if (change.field === "calls") {
-        tareas.push(procesarLlamadas(env, env.CRM_DB, change.value));
+        tareas.push(procesarLlamadas(env, env.CRM_DB, change.value, origen));
         continue;
       }
       if (change.field !== "messages") continue;
-      tareas.push(procesarCambio(env, env.CRM_DB, change.value));
+      tareas.push(procesarCambio(env, env.CRM_DB, change.value, origen));
     }
   }
 

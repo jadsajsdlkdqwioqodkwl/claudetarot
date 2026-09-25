@@ -83,6 +83,7 @@ import {
   onRequestPost as crmPushSubscribePost,
   onRequestDelete as crmPushSubscribeDelete
 } from "./api/crm/push-subscribe.js";
+import { onRequestGet as crmNotifySettingsGet, onRequestPost as crmNotifySettingsPost } from "./api/crm/notify-settings.js";
 import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
@@ -126,6 +127,7 @@ const ROUTES = {
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },
+  "/api/crm/notify-settings": { GET: crmNotifySettingsGet, POST: crmNotifySettingsPost },
   "/api/crm/export-reset": { POST: crmExportResetPost },
   "/api/crm/change-password": { POST: crmChangePasswordPost },
   "/api/crm/forgot-password": { POST: crmForgotPasswordPost },

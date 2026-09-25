@@ -71,3 +71,27 @@ export async function notificarTelegram(env, mensaje) {
     console.error("Telegram:", err.message);
   }
 }
+
+/**
+ * Llamada cruda a la Bot API con el mismo TELEGRAM_BOT_TOKEN de los pedidos.
+ * Devuelve `result` o lanza con la descripción de Telegram (y `status`, para
+ * distinguir un chat bloqueado — 403 — de un fallo de red).
+ */
+export async function llamarTelegram(env, metodo, datos = {}) {
+  if (!env.TELEGRAM_BOT_TOKEN) throw Object.assign(new Error("Falta TELEGRAM_BOT_TOKEN."), { status: 503 });
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${metodo}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos)
+  });
+  const salida = await res.json().catch(() => ({}));
+  if (!res.ok || !salida.ok) {
+    throw Object.assign(new Error(salida.description || `HTTP ${res.status}`), { status: res.status });
+  }
+  return salida.result;
+}
+
+/** Para texto libre dentro de parse_mode HTML (nombres y mensajes de clientes). */
+export function escaparHtml(texto) {
+  return String(texto ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}

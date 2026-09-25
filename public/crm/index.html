@@ -66,6 +66,7 @@
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-instalar" class="accion-secundaria" title="Instalar como app" style="display:none"></button>
         <button id="btn-notificaciones" title="Activar notificaciones"></button>
+        <button id="btn-avisos" class="accion-secundaria" title="Avisos por Telegram" style="display:none"></button>
         <button id="btn-mi-password" class="accion-secundaria" title="Cambiar mi contraseña"></button>
         <button id="btn-admin" class="accion-secundaria" title="Mensaje masivo, costos y herramientas" style="display:none"></button>
         <button id="btn-equipo" class="accion-secundaria" title="Equipo"></button>
@@ -218,6 +219,27 @@
     </div>
     <button class="cancelar" id="totp-activar-btn" type="button" style="width:100%">Activar 2FA con app</button>
     <button class="cancelar" id="totp-desactivar-btn" type="button" style="width:100%;display:none">Desactivar 2FA con app</button>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-avisos-fondo">
+  <div class="modal">
+    <h2>Avisos de mensajes nuevos</h2>
+    <div class="error" id="avisos-error"></div>
+    <p class="ayuda-modal">Telegram llega aunque el CRM esté cerrado; la push del celular a veces no.</p>
+    <select id="avisos-canal">
+      <option value="push">Solo push del navegador (campana)</option>
+      <option value="telegram">Solo Telegram</option>
+      <option value="ambos">Push y Telegram</option>
+    </select>
+    <p class="ayuda-modal" id="avisos-estado">Cargando…</p>
+    <button class="cancelar" id="avisos-vincular" type="button" style="width:100%;display:none">Vincular mi Telegram</button>
+    <button class="crear" id="avisos-comprobar" type="button" style="width:100%;display:none">Ya le di "Iniciar" en Telegram</button>
+    <button class="cancelar" id="avisos-probar" type="button" style="width:100%;display:none">Mandarme un aviso de prueba</button>
+    <button class="cancelar" id="avisos-desvincular" type="button" style="width:100%;display:none">Desvincular Telegram</button>
+    <div class="acciones">
+      <button class="cancelar" id="avisos-cerrar" type="button">Cerrar</button>
+    </div>
   </div>
 </div>
 

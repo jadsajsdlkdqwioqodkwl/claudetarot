@@ -634,6 +634,13 @@ public/crm/                  El panel: index.html + app.js, sin build ni depende
   3+ min sin tocar nada, 3 min tras 15 min quieto, y nada con la pestaña oculta (salvo el
   modo de notificaciones locales, cada 2 min). Pensado para el tope de 100k requests/día
   del plan gratis de Workers.
+- **Avisos de mensajes nuevos**: cada asesora elige en el CRM (botón de avión de papel,
+  "Avisos por Telegram") si le llegan por push del navegador, por Telegram o por ambos.
+  Usa el mismo bot de los pedidos (`TELEGRAM_BOT_TOKEN`); se vincula con `/start <código>`
+  y se confirma leyendo `getUpdates`, así que el bot **no debe tener webhook**. Los avisos
+  a Telegram salen como subrequests del mismo webhook de WhatsApp: no suman requests.
+  Varios mensajes seguidos del mismo chat = un solo aviso cada 30 s. Esquema en
+  `migrations/0025_crm_v25.sql`.
 
 ### Paso 1 — Meta: número y credenciales
 
