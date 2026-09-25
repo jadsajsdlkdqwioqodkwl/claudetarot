@@ -660,3 +660,6 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   #chat header .acciones-chat .btn-meta { height: 30px; min-width: 30px; padding: 0 5px; }
   #popover-meta { top: 56px; right: 8px; left: 8px; width: auto; max-width: none; }
 }
+.tarjeta-contacto { align-items: flex-start; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; }
+.tarjeta-contacto .sub { font-size: 12px; }
+.tarjeta-contacto .sub a { color: var(--verde-osc); }

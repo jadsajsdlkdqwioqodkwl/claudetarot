@@ -16,7 +16,9 @@ export async function notificarMensajeNuevo(env, conversacion, contacto, { type,
   if (!suscripciones.length) return;
 
   const titulo = contacto.profile_name || `+${contacto.wa_id}`;
-  const cuerpo = (body && String(body).trim()) || RESUMENES[type] || "Mensaje nuevo";
+  let cuerpo = (body && String(body).trim()) || RESUMENES[type] || "Mensaje nuevo";
+  if (type === "location") cuerpo = `📍 ${String(body || "").split("|")[2] || "Ubicación"}`;
+  if (type === "contacts") cuerpo = `👤 ${String(body || "").split("|")[0] || "Contacto"}`;
 
   const datos = {
     title: titulo,

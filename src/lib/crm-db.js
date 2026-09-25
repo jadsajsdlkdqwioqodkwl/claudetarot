@@ -57,6 +57,12 @@ export async function obtenerOCrearConversacion(db, contactId) {
 }
 
 export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, mediaId, mediaMime, replyToMessageId, viewOnce }) {
+  // Meta reintenta el webhook si no recibió el 200 a tiempo: el mismo
+  // mensaje llega dos veces. Si ya está guardado no se duplica (devuelve false).
+  if (waMessageId) {
+    const ya = await db.prepare("SELECT id FROM messages WHERE wa_message_id = ? AND direction = 'in'").bind(waMessageId).first();
+    if (ya) return false;
+  }
   await db
     .prepare(
       `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_id, media_mime, status, reply_to_message_id, view_once)
@@ -76,6 +82,7 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     )
     .bind(conversationId)
     .run();
+  return true;
 }
 
 export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId, fileName }) {
@@ -96,11 +103,26 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .run();
 }
 
+/**
+ * Meta no garantiza el orden de los estados: un "sent" puede llegar después
+ * del "read". Nunca se retrocede (read > delivered > sent); "failed" siempre
+ * se aplica. Devuelve cuántas filas cambió (0 si el mensaje todavía no está
+ * guardado — pasa cuando el estado llega antes que el INSERT del envío).
+ */
 export async function actualizarEstadoMensaje(db, waMessageId, status, errorDetail) {
-  await db
-    .prepare("UPDATE messages SET status = ?, error_detail = ? WHERE wa_message_id = ?")
+  const r = await db
+    .prepare(
+      `UPDATE messages SET status = ?1, error_detail = ?2
+       WHERE wa_message_id = ?3
+         AND (?1 = 'failed'
+           OR (CASE status WHEN 'read' THEN 3 WHEN 'delivered' THEN 2 WHEN 'sent' THEN 1 ELSE 0 END)
+            < (CASE ?1 WHEN 'read' THEN 3 WHEN 'delivered' THEN 2 WHEN 'sent' THEN 1 ELSE 0 END))`
+    )
     .bind(status, errorDetail || null, waMessageId)
     .run();
+  if (r.meta?.changes) return r.meta.changes;
+  const existe = await db.prepare("SELECT 1 FROM messages WHERE wa_message_id = ?").bind(waMessageId).first();
+  return existe ? 1 : 0;
 }
 
 /** Busca el id interno de un mensaje por su wa_message_id — para resolver a qué mensaje responde uno entrante. */

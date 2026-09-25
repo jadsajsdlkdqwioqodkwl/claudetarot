@@ -78,7 +78,16 @@ function tipoYCuerpo(msg) {
       return { type: "location", body: [loc.latitude, loc.longitude, loc.name || "", loc.address || ""].join("|") };
     }
     case "button":
-      return { type: "text", body: msg.button?.text || "" };
+      return { type: "text", body: msg.button?.text || msg.button?.payload || "" };
+    case "contacts": {
+      // Tarjeta(s) de contacto compartidas: "Nombre|+tel1,+tel2" una por línea.
+      const lineas = (msg.contacts || []).map((c) => {
+        const nombre = c.name?.formatted_name || [c.name?.first_name, c.name?.last_name].filter(Boolean).join(" ") || "Contacto";
+        const tels = (c.phones || []).map((p) => p.phone || p.wa_id).filter(Boolean).join(",");
+        return `${nombre.replace(/[|\n]/g, " ")}|${tels}`;
+      });
+      return { type: "contacts", body: lineas.join("\n") };
+    }
     case "order": {
       const items = msg.order?.product_items || [];
       const total = items.reduce((s, i) => s + (i.item_price || 0) * (i.quantity || 1), 0);
@@ -86,11 +95,33 @@ function tipoYCuerpo(msg) {
       return { type: "order", body: resumen, order: { catalogId: msg.order?.catalog_id, items, total, currency: items[0]?.currency } };
     }
     case "interactive": {
-      const r = msg.interactive?.button_reply || msg.interactive?.list_reply;
-      return { type: "text", body: r?.title || "" };
+      const i = msg.interactive || {};
+      const r = i.button_reply || i.list_reply;
+      if (r) return { type: "text", body: [r.title, r.description].filter(Boolean).join(" — ") };
+      if (i.nfm_reply) {
+        // Respuesta de un WhatsApp Flow: el JSON con lo que llenó el cliente.
+        let detalle = "";
+        try {
+          const datos = JSON.parse(i.nfm_reply.response_json || "{}");
+          detalle = Object.entries(datos).filter(([k]) => k !== "flow_token").map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join("\n");
+        } catch { /* JSON raro: se muestra solo el body */ }
+        return { type: "text", body: [i.nfm_reply.body, detalle].filter(Boolean).join("\n") || "Formulario enviado" };
+      }
+      return { type: "text", body: i.call_permission_reply ? `Permiso de llamada: ${i.call_permission_reply.response || ""}` : "[Mensaje interactivo]" };
     }
-    default:
-      return { type: msg.type || "unknown", body: "" };
+    case "system":
+      return { type: "text", body: msg.system?.body || "[Aviso del sistema]" };
+    case "request_welcome":
+      return { type: "text", body: "[El cliente abrió el chat]" };
+    case "unsupported":
+    case "unknown":
+    default: {
+      // Encuestas, mensajes editados/borrados, "una sola vista" de audio, etc.
+      // Meta no manda el contenido, solo un error con la explicación.
+      const err = msg.errors?.[0];
+      const detalle = err?.error_data?.details || err?.message || err?.title || "";
+      return { type: "unsupported", body: detalle ? `Mensaje no soportado por WhatsApp API (${msg.type || "desconocido"}): ${detalle}` : `Mensaje no soportado por WhatsApp API (${msg.type || "desconocido"})` };
+    }
   }
 }
 
@@ -194,7 +225,8 @@ async function procesarCambio(env, db, value) {
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
+    const nuevo = await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
+    if (!nuevo) continue; // reintento de Meta de un mensaje ya guardado
     await cancelarSeguimientosPendientes(db, conversacion.id);
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
@@ -208,7 +240,13 @@ async function procesarCambio(env, db, value) {
   for (const st of value.statuses || []) {
     const err = st.errors?.[0];
     const errorDetail = err ? `${err.title || err.code || "Error"}${err.error_data?.details ? `: ${err.error_data.details}` : ""}` : null;
-    await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
+    const cambiados = await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
+    // El estado puede llegar antes de que el envío termine de guardar el
+    // mensaje saliente — se reintenta una vez para no perder un "failed".
+    if (!cambiados) {
+      await new Promise((r) => setTimeout(r, 4000));
+      await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
+    }
   }
 }
 
@@ -234,7 +272,8 @@ async function procesarLlamadas(env, db, value) {
       ? "📞 Llamada perdida"
       : `📞 Llamada${call.duration ? ` (${call.duration}s)` : ""}${estado ? ` — ${estado}` : ""}`;
 
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
+    const nueva = await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
+    if (!nueva) continue;
     await cancelarSeguimientosPendientes(db, conversacion.id);
     await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body }).catch((err) => console.error("Push:", err.message));
   }

@@ -1222,7 +1222,7 @@ function avisarLocalmente() {
   for (const c of estado.conversaciones) {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
     if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
-    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : ({ image: "📷 Foto", video: "🎥 Video", audio: "🎵 Audio", document: "📄 Documento", sticker: "Sticker" }[c.last_type] || "Mensaje nuevo");
+    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : extractoMensaje(c.last_type, c.last_type === "location" || c.last_type === "contacts" ? c.last_body : "");
     navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
       body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
       tag: `chat-${c.conversation_id}`,
@@ -1243,7 +1243,7 @@ function pintarLista() {
     const noLeidos = sinLeer(c);
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
-    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
+    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : extractoMensaje(c.last_type, c.last_body || "");
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
 
     div.innerHTML = `
@@ -2493,30 +2493,64 @@ function contenidoMensaje(m) {
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
   if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
   if (m.type === "location") return ubicacionHtml(m.body);
+  if (m.type === "contacts") return contactosHtml(m.body);
+  if (m.type === "unsupported") return `<div class="tarjeta-especial">${icon("alertCircle")} ${escapar(m.body || "Mensaje no soportado")}</div>`;
+  // Media sin archivo (p. ej. descarga fallida): al menos se ve qué era y su texto.
+  if (["image", "video", "audio", "document", "sticker"].includes(m.type)) return `<span class="tipo">${escapar(extractoMensaje(m.type, ""))}</span>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
 }
 
-/** Tarjeta de ubicación — body es "lat|lng|nombre|dirección" (nombre/dirección solo si el cliente compartió un lugar guardado). */
+/**
+ * Ubicación guardada en dos formatos: el actual "lat|lng|nombre|dirección"
+ * y el viejo "lat,lng" (mensajes anteriores al cambio de formato).
+ */
+function parsearUbicacion(body) {
+  const txt = String(body || "").trim();
+  let [lat, lng, nombre, direccion] = txt.includes("|") ? txt.split("|") : txt.split(",");
+  lat = (lat || "").trim();
+  lng = (lng || "").trim();
+  const valido = (v) => v !== "" && v !== "undefined" && v !== "null" && Number.isFinite(Number(v));
+  if (!valido(lat) || !valido(lng)) { lat = ""; lng = ""; }
+  return { lat, lng, nombre: (nombre || "").trim(), direccion: (direccion || "").trim() };
+}
+
+/** Tarjeta de ubicación clickeable con coordenadas y link a Google Maps. */
 function ubicacionHtml(body) {
-  const [lat, lng, nombre, direccion] = (body || "").split("|");
-  if (!lat || !lng) return `<div class="tarjeta-especial tarjeta-ubicacion">${icon("map")} Ubicación (sin coordenadas)</div>`;
-  const url = `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+  const { lat, lng, nombre, direccion } = parsearUbicacion(body);
+  const consulta = lat && lng ? `${lat},${lng}` : [nombre, direccion].filter(Boolean).join(", ");
+  if (!consulta) return `<div class="tarjeta-especial tarjeta-ubicacion">${icon("map")} Ubicación compartida (WhatsApp no envió las coordenadas)</div>`;
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consulta)}`;
   return `<a class="tarjeta-especial tarjeta-ubicacion" href="${escapar(url)}" target="_blank" rel="noopener">
     ${icon("map")}
     <div>
       <strong>${escapar(nombre || "Ubicación compartida")}</strong>
       ${direccion ? `<div class="sub">${escapar(direccion)}</div>` : ""}
-      <div class="sub">Ver en Google Maps</div>
+      ${lat && lng ? `<div class="sub">${escapar(lat)}, ${escapar(lng)}</div>` : ""}
+      <div class="sub" style="text-decoration:underline">Abrir en Google Maps</div>
     </div>
   </a>`;
+}
+
+/** Tarjeta(s) de contacto compartido — body: "Nombre|+tel1,+tel2" una por línea. */
+function contactosHtml(body) {
+  const filas = String(body || "").split("\n").filter(Boolean).map((linea) => {
+    const [nombre, tels] = linea.split("|");
+    const links = (tels || "").split(",").filter(Boolean).map((t) => {
+      const limpio = t.replace(/[^\d+]/g, "");
+      return `<a href="https://wa.me/${escapar(limpio.replace("+", ""))}" target="_blank" rel="noopener">${escapar(t)}</a>`;
+    }).join(" · ");
+    return `<div><strong>${escapar(nombre || "Contacto")}</strong>${links ? `<div class="sub">${links}</div>` : ""}</div>`;
+  }).join("");
+  return `<div class="tarjeta-especial tarjeta-contacto">${icon("users")} <div>${filas || "Contacto compartido"}</div></div>`;
 }
 
 /** Un extracto corto de un mensaje, para citarlo en la respuesta o en el "responde a" arriba de una burbuja. */
 function extractoMensaje(tipo, body) {
   if (tipo === "location") {
-    const nombre = (body || "").split("|")[2];
-    return nombre ? `📍 ${nombre}` : "📍 Ubicación";
+    const { lat, lng, nombre } = parsearUbicacion(body);
+    return `📍 ${nombre || (lat && lng ? `Ubicación (${lat}, ${lng})` : "Ubicación")}`;
   }
+  if (tipo === "contacts") return `👤 ${(body || "").split("|")[0] || "Contacto"}`;
   if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
   const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "📞 Llamada" };
   return nombres[tipo] || "Mensaje";
