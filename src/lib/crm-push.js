@@ -5,16 +5,11 @@
  * mezclar la lógica de parseo de Meta con la de avisar a las vendedoras.
  */
 
-import { suscripcionesParaAvisar, borrarSuscripcionPush, agentesConAvisoTelegram, reservarAvisoTelegram } from "./crm-db.js";
+import { suscripcionesParaAvisar, borrarSuscripcionPush, agentesConAvisoTelegram } from "./crm-db.js";
 import { mandarPush } from "./web-push.js";
 import { llamarTelegram, escaparHtml } from "./telegram.js";
 
 const RESUMENES = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", call: "📞 Llamada" };
-
-// Varios mensajes seguidos del mismo cliente = un solo aviso de Telegram
-// (el equivalente al `tag` de la push, que reemplaza en vez de amontonar).
-// También evita el límite de ~1 mensaje por segundo por chat del bot.
-const VENTANA_TELEGRAM_MS = 30000;
 
 const esLaAsesora = (agente, nombre) => Boolean(nombre) && (nombre === agente.display_name || nombre === agente.username);
 
@@ -25,7 +20,7 @@ export async function notificarMensajeNuevo(env, conversacion, contacto, { type,
   if (!conPush && !conTelegram) return; // no configurado — silencioso, no es un error del negocio
 
   const [suscripciones, agentesTelegram] = await Promise.all([
-    conPush ? suscripcionesParaAvisar(db, conversacion.assigned_agent) : [],
+    conPush ? suscripcionesParaAvisar(db) : [],
     conTelegram ? agentesConAvisoTelegram(db).catch((err) => { console.error("Telegram:", err.message); return []; }) : []
   ]);
 
@@ -33,10 +28,6 @@ export async function notificarMensajeNuevo(env, conversacion, contacto, { type,
   // Si no vincularon, siguen con push: elegir Telegram nunca las deja sin avisos.
   const soloTelegram = agentesTelegram.filter((a) => a.notify_channel === "telegram");
   const pushes = suscripciones.filter((s) => !soloTelegram.some((a) => esLaAsesora(a, s.agent_name)));
-
-  // Misma regla que la push: chat asignado → solo su asesora; libre → todas.
-  const asignada = conversacion.assigned_agent;
-  const destinosTelegram = agentesTelegram.filter((a) => !asignada || esLaAsesora(a, asignada));
 
   const titulo = contacto.profile_name || `+${contacto.wa_id}`;
   const cuerpoCompleto = (body && String(body).trim()) || RESUMENES[type] || "Mensaje nuevo";
@@ -49,7 +40,7 @@ export async function notificarMensajeNuevo(env, conversacion, contacto, { type,
       conversation_id: conversacion.id,
       tag: `chat-${conversacion.id}` // agrupa notificaciones del mismo chat en vez de amontonar una por mensaje
     }),
-    avisarPorTelegram(env, destinosTelegram, conversacion.id, titulo, cuerpo, origen)
+    avisarPorTelegram(env, agentesTelegram, conversacion.id, titulo, cuerpo, origen)
   ]);
 }
 
@@ -71,7 +62,6 @@ async function avisarPorPush(env, suscripciones, datos) {
 
 async function avisarPorTelegram(env, agentes, conversationId, titulo, cuerpo, origen) {
   if (!agentes.length) return;
-  if (!(await reservarAvisoTelegram(env.CRM_DB, conversationId, VENTANA_TELEGRAM_MS))) return;
 
   const texto = `💬 <b>${escaparHtml(titulo)}</b>\n${escaparHtml(cuerpo)}`;
   const boton = origen

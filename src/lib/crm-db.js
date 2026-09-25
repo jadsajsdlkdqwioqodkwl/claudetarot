@@ -255,17 +255,9 @@ export async function borrarSuscripcionPush(db, endpoint) {
   await db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").bind(endpoint).run();
 }
 
-/**
- * A quién avisarle de un mensaje nuevo: si el chat ya tiene asesora
- * asignada, solo a su dispositivo (no le suena a todo el equipo un chat que
- * ya es de alguien); si está libre, a todas — cualquiera lo puede atender.
- */
-export async function suscripcionesParaAvisar(db, assignedAgent) {
-  if (!assignedAgent) {
-    const { results } = await db.prepare("SELECT * FROM push_subscriptions").all();
-    return results;
-  }
-  const { results } = await db.prepare("SELECT * FROM push_subscriptions WHERE agent_name = ?").bind(assignedAgent).all();
+/** A quién avisarle de un mensaje nuevo: a todas, esté o no asignado el chat. */
+export async function suscripcionesParaAvisar(db) {
+  const { results } = await db.prepare("SELECT * FROM push_subscriptions").all();
   return results;
 }
 
@@ -278,23 +270,6 @@ export async function agentesConAvisoTelegram(db) {
     )
     .all();
   return results;
-}
-
-/**
- * Reserva el aviso de Telegram de este chat: devuelve false si ya salió uno
- * hace menos de `ventanaMs` (el cliente mandó varios mensajes seguidos).
- * Atómico, así dos webhooks casi simultáneos no mandan dos avisos.
- */
-export async function reservarAvisoTelegram(db, conversationId, ventanaMs) {
-  const ahora = Date.now();
-  const { meta } = await db
-    .prepare(
-      `UPDATE conversations SET telegram_notified_at = ?1
-       WHERE id = ?2 AND (telegram_notified_at IS NULL OR telegram_notified_at < ?3)`
-    )
-    .bind(ahora, conversationId, ahora - ventanaMs)
-    .run();
-  return meta.changes > 0;
 }
 
 export async function registrarEventoCapi(db, { conversationId, orderId = null, productLabel = null, valor, moneda, status, createdBy, eventName, modo = null, error = null }) {

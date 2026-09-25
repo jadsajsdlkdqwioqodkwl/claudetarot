@@ -639,7 +639,7 @@ public/crm/                  El panel: index.html + app.js, sin build ni depende
   Usa el mismo bot de los pedidos (`TELEGRAM_BOT_TOKEN`); se vincula con `/start <código>`
   y se confirma leyendo `getUpdates`, así que el bot **no debe tener webhook**. Los avisos
   a Telegram salen como subrequests del mismo webhook de WhatsApp: no suman requests.
-  Varios mensajes seguidos del mismo chat = un solo aviso cada 30 s. Esquema en
+  Cada mensaje le llega a todas las asesoras, esté o no asignado el chat. Esquema en
   `migrations/0025_crm_v25.sql`.
 
 ### Paso 1 — Meta: número y credenciales
