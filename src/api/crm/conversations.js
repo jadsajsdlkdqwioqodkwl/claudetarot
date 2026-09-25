@@ -63,6 +63,7 @@ async function handler({ request, env, agent }) {
         c.ad_source_type,
         c.ad_headline,
         c.notes,
+        c.shalom_code,
         lm.body AS last_body,
         lm.type AS last_type,
         lm.direction AS last_direction,

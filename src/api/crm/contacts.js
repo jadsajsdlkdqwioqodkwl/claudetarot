@@ -2,10 +2,10 @@
  * POST  /api/crm/contacts — { wa_id, name? } → crea un contacto + su
  *       conversación a mano, para que un vendedor pueda cargar un lead
  *       antes de que la persona escriba por WhatsApp.
- * PATCH /api/crm/contacts — { contact_id, name?, stage?, notes?, tags? }
+ * PATCH /api/crm/contacts — { contact_id, name?, stage?, notes?, tags?, shalom_code? }
  *       Actualiza el contacto: la etapa del pipeline, el nombre puesto por
  *       el vendedor (distinto del `profile_name` que manda WhatsApp),
- *       notas y tags.
+ *       notas, tags y el código de Shalom.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -73,6 +73,10 @@ async function patch({ request, env }) {
   if (typeof payload.notes === "string") {
     campos.push("notes = ?");
     valores.push(payload.notes.slice(0, 4000));
+  }
+  if (typeof payload.shalom_code === "string") {
+    campos.push("shalom_code = ?");
+    valores.push(payload.shalom_code.trim().slice(0, 60) || null);
   }
   if (typeof payload.tags === "string") {
     campos.push("tags = ?");

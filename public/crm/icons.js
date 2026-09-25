@@ -43,6 +43,10 @@ const ICONS = {
   reply: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L2.5 9.5 8 14"/><path d="M2.5 9.5h8a6 6 0 016 6v1"/></svg>`,
   sticker: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3 3h9l5 5v9H3z"/><path d="M12 3v5h5" stroke-linecap="round"/><circle cx="7.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11.5" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M7 14.5c.8.9 1.8 1.3 2.7 1.3s1.9-.4 2.7-1.3" stroke-linecap="round"/></svg>`,
   bell: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/></svg>`,
+  rotate: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8A7 7 0 1110 17"/><path d="M3 3.5V8h4.5"/></svg>`,
+  zoomIn: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5M6 8.5h5M8.5 6v5"/></svg>`,
+  zoomOut: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5M6 8.5h5"/></svg>`,
+  undo: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4"/><path d="M3 8h9a5 5 0 010 10H9"/></svg>`,
   bellOff: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/><path d="M2.5 2.5l15 15"/></svg>`
 };
 

@@ -1979,7 +1979,7 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-stickers" title="Stickers">${icon("sticker")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
-      <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none" />
+      <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
@@ -2070,8 +2070,8 @@ function pintarChatBase(c) {
     e.preventDefault();
     dragCounter = 0;
     $("#zona-arrastre").classList.remove("visible");
-    const file = e.dataTransfer.files?.[0];
-    if (file) onArchivoElegido({ target: { files: [file] } });
+    const files = [...(e.dataTransfer.files || [])];
+    if (files.length) elegirArchivos(files);
   });
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
@@ -2841,9 +2841,22 @@ async function enviarReaccionMsg(messageId, emoji) {
 /* ---------- Adjuntar y enviar ---------- */
 
 function onArchivoElegido(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  elegirArchivo(file);
+  const files = [...(e.target.files || [])];
+  e.target.value = ""; // para poder volver a elegir las mismas
+  if (files.length) elegirArchivos(files);
+}
+
+/**
+ * Fotos y videos (uno o varios) van al editor, como en WhatsApp. Un solo
+ * documento, o un webp (sticker del teclado), sigue con la barra de vista
+ * previa de siempre.
+ */
+function elegirArchivos(files) {
+  if (files.length === 1 && (tipoLocal(files[0]) === "document" || files[0].type === "image/webp")) {
+    elegirArchivo(files[0]);
+    return;
+  }
+  abrirEditorMedia(files);
 }
 
 /** Adivina el tipo solo para la vista previa local — quién manda de verdad es lo que devuelve el servidor al subirlo (ver enviarMensaje). */
@@ -2867,7 +2880,7 @@ function onPegarImagen(e) {
     || [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith("image/"));
   if (!file) return;
   e.preventDefault();
-  elegirArchivo(file);
+  elegirArchivos([file]);
 }
 
 /** Imagen que mete el teclado del celular (Gboard/Samsung: portapapeles, stickers, GIFs) — llega como beforeinput, no como paste. */
@@ -2875,7 +2888,7 @@ function onImagenDelTeclado(e) {
   const file = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith("image/"));
   if (!file) return;
   e.preventDefault();
-  elegirArchivo(file);
+  elegirArchivos([file]);
 }
 
 /**
@@ -2893,7 +2906,7 @@ async function pegarImagenDelPortapapeles() {
       const tipo = item.types.find((t) => t.startsWith("image/"));
       if (!tipo) continue;
       const blob = await item.getType(tipo);
-      elegirArchivo(new File([blob], `imagen-pegada.${(tipo.split("/")[1] || "png").replace("jpeg", "jpg")}`, { type: tipo }));
+      elegirArchivos([new File([blob], `imagen-pegada.${(tipo.split("/")[1] || "png").replace("jpeg", "jpg")}`, { type: tipo })]);
       $("#texto-envio")?.focus();
       return;
     }
@@ -2949,6 +2962,383 @@ async function subirArchivo(file) {
   form.append("file", file);
   return pedir("/api/crm/upload-media", { method: "POST", body: form });
 }
+
+/* ---------- Editor de fotos antes de mandar (como el de WhatsApp) ---------- */
+
+// Lo que WhatsApp acepta como foto: 5 MB. Sin tocar la foto se manda el
+// archivo original de la galería, tal cual (máxima resolución); si se rotó,
+// recortó o pesa de más, se vuelve a codificar en JPEG a resolución nativa
+// y solo se baja la calidad lo justo para entrar en 5 MB.
+const FOTO_MAX_BYTES = 5 * 1024 * 1024;
+const LADO_MAX_EXPORT = 4096;          // tope de canvas seguro en iPhone
+const PIXELES_MAX_EXPORT = 16_000_000;
+const EDITOR_MAX_ARCHIVOS = 30;        // el mismo tope que WhatsApp
+const ZOOM_MAX = 8;
+
+const editor = { items: [], actual: 0, conversationId: null, punteros: new Map() };
+let siguienteIdEditor = 1;
+
+const editorAbierto = () => $("#editor-media-fondo").classList.contains("abierto");
+const itemActual = () => editor.items[editor.actual] || null;
+
+function itemDeArchivo(file) {
+  const tipo = tipoLocal(file);
+  return {
+    id: siguienteIdEditor++,
+    file,
+    tipo,
+    url: tipo === "document" ? null : URL.createObjectURL(file),
+    rot: 0, zoom: 1, tx: 0, ty: 0, // tx/ty: corrimiento en fracción del marco
+    ancho: 0, alto: 0,             // tamaño natural (ya con la orientación EXIF aplicada)
+    caption: "",
+    error: null
+  };
+}
+
+function abrirEditorMedia(files, { captions = [] } = {}) {
+  const conversationId = estado.conversacionActivaId;
+  if (!conversationId) return;
+  if (!editorAbierto()) {
+    editor.items = [];
+    editor.actual = 0;
+    editor.conversationId = conversationId;
+  }
+  const lugar = EDITOR_MAX_ARCHIVOS - editor.items.length;
+  if (files.length > lugar) alert(`Máximo ${EDITOR_MAX_ARCHIVOS} archivos por envío — se agregan los primeros ${Math.max(lugar, 0)}.`);
+  const nuevos = files.slice(0, Math.max(lugar, 0)).map(itemDeArchivo);
+  nuevos.forEach((it, i) => { it.caption = captions[i] || ""; });
+  if (!nuevos.length) return;
+
+  // Lo que ya estaba escrito en el chat pasa a ser el comentario de la
+  // primera foto, como cuando en WhatsApp adjuntas con texto a medio escribir.
+  const input = $("#texto-envio");
+  if (!editorAbierto() && input?.value.trim() && !nuevos[0].caption) {
+    nuevos[0].caption = input.value;
+    input.value = "";
+    input.style.height = "auto";
+  }
+
+  const primeroNuevo = editor.items.length;
+  editor.items.push(...nuevos);
+  editor.actual = primeroNuevo;
+  $("#editor-media-fondo").classList.add("abierto");
+  pintarEditor();
+}
+
+function cerrarEditor({ devolverTexto = true, revocar = true } = {}) {
+  const primero = editor.items[0];
+  if (devolverTexto && primero?.caption.trim()) {
+    const input = $("#texto-envio");
+    if (input && !input.value.trim()) input.value = primero.caption;
+  }
+  if (revocar) editor.items.forEach((it) => it.url && URL.revokeObjectURL(it.url));
+  editor.items = [];
+  editor.punteros.clear();
+  $("#em-marco").innerHTML = "";
+  if (editorAbierto()) $("#editor-media-fondo").classList.remove("abierto");
+}
+
+function pintarEditor() {
+  const it = itemActual();
+  if (!it) { cerrarEditor(); return; }
+  const esFoto = it.tipo === "image" && !it.error;
+  ["#em-rotar", "#em-alejar", "#em-acercar", "#em-restablecer"].forEach((sel) => { $(sel).style.visibility = esFoto ? "" : "hidden"; });
+  $("#em-caption").value = it.caption;
+  autoAltoCaption();
+  $("#em-enviar").dataset.cantidad = editor.items.length > 1 ? String(editor.items.length) : "";
+
+  $("#em-miniaturas").innerHTML = editor.items.map((x, i) => {
+    const previa = x.tipo === "image" ? `<img src="${x.url}" alt="" style="transform:rotate(${x.rot}deg)" />`
+      : x.tipo === "video" ? `<video src="${x.url}" muted></video>`
+      : `<span class="em-mini-doc">${icon("doc")}</span>`;
+    return `<button type="button" class="em-mini ${i === editor.actual ? "activa" : ""}" data-i="${i}" title="${escapar(x.file.name)}">${previa}</button>`;
+  }).join("") + (editor.items.length < EDITOR_MAX_ARCHIVOS ? `<button type="button" class="em-mini em-mini-mas" id="em-agregar" title="Agregar más">${icon("plus")}</button>` : "");
+  $("#em-miniaturas").querySelectorAll(".em-mini[data-i]").forEach((b) => b.addEventListener("click", () => {
+    guardarCaption();
+    editor.actual = Number(b.dataset.i);
+    pintarEditor();
+  }));
+  $("#em-agregar")?.addEventListener("click", () => $("#em-input-mas").click());
+
+  const marco = $("#em-marco");
+  if (it.tipo === "video") {
+    marco.className = "em-marco-libre";
+    marco.style.width = marco.style.height = "";
+    marco.innerHTML = `<video src="${it.url}" controls playsinline></video>`;
+    return;
+  }
+  if (it.tipo === "document" || it.error) {
+    marco.className = "em-marco-libre";
+    marco.style.width = marco.style.height = "";
+    marco.innerHTML = `<div class="em-doc">${icon(it.error ? "alertCircle" : "doc")}<div>${escapar(it.error || it.file.name)}</div></div>`;
+    return;
+  }
+  marco.className = "";
+  marco.innerHTML = `<img src="${it.url}" alt="" draggable="false" />`;
+  const img = marco.querySelector("img");
+  const alCargar = () => {
+    it.ancho = img.naturalWidth;
+    it.alto = img.naturalHeight;
+    colocarFoto();
+  };
+  if (img.complete && img.naturalWidth) alCargar();
+  else {
+    img.onload = alCargar;
+    img.onerror = () => {
+      it.error = "Este navegador no puede abrir este formato de foto. Conviértela a JPG o elige otra.";
+      pintarEditor();
+    };
+  }
+}
+
+/** Tamaño del marco (lo que se va a mandar) y posición de la foto dentro. */
+function colocarFoto() {
+  const it = itemActual();
+  const marco = $("#em-marco");
+  const img = marco.querySelector("img");
+  if (!it || !img || !it.ancho) return;
+  const esc = $("#em-escenario").getBoundingClientRect();
+  const girada = it.rot % 180 !== 0;
+  const rw = girada ? it.alto : it.ancho;
+  const rh = girada ? it.ancho : it.alto;
+  const encaje = Math.min((esc.width - 24) / rw, (esc.height - 24) / rh);
+  const fw = rw * encaje;
+  const fh = rh * encaje;
+  limitarCorrimiento(it);
+  marco.style.width = `${fw}px`;
+  marco.style.height = `${fh}px`;
+  img.style.width = `${it.ancho * encaje}px`;
+  img.style.height = `${it.alto * encaje}px`;
+  img.style.transform = `translate(-50%, -50%) translate(${it.tx * fw}px, ${it.ty * fh}px) rotate(${it.rot}deg) scale(${it.zoom})`;
+  $("#em-restablecer").disabled = it.rot === 0 && it.zoom === 1;
+}
+
+/** La foto siempre cubre todo el marco: no se puede correr más allá del borde. */
+function limitarCorrimiento(it) {
+  const max = (it.zoom - 1) / 2;
+  it.tx = Math.max(-max, Math.min(max, it.tx));
+  it.ty = Math.max(-max, Math.min(max, it.ty));
+}
+
+function zoomFoto(factor) {
+  const it = itemActual();
+  if (!it || it.tipo !== "image") return;
+  it.zoom = Math.max(1, Math.min(ZOOM_MAX, it.zoom * factor));
+  colocarFoto();
+}
+
+function guardarCaption() {
+  const it = itemActual();
+  if (it) it.caption = $("#em-caption").value;
+}
+
+function autoAltoCaption() {
+  const t = $("#em-caption");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 120) + "px";
+}
+
+/** El archivo que se sube de verdad: el original si no se tocó, o el recorte a resolución nativa. */
+async function archivoFinalDelEditor(it) {
+  if (it.tipo !== "image") return it.file;
+  const sinCambios = it.rot === 0 && it.zoom === 1;
+  if (sinCambios && (it.file.type === "image/jpeg" || it.file.type === "image/png") && it.file.size <= FOTO_MAX_BYTES) return it.file;
+
+  let bmp;
+  try {
+    bmp = await createImageBitmap(it.file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error(`No se pudo leer "${it.file.name}" en este navegador. Conviértela a JPG.`);
+  }
+  const girada = it.rot % 180 !== 0;
+  const rw = girada ? bmp.height : bmp.width;
+  const rh = girada ? bmp.width : bmp.height;
+  // Lo que se ve en el marco, en píxeles de la foto (ya girada).
+  const w = rw / it.zoom;
+  const h = rh / it.zoom;
+  const x0 = rw / 2 - (it.tx * rw) / it.zoom - w / 2;
+  const y0 = rh / 2 - (it.ty * rh) / it.zoom - h / 2;
+
+  let escala = Math.min(1, LADO_MAX_EXPORT / Math.max(w, h), Math.sqrt(PIXELES_MAX_EXPORT / (w * h)));
+  let blob = null;
+  for (let intento = 0; intento < 8; intento++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * escala));
+    canvas.height = Math.max(1, Math.round(h * escala));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; // un PNG con transparencia no queda negro en JPEG
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = "high";
+    ctx.scale(escala, escala);
+    ctx.translate(-x0, -y0);
+    ctx.translate(rw / 2, rh / 2);
+    ctx.rotate((it.rot * Math.PI) / 180);
+    ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+    const calidad = [0.95, 0.92, 0.88, 0.85][intento] ?? 0.85;
+    blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", calidad));
+    if (!blob) throw new Error("No se pudo preparar la foto.");
+    if (blob.size <= FOTO_MAX_BYTES) break;
+    if (intento >= 3) escala *= 0.85; // ya con calidad justa: recién ahí se achica
+  }
+  bmp.close?.();
+  const base = (it.file.name || "foto").replace(/\.[^.]+$/, "") || "foto";
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+}
+
+function enviarDesdeEditor() {
+  guardarCaption();
+  const conversationId = editor.conversationId;
+  const items = editor.items.filter((it) => !it.error);
+  if (!items.length) return;
+  const respondiendoA = estado.conversacionActivaId === conversationId ? estado.respondiendoA : null;
+  if (respondiendoA) cancelarRespuesta();
+  // Las vistas previas quedan vivas: las usan las burbujas "enviando".
+  cerrarEditor({ devolverTexto: false, revocar: false });
+
+  const burbujas = items.map((it) => ({ type: it.tipo, previewUrl: it.url, fileName: it.file.name, body: it.caption.trim() }));
+  let enviados = 0;
+  encolarEnvio(conversationId, burbujas, async () => {
+    for (const it of items) {
+      const archivo = await archivoFinalDelEditor(it);
+      const { media_key, type, original_name } = await subirArchivo(archivo);
+      await pedir("/api/crm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          media_key,
+          media_type: type,
+          caption: it.caption.trim() || undefined,
+          file_name: original_name,
+          reply_to_id: enviados === 0 ? respondiendoA?.id || undefined : undefined
+        })
+      });
+      enviados++;
+      if (it.url) URL.revokeObjectURL(it.url);
+    }
+  }, (err) => {
+    const restantes = items.slice(enviados);
+    alert(`${enviados ? `Se mandaron ${enviados} de ${items.length}. ` : ""}No se pudo mandar "${restantes[0]?.file.name}": ${err.message}`);
+    // Lo que no salió vuelve al editor para reintentar, si sigue en ese chat.
+    if (estado.conversacionActivaId === conversationId && !editorAbierto() && restantes.length) {
+      restantes.forEach((it) => it.url && URL.revokeObjectURL(it.url));
+      abrirEditorMedia(restantes.map((it) => it.file), { captions: restantes.map((it) => it.caption) });
+    } else {
+      restantes.forEach((it) => it.url && URL.revokeObjectURL(it.url));
+    }
+  });
+}
+
+function configurarEditorMedia() {
+  $("#em-cerrar").innerHTML = icon("close");
+  $("#em-rotar").innerHTML = icon("rotate");
+  $("#em-alejar").innerHTML = icon("zoomOut");
+  $("#em-acercar").innerHTML = icon("zoomIn");
+  $("#em-restablecer").innerHTML = icon("undo");
+  $("#em-quitar").innerHTML = icon("trash");
+  $("#em-enviar").innerHTML = icon("send");
+
+  $("#em-cerrar").addEventListener("click", () => cerrarEditor());
+  // El "atrás" del teléfono cierra el modal sin pasar por cerrarEditor.
+  new MutationObserver(() => { if (!editorAbierto() && editor.items.length) cerrarEditor(); })
+    .observe($("#editor-media-fondo"), { attributes: true, attributeFilter: ["class"] });
+
+  $("#em-rotar").addEventListener("click", () => {
+    const it = itemActual();
+    if (!it) return;
+    it.rot = (it.rot + 270) % 360; // a la izquierda, como WhatsApp
+    it.tx = it.ty = 0;
+    colocarFoto();
+    const mini = $(`#em-miniaturas .em-mini[data-i="${editor.actual}"] img`);
+    if (mini) mini.style.transform = `rotate(${it.rot}deg)`;
+  });
+  $("#em-acercar").addEventListener("click", () => zoomFoto(1.4));
+  $("#em-alejar").addEventListener("click", () => zoomFoto(1 / 1.4));
+  $("#em-restablecer").addEventListener("click", () => {
+    const it = itemActual();
+    if (!it) return;
+    Object.assign(it, { rot: 0, zoom: 1, tx: 0, ty: 0 });
+    pintarEditor();
+  });
+  $("#em-quitar").addEventListener("click", () => {
+    const it = itemActual();
+    if (!it) return;
+    if (it.url) URL.revokeObjectURL(it.url);
+    editor.items.splice(editor.actual, 1);
+    editor.actual = Math.min(editor.actual, editor.items.length - 1);
+    if (!editor.items.length) { cerrarEditor({ revocar: false }); return; }
+    pintarEditor();
+  });
+  $("#em-input-mas").addEventListener("change", (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    guardarCaption();
+    if (files.length) abrirEditorMedia(files);
+  });
+
+  const caption = $("#em-caption");
+  caption.addEventListener("input", () => { guardarCaption(); autoAltoCaption(); });
+  caption.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !window.matchMedia("(max-width: 600px)").matches) {
+      e.preventDefault();
+      enviarDesdeEditor();
+    }
+  });
+  $("#em-enviar").addEventListener("click", enviarDesdeEditor);
+  document.addEventListener("keydown", (e) => {
+    if (!editorAbierto() || e.target === caption) return;
+    if (e.key === "Escape") cerrarEditor();
+  });
+
+  // Mover con el dedo/mouse, pellizcar o rueda para acercar, doble toque para 2×.
+  const escenario = $("#em-escenario");
+  let pellizco = null;
+  const distancia = () => {
+    const [a, b] = [...editor.punteros.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  escenario.addEventListener("pointerdown", (e) => {
+    const it = itemActual();
+    if (!it || it.tipo !== "image" || it.error) return;
+    escenario.setPointerCapture(e.pointerId);
+    editor.punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (editor.punteros.size === 2) pellizco = { d: distancia(), zoom: it.zoom };
+  });
+  escenario.addEventListener("pointermove", (e) => {
+    const it = itemActual();
+    const previo = editor.punteros.get(e.pointerId);
+    if (!it || !previo) return;
+    const actual = { x: e.clientX, y: e.clientY };
+    editor.punteros.set(e.pointerId, actual);
+    if (editor.punteros.size >= 2 && pellizco) {
+      it.zoom = Math.max(1, Math.min(ZOOM_MAX, pellizco.zoom * (distancia() / pellizco.d)));
+    } else if (editor.punteros.size === 1 && it.zoom > 1) {
+      const marco = $("#em-marco").getBoundingClientRect();
+      it.tx += (actual.x - previo.x) / marco.width;
+      it.ty += (actual.y - previo.y) / marco.height;
+    }
+    colocarFoto();
+  });
+  const soltar = (e) => {
+    editor.punteros.delete(e.pointerId);
+    if (editor.punteros.size < 2) pellizco = null;
+  };
+  escenario.addEventListener("pointerup", soltar);
+  escenario.addEventListener("pointercancel", soltar);
+  escenario.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoomFoto(Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+  escenario.addEventListener("dblclick", () => {
+    const it = itemActual();
+    if (!it || it.tipo !== "image") return;
+    it.zoom = it.zoom > 1 ? 1 : 2;
+    colocarFoto();
+  });
+  window.addEventListener("resize", () => { if (editorAbierto()) colocarFoto(); });
+}
+
+configurarEditorMedia();
 
 /*
  * Envío en segundo plano: el mensaje aparece en el chat como "enviando" y el
@@ -4138,6 +4528,59 @@ $("#template-enviar").addEventListener("click", async () => {
 
 /* ---------- Panel de detalle ---------- */
 
+/** El código de Shalom del cliente como etiqueta: se ve de un vistazo, se copia de un toque y se edita en el lugar. */
+function pintarShalom(c, editando = false) {
+  const cont = $("#detalle-shalom");
+  if (!cont) return;
+  if (c.shalom_code && !editando) {
+    cont.innerHTML = `
+      <div class="shalom-fila">
+        <span class="etiqueta-shalom" title="Código de Shalom">${escapar(c.shalom_code)}</span>
+        <button type="button" class="cancelar" id="shalom-copiar">Copiar</button>
+        <button type="button" class="cancelar" id="shalom-editar">${icon("pencil")}</button>
+      </div>`;
+    $("#shalom-copiar").addEventListener("click", async (e) => {
+      try {
+        await navigator.clipboard.writeText(c.shalom_code);
+        e.currentTarget.textContent = "Copiado ✓";
+      } catch {
+        prompt("Copia el código:", c.shalom_code);
+      }
+    });
+    $("#shalom-editar").addEventListener("click", () => pintarShalom(c, true));
+    return;
+  }
+  cont.innerHTML = `
+    <div class="shalom-fila">
+      <input type="text" id="shalom-input" placeholder="Ej. código de la orden de Shalom" maxlength="60" value="${escapar(c.shalom_code || "")}" />
+      <button type="button" class="crear" id="shalom-guardar">Guardar</button>
+    </div>
+    <div class="ayuda-modal" id="shalom-estado" style="margin:2px 0 0"></div>`;
+  const input = $("#shalom-input");
+  const guardar = async () => {
+    const valor = input.value.trim();
+    const btn = $("#shalom-guardar");
+    btn.disabled = true;
+    try {
+      await pedir("/api/crm/contacts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_id: c.contact_id, shalom_code: valor })
+      });
+      // Todas las conversaciones de ese contacto comparten el código.
+      for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.shalom_code = valor || null;
+      c.shalom_code = valor || null;
+      pintarShalom(c);
+    } catch (err) {
+      $("#shalom-estado").textContent = `No se guardó: ${err.message}`;
+      btn.disabled = false;
+    }
+  };
+  $("#shalom-guardar").addEventListener("click", guardar);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); guardar(); } });
+  if (editando) input.focus();
+}
+
 async function pintarDetalle(c) {
   const nombre = c.profile_name || c.wa_id;
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
@@ -4146,6 +4589,9 @@ async function pintarDetalle(c) {
     ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
+
+    <h2>Código Shalom</h2>
+    <div id="detalle-shalom"></div>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -4223,6 +4669,7 @@ async function pintarDetalle(c) {
     }
   }, 600));
 
+  pintarShalom(c);
   actualizarHistorialCapi(c.conversation_id);
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {

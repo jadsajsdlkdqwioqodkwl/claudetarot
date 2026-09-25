@@ -661,3 +661,39 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   #chat header .acciones-chat .btn-meta { height: 30px; min-width: 30px; padding: 0 5px; }
   #popover-meta { top: 56px; right: 8px; left: 8px; width: auto; max-width: none; }
 }
+
+/* Código de Shalom en el panel derecho, como etiqueta. */
+.shalom-fila { display: flex; align-items: center; gap: 6px; }
+.shalom-fila input { flex: 1; min-width: 0; padding: 7px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; font-family: inherit; }
+.etiqueta-shalom { flex: 1; min-width: 0; padding: 5px 10px; border-radius: 999px; background: #fff3e0; color: #c2410c; border: 1px solid #fdba74; font-weight: 600; font-size: 13px; letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: all; }
+.etiqueta-shalom::before { content: "🚚 "; }
+
+/* Editor de fotos antes de mandar — pantalla completa, como el de WhatsApp. */
+#editor-media-fondo { background: #0b141a; }
+#editor-media { position: fixed; inset: 0; display: flex; flex-direction: column; color: #e9edef; }
+#editor-media header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top)); }
+#editor-media header button { width: 42px; height: 42px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+#editor-media header button:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+#editor-media header button:disabled { opacity: .35; cursor: default; }
+#editor-media header .icono-svg { width: 22px; height: 22px; }
+.em-herramientas { display: flex; gap: 2px; }
+#em-escenario { flex: 1; min-height: 0; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+#em-marco { position: relative; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.3); }
+#em-marco img { position: absolute; left: 50%; top: 50%; max-width: none; transform-origin: center; pointer-events: none; will-change: transform; }
+#em-marco.em-marco-libre { box-shadow: none; overflow: visible; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+#em-marco.em-marco-libre video { max-width: 100%; max-height: 100%; }
+.em-doc { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 320px; text-align: center; font-size: 14px; padding: 0 16px; }
+.em-doc .icono-svg { width: 56px; height: 56px; }
+#em-pie { padding: 8px 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.35); }
+#em-miniaturas { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; justify-content: safe center; }
+.em-mini { width: 54px; height: 54px; flex: none; padding: 0; border-radius: 6px; overflow: hidden; border: 2px solid transparent; background: #202c33; cursor: pointer; color: #e9edef; display: flex; align-items: center; justify-content: center; }
+.em-mini.activa { border-color: #25d366; }
+.em-mini img, .em-mini video { width: 100%; height: 100%; object-fit: cover; }
+.em-mini-mas { border: 1px dashed rgba(255,255,255,.45); background: transparent; }
+.em-mini .icono-svg { width: 22px; height: 22px; }
+.em-envio { display: flex; gap: 8px; align-items: flex-end; max-width: 900px; margin: 0 auto; }
+#em-caption { flex: 1; min-width: 0; resize: none; border: 0; border-radius: 22px; padding: 11px 16px; font-size: 16px; line-height: 1.35; background: #2a3942; color: #e9edef; max-height: 120px; font-family: inherit; outline: none; }
+#em-caption::placeholder { color: #8696a0; }
+#em-enviar { position: relative; width: 48px; height: 48px; flex: none; border: 0; border-radius: 50%; background: #25d366; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+#em-enviar .icono-svg { width: 22px; height: 22px; }
+#em-enviar[data-cantidad]:not([data-cantidad=""])::after { content: attr(data-cantidad); position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #fff; color: #111b21; font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
