@@ -1979,6 +1979,8 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-rapidas" title="Respuestas rápidas">${icon("bolt")}</button>
       <button type="button" class="icono" id="btn-stickers" title="Stickers">${icon("sticker")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
+      <!-- Solo image/* y video/*: así el celular abre la galería de fotos y no el explorador de archivos. -->
+      <input type="file" id="input-galeria" accept="image/*,video/*" multiple style="display:none" />
       <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
@@ -1990,6 +1992,7 @@ function pintarChatBase(c) {
       <div id="panel-emojis"></div>
       <div id="panel-catalogo"></div>
       <div id="panel-stickers"></div>
+      <div id="panel-adjuntar"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
   // Enter en un buscador de un panel (catálogo, respuestas rápidas) no debe
@@ -2019,8 +2022,9 @@ function pintarChatBase(c) {
   pintarEstrellaHeader(c);
   $("#btn-lead").addEventListener("click", (e) => { e.stopPropagation(); marcarLead(c); });
   $("#btn-venta").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverVenta(c); });
-  $("#btn-adjuntar").addEventListener("click", () => $("#input-archivo").click());
+  $("#btn-adjuntar").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-adjuntar"]); toggleAdjuntarPanel(); });
   $("#input-archivo").addEventListener("change", onArchivoElegido);
+  $("#input-galeria").addEventListener("change", onArchivoElegido);
   $("#texto-envio").addEventListener("paste", onPegarImagen);
   $("#texto-envio").addEventListener("beforeinput", onImagenDelTeclado);
   configurarAccionesMensajes();
@@ -2236,9 +2240,22 @@ function pintarListaProductos(filtro) {
 }
 
 function cerrarPaneles(excepto = []) {
-  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas", "#panel-stickers"].forEach((sel) => {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas", "#panel-stickers", "#panel-adjuntar"].forEach((sel) => {
     if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
   });
+}
+
+/** El clip, como en WhatsApp: la galería de fotos por un lado y los documentos por otro. */
+function toggleAdjuntarPanel() {
+  const panel = $("#panel-adjuntar");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (!panel.classList.contains("abierto")) return;
+  panel.innerHTML = `
+    <div class="item" id="adj-galeria"><div class="titulo">${icon("image")} Fotos y videos</div></div>
+    <div class="item" id="adj-documento"><div class="titulo">${icon("doc")} Documento</div></div>`;
+  $("#adj-galeria").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-galeria").click(); });
+  $("#adj-documento").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
 }
 
 /** Menú "⋯" que en el celular junta plantilla/catálogo/seguimiento — en pantallas angostas no entran los 5 íconos junto al textarea. */
@@ -2253,9 +2270,11 @@ function toggleMasPanel() {
     <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>
     <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>
     <div class="item" id="mas-pegar-imagen"><div class="titulo">${icon("image")} Pegar imagen copiada</div></div>
-    <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Adjuntar foto, video o archivo</div></div>
+    <div class="item mas-solo-angosto" id="mas-galeria"><div class="titulo">${icon("image")} Fotos y videos (galería)</div></div>
+    <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Documento o archivo</div></div>
     <div class="item mas-solo-angosto" id="mas-emojis"><div class="titulo">${icon("smile")} Emojis</div></div>`;
   $("#mas-pegar-imagen").addEventListener("click", () => { panel.classList.remove("abierto"); pegarImagenDelPortapapeles(); });
+  $("#mas-galeria").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-galeria").click(); });
   $("#mas-adjuntar").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
   $("#mas-emojis").addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("abierto"); toggleEmojiPanel(); });
   $("#mas-plantillas").addEventListener("click", () => { panel.classList.remove("abierto"); abrirModalTemplates(); });
@@ -2969,17 +2988,30 @@ async function subirArchivo(file) {
 // archivo original de la galería, tal cual (máxima resolución); si se rotó,
 // recortó o pesa de más, se vuelve a codificar en JPEG a resolución nativa
 // y solo se baja la calidad lo justo para entrar en 5 MB.
+//
+// El zoom es solo para mirar de cerca: no cambia lo que se manda. Lo único
+// que recorta es la herramienta Recortar.
 const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 const LADO_MAX_EXPORT = 4096;          // tope de canvas seguro en iPhone
 const PIXELES_MAX_EXPORT = 16_000_000;
 const EDITOR_MAX_ARCHIVOS = 30;        // el mismo tope que WhatsApp
 const ZOOM_MAX = 8;
+const RECORTE_MIN = 0.08;              // lado mínimo del recorte, en fracción de la foto
+const FOTO_ENTERA = { x: 0, y: 0, w: 1, h: 1 };
 
-const editor = { items: [], actual: 0, conversationId: null, punteros: new Map() };
+const editor = {
+  items: [],
+  actual: 0,
+  conversationId: null,
+  punteros: new Map(),
+  vista: { z: 1, x: 0, y: 0 }, // zoom de mirar, en px — no se manda
+  recorte: null                 // mientras se recorta: el rectángulo en edición
+};
 let siguienteIdEditor = 1;
 
 const editorAbierto = () => $("#editor-media-fondo").classList.contains("abierto");
 const itemActual = () => editor.items[editor.actual] || null;
+const esRecorteEntero = (c) => c.x <= 0 && c.y <= 0 && c.w >= 1 && c.h >= 1;
 
 function itemDeArchivo(file) {
   const tipo = tipoLocal(file);
@@ -2988,11 +3020,16 @@ function itemDeArchivo(file) {
     file,
     tipo,
     url: tipo === "document" ? null : URL.createObjectURL(file),
-    rot: 0, zoom: 1, tx: 0, ty: 0, // tx/ty: corrimiento en fracción del marco
-    ancho: 0, alto: 0,             // tamaño natural (ya con la orientación EXIF aplicada)
+    rot: 0,
+    crop: { ...FOTO_ENTERA }, // en fracción de la foto ya girada
+    ancho: 0, alto: 0,        // tamaño natural (ya con la orientación EXIF aplicada)
     caption: "",
     error: null
   };
+}
+
+function reiniciarVista() {
+  editor.vista = { z: 1, x: 0, y: 0 };
 }
 
 function abrirEditorMedia(files, { captions = [] } = {}) {
@@ -3021,6 +3058,8 @@ function abrirEditorMedia(files, { captions = [] } = {}) {
   const primeroNuevo = editor.items.length;
   editor.items.push(...nuevos);
   editor.actual = primeroNuevo;
+  editor.recorte = null;
+  reiniciarVista();
   $("#editor-media-fondo").classList.add("abierto");
   pintarEditor();
 }
@@ -3033,7 +3072,9 @@ function cerrarEditor({ devolverTexto = true, revocar = true } = {}) {
   }
   if (revocar) editor.items.forEach((it) => it.url && URL.revokeObjectURL(it.url));
   editor.items = [];
+  editor.recorte = null;
   editor.punteros.clear();
+  $("#editor-media").classList.remove("recortando");
   $("#em-marco").innerHTML = "";
   if (editorAbierto()) $("#editor-media-fondo").classList.remove("abierto");
 }
@@ -3042,7 +3083,9 @@ function pintarEditor() {
   const it = itemActual();
   if (!it) { cerrarEditor(); return; }
   const esFoto = it.tipo === "image" && !it.error;
-  ["#em-rotar", "#em-alejar", "#em-acercar", "#em-restablecer"].forEach((sel) => { $(sel).style.visibility = esFoto ? "" : "hidden"; });
+  if (!esFoto) editor.recorte = null;
+  $("#editor-media").classList.toggle("recortando", Boolean(editor.recorte));
+  ["#em-rotar", "#em-recortar", "#em-alejar", "#em-acercar", "#em-restablecer"].forEach((sel) => { $(sel).style.visibility = esFoto ? "" : "hidden"; });
   $("#em-caption").value = it.caption;
   autoAltoCaption();
   $("#em-enviar").dataset.cantidad = editor.items.length > 1 ? String(editor.items.length) : "";
@@ -3056,11 +3099,13 @@ function pintarEditor() {
   $("#em-miniaturas").querySelectorAll(".em-mini[data-i]").forEach((b) => b.addEventListener("click", () => {
     guardarCaption();
     editor.actual = Number(b.dataset.i);
+    reiniciarVista();
     pintarEditor();
   }));
   $("#em-agregar")?.addEventListener("click", () => $("#em-input-mas").click());
 
   const marco = $("#em-marco");
+  marco.style.transform = "";
   if (it.tipo === "video") {
     marco.className = "em-marco-libre";
     marco.style.width = marco.style.height = "";
@@ -3074,7 +3119,12 @@ function pintarEditor() {
     return;
   }
   marco.className = "";
-  marco.innerHTML = `<img src="${it.url}" alt="" draggable="false" />`;
+  marco.innerHTML = `<img src="${it.url}" alt="" draggable="false" />` + (editor.recorte ? `
+    <div id="em-caja" data-h="mover">
+      <span class="em-guia em-guia-v1"></span><span class="em-guia em-guia-v2"></span>
+      <span class="em-guia em-guia-h1"></span><span class="em-guia em-guia-h2"></span>
+      ${["nw", "ne", "sw", "se", "n", "s", "e", "w"].map((h) => `<span class="em-asa em-asa-${h}" data-h="${h}"></span>`).join("")}
+    </div>` : "");
   const img = marco.querySelector("img");
   const alCargar = () => {
     it.ancho = img.naturalWidth;
@@ -3091,41 +3141,58 @@ function pintarEditor() {
   }
 }
 
-/** Tamaño del marco (lo que se va a mandar) y posición de la foto dentro. */
+/**
+ * Fuera de Recortar, el marco muestra solo la parte recortada (lo que se va
+ * a mandar), con el zoom de mirar encima. En Recortar, la foto entera con
+ * el rectángulo para ajustar.
+ */
 function colocarFoto() {
   const it = itemActual();
   const marco = $("#em-marco");
   const img = marco.querySelector("img");
   if (!it || !img || !it.ancho) return;
   const esc = $("#em-escenario").getBoundingClientRect();
+  const c = editor.recorte ? FOTO_ENTERA : it.crop;
   const girada = it.rot % 180 !== 0;
   const rw = girada ? it.alto : it.ancho;
   const rh = girada ? it.ancho : it.alto;
-  const encaje = Math.min((esc.width - 24) / rw, (esc.height - 24) / rh);
-  const fw = rw * encaje;
-  const fh = rh * encaje;
-  limitarCorrimiento(it);
+  const margen = editor.recorte ? 56 : 24;
+  const encaje = Math.min((esc.width - margen) / (rw * c.w), (esc.height - margen) / (rh * c.h));
+  const fw = rw * c.w * encaje;
+  const fh = rh * c.h * encaje;
   marco.style.width = `${fw}px`;
   marco.style.height = `${fh}px`;
   img.style.width = `${it.ancho * encaje}px`;
   img.style.height = `${it.alto * encaje}px`;
-  img.style.transform = `translate(-50%, -50%) translate(${it.tx * fw}px, ${it.ty * fh}px) rotate(${it.rot}deg) scale(${it.zoom})`;
-  $("#em-restablecer").disabled = it.rot === 0 && it.zoom === 1;
+  img.style.left = `${(0.5 - c.x) * rw * encaje}px`;
+  img.style.top = `${(0.5 - c.y) * rh * encaje}px`;
+  img.style.transform = `translate(-50%, -50%) rotate(${it.rot}deg)`;
+
+  if (editor.recorte) {
+    marco.style.transform = "";
+    const r = editor.recorte;
+    Object.assign($("#em-caja").style, { left: `${r.x * 100}%`, top: `${r.y * 100}%`, width: `${r.w * 100}%`, height: `${r.h * 100}%` });
+  } else {
+    const v = editor.vista;
+    const maxX = ((v.z - 1) * fw) / 2 + Math.max(0, (fw * v.z - esc.width) / 2);
+    const maxY = ((v.z - 1) * fh) / 2 + Math.max(0, (fh * v.z - esc.height) / 2);
+    v.x = Math.max(-maxX, Math.min(maxX, v.x));
+    v.y = Math.max(-maxY, Math.min(maxY, v.y));
+    marco.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.z})`;
+  }
+  $("#em-restablecer").disabled = it.rot === 0 && esRecorteEntero(it.crop);
 }
 
-/** La foto siempre cubre todo el marco: no se puede correr más allá del borde. */
-function limitarCorrimiento(it) {
-  const max = (it.zoom - 1) / 2;
-  it.tx = Math.max(-max, Math.min(max, it.tx));
-  it.ty = Math.max(-max, Math.min(max, it.ty));
-}
-
-function zoomFoto(factor) {
+function zoomVista(factor) {
   const it = itemActual();
-  if (!it || it.tipo !== "image") return;
-  it.zoom = Math.max(1, Math.min(ZOOM_MAX, it.zoom * factor));
+  if (!it || it.tipo !== "image" || editor.recorte) return;
+  editor.vista.z = Math.max(1, Math.min(ZOOM_MAX, editor.vista.z * factor));
+  if (editor.vista.z === 1) editor.vista.x = editor.vista.y = 0;
   colocarFoto();
 }
+
+/** Girar 90° a la izquierda lleva el rectángulo con la foto. */
+const girarRect = (c) => ({ x: c.y, y: 1 - c.x - c.w, w: c.h, h: c.w });
 
 function guardarCaption() {
   const it = itemActual();
@@ -3141,7 +3208,7 @@ function autoAltoCaption() {
 /** El archivo que se sube de verdad: el original si no se tocó, o el recorte a resolución nativa. */
 async function archivoFinalDelEditor(it) {
   if (it.tipo !== "image") return it.file;
-  const sinCambios = it.rot === 0 && it.zoom === 1;
+  const sinCambios = it.rot === 0 && esRecorteEntero(it.crop);
   if (sinCambios && (it.file.type === "image/jpeg" || it.file.type === "image/png") && it.file.size <= FOTO_MAX_BYTES) return it.file;
 
   let bmp;
@@ -3153,11 +3220,11 @@ async function archivoFinalDelEditor(it) {
   const girada = it.rot % 180 !== 0;
   const rw = girada ? bmp.height : bmp.width;
   const rh = girada ? bmp.width : bmp.height;
-  // Lo que se ve en el marco, en píxeles de la foto (ya girada).
-  const w = rw / it.zoom;
-  const h = rh / it.zoom;
-  const x0 = rw / 2 - (it.tx * rw) / it.zoom - w / 2;
-  const y0 = rh / 2 - (it.ty * rh) / it.zoom - h / 2;
+  // El recorte, en píxeles de la foto ya girada.
+  const x0 = it.crop.x * rw;
+  const y0 = it.crop.y * rh;
+  const w = it.crop.w * rw;
+  const h = it.crop.h * rh;
 
   let escala = Math.min(1, LADO_MAX_EXPORT / Math.max(w, h), Math.sqrt(PIXELES_MAX_EXPORT / (w * h)));
   let blob = null;
@@ -3186,6 +3253,7 @@ async function archivoFinalDelEditor(it) {
 }
 
 function enviarDesdeEditor() {
+  if (editor.recorte) terminarRecorte(true);
   guardarCaption();
   const conversationId = editor.conversationId;
   const items = editor.items.filter((it) => !it.error);
@@ -3219,45 +3287,89 @@ function enviarDesdeEditor() {
   }, (err) => {
     const restantes = items.slice(enviados);
     alert(`${enviados ? `Se mandaron ${enviados} de ${items.length}. ` : ""}No se pudo mandar "${restantes[0]?.file.name}": ${err.message}`);
+    restantes.forEach((it) => it.url && URL.revokeObjectURL(it.url));
     // Lo que no salió vuelve al editor para reintentar, si sigue en ese chat.
     if (estado.conversacionActivaId === conversationId && !editorAbierto() && restantes.length) {
-      restantes.forEach((it) => it.url && URL.revokeObjectURL(it.url));
       abrirEditorMedia(restantes.map((it) => it.file), { captions: restantes.map((it) => it.caption) });
-    } else {
-      restantes.forEach((it) => it.url && URL.revokeObjectURL(it.url));
     }
   });
+}
+
+function empezarRecorte() {
+  const it = itemActual();
+  if (!it || it.tipo !== "image" || it.error) return;
+  editor.recorte = { ...it.crop };
+  reiniciarVista();
+  pintarEditor();
+}
+
+function terminarRecorte(aplicar) {
+  const it = itemActual();
+  if (aplicar && it && editor.recorte) it.crop = { ...editor.recorte };
+  editor.recorte = null;
+  reiniciarVista();
+  pintarEditor();
+}
+
+/** Mueve un borde o esquina (o todo el rectángulo) del recorte, sin salirse de la foto. */
+function ajustarRecorte(asa, dx, dy) {
+  const r = editor.recorte;
+  if (asa === "mover") {
+    r.x = Math.max(0, Math.min(1 - r.w, r.x + dx));
+    r.y = Math.max(0, Math.min(1 - r.h, r.y + dy));
+    return;
+  }
+  let izq = r.x, arr = r.y, der = r.x + r.w, aba = r.y + r.h;
+  if (asa.includes("w")) izq = Math.max(0, Math.min(der - RECORTE_MIN, izq + dx));
+  if (asa.includes("e")) der = Math.min(1, Math.max(izq + RECORTE_MIN, der + dx));
+  if (asa.includes("n")) arr = Math.max(0, Math.min(aba - RECORTE_MIN, arr + dy));
+  if (asa.includes("s")) aba = Math.min(1, Math.max(arr + RECORTE_MIN, aba + dy));
+  Object.assign(r, { x: izq, y: arr, w: der - izq, h: aba - arr });
 }
 
 function configurarEditorMedia() {
   $("#em-cerrar").innerHTML = icon("close");
   $("#em-rotar").innerHTML = icon("rotate");
+  $("#em-recortar").innerHTML = icon("crop");
   $("#em-alejar").innerHTML = icon("zoomOut");
   $("#em-acercar").innerHTML = icon("zoomIn");
   $("#em-restablecer").innerHTML = icon("undo");
   $("#em-quitar").innerHTML = icon("trash");
   $("#em-enviar").innerHTML = icon("send");
 
-  $("#em-cerrar").addEventListener("click", () => cerrarEditor());
+  // En Recortar, la X solo sale del recorte (como en WhatsApp).
+  $("#em-cerrar").addEventListener("click", () => (editor.recorte ? terminarRecorte(false) : cerrarEditor()));
   // El "atrás" del teléfono cierra el modal sin pasar por cerrarEditor.
   new MutationObserver(() => { if (!editorAbierto() && editor.items.length) cerrarEditor(); })
     .observe($("#editor-media-fondo"), { attributes: true, attributeFilter: ["class"] });
 
   $("#em-rotar").addEventListener("click", () => {
     const it = itemActual();
-    if (!it) return;
+    if (!it || it.tipo !== "image") return;
     it.rot = (it.rot + 270) % 360; // a la izquierda, como WhatsApp
-    it.tx = it.ty = 0;
+    it.crop = girarRect(it.crop);
+    if (editor.recorte) editor.recorte = girarRect(editor.recorte);
+    reiniciarVista();
     colocarFoto();
     const mini = $(`#em-miniaturas .em-mini[data-i="${editor.actual}"] img`);
     if (mini) mini.style.transform = `rotate(${it.rot}deg)`;
   });
-  $("#em-acercar").addEventListener("click", () => zoomFoto(1.4));
-  $("#em-alejar").addEventListener("click", () => zoomFoto(1 / 1.4));
+  $("#em-recortar").addEventListener("click", empezarRecorte);
+  $("#em-recorte-cancelar").addEventListener("click", () => terminarRecorte(false));
+  $("#em-recorte-listo").addEventListener("click", () => terminarRecorte(true));
+  $("#em-recorte-todo").addEventListener("click", () => {
+    if (!editor.recorte) return;
+    editor.recorte = { ...FOTO_ENTERA };
+    colocarFoto();
+  });
+  $("#em-acercar").addEventListener("click", () => zoomVista(1.5));
+  $("#em-alejar").addEventListener("click", () => zoomVista(1 / 1.5));
   $("#em-restablecer").addEventListener("click", () => {
     const it = itemActual();
     if (!it) return;
-    Object.assign(it, { rot: 0, zoom: 1, tx: 0, ty: 0 });
+    Object.assign(it, { rot: 0, crop: { ...FOTO_ENTERA } });
+    editor.recorte = null;
+    reiniciarVista();
     pintarEditor();
   });
   $("#em-quitar").addEventListener("click", () => {
@@ -3267,6 +3379,7 @@ function configurarEditorMedia() {
     editor.items.splice(editor.actual, 1);
     editor.actual = Math.min(editor.actual, editor.items.length - 1);
     if (!editor.items.length) { cerrarEditor({ revocar: false }); return; }
+    reiniciarVista();
     pintarEditor();
   });
   $("#em-input-mas").addEventListener("change", (e) => {
@@ -3287,12 +3400,14 @@ function configurarEditorMedia() {
   $("#em-enviar").addEventListener("click", enviarDesdeEditor);
   document.addEventListener("keydown", (e) => {
     if (!editorAbierto() || e.target === caption) return;
-    if (e.key === "Escape") cerrarEditor();
+    if (e.key === "Escape") editor.recorte ? terminarRecorte(false) : cerrarEditor();
   });
 
-  // Mover con el dedo/mouse, pellizcar o rueda para acercar, doble toque para 2×.
+  // Recortando: arrastrar esquinas/bordes o el rectángulo entero.
+  // Si no: mover con el dedo/mouse, pellizcar o rueda para acercar, doble toque para 2×.
   const escenario = $("#em-escenario");
   let pellizco = null;
+  let asaActiva = null;
   const distancia = () => {
     const [a, b] = [...editor.punteros.values()];
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -3300,39 +3415,48 @@ function configurarEditorMedia() {
   escenario.addEventListener("pointerdown", (e) => {
     const it = itemActual();
     if (!it || it.tipo !== "image" || it.error) return;
+    if (editor.recorte) {
+      asaActiva = e.target.closest?.("[data-h]")?.dataset.h || null;
+      if (!asaActiva) return;
+    }
+    e.preventDefault();
     escenario.setPointerCapture(e.pointerId);
     editor.punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (editor.punteros.size === 2) pellizco = { d: distancia(), zoom: it.zoom };
+    if (!editor.recorte && editor.punteros.size === 2) pellizco = { d: distancia(), z: editor.vista.z };
   });
   escenario.addEventListener("pointermove", (e) => {
-    const it = itemActual();
     const previo = editor.punteros.get(e.pointerId);
-    if (!it || !previo) return;
+    if (!previo) return;
     const actual = { x: e.clientX, y: e.clientY };
     editor.punteros.set(e.pointerId, actual);
-    if (editor.punteros.size >= 2 && pellizco) {
-      it.zoom = Math.max(1, Math.min(ZOOM_MAX, pellizco.zoom * (distancia() / pellizco.d)));
-    } else if (editor.punteros.size === 1 && it.zoom > 1) {
+    if (editor.recorte) {
+      if (!asaActiva || editor.punteros.size > 1) return;
       const marco = $("#em-marco").getBoundingClientRect();
-      it.tx += (actual.x - previo.x) / marco.width;
-      it.ty += (actual.y - previo.y) / marco.height;
+      ajustarRecorte(asaActiva, (actual.x - previo.x) / marco.width, (actual.y - previo.y) / marco.height);
+    } else if (editor.punteros.size >= 2 && pellizco) {
+      editor.vista.z = Math.max(1, Math.min(ZOOM_MAX, pellizco.z * (distancia() / pellizco.d)));
+    } else if (editor.punteros.size === 1 && editor.vista.z > 1) {
+      editor.vista.x += actual.x - previo.x;
+      editor.vista.y += actual.y - previo.y;
     }
     colocarFoto();
   });
   const soltar = (e) => {
     editor.punteros.delete(e.pointerId);
     if (editor.punteros.size < 2) pellizco = null;
+    if (!editor.punteros.size) asaActiva = null;
   };
   escenario.addEventListener("pointerup", soltar);
   escenario.addEventListener("pointercancel", soltar);
   escenario.addEventListener("wheel", (e) => {
     e.preventDefault();
-    zoomFoto(Math.exp(-e.deltaY * 0.0015));
+    zoomVista(Math.exp(-e.deltaY * 0.0015));
   }, { passive: false });
   escenario.addEventListener("dblclick", () => {
+    if (editor.recorte) return;
     const it = itemActual();
     if (!it || it.tipo !== "image") return;
-    it.zoom = it.zoom > 1 ? 1 : 2;
+    editor.vista = editor.vista.z > 1 ? { z: 1, x: 0, y: 0 } : { z: 2, x: 0, y: 0 };
     colocarFoto();
   });
   window.addEventListener("resize", () => { if (editorAbierto()) colocarFoto(); });
@@ -3533,7 +3657,7 @@ function agregarEmojisA(el) {
 ["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto"].forEach((sel) => agregarEmojisA($(sel)));
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers")) {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
     cerrarPaneles();
   }
 });

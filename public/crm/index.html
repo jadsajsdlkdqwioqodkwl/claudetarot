@@ -223,13 +223,14 @@
 </div>
 
 <!-- Editor de fotos antes de mandar, como el de WhatsApp: varias a la vez,
-     rotar, acercar/mover (recorta lo que se ve) y un comentario por foto. -->
+     rotar, recortar, acercar/mover para ver de cerca y un comentario por foto. -->
 <div class="modal-fondo" id="editor-media-fondo">
   <div id="editor-media">
     <header>
       <button type="button" id="em-cerrar" title="Cancelar"></button>
       <div class="em-herramientas">
         <button type="button" id="em-rotar" title="Rotar"></button>
+        <button type="button" id="em-recortar" title="Recortar"></button>
         <button type="button" id="em-alejar" title="Alejar"></button>
         <button type="button" id="em-acercar" title="Acercar"></button>
         <button type="button" id="em-restablecer" title="Deshacer cambios"></button>
@@ -237,6 +238,11 @@
       </div>
     </header>
     <div id="em-escenario"><div id="em-marco"></div></div>
+    <div id="em-barra-recorte">
+      <button type="button" id="em-recorte-cancelar">Cancelar</button>
+      <button type="button" id="em-recorte-todo">Toda la foto</button>
+      <button type="button" id="em-recorte-listo">Listo</button>
+    </div>
     <div id="em-pie">
       <div id="em-miniaturas"></div>
       <div class="em-envio">
@@ -244,7 +250,7 @@
         <button type="button" id="em-enviar" title="Enviar"></button>
       </div>
     </div>
-    <input type="file" id="em-input-mas" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
+    <input type="file" id="em-input-mas" accept="image/*,video/*" multiple style="display:none" />
   </div>
 </div>
 
