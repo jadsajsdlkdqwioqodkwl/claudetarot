@@ -2677,11 +2677,14 @@ function contenidoMensaje(m) {
     return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "audio" && (m.media_key || m.media_id)) {
-    return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>`;
+    return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "document" && (m.media_key || m.media_id)) {
+    // Los viejos guardaban el nombre en body; los nuevos, el nombre en
+    // file_name y en body el texto que va junto al archivo.
     const nombre = m.file_name || m.body || "Documento";
-    return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a>`;
+    const texto = m.file_name && m.body && m.body !== m.file_name ? m.body : "";
+    return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a>${texto ? `<div class="caption">${formatearTextoWA(texto)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return formatearTextoWA(m.body || "");
   if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;

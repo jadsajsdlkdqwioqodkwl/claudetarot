@@ -53,6 +53,13 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy, repl
  * manda como el nombre visible del archivo (ver enviarMedia).
  */
 export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy, fileName, replyTo, opciones) {
+  // Audio y sticker no admiten texto en WhatsApp: el archivo va solo y el
+  // texto sale justo después como mensaje aparte, para que no se pierda.
+  if (caption && (type === "audio" || type === "sticker")) {
+    const waMessageId = await mandarMediaGuardada(env, conversationId, waId, mediaKey, type, null, sentBy, fileName, replyTo, opciones);
+    await mandarTexto(env, conversationId, waId, caption, sentBy, null, opciones);
+    return waMessageId;
+  }
   const obj = await env.CRM_MEDIA.get(mediaKey);
   if (!obj) throw new Error("El archivo ya no está disponible.");
   const mime = obj.httpMetadata?.contentType || "application/octet-stream";

@@ -68,7 +68,8 @@ function tipoYCuerpo(msg) {
     case "audio":
       return { type: "audio", mediaId: msg.audio?.id, mediaMime: msg.audio?.mime_type };
     case "document":
-      return { type: "document", body: msg.document?.filename || "", mediaId: msg.document?.id, mediaMime: msg.document?.mime_type };
+      // El texto que el cliente escribe junto al archivo es el caption; el nombre va aparte.
+      return { type: "document", body: msg.document?.caption || "", fileName: msg.document?.filename || null, mediaId: msg.document?.id, mediaMime: msg.document?.mime_type };
     case "sticker":
       return { type: "sticker", mediaId: msg.sticker?.id, mediaMime: msg.sticker?.mime_type };
     case "location": {
@@ -186,7 +187,7 @@ async function procesarCambio(env, db, value, origen) {
       continue;
     }
 
-    const { type, body, mediaId, mediaMime, order } = tipoYCuerpo(msg);
+    const { type, body, fileName, mediaId, mediaMime, order } = tipoYCuerpo(msg);
     let bodyFinal = body;
     let ordenResuelta = order;
     if (type === "order" && order) {
@@ -194,7 +195,7 @@ async function procesarCambio(env, db, value, origen) {
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
     }
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
-    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
+    await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, fileName, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
     await cancelarSeguimientosPendientes(db, conversacion.id);
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
