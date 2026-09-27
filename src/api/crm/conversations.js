@@ -56,6 +56,7 @@ async function handler({ request, env, agent }) {
         conv.shared_with,
         conv.meta_tags,
         conv.last_message_at,
+        conv.last_inbound_at,
         c.id AS contact_id,
         c.wa_id,
         c.profile_name,

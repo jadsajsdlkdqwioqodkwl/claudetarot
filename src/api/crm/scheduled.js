@@ -9,6 +9,9 @@
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
  *                              { conversation_id, all: true } → cancela todos los pendientes de ese chat
  *
+ * La fecha no puede pasar de 24 h desde el último mensaje del cliente
+ * (fueraDeVentana): después WhatsApp ya no acepta texto libre.
+ *
  * Siempre texto libre — no acepta template_name (eso solo lo maneja
  * bulk-send.js). Para un seguimiento que sabes que caerá fuera de la
  * ventana de 24h/72h (típico de provincia, cobro días después), no uses
@@ -26,6 +29,20 @@ const json = (data, status = 200) =>
   });
 
 const TIPOS_MEDIA = new Set(["image", "video", "document", "sticker"]);
+
+/**
+ * WhatsApp solo acepta texto libre hasta 24 h después del último mensaje
+ * del cliente: un seguimiento programado más tarde nunca llegaría.
+ * Devuelve el error a mostrar, o null si la fecha entra en la ventana.
+ */
+async function fueraDeVentana(db, conversationId, sendAt) {
+  const conv = await db.prepare("SELECT last_inbound_at FROM conversations WHERE id = ?").bind(conversationId).first();
+  if (!conv?.last_inbound_at) return "El cliente todavía no escribió: WhatsApp no deja mandarle un seguimiento.";
+  const limite = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;
+  if (limite <= Date.now()) return "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle un seguimiento.";
+  if (sendAt.getTime() > limite) return "Tiene que salir antes de que se cumplan 24 h desde el último mensaje del cliente.";
+  return null;
+}
 
 async function get({ request, env }) {
   const url = new URL(request.url);
@@ -65,6 +82,8 @@ async function post({ request, env, agent }) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
   if (!body && !quickReplyId && !mediaKey) return json({ error: "Necesita un texto, una foto/video o una respuesta rápida." }, 400);
+  const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
+  if (errorVentana) return json({ error: errorVentana }, 422);
 
   const creado = await env.CRM_DB.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime)
@@ -98,6 +117,8 @@ async function patch({ request, env }) {
   }
   const body = payload?.body !== undefined ? (String(payload.body).trim().slice(0, 4096) || null) : actual.body;
   if (!body) return json({ error: "Necesita un texto." }, 400);
+  const errorVentana = await fueraDeVentana(env.CRM_DB, actual.conversation_id, sendAt);
+  if (errorVentana) return json({ error: errorVentana }, 422);
 
   await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ? WHERE id = ?")
     .bind(body, sendAt.toISOString(), id)

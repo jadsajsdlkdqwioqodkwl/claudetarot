@@ -652,7 +652,7 @@ async function pintarResumenLeadsAdmin() {
     }
     let acum = 0;
     cont.innerHTML = `
-      <div class="titulo">${icon("clock")} ${escapar(seq.title)} · ${d.settings.ad_followup_auto ? "automático en leads nuevos" : "solo a mano"}</div>
+      <div class="titulo">${icon("clock")} ${escapar(seq.title)} · ${d.settings.ad_followup_auto ? "automático en clientes nuevos" : "solo a mano"}</div>
       ${seq.steps.length ? seq.steps.map((p) => { acum += p.delay_minutes; return `<div>En ${formatearMomento(acum)}: ${escapar(recortarTexto(p.body || "Foto/video", 50))}</div>`; }).join("") : "<div>Sin mensajes todavía.</div>"}`;
   } catch (err) {
     cont.textContent = err.message;
@@ -804,7 +804,7 @@ $("#leads-secuencia").addEventListener("change", async (e) => {
 });
 
 $("#leads-nueva").addEventListener("click", async () => {
-  const title = prompt("Nombre de la secuencia:", "Seguimiento leads");
+  const title = prompt("Nombre de la secuencia:", "Seguimiento interesados");
   if (!title || !title.trim()) return;
   try {
     const { sequence } = await pedir("/api/crm/followup-sequences", {
@@ -1976,7 +1976,8 @@ function pintarChatBase(c) {
         </div>
       </div>
       <div class="acciones-chat">
-        <button class="btn-meta accion-lead ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Cliente interesado (Lead, avisa a Meta)">Lead</button>
+        <button class="btn-meta accion-lead ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Cliente interesado (avisa a Meta)">Interés</button>
+        <button class="btn-meta" id="btn-seg-rapido" type="button" title="Programar seguimiento">${icon("clock")}<span class="txt-seg-rapido">Seguimiento</span></button>
         <button class="btn-meta btn-venta accion-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
@@ -2092,6 +2093,7 @@ function pintarChatBase(c) {
     const files = [...(e.dataTransfer.files || [])];
     if (files.length) elegirArchivos(files);
   });
+  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento("mensaje"));
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
@@ -2382,7 +2384,7 @@ const KIT_DEFAULT = { nombre: "Kit Tarot Rider-Waite de aprendizaje", precio: 89
 const precioProducto = (p) => parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
 const etiquetasLocales = new Map(); // conversation_id -> { meta_tags, t } — que un GET viejo no borre la etiqueta recién puesta
 const tieneEtiqueta = (c, etiqueta) => ` ${c.meta_tags || ""} `.includes(` ${etiqueta} `);
-const ETAPAS = [["purchase", "Compra"], ["lead", "Lead"], ["contact", "Contacto"]];
+const ETAPAS = [["purchase", "Compra"], ["lead", "Interés"], ["contact", "Contacto"]];
 
 /** La etapa más avanzada del chat, como etiqueta en la lista. */
 function badgeEtapa(c) {
@@ -2402,7 +2404,7 @@ function ponerEtiquetaLocal(c, etiqueta) {
 async function marcarLead(c) {
   const botones = () => document.querySelectorAll(".accion-lead");
   if ([...botones()].some((b) => b.disabled)) return;
-  if (tieneEtiqueta(c, "lead") && !confirm("Este chat ya está marcado como cliente interesado (Lead). ¿Mandarlo de nuevo a Meta?")) return;
+  if (tieneEtiqueta(c, "lead") && !confirm("Este chat ya está marcado como cliente interesado. ¿Mandarlo de nuevo a Meta?")) return;
   botones().forEach((b) => { b.disabled = true; b.classList.add("enviando"); });
   try {
     await pedir("/api/crm/capi-send", {
@@ -2525,7 +2527,7 @@ function abrirPopoverVenta(c) {
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarPopoverMeta(); });
 
-const NOMBRE_EVENTO_META = { Purchase: "Venta", InitiateCheckout: "Intención", QualifiedLead: "Lead", Lead: "Lead", LeadSubmitted: "Conversación", Contact: "Conversación" };
+const NOMBRE_EVENTO_META = { Purchase: "Venta", InitiateCheckout: "Intención", QualifiedLead: "Interés", Lead: "Interés", LeadSubmitted: "Conversación", Contact: "Conversación" };
 
 /** Historial de eventos CAPI mandados en este chat (con o sin pedido del catálogo detrás). */
 async function actualizarHistorialCapi(conversationId) {
@@ -3672,7 +3674,7 @@ function agregarEmojisA(el) {
   grid.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => insertarEnCursor(el, b.textContent)));
 }
 
-["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto"].forEach((sel) => agregarEmojisA($(sel)));
+["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto", "#rapida-seg-texto"].forEach((sel) => agregarEmojisA($(sel)));
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
@@ -3912,7 +3914,8 @@ function abrirModalProgramarSeguimiento(modo) {
   sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
     estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
-  elegirCuando($('#seg-chips button[data-manana]'));
+  prepararChipsVentana();
+  elegirCuando($("#seg-chips button[data-ventana]:not(:disabled)") || $("#seg-chips button:not(:disabled)"));
   ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
@@ -3923,8 +3926,38 @@ function aInputLocal(d) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+/*
+ * WhatsApp solo deja mandar texto libre hasta 24 h después del último
+ * mensaje del cliente: un seguimiento más tarde no llega. El límite sale de
+ * last_inbound_at, que ya viene en la lista de chats (sin requests extra).
+ */
+const VENTANA_MS = 24 * 3600 * 1000;
+
+function limiteVentana() {
+  const c = estado.conversaciones.find((x) => x.conversation_id === estado.segConversacionId);
+  const v = c?.last_inbound_at;
+  if (!v) return null;
+  return new Date(new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").getTime() + VENTANA_MS);
+}
+
+/** Desactiva los botones que caerían pasadas las 24 h. */
+function prepararChipsVentana() {
+  const limite = limiteVentana();
+  document.querySelectorAll("#seg-chips button").forEach((b) => {
+    const f = b.dataset.otra !== undefined ? null : fechaDeChip(b);
+    b.disabled = !limite || limite.getTime() <= Date.now() || (f && (f.getTime() > limite.getTime() || f.getTime() <= Date.now()));
+  });
+  const input = $("#seg-fecha");
+  input.max = limite ? aInputLocal(limite) : "";
+  input.min = aInputLocal(new Date());
+}
+
 /** La fecha que representa un botón rápido, calculada contra el momento actual. */
 function fechaDeChip(btn) {
+  if (btn.dataset.ventana) {
+    const limite = limiteVentana();
+    return limite ? new Date(limite.getTime() - VENTANA_MS + Number(btn.dataset.ventana) * 3600 * 1000) : null;
+  }
   if (btn.dataset.min) return new Date(Date.now() + Number(btn.dataset.min) * 60000);
   if (btn.dataset.manana) {
     const d = new Date();
@@ -3942,7 +3975,7 @@ function elegirCuando(btn) {
   const esOtra = btn.dataset.otra !== undefined;
   input.style.display = esOtra ? "" : "none";
   if (esOtra) {
-    if (!input.value) input.value = aInputLocal(new Date(Date.now() + 86400000));
+    if (!input.value) input.value = aInputLocal(new Date(Date.now() + 3600000));
     input.focus();
   } else {
     input.value = aInputLocal(fechaDeChip(btn));
@@ -3953,13 +3986,23 @@ function elegirCuando(btn) {
 function pintarCuando() {
   const v = $("#seg-fecha").value;
   const el = $("#seg-cuando");
+  const limite = limiteVentana();
+  const fmt = (d) => d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  if (!limite || limite.getTime() <= Date.now()) {
+    el.textContent = "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle un seguimiento.";
+    el.classList.add("error");
+    return;
+  }
   if (!v) { el.textContent = "Elige cuándo."; el.classList.remove("error"); return; }
   const d = new Date(v);
   const pasada = d.getTime() <= Date.now();
-  el.classList.toggle("error", pasada);
+  const tarde = d.getTime() > limite.getTime();
+  el.classList.toggle("error", pasada || tarde);
   el.textContent = pasada
     ? "Esa hora ya pasó — elige una futura."
-    : `Se manda el ${d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`;
+    : tarde
+      ? `Tiene que salir antes del ${fmt(limite)} (24 h desde su último mensaje).`
+      : `Se manda el ${d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`;
 }
 
 $("#seg-chips").addEventListener("click", (e) => {
@@ -3977,7 +4020,7 @@ function pintarReglaSeguimiento() {
   const leadId = datosLead?.settings?.ad_followup_sequence_id;
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
   el.textContent = esLead
-    ? "Es la secuencia de leads (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
+    ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
     : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
 }
 
@@ -4092,6 +4135,7 @@ function abrirModalEditarSeguimiento(s) {
   ponerModoSeguimiento("mensaje");
   $("#seg-archivo").style.display = "none";
   $("#seg-rapida").style.display = "none";
+  prepararChipsVentana();
   $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
   elegirCuando($("#seg-chips button[data-otra]"));
   $("#seg-texto").value = s.body || "";
@@ -4190,6 +4234,8 @@ $("#seg-crear").addEventListener("click", async () => {
   if (chip && chip.dataset.otra === undefined) $("#seg-fecha").value = aInputLocal(fechaDeChip(chip));
   const fecha = $("#seg-fecha").value;
   if (fecha && new Date(fecha).getTime() <= Date.now()) { pintarCuando(); return alert("Esa hora ya pasó — elige una futura."); }
+  const limite = limiteVentana();
+  if (fecha && (!limite || new Date(fecha).getTime() > limite.getTime())) { pintarCuando(); return alert($("#seg-cuando").textContent); }
   const texto = $("#seg-texto").value.trim();
   const archivo = $("#seg-archivo").files[0];
   const quickReplyId = !archivo && estado.segRapidaMedia ? $("#seg-rapida").value : "";
@@ -4782,7 +4828,7 @@ async function pintarDetalle(c) {
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
 
     ${estado.miRol === "admin" ? `
-    <h2>Seguimiento para leads</h2>
+    <h2>Seguimiento para interesados</h2>
     <div id="detalle-leads">Cargando…</div>
     ` : ""}
 
@@ -4879,7 +4925,7 @@ function pintarEstadoLead() {
     ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}`
     : "No activo en este chat.";
   const btn = $("#btn-aplicar-leads");
-  if (btn) btn.innerHTML = `${icon("bolt")} ${activos.length ? "Reprogramar seguimiento de leads" : "Programar seguimiento de leads"}`;
+  if (btn) btn.innerHTML = `${icon("bolt")} ${activos.length ? "Reprogramar seguimiento de interesados" : "Programar seguimiento de interesados"}`;
 }
 
 /**
@@ -4956,20 +5002,20 @@ async function pintarLeadDetalle(c) {
   if (!contL) return; // "Seguimiento para leads" es solo admin
   const seq = secuenciaDeLeads(d);
   if (!seq || !seq.steps.length) {
-    contL.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no configuraste el seguimiento para leads." : "El admin todavía no configuró el seguimiento para leads."}</div>`
+    contL.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no configuraste el seguimiento para interesados." : "El admin todavía no configuró el seguimiento para interesados."}</div>`
       + (esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : "");
   } else {
     let acum = 0;
     contL.innerHTML = `
       <div class="ad-card lead-card">
-        <div class="titulo">${icon("clock")} ${escapar(seq.title)}${d.settings.ad_followup_auto ? ` <span class="pill-auto">automático en leads nuevos</span>` : ""}</div>
+        <div class="titulo">${icon("clock")} ${escapar(seq.title)}${d.settings.ad_followup_auto ? ` <span class="pill-auto">automático en clientes nuevos</span>` : ""}</div>
         <ol class="lead-timeline">${seq.steps.map((p) => {
           acum += p.delay_minutes;
           return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
         }).join("")}</ol>
         <div class="lead-estado" id="detalle-leads-estado"></div>
       </div>
-      <button class="crear" id="btn-aplicar-leads" type="button" style="width:100%;margin-top:6px">${icon("bolt")} Programar seguimiento de leads</button>
+      <button class="crear" id="btn-aplicar-leads" type="button" style="width:100%;margin-top:6px">${icon("bolt")} Programar seguimiento de interesados</button>
       ${esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : ""}
       <div class="ayuda-modal" style="margin:4px 0 0">Se cancela si el cliente contesta o si le escribes.</div>`;
     pintarEstadoLead();
@@ -4981,7 +5027,7 @@ async function pintarLeadDetalle(c) {
         const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${c.conversation_id}`);
         const activos = scheduled.filter(esSeguimientoLead);
         const pregunta = activos.length
-          ? `Este chat ya tiene el seguimiento de leads activo. ¿Reprogramarlo desde ahora? Se reemplaza, no se duplica (el primero saldría en ${formatearMomento(seq.steps[0].delay_minutes)}).`
+          ? `Este chat ya tiene el seguimiento de interesados activo. ¿Reprogramarlo desde ahora? Se reemplaza, no se duplica (el primero saldría en ${formatearMomento(seq.steps[0].delay_minutes)}).`
           : `¿Programar los ${seq.steps.length} mensaje(s) de seguimiento en este chat? El primero sale en ${formatearMomento(seq.steps[0].delay_minutes)}.`;
         if (!confirm(pregunta)) return;
         await pedir("/api/crm/followup-apply", {

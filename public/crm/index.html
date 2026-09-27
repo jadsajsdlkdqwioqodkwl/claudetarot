@@ -84,7 +84,7 @@
       <button data-mine="1" id="btn-filtro-mias">Mis chats</button>
       <select id="filtro-agente" title="Ver los chats de una asesora"><option value="">Asesora…</option></select>
       <button data-etiqueta="contact" title="Conversación iniciada">Contacto</button>
-      <button data-etiqueta="lead">Lead</button>
+      <button data-etiqueta="lead">Interés</button>
       <button data-etiqueta="purchase">Compra</button>
       <button id="btn-seleccionar-chats" title="Elegir varios chats para aplicarles una secuencia">Seleccionar</button>
     </div>
@@ -129,7 +129,7 @@
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
     <textarea id="rapida-seg-texto" placeholder="Seguimiento automático (opcional): se manda solo si el cliente no responde"></textarea>
     <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Mandarlo <input type="number" id="rapida-seg-horas" min="1" max="168" value="20" style="width:64px" /> horas después</label>
-    <div class="ayuda-modal">Se cancela si el cliente responde o si lo quitas desde el panel derecho del chat.</div>
+    <div class="ayuda-modal">Nunca sale pasadas 23 h desde el último mensaje del cliente. Se cancela si el cliente responde o si lo quitas desde el panel derecho del chat.</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>
@@ -151,12 +151,13 @@
     <div id="seg-modo-mensaje">
       <div class="seg-label">¿Cuándo?</div>
       <div class="seg-chips" id="seg-chips">
+        <button type="button" data-ventana="23">23 h después de su último mensaje</button>
         <button type="button" data-min="60">En 1 hora</button>
         <button type="button" data-min="180">En 3 horas</button>
+        <button type="button" data-min="360">En 6 horas</button>
+        <button type="button" data-min="720">En 12 horas</button>
         <button type="button" data-manana="10">Mañana 10 a. m.</button>
-        <button type="button" data-min="2880">En 2 días</button>
-        <button type="button" data-min="10080">En 1 semana</button>
-        <button type="button" data-otra>Otra fecha…</button>
+        <button type="button" data-otra>Otra hora…</button>
       </div>
       <input type="datetime-local" id="seg-fecha" style="display:none" />
       <div class="seg-cuando" id="seg-cuando"></div>
@@ -382,10 +383,10 @@
     <button class="cancelar" id="btn-abrir-bienvenida" type="button" style="width:100%">Configurar bienvenida de anuncios</button>
 
     <hr />
-    <h2>Seguimiento para leads</h2>
-    <p class="ayuda-modal">Mensajes que se mandan solos horas o días después, por si el lead no contesta. Tus vendedores lo ven y lo aplican con un botón desde el panel derecho de cada chat, y si quieres también se programa solo en cada lead nuevo de un anuncio.</p>
+    <h2>Seguimiento para interesados</h2>
+    <p class="ayuda-modal">Mensajes que se mandan solos horas o días después, por si el cliente interesado no contesta. Tus vendedores lo ven y lo aplican con un botón desde el panel derecho de cada chat, y si quieres también se programa solo en cada cliente nuevo de un anuncio.</p>
     <div class="ad-card" id="admin-leads-resumen" style="margin-bottom:8px">Cargando…</div>
-    <button class="cancelar" id="btn-abrir-leads" type="button" style="width:100%">Configurar seguimiento para leads</button>
+    <button class="cancelar" id="btn-abrir-leads" type="button" style="width:100%">Configurar seguimiento para interesados</button>
 
     <hr />
     <h2>Costos de WhatsApp</h2>
@@ -407,10 +408,10 @@
 
 <div class="modal-fondo" id="modal-leads-fondo">
   <div class="modal modal-ancho">
-    <h2>Seguimiento para leads</h2>
+    <h2>Seguimiento para interesados</h2>
     <p class="ayuda-modal">Arma acá los mensajes de insistencia y cuándo sale cada uno. Todos se cancelan solos en cuanto el cliente escribe o alguien le manda algo a mano — nunca le llegan a alguien que ya está conversando.</p>
 
-    <h3 class="leads-paso-titulo"><span>1</span> Secuencia de leads</h3>
+    <h3 class="leads-paso-titulo"><span>1</span> Secuencia de seguimiento</h3>
     <div class="leads-fila">
       <select id="leads-secuencia"></select>
       <button class="cancelar" id="leads-nueva" type="button">Nueva</button>
@@ -441,9 +442,9 @@
     <h3 class="leads-paso-titulo"><span>3</span> ¿Cuándo se aplica?</h3>
     <label class="leads-check">
       <input type="checkbox" id="leads-auto" />
-      <span><strong>Solo, en cada lead nuevo de un anuncio.</strong> Se programa en cuanto escribe por primera vez, justo después de la bienvenida.</span>
+      <span><strong>Solo, en cada cliente nuevo de un anuncio.</strong> Se programa en cuanto escribe por primera vez, justo después de la bienvenida.</span>
     </label>
-    <p class="ayuda-modal">Siempre, además, tus vendedores tienen el botón "Programar seguimiento de leads" en el panel derecho de cada chat — para leads que llegaron por otro lado o antes de armar esto.</p>
+    <p class="ayuda-modal">Siempre, además, tus vendedores tienen el botón "Programar seguimiento de interesados" en el panel derecho de cada chat — para clientes que llegaron por otro lado o antes de armar esto.</p>
     <p class="ayuda-modal" id="leads-estado"></p>
 
     <div class="acciones">

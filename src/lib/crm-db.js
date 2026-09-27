@@ -154,7 +154,7 @@ export const origenSeguimientoLead = (nombre) => (nombre ? `${PREFIJO_SEGUIMIENT
 /**
  * Seguimiento de una respuesta rápida: al mandar una que tiene
  * `followup_body`, se programa ese texto `followup_hours` (20 por defecto)
- * después. Es "manual" para las reglas de cancelación: lo cancela el cliente
+ * después, sin pasar de 23 h desde el último mensaje del cliente. Es "manual" para las reglas de cancelación: lo cancela el cliente
  * al escribir o la asesora desde el panel derecho, no sus propios mensajes.
  * Reemplaza al seguimiento de respuesta rápida que ya estuviera pendiente en
  * ese chat. Se apaga para todas con el ajuste `quick_followup_auto` = "0".
@@ -166,8 +166,15 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return;
   const q = await db.prepare("SELECT title, followup_body, followup_hours FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
   if (!q?.followup_body) return;
+  // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
+  // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría.
+  const conv = await db.prepare("SELECT last_inbound_at FROM conversations WHERE id = ?").bind(conversationId).first();
+  if (!conv?.last_inbound_at) return;
+  const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
   const horas = q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA;
-  const sendAt = new Date(Date.now() + horas * 3600 * 1000).toISOString();
+  const envio = Math.min(Date.now() + horas * 3600 * 1000, tope);
+  if (envio <= Date.now() + 60 * 1000) return;
+  const sendAt = new Date(envio).toISOString();
   await db.batch([
     db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?")
       .bind(conversationId, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`),

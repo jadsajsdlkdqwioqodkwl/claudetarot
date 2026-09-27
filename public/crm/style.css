@@ -629,6 +629,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #chat header .acciones-chat .btn-meta { width: auto; height: 32px; min-width: 32px; padding: 0 7px; gap: 3px; border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); color: var(--gris); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1; flex-shrink: 0; }
 #chat header .acciones-chat .btn-meta .icono-svg { width: 17px; height: 17px; }
 #chat header .acciones-chat .btn-meta:hover { background: var(--hover); }
+#seg-chips button:disabled { opacity: .4; cursor: not-allowed; }
 #chat header .acciones-chat .btn-meta.enviando { opacity: .5; }
 #chat header .acciones-chat .btn-meta.enviado { color: var(--verde-osc); border-color: var(--verde); background: #eafaf0; }
 #popover-meta { position: absolute; top: 60px; right: 12px; z-index: 25; width: 290px; max-width: calc(100% - 24px); background: var(--panel); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); padding: 12px; }
@@ -659,6 +660,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   #chat header { padding: 10px 10px; gap: 8px; }
   #chat header .acciones-chat { gap: 2px; }
   #chat header .acciones-chat .btn-meta { height: 30px; min-width: 30px; padding: 0 5px; }
+  #chat header .txt-seg-rapido { display: none; }
   #popover-meta { top: 56px; right: 8px; left: 8px; width: auto; max-width: none; }
 }
 
