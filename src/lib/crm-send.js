@@ -64,6 +64,10 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   if (!obj) throw new Error("El archivo ya no está disponible.");
   const mime = obj.httpMetadata?.contentType || "application/octet-stream";
   const blob = await obj.blob();
+  // Seguimientos, secuencias, respuestas rápidas y bienvenida no traen el
+  // nombre: sale del que se guardó al subir el archivo (upload-media.js),
+  // así el cliente recibe el documento con su nombre original.
+  fileName = fileName || obj.customMetadata?.originalName || undefined;
 
   const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
   const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
