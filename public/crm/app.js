@@ -1968,6 +1968,8 @@ function ayudaPermisoNotificaciones(permiso) {
 }
 
 function pintarChatBase(c) {
+  estado.fantasmaEditando = null;
+  cerrarPopoverSeg();
   const nombre = c.profile_name || c.wa_id;
   $("#chat").innerHTML = `
     <header>
@@ -2097,7 +2099,7 @@ function pintarChatBase(c) {
     const files = [...(e.dataTransfer.files || [])];
     if (files.length) elegirArchivos(files);
   });
-  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento("mensaje"));
+  $("#btn-seg-rapido").addEventListener("click", (e) => { e.stopPropagation(); abrirPopoverSeg(); });
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
@@ -2565,6 +2567,7 @@ function formVenta(c, alTerminar) {
 function abrirPopoverVenta(c) {
   const yaAbierto = Boolean($("#popover-meta"));
   cerrarPopoverMeta();
+  cerrarPopoverSeg();
   if (yaAbierto) return;
   const pop = document.createElement("div");
   pop.id = "popover-meta";
@@ -2607,12 +2610,14 @@ function textoSeguimiento(s) {
 async function actualizarSeguimientosDetalle() {
   const cont = $("#detalle-seguimientos");
   const conversationId = estado.conversacionActivaId;
-  if (!cont || !conversationId) return;
+  if (!conversationId) return;
   try {
     const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${conversationId}`);
     actualizarEtiquetaSeguimiento(conversationId, scheduled);
     if (estado.conversacionActivaId !== conversationId) return;
     estado.seguimientosDelChat = { conversationId, scheduled };
+    pintarFantasmas();
+    if (!cont) return;
     pintarEstadoLead();
     const html = (scheduled.length ? scheduled.map((s) => `
       <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
@@ -2795,9 +2800,12 @@ function pintarMensajes({ alFinal = false } = {}) {
       </div>
     </div>`).join("");
 
+  const fantasmas = $("#fantasmas");
   cont.innerHTML = (estado.hayMasAntiguos
     ? `<div id="cargar-anteriores"><button type="button">Cargar mensajes anteriores</button></div>`
     : "") + filas + pendientes;
+  if (fantasmas) cont.appendChild(fantasmas);
+  pintarFantasmas();
 
   $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
   if (alFinal || abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
@@ -4357,6 +4365,342 @@ $("#seg-crear").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+/* ---------- Seguimiento rápido (reloj de la cabecera) ---------- */
+
+/*
+ * El reloj de la cabecera abre una lista corta de respuestas rápidas: un
+ * toque en una la agenda (por defecto en 3 h) y queda como mensaje fantasma
+ * al final del chat. El admin elige qué respuestas aparecen y cuál es la
+ * predeterminada; sin configurar, sale la que se llame "URGENCIA".
+ */
+const SEG_RAPIDO_HORAS_DEFAULT = 3;
+const CHIPS_SEG_RAPIDO = [{ h: 1 }, { h: 3 }, { h: 6 }, { ventana: 23 }];
+let ajustesSegRapido = null; // { ids, defaultId }
+
+async function cargarAjustesSegRapido() {
+  const s = await pedir("/api/crm/settings");
+  ajustesSegRapido = { ids: s.seg_rapidos_ids || [], defaultId: s.seg_rapido_default_id || null };
+}
+
+/** Las respuestas de la lista corta, con la predeterminada primero. */
+function presetsSegRapido() {
+  const qs = estado.quickReplies || [];
+  const aj = ajustesSegRapido || { ids: [], defaultId: null };
+  const urgencia = qs.find((q) => /urgencia/i.test(q.title));
+  let lista = aj.ids.map((id) => qs.find((q) => q.id === id)).filter(Boolean);
+  if (!lista.length && urgencia) lista = [urgencia];
+  const def = qs.find((q) => q.id === aj.defaultId) || (urgencia && lista.includes(urgencia) ? urgencia : lista[0]) || null;
+  if (def) lista = [def, ...lista.filter((q) => q !== def)];
+  return { lista, def };
+}
+
+function fechaChipRapido(ch) {
+  if (ch.ventana) {
+    const limite = limiteVentana();
+    return limite ? new Date(limite.getTime() - VENTANA_MS + ch.ventana * 3600000) : null;
+  }
+  return new Date(Date.now() + ch.h * 3600000);
+}
+
+function chipRapidoValido(ch) {
+  const limite = limiteVentana();
+  const f = fechaChipRapido(ch);
+  return Boolean(limite && f && f.getTime() > Date.now() && f.getTime() <= limite.getTime());
+}
+
+function fechaLargaSeg(d) {
+  return d.toLocaleString("es-PE", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function cerrarPopoverSeg() {
+  $("#popover-seg")?.remove();
+  document.removeEventListener("pointerdown", cerrarPopoverSegAfuera, true);
+}
+
+function cerrarPopoverSegAfuera(e) {
+  if (!e.target.closest("#popover-seg, #btn-seg-rapido")) cerrarPopoverSeg();
+}
+
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarPopoverSeg(); });
+
+function abrirPopoverSeg() {
+  const yaAbierto = Boolean($("#popover-seg"));
+  cerrarPopoverSeg();
+  cerrarPopoverMeta();
+  if (yaAbierto) return;
+  estado.segConversacionId = estado.conversacionActivaId;
+  const validos = CHIPS_SEG_RAPIDO.map(chipRapidoValido);
+  const preferido = CHIPS_SEG_RAPIDO.findIndex((ch) => ch.h === SEG_RAPIDO_HORAS_DEFAULT);
+  estado.segRapido = { chip: validos[preferido] ? preferido : validos.lastIndexOf(true), siempre: false, editandoLista: false };
+
+  const pop = document.createElement("div");
+  pop.id = "popover-seg";
+  pop.addEventListener("click", onClickPopoverSeg);
+  pop.addEventListener("change", (e) => {
+    if (e.target.id === "seg-rapido-siempre") estado.segRapido.siempre = e.target.checked;
+  });
+  $("#chat").appendChild(pop);
+  document.addEventListener("pointerdown", cerrarPopoverSegAfuera, true);
+  pintarPopoverSeg();
+  // Se refresca cada vez que se abre: la lista la puede haber cambiado el admin.
+  Promise.all([cargarAjustesSegRapido(), cargarQuickReplies()])
+    .then(() => { if (!estado.segRapido.editandoLista) pintarPopoverSeg(); })
+    .catch(() => {});
+}
+
+function pintarPopoverSeg() {
+  const pop = $("#popover-seg");
+  if (!pop) return;
+  const st = estado.segRapido;
+  if (st.editandoLista) return pintarEditorListaSeg(pop);
+  const limite = limiteVentana();
+  const cerrada = !limite || limite.getTime() <= Date.now();
+  const { lista, def } = presetsSegRapido();
+  const chip = CHIPS_SEG_RAPIDO[st.chip];
+  const fecha = chip && chipRapidoValido(chip) ? fechaChipRapido(chip) : null;
+  const esAdmin = estado.miRol === "admin";
+  pop.innerHTML = `
+    <div class="pm-titulo">${icon("clock")} Seguimiento</div>
+    ${cerrada ? `<p class="pm-ayuda seg-rapido-error">Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle un seguimiento.</p>` : `
+    <div class="seg-rapido-chips">${CHIPS_SEG_RAPIDO.map((ch, i) => `<button type="button" data-i="${i}" class="${i === st.chip ? "activo" : ""}" ${chipRapidoValido(ch) ? "" : "disabled"}>${ch.ventana ? "A las 23 h" : `En ${ch.h} h`}</button>`).join("")}</div>
+    <div class="pm-ayuda">${fecha ? `Sale el ${escapar(fechaLargaSeg(fecha))}` : "Elige cuándo."}</div>
+    <div class="seg-rapido-lista">
+      ${lista.length ? lista.map((q) => `
+        <button type="button" class="seg-rapido-item ${q === def ? "def" : ""}" data-id="${q.id}" ${fecha ? "" : "disabled"}>
+          <span class="t">${escapar(q.title)}${q === def ? ` <span class="seg-def">Predeterminado</span>` : ""}</span>
+          <span class="c">${escapar(recortarTexto(q.body || (q.media?.length ? "Foto/video" : ""), 90))}</span>
+        </button>`).join("") : `<p class="pm-ayuda">${esAdmin ? "Todavía no hay mensajes en esta lista: toca \"Elegir mensajes\"." : "Todavía no hay mensajes en esta lista (los elige el admin)."}</p>`}
+    </div>
+    <label class="seg-rapido-siempre"><input type="checkbox" id="seg-rapido-siempre" ${st.siempre ? "checked" : ""} /> Mandarlo aunque el cliente responda</label>
+    <div class="pm-estado"></div>`}
+    <div class="seg-rapido-pie">
+      <button type="button" data-acc="mas">Más opciones…</button>
+      ${esAdmin ? `<button type="button" data-acc="lista">Elegir mensajes</button>` : ""}
+    </div>`;
+}
+
+function pintarEditorListaSeg(pop) {
+  const { lista, def } = presetsSegRapido();
+  const ids = new Set(lista.map((q) => q.id));
+  pop.innerHTML = `
+    <div class="pm-titulo">${icon("pencil")} Mensajes del botón</div>
+    <p class="pm-ayuda">Marca los que aparecen en la lista. ★ = el predeterminado (va primero).</p>
+    <div class="seg-lista-editor">${(estado.quickReplies || []).map((q) => `
+      <div class="fila">
+        <label><input type="checkbox" value="${q.id}" ${ids.has(q.id) ? "checked" : ""} /> <span>${escapar(q.title)}</span></label>
+        <label class="estrella" title="Predeterminado"><input type="radio" name="seg-def" value="${q.id}" ${def?.id === q.id ? "checked" : ""} /> ★</label>
+      </div>`).join("") || `<p class="pm-ayuda">Todavía no hay respuestas rápidas.</p>`}</div>
+    <div class="pm-estado"></div>
+    <div class="seg-rapido-pie">
+      <button type="button" data-acc="lista-cancelar">Cancelar</button>
+      <button type="button" data-acc="lista-guardar" class="pm-confirmar">Guardar</button>
+    </div>`;
+}
+
+async function onClickPopoverSeg(e) {
+  const pop = $("#popover-seg");
+  const chip = e.target.closest(".seg-rapido-chips button");
+  if (chip) { estado.segRapido.chip = Number(chip.dataset.i); pintarPopoverSeg(); return; }
+  const item = e.target.closest(".seg-rapido-item");
+  if (item) { agendarSegRapido(Number(item.dataset.id)); return; }
+  const acc = e.target.closest("button[data-acc]")?.dataset.acc;
+  if (acc === "mas") { cerrarPopoverSeg(); abrirModalProgramarSeguimiento("mensaje"); return; }
+  if (acc === "lista") { estado.segRapido.editandoLista = true; pintarPopoverSeg(); return; }
+  if (acc === "lista-cancelar") { estado.segRapido.editandoLista = false; pintarPopoverSeg(); return; }
+  if (acc === "lista-guardar") {
+    const ids = [...pop.querySelectorAll('.seg-lista-editor input[type="checkbox"]:checked')].map((x) => Number(x.value));
+    let defaultId = Number(pop.querySelector('.seg-lista-editor input[type="radio"]:checked')?.value) || null;
+    if (defaultId && !ids.includes(defaultId)) ids.unshift(defaultId);
+    if (!defaultId) defaultId = ids[0] || null;
+    try {
+      await pedir("/api/crm/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seg_rapidos_ids: ids, seg_rapido_default_id: defaultId })
+      });
+      ajustesSegRapido = { ids, defaultId };
+      estado.segRapido.editandoLista = false;
+      pintarPopoverSeg();
+    } catch (err) {
+      const el = pop.querySelector(".pm-estado");
+      if (el) { el.textContent = err.message; el.className = "pm-estado error"; }
+    }
+  }
+}
+
+async function agendarSegRapido(quickReplyId) {
+  const q = (estado.quickReplies || []).find((x) => x.id === quickReplyId);
+  const chip = CHIPS_SEG_RAPIDO[estado.segRapido.chip];
+  if (!q || !chip || !chipRapidoValido(chip)) return;
+  const pop = $("#popover-seg");
+  pop.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+  try {
+    await pedir("/api/crm/scheduled", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: estado.segConversacionId,
+        send_at: fechaChipRapido(chip).toISOString(),
+        // Igual que el modal: va el texto (editable después) y la rápida solo si trae foto/video.
+        body: q.body || undefined,
+        quick_reply_id: q.media?.length ? q.id : undefined,
+        mandar_siempre: estado.segRapido.siempre
+      })
+    });
+    cerrarPopoverSeg();
+    await actualizarSeguimientosDetalle();
+    const cont = $("#mensajes");
+    if (cont) cont.scrollTop = cont.scrollHeight;
+  } catch (err) {
+    pintarPopoverSeg();
+    const el = $("#popover-seg .pm-estado");
+    if (el) { el.textContent = err.message; el.className = "pm-estado error"; }
+  }
+}
+
+/* ---------- Seguimientos agendados como mensajes fantasma al final del chat ---------- */
+
+function fantasmasHtml() {
+  const d = estado.seguimientosDelChat;
+  if (!d || d.conversationId !== estado.conversacionActivaId) return "";
+  return d.scheduled.map((s) => {
+    const modo = estado.fantasmaEditando?.id === s.id ? estado.fantasmaEditando.modo : null;
+    const fecha = new Date(s.send_at);
+    return `
+    <div class="fantasma-fila" data-seg="${s.id}">
+      <div class="msg out fantasma">
+        <div class="fantasma-cab">${icon(s.batch_id ? "broadcast" : "clock")} Agendado para ${escapar(fechaLargaSeg(fecha))}${s.mandar_siempre ? " · sí o sí" : ""}</div>
+        ${modo === "texto"
+          ? `<textarea class="fantasma-textarea" rows="3">${escapar(s.body || "")}</textarea>`
+          : `<div class="fantasma-texto">${s.media_key ? icon(s.media_type === "video" ? "video" : "image") + " " : ""}${escapar(textoSeguimiento(s))}</div>`}
+        ${modo === "hora" ? `
+          <div class="fantasma-chips">${CHIPS_SEG_RAPIDO.map((ch, i) => `<button type="button" data-acc="chip" data-i="${i}">${ch.ventana ? "A las 23 h" : `En ${ch.h} h`}</button>`).join("")}</div>
+          <input type="datetime-local" class="fantasma-fecha" value="${aInputLocal(fecha)}" />` : ""}
+        ${modo ? `
+          <div class="fantasma-acciones">
+            <button type="button" data-acc="cancelar">Cancelar</button>
+            <button type="button" data-acc="guardar" class="primario">Guardar</button>
+          </div>` : `
+          <label class="fantasma-siempre"><input type="checkbox" data-acc="siempre" ${s.mandar_siempre ? "checked" : ""} /> Mandar aunque el cliente responda</label>
+          <div class="fantasma-acciones">
+            ${seguimientoEditable(s) ? `<button type="button" data-acc="texto">${icon("pencil")} Editar</button>` : ""}
+            <button type="button" data-acc="hora">${icon("clock")} Cambiar hora</button>
+            <button type="button" data-acc="eliminar" class="peligro">${icon("trash")} Eliminar</button>
+          </div>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/** Se pinta aparte de los mensajes: sobrevive a los repintados del poll (no se pierde lo que se está escribiendo). */
+function pintarFantasmas({ forzar = false } = {}) {
+  const cont = $("#mensajes");
+  if (!cont) return;
+  let box = $("#fantasmas");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "fantasmas";
+    box.addEventListener("click", onClickFantasma);
+    box.addEventListener("change", onCambioFantasma);
+  }
+  if (cont.lastElementChild !== box) cont.appendChild(box);
+  const ed = estado.fantasmaEditando;
+  if (ed && !estado.seguimientosDelChat?.scheduled.some((s) => s.id === ed.id)) estado.fantasmaEditando = null;
+  if (estado.fantasmaEditando && !forzar) return;
+  const html = fantasmasHtml();
+  if (box.dataset.firma === html) return;
+  const abajo = cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 60;
+  box.innerHTML = html;
+  box.dataset.firma = html;
+  if (abajo && !estado.fantasmaEditando) cont.scrollTop = cont.scrollHeight;
+}
+
+async function patchSeguimiento(cambios) {
+  await pedir("/api/crm/scheduled", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cambios)
+  });
+}
+
+async function onClickFantasma(e) {
+  const btn = e.target.closest("button[data-acc]");
+  if (!btn) return;
+  const fila = btn.closest(".fantasma-fila");
+  const id = Number(fila.dataset.seg);
+  const s = estado.seguimientosDelChat?.scheduled.find((x) => x.id === id);
+  if (!s) return;
+  const acc = btn.dataset.acc;
+  if (acc === "texto" || acc === "hora") {
+    estado.segConversacionId = estado.conversacionActivaId;
+    estado.fantasmaEditando = { id, modo: acc };
+    pintarFantasmas({ forzar: true });
+    const campo = $(`#fantasmas [data-seg="${id}"] ${acc === "texto" ? ".fantasma-textarea" : ".fantasma-fecha"}`);
+    campo?.focus();
+    return;
+  }
+  if (acc === "chip") {
+    const f = fechaChipRapido(CHIPS_SEG_RAPIDO[Number(btn.dataset.i)]);
+    if (f) fila.querySelector(".fantasma-fecha").value = aInputLocal(f);
+    fila.querySelectorAll(".fantasma-chips button").forEach((b) => b.classList.toggle("activo", b === btn));
+    return;
+  }
+  if (acc === "cancelar") {
+    estado.fantasmaEditando = null;
+    pintarFantasmas({ forzar: true });
+    return;
+  }
+  if (acc === "eliminar") {
+    if (!confirm("¿Eliminar este seguimiento agendado?")) return;
+    btn.disabled = true;
+    try {
+      await pedir("/api/crm/scheduled", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+    } catch (err) {
+      alert(err.message);
+    }
+    await actualizarSeguimientosDetalle();
+    return;
+  }
+  if (acc === "guardar") {
+    const cambios = { id };
+    if (estado.fantasmaEditando?.modo === "texto") {
+      const texto = fila.querySelector(".fantasma-textarea").value.trim();
+      if (!texto) return alert("Escribe un texto.");
+      cambios.body = texto;
+    } else {
+      const v = fila.querySelector(".fantasma-fecha").value;
+      const d = v ? new Date(v) : null;
+      if (!d || d.getTime() <= Date.now()) return alert("Elige una hora futura.");
+      cambios.send_at = d.toISOString();
+    }
+    btn.disabled = true;
+    try {
+      await patchSeguimiento(cambios);
+      estado.fantasmaEditando = null;
+      await actualizarSeguimientosDetalle();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+}
+
+async function onCambioFantasma(e) {
+  if (e.target.dataset.acc !== "siempre") return;
+  const id = Number(e.target.closest(".fantasma-fila").dataset.seg);
+  e.target.disabled = true;
+  try {
+    await patchSeguimiento({ id, mandar_siempre: e.target.checked });
+  } catch (err) {
+    alert(err.message);
+  }
+  await actualizarSeguimientosDetalle();
+}
 
 /* ---------- Secuencias de seguimiento (varios mensajes con timing, reutilizables) ---------- */
 

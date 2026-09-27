@@ -656,12 +656,61 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .form-venta .pm-estado { font-size: 12px; color: var(--gris); overflow-wrap: anywhere; }
 .form-venta .pm-estado.ok { color: var(--verde-osc); }
 .form-venta .pm-estado.error { color: var(--peligro); }
+/* Seguimiento rápido: popover del reloj de la cabecera. */
+#popover-seg { position: absolute; top: 60px; right: 12px; z-index: 25; width: 320px; max-width: calc(100% - 24px); max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+#popover-seg .pm-titulo { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+#popover-seg .pm-titulo .icono-svg { width: 16px; height: 16px; color: var(--verde-osc); }
+#popover-seg .pm-ayuda { margin: 0; font-size: 12px; color: var(--gris); }
+#popover-seg .seg-rapido-error { color: var(--peligro); }
+#popover-seg .pm-estado:empty { display: none; }
+#popover-seg .pm-estado.error { font-size: 12px; color: var(--peligro); }
+.seg-rapido-chips, .fantasma-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg-rapido-chips button, .fantasma-chips button { padding: 5px 9px; border: 1px solid var(--borde); border-radius: 999px; background: transparent; font-family: inherit; font-size: 12px; cursor: pointer; }
+.seg-rapido-chips button.activo, .fantasma-chips button.activo { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
+.seg-rapido-chips button:disabled { opacity: .4; cursor: not-allowed; }
+.seg-rapido-lista { display: flex; flex-direction: column; gap: 6px; }
+.seg-rapido-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); background: transparent; font-family: inherit; cursor: pointer; }
+.seg-rapido-item:hover { background: var(--hover); }
+.seg-rapido-item.def { border-color: var(--verde); background: #eafaf0; }
+.seg-rapido-item:disabled { opacity: .5; cursor: not-allowed; }
+.seg-rapido-item .t { font-weight: 600; font-size: 13px; }
+.seg-rapido-item .c { font-size: 12px; color: var(--gris); overflow-wrap: anywhere; }
+.seg-def { font-weight: 500; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--verde-osc); color: #fff; vertical-align: middle; }
+.seg-rapido-siempre { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gris); }
+.seg-rapido-pie { display: flex; gap: 6px; }
+.seg-rapido-pie button { flex: 1; padding: 7px 8px; border: 1px dashed var(--borde); border-radius: var(--radio-s); background: transparent; font-family: inherit; font-size: 12px; color: var(--gris); cursor: pointer; }
+.seg-rapido-pie button.pm-confirmar { border: 0; background: var(--verde-osc); color: #fff; font-weight: 600; }
+.seg-lista-editor { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; border: 1px solid var(--borde); border-radius: var(--radio-s); }
+.seg-lista-editor .fila { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
+.seg-lista-editor .fila:last-child { border-bottom: 0; }
+.seg-lista-editor label { display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }
+.seg-lista-editor label span { overflow-wrap: anywhere; }
+.seg-lista-editor .estrella { color: #d4a017; flex-shrink: 0; }
+
+/* Seguimientos agendados: mensaje fantasma al final del chat. */
+#fantasmas { display: flex; flex-direction: column; gap: 6px; }
+#fantasmas:empty { display: none; }
+.fantasma-fila { display: flex; max-width: 65%; align-self: flex-end; margin-left: auto; }
+.msg.fantasma { opacity: .78; background: transparent; border: 1.5px dashed var(--verde-osc); box-shadow: none; display: flex; flex-direction: column; gap: 6px; }
+.fantasma-cab { font-size: 12px; font-weight: 600; color: var(--verde-osc); display: flex; align-items: center; gap: 4px; }
+.fantasma-cab .icono-svg { width: 14px; height: 14px; }
+.fantasma-texto { white-space: pre-wrap; }
+.fantasma-textarea, .fantasma-fecha { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-family: inherit; font-size: 13px; resize: vertical; }
+.fantasma-siempre { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gris); }
+.fantasma-acciones { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.fantasma-acciones button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--borde); border-radius: 999px; background: var(--panel); font-family: inherit; font-size: 12px; color: var(--gris); cursor: pointer; }
+.fantasma-acciones button .icono-svg { width: 13px; height: 13px; }
+.fantasma-acciones button.primario { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
+.fantasma-acciones button.peligro { color: var(--peligro); }
+.fantasma-acciones button:disabled { opacity: .5; }
+
 @media (max-width: 480px) {
   #chat header { padding: 10px 10px; gap: 8px; }
   #chat header .acciones-chat { gap: 2px; }
   #chat header .acciones-chat .btn-meta { height: 30px; min-width: 30px; padding: 0 5px; }
   #chat header .txt-seg-rapido { display: none; }
-  #popover-meta { top: 56px; right: 8px; left: 8px; width: auto; max-width: none; }
+  #popover-meta, #popover-seg { top: 56px; right: 8px; left: 8px; width: auto; max-width: none; }
+  .fantasma-fila { max-width: 88%; }
 }
 
 /* Código de Shalom en el panel derecho, como etiqueta. */

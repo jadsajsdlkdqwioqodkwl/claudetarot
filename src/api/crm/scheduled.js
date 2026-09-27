@@ -5,9 +5,9 @@
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  *      + catalogo? ("*" = catálogo completo, o el retailer_id de un producto) y catalogo_nombre?
  *      + mandar_siempre? — true: sale aunque el cliente o nosotros escribamos antes
- * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre? } → edita un pendiente de texto libre
- *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
- *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
+ * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre? } → edita un pendiente
+ *      (la hora y mandar_siempre se cambian en cualquiera; el texto solo en los de texto
+ *      libre — los que llevan quick_reply_id, media_key propia, plantilla o catálogo no)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
  *                              { conversation_id, all: true } → cancela todos los pendientes de ese chat
  *
@@ -111,17 +111,19 @@ async function patch({ request, env }) {
 
   const actual = await env.CRM_DB.prepare("SELECT * FROM scheduled_messages WHERE id = ? AND status = 'pendiente'").bind(id).first();
   if (!actual) return json({ error: "No encontrado o ya no está pendiente." }, 404);
-  if (actual.quick_reply_id || actual.media_key || actual.template_name || actual.catalogo) {
-    return json({ error: "Este seguimiento no se puede editar — cancélalo y programa uno nuevo." }, 400);
+  const soloTexto = !(actual.quick_reply_id || actual.media_key || actual.template_name || actual.catalogo);
+  if (!soloTexto && payload?.body !== undefined && (String(payload.body).trim() || null) !== actual.body) {
+    return json({ error: "El texto de este seguimiento no se puede editar — cancélalo y programa uno nuevo." }, 400);
   }
 
   const sendAt = payload?.send_at !== undefined ? new Date(payload.send_at) : new Date(actual.send_at);
   if (Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
-  const body = payload?.body !== undefined ? (String(payload.body).trim().slice(0, 4096) || null) : actual.body;
-  if (!body) return json({ error: "Necesita un texto." }, 400);
-  const errorVentana = await fueraDeVentana(env.CRM_DB, actual.conversation_id, sendAt);
+  const body = soloTexto && payload?.body !== undefined ? (String(payload.body).trim().slice(0, 4096) || null) : actual.body;
+  if (soloTexto && !body) return json({ error: "Necesita un texto." }, 400);
+  // Las plantillas (envío masivo) no dependen de la ventana de 24 h.
+  const errorVentana = actual.template_name ? null : await fueraDeVentana(env.CRM_DB, actual.conversation_id, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
 
   const mandarSiempre = payload?.mandar_siempre !== undefined ? (payload.mandar_siempre ? 1 : 0) : actual.mandar_siempre;

@@ -12,7 +12,10 @@
  *         comportaba antes de existir este ajuste).
  *       - quick_followup_auto: si las respuestas rápidas con seguimiento lo
  *         programan al mandarlas. Sin valor guardado cuenta como encendido.
- * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean } → solo admin
+ *       - seg_rapidos_ids / seg_rapido_default_id: la lista corta de respuestas
+ *         rápidas del botón de seguimiento (reloj) de la cabecera del chat, y la
+ *         que se agenda con un toque. Vacío = la que se llame "URGENCIA".
+ * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean, seg_rapidos_ids?: number[], seg_rapido_default_id?: number|null } → solo admin
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -25,17 +28,21 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, segRapidosIds, segRapidoDefaultId] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
-    obtenerAjuste(env.CRM_DB, "quick_followup_auto")
+    obtenerAjuste(env.CRM_DB, "quick_followup_auto"),
+    obtenerAjuste(env.CRM_DB, "seg_rapidos_ids"),
+    obtenerAjuste(env.CRM_DB, "seg_rapido_default_id")
   ]);
   return json({
     ad_welcome_quick_reply_id: adWelcomeQuickReplyId ? Number(adWelcomeQuickReplyId) : null,
     ad_followup_sequence_id: adFollowupSequenceId ? Number(adFollowupSequenceId) : null,
     ad_followup_auto: adFollowupAuto !== "0",
-    quick_followup_auto: quickFollowupAuto !== "0"
+    quick_followup_auto: quickFollowupAuto !== "0",
+    seg_rapidos_ids: (segRapidosIds || "").split(",").map(Number).filter(Boolean),
+    seg_rapido_default_id: segRapidoDefaultId ? Number(segRapidoDefaultId) : null
   });
 }
 
@@ -60,6 +67,14 @@ async function patch({ request, env }) {
   }
   if ("quick_followup_auto" in payload) {
     await guardarAjuste(env.CRM_DB, "quick_followup_auto", payload.quick_followup_auto ? "1" : "0");
+  }
+  if ("seg_rapidos_ids" in payload) {
+    const ids = Array.isArray(payload.seg_rapidos_ids) ? payload.seg_rapidos_ids.map(Number).filter(Boolean).slice(0, 12) : [];
+    await guardarAjuste(env.CRM_DB, "seg_rapidos_ids", ids.join(","));
+  }
+  if ("seg_rapido_default_id" in payload) {
+    const id = payload.seg_rapido_default_id;
+    await guardarAjuste(env.CRM_DB, "seg_rapido_default_id", id ? String(Number(id)) : "");
   }
   return json({ ok: true });
 }
