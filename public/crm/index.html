@@ -127,6 +127,12 @@
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
+    <textarea id="rapida-seg-texto" placeholder="Seguimiento automático (opcional): se manda solo si el cliente no responde"></textarea>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Mandarlo <input type="number" id="rapida-seg-horas" min="1" max="168" value="20" style="width:64px" /> horas después</label>
+    <div class="ayuda-modal">Se cancela si el cliente responde o si lo quitas desde el panel derecho del chat.</div>
+    <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
+      <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
+    </label>
     <div class="acciones">
       <button class="cancelar" id="rapida-cancelar" type="button">Cancelar</button>
       <button class="crear" id="rapida-crear" type="button">Guardar</button>

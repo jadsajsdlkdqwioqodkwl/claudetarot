@@ -10,7 +10,9 @@
  *         NUEVO que escribe por primera vez desde un anuncio "Click to
  *         WhatsApp". Sin valor guardado cuenta como encendido (así se
  *         comportaba antes de existir este ajuste).
- * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean } → solo admin
+ *       - quick_followup_auto: si las respuestas rápidas con seguimiento lo
+ *         programan al mandarlas. Sin valor guardado cuenta como encendido.
+ * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean } → solo admin
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -23,15 +25,17 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
-    obtenerAjuste(env.CRM_DB, "ad_followup_auto")
+    obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
+    obtenerAjuste(env.CRM_DB, "quick_followup_auto")
   ]);
   return json({
     ad_welcome_quick_reply_id: adWelcomeQuickReplyId ? Number(adWelcomeQuickReplyId) : null,
     ad_followup_sequence_id: adFollowupSequenceId ? Number(adFollowupSequenceId) : null,
-    ad_followup_auto: adFollowupAuto !== "0"
+    ad_followup_auto: adFollowupAuto !== "0",
+    quick_followup_auto: quickFollowupAuto !== "0"
   });
 }
 
@@ -53,6 +57,9 @@ async function patch({ request, env }) {
   }
   if ("ad_followup_auto" in payload) {
     await guardarAjuste(env.CRM_DB, "ad_followup_auto", payload.ad_followup_auto ? "1" : "0");
+  }
+  if ("quick_followup_auto" in payload) {
+    await guardarAjuste(env.CRM_DB, "quick_followup_auto", payload.quick_followup_auto ? "1" : "0");
   }
   return json({ ok: true });
 }

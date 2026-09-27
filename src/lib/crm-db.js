@@ -78,7 +78,7 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId, fileName }) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId, fileName }, { subirEnBandeja = true } = {}) {
   await db
     .prepare(
       `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by, reply_to_message_id, file_name)
@@ -86,6 +86,10 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     )
     .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null, fileName || null)
     .run();
+
+  // Un seguimiento automático no sube el chat en la bandeja: sube recién
+  // cuando el cliente responde (registrarMensajeEntrante).
+  if (!subirEnBandeja) return;
 
   await db
     // Si le respondimos (a mano, la bienvenida o un seguimiento), lo que el
@@ -146,6 +150,31 @@ export async function cancelarSeguimientosPendientes(db, conversationId) {
 export const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 export const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 export const origenSeguimientoLead = (nombre) => (nombre ? `${PREFIJO_SEGUIMIENTO_LEAD} · ${nombre}` : PREFIJO_SEGUIMIENTO_LEAD);
+
+/**
+ * Seguimiento de una respuesta rápida: al mandar una que tiene
+ * `followup_body`, se programa ese texto `followup_hours` (20 por defecto)
+ * después. Es "manual" para las reglas de cancelación: lo cancela el cliente
+ * al escribir o la asesora desde el panel derecho, no sus propios mensajes.
+ * Reemplaza al seguimiento de respuesta rápida que ya estuviera pendiente en
+ * ese chat. Se apaga para todas con el ajuste `quick_followup_auto` = "0".
+ */
+export const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
+export const HORAS_SEGUIMIENTO_RAPIDA = 20;
+
+export async function programarSeguimientoDeRapida(db, conversationId, quickReplyId) {
+  if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return;
+  const q = await db.prepare("SELECT title, followup_body, followup_hours FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
+  if (!q?.followup_body) return;
+  const horas = q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA;
+  const sendAt = new Date(Date.now() + horas * 3600 * 1000).toISOString();
+  await db.batch([
+    db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?")
+      .bind(conversationId, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`),
+    db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by) VALUES (?, ?, ?, ?)")
+      .bind(conversationId, q.followup_body, sendAt, `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`)
+  ]);
+}
 
 /** Cancela solo los "tras no respuesta" (secuencia de leads) pendientes — lo que corresponde cuando nosotros le escribimos. */
 export async function cancelarSeguimientosDeLead(db, conversationId) {

@@ -37,6 +37,9 @@ const estado = {
   filtroTexto: "",
   archivoAdjunto: null,
   rapidaPendiente: null,
+  // La respuesta rápida cargada en el escribidor: al mandarla, el servidor
+  // programa su seguimiento automático si tiene uno.
+  rapidaUsadaId: null,
   segRapidaMedia: null,
   segModo: "mensaje",
   editandoRapidaId: null,
@@ -1011,6 +1014,7 @@ const seguimientosLocales = new Map(); // conversation_id -> { seg_pendientes, s
 // o aplicada a mano) vs. manual. Ver cancelarSeguimientosDeLead.
 const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
+const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 
 function esSeguimientoLead(s) {
   return s.created_by === ORIGEN_SEGUIMIENTO_AUTO || (s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_LEAD);
@@ -1024,6 +1028,7 @@ function esSeguimientoManual(s) {
 function etiquetaTipoSeguimiento(s) {
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
+  if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg manual">Automático · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
   return `<span class="tipo-seg manual">Manual</span>`;
 }
 
@@ -1431,6 +1436,7 @@ function guardarBorrador() {
     texto: $("#texto-envio")?.value || "",
     adjunto: estado.archivoAdjunto,
     rapida: estado.rapidaPendiente,
+    rapidaUsadaId: estado.rapidaUsadaId,
     respondiendoA: estado.respondiendoA
   };
   if (b.texto.trim() || b.adjunto || b.rapida || b.respondiendoA) borradores.set(id, b);
@@ -1449,6 +1455,7 @@ function restaurarBorrador(id) {
   }
   estado.archivoAdjunto = b.adjunto;
   estado.rapidaPendiente = b.rapida;
+  estado.rapidaUsadaId = b.rapidaUsadaId || null;
   estado.respondiendoA = b.respondiendoA;
   pintarPreviewArchivo();
   pintarPreviewRespuesta();
@@ -1463,6 +1470,7 @@ async function abrirConversacion(c) {
   // Sin revocar la vista previa del adjunto: puede haber quedado en el borrador del chat anterior.
   estado.respondiendoA = null;
   estado.rapidaPendiente = null;
+  estado.rapidaUsadaId = null;
   estado.archivoAdjunto = null;
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
   // de chats, no salir del sitio — se logra metiendo un estado en el
@@ -3542,6 +3550,8 @@ async function enviarMensaje(e) {
   const conversationId = estado.conversacionActivaId;
   const respondiendoA = estado.respondiendoA;
   const replyToId = respondiendoA?.id || undefined;
+  const rapidaUsadaId = estado.rapidaUsadaId || undefined;
+  estado.rapidaUsadaId = null;
 
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
@@ -3569,16 +3579,17 @@ async function enviarMensaje(e) {
         // `caption` es el pie de foto/video/documento. `file_name` queda en
         // el registro interno y, si es un documento, el cliente SÍ lo ve
         // como el nombre del archivo (ver enviarMedia en whatsapp.js).
-        body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId })
+        body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
       });
       if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
     } else if (rapida) {
       // Todas a la vez: la API las procesa en paralelo y llegan casi juntas.
-      const resultados = await Promise.allSettled(rapida.media.map((m) =>
+      // El seguimiento se programa con un solo envío: el texto si hay, si no la primera foto/video.
+      const resultados = await Promise.allSettled(rapida.media.map((m, i) =>
         pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type })
+          body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type, quick_reply_id: !texto && i === 0 ? rapidaUsadaId : undefined })
         })
       ));
       const fallidas = resultados.filter((r) => r.status === "rejected");
@@ -3587,7 +3598,7 @@ async function enviarMensaje(e) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
+          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
         });
       }
       if (fallidas.length) {
@@ -3597,13 +3608,13 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId })
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
       });
     }
   }, (err) => {
     alert(err.message);
     // Lo que no salió vuelve como borrador de SU chat para reintentar.
-    const b = { texto, adjunto, rapida, respondiendoA };
+    const b = { texto, adjunto, rapida, rapidaUsadaId, respondiendoA };
     const cuadroLibre = estado.conversacionActivaId === conversationId && !$("#texto-envio")?.value && !estado.archivoAdjunto && !estado.rapidaPendiente;
     if (cuadroLibre) {
       borradores.set(conversationId, b);
@@ -3777,6 +3788,7 @@ function usarQuickReply(q) {
   }
 
   estado.rapidaPendiente = q.media.length ? { media: q.media } : null;
+  estado.rapidaUsadaId = q.id;
   pintarPreviewArchivo();
 }
 
@@ -3787,8 +3799,35 @@ function abrirModalRapidaNueva() {
   $("#rapida-texto").value = "";
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  pintarSeguimientoRapida(null);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
+
+/** Los campos del seguimiento automático en el modal, y el interruptor global (solo admin). */
+function pintarSeguimientoRapida(q) {
+  $("#rapida-seg-texto").value = q?.followup_body || "";
+  $("#rapida-seg-horas").value = q?.followup_hours || 20;
+  const fila = $("#rapida-seg-global-fila");
+  fila.style.display = "none";
+  if (estado.miRol !== "admin") return;
+  pedir("/api/crm/settings").then((s) => {
+    $("#rapida-seg-global").checked = s.quick_followup_auto;
+    fila.style.display = "flex";
+  }).catch(() => {});
+}
+
+$("#rapida-seg-global").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quick_followup_auto: e.target.checked })
+    });
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    alert(err.message);
+  }
+});
 
 function abrirModalRapidaEdicion(q) {
   estado.editandoRapidaId = q.id;
@@ -3799,6 +3838,7 @@ function abrirModalRapidaEdicion(q) {
   $("#rapida-archivo-ayuda").textContent = q.media.length
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  pintarSeguimientoRapida(q);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
 
@@ -3814,6 +3854,8 @@ $("#rapida-crear").addEventListener("click", async () => {
   const title = $("#rapida-titulo").value.trim();
   const body = $("#rapida-texto").value.trim();
   const files = [...$("#rapida-archivo").files];
+  const followup_body = $("#rapida-seg-texto").value.trim();
+  const followup_hours = Number($("#rapida-seg-horas").value) || 20;
   const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
   if (!body && !files.length && !editandoId) return alert("Necesita texto o al menos un archivo.");
@@ -3834,13 +3876,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_body, followup_hours })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [] })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_body, followup_hours })
       });
     }
     await cargarQuickReplies();

@@ -4,9 +4,21 @@
  * PATCH  /api/crm/quick-replies — edita { id, title, body?, media_keys? } — si no mandas media_keys se
  *        conserva la media que ya tenía (no hace falta volver a subir fotos/videos solo para cambiar el texto)
  * DELETE /api/crm/quick-replies — borra { id }
+ *
+ * POST y PATCH aceptan además `followup_body` (texto del seguimiento
+ * automático, vacío = sin seguimiento) y `followup_hours` (1–168, 20 por
+ * defecto). Ver programarSeguimientoDeRapida.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { HORAS_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
+
+/** El seguimiento automático de la respuesta rápida, validado. */
+function leerSeguimiento(payload) {
+  const body = String(payload?.followup_body || "").trim().slice(0, 4096) || null;
+  const horas = Math.round(Number(payload?.followup_hours));
+  return { body, hours: body ? (horas >= 1 && horas <= 168 ? horas : HORAS_SEGUIMIENTO_RAPIDA) : null };
+}
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -16,7 +28,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-    "SELECT id, title, body, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
+    "SELECT id, title, body, followup_body, followup_hours, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -43,10 +55,11 @@ async function post({ request, env }) {
   if (!title) return json({ error: "Falta un título." }, 400);
   if (!body && !mediaKeys.length) return json({ error: "Necesita texto o al menos un archivo." }, 400);
 
+  const seguimiento = leerSeguimiento(payload);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body) VALUES (?, ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours) VALUES (?, ?, ?, ?) RETURNING *`
   )
-    .bind(title, body)
+    .bind(title, body, seguimiento.body, seguimiento.hours)
     .first();
 
   let i = 0;
@@ -93,7 +106,10 @@ async function patch({ request, env }) {
     if (!tieneMedia) return json({ error: "Necesita texto o al menos un archivo." }, 400);
   }
 
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
+  const seguimiento = leerSeguimiento(payload);
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ? WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, id)
+    .run();
 
   if (mediaKeys !== null) {
     const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();
@@ -115,7 +131,7 @@ async function patch({ request, env }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, followup_body: seguimiento.body, followup_hours: seguimiento.hours, media: media.results } });
 }
 
 async function del({ request, env }) {

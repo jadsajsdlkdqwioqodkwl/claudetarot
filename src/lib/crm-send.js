@@ -40,9 +40,9 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { esc
   await esperar(ms);
 }
 
-export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo) {
+export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones) {
   const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);
-  await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id });
+  await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id }, opciones);
   return waMessageId;
 }
 
@@ -52,7 +52,7 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy, repl
  * el registro interno (Sheets) y, si el tipo es "document", también se
  * manda como el nombre visible del archivo (ver enviarMedia).
  */
-export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy, fileName, replyTo) {
+export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, type, caption, sentBy, fileName, replyTo, opciones) {
   const obj = await env.CRM_MEDIA.get(mediaKey);
   if (!obj) throw new Error("El archivo ya no está disponible.");
   const mime = obj.httpMetadata?.contentType || "application/octet-stream";
@@ -70,7 +70,7 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
     sentBy,
     replyToMessageId: replyTo?.id,
     fileName
-  });
+  }, opciones);
   return waMessageId;
 }
 

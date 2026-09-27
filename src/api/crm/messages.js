@@ -5,11 +5,13 @@
  *      texto:  { conversation_id, body }
  *      media:  { conversation_id, media_key, media_type, caption? } — el
  *              media_key sale de /api/crm/upload-media
+ *      quick_reply_id? — si el mensaje salió de una respuesta rápida con
+ *              seguimiento, lo programa (ver programarSeguimientoDeRapida)
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "../../lib/crm-send.js";
-import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -84,6 +86,10 @@ async function post({ request, env, agent }) {
   }
 
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
+  const quickReplyId = Number(payload?.quick_reply_id) || null;
+  const programarRapida = () => quickReplyId
+    ? programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message))
+    : null;
   const sentBy = agent?.displayName || agent?.username || null;
 
   let replyTo = null;
@@ -105,6 +111,7 @@ async function post({ request, env, agent }) {
       const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
       const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName, replyTo);
       await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+      await programarRapida();
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -113,6 +120,7 @@ async function post({ request, env, agent }) {
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+    await programarRapida();
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     console.error("Enviar WhatsApp:", err.message);

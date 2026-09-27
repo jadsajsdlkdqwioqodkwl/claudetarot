@@ -14,6 +14,9 @@ import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 import { enviarTemplate } from "./whatsapp.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 
+// Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
+const SIN_SUBIR = { subirEnBandeja: false };
+
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
 
@@ -51,10 +54,10 @@ export async function procesarSeguimientosVencidos(env) {
         });
       } else if (s.media_key_real) {
         await pausaEnvio(env, s.conv_id);
-        await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático");
+        await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
       } else {
         await pausaEnvio(env, s.conv_id);
-        await mandarTexto(env, s.conv_id, s.wa_id, s.body || s.quick_body, "Seguimiento automático");
+        await mandarTexto(env, s.conv_id, s.wa_id, s.body || s.quick_body, "Seguimiento automático", undefined, SIN_SUBIR);
       }
       await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'enviado', sent_at = datetime('now') WHERE id = ?")
         .bind(s.id)
