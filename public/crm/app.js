@@ -653,7 +653,7 @@ async function pintarResumenLeadsAdmin() {
     let acum = 0;
     cont.innerHTML = `
       <div class="titulo">${icon("clock")} ${escapar(seq.title)} · ${d.settings.ad_followup_auto ? "automático en clientes nuevos" : "solo a mano"}</div>
-      ${seq.steps.length ? seq.steps.map((p) => { acum += p.delay_minutes; return `<div>En ${formatearMomento(acum)}: ${escapar(recortarTexto(p.body || "Foto/video", 50))}</div>`; }).join("") : "<div>Sin mensajes todavía.</div>"}`;
+      ${seq.steps.length ? seq.steps.map((p) => { acum += p.delay_minutes; return `<div>En ${formatearMomento(acum)}: ${escapar(recortarTexto(resumenPaso(p), 50))}</div>`; }).join("") : "<div>Sin mensajes todavía.</div>"}`;
   } catch (err) {
     cont.textContent = err.message;
   }
@@ -688,6 +688,7 @@ function cancelarEdicionPasoLead() {
   leadsEditandoPasoId = null;
   $("#leads-texto").value = "";
   $("#leads-archivo").value = "";
+  ponerCatalogoEnSelect($("#leads-catalogo"), "");
   $("#leads-delay-valor").value = "1";
   $("#leads-delay-unidad").value = "1440";
   $("#leads-agregar").textContent = "Agregar mensaje";
@@ -733,7 +734,7 @@ async function pintarModalLeads(forzar) {
     <div class="leads-paso${leadsEditandoPasoId === p.id ? " editando" : ""}" data-id="${p.id}">
       <div class="leads-paso-info">
         <div class="leads-paso-cuando">${icon("clock")} <strong>En ${formatearMomento(acum)}</strong><span class="sub"> · ${formatearDelay(p.delay_minutes)} ${i === 0 ? "después de aplicarlo" : "después del anterior"}</span></div>
-        <div class="leads-paso-cuerpo">${p.media_key ? icon(p.media_type === "video" ? "video" : "image") + " " : ""}${escapar(p.body || (p.media_key ? "Foto/video" : ""))}</div>
+        <div class="leads-paso-cuerpo">${p.media_key ? icon(p.media_type === "video" ? "video" : "image") + " " : ""}${escapar([etiquetaCatalogo(p), p.body].filter(Boolean).join(" — ") || (p.media_key ? "Foto/video" : ""))}</div>
       </div>
       <div class="leads-paso-acciones">
         <button class="mover-arriba" data-id="${p.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
@@ -778,6 +779,7 @@ async function pintarModalLeads(forzar) {
     $("#leads-delay-unidad").value = String(unidad);
     $("#leads-texto").value = p.body || "";
     $("#leads-archivo").value = "";
+    ponerCatalogoEnSelect($("#leads-catalogo"), p.catalogo, p.catalogo_nombre);
     $("#leads-agregar").textContent = "Guardar cambios";
     $("#leads-cancelar-edicion").style.display = "";
     cont.querySelectorAll(".leads-paso").forEach((el) => el.classList.toggle("editando", Number(el.dataset.id) === p.id));
@@ -848,12 +850,13 @@ $("#leads-agregar").addEventListener("click", async () => {
   const editandoId = leadsEditandoPasoId;
   const pasoEditado = editandoId ? seq.steps.find((x) => x.id === editandoId) : null;
   if (!valor || valor < 1) return alert("Pon cuánto tiempo esperar (1 o más).");
-  if (!texto && !archivo && !pasoEditado?.media_key) return alert("Escribe un texto o adjunta una foto/video.");
+  const cat = catalogoDeSelect($("#leads-catalogo"));
+  if (!texto && !archivo && !pasoEditado?.media_key && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video o elige el catálogo.");
 
   const btn = $("#leads-agregar");
   btn.disabled = true;
   try {
-    const cuerpo = { body: texto || null, delay_minutes: valor * unidad };
+    const cuerpo = { body: texto || null, delay_minutes: valor * unidad, ...cat };
     if (archivo) {
       const subida = await subirArchivo(archivo);
       Object.assign(cuerpo, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
@@ -2430,6 +2433,50 @@ async function productosDelCatalogo() {
   return cacheProductosCatalogo || [];
 }
 
+/*
+ * Selector "Sin catálogo / Catálogo completo / un producto" de los
+ * seguimientos y secuencias. Los productos se piden recién al abrir el
+ * selector, una sola vez por sesión (cacheProductosCatalogo).
+ */
+function ponerCatalogoEnSelect(sel, valor, nombre) {
+  if (!sel) return;
+  if (valor && valor !== "*" && ![...sel.options].some((o) => o.value === valor)) {
+    sel.add(new Option(nombre || "Producto del catálogo", valor));
+  }
+  sel.value = valor || "";
+  if (sel.dataset.conProductos) return;
+  sel.dataset.conProductos = "1";
+  const cargar = async () => {
+    try {
+      const productos = await productosDelCatalogo();
+      const actual = sel.value;
+      for (const p of productos) {
+        if (![...sel.options].some((o) => o.value === p.retailer_id)) sel.add(new Option(p.name || p.retailer_id, p.retailer_id));
+      }
+      sel.value = actual;
+    } catch { delete sel.dataset.conProductos; }
+  };
+  sel.addEventListener("pointerdown", cargar, { once: true });
+  sel.addEventListener("focus", cargar, { once: true });
+}
+
+/** { catalogo, catalogo_nombre } para mandar al servidor ("" = sin catálogo → null). */
+function catalogoDeSelect(sel) {
+  const v = sel?.value || "";
+  return { catalogo: v || null, catalogo_nombre: v && v !== "*" ? sel.options[sel.selectedIndex]?.text || null : null };
+}
+
+/** Texto corto de un paso de secuencia: catálogo, texto, o "Foto/video". */
+function resumenPaso(p) {
+  return [etiquetaCatalogo(p), p.body].filter(Boolean).join(" — ") || "Foto/video";
+}
+
+/** Cómo se ve en las listas un paso o seguimiento con catálogo. */
+function etiquetaCatalogo(x) {
+  if (!x?.catalogo) return "";
+  return x.catalogo === "*" ? "🛍️ Catálogo completo" : `🛍️ ${x.catalogo_nombre || "Producto del catálogo"}`;
+}
+
 function cerrarPopoverMeta() {
   $("#popover-meta")?.remove();
   document.removeEventListener("pointerdown", cerrarPopoverMetaAfuera, true);
@@ -2548,6 +2595,7 @@ async function actualizarHistorialCapi(conversationId) {
 /** Igual que arriba pero con la lista de seguimientos programados, para verla en el panel lateral sin abrir el chat. */
 /** El texto a mostrar de un seguimiento programado — cubre los tres orígenes posibles: texto propio, respuesta rápida, o plantilla (envío masivo). */
 function textoSeguimiento(s) {
+  if (s.catalogo) return etiquetaCatalogo(s) + (s.body ? ` — ${s.body}` : "");
   if (s.body) return s.body;
   if (s.quick_reply_title) return s.quick_reply_title;
   if (s.template_name) return `Plantilla: ${s.template_name}`;
@@ -3910,6 +3958,7 @@ function abrirModalProgramarSeguimiento(modo) {
   $("#seg-modal-titulo").textContent = "Programar seguimiento";
   $("#seg-tabs").style.display = "";
   $("#seg-archivo").style.display = "";
+  $("#seg-catalogo").style.display = "";
   const sel = $("#seg-rapida");
   sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
@@ -4073,7 +4122,7 @@ function pintarPreviewSecuenciaSeg() {
   cont.innerHTML = `<ol class="lead-timeline seg-timeline">${seq.steps.map((p) => {
     acum += p.delay_minutes;
     const cuando = new Date(ahora + acum * 60000).toLocaleString("es-PE", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
+    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 70))}</li>`;
   }).join("")}</ol>`;
 }
 
@@ -4122,6 +4171,7 @@ function limpiarFormSeguimiento() {
   $("#seg-texto").value = "";
   $("#seg-archivo").value = "";
   $("#seg-rapida").value = "";
+  ponerCatalogoEnSelect($("#seg-catalogo"), "");
   pintarPreviewSegRapida();
 }
 
@@ -4134,6 +4184,7 @@ function abrirModalEditarSeguimiento(s) {
   $("#seg-tabs").style.display = "none";
   ponerModoSeguimiento("mensaje");
   $("#seg-archivo").style.display = "none";
+  $("#seg-catalogo").style.display = "none";
   $("#seg-rapida").style.display = "none";
   prepararChipsVentana();
   $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
@@ -4143,7 +4194,7 @@ function abrirModalEditarSeguimiento(s) {
 }
 
 function seguimientoEditable(s) {
-  return !s.media_key && !s.quick_reply_id && !s.template_name;
+  return !s.media_key && !s.quick_reply_id && !s.template_name && !s.catalogo;
 }
 
 async function toggleSeguimientosPanel() {
@@ -4242,7 +4293,8 @@ $("#seg-crear").addEventListener("click", async () => {
   const editandoId = estado.editandoSeguimientoId;
   if (!fecha) return alert("Elige cuándo se manda.");
   if (editandoId && !texto) return alert("Escribe un texto.");
-  if (!texto && !quickReplyId && !archivo) return alert("Escribe un texto, adjunta una foto/video o elige una respuesta rápida.");
+  const cat = catalogoDeSelect($("#seg-catalogo"));
+  if (!texto && !quickReplyId && !archivo && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video, elige una respuesta rápida o el catálogo.");
 
   const btn = $("#seg-crear");
   btn.disabled = true;
@@ -4279,7 +4331,8 @@ $("#seg-crear").addEventListener("click", async () => {
         send_at: new Date(fecha).toISOString(),
         body: texto || undefined,
         quick_reply_id: quickReplyId || undefined,
-        media_key, media_type, media_mime
+        media_key, media_type, media_mime,
+        ...cat
       })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
@@ -4350,6 +4403,7 @@ function pintarListaSecuencias() {
           <div class="fila-seguimiento">
             <div>
               <div class="nombre">${i + 1}. +${formatearDelay(p.delay_minutes)}${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""}</div>
+              ${p.catalogo ? `<div class="sub">${escapar(etiquetaCatalogo(p))}</div>` : ""}
               ${p.body ? `<div class="sub">${escapar(p.body)}</div>` : ""}
             </div>
             <div style="display:flex;gap:4px">
@@ -4369,6 +4423,7 @@ function pintarListaSecuencias() {
           </div>
           <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
           <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
+          <select class="sel-catalogo fs-paso-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
           <input type="file" class="fs-paso-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
         </div>
@@ -4376,6 +4431,7 @@ function pintarListaSecuencias() {
     </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`);
 
   cont.querySelectorAll(".fs-paso-texto").forEach(agregarEmojisA);
+  cont.querySelectorAll(".fs-paso-catalogo").forEach((sel) => ponerCatalogoEnSelect(sel, ""));
 
   cont.querySelectorAll(".fs-editar").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -4458,6 +4514,7 @@ function pintarListaSecuencias() {
       const unidad = p.delay_minutes % 1440 === 0 ? 1440 : p.delay_minutes % 60 === 0 ? 60 : 1;
       fila.querySelector(".fs-paso-texto").value = p.body || "";
       fila.querySelector(".fs-paso-archivo").value = "";
+      ponerCatalogoEnSelect(fila.querySelector(".fs-paso-catalogo"), p.catalogo, p.catalogo_nombre);
       fila.querySelector(".fs-delay-valor").value = p.delay_minutes / unidad;
       fila.querySelector(".fs-delay-unidad").value = String(unidad);
       const guardar = fila.querySelector(".fs-agregar-paso-btn");
@@ -4486,7 +4543,8 @@ function pintarListaSecuencias() {
       const valor = Number(fila.querySelector(".fs-delay-valor").value) || 1;
       const unidad = Number(fila.querySelector(".fs-delay-unidad").value);
       const editando = Number(btn.dataset.editando) || null;
-      if (!texto && !archivo && !editando) return alert("Escribe un texto o adjunta una foto/video.");
+      const cat = catalogoDeSelect(fila.querySelector(".fs-paso-catalogo"));
+      if (!texto && !archivo && !editando && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video o elige el catálogo.");
 
       btn.disabled = true;
       btn.textContent = archivo ? "Subiendo…" : "Guardando…";
@@ -4505,7 +4563,8 @@ function pintarListaSecuencias() {
             ...(editando ? { step_id: editando } : { sequence_id: Number(btn.dataset.id) }),
             body: texto || undefined,
             media_key, media_type, media_mime,
-            delay_minutes: valor * unidad
+            delay_minutes: valor * unidad,
+            ...cat
           })
         });
         const seqId = btn.dataset.id;
@@ -5011,7 +5070,7 @@ async function pintarLeadDetalle(c) {
         <div class="titulo">${icon("clock")} ${escapar(seq.title)}${d.settings.ad_followup_auto ? ` <span class="pill-auto">automático en clientes nuevos</span>` : ""}</div>
         <ol class="lead-timeline">${seq.steps.map((p) => {
           acum += p.delay_minutes;
-          return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(p.body || "Foto/video", 70))}</li>`;
+          return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 70))}</li>`;
         }).join("")}</ol>
         <div class="lead-estado" id="detalle-leads-estado"></div>
       </div>

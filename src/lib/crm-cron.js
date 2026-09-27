@@ -11,7 +11,7 @@
  */
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
-import { enviarTemplate } from "./whatsapp.js";
+import { enviarTemplate, enviarCatalogo, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
@@ -52,6 +52,28 @@ export async function procesarSeguimientosVencidos(env) {
           body: `Plantilla: ${s.template_name}`,
           sentBy: s.created_by || "Envío masivo"
         });
+      } else if (s.catalogo) {
+        // Catálogo completo o un producto. Si además lleva foto/video, va antes.
+        await pausaEnvio(env, s.conv_id);
+        if (s.media_key_real) {
+          await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
+        }
+        const texto = s.body || s.quick_body || undefined;
+        let waMessageId;
+        if (s.catalogo === "*") {
+          // La miniatura sale del caché de productos: sin pedirle la lista a Meta.
+          const portada = await env.CRM_DB.prepare("SELECT retailer_id FROM catalog_products ORDER BY cached_at DESC LIMIT 1").first().catch(() => null);
+          waMessageId = await enviarCatalogo(env, s.wa_id, texto, portada?.retailer_id);
+        } else {
+          if (!env.WHATSAPP_CATALOG_ID) throw new Error("Falta WHATSAPP_CATALOG_ID.");
+          waMessageId = await enviarProducto(env, s.wa_id, env.WHATSAPP_CATALOG_ID, s.catalogo, texto);
+        }
+        await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
+          waMessageId,
+          type: s.catalogo === "*" ? "catalog" : "product",
+          body: s.catalogo === "*" ? "[Catálogo enviado]" : (s.catalogo_nombre || "Producto del catálogo"),
+          sentBy: "Seguimiento automático"
+        }, SIN_SUBIR);
       } else if (s.media_key_real) {
         await pausaEnvio(env, s.conv_id);
         await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", s.body || s.quick_body, "Seguimiento automático", undefined, undefined, SIN_SUBIR);

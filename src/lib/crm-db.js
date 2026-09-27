@@ -215,12 +215,22 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
     acumuladoMs += p.delay_minutes * 60 * 1000;
     const sendAt = new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
-      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime);
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null);
   });
   await db.batch(inserts);
   return pasos.length;
+}
+
+/**
+ * El catálogo de un seguimiento, tal como llega del CRM: "*" = el catálogo
+ * completo, cualquier otro valor = el retailer_id de un producto.
+ */
+export function leerCatalogo(payload) {
+  const catalogo = payload?.catalogo ? String(payload.catalogo).slice(0, 100) : null;
+  const nombre = catalogo && catalogo !== "*" && payload?.catalogo_nombre ? String(payload.catalogo_nombre).slice(0, 120) : null;
+  return { catalogo, catalogoNombre: nombre };
 }
 
 export async function guardarMediaKey(db, messageId, mediaKey) {

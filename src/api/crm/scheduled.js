@@ -3,6 +3,7 @@
  * POST   /api/crm/scheduled — programa uno:
  *      { conversation_id, send_at, body?, quick_reply_id? } — texto o una respuesta rápida guardada
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
+ *      + catalogo? ("*" = catálogo completo, o el retailer_id de un producto) y catalogo_nombre?
  * PATCH  /api/crm/scheduled — { id, send_at?, body? } → edita un pendiente de texto libre
  *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
  *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
@@ -21,6 +22,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { leerCatalogo } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -81,15 +83,16 @@ async function post({ request, env, agent }) {
   if (!sendAt || Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
-  if (!body && !quickReplyId && !mediaKey) return json({ error: "Necesita un texto, una foto/video o una respuesta rápida." }, 400);
+  const { catalogo, catalogoNombre } = leerCatalogo(payload);
+  if (!body && !quickReplyId && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida o el catálogo." }, 400);
   const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime)
+    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre)
     .first();
 
   return json({ ok: true, scheduled: creado });
@@ -107,7 +110,7 @@ async function patch({ request, env }) {
 
   const actual = await env.CRM_DB.prepare("SELECT * FROM scheduled_messages WHERE id = ? AND status = 'pendiente'").bind(id).first();
   if (!actual) return json({ error: "No encontrado o ya no está pendiente." }, 404);
-  if (actual.quick_reply_id || actual.media_key || actual.template_name) {
+  if (actual.quick_reply_id || actual.media_key || actual.template_name || actual.catalogo) {
     return json({ error: "Este seguimiento no se puede editar — cancélalo y programa uno nuevo." }, 400);
   }
 

@@ -7,7 +7,8 @@
  *
  * GET    /api/crm/followup-sequences — todas, con sus pasos en orden
  * POST   /api/crm/followup-sequences — { title } → crea una secuencia vacía
- *                                       { sequence_id, body?, media_key?, media_type?, media_mime?, delay_minutes } → agrega un paso al final
+ *                                       { sequence_id, body?, media_key?, media_type?, media_mime?, delay_minutes, catalogo?, catalogo_nombre? } → agrega un paso al final
+ *                                       (catalogo: "*" = catálogo completo, o el retailer_id de un producto)
  * DELETE /api/crm/followup-sequences — { sequence_id } → borra la secuencia entera
  *                                       { step_id } → borra un solo paso
  * PATCH  /api/crm/followup-sequences — { step_id, direction: "up"|"down" } → reordena un paso
@@ -16,6 +17,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { leerCatalogo } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -56,8 +58,9 @@ async function post({ request, env }) {
     const mediaType = mediaKey ? (TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "image") : null;
     const mediaMime = mediaKey && payload?.media_mime ? String(payload.media_mime) : null;
     const delayMinutes = Math.max(1, Number(payload?.delay_minutes) || 60);
+    const { catalogo, catalogoNombre } = leerCatalogo(payload);
 
-    if (!body && !mediaKey) return json({ error: "Necesita un texto o una foto/video." }, 400);
+    if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
 
     const existe = await env.CRM_DB.prepare("SELECT id FROM followup_sequences WHERE id = ?").bind(sequenceId).first();
     if (!existe) return json({ error: "Esa secuencia no existe." }, 404);
@@ -66,10 +69,10 @@ async function post({ request, env }) {
       .bind(sequenceId)
       .first();
     const creado = await env.CRM_DB.prepare(
-      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes, catalogo, catalogo_nombre)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
     )
-      .bind(sequenceId, (max?.m || 0) + 1, body, mediaKey, mediaType, mediaMime, delayMinutes)
+      .bind(sequenceId, (max?.m || 0) + 1, body, mediaKey, mediaType, mediaMime, delayMinutes, catalogo, catalogoNombre)
       .first();
 
     return json({ ok: true, step: creado });
@@ -146,12 +149,16 @@ async function patch({ request, env }) {
     const mediaKey = nuevaMedia || actual.media_key;
     const mediaType = nuevaMedia ? (TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "image") : actual.media_type;
     const mediaMime = nuevaMedia ? (payload?.media_mime ? String(payload.media_mime) : null) : actual.media_mime;
-    if (!body && !mediaKey) return json({ error: "Necesita un texto o una foto/video." }, 400);
+    // Sin `catalogo` en el payload se conserva el que tenía; con null se quita.
+    const { catalogo, catalogoNombre } = "catalogo" in (payload || {})
+      ? leerCatalogo(payload)
+      : { catalogo: actual.catalogo, catalogoNombre: actual.catalogo_nombre };
+    if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
 
     await env.CRM_DB.prepare(
-      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ? WHERE id = ?"
+      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ?, catalogo = ?, catalogo_nombre = ? WHERE id = ?"
     )
-      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, stepId)
+      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, stepId)
       .run();
     if (nuevaMedia && actual.media_key && env.CRM_MEDIA) await env.CRM_MEDIA.delete(actual.media_key).catch(() => {});
     return json({ ok: true });
