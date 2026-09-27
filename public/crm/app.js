@@ -202,6 +202,7 @@ async function mostrarApp() {
   $("#sesion-actual").title = $("#sesion-actual").textContent;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-avisos").style.display = esCuentaDeVendedor ? "" : "none";
+  if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   abrirChatDelLink(cargarConversaciones());
   cargarAsesorasFiltro();
@@ -1210,6 +1211,9 @@ function actualizarAvisosNoLeidos() {
    funciona mientras el CRM esté abierto (aunque sea de fondo/minimizado). */
 const NOTIF_LOCAL_KEY = "crm-notif-local";
 let noLeidosPorChat = null;
+// Si la asesora eligió solo Telegram, el aviso le llega por Telegram: el CRM
+// no debe sacar además su propia ventanita del navegador.
+let canalAvisos = null;
 
 function notifLocalActiva() {
   try { return localStorage.getItem(NOTIF_LOCAL_KEY) === "1"; } catch { return false; }
@@ -1219,7 +1223,7 @@ function avisarLocalmente() {
   const actuales = new Map(estado.conversaciones.map((c) => [c.conversation_id, c.unread_count || 0]));
   const previos = noLeidosPorChat;
   noLeidosPorChat = actuales;
-  if (!previos || !notifLocalActiva() || Notification.permission !== "granted") return;
+  if (!previos || canalAvisos === "telegram" || !notifLocalActiva() || Notification.permission !== "granted") return;
 
   for (const c of estado.conversaciones) {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
@@ -1571,6 +1575,7 @@ let linkTelegram = null;
 let esperandoStartTelegram = false;
 
 function pintarAvisos({ available, channel, linked }) {
+  canalAvisos = linked ? channel : null;
   $("#avisos-canal").value = channel;
   $("#avisos-canal").disabled = !linked;
   $("#avisos-estado").textContent = !available
