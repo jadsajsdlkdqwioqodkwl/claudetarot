@@ -4,7 +4,8 @@
  *      { conversation_id, send_at, body?, quick_reply_id? } — texto o una respuesta rápida guardada
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  *      + catalogo? ("*" = catálogo completo, o el retailer_id de un producto) y catalogo_nombre?
- * PATCH  /api/crm/scheduled — { id, send_at?, body? } → edita un pendiente de texto libre
+ *      + mandar_siempre? — true: sale aunque el cliente o nosotros escribamos antes
+ * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre? } → edita un pendiente de texto libre
  *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
  *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
@@ -89,10 +90,10 @@ async function post({ request, env, agent }) {
   if (errorVentana) return json({ error: errorVentana }, 422);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre)
+    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0)
     .first();
 
   return json({ ok: true, scheduled: creado });
@@ -123,8 +124,9 @@ async function patch({ request, env }) {
   const errorVentana = await fueraDeVentana(env.CRM_DB, actual.conversation_id, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
 
-  await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ? WHERE id = ?")
-    .bind(body, sendAt.toISOString(), id)
+  const mandarSiempre = payload?.mandar_siempre !== undefined ? (payload.mandar_siempre ? 1 : 0) : actual.mandar_siempre;
+  await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ?, mandar_siempre = ? WHERE id = ?")
+    .bind(body, sendAt.toISOString(), mandarSiempre, id)
     .run();
 
   return json({ ok: true });

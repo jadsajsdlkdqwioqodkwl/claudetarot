@@ -1032,6 +1032,7 @@ function etiquetaTipoSeguimiento(s) {
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg manual">Automático · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
+  if (s.mandar_siempre) return `<span class="tipo-seg manual">Se manda sí o sí</span>`;
   return `<span class="tipo-seg manual">Manual</span>`;
 }
 
@@ -4054,6 +4055,8 @@ function pintarCuando() {
       : `Se manda el ${d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`;
 }
 
+$("#seg-siempre").addEventListener("change", pintarReglaSeguimiento);
+
 $("#seg-chips").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (btn) elegirCuando(btn);
@@ -4068,9 +4071,12 @@ function pintarReglaSeguimiento() {
   if (!el) return;
   const leadId = datosLead?.settings?.ad_followup_sequence_id;
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
+  $("#seg-siempre-fila").style.display = estado.segModo === "mensaje" ? "flex" : "none";
   el.textContent = esLead
     ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
-    : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
+    : estado.segModo === "mensaje" && $("#seg-siempre").checked
+      ? "Se manda sí o sí a esa hora, aunque el cliente o tú escriban antes. Solo lo cancelas tú desde el panel derecho."
+      : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
 }
 
 function ponerModoSeguimiento(modo) {
@@ -4171,6 +4177,7 @@ function limpiarFormSeguimiento() {
   $("#seg-texto").value = "";
   $("#seg-archivo").value = "";
   $("#seg-rapida").value = "";
+  $("#seg-siempre").checked = false;
   ponerCatalogoEnSelect($("#seg-catalogo"), "");
   pintarPreviewSegRapida();
 }
@@ -4190,6 +4197,8 @@ function abrirModalEditarSeguimiento(s) {
   $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
   elegirCuando($("#seg-chips button[data-otra]"));
   $("#seg-texto").value = s.body || "";
+  $("#seg-siempre").checked = Boolean(s.mandar_siempre);
+  pintarReglaSeguimiento();
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
 
@@ -4303,7 +4312,7 @@ $("#seg-crear").addEventListener("click", async () => {
       await pedir("/api/crm/scheduled", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto })
+        body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto, mandar_siempre: $("#seg-siempre").checked })
       });
       $("#modal-seguimiento-fondo").classList.remove("abierto");
       limpiarFormSeguimiento();
@@ -4332,7 +4341,8 @@ $("#seg-crear").addEventListener("click", async () => {
         body: texto || undefined,
         quick_reply_id: quickReplyId || undefined,
         media_key, media_type, media_mime,
-        ...cat
+        ...cat,
+        mandar_siempre: $("#seg-siempre").checked
       })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");

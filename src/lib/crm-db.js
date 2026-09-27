@@ -131,7 +131,8 @@ export async function guardarReaccionPropia(db, messageId, emoji) {
 /** Cancela los seguimientos programados pendientes de una conversación — se usa cuando el cliente escribe o cuando nosotros le mandamos algo a mano, para no insistir con un mensaje que ya quedó desactualizado. */
 export async function cancelarSeguimientosPendientes(db, conversationId) {
   await db
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'")
+    // Los marcados "mandar siempre" no se cancelan: salen aunque el cliente escriba.
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND mandar_siempre = 0")
     .bind(conversationId)
     .run();
 }
