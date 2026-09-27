@@ -103,9 +103,15 @@ async function post({ request, env, agent }) {
   try {
     switch (payload.action) {
       case "link": {
-        const bytes = crypto.getRandomValues(new Uint8Array(12));
-        const codigo = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-        await db.prepare("UPDATE agents SET telegram_link_code = ? WHERE id = ?").bind(codigo, agente.id).run();
+        // Se reutiliza el código pendiente: si se generara uno nuevo cada vez
+        // que se abre el modal, el /start que ya mandó con el anterior no
+        // coincidiría nunca y la vinculación no se completaría.
+        let codigo = agente.telegram_link_code;
+        if (!codigo) {
+          const bytes = crypto.getRandomValues(new Uint8Array(12));
+          codigo = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+          await db.prepare("UPDATE agents SET telegram_link_code = ? WHERE id = ?").bind(codigo, agente.id).run();
+        }
         const bot = await llamarTelegram(env, "getMe");
         return json({ url: `https://t.me/${bot.username}?start=${codigo}` });
       }

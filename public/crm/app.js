@@ -1613,7 +1613,9 @@ $("#btn-avisos").addEventListener("click", async () => {
   linkTelegram = null;
   esperandoStartTelegram = false;
   try {
-    const datos = await pedir("/api/crm/notify-settings");
+    let datos = await pedir("/api/crm/notify-settings");
+    // Si ya mandó el /start antes y cerró el modal, se vincula al abrirlo.
+    if (datos.available && !datos.linked) datos = (await accionAvisos({ action: "check" })) || datos;
     pintarAvisos(datos);
     if (datos.available && !datos.linked) linkTelegram = (await accionAvisos({ action: "link" }))?.url || null;
   } catch (err) {
