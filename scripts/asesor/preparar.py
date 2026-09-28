@@ -29,17 +29,9 @@ def texto_fecha(v):
     return v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, dt.datetime) else str(v or "")
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("xlsx")
-    ap.add_argument("--dias", type=int, default=3)
-    ap.add_argument("--hoy", default=(dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))
-    ap.add_argument("--salida", default="/tmp/asesor")
-    a = ap.parse_args()
-
-    hoy = dt.date.fromisoformat(a.hoy)
-    desde = hoy - dt.timedelta(days=a.dias - 1)
-    wb = openpyxl.load_workbook(a.xlsx, read_only=True)
+def leer_filas(xlsx, desde, hoy):
+    """Filas de las pestañas diarias entre desde y hoy (inclusive), ordenadas por fecha."""
+    wb = openpyxl.load_workbook(xlsx, read_only=True)
     filas = []
     for ws in wb.worksheets:
         m = RE_PESTANA.match(ws.title)
@@ -53,9 +45,23 @@ def main():
                 "t": texto_fecha(r[0]), "wa": re.sub(r"\D", "", str(r[1]).replace(".0", "")),
                 "nombre": str(r[2] or ""), "quien": str(r[3] or ""), "vend": str(r[4] or ""),
                 "tipo": str(r[5] or "text"), "msg": "" if r[6] is None else str(r[6]),
-                "asesora": str(r[11] or ""), "embudo": str(r[13] or ""),
+                "anuncio": str(r[8] or ""), "asesora": str(r[11] or ""), "embudo": str(r[13] or ""),
             })
     filas.sort(key=lambda f: f["t"])
+    return filas
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("xlsx")
+    ap.add_argument("--dias", type=int, default=3)
+    ap.add_argument("--hoy", default=(dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))
+    ap.add_argument("--salida", default="/tmp/asesor")
+    a = ap.parse_args()
+
+    hoy = dt.date.fromisoformat(a.hoy)
+    desde = hoy - dt.timedelta(days=a.dias - 1)
+    filas = leer_filas(a.xlsx, desde, hoy)
 
     chats = OrderedDict()
     for f in filas:

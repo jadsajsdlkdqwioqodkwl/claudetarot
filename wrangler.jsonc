@@ -128,6 +128,11 @@
     // de la ventana de 24 h. Sin IA. Vacío = apagado. Entre 1 y 20.
     // CARRITO_MENSAJE_LIMA / CARRITO_MENSAJE_PROVINCIA (opcionales) cambian
     // el texto; {nombre} = su primer nombre.
-    "CARRITO_AUTO_HORAS": ""
+    "CARRITO_AUTO_HORAS": "",
+
+    // SHA-256 de la clave con la que la Routine del asesor llama a
+    // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el
+    // prompt de la Routine; aquí va el hash, que no sirve para nada sin ella.
+    "ASESOR_CLAVE_SHA256": "b22840bc68a039ffe4a74253fb8cb83f5092dc99b830bb4b931d95c249ad4c6a"
   }
 }

@@ -1,15 +1,16 @@
 """
-Manda el resultado de la lectura nocturna al Telegram del equipo:
+Manda el resultado de la lectura del asesor por el Worker (/api/asesor/avisos),
+que tiene el token del bot y reparte:
 
-  1. Un PDF con los pedidos de la fecha objetivo (confirmados Lima/provincia,
-     por confirmar, otros días, intención).
-  2. Un mensaje por cliente pendiente: "Manda este mensaje" con el texto listo
-     (un toque lo copia) y un botón que abre ese chat en el CRM.
+  1. Al dueño: un PDF con los pedidos de la fecha objetivo y un resumen.
+  2. A la vendedora asignada a cada chat (o al dueño si ella no vinculó
+     Telegram): "Manda este mensaje" con el texto listo (un toque lo copia) y
+     un botón que abre ese chat en el CRM.
 
-    python3 scripts/asesor/enviar.py /tmp/asesor/salida.json [--prueba]
-
-Lee TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID del entorno. Con --prueba no manda
-nada: imprime lo que mandaría y deja el PDF en /tmp/asesor.
+    ASESOR_CLAVE=... python3 scripts/asesor/enviar.py /tmp/asesor/salida.json
+    ... --solo-mensajes        sin PDF (corridas de 11:30 y 16:00)
+    ... --informe informe.txt  informe CRO, solo al dueño
+    ... --prueba               no manda nada, imprime lo que mandaría
 
 salida.json:
 {
@@ -21,10 +22,8 @@ salida.json:
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}]
 }
 """
-import glob, html, json, os, subprocess, sys, time, urllib.parse, urllib.request
+import base64, glob, html, json, os, subprocess, sys, urllib.error, urllib.request
 
-CRM = "https://kit-tarot-para-principiantes.tarotperu.store/crm/?wa="
-CHAT_DEFAULT = "8780926886"
 ORDEN = ["CONFIRMADO", "POR_CONFIRMAR", "OTRO_DIA", "INTENCION"]
 TITULOS = {
     ("CONFIRMADO", "LIMA"): "✅ Lima — confirmados", ("CONFIRMADO", "PROVINCIA"): "✅ Provincia — confirmados",
@@ -66,57 +65,65 @@ td.n::before{{counter-increment:n;content:counter(n)}}</style>
     return ruta_pdf, kits
 
 
-def telegram(metodo, token, campos=None, archivo=None):
-    url = f"https://api.telegram.org/bot{token}/{metodo}"
-    if archivo:
-        limite = "----asesor" + str(int(time.time()))
-        cuerpo = b""
-        for k, v in (campos or {}).items():
-            cuerpo += f"--{limite}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
-        with open(archivo, "rb") as fh:
-            cuerpo += (f"--{limite}\r\nContent-Disposition: form-data; name=\"document\"; filename=\"{os.path.basename(archivo)}\"\r\n"
-                       "Content-Type: application/pdf\r\n\r\n").encode() + fh.read() + f"\r\n--{limite}--\r\n".encode()
-        req = urllib.request.Request(url, data=cuerpo, headers={"Content-Type": f"multipart/form-data; boundary={limite}"})
-    else:
-        req = urllib.request.Request(url, data=json.dumps(campos).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
+
+
+def al_worker(clave, cuerpo):
+    """El Worker tiene el token del bot y sabe qué vendedora atiende cada chat."""
+    req = urllib.request.Request(AVISOS, data=json.dumps(cuerpo).encode(),
+                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as err:
+        sys.exit(f"El Worker rechazó el aviso ({err.code}): {err.read().decode()[:300]}")
 
 
 def main():
-    prueba = "--prueba" in sys.argv
-    ruta = next(a for a in sys.argv[1:] if not a.startswith("--"))
+    args = sys.argv[1:]
+    prueba, solo_mensajes = "--prueba" in args, "--solo-mensajes" in args
+    informe = args[args.index("--informe") + 1] if "--informe" in args else None
+    clave = os.environ.get("ASESOR_CLAVE", "")
+    if not clave and not prueba:
+        sys.exit("Falta ASESOR_CLAVE en el entorno (o usa --prueba).")
+
+    if informe:  # informe CRO: solo al dueño, en trozos que entren en un mensaje
+        texto = open(informe).read().strip()
+        trozos = [texto[i:i + 3800] for i in range(0, len(texto), 3800)]
+        for t in trozos:
+            print(t) if prueba else al_worker(clave, {"resumen": t, "solo_dueno": True})
+        print(f"Informe: {len(trozos)} mensaje(s){' (prueba, nada salió)' if prueba else ''}")
+        return
+
+    ruta = next(a for a in args if not a.startswith("--"))
     datos = json.load(open(ruta))
     carpeta = os.path.dirname(os.path.abspath(ruta))
-    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN", ""), os.environ.get("TELEGRAM_CHAT_ID", CHAT_DEFAULT)
-    if not token and not prueba:
-        sys.exit("Falta TELEGRAM_BOT_TOKEN en el entorno (o usa --prueba).")
-
-    pdf, kits = armar_pdf(datos, carpeta)
     ped = datos.get("pedidos", [])
     cuenta = lambda est, des=None: sum(1 for p in ped if p.get("estado") == est and (des is None or p.get("destino") == des))
-    resumen = (f"🧭 Asesor nocturno — pedidos para {datos.get('fecha_objetivo', '')}\n"
-               f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
-               f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
-               f"✍️ Mensajes para mandar: {len(datos.get('mensajes', []))}")
+    cuerpo = {"mensajes": datos.get("mensajes", [])}
+    if not solo_mensajes:
+        pdf, kits = armar_pdf(datos, carpeta)
+        cuerpo["resumen"] = (f"🧭 Asesor — pedidos para {datos.get('fecha_objetivo', '')}\n"
+                             f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
+                             f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
+                             f"✍️ Mensajes sugeridos a las vendedoras: {len(cuerpo['mensajes'])}")
+        with open(pdf, "rb") as fh:
+            cuerpo["pdf_base64"] = base64.b64encode(fh.read()).decode()
+        cuerpo["pdf_nombre"] = os.path.basename(pdf)
+        print(f"PDF: {pdf}")
+    elif cuerpo["mensajes"]:
+        cuerpo["resumen"] = f"🧭 Asesor — {len(cuerpo['mensajes'])} mensajes sugeridos a las vendedoras"
 
-    salidas = [("documento", {"chat_id": chat, "caption": resumen}, pdf)]
-    for m in datos.get("mensajes", []):
-        wa = "".join(c for c in str(m.get("whatsapp", "")) if c.isdigit())
-        texto = (f"✍️ <b>Manda este mensaje</b> a {e(m.get('nombre') or 'sin nombre')} (+{e(wa)})\n"
-                 f"<i>{e(m.get('motivo', ''))}</i>\n\n<code>{e(m.get('mensaje', ''))}</code>\n\n<i>Toca el texto para copiarlo.</i>")
-        salidas.append(("mensaje", {"chat_id": chat, "text": texto, "parse_mode": "HTML", "disable_web_page_preview": True,
-                                    "reply_markup": {"inline_keyboard": [[{"text": "💬 Abrir chat en el CRM", "url": CRM + wa}]]}}, None))
-
-    for tipo, campos, archivo in salidas:
-        if prueba:
-            print(f"[{tipo}]", campos.get("caption") or campos.get("text"), "\n")
-            continue
-        r = telegram("sendDocument" if archivo else "sendMessage", token, campos, archivo)
-        if not r.get("ok"):
-            print("Telegram rechazó:", r, file=sys.stderr)
-        time.sleep(0.4)  # lejos del límite de 20 mensajes/min por grupo
-    print(f"PDF: {pdf}\nEnviados: {len(salidas)}{' (prueba, nada salió)' if prueba else ''}")
+    if prueba:
+        print(cuerpo.get("resumen", ""))
+        for m in cuerpo["mensajes"]:
+            print(f"\n→ {m.get('nombre')} (+{m.get('whatsapp')}) — {m.get('motivo', '')}\n{m.get('mensaje')}")
+        print("\n(prueba, nada salió)")
+        return
+    if not cuerpo["mensajes"] and "resumen" not in cuerpo:
+        print("Nada que avisar.")
+        return
+    print(json.dumps(al_worker(clave, cuerpo), ensure_ascii=False))
 
 
 if __name__ == "__main__":

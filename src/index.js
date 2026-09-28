@@ -89,6 +89,7 @@ import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
+import { onRequestPost as asesorAvisosPost } from "./api/asesor.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -98,6 +99,7 @@ const ROUTES = {
   "/api/seguimiento": { GET: seguimiento },
 
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
+  "/api/asesor/avisos": { POST: asesorAvisosPost },
 
   "/api/crm/login": { POST: crmLogin },
   "/api/crm/login-info": { GET: crmLoginInfo },
