@@ -3695,11 +3695,10 @@ function toggleEmojiPanel() {
   panel.classList.toggle("abierto");
   if (panel.classList.contains("abierto")) {
     panel.innerHTML = EMOJIS.map((em) => `<button type="button">${em}</button>`).join("");
-    panel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-      const input = $("#texto-envio");
-      input.value += b.textContent;
-      input.focus();
-    }));
+    // Sin esto, tocar un emoji le saca el foco al texto y en el celular se
+    // cierra el teclado; y el emoji va donde está el cursor, no al final.
+    panel.addEventListener("mousedown", (e) => e.preventDefault());
+    panel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => insertarEnCursor($("#texto-envio"), b.textContent)));
   }
 }
 
@@ -3744,6 +3743,89 @@ document.addEventListener("click", (e) => {
 
 /* ---------- Respuestas rápidas ---------- */
 
+/*
+ * Buscador de respuestas rápidas. No exige el texto exacto:
+ *   - sin tildes ni mayúsculas ("envio" encuentra "Envío"),
+ *   - cada palabra por separado y en cualquier orden ("lima precio"),
+ *   - por el comienzo de la palabra ("prov" → "provincia"),
+ *   - con errores de tipeo ("provinsia", "adelnto"),
+ *   - con sinónimos del negocio ("costo" → "precio", "delivery" → "envío").
+ * Lo que coincide en el título pesa más que lo del cuerpo. Si ninguna tiene
+ * todas las palabras, muestra las que tengan alguna, ordenadas.
+ */
+const SINONIMOS_RAPIDAS = [
+  ["precio", "costo", "cuanto", "vale", "cuesta", "promo", "promocion", "oferta"],
+  ["envio", "delivery", "despacho", "enviar", "llega", "motorizado", "courier"],
+  ["provincia", "shalom", "olva", "agencia"],
+  ["pago", "yape", "plin", "adelanto", "deposito", "abono", "captura"],
+  ["ubicacion", "direccion", "donde", "domicilio"],
+  ["kit", "tarot", "cartas", "mazo", "baraja"],
+  ["hola", "bienvenida", "saludo", "info", "informacion"],
+  ["gracias", "agendado", "confirmado", "listo"],
+  ["foto", "fotos", "imagen", "video", "referencias"],
+  ["catalogo", "modelos", "productos"]
+];
+
+function normalizarBusqueda(texto) {
+  return String(texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9ñ\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function distanciaEdicion(a, b, tope) {
+  if (Math.abs(a.length - b.length) > tope) return tope + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const act = [i];
+    let minFila = i;
+    for (let j = 1; j <= b.length; j++) {
+      act[j] = Math.min(prev[j] + 1, act[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      minFila = Math.min(minFila, act[j]);
+    }
+    if (minFila > tope) return tope + 1;
+    prev = act;
+  }
+  return prev[b.length];
+}
+
+/** Qué tan bien calza una palabra buscada con una del texto (0 = nada). */
+function calce(token, palabra) {
+  if (palabra === token) return 10;
+  if (palabra.startsWith(token)) return 8;
+  if (token.length >= 3 && palabra.includes(token)) return 5;
+  if (token.length >= 4) {
+    const tope = token.length >= 7 ? 2 : 1;
+    // Contra la palabra entera y contra su comienzo (para "provinsi" → "provincia").
+    if (distanciaEdicion(token, palabra, tope) <= tope || distanciaEdicion(token, palabra.slice(0, token.length), tope) <= tope) return 4;
+  }
+  return 0;
+}
+
+function variantesToken(token) {
+  const grupo = SINONIMOS_RAPIDAS.find((g) => g.some((s) => calce(token, s) >= 8));
+  return grupo ? [token, ...grupo.filter((s) => s !== token)] : [token];
+}
+
+function puntajeToken(token, palabras) {
+  let mejor = 0;
+  variantesToken(token).forEach((v, i) => {
+    for (const p of palabras) mejor = Math.max(mejor, calce(v, p) * (i === 0 ? 1 : 0.6));
+  });
+  return mejor;
+}
+
+function buscarRapidas(lista, consulta) {
+  const tokens = normalizarBusqueda(consulta).split(" ").filter(Boolean);
+  if (!tokens.length) return lista;
+  const puntuadas = lista.map((q) => {
+    const titulo = normalizarBusqueda(q.title).split(" ");
+    const cuerpo = normalizarBusqueda(q.body).split(" ");
+    const porToken = tokens.map((t) => Math.max(puntajeToken(t, titulo) * 2, puntajeToken(t, cuerpo)));
+    return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) };
+  }).filter((x) => x.puntaje > 0);
+  const conTodas = puntuadas.filter((x) => x.todas);
+  return (conTodas.length ? conTodas : puntuadas).sort((a, b) => b.puntaje - a.puntaje).map((x) => x.q);
+}
+
 async function cargarQuickReplies() {
   const { quick_replies } = await pedir("/api/crm/quick-replies");
   estado.quickReplies = quick_replies;
@@ -3768,9 +3850,7 @@ function pintarQuickPanel() {
   const panel = $("#panel-rapidas");
   if (!panel) return;
 
-  const filtro = estado.filtroRapidas.toLowerCase();
-  const lista = estado.quickReplies.filter((q) =>
-    !filtro || q.title.toLowerCase().includes(filtro) || (q.body || "").toLowerCase().includes(filtro));
+  const lista = buscarRapidas(estado.quickReplies, estado.filtroRapidas);
   const esAdmin = estado.miRol === "admin";
 
   panel.innerHTML = `

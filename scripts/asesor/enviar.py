@@ -22,7 +22,7 @@ salida.json:
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}]
 }
 """
-import base64, glob, html, json, os, subprocess, sys, urllib.error, urllib.request
+import base64, glob, html, json, os, subprocess, sys, time, urllib.error, urllib.request
 
 ORDEN = ["CONFIRMADO", "POR_CONFIRMAR", "OTRO_DIA", "INTENCION"]
 TITULOS = {
@@ -65,6 +65,7 @@ td.n::before{{counter-increment:n;content:counter(n)}}</style>
     return ruta_pdf, kits
 
 
+LOTE = 5
 AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
 
 
@@ -123,7 +124,19 @@ def main():
     if not cuerpo["mensajes"] and "resumen" not in cuerpo:
         print("Nada que avisar.")
         return
-    print(json.dumps(al_worker(clave, cuerpo), ensure_ascii=False))
+    # De a pocos: cada aviso va a todo el equipo, y el plan gratis de
+    # Cloudflare corta en 50 llamadas por request.
+    mensajes = cuerpo.pop("mensajes")
+    total = {"enviados": 0, "fallidos": []}
+    lotes = [dict(cuerpo)] if "resumen" in cuerpo else []
+    lotes += [{"mensajes": mensajes[i:i + LOTE]} for i in range(0, len(mensajes), LOTE)]
+    for n, lote in enumerate(lotes):
+        r = al_worker(clave, lote)
+        total["enviados"] += r.get("enviados", 0)
+        total["fallidos"] += r.get("fallidos", [])
+        if n < len(lotes) - 1:
+            time.sleep(1.5)
+    print(json.dumps(total, ensure_ascii=False))
 
 
 if __name__ == "__main__":

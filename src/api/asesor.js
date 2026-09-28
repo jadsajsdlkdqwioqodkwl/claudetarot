@@ -4,9 +4,9 @@
  *
  * Existe para que la Routine no necesite el token del bot: el Worker ya lo
  * tiene, y además sabe qué vendedora atiende cada chat y si vinculó su
- * Telegram en el CRM. Cada "Manda este mensaje" le llega a la asesora
- * asignada (y a las que comparten el chat); si nadie tiene Telegram
- * vinculado, al chat del dueño (TELEGRAM_CHAT_ID).
+ * Telegram en el CRM. Cada "Manda este mensaje" le llega a todo el equipo
+ * con Telegram vinculado y al dueño (TELEGRAM_CHAT_ID), marcando a quién le
+ * toca: "Te toca a ti" para la asignada, "Copia" para las demás.
  *
  * Autenticación: cabecera `x-asesor-clave`. El Worker solo guarda su SHA-256
  * (ASESOR_CLAVE_SHA256, en wrangler.jsonc): la clave en sí vive únicamente en
@@ -21,7 +21,9 @@
 
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 
-const MAX_MENSAJES = 80;
+// Cada aviso va a todo el equipo: con el tope de 50 llamadas por request del
+// plan gratis de Cloudflare, enviar.py los manda de a 5.
+const MAX_MENSAJES = 8;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
 const json = (data, status = 200) =>
@@ -60,22 +62,33 @@ async function dentroDelLimite(env, ip) {
 
 const lista = (texto) => String(texto || "").split("\n").map((s) => s.trim()).filter(Boolean);
 
-/** A quién le toca este chat: la asignada y las que lo comparten, con Telegram vinculado. */
+/**
+ * A quién le llega cada aviso: a TODAS las que vincularon Telegram y al dueño
+ * (copia para todo el equipo), marcando a quién le toca. Le toca a la
+ * asignada y a las que comparten el chat; si nadie lo tiene asignado, a
+ * cualquiera que lo tome.
+ */
 export function destinatarios(conv, agentes, chatDueno) {
   const nombres = new Set([conv?.assigned_agent, ...lista(conv?.shared_with)].filter(Boolean));
-  const chats = agentes
-    .filter((a) => a.telegram_chat_id && (nombres.has(a.display_name) || nombres.has(a.username)))
-    .map((a) => String(a.telegram_chat_id));
-  if (!chats.length && chatDueno) chats.push(String(chatDueno));
-  return [...new Set(chats)];
+  const salida = new Map();
+  for (const a of agentes) {
+    if (!a.telegram_chat_id) continue;
+    const id = String(a.telegram_chat_id);
+    const leToca = nombres.has(a.display_name) || nombres.has(a.username);
+    salida.set(id, { chatId: id, leToca: leToca || salida.get(id)?.leToca || false });
+  }
+  if (chatDueno && !salida.has(String(chatDueno))) salida.set(String(chatDueno), { chatId: String(chatDueno), leToca: false });
+  return [...salida.values()];
 }
 
-export function textoAviso(m) {
+export function textoAviso(m, { asignada, leToca }) {
   const wa = String(m.whatsapp || "").replace(/\D/g, "");
+  const quien = leToca ? "👉 <b>Te toca a ti</b>" : asignada ? `👀 Copia · le toca a <b>${escaparHtml(asignada)}</b>` : "🙋 Sin asignar · puede tomarlo cualquiera";
   return (
     `✍️ <b>Manda este mensaje</b> a ${escaparHtml(m.nombre || "sin nombre")} (+${escaparHtml(wa)})\n` +
+    `${quien}\n` +
     (m.motivo ? `<i>${escaparHtml(m.motivo)}</i>\n` : "") +
-    `\n<code>${escaparHtml(m.mensaje || "")}</code>\n\n<i>Toca el texto para copiarlo.</i>`
+    `\n<code>${escaparHtml(m.mensaje || "")}</code>\n\n<i>Toca el texto para copiarlo y el botón para abrir el chat.</i>`
   );
 }
 
@@ -138,14 +151,15 @@ export async function onRequestPost({ request, env }) {
     )
       .bind(`%${wa.slice(-9)}`)
       .first();
-    const chats = payload.solo_dueno ? [String(dueno)] : destinatarios(conv, agentes, dueno);
-    const boton = conv
-      ? { reply_markup: { inline_keyboard: [[{ text: "💬 Abrir chat en el CRM", url: `${origen}/crm/?chat=${conv.id}` }]] } }
-      : {};
-    for (const chatId of chats) {
+    const para = payload.solo_dueno ? [{ chatId: String(dueno), leToca: false }] : destinatarios(conv, agentes, dueno);
+    const asignada = [conv?.assigned_agent, ...lista(conv?.shared_with)].filter(Boolean).join(", ");
+    // Con el chat encontrado, el botón lo abre por id; si no, por número.
+    const url = conv ? `${origen}/crm/?chat=${conv.id}` : `${origen}/crm/?wa=${wa}`;
+    const boton = { reply_markup: { inline_keyboard: [[{ text: "💬 Abrir chat en el CRM", url }]] } };
+    for (const { chatId, leToca } of para) {
       try {
         await llamarTelegram(env, "sendMessage", {
-          chat_id: chatId, text: textoAviso(m), parse_mode: "HTML", disable_web_page_preview: true, ...boton
+          chat_id: chatId, text: textoAviso(m, { asignada, leToca }), parse_mode: "HTML", disable_web_page_preview: true, ...boton
         });
         res.enviados++;
         if (chatId === String(dueno)) res.a_dueno++;
