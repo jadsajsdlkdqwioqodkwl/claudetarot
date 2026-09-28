@@ -364,16 +364,18 @@ mensaje automático al cliente es el de carrito abandonado, y lo manda el Worker
 
 ## Carrito abandonado automático (Worker)
 
-`src/lib/crm-carrito.js`, en el cron de 5 min. **Apagado** hasta que pongas
-`CARRITO_AUTO_HORAS` en `wrangler.jsonc` (ej. `"3"`) y despliegues.
+`src/lib/crm-carrito.js`, en el cron de 5 min. **Sin IA, sin créditos.**
+**Apagado** hasta que pongas `CARRITO_AUTO_HORAS` en `wrangler.jsonc` (ej. `"3"`) y despliegues.
 
-Le escribe **una sola vez por chat** al cliente que pidió en el catálogo, cuando:
-pasaron N horas desde su último mensaje, sigue dentro de la ventana de 24 h
-(texto libre, sin plantilla de marketing), el último mensaje fue nuestro, no
-hay otro seguimiento pendiente y el chat no tiene la etiqueta de venta. Se
-agenda como un seguimiento más: aparece en el panel y se cancela solo si el
-cliente escribe antes. `CARRITO_MENSAJE` cambia el texto (`{nombre}` = su
-nombre).
+Detecta el abandono real de este negocio: la vendedora le pidió **la ubicación**
+(Lima) o **el adelanto** (provincia) y el cliente se quedó callado N horas. Le
+manda **un** recordatorio con su primer nombre, distinto para Lima y provincia,
+solo si: sigue dentro de la ventana de 24 h (texto libre, sin plantilla
+pagada), el último mensaje fue nuestro, no hay otro seguimiento pendiente, no
+se le mandó otro en 7 días, no tiene la etiqueta de venta y no se agendó ni
+despachó ("queda agendado", comprobante, clave). Se agenda como un seguimiento
+más: aparece en el panel y se cancela solo si el cliente escribe antes.
+`CARRITO_MENSAJE_LIMA` / `CARRITO_MENSAJE_PROVINCIA` cambian el texto.
 
 La columna **N (`Embudo`)** de la hoja de chats trae las etiquetas del chat
 (`contact` / `lead` / `purchase`): el reporte cuenta las ventas con el botón de
