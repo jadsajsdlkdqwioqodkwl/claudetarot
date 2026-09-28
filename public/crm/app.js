@@ -1677,15 +1677,23 @@ $("#avisos-desvincular").addEventListener("click", async (e) => {
   }
 });
 
-/** El botón "Abrir chat" de Telegram llega con /crm/?chat=<id>. */
+/**
+ * El botón "Abrir chat" de Telegram llega con /crm/?chat=<id>. El del asesor
+ * (que solo conoce el número, no el id) llega con /crm/?wa=<número>: si ese
+ * chat no está entre los 200 de la lista, se busca por número.
+ */
 function abrirChatDelLink(cargando) {
   const params = new URLSearchParams(location.search);
   const id = Number(params.get("chat"));
-  if (!id) return;
+  const wa = (params.get("wa") || "").replace(/\D/g, "");
+  if (!id && !wa) return;
   params.delete("chat");
+  params.delete("wa");
   history.replaceState(history.state, "", location.pathname + (params.toString() ? `?${params}` : "") + location.hash);
-  Promise.resolve(cargando).then(() => {
-    const c = estado.conversaciones.find((x) => x.conversation_id === id);
+  Promise.resolve(cargando).then(async () => {
+    const coincide = (x) => (id ? x.conversation_id === id : String(x.wa_id).endsWith(wa.slice(-9)));
+    let c = estado.conversaciones.find(coincide);
+    if (!c && wa) c = (await pedir(`/api/crm/conversations?q=${encodeURIComponent(wa.slice(-9))}`)).conversations.find(coincide);
     if (c) abrirConversacion(c);
   }).catch(() => {});
 }
