@@ -11,7 +11,7 @@
  */
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
-import { enviarTemplate, enviarCatalogo, enviarProducto } from "./whatsapp.js";
+import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
@@ -62,8 +62,12 @@ export async function procesarSeguimientosVencidos(env) {
         let waMessageId;
         if (s.catalogo === "*") {
           // La miniatura sale del caché de productos: sin pedirle la lista a Meta.
-          const portada = await env.CRM_DB.prepare("SELECT retailer_id FROM catalog_products ORDER BY cached_at DESC LIMIT 1").first().catch(() => null);
-          waMessageId = await enviarCatalogo(env, s.wa_id, texto, portada?.retailer_id);
+          // Solo productos del catálogo conectado: el caché también guarda
+          // filas viejas de otro catálogo, que Meta no puede usar de portada.
+          const { results: portadas } = await env.CRM_DB.prepare(
+            "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
+          ).bind(env.WHATSAPP_CATALOG_ID || "").all().catch(() => ({ results: [] }));
+          waMessageId = await enviarCatalogoConPortada(env, s.wa_id, texto, portadas.map((p) => p.retailer_id));
         } else {
           if (!env.WHATSAPP_CATALOG_ID) throw new Error("Falta WHATSAPP_CATALOG_ID.");
           waMessageId = await enviarProducto(env, s.wa_id, env.WHATSAPP_CATALOG_ID, s.catalogo, texto);

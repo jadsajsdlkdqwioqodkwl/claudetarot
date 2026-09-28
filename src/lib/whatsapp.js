@@ -30,7 +30,9 @@ async function llamar(env, path, body) {
   }
   if (!res.ok) {
     const msg = datos?.error?.message || texto || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const err = new Error(msg);
+    err.code = datos?.error?.code;
+    throw err;
   }
   return datos;
 }
@@ -103,6 +105,24 @@ export async function enviarCatalogo(env, waId, texto, thumbnailRetailerId) {
     }
   });
   return datos.messages?.[0]?.id || null;
+}
+
+/**
+ * Manda el catálogo probando portadas en orden. Si Meta no puede bajar la foto
+ * de un producto (#131053 Media upload error), prueba con el siguiente y, si
+ * ninguno sirve, lo manda sin portada elegida — antes un solo producto con la
+ * foto rota tumbaba el envío del catálogo entero.
+ */
+export async function enviarCatalogoConPortada(env, waId, texto, candidatos = []) {
+  for (const retailerId of [...new Set(candidatos.filter(Boolean))].slice(0, 3)) {
+    try {
+      return await enviarCatalogo(env, waId, texto, retailerId);
+    } catch (err) {
+      if (err.code !== 131053) throw err;
+      console.error("Portada de catálogo sin foto válida:", retailerId);
+    }
+  }
+  return enviarCatalogo(env, waId, texto);
 }
 
 /** Lista los productos del catálogo, para elegir uno y mandarlo suelto. */

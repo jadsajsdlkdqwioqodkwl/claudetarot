@@ -5,7 +5,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { enviarCatalogo, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
+import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache } from "../../lib/crm-db.js";
 import { pausaEnvio } from "../../lib/crm-send.js";
@@ -112,15 +112,17 @@ async function post({ request, env, agent }) {
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
-    let thumbnailRetailerId;
+    // Portadas candidatas: productos en stock y con foto primero.
+    let portadas = [];
     if (env.WHATSAPP_CATALOG_ID) {
       try {
         const productos = await listarProductosCatalogo(env, env.WHATSAPP_CATALOG_ID);
-        thumbnailRetailerId = productos[0]?.retailer_id;
+        const buenos = productos.filter((p) => p.image_url && (!p.availability || p.availability === "in stock"));
+        portadas = [...buenos, ...productos].map((p) => p.retailer_id);
       } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
     }
     await pausaEnvio(env, conversationId);
-    const waMessageId = await enviarCatalogo(env, conv.wa_id, payload?.text, thumbnailRetailerId);
+    const waMessageId = await enviarCatalogoConPortada(env, conv.wa_id, payload?.text, portadas);
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "catalog",
