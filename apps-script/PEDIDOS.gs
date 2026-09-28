@@ -145,11 +145,11 @@ function llamarClaudeEnParalelo_(key, lotes, hoyTxt, objetivoTxt) {
     "- CONFIRMADO: Lima si el cliente dio dirección o ubicación y la vendedora lo agendó para la fecha objetivo. Provincia si mandó la captura del adelanto ([imagen] después de que le pidieron el pago) y dio nombre, DNI y agencia, y aún no se le envió el comprobante de Shalom/Olva. Las vendedoras a veces se olvidan de marcar la venta: guíate por la conversación.\n" +
     "- POR_CONFIRMAR: prometió pagar o dar datos para la fecha objetivo, o falta un dato para despachar (dirección, teléfono, DNI, agencia) o hay una duda (monto, horario, captura dudosa).\n" +
     "- OTRO_DIA: pidió otra fecha concreta; pon esa fecha en fecha_entrega (yyyy-mm-dd).\n" +
-    "- EN_TRANSITO: ya se despachó (se le mandó comprobante o clave) y falta que recoja o pague el saldo.\n" +
+    "- EN_TRANSITO: ya se despachó o se agendó para un día anterior (Lima o provincia).\n" +
     "- ENTREGADO: ya recogió, recibió o pagó todo.\n" +
     "- INTENCION: mostró interés real (dijo lugar, pidió yape, dijo que quiere) pero no concretó.\n" +
     "- DESCARTAR: solo preguntó el precio, dijo que no, spam o prueba interna.\n" +
-    "Un pedido de Lima agendado para un día anterior a la fecha objetivo, sin señal de entrega, es POR_CONFIRMAR con nota 'verificar si se entregó'.\n" +
+    "Un pedido agendado o despachado para un día anterior a la fecha objetivo es EN_TRANSITO: la entrega la sigue el courier en su plataforma, no la confirmamos por chat.\n" +
     "Copia los datos tal como los escribió el cliente. Si no hay un dato, deja el texto vacío. En 'falta' pon qué falta para despachar; en 'nota', lo que el repartidor o la vendedora deban saber (horario, precio especial, número de kits, vía aérea). " +
     "Responde con un solo objeto por cada chat, usando el número de WhatsApp de la cabecera '=== número | nombre'.";
 

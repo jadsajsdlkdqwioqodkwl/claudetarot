@@ -396,9 +396,9 @@ cada fila pintada según su estado:
 | Estado | Regla |
 |---|---|
 | `CONFIRMADO` | Lima: dio dirección y la vendedora lo agendó. Provincia: captura del adelanto + nombre, DNI y agencia |
-| `POR_CONFIRMAR` | Prometió pagar o falta un dato; o un pedido de Lima de un día anterior sin señal de entrega |
+| `POR_CONFIRMAR` | Prometió pagar o falta un dato para despachar |
 | `OTRO_DIA` | Pidió otra fecha (va en *Fecha entrega*) |
-| `EN_TRANSITO` / `ENTREGADO` | Ya despachado / ya recogido o pagado |
+| `EN_TRANSITO` / `ENTREGADO` | Agendado o despachado para un día anterior (la entrega la sigue el courier) / ya recogido o pagado |
 | `INTENCION` | Interés real sin concretar |
 | `REVISAR A MANO` | Claude no lo devolvió o el lote falló: **nunca se pierde un chat en silencio** |
 
