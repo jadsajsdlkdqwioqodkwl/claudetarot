@@ -45,6 +45,7 @@ import {
   onRequestDelete as crmScheduledDelete
 } from "./api/crm/scheduled.js";
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
+import { agendarCarritosAbandonados } from "./lib/crm-carrito.js";
 import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
 import { onRequestGet as crmCatalogGet, onRequestPost as crmCatalogPost, onRequestGetProductos as crmCatalogProductosGet } from "./api/crm/catalog.js";
@@ -209,7 +210,9 @@ export default {
     }
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
     // "escribiendo…" de 1 s por mensaje, un lote grande de seguimientos
-    // vencidos a la vez puede tardar más que eso.
+    // vencidos a la vez puede tardar más que eso. El carrito abandonado solo
+    // agenda filas; salen en esta misma pasada con los demás seguimientos.
+    await agendarCarritosAbandonados(env).catch((err) => console.error("Carrito abandonado:", err.message));
     await procesarSeguimientosVencidos(env);
   }
 };

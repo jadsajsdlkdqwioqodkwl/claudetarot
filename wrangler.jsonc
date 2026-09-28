@@ -120,6 +120,12 @@
     // confirmado con /api/diag → "catálogo conectado a WhatsApp". El de
     // Commerce Manager (785861823961723) existe pero no está enlazado al
     // número, por eso mandar un producto individual daba (#131009).
-    "WHATSAPP_CATALOG_ID": "1610775203147241"
+    "WHATSAPP_CATALOG_ID": "1610775203147241",
+
+    // Carrito abandonado (src/lib/crm-carrito.js): horas de silencio del
+    // cliente tras pedir en el catálogo antes de mandarle UN recordatorio,
+    // siempre dentro de la ventana de 24 h. Vacío = apagado. Entre 1 y 20.
+    // CARRITO_MENSAJE (opcional) reemplaza el texto; {nombre} = su nombre.
+    "CARRITO_AUTO_HORAS": ""
   }
 }

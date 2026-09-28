@@ -314,3 +314,67 @@ Si cambias cualquiera, **cámbialo también en `src/lib/ventas.js`** del Worker.
 `npm run check` compara los dos archivos y falla si se desalinean: sin ese
 chequeo, el Worker leería la clave de Shalom en la columna del saldo y nadie se
 enteraría hasta que un cliente lo reclamara.
+
+---
+
+# Asesor logístico — `ASESOR.gs`
+
+Va en **otro libro**: la hoja de chats *TAROT CHATS - VENTAS CRM*, donde el
+Worker vuelca cada 10 min los mensajes de WhatsApp (una pestaña por día). Es un
+proyecto de Apps Script aparte, con su propio `onOpen`.
+
+| Qué | Cuándo | Costo |
+|---|---|---|
+| **Alertas al equipo por Telegram**: cliente esperando respuesta, pedido del catálogo sin atender, ventana de 24 h por cerrarse sin venta | cada 30 min, en `HORARIO` | 0 tokens |
+| **Reporte del día anterior**: chats, anuncio → pedido → venta, 1ra respuesta, por vendedora, por anuncio. Pestaña `Reportes IA` + Telegram (+ correo) | 8:00 Lima | 0 tokens |
+| **Análisis CRO** dentro del reporte: por qué se perdieron ventas, 3 cambios medibles, a quién retomar mañana y con qué mensaje | 1 llamada/día, solo si hay `ANTHROPIC_API_KEY` | ~US$ 0.05–0.15/día |
+
+El asesor **nunca le escribe al cliente**: avisa a las vendedoras. El único
+mensaje automático al cliente es el de carrito abandonado, y lo manda el Worker
+(abajo).
+
+## Instalar
+
+1. Abre la hoja de chats → **Extensiones → Apps Script**.
+2. Pega `apps-script/ASESOR.gs` en `Código.gs`.
+3. **Configuración del proyecto → Propiedades del script**:
+
+   | Propiedad | Valor |
+   |---|---|
+   | `TELEGRAM_BOT_TOKEN` | el mismo bot del Worker (u otro) |
+   | `TELEGRAM_CHAT_ID` | chat o grupo del equipo de ventas |
+   | `ANTHROPIC_API_KEY` | *(opcional)* sin ella, el reporte sale solo con números |
+   | `CLAUDE_MODEL` | *(opcional)* por defecto `claude-opus-5` |
+   | `CLAUDE_EFFORT` | *(opcional)* `low` por defecto; `medium` para más detalle |
+   | `REPORTE_EMAIL` | *(opcional)* también manda el reporte por correo |
+   | `HORARIO` | *(opcional)* `9-22` por defecto, hora de Lima |
+   | `ESPERA_MIN` | *(opcional)* minutos antes de avisar que alguien espera; `15` |
+
+4. Recarga la hoja → menú **Asesor → Probar Telegram**, luego **Reporte de hoy
+   hasta ahora** para ver uno, y **Activar automatismos**.
+
+## Cómo ahorra tokens
+
+- Todo lo que se puede **contar** se cuenta en Apps Script: gratis.
+- A Claude viaja **una** llamada por día, con los 40 chats con más señal
+  (pedidos primero), los últimos 14 mensajes de cada uno recortados a 160
+  caracteres, sin números de teléfono.
+- El system prompt es fijo y va con `cache_control`.
+- Las alertas no usan IA.
+
+## Carrito abandonado automático (Worker)
+
+`src/lib/crm-carrito.js`, en el cron de 5 min. **Apagado** hasta que pongas
+`CARRITO_AUTO_HORAS` en `wrangler.jsonc` (ej. `"3"`) y despliegues.
+
+Le escribe **una sola vez por chat** al cliente que pidió en el catálogo, cuando:
+pasaron N horas desde su último mensaje, sigue dentro de la ventana de 24 h
+(texto libre, sin plantilla de marketing), el último mensaje fue nuestro, no
+hay otro seguimiento pendiente y el chat no tiene la etiqueta de venta. Se
+agenda como un seguimiento más: aparece en el panel y se cancela solo si el
+cliente escribe antes. `CARRITO_MENSAJE` cambia el texto (`{nombre}` = su
+nombre).
+
+La columna **N (`Embudo`)** de la hoja de chats trae las etiquetas del chat
+(`contact` / `lead` / `purchase`): el reporte cuenta las ventas con el botón de
+venta del CRM. Las pestañas de días anteriores no la tienen.

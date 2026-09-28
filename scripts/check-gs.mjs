@@ -112,5 +112,47 @@ check("un intento fallido sí se reintenta",
 check("aguanta espacios y celdas vacías",
   debeReportarse("  Pagado ", "   ") === true && debeReportarse("", "") === false);
 
+
+/* ASESOR.gs — otro proyecto (la hoja de chats), su propio sandbox */
+const ctxAsesor = createContext({ console });
+runInContext(readFileSync(join(root, "apps-script/ASESOR.gs"), "utf8"), ctxAsesor);
+const { minutosDe, agruparChats, metricasDelDia, detectarAlertas, digestParaIA } = ctxAsesor;
+const fila = (hora, wa, quien, extra = {}) => Object.assign({
+  fecha: "2026-09-22 " + hora, wa, nombre: "Ana", quien, vendedor: quien === "Cliente" ? "" : "Danitza",
+  tipo: "text", msg: "hola", ctwa: "", anuncio: "", embudo: "", asesora: ""
+}, extra);
+const filasA = [
+  // 1: pidió en catálogo, vendedora tarda 20 min, termina en venta
+  fila("10:00:00", "511", "Cliente", { ctwa: "x", anuncio: "Kit Rider" }),
+  fila("10:01:00", "511", "Vendedor", { vendedor: "Bienvenida automática" }),
+  fila("10:05:00", "511", "Cliente", { tipo: "order", msg: "1× Kit" }),
+  fila("10:20:00", "511", "Vendedor", { embudo: "contact purchase" }),
+  // 2: pregunta y nadie responde (la bienvenida no cuenta)
+  fila("11:00:00", "522", "Cliente", { ctwa: "x", anuncio: "Kit Rider" }),
+  fila("11:00:30", "522", "Vendedor", { vendedor: "Bienvenida automática" }),
+  // 3: pidió, le respondieron, se calló
+  fila("09:00:00", "533", "Cliente", { tipo: "order", msg: "2× Kit" }),
+  fila("09:03:00", "533", "Vendedor")
+];
+const chatsA = agruparChats(filasA);
+const mA = metricasDelDia(chatsA);
+check("minutosDe entiende la fecha de la hoja", minutosDe("2026-09-22 10:05:00") - minutosDe("2026-09-22 10:00:00") === 5);
+check("cuenta chats, anuncio y pedidos", mA.chatsConCliente === 3 && mA.deAnuncio === 2 && mA.conPedidoCatalogo === 2);
+check("la venta sale de la etiqueta purchase", mA.ventas === 1 && mA.pedidoSinVenta === 1);
+check("un mensaje automático no cuenta como respuesta", chatsA.get("522").ultimoQuien === "Cliente" && mA.sinRespuesta === 1);
+check("primera respuesta se mide desde el primer mensaje del cliente", chatsA.get("511").primeraRespuestaMin === 20);
+check("por anuncio: chats → pedidos → ventas",
+  mA.porAnuncio["Kit Rider"].chats === 2 && mA.porAnuncio["Kit Rider"].pedidos === 1 && mA.porAnuncio["Kit Rider"].ventas === 1);
+const alA = detectarAlertas(chatsA, minutosDe("2026-09-22 11:30:00"), 15);
+check("alerta al que espera hace 30 min", alA.esperando.length === 1 && alA.esperando[0].c.wa === "522");
+check("no alerta a quien ya compró ni a quien ya fue atendido", alA.pedidosSinAtender.length === 0);
+const alB = detectarAlertas(chatsA, minutosDe("2026-09-23 05:30:00"), 15);
+check("ventana de 24 h por cerrarse solo con pedido y sin venta",
+  alB.ventanaPorCerrar.length === 1 && alB.ventanaPorCerrar[0].c.wa === "533");
+const chatsP = agruparChats([fila("12:00:00", "544", "Cliente", { tipo: "order", msg: "1× Kit" })]);
+check("un pedido sin respuesta va aparte", detectarAlertas(chatsP, minutosDe("2026-09-22 12:20:00"), 15).pedidosSinAtender.length === 1);
+const dig = digestParaIA(chatsA);
+check("el digest no lleva números de teléfono", !/51[123]/.test(dig) && dig.includes("VENDIDO") && dig.includes("BOT:"));
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);
