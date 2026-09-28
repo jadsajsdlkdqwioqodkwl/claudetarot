@@ -37,6 +37,9 @@ const ASESOR = {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Asesor")
+    .addItem("📦 Sacar pedidos para mañana (Claude)", "pedidosParaManana")
+    .addItem("📦 Sacar pedidos para hoy (Claude)", "pedidosParaHoy")
+    .addSeparator()
     .addItem("Reporte de ayer (ahora)", "reporteDeAyer")
     .addItem("Reporte de hoy hasta ahora", "reporteDeHoy")
     .addItem("Revisar alertas ahora", "revisarAlertas")

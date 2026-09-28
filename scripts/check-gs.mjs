@@ -154,5 +154,34 @@ check("un pedido sin respuesta va aparte", detectarAlertas(chatsP, minutosDe("20
 const dig = digestParaIA(chatsA);
 check("el digest no lleva números de teléfono", !/51[123]/.test(dig) && dig.includes("VENDIDO") && dig.includes("BOT:"));
 
+
+/* PEDIDOS.gs — mismo proyecto que ASESOR.gs, así que comparten sandbox */
+const ctxPedidos = createContext({ console });
+runInContext(readFileSync(join(root, "apps-script/ASESOR.gs"), "utf8") + "\n" +
+  readFileSync(join(root, "apps-script/PEDIDOS.gs"), "utf8"), ctxPedidos);
+const P = ctxPedidos;
+const chatsP2 = P.agruparChats([
+  fila("09:00:00", "600", "Cliente", { msg: "Hola! Me gustaría más información." }),
+  fila("09:00:05", "600", "Vendedor", { vendedor: "Bienvenida automática", msg: "¡Hola! Qué alegría" }),
+  fila("10:00:00", "601", "Cliente", { msg: "Hola! Me gustaría más información." }),
+  fila("10:05:00", "601", "Vendedor", { msg: "Para dónde lo desea?" }),
+  fila("11:00:00", "602", "Cliente", { msg: "Av. Revolución 448 VES" }),
+  fila("11:01:00", "602", "Cliente", { tipo: "image", msg: "" }),
+  fila("11:02:00", "602", "Vendedor", { vendedor: "Seguimiento automático", msg: "recordatorio" })
+]);
+check("pedidos: el saludo del anuncio sin respuesta humana no se lee", P.chatRelevante(chatsP2.get("600")) === false);
+check("pedidos: si respondió una persona, se lee", P.chatRelevante(chatsP2.get("601")) === true);
+const tr = P.transcripcionChat(chatsP2.get("602"));
+check("pedidos: la transcripción quita lo automático y marca las imágenes",
+  tr.includes("C: Av. Revolución 448 VES") && tr.includes("[image]") && !tr.includes("recordatorio"));
+const lotesP = P.lotesDeChats([chatsP2.get("601"), chatsP2.get("602")], 10);
+check("pedidos: un lote nunca queda vacío aunque un chat pase el tope", lotesP.length === 2 && lotesP.every((l) => l.length === 1));
+const unidos = P.completarLote([{ wa: "51987654321", nombre: "A" }, { wa: "51912345678", nombre: "B" }],
+  [{ whatsapp: "987 654 321", estado: "CONFIRMADO" }], "Claude no lo clasificó");
+check("pedidos: ningún chat se pierde — el omitido sale como REVISAR A MANO",
+  unidos.length === 2 && unidos[0].estado === "CONFIRMADO" && unidos[1].estado === "REVISAR A MANO" && unidos[1].whatsapp === "51912345678" && unidos[0].whatsapp === "51987654321");
+check("pedidos: confirmados primero",
+  P.ordenarPedidos([{ estado: "INTENCION" }, { estado: "CONFIRMADO" }, { estado: "REVISAR A MANO" }]).map((x) => x.estado).join() === "CONFIRMADO,REVISAR A MANO,INTENCION");
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

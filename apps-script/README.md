@@ -378,3 +378,32 @@ nombre).
 La columna **N (`Embudo`)** de la hoja de chats trae las etiquetas del chat
 (`contact` / `lead` / `purchase`): el reporte cuenta las ventas con el botón de
 venta del CRM. Las pestañas de días anteriores no la tienen.
+
+## Botón "Sacar pedidos" — `PEDIDOS.gs`
+
+Va en el **mismo proyecto** que `ASESOR.gs` (Archivo → + → Secuencia de
+comandos → `PEDIDOS`) y aparece arriba del menú **Asesor**:
+
+- **📦 Sacar pedidos para mañana (Claude)**
+- **📦 Sacar pedidos para hoy (Claude)**
+
+Lee las pestañas diarias de los últimos `DIAS_PEDIDOS` días (7 por defecto),
+descarta los chats que solo tienen el saludo del anuncio sin respuesta de una
+persona, y manda el resto a Claude en lotes paralelos de ~24 000 caracteres.
+El resultado va a la pestaña **`Pedidos IA`**, con los confirmados primero y
+cada fila pintada según su estado:
+
+| Estado | Regla |
+|---|---|
+| `CONFIRMADO` | Lima: dio dirección y la vendedora lo agendó. Provincia: captura del adelanto + nombre, DNI y agencia |
+| `POR_CONFIRMAR` | Prometió pagar o falta un dato; o un pedido de Lima de un día anterior sin señal de entrega |
+| `OTRO_DIA` | Pidió otra fecha (va en *Fecha entrega*) |
+| `EN_TRANSITO` / `ENTREGADO` | Ya despachado / ya recogido o pagado |
+| `INTENCION` | Interés real sin concretar |
+| `REVISAR A MANO` | Claude no lo devolvió o el lote falló: **nunca se pierde un chat en silencio** |
+
+No depende de que las vendedoras marquen la venta: se guía por la conversación.
+
+Propiedades opcionales: `DIAS_PEDIDOS` (7), `CLAUDE_EFFORT_PEDIDOS` (`low`),
+`CLAUDE_MODEL`. Costo aproximado con 7 días (~280 chats, 9 lotes): menos de
+US$ 1 por clic.
