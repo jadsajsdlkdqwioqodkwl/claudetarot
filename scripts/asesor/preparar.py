@@ -21,7 +21,10 @@ except ImportError:
 
 RE_PESTANA = re.compile(r"^(\d{2})-(\d{2})-(\d{4})$")
 RE_AUTO = re.compile(r"autom[aá]tic|masivo|carrito|prueba de bienvenida", re.I)
-RE_SALUDO = re.compile(r"^hola! me gustar[ií]a m[aá]s informaci[oó]n\.?$", re.I)
+# El anuncio viejo decía "Hola! Me gustaría…" y el nuevo "¡Hola! Me gustaría…".
+RE_SALUDO = re.compile(r"^¡?hola!? me gustar[ií]a m[aá]s informaci[oó]n\.?$", re.I)
+# Recordatorios que ya le escribieron al cliente (la bienvenida automática NO cuenta).
+RE_RECORDATORIO = re.compile(r"seguimiento autom|carrito|masivo", re.I)
 MAX_CLIENTE, MAX_EQUIPO, MAX_ARCHIVO = 400, 160, 60000
 
 
@@ -80,7 +83,7 @@ def main():
             "nombre": nombre,
             "ultimo": "cliente" if ms[-1]["quien"] == "Cliente" else "equipo",
             "ultimo_cliente": ms[ult_cli]["t"],
-            "recordatorio_auto_despues": any(RE_AUTO.search(m["vend"]) for m in despues),
+            "recordatorio_auto_despues": any(RE_RECORDATORIO.search(m["vend"]) for m in despues),
             "asesora": next((m["asesora"] for m in reversed(ms) if m["asesora"]), ""),
             "embudo": next((m["embudo"] for m in reversed(ms) if m["embudo"]), ""),
         }

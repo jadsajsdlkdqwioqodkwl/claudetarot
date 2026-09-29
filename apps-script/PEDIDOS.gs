@@ -15,7 +15,7 @@
 const PEDIDOS = {
   PESTANA: "Pedidos IA",
   RE_PESTANA_DIA: /^(\d{2})-(\d{2})-(\d{4})$/,
-  SALUDO_ANUNCIO: /^hola! me gustar[ií]a m[aá]s informaci[oó]n\.?$/i,
+  SALUDO_ANUNCIO: /^¡?hola!? me gustar[ií]a m[aá]s informaci[oó]n\.?$/i,
   MAX_CHARS_LOTE: 24000,
   MAX_CHARS_CLIENTE: 400,
   MAX_CHARS_EQUIPO: 160,
