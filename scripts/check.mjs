@@ -658,7 +658,9 @@ check("el seguimiento no expone el DNI", !serializada.includes("45781234"));
 check("el seguimiento no expone las notas que comparten celda con la clave",
   !serializada.includes("moroso"));
 check("el seguimiento no expone el id de Drive", !serializada.includes("1AbCdEfGhIjKlMnOpQrS"));
-check("de la celda compartida solo sale la clave", publica.clave === "4821");
+check("con saldo pendiente la clave no sale: se muestra tras el pago", publica.clave === "" && publica.claveTrasPago === true);
+check("de la celda compartida solo sale la clave",
+  vistaPublica({ ...ventaDePrueba, "Saldo": "0" }).clave === "4821");
 check("el saldo sale de la hoja tal cual", publica.saldo === 89, String(publica.saldo));
 check("la foto se ofrece por código, no por Drive", publica.voucher === "/v/TS-K3M582R");
 check("a los 7 días esperando se le pide al cliente que se apure",
@@ -756,6 +758,22 @@ check("el dominio del seguimiento va sin barra final y por HTTPS",
   sitio.startsWith("https://") && !sitio.endsWith("/"), sitio);
 check("las letras de columna llegan hasta la última de la hoja",
   letraVenta(COLUMNAS_VENTA.length - 1) === "M");
+
+/* Claves de Shalom: 4 dígitos, nada en secuencia, sin repetir las abiertas. */
+{
+  const { claveShalomValida, nuevaClaveShalom } = await import("../src/lib/ventas.js");
+  check("Shalom rechaza claves en escalera o repetidas",
+    ["1234", "4321", "1111", "1112", "0123", "0987"].every((c) => !claveShalomValida(c)));
+  check("las claves de siempre siguen siendo válidas", ["3114", "3144", "3143"].every(claveShalomValida));
+  const usadas = new Set(["3114"]);
+  let ok = true;
+  for (let i = 0; i < 300; i++) {
+    const c = nuevaClaveShalom(usadas);
+    if (usadas.has(c) || !claveShalomValida(c)) ok = false;
+    usadas.add(c);
+  }
+  check("cada pedido recibe una clave nueva que no choca con las abiertas", ok);
+}
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

@@ -97,8 +97,10 @@ export async function onRequestGet(context) {
   // viven en R2, no en Drive: "r2:boletas/TS-…". Solo se acepta la de este
   // mismo código, así una celda mal escrita no puede servir la foto de otro.
   if (driveId.startsWith("r2:")) {
-    const clave = driveId.slice(3);
-    const obj = clave === `boletas/${codigo}` && env.CRM_MEDIA ? await env.CRM_MEDIA.get(clave) : null;
+    // ?n=2…6: las demás fotos del envío que se subieron desde el CRM (Links de Shalom).
+    const n = Number(new URL(request.url).searchParams.get("n")) || 1;
+    const clave = n >= 2 && n <= 6 ? `${driveId.slice(3)}-${n}` : driveId.slice(3);
+    const obj = clave.startsWith(`boletas/${codigo}`) && env.CRM_MEDIA ? await env.CRM_MEDIA.get(clave) : null;
     if (!obj) return error("No pudimos cargar la foto del voucher.", 404);
     return new Response(obj.body, {
       headers: {

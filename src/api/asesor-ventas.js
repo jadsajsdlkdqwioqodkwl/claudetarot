@@ -10,7 +10,8 @@
  *
  * Misma clave que /api/asesor/avisos (x-asesor-clave). Cuerpos:
  *   { accion: "crear",  dni, celular, envio: "Shalom", adelanto, saldo, clave?, notas? }
- *       → { codigo, link, nuevo }  (si ya hay una venta abierta con ese DNI, devuelve esa)
+ *       → { codigo, link, clave, nuevo }  (si ya hay una venta abierta con ese DNI, devuelve esa)
+ *       Sin clave, Shalom recibe una única de 4 dígitos (nuevaClaveShalom).
  *   { accion: "boleta", codigo? | dni, imagen_base64, mime?, orden?, cod_shalom?, estado? }
  *       → guarda la foto en R2 y pone la venta "En camino" (o el estado dado)
  *   { accion: "estado", codigo? | dni, estado, clave? }
@@ -21,7 +22,7 @@
  */
 
 import { getValues, updateValues } from "../lib/google-sheets.js";
-import { COLUMNAS_VENTA, RANGO_DATOS_VENTA, ESTADOS_ENVIO, ENVIOS, nuevoCodigo, indiceVenta, letraVenta, esCodigo } from "../lib/ventas.js";
+import { COLUMNAS_VENTA, RANGO_DATOS_VENTA, ESTADOS_ENVIO, ENVIOS, nuevoCodigo, indiceVenta, letraVenta, esCodigo, claveDe, nuevaClaveShalom } from "../lib/ventas.js";
 import { hojaVentas, olvidarCache } from "../lib/ventas-hoja.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 
@@ -62,6 +63,17 @@ export function conClave(celda, clave) {
   return notas ? `${clave} / ${notas}` : String(clave);
 }
 
+/** Claves de los pedidos abiertos, más las viejas compartidas, para no repetir. */
+export function clavesUsadas(filas) {
+  const usadas = new Set(["3114", "3144", "3143"]);
+  for (const f of filas) {
+    if (CERRADOS.has(String(f[indiceVenta("Estado")] || "").trim())) continue;
+    const c = claveDe(f[indiceVenta("Clave Shalom / Notas")]);
+    if (c) usadas.add(c);
+  }
+  return usadas;
+}
+
 async function leerFilas(env) {
   return getValues(env, `${hojaVentas(env)}!${RANGO_DATOS_VENTA}`);
 }
@@ -76,7 +88,8 @@ async function crear(env, p) {
   const existente = dni ? buscarFila(filas, { dni }) : null;
   if (existente) {
     const codigo = existente.valores[indiceVenta("Código")];
-    return json({ codigo, link: `${SITIO}/${codigo}`, nuevo: false });
+    const claveExistente = claveDe(existente.valores[indiceVenta("Clave Shalom / Notas")]);
+    return json({ codigo, link: `${SITIO}/${codigo}`, clave: claveExistente, nuevo: false });
   }
 
   const usados = new Set(filas.map((f) => String(f[indiceVenta("Código")] || "").toUpperCase()));
@@ -91,13 +104,14 @@ async function crear(env, p) {
   const hoja = hojaVentas(env);
   const fecha = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
   const contacto = [dni, celular].filter(Boolean).join(" / ");
-  const clave = [p.clave, p.notas].filter((x) => x && String(x).trim()).join(" / ");
+  const claveShalom = String(p.clave || "").trim() || (envio === "Shalom" ? nuevaClaveShalom(clavesUsadas(filas)) : "");
+  const clave = [claveShalom, p.notas].filter((x) => x && String(x).trim()).join(" / ");
   // A–F y J–K por separado: G, H e I son ARRAYFORMULA de la fila 2 y escribir
   // encima (aunque sea vacío) rompe la columna entera.
   await updateValues(env, `${hoja}!A${fila}:F${fila}`, [[fecha, contacto, envio, p.adelanto ?? "", p.saldo ?? "", clave]]);
   await updateValues(env, `${hoja}!${col("Estado")}${fila}:${col("Código")}${fila}`, [["Pendiente", codigo]]);
   olvidarCache();
-  return json({ codigo, link: `${SITIO}/${codigo}`, nuevo: true });
+  return json({ codigo, link: `${SITIO}/${codigo}`, clave: claveShalom, nuevo: true });
 }
 
 async function actualizar(env, p, conImagen) {

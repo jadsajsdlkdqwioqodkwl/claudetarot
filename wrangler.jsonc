@@ -132,6 +132,8 @@
     // Plantilla utility aprobada en Meta para mandar el link de seguimiento
     // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
     "PLANTILLA_ENVIO": "",
+    // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
+    "SHALOM_AGENTES": "danitza",
 
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el

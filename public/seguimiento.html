@@ -216,7 +216,7 @@
     <section class="datos" id="datos"></section>
 
     <div id="bloqueVoucher" hidden>
-      <div class="rotulo">Comprobante de tu envío</div>
+      <div class="rotulo" id="rotuloFotos">Comprobante de tu envío</div>
       <figure class="voucher" id="voucher">
         <img id="voucherImg" src="" alt="Foto del comprobante de envío">
         <figcaption class="pie">Toca la foto para ampliarla</figcaption>
@@ -251,7 +251,7 @@
    * porque no es un paso del camino: es salirse de él.
    */
   var COPIA = {
-    "Pendiente":  { titulo: "Pedido registrado",  nota: "Tu pedido está anotado a tu nombre." },
+    "Pendiente":  { titulo: "Pedido confirmado",  nota: "Recibimos tu pedido y tu adelanto." },
     "En camino":  { titulo: "En camino",          nota: "Tu paquete ya salió." },
     "En destino": { titulo: "Llegó a la agencia", nota: "Listo para que lo recojas." },
     // El estado se llama "Pagado" en la hoja porque para el vendedor recoger y
@@ -336,10 +336,13 @@
     }
 
     if (e.estado === "Pendiente") {
-      caja.innerHTML = "<h2>Estamos preparando tu pedido</h2>" +
-        "<p>Apenas lo despachemos verás acá la foto del comprobante de envío" +
-        (e.enAgencia ? " y la clave para recogerlo" : "") +
-        ". No tienes que hacer nada todavía.</p>";
+      caja.className = "instr destacado";
+      caja.innerHTML = "<h2>¡Tu pedido está confirmado! ✨</h2>" +
+        "<p>Ya lo estamos preparando" + (e.enAgencia ? " para enviarlo por Shalom" : "") + ". " +
+        "Apenas salga, en esta misma página vas a ver " +
+        (e.enAgencia ? "la boleta de Shalom y las fotos de tu envío" : "la foto de tu envío") +
+        ". No tienes que hacer nada todavía.</p>" +
+        "<ul>" + item("<b>Guarda este link:</b> aquí verás cada paso de tu pedido hasta que lo tengas en tus manos.") + "</ul>";
       return;
     }
 
@@ -370,6 +373,8 @@
       var lista = "";
       lista += item("Lleva tu <b>DNI físico</b> — el original. Una foto o una copia no la aceptan.");
       lista += item("El paquete está registrado con <b>tu DNI</b>, el que nos diste al comprar.");
+      if (e.claveTrasPago) lista += item("<b>Para recibir tu clave de recojo</b>, cancela tu saldo de <b>" + soles(e.saldo) +
+        "</b> por Yape al <b>927 633 099</b> (Moisés O.) y mándanos la captura por WhatsApp. Apenas lo confirmemos, tu clave aparece aquí mismo.");
       if (e.clave) lista += item("Da la <b>clave de recojo</b> que ves abajo en el mostrador.");
       lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>" +
         (e.clave ? ", la clave" : "") + ", y que nos avises antes por WhatsApp para autorizarlo.");
@@ -489,13 +494,13 @@
       e.estado === "En destino" ? "Tu pedido ya llegó" :
       e.estado === "Pagado" ? "Pedido entregado" :
       e.estado === "Cancelado" ? "Pedido cancelado" :
-      e.estado === "En camino" ? "Tu pedido va en camino" : "Tu pedido está en preparación";
+      e.estado === "En camino" ? "Tu pedido va en camino" : "¡Tu pedido está confirmado!";
 
     var chip = $("chip");
     chip.className = "chip " +
       (e.estado === "En destino" || e.estado === "Pagado" ? "lista" :
        e.estado === "Cancelado" ? "fin" : "viva");
-    $("chipTxt").textContent = e.estado;
+    $("chipTxt").textContent = ({ "Pendiente": "Confirmado", "En destino": e.enAgencia ? "En la agencia" : "Llegó", "Pagado": "Entregado" })[e.estado] || e.estado;
     $("codigo").textContent = e.codigo;
 
     if (e.apurar) {
@@ -516,15 +521,34 @@
     pintarClave(e);
     pintarDatos(e);
 
-    if (e.voucher) {
+    var fotos = (e.fotos && e.fotos.length) ? e.fotos : (e.voucher ? [e.voucher] : []);
+    if (fotos.length > 1) {
+      $("rotuloFotos").textContent = "Boleta y fotos de tu envío";
+      fotos.slice(1).forEach(function (src) {
+        var fig = document.createElement("figure");
+        fig.className = "voucher";
+        fig.style.marginTop = "10px";
+        var img = document.createElement("img");
+        img.src = src;
+        img.alt = "Foto de tu envío";
+        img.addEventListener("error", function () { fig.remove(); });
+        fig.appendChild(img);
+        fig.addEventListener("click", function () {
+          $("lupaImg").src = src;
+          $("lupa").classList.add("on");
+        });
+        $("bloqueVoucher").appendChild(fig);
+      });
+    }
+    if (fotos.length) {
       $("bloqueVoucher").hidden = false;
-      $("voucherImg").src = e.voucher;
+      $("voucherImg").src = fotos[0];
       // Si Drive no devuelve la foto, el cuadro roto asusta más que no tenerla.
       $("voucherImg").addEventListener("error", function () {
         $("bloqueVoucher").hidden = true;
       });
       $("voucher").addEventListener("click", function () {
-        $("lupaImg").src = e.voucher;
+        $("lupaImg").src = fotos[0];
         $("lupa").classList.add("on");
       });
       $("lupa").addEventListener("click", function () { this.classList.remove("on"); });

@@ -120,6 +120,7 @@ function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-sugerencias").innerHTML = icon("sparkle");
   $("#btn-reportes").innerHTML = icon("doc");
+  $("#btn-shalom").innerHTML = icon("bag");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
@@ -196,7 +197,7 @@ function mostrarPasoCodigo(metodo2FA) {
 async function mostrarApp() {
   $("#login").style.display = "none";
   $("#app").classList.add("activo");
-  const { role, displayName, esCuentaDeVendedor } = await pedir("/api/crm/session");
+  const { role, displayName, esCuentaDeVendedor, shalom } = await pedir("/api/crm/session");
   estado.miRol = role;
   estado.miNombre = displayName || null;
   // Para que quede clarísimo con qué cuenta estás — el panel de admin
@@ -210,6 +211,8 @@ async function mostrarApp() {
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
+  $("#btn-shalom").style.display = shalom ? "" : "none";
+  if (shalom) actualizarConteoShalom();
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
   cargarAsesorasFiltro();
@@ -3953,6 +3956,131 @@ async function cargarChatSugerencia(card) {
 
 $("#btn-sugerencias").addEventListener("click", abrirSugerencias);
 $("#sug-cerrar").addEventListener("click", () => $("#modal-sugerencias-fondo").classList.remove("abierto"));
+
+/* ---------- Links de Shalom (link de seguimiento, clave y fotos por pedido) ---------- */
+
+const ESTADOS_SHALOM = ["Pendiente", "En camino", "En destino", "Pagado", "Cancelado"];
+const NOMBRE_ESTADO_SHALOM = { "Pendiente": "Confirmado", "En camino": "En camino", "En destino": "En la agencia", "Pagado": "Entregado", "Cancelado": "Cancelado" };
+
+async function actualizarConteoShalom() {
+  try {
+    const { pedidos } = await pedir("/api/crm/shalom");
+    const porMandar = pedidos.filter((p) => p.sugerencia).length;
+    $("#btn-shalom").innerHTML = icon("bag") + (porMandar ? `<span class="badge-sugerencias">${porMandar}</span>` : "");
+    return pedidos;
+  } catch {
+    return null;
+  }
+}
+
+function mensajeShalomPorDefecto(p) {
+  const nombre = (p.nombre || "").split(/\s+/)[0];
+  return `Hola${nombre ? " " + nombre : ""} ☺️ ¡Tu pedido está confirmado! ✨ Aquí puedes ver el estado de tu envío y, apenas salga, tu boleta de Shalom y las fotos de tu paquete: ${p.link}\n\nGuarda este link 🫶`;
+}
+
+async function abrirShalom() {
+  $("#modal-shalom-fondo").classList.add("abierto");
+  const cont = $("#lista-shalom");
+  cont.innerHTML = `<p class="ayuda-modal">Cargando pedidos…</p>`;
+  const pedidos = await actualizarConteoShalom();
+  if (!pedidos) {
+    cont.innerHTML = `<p class="ayuda-modal">No se pudo leer la hoja de Ventas.</p>`;
+    return;
+  }
+  if (!pedidos.length) {
+    cont.innerHTML = `<p class="ayuda-modal">No hay pedidos de Shalom abiertos. El asesor los crea en cada corrida apenas confirma una venta de provincia.</p>`;
+    return;
+  }
+  cont.innerHTML = pedidos.map((p) => `
+    <div class="tarjeta-shalom" data-codigo="${escapar(p.codigo)}" data-conv="${p.conversation_id || ""}">
+      <div class="sug-cabecera">
+        <span class="sug-tipo">${icon("bag")} ${escapar(p.nombre || p.contacto || p.codigo)}</span>
+        <span class="sub">${escapar(p.contacto)} · ${escapar(p.fecha)}</span>
+        <span class="sug-etiqueta">${escapar(NOMBRE_ESTADO_SHALOM[p.estado] || p.estado)}</span>
+      </div>
+      <div class="shalom-datos">
+        <div><span class="sub">Clave Shalom</span><b class="shalom-clave">${escapar(p.clave || "—")}</b>
+          ${p.clave ? `<button type="button" class="sug-icono shalom-copiar" data-copiar="${escapar(p.clave)}" title="Copiar clave">${icon("doc")}</button>` : ""}</div>
+        <div><span class="sub">Saldo</span><b>${p.saldo > 0 ? "S/ " + p.saldo : "Pagado"}</b></div>
+        <div><span class="sub">Fotos</span><b>${p.fotos}</b></div>
+      </div>
+      <div class="shalom-link">
+        <a href="${escapar(p.link)}" target="_blank" rel="noopener">${escapar(p.link.replace(/^https:\/\//, ""))}</a>
+        <button type="button" class="sug-icono shalom-copiar" data-copiar="${escapar(p.link)}" title="Copiar link">${icon("doc")}</button>
+      </div>
+      ${p.sugerencia?.motivo ? `<div class="sub">${escapar(p.sugerencia.motivo)}</div>` : ""}
+      <textarea class="sug-texto" rows="3">${escapar(p.sugerencia?.texto || mensajeShalomPorDefecto(p))}</textarea>
+      <div class="sub">${p.ventana_abierta ? "Ventana de 24 h abierta: sale como mensaje normal." : "Pasaron 24 h desde su último mensaje: sale con la plantilla de envío (si está aprobada) o cópialo."}</div>
+      <div class="shalom-controles">
+        <select class="shalom-estado" title="Estado del pedido">${ESTADOS_SHALOM.map((e) => `<option value="${e}"${e === p.estado ? " selected" : ""}>${NOMBRE_ESTADO_SHALOM[e]}</option>`).join("")}</select>
+        <label class="shalom-boton shalom-subir">${icon("image")} Subir boleta y fotos<input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" /></label>
+        ${p.saldo > 0 ? `<button type="button" class="shalom-boton shalom-pagado">${icon("check")} Pagó el saldo</button>` : ""}
+      </div>
+      <div class="sug-acciones">
+        <span class="sub sug-origen"></span>
+        ${p.conversation_id ? `<button type="button" class="sug-icono shalom-abrir" title="Abrir chat">${icon("chat")}</button>` : ""}
+        <button type="button" class="sug-icono shalom-copiar" data-copiar-de="texto" title="Copiar mensaje">${icon("doc")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-ahora shalom-enviar">${icon("send")} Enviar</button></div>
+      </div>
+    </div>`).join("");
+
+  cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
+  cont.querySelectorAll(".tarjeta-shalom").forEach((card) => {
+    const codigo = card.dataset.codigo;
+    const accion = async (cuerpo, boton) => {
+      if (boton) boton.disabled = true;
+      try {
+        const r = await pedir("/api/crm/shalom", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codigo, ...cuerpo }) });
+        return r;
+      } catch (err) {
+        alert(err.message);
+        return null;
+      } finally {
+        if (boton) boton.disabled = false;
+      }
+    };
+    card.querySelectorAll(".shalom-copiar").forEach((b) => b.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(b.dataset.copiarDe === "texto" ? card.querySelector(".sug-texto").value : b.dataset.copiar); b.classList.add("copiado"); setTimeout(() => b.classList.remove("copiado"), 1200); } catch { alert("No se pudo copiar."); }
+    }));
+    card.querySelector(".shalom-enviar").addEventListener("click", async (e) => {
+      const r = await accion({ accion: "enviar", texto: card.querySelector(".sug-texto").value }, e.currentTarget);
+      if (r?.ok) { alert(r.via === "plantilla" ? "Enviado con la plantilla de envío." : "Enviado."); abrirShalom(); }
+    });
+    card.querySelector(".shalom-estado").addEventListener("change", async (e) => {
+      const r = await accion({ accion: "estado", estado: e.target.value });
+      if (r?.ok) abrirShalom();
+    });
+    card.querySelector(".shalom-pagado")?.addEventListener("click", async (e) => {
+      if (!confirm("¿Confirmas que pagó el saldo? Su página le mostrará la clave de recojo.")) return;
+      const r = await accion({ accion: "saldo_pagado" }, e.currentTarget);
+      if (r?.ok) abrirShalom();
+    });
+    card.querySelector(".shalom-subir input").addEventListener("change", async (e) => {
+      const archivos = [...e.target.files];
+      if (!archivos.length) return;
+      const form = new FormData();
+      form.append("codigo", codigo);
+      archivos.forEach((a) => form.append("fotos", a));
+      card.querySelector(".shalom-subir").classList.add("copiado");
+      try {
+        const r = await pedir("/api/crm/shalom", { method: "POST", body: form });
+        alert(`Listo: ${r.subidas} foto(s) en su página. El pedido quedó "En camino".`);
+        abrirShalom();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+    card.querySelector(".shalom-abrir")?.addEventListener("click", async () => {
+      const convId = Number(card.dataset.conv);
+      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      if (!c) { await cargarConversaciones(); c = estado.conversaciones.find((x) => x.conversation_id === convId); }
+      if (c) { $("#modal-shalom-fondo").classList.remove("abierto"); abrirConversacion(c); }
+    });
+  });
+}
+
+$("#btn-shalom").addEventListener("click", abrirShalom);
+$("#shalom-cerrar").addEventListener("click", () => $("#modal-shalom-fondo").classList.remove("abierto"));
 
 /* ---------- Reportes de ventas (PDF del asesor) ---------- */
 

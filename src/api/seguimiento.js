@@ -14,6 +14,7 @@
  *   · Drive ID — la foto se sirve por /v/<código>, nunca por el id de Drive.
  */
 import { buscarVenta } from "../lib/ventas-hoja.js";
+import { contarFotos } from "./crm/shalom.js";
 import {
   ESTADOS_ENVIO,
   ESTADO_ESPERANDO,
@@ -57,7 +58,7 @@ async function dentroDelLimite(env, ip) {
  * Traduce la fila de la hoja a lo que la página necesita.
  * Exportada para poder probarla sin red en `npm run check`.
  */
-export function vistaPublica(venta, ahora = new Date()) {
+export function vistaPublica(venta, ahora = new Date(), fotos = 1) {
   const estado = ESTADOS_ENVIO.includes(venta["Estado"])
     ? venta["Estado"]
     : ESTADOS_ENVIO[0];
@@ -81,16 +82,23 @@ export function vistaPublica(venta, ahora = new Date()) {
     pasos: pasosDe(venta["Envío"], estado),
     // La clave solo aparece cuando ya sirve de algo: antes de que el paquete
     // llegue, enseñarla solo invita a que el cliente vaya a la agencia de balde.
-    clave: enAgencia && estado === ESTADO_ESPERANDO
+    // Y solo con el saldo pagado: la clave es la garantía del cobro. Mientras
+    // haya saldo, la página le dice cómo pagarlo y que ahí mismo le aparecerá.
+    clave: enAgencia && estado === ESTADO_ESPERANDO && aNumero(venta["Saldo"]) <= 0
       ? claveDe(venta["Clave Shalom / Notas"])
       : "",
+    claveTrasPago: enAgencia && estado === ESTADO_ESPERANDO && aNumero(venta["Saldo"]) > 0,
     saldo: Math.max(0, aNumero(venta["Saldo"])),
     fecha: venta["Fecha"],
     diasEsperando: dias,
     // Al cliente no le mostramos el escalón de alerta (es para el vendedor),
     // pero sí si ya conviene que se apure.
     apurar: Boolean(alertaDe(dias)),
-    voucher: venta["Drive ID"] ? `/v/${venta["Código"]}` : null
+    voucher: venta["Drive ID"] ? `/v/${venta["Código"]}` : null,
+    // La boleta y las fotos del envío (subidas desde CRM → Links de Shalom).
+    fotos: venta["Drive ID"]
+      ? Array.from({ length: Math.max(1, fotos) }, (_, i) => `/v/${venta["Código"]}${i ? `?n=${i + 1}` : ""}`)
+      : []
   };
 }
 
@@ -117,5 +125,13 @@ export async function onRequestGet(context) {
     return json({ error: "No encontramos ningún envío con ese código." }, 404);
   }
 
-  return json({ ok: true, envio: vistaPublica(venta) }, 200, 15);
+  let fotos = 1;
+  if (String(venta["Drive ID"] || "").startsWith("r2:")) {
+    try {
+      fotos = await contarFotos(env, venta["Código"]);
+    } catch (err) {
+      console.error("Fotos seguimiento:", err.message);
+    }
+  }
+  return json({ ok: true, envio: vistaPublica(venta, new Date(), fotos) }, 200, 15);
 }

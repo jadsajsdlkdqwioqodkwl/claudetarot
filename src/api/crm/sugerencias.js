@@ -58,7 +58,7 @@ async function get({ request, env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND (? OR s.tipo != 'envio')
+     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND ? IN (0, 1)
      ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
   ).bind(esAdmin(agent) ? 1 : 0).all();
   return json({

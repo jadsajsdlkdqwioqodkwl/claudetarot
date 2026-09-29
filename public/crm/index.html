@@ -64,6 +64,7 @@
       </div>
       <div class="acciones">
         <button id="btn-sugerencias" title="Sugerencias del asesor para aprobar" style="display:none"></button>
+        <button id="btn-shalom" title="Links de Shalom" style="display:none; position:relative"></button>
         <button id="btn-reportes" title="Reportes de ventas (PDF)" style="display:none"></button>
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-instalar" class="accion-secundaria" title="Instalar como app" style="display:none"></button>
@@ -284,6 +285,17 @@
     <button class="cancelar" id="avisos-desvincular" type="button" style="width:100%;display:none">Desvincular Telegram</button>
     <div class="acciones">
       <button class="cancelar" id="avisos-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-shalom-fondo">
+  <div class="modal modal-ancho">
+    <h2>Links de Shalom</h2>
+    <p class="ayuda-modal">Cada pedido de provincia con su link de seguimiento y su clave única de recojo (úsala al registrar el envío en Shalom). Manda el link apenas se confirma la venta; cuando tengas la boleta, súbela con las fotos del envío y el cliente las verá en su página. Con "pagó el saldo" su página le muestra la clave.</p>
+    <div id="lista-shalom"></div>
+    <div class="acciones">
+      <button class="cancelar" id="shalom-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
