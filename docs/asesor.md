@@ -94,8 +94,9 @@ página del cliente le muestra su clave. Nunca se marca solo.
   los de la bienvenida). Así se mide si 1 mensaje cierra más que 8.
 - **Botones 1·2·3 en todos lados**: en el chat, en ⚡ Respuestas rápidas de
   Sugerencias, de los pasos de seguimiento, de la bienvenida y del comentario
-  de una foto, y en el selector del seguimiento programado. Tocar la
-  respuesta pone la 1; tocar un número pone esa versión.
+  de una foto, y en el selector del seguimiento programado. Los números solo
+  eligen la versión (se marca y se ve su texto); recién al tocar el mensaje
+  se pone en el cuadro. Sin elegir, va la 1 (en el chat, el CRM sortea).
 - **Opciones 2 y 3 del director**: `contexto.py` lista las respuestas más
   usadas sin prueba, primero las que menos hacen avanzar el chat
   (`candidatas_a_opciones`); ahí propone `variantes`.

@@ -909,6 +909,8 @@ check("las letras de columna llegan hasta la última de la hoja",
   const envio = readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8");
   check("mensajes seguidos: espera a que se entregue el anterior antes del \"escribiendo…\"",
     /ESPACIO_ENTRE_MENSAJES_MS = 2000/.test(envio) && /esperarEspacio\(conversationId/.test(envio));
+  check("los botoncitos 1·2·3 solo eligen la versión; se pone al tocar el mensaje",
+    readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("function elegirVersionEnLista"));
   check("todos los modales tienen su ✕ de cerrar arriba a la derecha",
     readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes('x.className = "modal-x"'));
   check("pausaEnvio muestra \"escribiendo…\" y espera", /mostrarEscribiendo\(env/.test(envio) && /await esperar\(ms\)/.test(envio));

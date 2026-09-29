@@ -3638,6 +3638,7 @@ function configurarEditorMedia() {
     panel.querySelector("input").addEventListener("input", pintar);
     panel.querySelector("input").focus();
     panel.querySelector(".em-rapidas-lista").addEventListener("click", (e) => {
+      if (elegirVersionEnLista(e)) return;
       const texto = textoElegido(e);
       if (texto === null) return;
       if (!caption.value.trim()) { caption.value = texto; guardarCaption(); autoAltoCaption(); } else meterEnCaption(" " + texto);
@@ -3929,19 +3930,43 @@ function itemRapidaHtml(q, nota = "") {
     <div role="button" tabindex="0" class="rapida-item" data-id="${q.id}">
       <b>${escapar(q.title)}</b>${nota}
       <span>${escapar((q.body || "").slice(0, 140))}</span>
-      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}<span class="sub">versiones</span></div>` : ""}
+      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version${i === 0 ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}<span class="sub">elige la versión y toca el mensaje</span></div>` : ""}
     </div>`;
 }
 
-/** El texto que corresponde al toque (la versión elegida, o el de siempre). */
+/**
+ * Los botoncitos 1·2·3 solo ELIGEN la versión (se marca y el texto de la
+ * lista cambia a esa versión); recién al tocar el mensaje se pone en el
+ * cuadro. Devuelve true si el toque fue en un botoncito.
+ */
+function elegirVersionEnLista(e) {
+  const chip = e.target.closest(".version");
+  const item = chip?.closest(".rapida-item, #panel-rapidas .item");
+  if (!chip || !item) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  const q = (estado.quickReplies || []).find((x) => x.id === Number(chip.dataset.q || item.dataset.id));
+  const vs = q && versionesDe(q);
+  if (!vs) return true;
+  const i = Number(chip.dataset.i);
+  item.dataset.version = String(i);
+  item.querySelectorAll(".version").forEach((b) => b.classList.toggle("activa", b === chip));
+  const texto = vs[i]?.texto ?? q.body ?? "";
+  const vista = item.querySelector(".cuerpo") || item.querySelector(":scope > span");
+  if (vista) vista.textContent = item.classList.contains("item") ? texto : texto.slice(0, 140);
+  return true;
+}
+
+/** El texto que corresponde al toque en el mensaje: la versión elegida con 1·2·3, o la 1. */
 function textoElegido(e) {
+  if (e.target.closest(".version")) return null;
   const item = e.target.closest(".rapida-item");
   if (!item) return null;
   const q = (estado.quickReplies || []).find((x) => x.id === Number(item.dataset.id));
   if (!q) return null;
-  const chip = e.target.closest(".version");
   const vs = versionesDe(q);
-  return chip && vs ? vs[Number(chip.dataset.i)]?.texto ?? q.body ?? "" : q.body || "";
+  const i = item.dataset.version;
+  return i !== undefined && vs ? vs[Number(i)]?.texto ?? q.body ?? "" : q.body || "";
 }
 
 /**
@@ -3985,6 +4010,7 @@ function agregarRapidasA(el) {
   caja.querySelector("input").addEventListener("input", pintar);
   caja.addEventListener("mousedown", (e) => { if (e.target.closest(".rapida-item")) e.preventDefault(); });
   caja.addEventListener("click", (e) => {
+    if (elegirVersionEnLista(e)) return;
     const texto = textoElegido(e);
     if (texto === null) return;
     if (!el.value.trim()) el.value = texto;
@@ -4764,7 +4790,8 @@ function pintarQuickPanel() {
     el.addEventListener("click", (e) => {
       if (e.target.closest(".borrar") || e.target.closest(".editar") || e.target.closest(".arrastrar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
-      if (q) usarQuickReply(q);
+      // Con una versión elegida en sus 1·2·3 va esa; si no, el CRM sortea.
+      if (q) usarQuickReply(q, el.dataset.version !== undefined ? Number(el.dataset.version) : null);
     });
   });
   panel.querySelectorAll(".editar").forEach((btn) => {
@@ -4917,7 +4944,8 @@ function pintarVersionesRapida() {
 }
 
 document.addEventListener("click", (e) => {
-  const b = e.target.closest("#panel-rapidas .version, #versiones-rapida .version");
+  if (e.target.closest("#panel-rapidas .version")) { elegirVersionEnLista(e); return; }
+  const b = e.target.closest("#versiones-rapida .version");
   if (!b) return;
   e.preventDefault();
   e.stopPropagation();
