@@ -11,6 +11,7 @@
  */
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
+import { textoPorDefectoSql } from "./crm-variantes.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
@@ -93,7 +94,7 @@ export async function procesarSeguimientosVencidos(env) {
   // mensaje del cliente (para el "escribiendo…"), sin una consulta por envío.
   const marcas = reservados.map(() => "?").join(",");
   const { results: vencidos } = await env.CRM_DB.prepare(
-    `SELECT s.*, conv.id AS conv_id, c.wa_id, q.body AS quick_body,
+    `SELECT s.*, conv.id AS conv_id, c.wa_id, ${textoPorDefectoSql("rapida")} AS quick_body,
        COALESCE(s.media_key, qm.media_key, q.media_key) AS media_key_real,
        COALESCE(s.media_type, qm.media_type, q.media_type) AS media_type_real,
        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'out'
@@ -104,7 +105,7 @@ export async function procesarSeguimientosVencidos(env) {
        conv.etapa AS etapa,
        (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
        EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
-          AND md.body = COALESCE(s.body, q.body) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
+          AND md.body = COALESCE(s.body, ${textoPorDefectoSql("rapida")}) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
      FROM scheduled_messages s
      JOIN conversations conv ON conv.id = s.conversation_id
      JOIN contacts c ON c.id = conv.contact_id

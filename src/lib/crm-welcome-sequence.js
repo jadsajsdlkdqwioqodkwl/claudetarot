@@ -30,13 +30,13 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
 
   if (!pasos.length) return 0;
 
-  let enPrueba = {};
-  if (pruebas) {
-    enPrueba = await versionesEnPrueba(env.CRM_DB, "bienvenida", pasos.map((p) => p.id)).catch((err) => {
-      console.error("Versiones de bienvenida:", err.message);
-      return {};
-    });
-  }
+  // Las versiones se leen siempre: la ⭐ predeterminada sale también en el
+  // sandbox y en los reenvíos a mano (ahí sin sorteo y sin contar para la prueba).
+  const enPrueba = await versionesEnPrueba(env.CRM_DB, "bienvenida", pasos.map((p) => p.id)).catch((err) => {
+    console.error("Versiones de bienvenida:", err.message);
+    return {};
+  });
+  const elegir = (vs) => (pruebas ? elegirVersion(vs) : vs.find((v) => v.predeterminada) || null);
 
   // Todas las fotos/videos de la secuencia, en una sola consulta.
   const marcas = pasos.map(() => "?").join(",");
@@ -58,14 +58,14 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   // texto) y los demás pasos no se mandan.
   const primero = pasos[0];
   const vPrimero = enPrueba[primero.id];
-  const elegidaPrimero = vPrimero ? elegirVersion(vPrimero) : null;
+  const elegidaPrimero = vPrimero ? elegir(vPrimero) : null;
   if (elegidaPrimero?.unico) {
     if (elegidaPrimero.media_key) {
       await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
     }
     await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
     await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel);
-    await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
+    if (pruebas) await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
     return 1;
   }
 
@@ -85,7 +85,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       // El primer paso ya se sorteó arriba; los demás, aquí. Las versiones
       // "únicas" solo valen como primer paso: en otro paso no se eligen.
       const versiones = enPrueba[paso.id]?.filter((v) => !v.unico);
-      const elegida = paso.id === primero.id ? elegidaPrimero : versiones?.length ? elegirVersion(versiones) : null;
+      const elegida = paso.id === primero.id ? elegidaPrimero : versiones?.length ? elegir(versiones) : null;
       await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
       await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
       if (pruebas) {

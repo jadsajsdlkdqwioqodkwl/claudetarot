@@ -25,7 +25,7 @@
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 import { aprendizaje } from "./asesor-datos.js";
-import { versionesEnPrueba } from "../lib/crm-variantes.js";
+import { versionesEnPrueba, textoPorDefectoSql } from "../lib/crm-variantes.js";
 import { frasesQueConvierten } from "../lib/crm-frases.js";
 import { getValues } from "../lib/google-sheets.js";
 import { hojaVentas } from "../lib/ventas-hoja.js";
@@ -364,7 +364,7 @@ export async function onRequestGetContexto({ request, env }) {
   await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
   const [rapidas, pendientes, bienvenida, pruebas, noCierran] = await Promise.all([
     env.CRM_DB.prepare(
-      `SELECT q.id, q.title, q.body, q.grupo, q.sort_order,
+      `SELECT q.id, q.title, ${textoPorDefectoSql("rapida")} AS body, q.grupo, q.sort_order,
          (SELECT group_concat(media_type) FROM quick_reply_media m WHERE m.quick_reply_id = q.id) AS media
        FROM quick_replies q ORDER BY q.sort_order, q.id`
     ).all(),
@@ -372,7 +372,7 @@ export async function onRequestGetContexto({ request, env }) {
       "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
     ).all(),
     env.CRM_DB.prepare(
-      `SELECT s.id, s.title, s.body,
+      `SELECT s.id, s.title, ${textoPorDefectoSql("bienvenida", "s")} AS body,
          (SELECT group_concat(media_type) FROM welcome_step_media m WHERE m.welcome_step_id = s.id) AS media
        FROM welcome_steps s ORDER BY s.step_order`
     ).all(),

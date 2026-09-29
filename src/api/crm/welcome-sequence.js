@@ -18,7 +18,7 @@
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
-import { guardarAnterior } from "../../lib/crm-variantes.js";
+import { guardarAnterior, textoPorDefectoSql } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -28,7 +28,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: pasos } = await env.CRM_DB.prepare(
-    "SELECT id, title, body, step_order, texto_primero FROM welcome_steps ORDER BY step_order ASC"
+    `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
   ).all();
 
   const { results: media } = await env.CRM_DB.prepare(

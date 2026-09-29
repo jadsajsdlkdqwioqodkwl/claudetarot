@@ -22,6 +22,7 @@
  * docs/whatsapp-ventanas-y-costos.md.
  */
 
+import { textoPorDefectoSql } from "../../lib/crm-variantes.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 
@@ -53,7 +54,7 @@ async function get({ request, env }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const { results } = await env.CRM_DB.prepare(
-    `SELECT s.*, q.title AS quick_reply_title, q.body AS quick_reply_body
+    `SELECT s.*, q.title AS quick_reply_title, ${textoPorDefectoSql("rapida")} AS quick_reply_body
      FROM scheduled_messages s LEFT JOIN quick_replies q ON q.id = s.quick_reply_id
      WHERE s.conversation_id = ? AND s.status = 'pendiente'
      ORDER BY s.send_at ASC`

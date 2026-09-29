@@ -466,7 +466,7 @@ async function pintarSecuenciaBienvenida() {
     <div class="fila-seguimiento">
       <div>
         <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)}</div>
-        ${s.body ? `<div class="sub">${escapar(s.body)}</div>` : ""}
+        ${s.texto_por_defecto || s.body ? `<div class="sub">${escapar(s.texto_por_defecto || s.body)}</div>` : ""}
       </div>
       <div style="display:flex;gap:4px">
         <button class="mover-arriba" data-id="${s.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
@@ -3671,7 +3671,7 @@ function configurarEditorMedia() {
     panel.innerHTML = `<input type="text" placeholder="Buscar respuesta rápida…" /><div class="em-rapidas-lista"></div>`;
     if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
     const pintar = () => {
-      const lista = buscarRapidas(estado.quickReplies || [], panel.querySelector("input").value).filter((q) => q.body).slice(0, 30);
+      const lista = buscarRapidas(estado.quickReplies || [], panel.querySelector("input").value).filter((q) => textoRapida(q)).slice(0, 30);
       panel.querySelector(".em-rapidas-lista").innerHTML = lista.map((q) => itemRapidaHtml(q)).join("") || `<p>Sin resultados.</p>`;
     };
     pintar();
@@ -3969,8 +3969,8 @@ function itemRapidaHtml(q, nota = "") {
   return `
     <div role="button" tabindex="0" class="rapida-item" data-id="${q.id}">
       <b>${escapar(q.title)}</b>${nota}
-      <span>${escapar((q.body || "").slice(0, 140))}</span>
-      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version${i === 0 ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}<span class="sub">elige la versión y toca el mensaje</span></div>` : ""}
+      <span>${escapar(textoRapida(q).slice(0, 140))}</span>
+      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version${i === 0 ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? "⭐" : ""}</button>`).join("")}<span class="sub">elige la versión y toca el mensaje</span></div>` : ""}
     </div>`;
 }
 
@@ -4779,7 +4779,7 @@ function buscarRapidas(lista, consulta) {
   if (!tokens.length) return lista;
   const puntuadas = lista.map((q) => {
     const titulo = normalizarBusqueda(q.title).split(" ");
-    const cuerpo = normalizarBusqueda(q.body).split(" ");
+    const cuerpo = normalizarBusqueda(`${q.body || ""} ${(q.variantes || []).map((v) => v.texto || "").join(" ")}`).split(" ");
     const porToken = tokens.map((t) => Math.max(puntajeToken(t, titulo) * 2, puntajeToken(t, cuerpo)));
     return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) };
   }).filter((x) => x.puntaje > 0);
@@ -4826,7 +4826,7 @@ function pintarQuickPanel() {
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
           <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
-          ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
+          ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
         <button class="editar" data-id="${q.id}" title="Editar">${icon("pencil")}</button>
@@ -4974,7 +4974,12 @@ function ponerTextoRapida(texto) {
   input.setSelectionRange(input.value.length, input.value.length);
 }
 
-/** [{ id, texto }] de cada versión (la 1 es la original), o null si no hay prueba. */
+/** El texto que sale por defecto: el de la ⭐ predeterminada, o el de siempre. */
+function textoRapida(q) {
+  return versionesDe(q)?.[0]?.texto ?? q?.body ?? "";
+}
+
+/** [{ id, texto }] de cada versión (la 1 es la original, o la ⭐ predeterminada si hay orden fijo), o null si no hay prueba. */
 function versionesDe(q) {
   if (!q.variantes?.length) return null;
   return q.variantes.map((v) => ({ id: v.id, texto: v.texto ?? q.body ?? "" }));
@@ -4991,7 +4996,7 @@ function botonesVersiones(q, activa = null) {
   const vs = versionesDe(q);
   if (!vs) return "";
   return `<div class="versiones">${vs.map((v, i) =>
-    `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}</div>`;
+    `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? "⭐" : ""}</button>`).join("")}</div>`;
 }
 
 /** La barrita encima del cuadro para cambiar de versión con un toque. */
@@ -5234,7 +5239,7 @@ async function pintarPruebas(cont, tipo, refId) {
   if (tipo === "rapida") {
     // Parte de este texto; los que siguen se suman con ⚡ Respuestas rápidas.
     const q = (estado.quickReplies || []).find((x) => x.id === refId);
-    if (q?.body) combinado = { texto: q.body.trim(), nota: "Suma los mensajes que van después con ⚡ Respuestas rápidas y junta todo en uno." };
+    if (q && textoRapida(q)) combinado = { texto: textoRapida(q).trim(), nota: "Suma los mensajes que van después con ⚡ Respuestas rápidas y junta todo en uno." };
   } else if (pasos[0]?.id === refId && pasos.length > 1) {
     combinado = { texto: pasos.map((p) => (p.body || "").trim()).filter(Boolean).join("\n\n"), nota: "Reemplaza toda la bienvenida por un solo mensaje.", media: pasos.flatMap((p) => p.media) };
   }
@@ -5278,7 +5283,10 @@ async function pintarPruebas(cont, tipo, refId) {
     </div>`;
 
   const recargar = async () => {
-    if (tipo === "rapida") await cargarQuickReplies().catch(() => {});
+    if (tipo === "rapida") {
+      await cargarQuickReplies().catch(() => {});
+      if ($("#panel-rapidas")?.classList.contains("abierto")) pintarQuickPanel();
+    } else pintarSecuenciaBienvenida().catch(() => {});
     await pintarPruebas(cont, tipo, refId);
   };
   const llamar = (method, body) => pedir("/api/crm/variantes", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -5377,7 +5385,7 @@ function abrirModalProgramarSeguimiento(modo) {
   const sel = $("#seg-rapida");
   sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
-    estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${q.body ? ` — ${escapar(recortarTexto(q.body.replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
+    estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${textoRapida(q) ? ` — ${escapar(recortarTexto(textoRapida(q).replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
   prepararChipsVentana();
   elegirCuando($("#seg-chips button[data-ventana]:not(:disabled)") || $("#seg-chips button:not(:disabled)"));
   ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");

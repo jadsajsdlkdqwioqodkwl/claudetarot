@@ -13,6 +13,16 @@
  */
 
 export const MIN_USOS = 20;
+
+/**
+ * SQL: el texto que sale por defecto de una respuesta rápida (alias `q`) o
+ * paso de bienvenida — el de la versión ⭐ predeterminada si hay orden fijo
+ * con otra versión primero; si no, su body. Para todo lo que muestra o manda
+ * "el texto de la respuesta" (seguimientos programados, listas, director).
+ */
+export const textoPorDefectoSql = (tipo, alias = "q") =>
+  `COALESCE((SELECT vd.texto FROM variantes vd WHERE vd.tipo = '${tipo === "bienvenida" ? "bienvenida" : "rapida"}' AND vd.ref_id = ${alias}.id
+     AND vd.estado = 'activa' AND vd.unico = 0 AND vd.id = json_extract(${alias}.orden_versiones, '$[0]')), ${alias}.body)`;
 const PISO = 0.1;
 const DIAS = 45;
 const MUESTRAS = 400;
