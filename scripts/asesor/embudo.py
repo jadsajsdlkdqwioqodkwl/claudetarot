@@ -97,7 +97,7 @@ def main():
         if etapa in (3, 4):
             lineas = [f"{m['t'][5:16]} {'C' if m['quien'] == 'Cliente' else 'V'}: {re.sub(chr(10), ' ', m['msg'])[:200] or '[' + m['tipo'] + ']'}"
                       for m in ms if m["quien"] == "Cliente" or not RE_AUTO.search(m["vend"])]
-            perdidos.append(f"=== {wa[-4:]} etapa {etapa} | {claves['anuncio']}\n" + "\n".join(lineas[-12:]))
+            perdidos.append(f"=== {wa} etapa {etapa} | {claves['anuncio']}\n" + "\n".join(lineas[-12:]))
 
     def tabla(d, minimo=3):
         filas_t = [{"clave": k, **v, "cierre_%": round(100 * v["cerraron"] / v["chats"], 1)} for k, v in d.items() if v["chats"] >= minimo]
