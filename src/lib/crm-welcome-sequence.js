@@ -50,7 +50,6 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   const elegidaPrimero = vPrimero ? vPrimero[sortear(vPrimero.map((v) => v.peso))] : null;
   if (elegidaPrimero?.unico) {
     if (elegidaPrimero.media_key) {
-      await pausaEnvio(env, conversationId, undefined, escribiendo);
       await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
     }
     await pausaEnvio(env, conversationId, undefined, escribiendo);
@@ -59,7 +58,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
     return 1;
   }
 
-  // Cada mensaje (texto, foto o video) con su propio "escribiendo…" (1,5 s).
+  // Fotos y videos al toque; cada texto con su propio "escribiendo…" (1,5 s).
   for (const paso of pasos) {
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"
@@ -72,7 +71,6 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       // repetido una vez por archivo. El texto se manda una sola vez,
       // aparte, después de que lleguen todos los archivos.
       for (const m of media.results) {
-        await pausaEnvio(env, conversationId, undefined, escribiendo);
         await mandarMediaGuardada(env, conversationId, waId, m.media_key, m.media_type, undefined, sentByLabel);
       }
     }

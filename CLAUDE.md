@@ -36,13 +36,15 @@ Más detalle: `docs/asesor.md`.
 
 ## Si vas a tocar el código
 
-- ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo mensaje que sale a
+- ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo TEXTO que sale a
   un cliente lleva antes "escribiendo…" durante **1,5 s** (`pausaEnvio()` en
   `src/lib/crm-send.js`, `PAUSA_ENVIO_MS = 1500`). No se quita, no se acorta
   y todo envío nuevo lo llama antes de `mandarTexto()` / `mandarMediaGuardada()`.
   `npm run check` falla si falta en algún envío. Está garantizado dentro de
   `mandarTexto()`, `mandarMediaGuardada()` y `mandarConEscribiendo()`
-  (catálogo, producto, plantilla): si nadie hizo la pausa, la hacen ellas.
+  (plantilla): si nadie hizo la pausa, la hacen ellas. Fotos, videos,
+  audios, documentos, catálogo y producto salen al toque, sin "escribiendo…"
+  (`mandarMediaGuardada()`, `mandarAlToque()`).
   Nunca llames directo a `enviarTexto/enviarMedia/enviarTemplate/enviarCatalogo*/enviarProducto`.
 
 - `npm run check` y `npm run check:gs` antes de subir (el chequeo "la foto de

@@ -8,7 +8,7 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache } from "../../lib/crm-db.js";
-import { pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
+import { mandarAlToque } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -100,8 +100,7 @@ async function post({ request, env, agent }) {
         nombre = mapa[retailerId]?.name || null;
       }
 
-      await pausaEnvio(env, conversationId);
-      const waMessageId = await mandarConEscribiendo(env, conversationId, () => enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text));
+      const waMessageId = await mandarAlToque(env, conversationId, () => enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text));
       await registrarMensajeSaliente(env.CRM_DB, conversationId, {
         waMessageId,
         type: "product",
@@ -121,8 +120,7 @@ async function post({ request, env, agent }) {
         portadas = [...buenos, ...productos].map((p) => p.retailer_id);
       } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
     }
-    await pausaEnvio(env, conversationId);
-    const waMessageId = await mandarConEscribiendo(env, conversationId, () => enviarCatalogoConPortada(env, conv.wa_id, payload?.text, portadas));
+    const waMessageId = await mandarAlToque(env, conversationId, () => enviarCatalogoConPortada(env, conv.wa_id, payload?.text, portadas));
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "catalog",

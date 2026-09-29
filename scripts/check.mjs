@@ -901,7 +901,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   for (const ruta of archivos) {
     const lineas = readFileSync(ruta, "utf8").split("\n");
     lineas.forEach((l, i) => {
-      if (!/\b(mandarTexto|mandarMediaGuardada)\(/.test(l) || /^\s*(import|\*|\/\/)/.test(l)) return;
+      if (!/\bmandarTexto\(/.test(l) || /^\s*(import|\*|\/\/)/.test(l)) return;
       if (!lineas.slice(Math.max(0, i - 20), i).some((x) => /pausaEnvio\(/.test(x))) sinEscribiendo.push(`${ruta.split("/src/")[1]}:${i + 1}`);
     });
   }
@@ -915,13 +915,14 @@ check("las letras de columna llegan hasta la última de la hoja",
     const lineas = readFileSync(ruta, "utf8").split("\n");
     lineas.forEach((l, i) => {
       if (/^\s*(import|\*|\/\/)/.test(l)) return;
-      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
+      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(|mandarAlToque\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
     });
   }
-  check(`catálogo, producto y plantilla también van con "escribiendo…"${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);
+  check(`ninguna llamada directa a Meta (plantilla con "escribiendo…", catálogo/producto al toque)${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);
   const envio = readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8");
-  check("mandarTexto, mandarMediaGuardada y mandarConEscribiendo hacen su propia pausa si falta",
-    (envio.match(/await asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviar/g) || []).length === 3);
+  check("mandarTexto y mandarConEscribiendo hacen su propia pausa si falta",
+    (envio.match(/await asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviar/g) || []).length === 2);
+  check("fotos, videos y archivos salen al toque (sin \"escribiendo…\")", !/asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviarMedia/.test(envio));
   check("ningún envío salta el \"escribiendo…\"", !/escribiendo:\s*false/.test(envio) && !/escribiendo:\s*false/.test(readFileSync(new URL("../src/lib/crm-welcome-sequence.js", import.meta.url), "utf8")));
   check("dos envíos al mismo chat a la vez toman turno", /envio_turnos/.test(envio));
   check("mensajes seguidos: espera a que se entregue el anterior antes del \"escribiendo…\"",

@@ -8,7 +8,7 @@ import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiend
 import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "./crm-db.js";
 
 /**
- * Antes de mandarle algo al cliente: le muestra "escribiendo…" y espera 1,5 s,
+ * Antes de mandarle un TEXTO al cliente: le muestra "escribiendo…" y espera 1,5 s,
  * para que no llegue al instante como un bot. La espera no es CPU ni suma
  * requests del Worker; el "escribiendo" es una llamada más a Meta
  * (subrequest, sin costo). WhatsApp lo muestra marcando como leído el último
@@ -17,17 +17,21 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
  */
 /*
  * ⚠️ NO TOCAR — REGLA DEL DUEÑO, IMPORTANTÍSIMA.
- * Todo mensaje que sale a un cliente (a mano, pegado, respuesta rápida,
- * bienvenida, seguimiento, sugerencia aprobada, link de Shalom, catálogo,
- * producto, plantilla, fotos/videos/audios/documentos) va precedido de
- * "escribiendo…" en su WhatsApp durante 1,5 s y recién el mensaje. No se
- * quita, no se acorta, no se salta "para que vaya más rápido".
+ * Todo TEXTO que sale a un cliente (a mano, pegado, respuesta rápida,
+ * bienvenida, seguimiento, sugerencia aprobada, link de Shalom, plantilla)
+ * va precedido de "escribiendo…" en su WhatsApp durante 1,5 s y recién el
+ * mensaje. No se quita, no se acorta, no se salta "para que vaya más rápido".
  *
- * Está garantizado aquí mismo, no depende de quien llama: mandarTexto(),
- * mandarMediaGuardada() y mandarConEscribiendo() (catálogo, producto,
- * plantilla) hacen su propia pausaEnvio() si nadie la hizo justo antes para
- * ese mensaje. Cada pausa sirve para UN solo mensaje. `npm run check` falla
- * si algún envío a Meta no pasa por estas funciones o si este valor cambia.
+ * Fotos, videos, audios, documentos, stickers, catálogo y producto salen al
+ * toque, sin "escribiendo…" (así es en WhatsApp: eso no se escribe).
+ * Decisión del dueño (2026-09-29). Si llevan texto aparte (audio/sticker con
+ * texto), ese texto sí va con su "escribiendo…".
+ *
+ * Está garantizado aquí mismo, no depende de quien llama: mandarTexto() y
+ * mandarConEscribiendo() (plantilla) hacen su propia pausaEnvio() si nadie
+ * la hizo justo antes para ese mensaje. Cada pausa sirve para UN solo
+ * mensaje. `npm run check` falla si algún envío a Meta no pasa por estas
+ * funciones o si este valor cambia.
  */
 export const PAUSA_ENVIO_MS = 1500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -151,12 +155,18 @@ async function marcarEnviado(env, conversationId) {
 }
 
 /**
- * Catálogo, producto o plantilla (lo que no pasa por mandarTexto /
- * mandarMediaGuardada): `enviar` es la llamada a Meta; antes va su
- * "escribiendo…" de 1,5 s.
+ * Plantilla (texto que no pasa por mandarTexto): `enviar` es la llamada a
+ * Meta; antes va su "escribiendo…" de 1,5 s.
  */
 export async function mandarConEscribiendo(env, conversationId, enviar) {
   await asegurarPausa(env, conversationId);
+  const waMessageId = await enviar();
+  await marcarEnviado(env, conversationId);
+  return waMessageId;
+}
+
+/** Catálogo o producto: sale al toque, sin "escribiendo…". */
+export async function mandarAlToque(env, conversationId, enviar) {
   const waMessageId = await enviar();
   await marcarEnviado(env, conversationId);
   return waMessageId;
@@ -194,7 +204,7 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   fileName = fileName || obj.customMetadata?.originalName || undefined;
 
   const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
-  await asegurarPausa(env, conversationId);
+  // Foto, video, audio, documento: al toque, sin "escribiendo…".
   const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
   await marcarEnviado(env, conversationId);
 

@@ -115,7 +115,7 @@ async function post({ request, env, agent }) {
   }
 
   try {
-    await pausaEnvio(env, conversationId);
+    // Fotos, videos y archivos: al toque. El texto: "escribiendo…" (en mandarTexto).
     if (mediaKey) {
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);
@@ -130,6 +130,7 @@ async function post({ request, env, agent }) {
     const texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
+    await pausaEnvio(env, conversationId);
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida();
