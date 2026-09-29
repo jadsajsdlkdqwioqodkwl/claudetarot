@@ -36,8 +36,10 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
   (dentro de las 24 h) y ahí aparece su boleta cuando sale.
 
 ## Herramientas de cierre que SÍ se pueden ofrecer
-Úsalas solo cuando destraban una venta real (objeción de precio, cliente que se
-enfrió, reprogramación), nunca en el primer mensaje ni a todos:
+Úsalas cuando destraban una venta real, nunca de entrada a quien recién pregunta
+ni a todos: si el cliente dijo "caro" o pidió rebaja, de inmediato; si se enfrió
+después de que le pidieron el cierre, como último paso de una secuencia; y en
+reprogramaciones.
 - **Descuento de S/10**: kit a **S/79**.
 - **Collar amuleto adicional** de regalo (además del que ya trae el kit).
 - Separar un pedido para otra fecha con un adelanto mínimo de S/10.
@@ -47,7 +49,8 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
 ## Reglas de WhatsApp
 - Texto libre solo dentro de las 24 h desde el último mensaje del cliente.
   Fuera de eso, solo plantillas aprobadas (se pagan).
-- Máximo un recordatorio por cliente; nada de mensajes masivos no pedidos.
+- Seguimiento: hasta una secuencia de 3–4 mensajes por cliente dentro de sus
+  24 h (se cancela sola si responde); nada de mensajes masivos no pedidos.
 - Estilo de las vendedoras: cálido, "estimad@", ☺️✨🫶, 2–3 líneas, una sola
   acción clara al final ("¿Para dónde lo desea? 📍").
 
