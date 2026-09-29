@@ -294,30 +294,28 @@ export function fechaSuelta(valor) {
 }
 
 /**
- * Clave de recojo de Shalom, una por pedido (4 dígitos). Shalom rechaza las
- * que van en secuencia, así que se descartan: todos iguales (1111), escaleras
- * (1234, 4321, 0123) y las que repiten un dígito tres veces (1112). Tampoco
- * empieza en 0 ni repite ninguna de `usadas` (las de los pedidos abiertos y
- * las viejas compartidas 3114/3144/3143), para que nunca
- * haya dos paquetes esperando con la misma clave y se sepa de quién es cada una.
+ * Claves de recojo de Shalom: las de siempre (3114, 3144, 3143), o las que
+ * diga CLAVES_SHALOM separadas por coma. Cada pedido queda con UNA de ellas
+ * anotada al crearse, así ya no hay que recordar cuál se usó con quién: sale
+ * en el reporte, en Links de Shalom y en la página del cliente.
  */
-export function claveShalomValida(clave) {
-  if (!/^[1-9]\d{3}$/.test(clave)) return false; // sin 0 adelante: se pierde al pegarla en una celda
-  const d = [...clave].map(Number);
-  const pasos = d.slice(1).map((x, i) => x - d[i]);
-  if (pasos.every((p) => p === 1) || pasos.every((p) => p === -1)) return false;
-  const cuenta = {};
-  for (const x of d) cuenta[x] = (cuenta[x] || 0) + 1;
-  if (Object.values(cuenta).some((n) => n >= 3)) return false;
-  return true;
+export const CLAVES_SHALOM_POR_DEFECTO = ["3114", "3144", "3143"];
+
+export function clavesShalom(env) {
+  const lista = String(env?.CLAVES_SHALOM || "").split(",").map((c) => c.trim()).filter((c) => /^\d{4}$/.test(c));
+  return lista.length ? lista : CLAVES_SHALOM_POR_DEFECTO;
 }
 
-export function nuevaClaveShalom(usadas = new Set(), azar = Math.random) {
-  for (let i = 0; i < 500; i++) {
-    const clave = String(Math.floor(azar() * 10000)).padStart(4, "0");
-    if (claveShalomValida(clave) && !usadas.has(clave)) return clave;
-  }
-  throw new Error("No quedan claves libres");
+/**
+ * La clave para un pedido nuevo: la que menos pedidos abiertos tiene, así dos
+ * paquetes esperando en la misma agencia casi nunca comparten clave. En empate,
+ * la primera de la lista (3114).
+ * @param {string[]} abiertas  claves de los pedidos que siguen abiertos
+ */
+export function elegirClaveShalom(claves, abiertas = []) {
+  const uso = new Map(claves.map((c) => [c, 0]));
+  for (const c of abiertas) if (uso.has(c)) uso.set(c, uso.get(c) + 1);
+  return [...uso.entries()].sort((x, y) => x[1] - y[1])[0][0];
 }
 
 /** ¿Este usuario del CRM maneja los links de Shalom? El admin siempre; además los de SHALOM_AGENTES. */

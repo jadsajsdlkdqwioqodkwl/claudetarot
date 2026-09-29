@@ -3742,6 +3742,62 @@ function agregarEmojisA(el) {
 
 ["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto", "#rapida-seg-texto"].forEach((sel) => agregarEmojisA($(sel)));
 
+/**
+ * Botón "Respuestas rápidas" junto a Emojis en los textos de Sugerencias y de
+ * Links de Shalom: busca como el panel del chat (buscarRapidas) y la elegida
+ * se pone en el campo (reemplaza si está vacío, si no se inserta en el cursor).
+ * Solo el texto: las fotos de una respuesta rápida se mandan desde el chat.
+ */
+function agregarRapidasA(el) {
+  if (!el || el.dataset.conRapidas) return;
+  el.dataset.conRapidas = "1";
+  // Si nunca tocaste el texto, la respuesta rápida va al final; si pusiste el
+  // cursor en algún lado, entra ahí (el navegador recuerda la posición).
+  el.addEventListener("click", () => { el.dataset.tocado = "1"; });
+  el.addEventListener("keyup", () => { el.dataset.tocado = "1"; });
+  agregarEmojisA(el);
+  const barra = el.nextElementSibling?.classList.contains("emoji-barra") ? el.nextElementSibling : null;
+  if (!barra) return;
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "emoji-toggle rapidas-toggle";
+  boton.innerHTML = `${icon("bolt")} Respuestas rápidas`;
+  barra.querySelector(".emoji-toggle").after(boton);
+  const caja = document.createElement("div");
+  caja.className = "rapidas-inline";
+  caja.innerHTML = `<input type="text" placeholder="Buscar respuesta rápida…" /><div class="rapidas-lista"></div>`;
+  barra.appendChild(caja);
+  const pintar = () => {
+    const lista = buscarRapidas(estado.quickReplies || [], caja.querySelector("input").value).slice(0, 30);
+    caja.querySelector(".rapidas-lista").innerHTML = lista.map((q) => `
+      <button type="button" class="rapida-item" data-id="${q.id}">
+        <b>${escapar(q.title)}</b>${q.media?.length ? ` <span class="sub">(+${q.media.length} foto/video: mándalo desde el chat)</span>` : ""}
+        <span>${escapar((q.body || "").slice(0, 140))}</span>
+      </button>`).join("") || `<p class="sub">Sin resultados.</p>`;
+  };
+  boton.addEventListener("click", async () => {
+    const abrir = !barra.classList.contains("rapidas-abierta");
+    barra.classList.toggle("rapidas-abierta", abrir);
+    if (!abrir) return;
+    if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
+    pintar();
+    caja.querySelector("input").focus();
+  });
+  caja.querySelector("input").addEventListener("input", pintar);
+  caja.addEventListener("mousedown", (e) => { if (e.target.closest(".rapida-item")) e.preventDefault(); });
+  caja.addEventListener("click", (e) => {
+    const item = e.target.closest(".rapida-item");
+    if (!item) return;
+    const q = (estado.quickReplies || []).find((x) => x.id === Number(item.dataset.id));
+    if (!q) return;
+    if (!el.value.trim()) el.value = q.body || "";
+    else if (el.dataset.tocado) insertarEnCursor(el, q.body || "");
+    else { el.value = el.value.replace(/\s*$/, "") + "\n\n" + (q.body || ""); }
+    barra.classList.remove("rapidas-abierta");
+    el.focus();
+  });
+}
+
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
     cerrarPaneles();
@@ -3834,13 +3890,14 @@ function pintarSugerencias(lista) {
       </div>`;
   }).join("");
 
-  cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
+  cont.querySelectorAll(".sug-texto, .sug-paso textarea").forEach((el) => agregarRapidasA(el));
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
     if (card.querySelector(".sug-chat")) cargarChatSugerencia(card);
     card.querySelector(".sug-agregar-paso")?.addEventListener("click", () => {
       const lista = card.querySelector(".sug-pasos");
       if (lista.children.length >= 3) return alert("Máximo 3 pasos extra.");
       lista.insertAdjacentHTML("beforeend", pasoHtml({ horas: 4, texto: "" }));
+      agregarRapidasA(lista.lastElementChild.querySelector("textarea"));
       card.querySelector(".sug-etapa") || card.querySelector(".sug-texto").insertAdjacentHTML("beforebegin", `<div class="sub sug-etapa">Mensaje 1</div>`);
       lista.lastElementChild.querySelector("textarea").focus();
     });
@@ -4024,7 +4081,7 @@ async function abrirShalom() {
       </div>
     </div>`).join("");
 
-  cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
+  cont.querySelectorAll(".sug-texto").forEach((el) => agregarRapidasA(el));
   cont.querySelectorAll(".tarjeta-shalom").forEach((card) => {
     const codigo = card.dataset.codigo;
     const accion = async (cuerpo, boton) => {

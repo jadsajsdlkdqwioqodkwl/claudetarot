@@ -20,10 +20,11 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { getValues, updateValues } from "../../lib/google-sheets.js";
 import {
-  RANGO_DATOS_VENTA, ESTADOS_ENVIO, indiceVenta, letraVenta, claveDe, telefonoDe, aNumero, esCodigo, manejaShalom
+  RANGO_DATOS_VENTA, ESTADOS_ENVIO, indiceVenta, letraVenta, claveDe, telefonoDe, aNumero, esCodigo, manejaShalom,
+  clavesShalom, elegirClaveShalom
 } from "../../lib/ventas.js";
 import { hojaVentas, olvidarCache } from "../../lib/ventas-hoja.js";
-import { buscarFila } from "../asesor-ventas.js";
+import { buscarFila, conClave, clavesAbiertas } from "../asesor-ventas.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
@@ -77,6 +78,22 @@ async function get({ env }) {
   const { results: sugs } = await env.CRM_DB.prepare(
     "SELECT id, wa_id, texto, motivo, created_at FROM asesor_sugerencias WHERE tipo = 'envio' AND estado = 'pendiente' ORDER BY created_at DESC"
   ).all();
+
+  // Pedidos Shalom que quedaron sin clave (los de antes de las claves fijas):
+  // se les asigna una ahora y se escribe en su fila, una sola vez.
+  const abiertas = clavesAbiertas(filas);
+  const hoja = hojaVentas(env);
+  for (const f of elegidas) {
+    const estadoF = String(f[i("Estado")] || "Pendiente").trim();
+    if (claveDe(f[i("Clave Shalom / Notas")]) || estadoF === "Pagado") continue;
+    const clave = elegirClaveShalom(clavesShalom(env), abiertas);
+    abiertas.push(clave);
+    const celda = conClave(f[i("Clave Shalom / Notas")], clave);
+    const numFila = filas.indexOf(f) + 2;
+    await updateValues(env, `${hoja}!${col("Clave Shalom / Notas")}${numFila}`, [[celda]]);
+    f[i("Clave Shalom / Notas")] = celda;
+    olvidarCache();
+  }
 
   const pedidos = [];
   for (const f of elegidas) {

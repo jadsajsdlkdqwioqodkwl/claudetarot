@@ -731,6 +731,16 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #editor-media.recortando #em-restablecer,
 #editor-media.recortando #em-quitar { display: none; }
 
+/* Respuestas rápidas dentro de Sugerencias / Links de Shalom */
+.rapidas-toggle { margin-left: 6px; }
+.rapidas-inline { display: none; flex-direction: column; gap: 6px; margin-top: 6px; }
+.emoji-barra.rapidas-abierta .rapidas-inline { display: flex; }
+.rapidas-inline input { font: inherit; padding: 6px 10px; border: 1px solid var(--borde); border-radius: var(--radio-full); }
+.rapidas-lista { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.rapida-item { text-align: left; border: 1px solid var(--borde); background: var(--panel); border-radius: var(--radio-m); padding: 6px 8px; cursor: pointer; font: inherit; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
+.rapida-item:hover { background: var(--hover); }
+.rapida-item span { color: var(--gris); font-size: 12px; }
+
 /* Links de Shalom */
 .tarjeta-shalom { border: 1px solid var(--borde); border-radius: var(--radio-m); padding: var(--espacio-m); margin: 0 0 var(--espacio-m); display: flex; flex-direction: column; gap: var(--espacio-s); background: var(--panel); }
 .tarjeta-shalom .sub { font-size: 12px; color: var(--gris); }

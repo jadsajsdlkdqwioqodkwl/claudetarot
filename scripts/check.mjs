@@ -759,20 +759,13 @@ check("el dominio del seguimiento va sin barra final y por HTTPS",
 check("las letras de columna llegan hasta la última de la hoja",
   letraVenta(COLUMNAS_VENTA.length - 1) === "M");
 
-/* Claves de Shalom: 4 dígitos, nada en secuencia, sin repetir las abiertas. */
+/* Claves de Shalom: las fijas de siempre, repartidas entre los pedidos abiertos. */
 {
-  const { claveShalomValida, nuevaClaveShalom } = await import("../src/lib/ventas.js");
-  check("Shalom rechaza claves en escalera o repetidas",
-    ["1234", "4321", "1111", "1112", "0123", "0987"].every((c) => !claveShalomValida(c)));
-  check("las claves de siempre siguen siendo válidas", ["3114", "3144", "3143"].every(claveShalomValida));
-  const usadas = new Set(["3114"]);
-  let ok = true;
-  for (let i = 0; i < 300; i++) {
-    const c = nuevaClaveShalom(usadas);
-    if (usadas.has(c) || !claveShalomValida(c)) ok = false;
-    usadas.add(c);
-  }
-  check("cada pedido recibe una clave nueva que no choca con las abiertas", ok);
+  const { clavesShalom, elegirClaveShalom } = await import("../src/lib/ventas.js");
+  check("sin configurar, las claves son 3114, 3144 y 3143", clavesShalom({}).join() === "3114,3144,3143");
+  check("CLAVES_SHALOM cambia la lista", clavesShalom({ CLAVES_SHALOM: "1357, 2468" }).join() === "1357,2468");
+  check("un pedido nuevo recibe la clave menos usada", elegirClaveShalom(["3114", "3144", "3143"], ["3114", "3144", "3114"]) === "3143");
+  check("en empate gana la primera (3114)", elegirClaveShalom(["3114", "3144", "3143"], []) === "3114");
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

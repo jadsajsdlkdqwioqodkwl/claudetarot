@@ -134,6 +134,8 @@
     "PLANTILLA_ENVIO": "",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",
+    // Claves de recojo de Shalom que se reparten entre los pedidos (una por pedido).
+    "CLAVES_SHALOM": "3114,3144,3143",
 
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el
