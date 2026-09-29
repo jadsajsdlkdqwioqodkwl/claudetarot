@@ -97,7 +97,11 @@ export function textoAviso(m, { asignada, leToca }) {
     `✍️ <b>Manda este mensaje</b> a ${escaparHtml(m.nombre || "sin nombre")} (+${escaparHtml(wa)})\n` +
     `${quien}\n` +
     (m.motivo ? `<i>${escaparHtml(m.motivo)}</i>\n` : "") +
-    `\n<code>${escaparHtml(m.mensaje || "")}</code>\n\n<i>Toca el texto para copiarlo y el botón para abrir el chat.</i>`
+    `\n<code>${escaparHtml(m.mensaje || "")}</code>\n\n` +
+    (Array.isArray(m.pasos) && m.pasos.length
+      ? `<i>+${m.pasos.length} seguimiento(s) más si no responde: aprobarlos en Sugerencias del CRM.</i>\n`
+      : "") +
+    `<i>Toca el texto para copiarlo y el botón para abrir el chat.</i>`
   );
 }
 
@@ -189,7 +193,8 @@ export async function onRequestPost({ request, env }) {
  *
  * { origen: "asesor 16:30",
  *   sugerencias: [
- *     { tipo: "seguimiento", whatsapp, nombre, motivo, texto },
+ *     { tipo: "seguimiento", whatsapp, nombre, motivo, texto,
+ *       pasos?: [{ horas, texto }] },   // secuencia: salen solos si no responde
  *     { tipo: "envio", whatsapp, nombre, motivo, texto, link },   // boleta lista: solo la ve el admin
 
  *     { tipo: "respuesta_rapida", titulo, texto, motivo,
@@ -198,6 +203,19 @@ export async function onRequestPost({ request, env }) {
  * Un chat tiene a lo sumo un seguimiento pendiente: si ya había uno, se
  * reemplaza el texto (la propuesta más nueva sabe más del chat).
  */
+/** Pasos extra de una secuencia: hasta 3, cada uno 1–20 h después del anterior. JSON o null. */
+export function normalizarPasos(lista) {
+  if (!Array.isArray(lista)) return null;
+  const pasos = lista
+    .map((p) => ({
+      horas: Math.min(Math.max(Number(p?.horas) || 0, 0.25), 20),
+      texto: String(p?.texto ?? p?.mensaje ?? "").trim().slice(0, 4096)
+    }))
+    .filter((p) => p.texto)
+    .slice(0, 3);
+  return pasos.length ? JSON.stringify(pasos) : null;
+}
+
 async function convDe(env, wa) {
   if (wa.length < 9) return null;
   return env.CRM_DB.prepare(
@@ -244,6 +262,7 @@ export async function onRequestPostSugerencias({ request, env }) {
     }
 
     const tipo = s.tipo === "envio" ? "envio" : "seguimiento";
+    const pasos = normalizarPasos(s.pasos);
     const link = tipo === "envio" ? String(s.link || "").slice(0, 200) || null : null;
     const wa = String(s.whatsapp || "").replace(/\D/g, "");
     const conv = await convDe(env, wa);
@@ -257,15 +276,15 @@ export async function onRequestPostSugerencias({ request, env }) {
       .bind(conv.id, tipo)
       .first();
     if (previa) {
-      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), created_at = datetime('now') WHERE id = ?")
-        .bind(texto, texto, motivo, origen, link, previa.id)
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), pasos = ?, created_at = datetime('now') WHERE id = ?")
+        .bind(texto, texto, motivo, origen, link, pasos, previa.id)
         .run();
       res.actualizadas++;
     } else {
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen, pasos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       )
-        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen)
+        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen, pasos)
         .run();
       res.creadas++;
     }

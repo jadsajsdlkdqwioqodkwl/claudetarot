@@ -756,6 +756,18 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-programar { width: 38px; justify-content: center; border-right: 1px solid rgba(255,255,255,.3) !important; }
 .sug-ahora { padding: 0 14px 0 10px; font-weight: 600; }
 .sug-enviar-grupo button:hover { background: var(--verde-header); }
+.sug-chat { max-height: 240px; overflow-y: auto; background: var(--fondo); border-radius: var(--radio-m); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.sug-msg { max-width: 85%; padding: 5px 8px; border-radius: var(--radio-m); font-size: 13px; line-height: 1.35; background: var(--panel); align-self: flex-start; word-wrap: break-word; }
+.sug-msg.saliente { background: var(--burbuja-out); align-self: flex-end; }
+.sug-msg .sub { display: block; font-size: 10px; text-align: right; margin-top: 2px; }
+.sug-etapa { font-weight: 600; }
+.sug-pasos { display: flex; flex-direction: column; gap: var(--espacio-s); }
+.sug-paso { border-left: 3px solid var(--verde-osc); padding-left: 8px; display: flex; flex-direction: column; gap: 4px; }
+.sug-paso-cab { display: flex; align-items: center; gap: 6px; }
+.sug-paso-horas { width: 64px; font: inherit; padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); }
+.sug-quitar-paso { margin-left: auto; width: 30px; height: 30px; }
+.sug-paso textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.sug-agregar-paso { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; border: 1px dashed var(--borde); background: transparent; color: var(--verde-osc); border-radius: var(--radio-full); padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }
 .sug-hora { display: flex; gap: var(--espacio-s); justify-content: flex-end; align-items: center; }
 .sug-hora[hidden] { display: none; }
 .sug-hora input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); }

@@ -19,7 +19,8 @@ salida.json:
                "destino": "LIMA|PROVINCIA", "nombre": "", "whatsapp": "",
                "telefono": "", "dni": "", "direccion_o_agencia": "",
                "courier": "", "kits": 1, "pago": "", "fecha_entrega": "", "nota": ""}],
-  "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}],
+  "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": "",
+                "pasos": [{"horas": 5, "mensaje": ""}]}],   # opcional: secuencia si no responde
   "respuestas_rapidas": [{"titulo": "", "texto": "", "motivo": "",
                           "destinatarios": [{"whatsapp": "", "nombre": ""}]}],
   "envios": [{"whatsapp": "", "nombre": "", "link": "https://…/TS-…", "motivo": "", "mensaje": ""}],
@@ -141,7 +142,9 @@ def main():
     # Primero ✨ Sugerencias del CRM (aprobar = programarlo): si Telegram
     # falla después, las propuestas ya quedaron guardadas.
     propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
-                   "motivo": m.get("motivo"), "texto": m.get("mensaje")} for m in mensajes]
+                   "motivo": m.get("motivo"), "texto": m.get("mensaje"),
+                   "pasos": [{"horas": p.get("horas"), "texto": p.get("mensaje") or p.get("texto")}
+                             for p in m.get("pasos") or []]} for m in mensajes]
     propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
     # Links con la boleta lista: solo al admin, en el CRM. No van a Telegram.
     propuestas += [{"tipo": "envio", "whatsapp": e.get("whatsapp"), "nombre": e.get("nombre"), "link": e.get("link"),

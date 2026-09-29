@@ -26,6 +26,7 @@ import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente } from "../../lib/crm-db.js";
+import { normalizarPasos } from "../asesor.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -35,7 +36,7 @@ const json = (data, status = 200) =>
 
 const parsear = (texto) => {
   try {
-    return JSON.parse(texto || "[]");
+    return JSON.parse(texto || "[]") || [];
   } catch {
     return [];
   }
@@ -43,7 +44,17 @@ const parsear = (texto) => {
 
 const esAdmin = (agent) => !agent || agent.role === "admin";
 
-async function get({ env, agent }) {
+async function get({ request, env, agent }) {
+  // ?chat=<conversation_id>: los últimos mensajes de ese chat, para editar la
+  // sugerencia viendo la conversación. No lo marca como leído.
+  const chat = Number(new URL(request.url).searchParams.get("chat"));
+  if (chat) {
+    const { results: mensajes } = await env.CRM_DB.prepare(
+      `SELECT id, direction, type, body, file_name, sent_by, created_at FROM messages
+       WHERE conversation_id = ? ORDER BY id DESC LIMIT 20`
+    ).bind(chat).all();
+    return json({ mensajes: mensajes.reverse() });
+  }
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
@@ -52,7 +63,7 @@ async function get({ env, agent }) {
   ).bind(esAdmin(agent) ? 1 : 0).all();
   return json({
     pendientes: results.length,
-    sugerencias: results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios) }))
+    sugerencias: results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos) }))
   });
 }
 
@@ -143,6 +154,19 @@ async function post({ request, env, agent }) {
     }
     if (error) return json({ error }, 422);
     programados.push(s.conversation_id);
+    // Secuencia: los pasos siguientes quedan programados después del
+    // primero; se cancelan solos si el cliente responde.
+    const pasos = parsear(payload.pasos !== undefined ? normalizarPasos(payload.pasos) : s.pasos);
+    let base = cuando instanceof Date ? cuando.getTime() : Date.now() + (cuando === "ahora" ? 0 : 60 * 1000);
+    for (const [i, paso] of pasos.entries()) {
+      base += paso.horas * 3600 * 1000;
+      const err = await programar(env, s.conversation_id, paso.texto, quien, new Date(base));
+      if (err) saltados.push({ nombre: `Paso ${i + 2}`, motivo: err });
+      else programados.push(s.conversation_id);
+    }
+    if (payload.pasos !== undefined) {
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET pasos = ? WHERE id = ?").bind(normalizarPasos(payload.pasos), id).run();
+    }
   } else {
     const titulo = String(payload.titulo ?? s.titulo ?? "").trim().slice(0, 80);
     if (!titulo) return json({ error: "La respuesta rápida necesita un título." }, 400);
@@ -160,7 +184,10 @@ async function post({ request, env, agent }) {
     .bind(texto, payload.titulo ? String(payload.titulo).slice(0, 80) : null, id)
     .run();
   await cerrar("aprobada");
-  return json({ ok: true, enviados: cuando === "ahora" ? programados.length : 0, programados: cuando === "ahora" ? 0 : programados.length, saltados });
+  // Con "ahora" sale ya el primer mensaje (o el de cada destinatario de una
+  // respuesta rápida); lo demás queda programado.
+  const enviados = cuando !== "ahora" ? 0 : s.tipo === "respuesta_rapida" ? programados.length : 1;
+  return json({ ok: true, enviados, programados: programados.length - enviados, saltados });
 }
 
 export const onRequestGet = conAuth(get);

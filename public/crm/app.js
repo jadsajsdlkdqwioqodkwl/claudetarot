@@ -3799,11 +3799,18 @@ function pintarSugerencias(lista) {
       ? `<div class="sug-destinos"><div class="sub">Mandársela a:</div>${s.destinatarios.map((d) => `
           <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}</label>`).join("")}</div>`
       : "";
+    const conChat = !esRapida && s.conversation_id;
+    const pasos = esRapida ? "" : `
+        <div class="sug-pasos">${(s.pasos || []).map(pasoHtml).join("")}</div>
+        ${esEnvio ? "" : `<button type="button" class="sug-agregar-paso">${icon("plus")} Paso si no responde</button>`}`;
     return `
       <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
         <div class="sug-cabecera">${cabecera}</div>
         ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+        ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
+        ${!esRapida && (s.pasos || []).length ? `<div class="sub sug-etapa">Mensaje 1</div>` : ""}
         <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
+        ${pasos}
         ${destinos}
         <div class="sug-acciones">
           <span class="sub sug-origen">${escapar(s.origen || "")}</span>
@@ -3824,6 +3831,19 @@ function pintarSugerencias(lista) {
 
   cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
+    if (card.querySelector(".sug-chat")) cargarChatSugerencia(card);
+    card.querySelector(".sug-agregar-paso")?.addEventListener("click", () => {
+      const lista = card.querySelector(".sug-pasos");
+      if (lista.children.length >= 3) return alert("Máximo 3 pasos extra.");
+      lista.insertAdjacentHTML("beforeend", pasoHtml({ horas: 4, texto: "" }));
+      card.querySelector(".sug-etapa") || card.querySelector(".sug-texto").insertAdjacentHTML("beforebegin", `<div class="sub sug-etapa">Mensaje 1</div>`);
+      lista.lastElementChild.querySelector("textarea").focus();
+    });
+    card.querySelector(".sug-pasos")?.addEventListener("click", (e) => {
+      if (e.target.closest(".sug-quitar-paso")) e.target.closest(".sug-paso").remove();
+    });
+  });
+  cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
     const id = Number(card.dataset.id);
     const accion = async (tipo, boton, extra = {}) => {
       const cuerpo = { id, accion: tipo, ...extra };
@@ -3832,6 +3852,12 @@ function pintarSugerencias(lista) {
         const titulo = card.querySelector(".sug-titulo");
         if (titulo) cuerpo.titulo = titulo.value;
         cuerpo.destinatarios = [...card.querySelectorAll(".sug-destino:checked")].map((c) => Number(c.value));
+        if (card.querySelector(".sug-pasos")) {
+          cuerpo.pasos = [...card.querySelectorAll(".sug-paso")].map((p) => ({
+            horas: Number(p.querySelector(".sug-paso-horas").value) || 4,
+            texto: p.querySelector("textarea").value
+          })).filter((p) => p.texto.trim());
+        }
       }
       boton.disabled = true;
       try {
@@ -3890,6 +3916,38 @@ function pintarSugerencias(lista) {
 }
 
 const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo"));
+
+function pasoHtml(p) {
+  return `
+    <div class="sug-paso">
+      <div class="sug-paso-cab">
+        <span class="sub">Si no responde, a las</span>
+        <input type="number" class="sug-paso-horas" min="0.25" max="20" step="0.5" value="${Number(p.horas) || 4}" />
+        <span class="sub">h</span>
+        <button type="button" class="sug-icono sug-quitar-paso" title="Quitar paso">${icon("trash")}</button>
+      </div>
+      <textarea rows="3">${escapar(p.texto || "")}</textarea>
+    </div>`;
+}
+
+/** Los últimos mensajes del chat dentro de la tarjeta, para editar viendo la conversación. */
+async function cargarChatSugerencia(card) {
+  const caja = card.querySelector(".sug-chat");
+  try {
+    const { mensajes } = await pedir(`/api/crm/sugerencias?chat=${card.dataset.conv}`);
+    const hora = (t) => new Date(t.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    caja.innerHTML = mensajes.length
+      ? mensajes.map((m) => `
+          <div class="sug-msg ${m.direction === "in" ? "entrante" : "saliente"}">
+            <div>${m.body && m.type !== "location" ? formatearTextoWA(m.body) : `<em>${escapar(extractoMensaje(m.type, m.type === "location" ? m.body : m.file_name || ""))}</em>`}</div>
+            <span class="sub">${m.direction === "in" ? "" : escapar(m.sent_by || "") + " · "}${hora(m.created_at)}</span>
+          </div>`).join("")
+      : `<p class="sub">Sin mensajes.</p>`;
+    caja.scrollTop = caja.scrollHeight;
+  } catch (err) {
+    caja.innerHTML = `<p class="sub">${escapar(err.message)}</p>`;
+  }
+}
 
 $("#btn-sugerencias").addEventListener("click", abrirSugerencias);
 $("#sug-cerrar").addEventListener("click", () => $("#modal-sugerencias-fondo").classList.remove("abierto"));
