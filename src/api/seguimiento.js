@@ -102,9 +102,49 @@ export function vistaPublica(venta, ahora = new Date(), fotos = 1) {
   };
 }
 
+/**
+ * Pedidos de mentira para ver cómo se ve la página en cada etapa, sin tocar
+ * la hoja ni datos de clientes: /TS-DEMO-PENDIENTE, -CAMINO, -DESTINO
+ * (saldo por pagar), -CLAVE (saldo pagado: muestra la clave), -PAGADO,
+ * -CANCELADO y -LIMA (entrega a domicilio). La foto es una del producto.
+ */
+const DEMOS = {
+  "TS-DEMO-PENDIENTE": { Estado: "Pendiente", "Envío": "Shalom", Saldo: 69 },
+  "TS-DEMO-CAMINO": { Estado: "En camino", "Envío": "Shalom", Saldo: 69, foto: true },
+  "TS-DEMO-DESTINO": { Estado: "En destino", "Envío": "Shalom", Saldo: 69, foto: true, diasAtras: 1 },
+  "TS-DEMO-CLAVE": { Estado: "En destino", "Envío": "Shalom", Saldo: 0, foto: true, diasAtras: 2 },
+  "TS-DEMO-PAGADO": { Estado: "Pagado", "Envío": "Shalom", Saldo: 0, foto: true },
+  "TS-DEMO-CANCELADO": { Estado: "Cancelado", "Envío": "Shalom", Saldo: 69 },
+  "TS-DEMO-LIMA": { Estado: "En camino", "Envío": "Lima", Saldo: 0 }
+};
+
+export function ventaDemo(codigo, ahora = new Date()) {
+  const d = DEMOS[String(codigo || "").toUpperCase()];
+  if (!d) return null;
+  const dia = (n) => new Date(ahora.getTime() - n * 86400000 - 5 * 3600000).toISOString().slice(0, 10);
+  const venta = {
+    "Código": String(codigo).toUpperCase(),
+    Fecha: dia(3),
+    Estado: d.Estado,
+    "Envío": d["Envío"],
+    Saldo: d.Saldo,
+    "Clave Shalom / Notas": "3114",
+    "En destino desde": d.diasAtras ? dia(d.diasAtras) : "",
+    "Drive ID": d.foto ? "demo" : ""
+  };
+  const vista = vistaPublica(venta, ahora, 1);
+  if (d.foto) {
+    vista.voucher = "/kittarotcod/galeria/g1.webp";
+    vista.fotos = [vista.voucher];
+  }
+  return vista;
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const codigo = new URL(request.url).searchParams.get("c") || "";
+  const demo = ventaDemo(codigo);
+  if (demo) return json({ ok: true, envio: demo, demo: true }, 200, 60);
 
   const ip = request.headers.get("CF-Connecting-IP") || "";
   if (!(await dentroDelLimite(env, ip))) {
