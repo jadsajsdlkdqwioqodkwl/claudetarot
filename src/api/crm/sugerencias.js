@@ -5,17 +5,20 @@
  * GET  /api/crm/sugerencias — las pendientes (y cuántas hay).
  * POST /api/crm/sugerencias
  *   { id, accion: "descartar" }
- *   { id, accion: "aprobar", texto?, titulo?, destinatarios?: [conversation_id] }
- *     · seguimiento → se programa en ese chat para dentro de 1 minuto (sale por
- *       el cron de siempre y se cancela solo si el cliente escribe antes).
+ *   { id, accion: "aprobar", modo?: "ahora" | "programar", send_at?, texto?, titulo?, destinatarios?: [conversation_id] }
+ *     · modo "ahora" → sale en este momento por WhatsApp.
+ *     · modo "programar" → queda en scheduled_messages para `send_at` (o
+ *       dentro de 1 minuto si no viene); sale por el cron de siempre y se
+ *       cancela solo si el cliente escribe antes.
  *     · respuesta_rapida → se crea la respuesta rápida y, a cada destinatario
- *       elegido, se le programa ese texto.
+ *       elegido, se le manda o programa ese texto.
  *   Los chats con la ventana de 24 h cerrada no se programan: vuelven en
  *   `saltados` con el motivo, para que la vendedora use una plantilla.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
+import { mandarTexto } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -43,10 +46,22 @@ async function get({ env }) {
   });
 }
 
-async function programar(env, conversationId, texto, quien) {
-  const sendAt = new Date(Date.now() + 60 * 1000);
+async function programar(env, conversationId, texto, quien, cuando) {
+  const sendAt = cuando instanceof Date ? cuando : new Date(Date.now() + 60 * 1000);
   const error = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (error) return error;
+  if (cuando === "ahora") {
+    const conv = await env.CRM_DB.prepare(
+      "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
+    ).bind(conversationId).first();
+    if (!conv) return "No encontré el chat.";
+    try {
+      await mandarTexto(env, conversationId, conv.wa_id, texto, quien);
+    } catch (err) {
+      return `WhatsApp no lo aceptó: ${err.message}`;
+    }
+    return null;
+  }
   await env.CRM_DB.prepare(
     "INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by) VALUES (?, ?, ?, ?)"
   )
@@ -75,6 +90,13 @@ async function post({ request, env, agent }) {
     return json({ ok: true });
   }
 
+  let cuando = null;
+  if (payload.modo === "ahora") cuando = "ahora";
+  else if (payload.send_at) {
+    cuando = new Date(payload.send_at);
+    if (Number.isNaN(cuando.getTime())) return json({ error: "Fecha u hora inválida." }, 400);
+    if (cuando.getTime() < Date.now() - 60 * 1000) return json({ error: "Esa hora ya pasó." }, 400);
+  }
   const texto = String(payload.texto ?? s.texto).trim().slice(0, 4096);
   if (!texto) return json({ error: "El mensaje quedó vacío." }, 400);
   const programados = [];
@@ -82,7 +104,7 @@ async function post({ request, env, agent }) {
 
   if (s.tipo === "seguimiento") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
-    const error = await programar(env, s.conversation_id, texto, quien);
+    const error = await programar(env, s.conversation_id, texto, quien, cuando);
     if (error) return json({ error }, 422);
     programados.push(s.conversation_id);
   } else {
@@ -92,7 +114,7 @@ async function post({ request, env, agent }) {
     const elegidos = new Set((Array.isArray(payload.destinatarios) ? payload.destinatarios : []).map(Number));
     for (const d of parsear(s.destinatarios)) {
       if (!d.conversation_id || !elegidos.has(Number(d.conversation_id))) continue;
-      const error = await programar(env, d.conversation_id, texto, quien);
+      const error = await programar(env, d.conversation_id, texto, quien, cuando);
       if (error) saltados.push({ nombre: d.nombre || d.wa_id, motivo: error });
       else programados.push(d.conversation_id);
     }
@@ -102,7 +124,7 @@ async function post({ request, env, agent }) {
     .bind(texto, payload.titulo ? String(payload.titulo).slice(0, 80) : null, id)
     .run();
   await cerrar("aprobada");
-  return json({ ok: true, programados: programados.length, saltados });
+  return json({ ok: true, enviados: cuando === "ahora" ? programados.length : 0, programados: cuando === "ahora" ? 0 : programados.length, saltados });
 }
 
 export const onRequestGet = conAuth(get);

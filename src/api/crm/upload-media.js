@@ -16,7 +16,10 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const MAX_BYTES = 16 * 1024 * 1024; // el límite de WhatsApp para video/documento
+// WhatsApp acepta video hasta 16 MB y documento hasta 100 MB: un video más
+// pesado se manda como documento (el cliente lo descarga y lo reproduce).
+const MAX_BYTES = 100 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 16 * 1024 * 1024;
 
 // Lo único que la Cloud API acepta como foto o video de verdad (no como
 // documento). heic, gif, etc. los rechaza con (#100) Invalid parameter
@@ -55,7 +58,7 @@ async function handler({ request, env }) {
 
   const file = form.get("file");
   if (!file || typeof file === "string") return json({ error: "Falta el archivo." }, 400);
-  if (file.size > MAX_BYTES) return json({ error: "El archivo pesa más de 16 MB." }, 413);
+  if (file.size > MAX_BYTES) return json({ error: "El archivo pesa más de 100 MB." }, 413);
 
   const mime = file.type || "application/octet-stream";
 
@@ -77,7 +80,8 @@ async function handler({ request, env }) {
     customMetadata: { originalName: nombreOriginal }
   });
 
-  return json({ ok: true, media_key: key, mime, type: tipoDeMime(mime), original_name: nombreOriginal });
+  const type = tipoDeMime(mime) === "video" && file.size > VIDEO_MAX_BYTES ? "document" : tipoDeMime(mime);
+  return json({ ok: true, media_key: key, mime, type, original_name: nombreOriginal });
 }
 
 export const onRequestPost = conAuth(handler);

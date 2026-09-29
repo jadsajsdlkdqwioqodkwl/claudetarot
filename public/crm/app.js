@@ -3750,7 +3750,7 @@ function iniciarSugerencias() {
   actualizarConteoSugerencias();
   clearInterval(sugerenciasTimer);
   sugerenciasTimer = setInterval(actualizarConteoSugerencias, 120000);
-  // El botón "✅ Aprobar y programar" de Telegram llega con /crm/?sugerencias=1.
+  // El botón "✨ Ver sugerencias" de Telegram llega con /crm/?sugerencias=1.
   const params = new URLSearchParams(location.search);
   if (params.has("sugerencias")) {
     params.delete("sugerencias");
@@ -3805,8 +3805,13 @@ function pintarSugerencias(lista) {
         ${destinos}
         <div class="sug-acciones">
           ${s.conversation_id ? `<button type="button" class="sug-abrir">Abrir chat</button>` : ""}
-          <button type="button" class="sug-descartar cancelar">Descartar</button>
-          <button type="button" class="sug-aprobar crear">${esRapida ? "Aprobar" : "Aprobar y programar"}</button>
+          <button type="button" class="sug-descartar cancelar">🗑️ Descartar</button>
+          <button type="button" class="sug-programar">🕐 Programar</button>
+          <button type="button" class="sug-ahora crear">📤 Enviar ahora</button>
+        </div>
+        <div class="sug-hora" hidden>
+          <input type="datetime-local" class="sug-cuando" />
+          <button type="button" class="sug-confirmar-programa crear">Programar</button>
         </div>
         <div class="sub">${escapar(s.origen || "")}</div>
       </div>`;
@@ -3815,8 +3820,8 @@ function pintarSugerencias(lista) {
   cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
     const id = Number(card.dataset.id);
-    const accion = async (tipo, boton) => {
-      const cuerpo = { id, accion: tipo };
+    const accion = async (tipo, boton, extra = {}) => {
+      const cuerpo = { id, accion: tipo, ...extra };
       if (tipo === "aprobar") {
         cuerpo.texto = card.querySelector(".sug-texto").value;
         const titulo = card.querySelector(".sug-titulo");
@@ -3831,7 +3836,7 @@ function pintarSugerencias(lista) {
           body: JSON.stringify(cuerpo)
         });
         card.remove();
-        if (r.saltados?.length) alert(`No se programó para:\n${r.saltados.map((x) => `• ${x.nombre}: ${x.motivo}`).join("\n")}`);
+        if (r.saltados?.length) alert(`No salió para:\n${r.saltados.map((x) => `• ${x.nombre}: ${x.motivo}`).join("\n")}`);
         if (tipo === "aprobar" && titulo_es_rapida(card)) cargarQuickReplies();
         if (!$("#lista-sugerencias .tarjeta-sugerencia")) pintarSugerencias([]);
         actualizarConteoSugerencias();
@@ -3840,7 +3845,22 @@ function pintarSugerencias(lista) {
         alert(err.message);
       }
     };
-    card.querySelector(".sug-aprobar").addEventListener("click", (e) => accion("aprobar", e.currentTarget));
+    card.querySelector(".sug-ahora").addEventListener("click", (e) => accion("aprobar", e.currentTarget, { modo: "ahora" }));
+    card.querySelector(".sug-programar").addEventListener("click", () => {
+      const caja = card.querySelector(".sug-hora");
+      const input = card.querySelector(".sug-cuando");
+      if (!input.value) {
+        // Por defecto, dentro de 1 hora (hora local del navegador).
+        const d = new Date(Date.now() + 3600 * 1000 - new Date().getTimezoneOffset() * 60000);
+        input.value = d.toISOString().slice(0, 16);
+      }
+      caja.hidden = !caja.hidden;
+    });
+    card.querySelector(".sug-confirmar-programa").addEventListener("click", (e) => {
+      const valor = card.querySelector(".sug-cuando").value;
+      if (!valor) return alert("Elige la fecha y hora.");
+      accion("aprobar", e.currentTarget, { modo: "programar", send_at: new Date(valor).toISOString() });
+    });
     card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
     card.querySelector(".sug-abrir")?.addEventListener("click", async () => {
       const convId = Number(card.dataset.conv);

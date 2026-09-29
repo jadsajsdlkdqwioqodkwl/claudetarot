@@ -165,7 +165,7 @@ export async function onRequestPost({ request, env }) {
     const url = conv ? `${origen}/crm/?chat=${conv.id}` : `${origen}/crm/?wa=${wa}`;
     const boton = { reply_markup: { inline_keyboard: [[
       { text: "💬 Abrir chat", url },
-      { text: "✅ Aprobar y programar", url: `${origen}/crm/?sugerencias=1` }
+      { text: "✨ Ver sugerencias", url: `${origen}/crm/?sugerencias=1` }
     ]] } };
     for (const { chatId, leToca } of para) {
       try {

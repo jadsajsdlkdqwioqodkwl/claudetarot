@@ -742,3 +742,5 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-destinos { display: flex; flex-direction: column; gap: 2px; max-height: 160px; overflow-y: auto; }
 .sug-destinos label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .sug-acciones { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.sug-hora { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 6px; }
+.sug-hora[hidden] { display: none; }
