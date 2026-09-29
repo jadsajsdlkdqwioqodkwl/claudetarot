@@ -797,19 +797,33 @@ check("las letras de columna llegan hasta la última de la hoja",
 }
 
 {
-  console.log("\nLink de envío automático (crm-links-envio.js)");
-  const { momentoDelLink } = await import("../src/lib/crm-links-envio.js");
+  console.log("\nLink de seguimiento a mano y seguimientos sin choques");
+  const { textoDelLink } = await import("../src/lib/crm-links-envio.js");
+  const links = await import("../src/lib/crm-links-envio.js");
   const { rellenar } = await import("../src/lib/crm-cron.js");
-  const ahora = Date.parse("2026-09-29T15:00:00Z");
-  check("sale 23 h después del último mensaje del cliente",
-    momentoDelLink("2026-09-29 10:00:00", ahora) === Date.parse("2026-09-30T09:00:00Z"));
-  check("si ya pasaron las 23 h pero queda ventana, sale en un minuto",
-    momentoDelLink("2026-09-28 15:30:00", ahora) === ahora + 60000);
-  check("sin ventana (o con menos de 15 min) no se programa",
-    momentoDelLink("2026-09-28 15:10:00", ahora) === null && momentoDelLink("2026-09-27 10:00:00", ahora) === null && momentoDelLink(null, ahora) === null);
+  const { esOrigenAutomatico, MAX_AUTOMATICOS_SIN_RESPUESTA } = await import("../src/lib/crm-db.js");
+  check("el link ya no se programa solo", !links.programarLinksDeEnvio && !links.momentoDelLink && !links.reprogramarLinkDeEnvio);
+  check("el texto del link sale con su link y su nombre",
+    textoDelLink("Hola {nombre} 👉 {link}", { link: "https://x/TS-1", nombre: "Ana" }) === "Hola Ana 👉 https://x/TS-1");
   check("rellena {link} y {nombre}",
     rellenar("Hola {nombre} 👉 {link}", { link: "https://x/TS-1", nombre: "Ana" }) === "Hola Ana 👉 https://x/TS-1" &&
     rellenar("sin datos {link}", null) === "sin datos {link}");
+  check("se distingue lo automático de lo que programa una persona",
+    esOrigenAutomatico("Seguimiento automático (anuncio)") && esOrigenAutomatico("Seguimiento de respuesta rápida · Precio") &&
+    esOrigenAutomatico("Sugerencia del asesor · Moi") && !esOrigenAutomatico("Moi") && !esOrigenAutomatico(null));
+  check("como mucho 2 automáticos seguidos sin respuesta", MAX_AUTOMATICOS_SIN_RESPUESTA === 2);
+  const cron = readFileSync(new URL("../src/lib/crm-cron.js", import.meta.url), "utf8");
+  check("el cron no repite textos, no escribe a quien compró ni se cruza con una conversación viva",
+    cron.includes("ya_enviado") && cron.includes("s.etapa >= 5") && cron.includes("30 * 60 * 1000"));
+  const db = readFileSync(new URL("../src/lib/crm-db.js", import.meta.url), "utf8");
+  check("escribirle cancela también el seguimiento de respuesta rápida pendiente",
+    /cancelarSeguimientosDeLead[\s\S]{0,900}PREFIJO_SEGUIMIENTO_RAPIDA/.test(db));
+  const prog = readFileSync(new URL("../src/api/crm/scheduled.js", import.meta.url), "utf8");
+  check("programar a mano reemplaza a los automáticos y no duplica", prog.includes("cancelarSeguimientosDeLead(env.CRM_DB, conversationId)") && prog.includes("ya está programado"));
+  const masivo = readFileSync(new URL("../src/api/crm/bulk-send.js", import.meta.url), "utf8");
+  check("sin envíos masivos", masivo.includes("onRequestPost = conAdmin(apagado)"));
+  const sugs = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
+  check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));
 }
 
 {

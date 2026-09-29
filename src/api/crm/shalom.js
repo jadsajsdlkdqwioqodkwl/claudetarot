@@ -95,11 +95,10 @@ async function get({ env }) {
     olvidarCache();
   }
 
-  // El link automático de cada pedido (crm-links-envio.js): programado, enviado o sin ventana.
+  // Si su link de seguimiento ya se mandó (a mano: desde el chat o desde aquí).
   const codigos = elegidas.map((f) => String(f[i("Código")]).trim().toUpperCase()).slice(0, 90);
   const { results: links } = codigos.length ? await env.CRM_DB.prepare(
-    `SELECT e.codigo, e.estado, s.status, s.send_at, s.sent_at FROM envio_links e
-     LEFT JOIN scheduled_messages s ON s.id = e.scheduled_id WHERE e.codigo IN (${codigos.map(() => "?").join(",")})`
+    `SELECT e.codigo, e.estado, e.actualizado_at FROM envio_links e WHERE e.codigo IN (${codigos.map(() => "?").join(",")})`
   ).bind(...codigos).all().catch(() => ({ results: [] })) : { results: [] };
   const linkDe = {};
   for (const l of links) linkDe[l.codigo] = l;
@@ -125,10 +124,7 @@ async function get({ env }) {
       estado: String(f[i("Estado")] || "Pendiente").trim(),
       fotos: String(f[i("Drive ID")] || "").startsWith("r2:") ? await contarFotos(env, codigo) : (f[i("Drive ID")] ? 1 : 0),
       sugerencia: sug ? { id: sug.id, texto: sug.texto, motivo: sug.motivo } : null,
-      link_auto: linkDe[codigo] ? {
-        estado: linkDe[codigo].estado === "sin_ventana" ? "sin_ventana" : linkDe[codigo].status || linkDe[codigo].estado,
-        cuando: linkDe[codigo].sent_at || linkDe[codigo].send_at || null
-      } : null
+      link_auto: linkDe[codigo]?.estado === "enviado" ? { estado: "enviado", cuando: linkDe[codigo].actualizado_at } : null
     });
   }
   return json({ pedidos, plantilla: Boolean(env.PLANTILLA_ENVIO) });
@@ -216,6 +212,10 @@ async function enviar(env, codigo, texto, quien) {
   await env.CRM_DB.prepare(
     "UPDATE asesor_sugerencias SET estado = 'aprobada', texto = ?, resuelto_por = ?, resuelto_at = datetime('now') WHERE tipo = 'envio' AND estado = 'pendiente' AND conversation_id = ?"
   ).bind(texto, quien, chat.id).run();
+  await env.CRM_DB.prepare(
+    `INSERT INTO envio_links (codigo, conversation_id, estado, actualizado_at) VALUES (?, ?, 'enviado', datetime('now'))
+     ON CONFLICT(codigo) DO UPDATE SET estado = 'enviado', actualizado_at = datetime('now')`
+  ).bind(codigo, chat.id).run().catch(() => {});
   return json({ ok: true, via });
 }
 

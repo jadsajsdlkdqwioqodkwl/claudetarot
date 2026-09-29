@@ -12,7 +12,7 @@
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
-import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO } from "./crm-db.js";
+import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
@@ -100,7 +100,11 @@ export async function procesarSeguimientosVencidos(env) {
           AND m.sent_by = 'Seguimiento automático' AND m.created_at > COALESCE(conv.last_inbound_at, '1970-01-01')) AS automaticos_seguidos,
        (SELECT mi.wa_message_id FROM messages mi WHERE mi.conversation_id = conv.id AND mi.direction = 'in'
           AND mi.type <> 'call' AND mi.wa_message_id IS NOT NULL AND mi.created_at >= datetime('now', '-1 day')
-          ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in
+          ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in,
+       conv.etapa AS etapa,
+       (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
+       EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
+          AND md.body = COALESCE(s.body, q.body) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
      FROM scheduled_messages s
      JOIN conversations conv ON conv.id = s.conversation_id
      JOIN contacts c ON c.id = conv.contact_id
@@ -112,13 +116,33 @@ export async function procesarSeguimientosVencidos(env) {
   ).bind(...reservados.map((r) => r.id)).all();
 
   const enviadosAhora = {};
+  const cancelar = (id) => env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(id).run();
   for (const s of vencidos) {
     const escribiendo = { ultimoWaId: s.ultimo_wa_in || null };
     try {
+      // Reglas anti-choque para lo que programó el sistema (no una persona):
+      if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
+        // · el link de seguimiento ya no sale solo (se manda a mano);
+        // · a quien ya compró no le sale un "si no responde";
+        // · el mismo texto ya le llegó en los últimos 2 días: no se repite;
+        // · uno por chat por pasada.
+        if (s.created_by === ORIGEN_LINK_ENVIO || s.etapa >= 5 || s.ya_enviado || enviadosAhora[s.conv_id]) {
+          await cancelar(s.id);
+          continue;
+        }
+        // · si alguien le escribió hace menos de 30 min, espera 30 min más
+        //   (se ve la conversación viva: no se le cruza un automático).
+        const ultimoOut = s.ultimo_out_at ? new Date(s.ultimo_out_at.replace(" ", "T") + "Z").getTime() : 0;
+        if (ultimoOut && Date.now() - ultimoOut < 30 * 60 * 1000) {
+          await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
+            .bind(new Date(ultimoOut + 30 * 60 * 1000).toISOString(), s.id).run();
+          continue;
+        }
+      }
       // Tope de insistencia (MAX_AUTOMATICOS_SIN_RESPUESTA), contando también lo que sale en esta pasada.
       const seguidos = (s.automaticos_seguidos || 0) + (enviadosAhora[s.conv_id] || 0);
       if (!s.template_name && !s.mandar_siempre && seguidos >= MAX_AUTOMATICOS_SIN_RESPUESTA) {
-        await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(s.id).run();
+        await cancelar(s.id);
         continue;
       }
       let datos = null;

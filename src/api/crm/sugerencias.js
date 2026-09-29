@@ -164,7 +164,7 @@ async function conPlantilla(env, s, quien) {
 async function post({ request, env, agent }) {
   const payload = await request.json().catch(() => null);
   const id = Number(payload?.id);
-  if (!id || !["aprobar", "descartar", "responder"].includes(payload?.accion)) return json({ error: "Solicitud inválida." }, 400);
+  if (!id || !["aprobar", "descartar", "responder", "enviar_a"].includes(payload?.accion)) return json({ error: "Solicitud inválida." }, 400);
 
   const s = await env.CRM_DB.prepare("SELECT * FROM asesor_sugerencias WHERE id = ?").bind(id).first();
   if (!s) return json({ error: "Esa sugerencia ya no existe." }, 404);
@@ -180,6 +180,27 @@ async function post({ request, env, agent }) {
 
   if (payload.accion === "descartar") {
     await cerrar("descartada");
+    return json({ ok: true });
+  }
+
+  // Sin envíos en bloque: una respuesta rápida propuesta para varios chats se
+  // manda de a uno, después de que la vendedora abrió y leyó ese chat.
+  if (payload.accion === "enviar_a") {
+    if (s.tipo !== "respuesta_rapida") return json({ error: "Solicitud inválida." }, 400);
+    const convId = Number(payload.conversation_id);
+    const lista = parsear(s.destinatarios);
+    const d = lista.find((x) => Number(x?.conversation_id) === convId);
+    if (!d) return json({ error: "Ese chat no está en esta sugerencia." }, 404);
+    if (d.enviado) return json({ error: `Ya se le mandó (${d.enviado_por || "otra persona"}).` }, 409);
+    const texto = String(payload.texto ?? s.texto).trim().slice(0, 4096);
+    if (!texto) return json({ error: "El mensaje está vacío." }, 400);
+    const destino = (await destinosDeChats(env.CRM_DB, [convId]))[convId];
+    if (!textoSirvePara(texto, destino)) return json({ error: `Este chat es de ${destino}: el mensaje es para el otro destino.` }, 422);
+    const error = await programar(env, convId, texto, quien, "ahora");
+    if (error) return json({ error }, 422);
+    d.enviado = new Date().toISOString();
+    d.enviado_por = quien;
+    await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET destinatarios = ? WHERE id = ?").bind(JSON.stringify(lista), id).run();
     return json({ ok: true });
   }
 
@@ -265,20 +286,10 @@ async function post({ request, env, agent }) {
   } else {
     const titulo = String(payload.titulo ?? s.titulo ?? "").trim().slice(0, 80);
     if (!titulo) return json({ error: "La respuesta rápida necesita un título." }, 400);
-    await env.CRM_DB.prepare("INSERT INTO quick_replies (title, body) VALUES (?, ?)").bind(titulo, texto).run();
-    const elegidos = new Set((Array.isArray(payload.destinatarios) ? payload.destinatarios : []).map(Number));
-    // Última revisión antes de mandar: nada de adelanto de Shalom a alguien de Lima (ni al revés).
-    const destinos = await destinosDeChats(env.CRM_DB, [...elegidos]);
-    for (const d of parsear(s.destinatarios)) {
-      if (!d.conversation_id || !elegidos.has(Number(d.conversation_id))) continue;
-      if (!textoSirvePara(texto, destinos[d.conversation_id])) {
-        saltados.push({ nombre: d.nombre || d.wa_id, motivo: `es de ${destinos[d.conversation_id]}; este mensaje es para el otro destino` });
-        continue;
-      }
-      const error = await programar(env, d.conversation_id, texto, quien, cuando);
-      if (error) saltados.push({ nombre: d.nombre || d.wa_id, motivo: error });
-      else programados.push(d.conversation_id);
-    }
+    // Aprobar = guardarla como respuesta rápida. A los chats sugeridos ya no
+    // se les manda en bloque: cada uno se abre, se lee y se manda aparte
+    // (accion "enviar_a").
+    await env.CRM_DB.prepare("INSERT INTO quick_replies (title, body, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))").bind(titulo, texto).run();
   }
 
   await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, titulo = COALESCE(?, titulo) WHERE id = ?")
@@ -287,7 +298,7 @@ async function post({ request, env, agent }) {
   await cerrar("aprobada");
   // Con "ahora" sale ya el primer mensaje (o el de cada destinatario de una
   // respuesta rápida); lo demás queda programado.
-  const enviados = cuando !== "ahora" ? 0 : s.tipo === "respuesta_rapida" ? programados.length : 1;
+  const enviados = cuando !== "ahora" || s.tipo === "respuesta_rapida" ? 0 : 1;
   return json({ ok: true, enviados, programados: programados.length - enviados, saltados });
 }
 

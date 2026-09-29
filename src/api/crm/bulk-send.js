@@ -79,6 +79,14 @@ async function get({ request, env }) {
   return json({ batches: results });
 }
 
+/*
+ * APAGADO a pedido del dueño: nada de envíos en bloque. Cada chat se abre,
+ * se lee y se le escribe aparte. (El GET queda para ver los envíos viejos.)
+ */
+async function apagado() {
+  return json({ error: "Los envíos masivos están apagados: cada chat se abre, se lee y se le escribe aparte." }, 410);
+}
+
 async function post({ request, env, agent }) {
   let payload;
   try {
@@ -120,4 +128,4 @@ async function post({ request, env, agent }) {
 }
 
 export const onRequestGet = conAdmin(get);
-export const onRequestPost = conAdmin(post);
+export const onRequestPost = conAdmin(apagado);

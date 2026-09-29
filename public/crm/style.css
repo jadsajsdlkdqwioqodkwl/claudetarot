@@ -903,3 +903,11 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-opciones { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
 .sug-respuesta { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; margin: 4px 0; }
 .sug-responder { font: inherit; }
+
+/* Chats sugeridos de una respuesta rápida: uno por uno, leyendo antes */
+.sug-dest { border-top: 1px solid var(--borde); padding: 6px 0; }
+.sug-dest-fila { display: flex; align-items: center; gap: 6px; font-size: 13px; flex-wrap: wrap; }
+.sug-dest-leer, .sug-dest-enviar { font: inherit; font-size: 12px; border: 1px solid var(--borde); background: var(--panel); border-radius: var(--radio-full); padding: 3px 10px; cursor: pointer; margin-left: auto; }
+.sug-dest-enviar { background: var(--verde-osc); color: #fff; border-color: var(--verde-osc); margin-top: 4px; }
+.sug-dest-cuerpo { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.sug-dest-texto { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; }

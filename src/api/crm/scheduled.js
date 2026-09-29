@@ -23,7 +23,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { leerCatalogo } from "../../lib/crm-db.js";
+import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -88,6 +88,19 @@ async function post({ request, env, agent }) {
   if (!body && !quickReplyId && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida o el catálogo." }, 400);
   const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
+
+  // El mismo texto ya programado para este chat (doble toque, o dos personas
+  // a la vez): no se programa dos veces.
+  if (body) {
+    const igual = await env.CRM_DB.prepare(
+      "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND body = ? LIMIT 1"
+    ).bind(conversationId, body).first();
+    if (igual) return json({ error: "Ese mismo mensaje ya está programado para este chat." }, 409);
+  }
+  // Una sola cadena por chat: lo que programa una persona reemplaza a los
+  // automáticos pendientes (bienvenida, respuesta rápida, sugerencias), que
+  // si no se sumaban y el cliente recibía mensajes de más.
+  await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
 
   const creado = await env.CRM_DB.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre)

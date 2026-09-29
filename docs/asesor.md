@@ -45,21 +45,15 @@ El plan gratis de Cloudflare corta cada ejecución en **50 consultas a D1** y
 | `*/10` | Export de chats a la hoja de Google. |
 | `*/15` | Link de envío automático, resumen semanal / pruebas listas (una vez al día; esa pasada no hace más), etapa del embudo (3 consultas) y frases (≈4). |
 
-## Link de seguimiento automático
+## Link de seguimiento (a mano)
 
-Cada venta nueva de la pestaña **Ventas** (con código TS-…, de los últimos 2
-días) recibe sola su link **23 h después del último mensaje del cliente**,
-dentro de su ventana de 24 h: gratis y sin plantilla. Si el cliente vuelve a
-escribir, se corre a 23 h de ese mensaje. Sale aunque el cliente escriba
-(`mandar_siempre`). Para entonces la boleta suele estar subida; si no,
-aparece después en el mismo link.
-
-- **El texto** es la respuesta rápida **"Link de envío (sale solo)"** (al
-  final de la lista). La editan el admin y las vendedoras con el lápiz; `{link}` y
-  `{nombre}` se rellenan solos. **Borrarla apaga el envío automático.**
-- En **Links de Shalom** cada pedido dice si su link está programado (y a
-  qué hora), enviado, o si no alcanzó la ventana (entonces se manda desde ahí).
-- Código: `src/lib/crm-links-envio.js`, tabla `envio_links` (migración 0035).
+Ya **no sale solo**. En el panel derecho del chat, "Link de seguimiento del
+pedido" → **🔗 Preparar el link**: busca su venta abierta en la pestaña
+Ventas por el celular, arma el texto con la respuesta rápida **"Link de
+envío"** (`{link}` y `{nombre}` ya puestos), la vendedora lo revisa, lo
+edita si quiere y lo manda (`/api/crm/link-envio`). También se puede mandar
+desde Links de Shalom. Queda anotado en `envio_links` como enviado. El cron
+cancela cualquier link automático que hubiera quedado programado.
 
 ## Saldo desde la captura
 
@@ -130,6 +124,30 @@ página del cliente le muestra su clave. Nunca se marca solo.
 Ya no hay grupos: cada quien las ordena arrastrando del ⋮⋮ en el panel ⚡
 del chat (mouse o dedo) y el orden queda para todo el equipo
 (`PATCH /api/crm/quick-replies { ordenar: [ids] }`). Las nuevas van al final.
+
+## Sin envíos en bloque
+
+- Una respuesta rápida que el bot propone "para varios chats" ya no se manda
+  a todos de una: en ✨ Sugerencias cada chat tiene **Leer chat**; se abren
+  sus últimos mensajes, se ajusta el texto para ese cliente y recién ahí
+  **Mandárselo**. "Guardar respuesta rápida" solo la guarda.
+- Las sugerencias ya no se programan para más tarde: se leen y se envían.
+- Mensaje masivo (admin) y "Seleccionar" varios chats para aplicarles una
+  secuencia: apagados.
+
+## Seguimientos sin choques
+
+- **Una sola cadena por chat.** Programar un seguimiento a mano (o aplicar
+  una secuencia) cancela los automáticos pendientes (bienvenida, respuesta
+  rápida, sugerencias) y la misma secuencia si ya estaba. Una respuesta
+  rápida con seguimiento no agrega su cadena si ya hay uno programado a mano.
+- **Escribirle cancela** también el seguimiento de respuesta rápida pendiente
+  (antes seguía y se juntaba con lo que escribía la vendedora).
+- En el cron, a lo programado por el sistema: no se le manda a quien ya
+  compró (etapa 5), no se repite un texto que ya le llegó en 2 días, sale uno
+  por chat por pasada y, si alguien le escribió hace menos de 30 min, espera.
+- Tope: **2 automáticos seguidos sin respuesta** (antes 4).
+- El mismo texto no se puede programar dos veces para el mismo chat.
 
 ## Envíos a varios chats: Lima o provincia
 

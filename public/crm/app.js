@@ -1050,7 +1050,7 @@ function etiquetaTipoSeguimiento(s) {
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SUGERENCIA)) return `<span class="tipo-seg lead">Sugerencia aprobada · ${escapar(s.created_by.slice(PREFIJO_SUGERENCIA.length).replace(/^ · /, ""))}</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
-  if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg manual">Automático · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
+  if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg lead">Tras no respuesta · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
   if (s.mandar_siempre) return `<span class="tipo-seg manual">Se manda sí o sí</span>`;
   return `<span class="tipo-seg manual">Manual</span>`;
 }
@@ -2740,7 +2740,7 @@ async function actualizarSeguimientosDetalle() {
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">"Tras no respuesta" se cancela si el cliente escribe o si le escribes. "Manual" se cancela solo si el cliente escribe.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
+      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">"Tras no respuesta" se cancela si el cliente escribe o si le escribes. "Manual" se cancela solo si el cliente escribe. Programar uno a mano reemplaza a los automáticos.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
       + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
@@ -4032,10 +4032,17 @@ function pintarSugerencias(lista) {
     const cabecera = esRapida
       ? `<span class="sug-tipo">${icon("bolt")} Respuesta rápida nueva</span><input type="text" class="sug-titulo" value="${escapar(s.titulo || "")}" maxlength="80" placeholder="Título" />`
       : `<span class="sug-tipo">${icon(esEnvio ? "bag" : "chat")} ${escapar(s.nombre || "Cliente")}</span><span class="sub">+${escapar(s.wa_id || "")}${s.assigned_agent ? ` · ${escapar(s.assigned_agent)}` : ""}</span>${esEnvio ? `<span class="sug-etiqueta">Envío</span>` : ""}`;
+    // Sin envíos en bloque: cada chat sugerido se abre y se lee antes de mandarle.
     const destinos = esRapida && s.destinatarios.length
-      ? `<div class="sug-destinos"><div class="sub">Mandársela a:</div>${s.destinatarios.map((d) => `
-          <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}
-            <span class="reloj" data-cierra="${cierreVentana(d.last_inbound_at) || ""}"></span></label>`).join("")}</div>`
+      ? `<div class="sug-destinos"><div class="sub">Chats a los que le serviría (ábrelo, léelo y recién mándale):</div>${s.destinatarios.map((d) => `
+          <div class="sug-dest" data-conv="${d.conversation_id}">
+            <div class="sug-dest-fila">
+              <b>${escapar(d.nombre || d.wa_id)}</b>
+              <span class="reloj" data-cierra="${cierreVentana(d.last_inbound_at) || ""}"></span>
+              ${d.enviado ? `<span class="sub">· enviado ✓ ${escapar(d.enviado_por || "")}</span>` : `<button type="button" class="sug-dest-leer">Leer chat</button>`}
+            </div>
+            <div class="sug-dest-cuerpo" hidden></div>
+          </div>`).join("")}</div>`
       : "";
     const conChat = !esRapida && s.conversation_id;
     const pasos = esRapida ? "" : `
@@ -4067,13 +4074,10 @@ function pintarSugerencias(lista) {
           <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
           <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
           <div class="sug-enviar-grupo">
-            <button type="button" class="sug-programar" title="Programar">${icon("clock")}</button>
-            <button type="button" class="sug-ahora" title="Enviar ahora">${icon("send")} Enviar</button>
+            ${esRapida
+              ? `<button type="button" class="sug-ahora" title="Guardarla en las respuestas rápidas">${icon("bolt")} Guardar respuesta rápida</button>`
+              : `<button type="button" class="sug-ahora" title="Enviar ahora">${icon("send")} Enviar</button>`}
           </div>
-        </div>
-        <div class="sug-hora" hidden>
-          <input type="datetime-local" class="sug-cuando" />
-          <button type="button" class="sug-confirmar-programa">${icon("clock")} Programar</button>
         </div>
       </div>`;
   }).join("");
@@ -4109,7 +4113,6 @@ function pintarSugerencias(lista) {
         cuerpo.texto = card.querySelector(".sug-texto").value;
         const titulo = card.querySelector(".sug-titulo");
         if (titulo) cuerpo.titulo = titulo.value;
-        cuerpo.destinatarios = [...card.querySelectorAll(".sug-destino:checked")].map((c) => Number(c.value));
         if (card.querySelector(".sug-pasos")) {
           cuerpo.pasos = [...card.querySelectorAll(".sug-paso")].map((p) => ({
             horas: Number(p.querySelector(".sug-paso-horas").value) || 4,
@@ -4182,20 +4185,44 @@ function pintarSugerencias(lista) {
       return;
     }
     card.querySelector(".sug-ahora").addEventListener("click", (e) => accion("aprobar", e.currentTarget, { modo: "ahora" }));
-    card.querySelector(".sug-programar").addEventListener("click", () => {
-      const caja = card.querySelector(".sug-hora");
-      const input = card.querySelector(".sug-cuando");
-      if (!input.value) {
-        // Por defecto, dentro de 1 hora (hora local del navegador).
-        const d = new Date(Date.now() + 3600 * 1000 - new Date().getTimezoneOffset() * 60000);
-        input.value = d.toISOString().slice(0, 16);
-      }
-      caja.hidden = !caja.hidden;
-    });
-    card.querySelector(".sug-confirmar-programa").addEventListener("click", (e) => {
-      const valor = card.querySelector(".sug-cuando").value;
-      if (!valor) return alert("Elige la fecha y hora.");
-      accion("aprobar", e.currentTarget, { modo: "programar", send_at: new Date(valor).toISOString() });
+    // Cada chat sugerido: primero se lee (sus últimos mensajes), después se
+    // puede ajustar el texto para ese cliente y mandarlo. Nunca a todos de una.
+    card.querySelectorAll(".sug-dest").forEach((fila) => {
+      fila.querySelector(".sug-dest-leer")?.addEventListener("click", async (e) => {
+        const cuerpo = fila.querySelector(".sug-dest-cuerpo");
+        if (!cuerpo.hidden) { cuerpo.hidden = true; return; }
+        cuerpo.hidden = false;
+        cuerpo.innerHTML = `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>`;
+        const caja = cuerpo.querySelector(".sug-chat");
+        try {
+          const { mensajes } = await pedir(`/api/crm/sugerencias?chat=${fila.dataset.conv}`);
+          caja.innerHTML = htmlChatSugerencia(mensajes);
+          caja.scrollTop = caja.scrollHeight;
+        } catch (err) {
+          caja.innerHTML = `<p class="sub">${escapar(err.message)}</p>`;
+          return;
+        }
+        cuerpo.insertAdjacentHTML("beforeend", `
+          <textarea class="sug-dest-texto" rows="3">${escapar(card.querySelector(".sug-texto").value)}</textarea>
+          <button type="button" class="sug-dest-enviar">${icon("send")} Mandárselo</button>`);
+        agregarRapidasA(cuerpo.querySelector(".sug-dest-texto"));
+        cuerpo.querySelector(".sug-dest-enviar").addEventListener("click", async (ev) => {
+          const boton = ev.currentTarget;
+          boton.disabled = true;
+          try {
+            await pedir("/api/crm/sugerencias", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, accion: "enviar_a", conversation_id: Number(fila.dataset.conv), texto: cuerpo.querySelector(".sug-dest-texto").value })
+            });
+            cuerpo.hidden = true;
+            fila.querySelector(".sug-dest-leer")?.replaceWith(Object.assign(document.createElement("span"), { className: "sub", textContent: "· enviado ✓" }));
+          } catch (err) {
+            boton.disabled = false;
+            alert(err.message);
+          }
+        });
+      });
     });
     card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
   });
@@ -4342,19 +4369,24 @@ function pintarRelojes() {
 }
 
 /** Los últimos mensajes del chat dentro de la tarjeta, para editar viendo la conversación. */
+/** Los últimos mensajes de un chat, en burbujas, para leerlo antes de mandar. */
+function htmlChatSugerencia(mensajes) {
+  const hora = (t) => new Date(t.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return mensajes.length
+    ? mensajes.map((m) => `
+        <div class="sug-msg ${m.direction === "in" ? "entrante" : "saliente"}">
+          ${m.type === "image" && m.tiene_media ? `<img class="sug-foto" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />` : ""}
+          <div>${m.body && m.type !== "location" ? formatearTextoWA(m.body) : m.type === "image" && m.tiene_media ? "" : `<em>${escapar(extractoMensaje(m.type, m.type === "location" ? m.body : m.file_name || ""))}</em>`}</div>
+          <span class="sub">${m.direction === "in" ? "" : escapar(m.sent_by || "") + " · "}${hora(m.created_at)}</span>
+        </div>`).join("")
+    : `<p class="sub">Sin mensajes.</p>`;
+}
+
 async function cargarChatSugerencia(card) {
   const caja = card.querySelector(".sug-chat");
   try {
     const { mensajes } = await pedir(`/api/crm/sugerencias?chat=${card.dataset.conv}`);
-    const hora = (t) => new Date(t.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" });
-    caja.innerHTML = mensajes.length
-      ? mensajes.map((m) => `
-          <div class="sug-msg ${m.direction === "in" ? "entrante" : "saliente"}">
-            ${m.type === "image" && m.tiene_media ? `<img class="sug-foto" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />` : ""}
-            <div>${m.body && m.type !== "location" ? formatearTextoWA(m.body) : m.type === "image" && m.tiene_media ? "" : `<em>${escapar(extractoMensaje(m.type, m.type === "location" ? m.body : m.file_name || ""))}</em>`}</div>
-            <span class="sub">${m.direction === "in" ? "" : escapar(m.sent_by || "") + " · "}${hora(m.created_at)}</span>
-          </div>`).join("")
-      : `<p class="sub">Sin mensajes.</p>`;
+    caja.innerHTML = htmlChatSugerencia(mensajes);
     caja.scrollTop = caja.scrollHeight;
   } catch (err) {
     caja.innerHTML = `<p class="sub">${escapar(err.message)}</p>`;
@@ -4750,7 +4782,7 @@ function usarQuickReply(q, indice = null) {
   // "Link de envío (sale solo)": la manda el sistema con el link de cada
   // cliente en {link}; a mano saldría con el {link} literal.
   if (/\{link\}/i.test(q.body || "")) {
-    alert("Esta respuesta sale sola, con el link de cada cliente, 23 h después de su último mensaje. Para cambiar el texto, edítala con el lápiz.");
+    alert("Esta respuesta lleva el link de cada cliente: mándala desde el panel derecho del chat, en \"Link de seguimiento del pedido\". Para cambiar el texto, edítala con el lápiz.");
     return;
   }
 
@@ -6034,14 +6066,11 @@ $("#template-enviar").addEventListener("click", async () => {
 /* ---------- Panel de detalle ---------- */
 
 /** El código de Shalom del cliente como etiqueta: se ve de un vistazo, se copia de un toque y se edita en el lugar. */
-/** Estado del link que sale solo 23 h después del último mensaje del cliente (crm-links-envio.js). */
+/** Si el link de seguimiento ya se le mandó (a mano, desde el chat o desde aquí). */
 function textoLinkAuto(l) {
   const hora = (v) => (v ? new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "");
-  if (!l) return "🔗 Link automático: todavía no (se programa solo si la venta tiene celular y chat).";
-  if (l.estado === "enviado") return `🔗 Link automático: enviado ${hora(l.cuando)} ✓`;
-  if (l.estado === "pendiente" || l.estado === "enviando") return `🔗 Link automático: sale ${hora(l.cuando)} (23 h después de su último mensaje)`;
-  if (l.estado === "sin_ventana") return "🔗 Link automático: no alcanzó la ventana de 24 h; mándalo abajo.";
-  return `🔗 Link automático: ${l.estado} — mándalo abajo.`;
+  if (l?.estado === "enviado") return `🔗 Link enviado ${hora(l.cuando)} ✓`;
+  return "🔗 Link todavía no enviado: mándalo abajo o desde el chat.";
 }
 
 function pintarShalom(c, editando = false) {
@@ -6096,6 +6125,55 @@ function pintarShalom(c, editando = false) {
   if (editando) input.focus();
 }
 
+/**
+ * 🔗 Link de seguimiento, a mano: busca su venta en Ventas, arma el texto
+ * (respuesta rápida "Link de envío" con su link) y la vendedora lo revisa
+ * y lo manda. Nada sale solo.
+ */
+async function prepararLinkEnvio(c) {
+  const cont = $("#detalle-link");
+  cont.innerHTML = `<p class="ayuda-modal">Buscando su venta…</p>`;
+  let datos;
+  try {
+    datos = await pedir(`/api/crm/link-envio?conversation_id=${c.conversation_id}`);
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p><button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Volver a buscar</button>`;
+    $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
+    return;
+  }
+  cont.innerHTML = `
+    <div class="ayuda-modal" style="margin:0 0 4px">Pedido <b>${escapar(datos.codigo)}</b> · <a href="${escapar(datos.link)}" target="_blank" rel="noopener">ver su página</a></div>
+    <textarea id="detalle-link-texto" style="width:100%;min-height:110px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(datos.texto)}</textarea>
+    ${datos.ventana_abierta ? "" : `<p class="ayuda-modal" style="color:var(--peligro)">Pasaron más de 24 h desde su último mensaje: WhatsApp no deja mandarle texto libre.</p>`}
+    <div style="display:flex;gap:6px">
+      <button class="cancelar" id="detalle-link-cerrar" type="button" style="flex:1;font-size:12px">Cancelar</button>
+      <button class="crear" id="detalle-link-enviar" type="button" style="flex:2;font-size:12px" ${datos.ventana_abierta ? "" : "disabled"}>${icon("send")} Mandar link</button>
+    </div>`;
+  const volver = () => {
+    cont.innerHTML = `<button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Preparar el link para este cliente</button>`;
+    $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
+  };
+  $("#detalle-link-cerrar").addEventListener("click", volver);
+  $("#detalle-link-enviar").addEventListener("click", async (e) => {
+    const texto = $("#detalle-link-texto").value.trim();
+    if (!texto) return;
+    e.currentTarget.disabled = true;
+    try {
+      await pedir("/api/crm/link-envio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: c.conversation_id, codigo: datos.codigo, texto })
+      });
+      cont.innerHTML = `<p class="ayuda-modal">Link enviado ✓</p>`;
+      setTimeout(volver, 3000);
+      cargarMensajes().catch(() => {});
+    } catch (err) {
+      e.currentTarget.disabled = false;
+      alert(err.message);
+    }
+  });
+}
+
 async function pintarDetalle(c) {
   const nombre = c.profile_name || c.wa_id;
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
@@ -6107,6 +6185,11 @@ async function pintarDetalle(c) {
 
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
+
+    <h2>Link de seguimiento del pedido</h2>
+    <div id="detalle-link">
+      <button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Preparar el link para este cliente</button>
+    </div>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -6185,6 +6268,7 @@ async function pintarDetalle(c) {
   }, 600));
 
   pintarShalom(c);
+  $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
   actualizarHistorialCapi(c.conversation_id);
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {

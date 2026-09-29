@@ -165,10 +165,11 @@ export const origenSugerencia = (quien) => `${PREFIJO_SUGERENCIA} · ${quien || 
 /**
  * Tope de insistencia (docs/negocio.md: "hasta 3–4 mensajes por cliente"):
  * con este número de seguimientos automáticos ya enviados sin que el cliente
- * responda, el cron no manda más texto libre. Se suman todas las fuentes (secuencia
+ * responda, el cron no manda más texto libre. Bajado de 4 a 2 porque se
+ * estaban mandando demasiados mensajes seguidos sin respuesta. Se suman todas las fuentes (secuencia
  * de leads, respuesta rápida, sugerencias, carrito), que antes podían apilarse.
  */
-export const MAX_AUTOMATICOS_SIN_RESPUESTA = 4;
+export const MAX_AUTOMATICOS_SIN_RESPUESTA = 2;
 
 /**
  * El link de seguimiento del pedido (página /TS-…), que sale solo 23 h
@@ -203,8 +204,18 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
   // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
   // paso que caería más tarde no se programa (ni los que siguen).
-  const conv = await db.prepare("SELECT last_inbound_at FROM conversations WHERE id = ?").bind(conversationId).first();
+  const conv = await db.prepare(
+    `SELECT conv.last_inbound_at, conv.etapa,
+       (SELECT COUNT(*) FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status = 'pendiente' AND s.batch_id IS NULL
+          AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ?
+          AND COALESCE(s.created_by, '') <> ?) AS manuales
+     FROM conversations conv WHERE conv.id = ?`
+  ).bind(`${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, ORIGEN_SEGUIMIENTO_AUTO, conversationId).first();
   if (!conv?.last_inbound_at) return;
+  // Una sola cadena por chat: si una persona ya dejó un seguimiento programado
+  // a mano, manda el suyo y la respuesta rápida no agrega otra cadena encima.
+  // Y a quien ya compró (etapa 5) no le sale un "si no responde".
+  if (conv.manuales > 0 || conv.etapa >= 5) return;
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
   const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`;
   const inserts = [];
@@ -228,14 +239,32 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   ]);
 }
 
-/** Cancela solo los "tras no respuesta" (secuencia de leads y sugerencias del asesor) pendientes — lo que corresponde cuando nosotros le escribimos. */
+/**
+ * ¿Lo programó el sistema (no una persona a mano)? Secuencia de leads,
+ * seguimiento de respuesta rápida, sugerencia del asesor, carrito o link.
+ * A estos se les aplican las reglas anti-choque del cron (crm-cron.js).
+ */
+export function esOrigenAutomatico(createdBy) {
+  const o = String(createdBy || "");
+  return o === ORIGEN_SEGUIMIENTO_AUTO || o === ORIGEN_LINK_ENVIO || o.startsWith(PREFIJO_SEGUIMIENTO_LEAD)
+    || o.startsWith(PREFIJO_SEGUIMIENTO_RAPIDA) || o.startsWith(PREFIJO_SUGERENCIA) || /carrito/i.test(o);
+}
+
+/**
+ * Cancela los automáticos pendientes (secuencia de leads, sugerencias del
+ * asesor y el seguimiento de respuesta rápida) — lo que corresponde cuando
+ * nosotros le escribimos: la conversación siguió y ese texto quedó viejo.
+ * (Antes el de respuesta rápida no se cancelaba y se juntaba con lo que la
+ * vendedora seguía escribiendo o programando: mensajes de más.)
+ */
 export async function cancelarSeguimientosDeLead(db, conversationId) {
   await db
     .prepare(
       `UPDATE scheduled_messages SET status = 'cancelado'
-       WHERE conversation_id = ? AND status = 'pendiente' AND (created_by = ? OR created_by LIKE ? OR created_by LIKE ?)`
+       WHERE conversation_id = ? AND status = 'pendiente' AND mandar_siempre = 0 AND batch_id IS NULL
+         AND (created_by = ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ?)`
     )
-    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`)
+    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`)
     .run();
 }
 

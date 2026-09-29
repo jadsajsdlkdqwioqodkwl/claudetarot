@@ -104,7 +104,8 @@ import {
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
 import { procesarFrases } from "./lib/crm-frases.js";
-import { programarLinksDeEnvio } from "./lib/crm-links-envio.js";
+import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
+import { onRequestGet as crmLinkEnvioGet, onRequestPost as crmLinkEnvioPost } from "./api/crm/link-envio.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -128,6 +129,7 @@ const ROUTES = {
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
+  "/api/crm/link-envio": { GET: crmLinkEnvioGet, POST: crmLinkEnvioPost },
   "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },
 
   "/api/crm/login": { POST: crmLogin },
@@ -238,7 +240,7 @@ export default {
 
   // Tres crons (ver wrangler.jsonc → triggers.crons), distinguidos por
   // event.cron: cada 5 min manda los seguimientos vencidos; cada 10 vuelca
-  // los chats nuevos a Sheets; cada 15 programa los links de envío y hace lo
+  // los chats nuevos a Sheets; cada 15 hace lo
   // analítico (embudo, frases, resumen semanal).
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {
@@ -249,7 +251,9 @@ export default {
     // su propio tope de 50 consultas a D1 (plan gratis): así nunca le quita
     // cupo al envío de seguimientos. Cada paso sigue aunque el anterior falle.
     if (event.cron === "*/15 * * * *") {
-      await programarLinksDeEnvio(env).catch((err) => console.error("Links de envío:", err.message));
+      // El link de seguimiento ya no sale solo (se manda a mano desde el chat):
+      // por si quedó alguno programado de la versión automática.
+      await cancelarLinksAutomaticos(env.CRM_DB).catch((err) => console.error("Links de envío:", err.message));
       // El resumen (una vez al día) gasta muchas consultas: esa pasada no
       // hace más; embudo y frases siguen en la de 15 min después.
       const hizoResumen = await enviarResumenSiToca(env).catch((err) => {

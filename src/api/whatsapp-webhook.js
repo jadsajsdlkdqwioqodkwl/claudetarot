@@ -30,7 +30,6 @@ import {
 import { reportarEventoMeta } from "../lib/meta-capi.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
-import { reprogramarLinkDeEnvio } from "../lib/crm-links-envio.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
 
 const json = (data, status = 200) =>
@@ -202,8 +201,6 @@ async function procesarCambio(env, db, value, origen) {
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, fileName, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
     await cancelarSeguimientosPendientes(db, conversacion.id);
-    // El link de envío automático (si tiene uno pendiente) sale 23 h después de este mensaje.
-    await reprogramarLinkDeEnvio(db, conversacion.id).catch((err) => console.error("Link de envío:", err.message));
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }

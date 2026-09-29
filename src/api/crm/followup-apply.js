@@ -32,6 +32,8 @@ async function post({ request, env, agent }) {
     ? [...new Set(payload.conversation_ids.map(Number).filter(Boolean))]
     : payload?.conversation_id ? [Number(payload.conversation_id)] : [];
   if (!conversationIds.length) return json({ error: "Falta conversation_id o conversation_ids." }, 400);
+  // Sin envíos en bloque: una secuencia se aplica a un chat a la vez, después de leerlo.
+  if (conversationIds.length > 1) return json({ error: "Las secuencias se aplican de a un chat: ábrelo, léelo y aplícala desde ahí." }, 422);
 
   const { results: existentes } = await env.CRM_DB.prepare(
     `SELECT id FROM conversations WHERE id IN (${conversationIds.map(() => "?").join(",")})`
@@ -50,7 +52,13 @@ async function post({ request, env, agent }) {
   const createdBy = esLead ? origenSeguimientoLead(nombre) : nombre;
   let pasosProgramados = 0;
   for (const conv of existentes) {
-    if (esLead) await cancelarSeguimientosDeLead(env.CRM_DB, conv.id);
+    // Una sola cadena por chat: la secuencia nueva reemplaza a los automáticos
+    // pendientes y a esta misma secuencia si ya estaba aplicada (antes se duplicaba).
+    await cancelarSeguimientosDeLead(env.CRM_DB, conv.id);
+    if (createdBy) {
+      await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by = ?")
+        .bind(conv.id, createdBy).run();
+    }
     pasosProgramados += await programarSecuenciaSeguimiento(env.CRM_DB, conv.id, sequenceId, createdBy);
   }
 
