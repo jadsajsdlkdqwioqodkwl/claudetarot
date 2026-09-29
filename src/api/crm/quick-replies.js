@@ -5,19 +5,55 @@
  *        conserva la media que ya tenía (no hace falta volver a subir fotos/videos solo para cambiar el texto)
  * DELETE /api/crm/quick-replies — borra { id }
  *
- * POST y PATCH aceptan además `followup_body` (texto del seguimiento
- * automático, vacío = sin seguimiento) y `followup_hours` (1–168, 20 por
- * defecto). Ver programarSeguimientoDeRapida.
+ * POST y PATCH aceptan además `followup_pasos`: la secuencia de seguimiento
+ * si el cliente no responde, hasta 4 pasos [{ horas, body?, media_key?,
+ * media_type?, media_mime? }], cada uno `horas` después del anterior. (Sigue
+ * aceptando el formato viejo `followup_body` + `followup_hours` = un paso.)
+ * Ver programarSeguimientoDeRapida.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { HORAS_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
 
-/** El seguimiento automático de la respuesta rápida, validado. */
+/**
+ * La secuencia de seguimiento de la respuesta rápida, validada. Devuelve los
+ * pasos (JSON o null) y, para lo que todavía lee el formato viejo, el primer
+ * paso como body/hours.
+ */
 function leerSeguimiento(payload) {
-  const body = String(payload?.followup_body || "").trim().slice(0, 4096) || null;
-  const horas = Math.round(Number(payload?.followup_hours));
-  return { body, hours: body ? (horas >= 1 && horas <= 168 ? horas : HORAS_SEGUIMIENTO_RAPIDA) : null };
+  let pasos = Array.isArray(payload?.followup_pasos)
+    ? payload.followup_pasos
+    : payload?.followup_body ? [{ horas: payload.followup_hours, body: payload.followup_body }] : [];
+  pasos = pasos
+    .map((p) => {
+      const horas = Number(p?.horas);
+      const paso = {
+        horas: horas >= 0.25 && horas <= 168 ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
+        body: String(p?.body || "").trim().slice(0, 4096) || null
+      };
+      if (p?.media_key) Object.assign(paso, {
+        media_key: String(p.media_key).slice(0, 200),
+        media_type: ["image", "video", "document", "audio", "sticker"].includes(p.media_type) ? p.media_type : "document",
+        media_mime: p.media_mime ? String(p.media_mime).slice(0, 100) : null
+      });
+      return paso;
+    })
+    .filter((p) => p.body || p.media_key)
+    .slice(0, 4);
+  return {
+    pasos: pasos.length ? JSON.stringify(pasos) : null,
+    body: pasos[0]?.body || (pasos.length ? "(archivo)" : null),
+    hours: pasos.length ? Math.max(1, Math.round(pasos[0].horas)) : null
+  };
+}
+
+/** Los pasos guardados, o el seguimiento viejo como un solo paso. */
+function pasosDe(r) {
+  try {
+    const p = JSON.parse(r.followup_pasos || "null");
+    if (Array.isArray(p) && p.length) return p;
+  } catch { /* formato viejo */ }
+  return r.followup_body ? [{ horas: r.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: r.followup_body }] : [];
 }
 
 const json = (data, status = 200) =>
@@ -28,7 +64,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-    "SELECT id, title, body, followup_body, followup_hours, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
+    "SELECT id, title, body, followup_body, followup_hours, followup_pasos, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -37,7 +73,9 @@ async function get({ env }) {
   const porRapida = {};
   for (const m of media) (porRapida[m.quick_reply_id] ||= []).push(m);
 
-  return json({ quick_replies: rapidas.map((r) => ({ ...r, media: porRapida[r.id] || [] })) });
+  return json({
+    quick_replies: rapidas.map((r) => ({ ...r, followup_pasos: pasosDe(r), media: porRapida[r.id] || [] }))
+  });
 }
 
 async function post({ request, env }) {
@@ -57,9 +95,9 @@ async function post({ request, env }) {
 
   const seguimiento = leerSeguimiento(payload);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours) VALUES (?, ?, ?, ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos) VALUES (?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos)
     .first();
 
   let i = 0;
@@ -75,7 +113,7 @@ async function post({ request, env }) {
     .bind(creada.id)
     .all();
 
-  return json({ ok: true, quick_reply: { ...creada, media: media.results } });
+  return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), media: media.results } });
 }
 
 async function patch({ request, env }) {
@@ -107,8 +145,8 @@ async function patch({ request, env }) {
   }
 
   const seguimiento = leerSeguimiento(payload);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ? WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, id)
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ? WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, id)
     .run();
 
   if (mediaKeys !== null) {
@@ -131,7 +169,7 @@ async function patch({ request, env }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, followup_body: seguimiento.body, followup_hours: seguimiento.hours, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), media: media.results } });
 }
 
 async function del({ request, env }) {

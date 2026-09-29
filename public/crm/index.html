@@ -130,9 +130,10 @@
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
-    <textarea id="rapida-seg-texto" placeholder="Seguimiento automático (opcional): se manda solo si el cliente no responde"></textarea>
-    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Mandarlo <input type="number" id="rapida-seg-horas" min="1" max="168" value="20" style="width:64px" /> horas después</label>
-    <div class="ayuda-modal">Nunca sale pasadas 23 h desde el último mensaje del cliente. Se cancela si el cliente responde o si lo quitas desde el panel derecho del chat.</div>
+    <div class="rp-titulo">Seguimiento si el cliente no responde (opcional)</div>
+    <div id="rapida-pasos"></div>
+    <button type="button" class="sug-agregar-paso" id="rapida-agregar-paso"></button>
+    <div class="ayuda-modal">Hasta 4 mensajes, cada uno las horas indicadas después del anterior, con texto y/o un archivo. Nunca sale pasadas 23 h desde el último mensaje del cliente. Toda la secuencia se cancela si el cliente responde o si la quitas desde el panel derecho del chat.</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>
@@ -259,7 +260,10 @@
     </div>
     <div id="em-pie">
       <div id="em-miniaturas"></div>
+      <div id="em-panel"></div>
       <div class="em-envio">
+        <button type="button" id="em-emoji" class="em-extra" title="Emojis"></button>
+        <button type="button" id="em-rapidas" class="em-extra" title="Respuestas rápidas"></button>
         <textarea id="em-caption" rows="1" placeholder="Añade un comentario…"></textarea>
         <button type="button" id="em-enviar" title="Enviar"></button>
       </div>

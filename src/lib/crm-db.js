@@ -153,9 +153,10 @@ export const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 export const origenSeguimientoLead = (nombre) => (nombre ? `${PREFIJO_SEGUIMIENTO_LEAD} · ${nombre}` : PREFIJO_SEGUIMIENTO_LEAD);
 
 /**
- * Seguimiento de una respuesta rápida: al mandar una que tiene
- * `followup_body`, se programa ese texto `followup_hours` (20 por defecto)
- * después, sin pasar de 23 h desde el último mensaje del cliente. Es "manual" para las reglas de cancelación: lo cancela el cliente
+ * Seguimiento de una respuesta rápida: al mandar una que tiene secuencia
+ * (`followup_pasos`, hasta 4 pasos con texto y/o archivo, o el viejo
+ * `followup_body`), se programa cada paso `horas` después del anterior, sin
+ * pasar de 23 h desde el último mensaje del cliente. Es "manual" para las reglas de cancelación: lo cancela el cliente
  * al escribir o la asesora desde el panel derecho, no sus propios mensajes.
  * Reemplaza al seguimiento de respuesta rápida que ya estuviera pendiente en
  * ese chat. Se apaga para todas con el ajuste `quick_followup_auto` = "0".
@@ -165,22 +166,38 @@ export const HORAS_SEGUIMIENTO_RAPIDA = 20;
 
 export async function programarSeguimientoDeRapida(db, conversationId, quickReplyId) {
   if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return;
-  const q = await db.prepare("SELECT title, followup_body, followup_hours FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
-  if (!q?.followup_body) return;
+  const q = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
+  if (!q) return;
+  // La secuencia (hasta 4 pasos) o, en respuestas viejas, un solo seguimiento.
+  let pasos = [];
+  try { pasos = JSON.parse(q.followup_pasos || "[]") || []; } catch { pasos = []; }
+  if (!pasos.length && q.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
+  if (!pasos.length) return;
   // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
-  // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría.
+  // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
+  // paso que caería más tarde no se programa (ni los que siguen).
   const conv = await db.prepare("SELECT last_inbound_at FROM conversations WHERE id = ?").bind(conversationId).first();
   if (!conv?.last_inbound_at) return;
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
-  const horas = q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA;
-  const envio = Math.min(Date.now() + horas * 3600 * 1000, tope);
-  if (envio <= Date.now() + 60 * 1000) return;
-  const sendAt = new Date(envio).toISOString();
+  const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`;
+  const inserts = [];
+  let envio = Date.now();
+  for (const [i, p] of pasos.entries()) {
+    envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
+    // El primero se recorta al tope (como antes); los demás, si no entran, se omiten.
+    const cuando = i === 0 ? Math.min(envio, tope) : envio;
+    if (cuando > tope || cuando <= Date.now() + 60 * 1000) break;
+    envio = cuando;
+    inserts.push(
+      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null)
+    );
+  }
+  if (!inserts.length) return;
   await db.batch([
     db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?")
       .bind(conversationId, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`),
-    db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by) VALUES (?, ?, ?, ?)")
-      .bind(conversationId, q.followup_body, sendAt, `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`)
+    ...inserts
   ]);
 }
 

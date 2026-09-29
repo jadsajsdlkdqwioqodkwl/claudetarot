@@ -3475,6 +3475,47 @@ function configurarEditorMedia() {
 
   const caption = $("#em-caption");
   caption.addEventListener("input", () => { guardarCaption(); autoAltoCaption(); });
+
+  // Emojis y respuestas rápidas (su texto) también al mandar fotos o archivos.
+  $("#em-emoji").innerHTML = icon("smile");
+  $("#em-rapidas").innerHTML = icon("bolt");
+  const panel = $("#em-panel");
+  const cerrarPanelEditor = () => { panel.className = ""; panel.innerHTML = ""; };
+  // Tocar un emoji no le quita el foco al comentario (en el celular no se cierra el teclado).
+  panel.addEventListener("mousedown", (e) => { if (e.target.closest(".em-emojis")) e.preventDefault(); });
+  const meterEnCaption = (texto) => {
+    insertarEnCursor(caption, texto);
+    guardarCaption();
+    autoAltoCaption();
+  };
+  $("#em-emoji").addEventListener("click", () => {
+    if (panel.classList.contains("emojis")) return cerrarPanelEditor();
+    panel.className = "abierto emojis";
+    panel.innerHTML = `<div class="em-emojis">${EMOJIS.map((em) => `<button type="button">${em}</button>`).join("")}</div>`;
+    panel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => meterEnCaption(b.textContent)));
+  });
+  $("#em-rapidas").addEventListener("click", async () => {
+    if (panel.classList.contains("rapidas")) return cerrarPanelEditor();
+    panel.className = "abierto rapidas";
+    panel.innerHTML = `<input type="text" placeholder="Buscar respuesta rápida…" /><div class="em-rapidas-lista"></div>`;
+    if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
+    const pintar = () => {
+      const lista = buscarRapidas(estado.quickReplies || [], panel.querySelector("input").value).filter((q) => q.body).slice(0, 30);
+      panel.querySelector(".em-rapidas-lista").innerHTML = lista.map((q) => `
+        <button type="button" data-id="${q.id}"><b>${escapar(q.title)}</b><span>${escapar(q.body.slice(0, 120))}</span></button>`).join("") || `<p>Sin resultados.</p>`;
+    };
+    pintar();
+    panel.querySelector("input").addEventListener("input", pintar);
+    panel.querySelector("input").focus();
+    panel.querySelector(".em-rapidas-lista").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-id]");
+      const q = b && (estado.quickReplies || []).find((x) => x.id === Number(b.dataset.id));
+      if (!q) return;
+      if (!caption.value.trim()) { caption.value = q.body; guardarCaption(); autoAltoCaption(); } else meterEnCaption(" " + q.body);
+      cerrarPanelEditor();
+      caption.focus();
+    });
+  });
   caption.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !window.matchMedia("(max-width: 600px)").matches) {
       e.preventDefault();
@@ -3740,7 +3781,7 @@ function agregarEmojisA(el) {
   grid.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => insertarEnCursor(el, b.textContent)));
 }
 
-["#seg-texto", "#leads-texto", "#rapida-texto", "#seq-texto", "#rapida-seg-texto"].forEach((sel) => agregarEmojisA($(sel)));
+["#seg-texto", "#leads-texto", "#seq-texto"].forEach((sel) => agregarEmojisA($(sel)));
 
 /**
  * Botón "Respuestas rápidas" junto a Emojis en los textos de Sugerencias y de
@@ -3797,6 +3838,10 @@ function agregarRapidasA(el) {
     el.focus();
   });
 }
+
+agregarRapidasA($("#rapida-texto"));
+$("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
+$("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida());
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
@@ -4363,10 +4408,78 @@ function abrirModalRapidaNueva() {
   $("#modal-rapida-fondo").classList.add("abierto");
 }
 
-/** Los campos del seguimiento automático en el modal, y el interruptor global (solo admin). */
+/** Un paso de la secuencia de seguimiento de la respuesta rápida (texto, horas y archivo opcional). */
+function pasoRapidaHtml(p, n) {
+  return `
+    <div class="rp-paso" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
+      <div class="sug-paso-cab">
+        <b class="rp-num">Paso ${n}</b>
+        <span class="sub">si no responde, a las</span>
+        <input type="number" class="sug-paso-horas rp-horas" min="0.25" max="168" step="0.5" value="${Number(p.horas) || 20}" />
+        <span class="sub">h</span>
+        <button type="button" class="sug-icono rp-quitar" title="Quitar paso">${icon("trash")}</button>
+      </div>
+      <textarea class="rp-texto" rows="3" placeholder="Texto del seguimiento (opcional si adjuntas un archivo)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
+      <div class="rp-archivo">
+        <label class="shalom-boton">${icon("paperclip")} Adjuntar archivo<input type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none" /></label>
+        <span class="sub rp-nombre">${p.media_key ? `Con ${p.media_type === "video" ? "video" : p.media_type === "image" ? "foto" : "archivo"} adjunto` : ""}</span>
+        <button type="button" class="sug-icono rp-quitar-archivo" title="Quitar archivo" ${p.media_key ? "" : "hidden"}>${icon("close")}</button>
+      </div>
+    </div>`;
+}
+
+function renumerarPasosRapida() {
+  $("#rapida-pasos").querySelectorAll(".rp-num").forEach((b, i) => { b.textContent = `Paso ${i + 1}`; });
+  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 4 ? "none" : "";
+}
+
+function agregarPasoRapida(p = { horas: 20 }) {
+  const cont = $("#rapida-pasos");
+  cont.insertAdjacentHTML("beforeend", pasoRapidaHtml(p, cont.children.length + 1));
+  const el = cont.lastElementChild;
+  agregarRapidasA(el.querySelector(".rp-texto"));
+  el.querySelector(".rp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosRapida(); });
+  const input = el.querySelector('input[type="file"]');
+  input.addEventListener("change", () => {
+    const f = input.files[0];
+    if (!f) return;
+    el._archivo = f;
+    el.querySelector(".rp-nombre").textContent = f.name;
+    el.querySelector(".rp-quitar-archivo").hidden = false;
+  });
+  el.querySelector(".rp-quitar-archivo").addEventListener("click", () => {
+    el._archivo = null;
+    input.value = "";
+    el.dataset.mediaKey = "";
+    el.querySelector(".rp-nombre").textContent = "";
+    el.querySelector(".rp-quitar-archivo").hidden = true;
+  });
+  renumerarPasosRapida();
+}
+
+/** Sube los archivos nuevos y devuelve la secuencia lista para la API. */
+async function leerPasosRapida() {
+  const pasos = [];
+  for (const el of $("#rapida-pasos").children) {
+    const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
+    if (el._archivo) {
+      const subida = await subirArchivo(el._archivo);
+      Object.assign(paso, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    } else if (el.dataset.mediaKey) {
+      Object.assign(paso, { media_key: el.dataset.mediaKey, media_type: el.dataset.mediaType, media_mime: el.dataset.mediaMime || null });
+    }
+    if (paso.body || paso.media_key) pasos.push(paso);
+  }
+  return pasos;
+}
+
+/** La secuencia de seguimiento en el modal, y el interruptor global (solo admin). */
 function pintarSeguimientoRapida(q) {
-  $("#rapida-seg-texto").value = q?.followup_body || "";
-  $("#rapida-seg-horas").value = q?.followup_hours || 20;
+  $("#rapida-pasos").innerHTML = "";
+  const pasos = q?.followup_pasos?.length ? q.followup_pasos
+    : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
+  pasos.forEach((p) => agregarPasoRapida(p));
+  renumerarPasosRapida();
   const fila = $("#rapida-seg-global-fila");
   fila.style.display = "none";
   if (estado.miRol !== "admin") return;
@@ -4414,8 +4527,6 @@ $("#rapida-crear").addEventListener("click", async () => {
   const title = $("#rapida-titulo").value.trim();
   const body = $("#rapida-texto").value.trim();
   const files = [...$("#rapida-archivo").files];
-  const followup_body = $("#rapida-seg-texto").value.trim();
-  const followup_hours = Number($("#rapida-seg-horas").value) || 20;
   const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
   if (!body && !files.length && !editandoId) return alert("Necesita texto o al menos un archivo.");
@@ -4432,17 +4543,18 @@ $("#rapida-crear").addEventListener("click", async () => {
         media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
       }
     }
+    const followup_pasos = await leerPasosRapida();
     if (editandoId) {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_body, followup_hours })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_body, followup_hours })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos })
       });
     }
     await cargarQuickReplies();
