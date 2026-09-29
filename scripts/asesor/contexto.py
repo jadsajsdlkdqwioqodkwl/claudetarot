@@ -20,7 +20,7 @@ def main():
     clave = os.environ.get("ASESOR_CLAVE", "")
     if not clave:
         sys.exit("Falta ASESOR_CLAVE en el entorno.")
-    req = urllib.request.Request(URL, headers={"x-asesor-clave": clave})
+    req = urllib.request.Request(URL, headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})  # sin UA propio, Cloudflare corta con 1010
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             datos = json.load(r)

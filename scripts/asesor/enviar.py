@@ -82,7 +82,9 @@ SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
 def al_worker(clave, cuerpo, url=None):
     """El Worker tiene el token del bot y sabe qué vendedora atiende cada chat."""
     req = urllib.request.Request(url or AVISOS, data=json.dumps(cuerpo).encode(),
-                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave})
+                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave,
+                                          # Cloudflare corta (error 1010) el User-Agent por defecto de Python.
+                                          "User-Agent": "tarot-asesor/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             return json.load(r)

@@ -18,7 +18,9 @@ def llamar(cuerpo):
     if not clave:
         sys.exit("Falta ASESOR_CLAVE en el entorno.")
     req = urllib.request.Request(URL, data=json.dumps(cuerpo).encode(),
-                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave})
+                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave,
+                                          # Cloudflare corta (error 1010) el User-Agent por defecto de Python.
+                                          "User-Agent": "tarot-asesor/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.load(r)
