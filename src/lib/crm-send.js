@@ -34,6 +34,11 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
  * funciones o si este valor cambia.
  */
 export const PAUSA_ENVIO_MS = 1500;
+/*
+ * Bienvenida automática: el dueño la quiere rapidito (2026-09-29): cada texto
+ * con "escribiendo…" de solo 0,5 s y sin el espacio entre mensajes.
+ */
+export const PAUSA_BIENVENIDA_MS = 500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /*
@@ -60,7 +65,7 @@ async function esperarEspacio(conversationId, ultimoOutDb) {
 }
 
 /** Reserva el turno de este mensaje en el chat; devuelve cuántos ms esperar antes del "escribiendo…". */
-async function reservarTurno(env, conversationId, ms) {
+async function reservarTurno(env, conversationId, ms, espacio = ESPACIO_ENTRE_MENSAJES_MS) {
   if (!env?.CRM_DB || !conversationId) return 0;
   try {
     const ahora = Date.now();
@@ -68,7 +73,7 @@ async function reservarTurno(env, conversationId, ms) {
       `INSERT INTO envio_turnos (conversation_id, fin) VALUES (?1, ?2 + ?4)
        ON CONFLICT(conversation_id) DO UPDATE SET fin = MAX(fin + ?3, ?2) + ?4
        RETURNING fin`
-    ).bind(conversationId, ahora, ESPACIO_ENTRE_MENSAJES_MS, ms).first();
+    ).bind(conversationId, ahora, espacio, ms).first();
     return Math.min(Math.max((r?.fin || 0) - ms - ahora, 0), ESPERA_MAXIMA_TURNO_MS);
   } catch (err) {
     console.error("Turno de envío:", err.message);
@@ -96,9 +101,9 @@ async function escribiendoEn(env, conversationId, waMessageId) {
   }
 }
 
-export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId } = {}) {
-  // Nunca menos de 1,5 s, pase lo que pase.
-  ms = Math.max(Number(ms) || 0, PAUSA_ENVIO_MS);
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId, rapido = false } = {}) {
+  // Nunca menos de 1,5 s, pase lo que pase (la bienvenida, `rapido`: 0,5 s).
+  ms = rapido ? Math.max(Number(ms) || 0, PAUSA_BIENVENIDA_MS) : Math.max(Number(ms) || 0, PAUSA_ENVIO_MS);
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
   // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
   let waIn = ultimoWaId || null;
@@ -121,8 +126,8 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ult
       await avisarErrorEscribiendo(env, conversationId, err);
     }
   }
-  await esperarEspacio(conversationId, ultimoOut);
-  const turno = await reservarTurno(env, conversationId, ms);
+  if (!rapido) await esperarEspacio(conversationId, ultimoOut);
+  const turno = await reservarTurno(env, conversationId, ms, rapido ? 0 : ESPACIO_ENTRE_MENSAJES_MS);
   if (turno) await esperar(turno);
   await escribiendoEn(env, conversationId, waIn);
   await esperar(ms);

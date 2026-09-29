@@ -10,8 +10,8 @@
  * de Meta — ver docs/whatsapp-ventanas-y-costos.md.
  */
 
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, esperar } from "./crm-send.js";
-import { versionesEnPrueba, sortear, registrarUso } from "./crm-variantes.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, esperar, PAUSA_BIENVENIDA_MS } from "./crm-send.js";
+import { versionesEnPrueba, elegirVersion, registrarUso } from "./crm-variantes.js";
 
 /**
  * `pruebas`: solo la bienvenida real (la del webhook). Si un paso tiene
@@ -21,7 +21,8 @@ import { versionesEnPrueba, sortear, registrarUso } from "./crm-variantes.js";
  */
 export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null, { pruebas = false, ultimoWaId } = {}) {
   // Con el id del mensaje del cliente a mano, el "escribiendo…" no gasta una consulta por paso.
-  const escribiendo = ultimoWaId ? { ultimoWaId } : {};
+  // Rapidito (decisión del dueño): "escribiendo…" de 0,5 s por texto, sin espacio entre mensajes.
+  const escribiendo = ultimoWaId ? { ultimoWaId, rapido: true } : { rapido: true };
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT id, step_order, body FROM welcome_steps ORDER BY step_order ASC"
   ).all();
@@ -37,22 +38,22 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
     });
   }
 
-  // La automática arranca apenas llega el mensaje del cliente: un segundo
+  // La automática arranca apenas llega el mensaje del cliente: medio segundo
   // antes de marcarlo leído / "escribiendo…", que pegado a su mensaje
   // WhatsApp no llegaba a mostrarlo.
-  await esperar(1000);
+  await esperar(500);
 
   // Versión "en un solo mensaje": si salió sorteada una versión `unico` del
   // primer paso, reemplaza TODA la secuencia (su foto/video, si tiene, y su
   // texto) y los demás pasos no se mandan.
   const primero = pasos[0];
   const vPrimero = enPrueba[primero.id];
-  const elegidaPrimero = vPrimero ? vPrimero[sortear(vPrimero.map((v) => v.peso))] : null;
+  const elegidaPrimero = vPrimero ? elegirVersion(vPrimero) : null;
   if (elegidaPrimero?.unico) {
     if (elegidaPrimero.media_key) {
       await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
     }
-    await pausaEnvio(env, conversationId, undefined, escribiendo);
+    await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
     await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel);
     await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
     return 1;
@@ -78,8 +79,8 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       // El primer paso ya se sorteó arriba; los demás, aquí. Las versiones
       // "únicas" solo valen como primer paso: en otro paso no se eligen.
       const versiones = enPrueba[paso.id]?.filter((v) => !v.unico);
-      const elegida = paso.id === primero.id ? elegidaPrimero : versiones ? versiones[sortear(versiones.map((v) => v.peso))] : null;
-      await pausaEnvio(env, conversationId, undefined, escribiendo);
+      const elegida = paso.id === primero.id ? elegidaPrimero : versiones?.length ? elegirVersion(versiones) : null;
+      await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
       await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
       if (pruebas) {
         await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: paso.id, varianteId: elegida?.id || 0, conversationId, etapaAntes: 1, agente: sentByLabel });

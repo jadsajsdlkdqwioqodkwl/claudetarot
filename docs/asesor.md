@@ -83,13 +83,14 @@ página del cliente le muestra su clave. Nunca se marca solo.
 - Decide el admin: ⚡ → editar la respuesta (o Bienvenida → editar paso) →
   "Quedarse con esta". El texto viejo queda guardado y la cuenta de la
   original vuelve a 0 cada vez que su texto cambia.
-- **Orden fijo sin cerrar la prueba** (respuestas rápidas, solo admin): en
-  ⚡ → editar la respuesta, cada versión tiene un selector de número
-  (1·2·3·4). Al cambiarlo se fija el orden (`quick_replies.orden_versiones`,
-  `PATCH /api/crm/variantes { tipo: "rapida", ref_id, orden: [ids] }`): la 1
-  es la **predeterminada** (va al tocar el mensaje, sin sorteo) y los
-  botones del chat siguen ese orden. "Volver a que el CRM las alterne"
-  (`orden: null`) regresa al sorteo. Cerrar la prueba borra el orden.
+- **Predeterminada sin cerrar la prueba** (respuestas rápidas y pasos de la
+  bienvenida, todo el equipo): en el editor de la respuesta o del paso, cada
+  versión tiene **⭐ Predeterminada** y un selector de número (1·2·3·4).
+  Se guarda en `orden_versiones` (`PATCH /api/crm/variantes { tipo, ref_id,
+  orden: [ids] }`): la 1 sale siempre (al tocar la respuesta rápida, o en la
+  bienvenida automática) sin sorteo, y los botones del chat siguen ese orden.
+  "Volver a que el CRM las alterne" (`orden: null`) regresa al sorteo.
+  Cerrar la prueba borra el orden.
 - Máximo 3 versiones en prueba por mensaje.
 - **Todo el equipo** puede ver, agregar y editar versiones (⚡ → lápiz de la
   respuesta). Editar crea una versión nueva que se mide desde 0. Cerrar la

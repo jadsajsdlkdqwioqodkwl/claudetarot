@@ -5162,9 +5162,9 @@ async function pintarPruebas(cont, tipo, refId) {
   // "Va ganando" solo cuando todas tienen datos suficientes (20 usos elegidos por el CRM).
   const lider = enPrueba && vs.every((v) => v.usos >= 20) ? vs.reduce((a, b) => (b.peso > a.peso ? b : a)) : null;
   const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
-  // Respuestas rápidas: el admin ordena las versiones sin cerrar la prueba; la 1 es la predeterminada.
-  const ordenable = tipo === "rapida" && enPrueba && esAdmin;
-  const fijo = tipo === "rapida" && vs.some((v) => v.predeterminada);
+  // Todo el equipo ordena las versiones sin cerrar la prueba; la 1 es la predeterminada.
+  const ordenable = enPrueba;
+  const fijo = vs.some((v) => v.predeterminada);
 
   // Qué juntaría la versión "en un solo mensaje".
   let combinado = null;
@@ -5180,21 +5180,24 @@ async function pintarPruebas(cont, tipo, refId) {
     <div class="rp-titulo">🧪 ${enPrueba ? "Versiones en prueba" : "Versiones del mensaje"}</div>
     <p class="ayuda-modal">${enPrueba
       ? fijo
-        ? "Orden fijo: al tocar el mensaje va la 1 (la predeterminada); las otras se eligen con los botones 1·2·3·4 del chat. La prueba sigue abierta."
+        ? (tipo === "rapida"
+          ? "Orden fijo: al tocar el mensaje va la 1 (⭐ la predeterminada); las otras se eligen con los botones 1·2·3·4 del chat. La prueba sigue abierta."
+          : "Orden fijo: la bienvenida manda siempre la 1 (⭐ la predeterminada). La prueba sigue abierta.")
         : "El CRM las alterna y manda más la que hace avanzar más chats. Con los botones 1·2·3 del chat también se puede elegir a mano. Se decide cuando cada una tenga al menos 20 usos."
       : "Agrega otra forma de decir este mensaje: el CRM las alterna y mide cuál hace avanzar más chats."}</p>
     ${ordenable ? `<p class="sub">${fijo
       ? `Cambia el número para reordenarlas. <button type="button" class="pv-sortear">Volver a que el CRM las alterne</button>`
-      : "Cambia el número de una versión para fijar el orden: la 1 pasa a ser la predeterminada (va al tocar el mensaje) sin cerrar la prueba."}</p>` : ""}
+      : "Toca ⭐ Predeterminada en la que quieras que salga siempre, o cambia su número para ordenarlas. No se cierra la prueba ni se borra nada."}</p>` : ""}
     ${vs.map((v, i) => `
       <div class="prueba-version${lider && v.id === lider.id ? " lider" : ""}" data-id="${v.id}">
         <div class="pv-cab">
-          <b>${ordenable ? `<select class="pv-orden" title="Orden (la 1 es la predeterminada)">${vs.map((_, k) => `<option value="${k}"${k === i ? " selected" : ""}>${k + 1}</option>`).join("")}</select>` : i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}${fijo && i === 0 ? " · predeterminada" : ""}</b>
+          <b>${ordenable ? `<select class="pv-orden" title="Orden (la 1 es la predeterminada)">${vs.map((_, k) => `<option value="${k}"${k === i ? " selected" : ""}>${k + 1}</option>`).join("")}</select>` : i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}${fijo && i === 0 ? " · ⭐ predeterminada" : ""}</b>
           <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.cerraron, v.usos)}% cerró · ${pct(v.respondieron, v.usos)}% respondió${v.editadas ? ` · ${v.editadas} editadas` : ""}${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
         </div>
         ${v.id ? `<div class="sub pv-texto">${v.media_key ? `${icon(v.media_type === "video" ? "video" : "image")} ` : ""}${escapar(v.texto)}</div>` : ""}
         ${v.motivo ? `<div class="sub"><i>${escapar(v.motivo)}</i></div>` : ""}
         <div class="pv-acciones">
+          ${ordenable && !(fijo && i === 0) ? `<button type="button" class="pv-predeterminada">⭐ Predeterminada</button>` : ""}
           ${v.id ? `<button type="button" class="pv-editar">Editar</button>` : ""}
           ${enPrueba && esAdmin ? `<button type="button" class="pv-ganadora">Quedarse con esta</button>` : ""}
           ${v.id && esAdmin ? `<button type="button" class="pv-quitar">Quitar</button>` : ""}
@@ -5262,13 +5265,15 @@ async function pintarPruebas(cont, tipo, refId) {
   cont.querySelectorAll(".prueba-version").forEach((el) => {
     const id = Number(el.dataset.id);
     const v = vs.find((x) => x.id === id);
-    el.querySelector(".pv-orden")?.addEventListener("change", async (e) => {
-      // Mueve esta versión al puesto elegido; las demás corren un lugar.
+    // Mueve esta versión al puesto elegido; las demás corren un lugar.
+    const mover = async (puesto, boton) => {
       const orden = vs.map((x) => x.id).filter((x) => x !== id);
-      orden.splice(Number(e.target.value), 0, id);
-      e.target.disabled = true;
-      try { await llamar("PATCH", { tipo, ref_id: refId, orden }); await recargar(); } catch (err) { alert(err.message); e.target.disabled = false; }
-    });
+      orden.splice(puesto, 0, id);
+      boton.disabled = true;
+      try { await llamar("PATCH", { tipo, ref_id: refId, orden }); await recargar(); } catch (err) { alert(err.message); boton.disabled = false; }
+    };
+    el.querySelector(".pv-orden")?.addEventListener("change", (e) => mover(Number(e.target.value), e.target));
+    el.querySelector(".pv-predeterminada")?.addEventListener("click", (e) => mover(0, e.currentTarget));
     el.querySelector(".pv-editar")?.addEventListener("click", () => {
       if (el.querySelector(".pv-editor")) return;
       el.insertAdjacentHTML("beforeend", `<div class="pv-editor"><textarea>${escapar(v.texto)}</textarea>
