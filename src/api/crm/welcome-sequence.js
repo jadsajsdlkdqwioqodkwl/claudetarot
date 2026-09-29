@@ -11,6 +11,10 @@
  * PATCH  /api/crm/welcome-sequence — { id, direction: "up"|"down" } → lo mueve
  *                                  — { id, title, body?, media_keys? } → lo edita (sin media_keys
  *                                    conserva la media que ya tenía)
+ *                                  — { id, orden_media: [ids de welcome_step_media] } → orden en que
+ *                                    salen sus fotos/videos
+ *                                  — { id, texto_primero: bool } → el texto antes que las fotos
+ * POST y la edición aceptan también `texto_primero`.
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -24,7 +28,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: pasos } = await env.CRM_DB.prepare(
-    "SELECT id, title, body, step_order FROM welcome_steps ORDER BY step_order ASC"
+    "SELECT id, title, body, step_order, texto_primero FROM welcome_steps ORDER BY step_order ASC"
   ).all();
 
   const { results: media } = await env.CRM_DB.prepare(
@@ -53,9 +57,9 @@ async function post({ request, env }) {
 
   const max = await env.CRM_DB.prepare("SELECT COALESCE(MAX(step_order), 0) AS m FROM welcome_steps").first();
   const creado = await env.CRM_DB.prepare(
-    "INSERT INTO welcome_steps (title, body, step_order) VALUES (?, ?, ?) RETURNING *"
+    "INSERT INTO welcome_steps (title, body, step_order, texto_primero) VALUES (?, ?, ?, ?) RETURNING *"
   )
-    .bind(title, body, (max?.m || 0) + 1)
+    .bind(title, body, (max?.m || 0) + 1, payload?.texto_primero ? 1 : 0)
     .first();
 
   let i = 0;
@@ -108,6 +112,23 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
+  if (Array.isArray(payload?.orden_media)) {
+    const { results } = await env.CRM_DB.prepare("SELECT id FROM welcome_step_media WHERE welcome_step_id = ?").bind(id).all();
+    const suyos = new Set(results.map((r) => r.id));
+    const orden = [...new Set(payload.orden_media.map(Number))].filter((x) => suyos.has(x));
+    for (const x of suyos) if (!orden.includes(x)) orden.push(x);
+    if (orden.length) {
+      await env.CRM_DB.batch(orden.map((mid, i) =>
+        env.CRM_DB.prepare("UPDATE welcome_step_media SET sort_order = ? WHERE id = ? AND welcome_step_id = ?").bind(i, mid, id)));
+    }
+    return json({ ok: true });
+  }
+
+  if (payload?.texto_primero !== undefined && payload?.title === undefined) {
+    await env.CRM_DB.prepare("UPDATE welcome_steps SET texto_primero = ? WHERE id = ?").bind(payload.texto_primero ? 1 : 0, id).run();
+    return json({ ok: true });
+  }
+
   if (payload?.direction) {
     const direction = payload.direction;
     if (!["up", "down"].includes(direction)) return json({ error: "direction inválido." }, 400);
@@ -152,7 +173,8 @@ async function patch({ request, env, agent }) {
   if ((existente.body || null) !== body) {
     await guardarAnterior(env.CRM_DB, "bienvenida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
-  await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
+  await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ?, texto_primero = COALESCE(?, texto_primero) WHERE id = ?")
+    .bind(title, body, payload?.texto_primero === undefined ? null : payload.texto_primero ? 1 : 0, id).run();
 
   if (mediaKeys !== null) {
     const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM welcome_step_media WHERE welcome_step_id = ?").bind(id).all();

@@ -186,8 +186,37 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy, repl
 }
 
 /**
- * `mediaKey` es la clave en R2 (CRM_MEDIA). Sube una copia fresca a WhatsApp
- * y manda. `caption` es el pie de foto/video/documento. `fileName` queda en
+ * El archivo de R2 ya subido a WhatsApp: { mediaId, mime, fileName }. Reusa
+ * el media id de wa_media_cache (Meta lo guarda ~30 días; aquí 25) para no
+ * volver a subir la misma foto en cada envío; `fresca` fuerza subirla de nuevo.
+ */
+export async function subidaDe(env, mediaKey, { fresca = false } = {}) {
+  if (!fresca) {
+    const c = await env.CRM_DB?.prepare(
+      "SELECT media_id, mime, file_name FROM wa_media_cache WHERE media_key = ? AND created_at >= datetime('now', '-25 days')"
+    ).bind(mediaKey).first().catch(() => null);
+    if (c?.media_id) return { mediaId: c.media_id, mime: c.mime, fileName: c.file_name || undefined, deCache: true };
+  }
+  const obj = await env.CRM_MEDIA.get(mediaKey);
+  if (!obj) throw new Error("El archivo ya no está disponible.");
+  const mime = obj.httpMetadata?.contentType || "application/octet-stream";
+  const fileName = obj.customMetadata?.originalName || undefined;
+  const mediaId = await subirMedia(env, await obj.blob(), mime, mediaKey.split("/").pop());
+  await env.CRM_DB?.prepare(
+    `INSERT INTO wa_media_cache (media_key, media_id, mime, file_name) VALUES (?, ?, ?, ?)
+     ON CONFLICT(media_key) DO UPDATE SET media_id = excluded.media_id, mime = excluded.mime, file_name = excluded.file_name, created_at = datetime('now')`
+  ).bind(mediaKey, mediaId, mime, fileName || null).run().catch(() => {});
+  return { mediaId, mime, fileName, deCache: false };
+}
+
+/** Sube de antemano (en paralelo) los archivos que se van a mandar, para que después salgan seguidos. */
+export async function prepararMedias(env, mediaKeys) {
+  await Promise.all([...new Set(mediaKeys)].map((k) => subidaDe(env, k).catch((err) => console.error("Preparar media:", err.message))));
+}
+
+/**
+ * `mediaKey` es la clave en R2 (CRM_MEDIA). La manda a WhatsApp (subida una
+ * sola vez y reusada, ver subidaDe). `caption` es el pie de foto/video/documento. `fileName` queda en
  * el registro interno (Sheets) y, si el tipo es "document", también se
  * manda como el nombre visible del archivo (ver enviarMedia).
  */
@@ -199,18 +228,22 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
     await mandarTexto(env, conversationId, waId, caption, sentBy, null, opciones);
     return waMessageId;
   }
-  const obj = await env.CRM_MEDIA.get(mediaKey);
-  if (!obj) throw new Error("El archivo ya no está disponible.");
-  const mime = obj.httpMetadata?.contentType || "application/octet-stream";
-  const blob = await obj.blob();
+  let subida = await subidaDe(env, mediaKey);
   // Seguimientos, secuencias, respuestas rápidas y bienvenida no traen el
   // nombre: sale del que se guardó al subir el archivo (upload-media.js),
   // así el cliente recibe el documento con su nombre original.
-  fileName = fileName || obj.customMetadata?.originalName || undefined;
-
-  const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
   // Foto, video, audio, documento: al toque, sin "escribiendo…".
-  const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
+  let waMessageId;
+  try {
+    waMessageId = await enviarMedia(env, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+  } catch (err) {
+    // El media id guardado venció en Meta: se sube de nuevo y se reintenta.
+    if (!subida.deCache) throw err;
+    subida = await subidaDe(env, mediaKey, { fresca: true });
+    waMessageId = await enviarMedia(env, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+  }
+  fileName = fileName || subida.fileName;
+  const mime = subida.mime;
   await marcarEnviado(env, conversationId);
 
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {

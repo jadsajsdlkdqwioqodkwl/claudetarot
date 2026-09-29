@@ -518,6 +518,8 @@ function editarPasoBienvenida(s) {
   $("#seq-archivo-ayuda").textContent = s.media.length
     ? `Ya tiene ${s.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
+  $("#seq-texto-primero").checked = Boolean(s.texto_primero);
+  pintarMediasPaso(s);
   $("#seq-agregar-btn").textContent = "Guardar cambios";
   $("#seq-cancelar-edicion").style.display = "";
   pintarPruebas($("#seq-pruebas"), "bienvenida", s.id);
@@ -534,6 +536,44 @@ function cancelarEdicionPaso() {
   $("#seq-agregar-btn").textContent = "Agregar paso";
   $("#seq-cancelar-edicion").style.display = "none";
   $("#seq-pruebas").innerHTML = "";
+  $("#seq-medias").innerHTML = "";
+  $("#seq-texto-primero").checked = false;
+}
+
+/**
+ * Las fotos/videos del paso en el orden en que salen, con flechas para
+ * cambiarlo (se guarda al toque, sin volver a subir nada).
+ */
+function pintarMediasPaso(s) {
+  const cont = $("#seq-medias");
+  const ms = s.media || [];
+  if (ms.length < 1) { cont.innerHTML = ""; return; }
+  cont.innerHTML = `<div class="sub">Orden en que se mandan${ms.length > 1 ? " (usa las flechas)" : ""}:</div>
+    <div class="seq-medias-fila">${ms.map((m, i) => `
+      <div class="seq-media" data-id="${m.id}">
+        <b>${i + 1}</b>
+        ${m.media_type === "video" ? `<video src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" muted></video>`
+          : m.media_type === "image" ? `<img src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" alt="" />`
+          : `<div class="seq-media-doc">${icon("doc")}</div>`}
+        <div class="seq-media-flechas">
+          <button type="button" class="seq-media-antes" title="Antes" ${i === 0 ? "disabled" : ""}>◀</button>
+          <button type="button" class="seq-media-despues" title="Después" ${i === ms.length - 1 ? "disabled" : ""}>▶</button>
+        </div>
+      </div>`).join("")}</div>`;
+  cont.querySelectorAll(".seq-media").forEach((el, i) => {
+    const mover = async (j) => {
+      const orden = ms.map((m) => m.id);
+      [orden[i], orden[j]] = [orden[j], orden[i]];
+      try {
+        await pedir("/api/crm/welcome-sequence", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, orden_media: orden }) });
+        s.media = orden.map((id) => ms.find((m) => m.id === id));
+        pintarMediasPaso(s);
+        pintarSecuenciaBienvenida();
+      } catch (err) { alert(err.message); }
+    };
+    el.querySelector(".seq-media-antes").addEventListener("click", () => mover(i - 1));
+    el.querySelector(".seq-media-despues").addEventListener("click", () => mover(i + 1));
+  });
 }
 $("#seq-cancelar-edicion").addEventListener("click", cancelarEdicionPaso);
 
@@ -561,13 +601,13 @@ $("#seq-agregar-btn").addEventListener("click", async () => {
       await pedir("/api/crm/welcome-sequence", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, texto_primero: $("#seq-texto-primero").checked })
       });
     } else {
       await pedir("/api/crm/welcome-sequence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [] })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], texto_primero: $("#seq-texto-primero").checked })
       });
     }
     await pintarSecuenciaBienvenida();
@@ -3940,21 +3980,40 @@ function itemRapidaHtml(q, nota = "") {
  * cuadro. Devuelve true si el toque fue en un botoncito.
  */
 function elegirVersionEnLista(e) {
-  const chip = e.target.closest(".version");
+  const chip = e.target.closest(".version, .version-min");
   const item = chip?.closest(".rapida-item, #panel-rapidas .item");
   if (!chip || !item) return false;
   e.preventDefault();
   e.stopPropagation();
+  if (chip.classList.contains("version-min")) { reiniciarItemRapida(item); return true; }
   const q = (estado.quickReplies || []).find((x) => x.id === Number(chip.dataset.q || item.dataset.id));
   const vs = q && versionesDe(q);
   if (!vs) return true;
   const i = Number(chip.dataset.i);
   item.dataset.version = String(i);
   item.querySelectorAll(".version").forEach((b) => b.classList.toggle("activa", b === chip));
-  const texto = vs[i]?.texto ?? q.body ?? "";
+  // Al elegir una versión se ve su mensaje completo; ▴ lo minimiza y vuelve a la 1.
+  item.classList.add("expandida");
   const vista = item.querySelector(".cuerpo") || item.querySelector(":scope > span");
-  if (vista) vista.textContent = item.classList.contains("item") ? texto : texto.slice(0, 140);
+  if (vista) vista.textContent = vs[i]?.texto ?? q.body ?? "";
+  const fila = item.querySelector(".versiones");
+  if (fila && !fila.querySelector(".version-min")) fila.insertAdjacentHTML("beforeend", `<button type="button" class="version-min" title="Minimizar">▴</button>`);
   return true;
+}
+
+/** Vuelve la vista previa como estaba: sin versión elegida, texto de la 1, recortado. */
+function reiniciarItemRapida(item) {
+  if (!item) return;
+  const q = (estado.quickReplies || []).find((x) => x.id === Number(item.dataset.id));
+  item.classList.remove("expandida");
+  delete item.dataset.version;
+  item.querySelector(".version-min")?.remove();
+  const enPanel = item.classList.contains("item");
+  item.querySelectorAll(".version").forEach((b) => b.classList.toggle("activa", !enPanel && b.dataset.i === "0"));
+  if (!q) return;
+  const texto = versionesDe(q)?.[0]?.texto ?? q.body ?? "";
+  const vista = item.querySelector(".cuerpo") || item.querySelector(":scope > span");
+  if (vista) vista.textContent = enPanel ? texto : texto.slice(0, 140);
 }
 
 /** El texto que corresponde al toque en el mensaje: la versión elegida con 1·2·3, o la 1. */
@@ -3966,7 +4025,9 @@ function textoElegido(e) {
   if (!q) return null;
   const vs = versionesDe(q);
   const i = item.dataset.version;
-  return i !== undefined && vs ? vs[Number(i)]?.texto ?? q.body ?? "" : q.body || "";
+  const texto = i !== undefined && vs ? vs[Number(i)]?.texto ?? q.body ?? "" : vs ? vs[0].texto : q.body || "";
+  reiniciarItemRapida(item); // ya se usó: la vista previa vuelve a como estaba
+  return texto;
 }
 
 /**
@@ -4791,7 +4852,9 @@ function pintarQuickPanel() {
       if (e.target.closest(".borrar") || e.target.closest(".editar") || e.target.closest(".arrastrar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       // Con una versión elegida en sus 1·2·3 va esa; si no, el CRM sortea.
-      if (q) usarQuickReply(q, el.dataset.version !== undefined ? Number(el.dataset.version) : null);
+      const indice = el.dataset.version !== undefined ? Number(el.dataset.version) : null;
+      reiniciarItemRapida(el);
+      if (q) usarQuickReply(q, indice);
     });
   });
   panel.querySelectorAll(".editar").forEach((btn) => {
@@ -4946,7 +5009,7 @@ function pintarVersionesRapida() {
 }
 
 document.addEventListener("click", (e) => {
-  if (e.target.closest("#panel-rapidas .version")) { elegirVersionEnLista(e); return; }
+  if (e.target.closest("#panel-rapidas .version, #panel-rapidas .version-min")) { elegirVersionEnLista(e); return; }
   const b = e.target.closest("#versiones-rapida .version");
   if (!b) return;
   e.preventDefault();

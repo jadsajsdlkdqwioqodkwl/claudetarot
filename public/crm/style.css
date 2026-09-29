@@ -925,3 +925,18 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .modal > .modal-x { position: sticky; top: 0; float: right; margin: -10px -10px 4px 8px; width: 36px; height: 36px; border: 0; border-radius: var(--radio-full); background: var(--fondo); color: var(--texto, #111); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; z-index: 5; }
 .modal > .modal-x:hover { background: #fde8e7; color: var(--peligro); }
 .modal > .modal-x .icono-svg, .modal > .modal-x svg { width: 20px; height: 20px; }
+
+/* Bienvenida: orden de las fotos/videos de un paso */
+.seq-medias { margin: 6px 0; }
+.seq-medias-fila { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.seq-media { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; }
+.seq-media img, .seq-media video, .seq-media-doc { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: #eee; display: flex; align-items: center; justify-content: center; }
+.seq-media-flechas { display: flex; gap: 4px; }
+.seq-media-flechas button { padding: 2px 8px; }
+.seq-texto-primero { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 6px 0; }
+.seq-texto-primero input { width: auto; }
+
+/* Vista previa de una versión elegida con 1·2·3: el mensaje completo; ▴ la minimiza */
+#panel-rapidas .item.expandida .cuerpo { -webkit-line-clamp: unset; display: block; white-space: pre-wrap; color: var(--texto, inherit); }
+.rapida-item.expandida > span { white-space: pre-wrap; }
+.versiones .version-min { border: 0; background: transparent; cursor: pointer; font-size: 14px; padding: 0 6px; color: var(--gris); }
