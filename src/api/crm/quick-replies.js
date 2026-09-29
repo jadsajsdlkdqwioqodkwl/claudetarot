@@ -5,9 +5,8 @@
  *        conserva la media que ya tenía (no hace falta volver a subir fotos/videos solo para cambiar el texto)
  * DELETE /api/crm/quick-replies — borra { id }
  *
- * POST y PATCH aceptan `grupo` (la cadena o tipo: "Lima", "Provincia",
- * "Objeciones", "Confirmación"…) y `orden` (su número dentro del grupo: el
- * mensaje 1, 2, 3 de la cadena). El CRM las muestra agrupadas así.
+ * PATCH { ordenar: [ids] } guarda el orden en que el equipo las arrastró
+ * (sort_order 1, 2, 3…). Las nuevas van al final. (Los grupos ya no se usan.)
  *
  * POST y PATCH aceptan además `followup_pasos`: la secuencia de seguimiento
  * si el cliente no responde, hasta 4 pasos [{ horas, body?, media_key?,
@@ -122,9 +121,10 @@ async function post({ request, env }) {
   const seguimiento = leerSeguimiento(payload);
   const { grupo, orden } = leerGrupo(payload);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden ?? 0)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden)
     .first();
 
   let i = 0;
@@ -149,6 +149,13 @@ async function patch({ request, env, agent }) {
     payload = JSON.parse(await request.text());
   } catch {
     return json({ error: "Solicitud inválida." }, 400);
+  }
+
+  if (Array.isArray(payload?.ordenar)) {
+    const ids = [...new Set(payload.ordenar.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 500);
+    if (!ids.length) return json({ error: "Falta el orden." }, 400);
+    await env.CRM_DB.batch(ids.map((qid, i) => env.CRM_DB.prepare("UPDATE quick_replies SET sort_order = ? WHERE id = ?").bind(i + 1, qid)));
+    return json({ ok: true });
   }
 
   const id = Number(payload?.id);
@@ -177,7 +184,7 @@ async function patch({ request, env, agent }) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
   const { grupo, orden } = leerGrupo(payload);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, grupo = ?, sort_order = COALESCE(?, sort_order) WHERE id = ?")
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden, id)
     .run();
 

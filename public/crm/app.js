@@ -3592,17 +3592,15 @@ function configurarEditorMedia() {
     if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
     const pintar = () => {
       const lista = buscarRapidas(estado.quickReplies || [], panel.querySelector("input").value).filter((q) => q.body).slice(0, 30);
-      panel.querySelector(".em-rapidas-lista").innerHTML = lista.map((q) => `
-        <button type="button" data-id="${q.id}"><b>${escapar(q.title)}</b><span>${escapar(q.body.slice(0, 120))}</span></button>`).join("") || `<p>Sin resultados.</p>`;
+      panel.querySelector(".em-rapidas-lista").innerHTML = lista.map((q) => itemRapidaHtml(q)).join("") || `<p>Sin resultados.</p>`;
     };
     pintar();
     panel.querySelector("input").addEventListener("input", pintar);
     panel.querySelector("input").focus();
     panel.querySelector(".em-rapidas-lista").addEventListener("click", (e) => {
-      const b = e.target.closest("button[data-id]");
-      const q = b && (estado.quickReplies || []).find((x) => x.id === Number(b.dataset.id));
-      if (!q) return;
-      if (!caption.value.trim()) { caption.value = q.body; guardarCaption(); autoAltoCaption(); } else meterEnCaption(" " + q.body);
+      const texto = textoElegido(e);
+      if (texto === null) return;
+      if (!caption.value.trim()) { caption.value = texto; guardarCaption(); autoAltoCaption(); } else meterEnCaption(" " + texto);
       cerrarPanelEditor();
       caption.focus();
     });
@@ -3877,7 +3875,34 @@ function agregarEmojisA(el) {
   grid.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => insertarEnCursor(el, b.textContent)));
 }
 
-["#seg-texto", "#leads-texto", "#seq-texto"].forEach((sel) => agregarEmojisA($(sel)));
+agregarEmojisA($("#leads-texto"));
+["#seg-texto", "#seq-texto"].forEach((sel) => agregarRapidasA($(sel)));
+
+/**
+ * Una respuesta rápida en los buscadores de los editores (Sugerencias, pasos
+ * de seguimiento, bienvenida, comentario de foto): tocarla pone la versión 1;
+ * sus botones 1·2·3 (si tiene versiones en prueba) ponen esa versión.
+ */
+function itemRapidaHtml(q, nota = "") {
+  const vs = versionesDe(q);
+  return `
+    <div role="button" tabindex="0" class="rapida-item" data-id="${q.id}">
+      <b>${escapar(q.title)}</b>${nota}
+      <span>${escapar((q.body || "").slice(0, 140))}</span>
+      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}<span class="sub">versiones</span></div>` : ""}
+    </div>`;
+}
+
+/** El texto que corresponde al toque (la versión elegida, o el de siempre). */
+function textoElegido(e) {
+  const item = e.target.closest(".rapida-item");
+  if (!item) return null;
+  const q = (estado.quickReplies || []).find((x) => x.id === Number(item.dataset.id));
+  if (!q) return null;
+  const chip = e.target.closest(".version");
+  const vs = versionesDe(q);
+  return chip && vs ? vs[Number(chip.dataset.i)]?.texto ?? q.body ?? "" : q.body || "";
+}
 
 /**
  * Botón "Respuestas rápidas" junto a Emojis en los textos de Sugerencias y de
@@ -3906,11 +3931,8 @@ function agregarRapidasA(el) {
   barra.appendChild(caja);
   const pintar = () => {
     const lista = buscarRapidas(estado.quickReplies || [], caja.querySelector("input").value).slice(0, 30);
-    caja.querySelector(".rapidas-lista").innerHTML = lista.map((q) => `
-      <button type="button" class="rapida-item" data-id="${q.id}">
-        <b>${escapar(q.title)}</b>${q.media?.length ? ` <span class="sub">(+${q.media.length} foto/video: mándalo desde el chat)</span>` : ""}
-        <span>${escapar((q.body || "").slice(0, 140))}</span>
-      </button>`).join("") || `<p class="sub">Sin resultados.</p>`;
+    caja.querySelector(".rapidas-lista").innerHTML = lista.map((q) =>
+      itemRapidaHtml(q, q.media?.length ? ` <span class="sub">(+${q.media.length} foto/video: mándalo desde el chat)</span>` : "")).join("") || `<p class="sub">Sin resultados.</p>`;
   };
   boton.addEventListener("click", async () => {
     const abrir = !barra.classList.contains("rapidas-abierta");
@@ -3923,13 +3945,12 @@ function agregarRapidasA(el) {
   caja.querySelector("input").addEventListener("input", pintar);
   caja.addEventListener("mousedown", (e) => { if (e.target.closest(".rapida-item")) e.preventDefault(); });
   caja.addEventListener("click", (e) => {
-    const item = e.target.closest(".rapida-item");
-    if (!item) return;
-    const q = (estado.quickReplies || []).find((x) => x.id === Number(item.dataset.id));
-    if (!q) return;
-    if (!el.value.trim()) el.value = q.body || "";
-    else if (el.dataset.tocado) insertarEnCursor(el, q.body || "");
-    else { el.value = el.value.replace(/\s*$/, "") + "\n\n" + (q.body || ""); }
+    const texto = textoElegido(e);
+    if (texto === null) return;
+    if (!el.value.trim()) el.value = texto;
+    else if (el.dataset.tocado) insertarEnCursor(el, texto);
+    else { el.value = el.value.replace(/\s*$/, "") + "\n\n" + texto; }
+    el.dispatchEvent(new Event("input", { bubbles: true }));
     barra.classList.remove("rapidas-abierta");
     el.focus();
   });
@@ -4002,15 +4023,17 @@ function pintarSugerencias(lista) {
       : `<span class="sug-tipo">${icon(esEnvio ? "bag" : "chat")} ${escapar(s.nombre || "Cliente")}</span><span class="sub">+${escapar(s.wa_id || "")}${s.assigned_agent ? ` · ${escapar(s.assigned_agent)}` : ""}</span>${esEnvio ? `<span class="sug-etiqueta">Envío</span>` : ""}`;
     const destinos = esRapida && s.destinatarios.length
       ? `<div class="sug-destinos"><div class="sub">Mandársela a:</div>${s.destinatarios.map((d) => `
-          <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}</label>`).join("")}</div>`
+          <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}
+            <span class="reloj" data-cierra="${cierreVentana(d.last_inbound_at) || ""}"></span></label>`).join("")}</div>`
       : "";
     const conChat = !esRapida && s.conversation_id;
     const pasos = esRapida ? "" : `
         <div class="sug-pasos">${(s.pasos || []).map(pasoHtml).join("")}</div>
         ${esEnvio ? "" : `<button type="button" class="sug-agregar-paso">${icon("plus")} Paso si no responde</button>`}`;
     return `
-      <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+      <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}" data-cierra="${conChat ? cierreVentana(s.last_inbound_at) || "" : ""}">
         <div class="sug-cabecera">${cabecera}</div>
+        ${conChat ? `<div class="reloj reloj-tarjeta"></div>` : ""}
         ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
         ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
         ${!esRapida && (s.pasos || []).length ? `<div class="sub sug-etapa">Mensaje 1</div>` : ""}
@@ -4041,14 +4064,22 @@ function pintarSugerencias(lista) {
       const lista = card.querySelector(".sug-pasos");
       if (lista.children.length >= 3) return alert("Máximo 3 pasos extra.");
       lista.insertAdjacentHTML("beforeend", pasoHtml({ horas: 4, texto: "" }));
+      pintarRelojes();
       agregarRapidasA(lista.lastElementChild.querySelector("textarea"));
       card.querySelector(".sug-etapa") || card.querySelector(".sug-texto").insertAdjacentHTML("beforebegin", `<div class="sub sug-etapa">Mensaje 1</div>`);
       lista.lastElementChild.querySelector("textarea").focus();
     });
     card.querySelector(".sug-pasos")?.addEventListener("click", (e) => {
-      if (e.target.closest(".sug-quitar-paso")) e.target.closest(".sug-paso").remove();
+      if (e.target.closest(".sug-quitar-paso")) { e.target.closest(".sug-paso").remove(); pintarRelojes(); }
     });
+    card.querySelector(".sug-pasos")?.addEventListener("input", (e) => { if (e.target.closest(".sug-paso-horas")) pintarRelojes(); });
   });
+  pintarRelojes();
+  clearInterval(estado.relojSugerencias);
+  estado.relojSugerencias = setInterval(() => {
+    if (!document.querySelector("#lista-sugerencias .reloj")) return clearInterval(estado.relojSugerencias);
+    pintarRelojes();
+  }, 30000);
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
     const id = Number(card.dataset.id);
     const accion = async (tipo, boton, extra = {}) => {
@@ -4189,10 +4220,60 @@ function pasoHtml(p) {
         <span class="sub">Si no responde, a las</span>
         <input type="number" class="sug-paso-horas" min="0.25" max="20" step="0.5" value="${Number(p.horas) || 4}" />
         <span class="sub">h</span>
+        <span class="reloj reloj-paso"></span>
         <button type="button" class="sug-icono sug-quitar-paso" title="Quitar paso">${icon("trash")}</button>
       </div>
       <textarea rows="3">${escapar(p.texto || "")}</textarea>
     </div>`;
+}
+
+/** Cuándo se cierra la ventana de 24 h (ms), o null si nunca escribió. */
+function cierreVentana(ultimoEntrante) {
+  if (!ultimoEntrante) return null;
+  const t = new Date(String(ultimoEntrante).replace(" ", "T") + (/Z|[+-]\d\d:?\d\d$/.test(ultimoEntrante) ? "" : "Z")).getTime();
+  return Number.isNaN(t) ? null : t + 24 * 3600 * 1000;
+}
+
+function duracion(ms) {
+  const min = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(min / 60);
+  return h ? `${h} h ${String(min % 60).padStart(2, "0")} min` : `${min} min`;
+}
+
+/**
+ * Cronómetro de las recomendaciones: cuánto queda de la ventana de 24 h para
+ * mandar el mensaje, y si cada paso de seguimiento (a sus horas, contando
+ * desde ahora) alcanza a salir. En rojo con menos de 1 h.
+ */
+function pintarRelojes() {
+  const ahora = Date.now();
+  const hora = (t) => new Date(t).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+  document.querySelectorAll("#lista-sugerencias .tarjeta-sugerencia").forEach((card) => {
+    const cierra = Number(card.dataset.cierra) || 0;
+    const r = card.querySelector(".reloj-tarjeta");
+    if (r) {
+      const queda = cierra - ahora;
+      r.className = `reloj reloj-tarjeta${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
+      r.textContent = !cierra ? "⏱ Sin mensajes del cliente: fuera de ventana"
+        : queda <= 0 ? "⏱ Ventana cerrada: ya no se le puede escribir gratis"
+        : `⏱ Quedan ${duracion(queda)} para mandarlo (hasta las ${hora(cierra)})`;
+    }
+    let base = ahora;
+    card.querySelectorAll(".sug-paso").forEach((p) => {
+      base += (Number(p.querySelector(".sug-paso-horas").value) || 0) * 3600000;
+      const rp = p.querySelector(".reloj-paso");
+      if (!rp || !cierra) return;
+      const entra = base <= cierra;
+      rp.className = `reloj reloj-paso${entra ? "" : " cerrada"}`;
+      rp.textContent = entra ? `sale ${hora(base)} · sobra ${duracion(cierra - base)}` : `no alcanza (cierra ${hora(cierra)})`;
+    });
+    card.querySelectorAll(".sug-destinos .reloj").forEach((rd) => {
+      const c = Number(rd.dataset.cierra) || 0;
+      const q = c - ahora;
+      rd.className = `reloj${!c || q <= 0 ? " cerrada" : q < 3600000 ? " urgente" : ""}`;
+      rd.textContent = !c || q <= 0 ? "· cerrada" : `· ${duracion(q)}`;
+    });
+  });
 }
 
 /** Los últimos mensajes del chat dentro de la tarjeta, para editar viendo la conversación. */
@@ -4440,20 +4521,13 @@ function buscarRapidas(lista, consulta) {
   const tokens = normalizarBusqueda(consulta).split(" ").filter(Boolean);
   if (!tokens.length) return lista;
   const puntuadas = lista.map((q) => {
-    const titulo = normalizarBusqueda(`${q.title} ${q.grupo || ""}`).split(" ");
+    const titulo = normalizarBusqueda(q.title).split(" ");
     const cuerpo = normalizarBusqueda(q.body).split(" ");
     const porToken = tokens.map((t) => Math.max(puntajeToken(t, titulo) * 2, puntajeToken(t, cuerpo)));
     return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) };
   }).filter((x) => x.puntaje > 0);
   const conTodas = puntuadas.filter((x) => x.todas);
   return (conTodas.length ? conTodas : puntuadas).sort((a, b) => b.puntaje - a.puntaje).map((x) => x.q);
-}
-
-/** Por grupo (los sin grupo al final) y dentro de cada grupo por su número. */
-function ordenarPorGrupo(lista) {
-  const grupos = [...new Set(lista.map((q) => q.grupo).filter(Boolean))];
-  const pos = (g) => (g ? grupos.indexOf(g) : grupos.length);
-  return [...lista].sort((a, b) => pos(a.grupo) - pos(b.grupo) || (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 }
 
 async function cargarQuickReplies() {
@@ -4481,23 +4555,20 @@ function pintarQuickPanel() {
   if (!panel) return;
 
   const buscando = Boolean(estado.filtroRapidas.trim());
-  // Sin búsqueda: agrupadas por su cadena o tipo (Lima 1, 2, 3 · Objeciones…),
-  // en su orden. Buscando: por relevancia, con el grupo al lado del título.
-  const lista = buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : ordenarPorGrupo(estado.quickReplies);
-  let grupoPrevio;
+  // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
+  const lista = buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies;
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
     ${lista.map((q) => {
       const foto = q.media[0];
-      const cabecera = !buscando && q.grupo !== grupoPrevio && (estado.quickReplies.some((x) => x.grupo)) ? `<div class="grupo-rapidas">${escapar(q.grupo || "Otras")}</div>` : "";
-      grupoPrevio = q.grupo;
-      return `${cabecera}
+      return `
       <div class="item" data-id="${q.id}">
+        ${buscando ? "" : `<span class="arrastrar" title="Arrastra para ordenar">⋮⋮</span>`}
         ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${buscando && q.grupo ? `<span class="grupo-chip">${escapar(q.grupo)}</span>` : ""}</div>
+          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -4517,9 +4588,11 @@ function pintarQuickPanel() {
     $("#rapidas-buscar").setSelectionRange(v.length, v.length);
   });
 
+  if (!buscando) activarArrastreRapidas(panel);
+
   panel.querySelectorAll(".item[data-id]").forEach((el) => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".borrar") || e.target.closest(".editar")) return;
+      if (e.target.closest(".borrar") || e.target.closest(".editar") || e.target.closest(".arrastrar")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       if (q) usarQuickReply(q);
     });
@@ -4548,6 +4621,54 @@ function pintarQuickPanel() {
   $("#nueva-rapida")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
     abrirModalRapidaNueva();
+  });
+}
+
+/**
+ * Ordenar arrastrando del ⋮⋮ (mouse y dedo). Al soltar se guarda el orden de
+ * todas para todo el equipo (PATCH { ordenar: [ids] }).
+ */
+function activarArrastreRapidas(panel) {
+  panel.querySelectorAll(".arrastrar").forEach((asa) => {
+    asa.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const item = asa.closest(".item");
+      const antes = [...panel.querySelectorAll(".item[data-id]")].map((x) => x.dataset.id).join(",");
+      item.classList.add("arrastrando");
+      // Escucha en window: al mover el item en la lista el navegador suelta la
+      // captura del puntero, y el ⋮⋮ dejaría de recibir los movimientos.
+      const mover = (ev) => {
+        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]");
+        if (bajo && bajo !== item) {
+          const r = bajo.getBoundingClientRect();
+          bajo[ev.clientY < r.top + r.height / 2 ? "before" : "after"](item);
+        }
+        // Cerca de los bordes, la lista se desplaza sola.
+        const p = panel.getBoundingClientRect();
+        if (ev.clientY < p.top + 40) panel.scrollTop -= 12;
+        else if (ev.clientY > p.bottom - 60) panel.scrollTop += 12;
+      };
+      const soltar = async () => {
+        window.removeEventListener("pointermove", mover);
+        window.removeEventListener("pointerup", soltar);
+        window.removeEventListener("pointercancel", soltar);
+        item.classList.remove("arrastrando");
+        const ids = [...panel.querySelectorAll(".item[data-id]")].map((x) => Number(x.dataset.id));
+        if (ids.join(",") === antes) return;
+        const porId = new Map(estado.quickReplies.map((q) => [q.id, q]));
+        estado.quickReplies = ids.map((id) => porId.get(id)).filter(Boolean);
+        try {
+          await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ordenar: ids }) });
+        } catch (err) {
+          alert(err.message);
+          await cargarQuickReplies().catch(() => {});
+          pintarQuickPanel();
+        }
+      };
+      window.addEventListener("pointermove", mover);
+      window.addEventListener("pointerup", soltar);
+      window.addEventListener("pointercancel", soltar);
+    });
   });
 }
 
@@ -4640,7 +4761,6 @@ function abrirModalRapidaNueva() {
   $("#rapida-titulo").value = "";
   $("#rapida-texto").value = "";
   $("#rapida-archivo").value = "";
-  llenarGrupoRapida(null);
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarSeguimientoRapida(null);
   $("#rapida-pruebas").innerHTML = "";
@@ -4741,20 +4861,11 @@ $("#rapida-seg-global").addEventListener("change", async (e) => {
   }
 });
 
-/** Grupo y número en el modal, con los grupos que ya existen para elegir. */
-function llenarGrupoRapida(q) {
-  const grupos = [...new Set((estado.quickReplies || []).map((x) => x.grupo).filter(Boolean))];
-  $("#grupos-rapidas").innerHTML = grupos.map((g) => `<option value="${escapar(g)}"></option>`).join("");
-  $("#rapida-grupo").value = q?.grupo || "";
-  $("#rapida-orden").value = q ? q.sort_order || "" : "";
-}
-
 function abrirModalRapidaEdicion(q) {
   estado.editandoRapidaId = q.id;
   $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
   $("#rapida-titulo").value = q.title;
   $("#rapida-texto").value = q.body || "";
-  llenarGrupoRapida(q);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = q.media.length
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
@@ -4797,13 +4908,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, grupo: $("#rapida-grupo").value, orden: $("#rapida-orden").value === "" ? undefined : Number($("#rapida-orden").value) })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, grupo: $("#rapida-grupo").value, orden: $("#rapida-orden").value === "" ? undefined : Number($("#rapida-orden").value) })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos })
       });
     }
     await cargarQuickReplies();
@@ -4855,12 +4966,9 @@ async function pintarPruebas(cont, tipo, refId) {
   // Qué juntaría la versión "en un solo mensaje".
   let combinado = null;
   if (tipo === "rapida") {
+    // Parte de este texto; los que siguen se suman con ⚡ Respuestas rápidas.
     const q = (estado.quickReplies || []).find((x) => x.id === refId);
-    const cadena = q?.grupo ? ordenarPorGrupo(estado.quickReplies.filter((x) => x.grupo === q.grupo && x.body)) : [];
-    const desde = cadena.findIndex((x) => x.id === refId);
-    if (desde >= 0 && cadena.length - desde > 1) {
-      combinado = { texto: cadena.slice(desde).map((x) => x.body.trim()).join("\n\n"), nota: `Junta ${cadena.length - desde} mensajes del grupo ${q.grupo}.` };
-    }
+    if (q?.body) combinado = { texto: q.body.trim(), nota: "Suma los mensajes que van después con ⚡ Respuestas rápidas y junta todo en uno." };
   } else if (pasos[0]?.id === refId && pasos.length > 1) {
     combinado = { texto: pasos.map((p) => (p.body || "").trim()).filter(Boolean).join("\n\n"), nota: "Reemplaza toda la bienvenida por un solo mensaje.", media: pasos.flatMap((p) => p.media) };
   }
@@ -4912,6 +5020,7 @@ async function pintarPruebas(cont, tipo, refId) {
       ${medias.map((m, k) => `<label class="pv-media"><input type="radio" name="pv-media-${refId}" value="${k}" />
         ${m.media_type === "video" ? `<video src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" muted></video>` : `<img src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" alt="" />`}</label>`).join("")}` : "";
     caja._medias = medias || [];
+    agregarRapidasA(caja.querySelector("textarea"));
     caja.querySelector("textarea").focus();
   };
   cont.querySelector(".pv-agregar").addEventListener("click", () => {
@@ -5160,14 +5269,38 @@ $("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuenc
 $("#seg-rapida").addEventListener("change", (e) => {
   const q = estado.quickReplies.find((x) => String(x.id) === e.target.value);
   estado.segRapidaMedia = q?.media?.length ? q.media : null;
-  if (q) {
-    const txt = $("#seg-texto");
-    txt.value = q.body || "";
-    txt.focus();
-    txt.setSelectionRange(txt.value.length, txt.value.length);
-  }
+  if (q) ponerVersionSeg(q, 0);
+  pintarVersionesSeg(q);
   pintarPreviewSegRapida();
 });
+
+function ponerVersionSeg(q, i) {
+  const txt = $("#seg-texto");
+  txt.value = versionesDe(q)?.[i]?.texto ?? q.body ?? "";
+  txt.focus();
+  txt.setSelectionRange(txt.value.length, txt.value.length);
+}
+
+/** Botones 1·2·3 debajo del selector de respuesta rápida del seguimiento. */
+function pintarVersionesSeg(q, activa = 0) {
+  let cont = $("#seg-versiones");
+  if (!cont) {
+    cont = document.createElement("div");
+    cont.id = "seg-versiones";
+    cont.className = "versiones-rapida";
+    $("#seg-rapida").after(cont);
+    cont.addEventListener("click", (e) => {
+      const b = e.target.closest(".version");
+      const q2 = b && estado.quickReplies.find((x) => x.id === Number(b.dataset.q));
+      if (!q2) return;
+      ponerVersionSeg(q2, Number(b.dataset.i));
+      pintarVersionesSeg(q2, Number(b.dataset.i));
+    });
+  }
+  const html = q ? botonesVersiones(q, activa) : "";
+  cont.style.display = html ? "flex" : "none";
+  cont.innerHTML = html ? `<span class="sub">${escapar(q.title)} · versión</span>${html}` : "";
+}
 
 function pintarPreviewSegRapida() {
   const cont = $("#seg-rapida-preview");
@@ -5195,6 +5328,7 @@ function limpiarFormSeguimiento() {
   $("#seg-texto").value = "";
   $("#seg-archivo").value = "";
   $("#seg-rapida").value = "";
+  pintarVersionesSeg(null);
   $("#seg-siempre").checked = false;
   ponerCatalogoEnSelect($("#seg-catalogo"), "");
   pintarPreviewSegRapida();

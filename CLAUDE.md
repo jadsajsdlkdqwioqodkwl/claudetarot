@@ -3,12 +3,17 @@
 ## Si vas a proponer textos para clientes (asesor, director CRO, semanal)
 
 1. Lee `docs/negocio.md` (reglas fijas del negocio) y corre
-   `scripts/asesor/contexto.py`: respuestas rápidas vigentes por grupo,
+   `scripts/asesor/contexto.py`: respuestas rápidas vigentes (en su orden),
    bienvenida, pruebas en curso, **cómo editaron las vendedoras los textos**,
    frases que acompañan las ventas, memoria y qué pasó con lo que propusiste.
 2. Usa la skill **voz-tarot-store** para todo texto que vea un cliente. Las
    demás skills de `.claude/skills/` (ver su README) son criterio de análisis:
    objeciones, cierre, seguimiento, pruebas A/B, CRO, psicología, oferta.
+   Seguimientos y envíos a varios chats: cada mensaje aporta algo nuevo (no
+   "¿sigue interesad@?") y va solo a los chats de su destino (Lima o
+   provincia); ver reglas 10–12 de voz-tarot-store.
+   Opciones 2 y 3: para las respuestas rápidas de "Dónde proponer opciones
+   2 y 3" en contexto.py, propón `variantes` (no respuestas rápidas nuevas).
 3. **Nunca mandas mensajes a clientes.** Todo va a ✨ Sugerencias vía
    `scripts/asesor/enviar.py`; una persona lo aprueba. No llamas a ninguna
    API de IA.

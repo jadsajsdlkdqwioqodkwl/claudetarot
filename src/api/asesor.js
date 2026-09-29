@@ -31,6 +31,7 @@ import { getValues } from "../lib/google-sheets.js";
 import { hojaVentas } from "../lib/ventas-hoja.js";
 import { RANGO_DATOS_VENTA, indiceVenta } from "../lib/ventas.js";
 import { buscarFila } from "./asesor-ventas.js";
+import { destinosDeChats, textoSirvePara } from "../lib/crm-destino.js";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
@@ -261,13 +262,25 @@ export async function onRequestPostSugerencias({ request, env }) {
     if (s.tipo === "respuesta_rapida") {
       const titulo = String(s.titulo || "").trim().slice(0, 80);
       if (!titulo) continue;
-      const destinatarios = [];
+      // La misma propuesta dos veces (dos corridas seguidas) no se duplica.
+      const igual = await env.CRM_DB.prepare(
+        "SELECT 1 FROM asesor_sugerencias WHERE tipo = 'respuesta_rapida' AND estado = 'pendiente' AND (titulo = ? OR texto = ?)"
+      ).bind(titulo, texto).first();
+      if (igual) continue;
+      const candidatos = [];
       for (const d of (Array.isArray(s.destinatarios) ? s.destinatarios : []).slice(0, 50)) {
         const wa = String(d?.whatsapp || "").replace(/\D/g, "");
         const conv = await convDe(env, wa);
-        if (conv) destinatarios.push({ conversation_id: conv.id, wa_id: wa, nombre: String(d.nombre || "").slice(0, 80) });
+        if (conv) candidatos.push({ conversation_id: conv.id, wa_id: wa, nombre: String(d.nombre || "").slice(0, 80) });
         else if (wa) res.sin_chat.push(wa);
       }
+      // Un mensaje de provincia (adelanto, Shalom) no va a chats de Lima, ni al revés.
+      const destinos = await destinosDeChats(env.CRM_DB, candidatos.map((d) => d.conversation_id));
+      const destinatarios = candidatos.filter((d) => {
+        const sirve = textoSirvePara(texto, destinos[d.conversation_id]);
+        if (!sirve) (res.otro_destino ||= []).push(d.wa_id);
+        return sirve;
+      });
       await env.CRM_DB.prepare(
         "INSERT INTO asesor_sugerencias (tipo, titulo, texto, texto_original, motivo, destinatarios, origen) VALUES ('respuesta_rapida', ?, ?, ?, ?, ?, ?)"
       )
@@ -285,6 +298,13 @@ export async function onRequestPostSugerencias({ request, env }) {
     if (!conv) {
       res.sin_chat.push(wa);
       continue;
+    }
+    if (tipo === "seguimiento") {
+      const destino = (await destinosDeChats(env.CRM_DB, [conv.id]))[conv.id];
+      if (!textoSirvePara(texto, destino)) {
+        (res.otro_destino ||= []).push(wa);
+        continue;
+      }
     }
     const previa = await env.CRM_DB.prepare(
       "SELECT id FROM asesor_sugerencias WHERE conversation_id = ? AND tipo = ? AND estado = 'pendiente'"
@@ -323,7 +343,7 @@ export async function onRequestGetContexto({ request, env }) {
     env.CRM_DB.prepare(
       `SELECT q.id, q.title, q.body, q.grupo, q.sort_order,
          (SELECT group_concat(media_type) FROM quick_reply_media m WHERE m.quick_reply_id = q.id) AS media
-       FROM quick_replies q ORDER BY COALESCE(q.grupo, 'zzz'), q.sort_order, q.id`
+       FROM quick_replies q ORDER BY q.sort_order, q.id`
     ).all(),
     env.CRM_DB.prepare(
       "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
@@ -373,5 +393,13 @@ export async function pruebasDeMensajes(env) {
      ORDER BY u.created_at DESC LIMIT 40`
   ).all();
   const frases = await frasesQueConvierten(env.CRM_DB, 30).catch(() => null);
-  return { en_curso: { rapida: rapidas, bienvenida }, uso_por_mensaje: uso, ediciones, frases };
+  // Dónde conviene probar una opción 2 y 3: las respuestas rápidas más usadas
+  // sin prueba en curso, primero las que menos hacen avanzar el chat.
+  const pct = (u) => (u.usos ? u.avanzaron / u.usos : 0);
+  const candidatas = uso
+    .filter((u) => u.tipo === "rapida" && u.usos >= 10 && !rapidas[u.ref_id])
+    .map((u) => ({ ref_tipo: "rapida", ref_id: u.ref_id, usos: u.usos, avanza_pct: Math.round(100 * pct(u)), editadas: u.editadas || 0 }))
+    .sort((a, b) => a.avanza_pct - b.avanza_pct || b.usos - a.usos)
+    .slice(0, 6);
+  return { en_curso: { rapida: rapidas, bienvenida }, uso_por_mensaje: uso, ediciones, frases, candidatas_a_opciones: candidatas };
 }

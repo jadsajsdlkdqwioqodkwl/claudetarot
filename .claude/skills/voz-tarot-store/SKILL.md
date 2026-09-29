@@ -46,6 +46,30 @@ las respuestas rápidas vigentes y **cómo editaron las vendedoras los textos**
    tildes ("envio", "codigo") son parte de la voz; no hace falta copiarlos,
    pero tampoco pulir el texto hasta que suene a folleto.
 
+## Seguimientos y envíos a varios chats
+
+10. **Cada seguimiento aporta algo nuevo**, nunca un "¿sigue interesad@?" ni
+    repetir la pregunta del mensaje anterior. Algo que el cliente aún no sabe
+    del kit o que lo acerca a decidir, uno por mensaje:
+    - que cada carta trae su significado impreso y el manual enseña la primera
+      tirada paso a paso (puede leer desde el primer día, sin saber nada);
+    - que trae tapete y collar amuleto de regalo;
+    - Lima: paga al recibir, el motorizado llama antes y llega de 12 a 5 pm;
+    - provincia: el adelanto de S/20 cubre el envío y reserva el kit, el resto
+      al recoger en su agencia Shalom u Olva;
+    - una foto o video del kit (propónlo como `media` si hay uno en contexto);
+    - como último paso de una secuencia a quien ya se enfrió después de que le
+      pidieron el cierre: S/79 o collar adicional (no los dos, ver negocio.md).
+11. **Segmenta antes de juntar destinatarios.** Un mensaje que habla de
+    adelanto, Shalom, Olva o agencia es solo para chats de provincia; uno de
+    ubicación, motorizado o "al recibir" solo para Lima. Si no se sabe el
+    destino, el mensaje no puede depender de él. El Worker igual saca de la
+    lista a quien sea del otro destino, pero propón bien desde el principio.
+12. **Rescate de quien no dijo destino**: no "¿Para dónde lo quiere?" pelado.
+    Dale una razón para contestar: "Le cuento que el envío es gratis a todo el
+    Perú y en Lima paga recién al recibir ☺️ ¿Para qué distrito o ciudad
+    sería?".
+
 ## Antes de proponer, revisa
 
 - ¿Lo mandaría Danitza, Priscila o Moi tal cual, sin cambiarle nada?

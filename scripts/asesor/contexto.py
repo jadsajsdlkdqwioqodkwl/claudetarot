@@ -30,14 +30,10 @@ def main():
         sys.exit(f"El Worker rechazó la consulta ({err.code}): {err.read().decode()[:300]}")
 
     partes = [open(os.path.join(RAIZ, "docs", "negocio.md")).read().strip(), "",
-              "## Respuestas rápidas vigentes (texto exacto)"]
-    grupo_actual = object()
+              "## Respuestas rápidas vigentes (texto exacto, en el orden en que el equipo las acomodó)"]
     for q in datos.get("respuestas_rapidas", []):
-        if q.get("grupo") != grupo_actual:
-            grupo_actual = q.get("grupo")
-            partes += ["", f"### Grupo: {grupo_actual or '(sin grupo)'}"]
         media = f" · con {q['media']}" if q.get("media") else ""
-        partes += ["", f"#### {q['title']} (rapida #{q['id']}, n.º {q.get('sort_order') or 0} del grupo{media})", (q.get("body") or "(solo foto/video)").strip()]
+        partes += ["", f"#### {q['title']} (rapida #{q['id']}, n.º {q.get('sort_order') or 0} en la lista{media})", (q.get("body") or "(solo foto/video)").strip()]
     bienv = datos.get("bienvenida", [])
     if bienv:
         partes += ["", "## Bienvenida automática (a quien llega de un anuncio), en orden — ids para proponer variantes"]
@@ -77,6 +73,13 @@ def main():
             for e in ed[:25]:
                 nombre = titulos.get((e["tipo"], e["ref_id"])) or f"{e['tipo']} #{e['ref_id']}"
                 partes.append(f"- {nombre} · {e.get('agente') or '?'} · {'avanzó' if e.get('avanzo') else 'no avanzó'}: {e['texto_enviado'][:300]}")
+        cand = pr.get("candidatas_a_opciones") or []
+        if cand:
+            partes += ["", "### Dónde proponer opciones 2 y 3 (variantes) — las más usadas sin prueba, primero las que menos avanzan",
+                       "Propón 1 o 2 versiones para las primeras (en `variantes` de salida.json), basadas en las ediciones de las vendedoras y en las frases que más cierran."]
+            for c in cand:
+                nombre = titulos.get(("rapida", c["ref_id"])) or f"rapida #{c['ref_id']}"
+                partes.append(f"- {nombre} (rapida #{c['ref_id']}): {c['usos']} usos, {c['avanza_pct']}% avanzó, {c['editadas']} editadas")
         fr = pr.get("frases") or {}
         if fr.get("mejores"):
             partes += ["", f"### Frases del equipo y cierre (30 días, antes de pedir el cierre; promedio {fr['promedio']}% en {fr['chats']} chats)",

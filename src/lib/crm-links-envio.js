@@ -33,7 +33,8 @@ const MAX_POR_PASADA = 40;
 const CERRADOS = new Set(["Pagado", "Cancelado"]);
 
 export const TEXTO_LINK_POR_DEFECTO =
-  "Hola estimad@ ☺️ le comparto el seguimiento de su pedido, aquí le va a aparecer su boleta y cómo recogerlo 👉 {link} ✨";
+  "Hola estimad@ ☺️ su Kit Tarot ya está en camino 🚚 En este link va a ver su boleta y en qué va su envío 👉 {link}\n\n" +
+  "Cuando le llegue, empiece por el manual: le enseña paso a paso a hacer su primera tirada, y cada carta ya trae su significado impreso, así que puede leer desde el primer día ✨";
 
 /**
  * La respuesta rápida que da el texto. La crea la primera vez; si alguien la
@@ -46,7 +47,7 @@ export async function rapidaDelLink(db) {
     return q?.body ? q : null;
   }
   const creada = await db.prepare(
-    "INSERT INTO quick_replies (title, body, grupo, sort_order) VALUES ('Link de envío (sale solo)', ?, 'Automáticos', 1) RETURNING id, body"
+    "INSERT INTO quick_replies (title, body, grupo, sort_order) VALUES ('Link de envío (sale solo)', ?, 'Automáticos', (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)) RETURNING id, body"
   ).bind(TEXTO_LINK_POR_DEFECTO).first();
   await db.prepare("INSERT INTO crm_settings (key, value) VALUES ('rapida_link_envio_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
     .bind(String(creada.id)).run();

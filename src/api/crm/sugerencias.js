@@ -42,6 +42,7 @@ import { normalizarPasos } from "../asesor.js";
 import { cerrarPrueba } from "../../lib/crm-variantes.js";
 import { manejaShalom } from "../../lib/ventas.js";
 import { saldoPagado } from "./shalom.js";
+import { destinosDeChats, textoSirvePara } from "../../lib/crm-destino.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -86,10 +87,23 @@ async function get({ request, env, agent }) {
     s.ref_titulo = ref ? `${s.ref_tipo === "bienvenida" ? "Bienvenida · " : ""}${ref.title}` : "(ya no existe)";
     s.ref_texto = ref?.body || "";
   }
-  return json({
-    pendientes: results.length,
-    sugerencias: results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos) }))
-  });
+  // Para el cronómetro: cuándo escribió por última vez cada destinatario de
+  // una respuesta rápida (una consulta por cada 90 chats, tope de parámetros de D1).
+  const lista = results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos) }));
+  const ids = [...new Set(lista.flatMap((s) => (Array.isArray(s.destinatarios) ? s.destinatarios : []).map((d) => Number(d.conversation_id)).filter(Boolean)))];
+  const ultimo = {};
+  for (let i = 0; i < ids.length && i < 450; i += 90) {
+    const lote = ids.slice(i, i + 90);
+    const { results: filas } = await env.CRM_DB.prepare(
+      `SELECT id, last_inbound_at FROM conversations WHERE id IN (${lote.map(() => "?").join(",")})`
+    ).bind(...lote).all();
+    for (const f of filas) ultimo[f.id] = f.last_inbound_at;
+  }
+  for (const s of lista) {
+    if (!Array.isArray(s.destinatarios)) continue;
+    for (const d of s.destinatarios) d.last_inbound_at = ultimo[Number(d.conversation_id)] || null;
+  }
+  return json({ pendientes: results.length, sugerencias: lista });
 }
 
 async function programar(env, conversationId, texto, quien, cuando) {
@@ -231,8 +245,14 @@ async function post({ request, env, agent }) {
     if (!titulo) return json({ error: "La respuesta rápida necesita un título." }, 400);
     await env.CRM_DB.prepare("INSERT INTO quick_replies (title, body) VALUES (?, ?)").bind(titulo, texto).run();
     const elegidos = new Set((Array.isArray(payload.destinatarios) ? payload.destinatarios : []).map(Number));
+    // Última revisión antes de mandar: nada de adelanto de Shalom a alguien de Lima (ni al revés).
+    const destinos = await destinosDeChats(env.CRM_DB, [...elegidos]);
     for (const d of parsear(s.destinatarios)) {
       if (!d.conversation_id || !elegidos.has(Number(d.conversation_id))) continue;
+      if (!textoSirvePara(texto, destinos[d.conversation_id])) {
+        saltados.push({ nombre: d.nombre || d.wa_id, motivo: `es de ${destinos[d.conversation_id]}; este mensaje es para el otro destino` });
+        continue;
+      }
       const error = await programar(env, d.conversation_id, texto, quien, cuando);
       if (error) saltados.push({ nombre: d.nombre || d.wa_id, motivo: error });
       else programados.push(d.conversation_id);

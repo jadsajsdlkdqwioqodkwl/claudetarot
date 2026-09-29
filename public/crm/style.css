@@ -861,11 +861,15 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #versiones-rapida .sub { font-size: 12px; color: var(--gris); }
 
 /* Respuestas rápidas agrupadas por cadena o tipo */
-#panel-rapidas .grupo-rapidas { position: sticky; top: 0; z-index: 1; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--verde-osc); background: var(--fondo); border-bottom: 1px solid var(--borde); }
-.grupo-chip { font-size: 10px; font-weight: 600; color: var(--verde-osc); border: 1px solid currentColor; border-radius: var(--radio-full); padding: 0 6px; margin-left: 4px; }
-.fila-grupo { display: flex; gap: 8px; }
-.fila-grupo #rapida-grupo { flex: 1; }
-.modal .fila-grupo #rapida-orden { width: 72px; padding: 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; margin-bottom: 10px; font-family: inherit; }
+#panel-rapidas .arrastrar { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
+#panel-rapidas .item.arrastrando { opacity: .6; background: var(--hover); }
+.versiones-rapida { align-items: center; gap: 8px; margin: -4px 0 8px; }
+.versiones-rapida .versiones { margin-top: 0; }
+.versiones-rapida .sub { font-size: 12px; color: var(--gris); }
+.rapida-item .versiones { align-items: center; }
+.rapida-item .versiones .sub { font-size: 11px; margin-left: 2px; }
+.em-rapidas-lista .rapida-item { background: #2a3942; color: #e9edef; border: 0; border-radius: 8px; padding: 6px 10px; }
+.em-rapidas-lista .rapida-item span { color: #8696a0; }
 .pruebas .pv-nueva .sub, .pruebas .pv-editor .sub { font-size: 12px; color: var(--gris); }
 
 .pv-botones { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -878,3 +882,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .pv-media img, .pv-media video { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
 
 .sug-foto { max-width: 180px; max-height: 220px; border-radius: 8px; display: block; }
+
+/* Cronómetro de la ventana de 24 h en ✨ Sugerencias */
+.reloj { font-size: 12px; color: var(--verde-osc); font-weight: 600; }
+.reloj-tarjeta { margin: 2px 0 6px; }
+.reloj-paso { margin-left: 4px; font-weight: 500; }
+.reloj.urgente { color: #d93025; }
+.reloj.cerrada { color: var(--gris); font-weight: 500; }

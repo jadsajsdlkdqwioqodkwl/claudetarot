@@ -837,5 +837,30 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("sortear respeta un peso de 1", sortear([0, 1, 0]) === 1);
 }
 
+{
+  console.log("\nLima o provincia (crm-destino.js)");
+  const { destinoDeChat, destinoDeTexto, textoSirvePara } = await import("../src/lib/crm-destino.js");
+  const m = (...bodies) => bodies.map((body) => ({ body }));
+  check("un chat que dijo su distrito de Lima es de Lima", destinoDeChat(m("Hola", "Para SJL por favor")) === "lima");
+  check("un chat que pidió Shalom es de provincia", destinoDeChat(m("Lo quiero", "a Arequipa por shalom")) === "provincia");
+  check("gana la última señal", destinoDeChat(m("en lima", "mejor envíelo a provincia")) === "provincia");
+  check("la pregunta \"¿Lima o provincia?\" no cuenta", destinoDeChat(m("¿Para Lima o provincia?")) === null);
+  check("un texto con adelanto es para provincia", destinoDeTexto("Para separarlo es un adelanto de S/20 por Yape ☺️") === "provincia");
+  check("un texto de motorizado es para Lima", destinoDeTexto("El motorizado lo llama antes de llegar ✨") === "lima");
+  check("el adelanto no le sale a alguien de Lima", !textoSirvePara("Me envía el adelanto de S/20 ☺️", "lima"));
+  check("un texto neutro sirve para todos", textoSirvePara("El kit trae tapete y collar ✨", "lima") && textoSirvePara("¿Me confirma? ☺️", null));
+}
+
+{
+  console.log("\nLink de envío y respuestas rápidas");
+  const { TEXTO_LINK_POR_DEFECTO } = await import("../src/lib/crm-links-envio.js");
+  check("el mensaje del link cuenta algo del kit, no solo el link",
+    TEXTO_LINK_POR_DEFECTO.includes("{link}") && /manual|significado/.test(TEXTO_LINK_POR_DEFECTO));
+  const app = readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8");
+  check("las respuestas rápidas se ordenan arrastrando (sin grupos)", app.includes("activarArrastreRapidas") && !app.includes("ordenarPorGrupo"));
+  check("los buscadores de los editores muestran las versiones 1·2·3", app.includes("itemRapidaHtml") && app.includes("pintarVersionesSeg"));
+  check("las recomendaciones tienen cronómetro de ventana", app.includes("pintarRelojes"));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

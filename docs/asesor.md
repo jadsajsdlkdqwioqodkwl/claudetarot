@@ -54,8 +54,8 @@ escribir, se corre a 23 h de ese mensaje. Sale aunque el cliente escriba
 (`mandar_siempre`). Para entonces la boleta suele estar subida; si no,
 aparece después en el mismo link.
 
-- **El texto** es la respuesta rápida **"Link de envío (sale solo)"** (grupo
-  Automáticos). La editan el admin y las vendedoras con el lápiz; `{link}` y
+- **El texto** es la respuesta rápida **"Link de envío (sale solo)"** (al
+  final de la lista). La editan el admin y las vendedoras con el lápiz; `{link}` y
   `{nombre}` se rellenan solos. **Borrarla apaga el envío automático.**
 - En **Links de Shalom** cada pedido dice si su link está programado (y a
   qué hora), enviado, o si no alcanzó la ventana (entonces se manda desde ahí).
@@ -93,20 +93,36 @@ página del cliente le muestra su clave. Nunca se marca solo.
 - **Todo el equipo** puede ver, agregar y editar versiones (⚡ → lápiz de la
   respuesta). Editar crea una versión nueva que se mide desde 0. Cerrar la
   prueba y quitar versiones: solo el admin.
-- **En un solo mensaje**: en una respuesta de una cadena (grupo "Lima", n.º 1,
-  2, 3…) el botón "+ En un solo mensaje" arma una versión de la n.º 1 que junta
-  la cadena. En el primer paso de la bienvenida arma una versión que
+- **En un solo mensaje**: en una respuesta rápida, "+ En un solo mensaje"
+  parte de su texto y se le suman los que van después con ⚡ Respuestas
+  rápidas. En el primer paso de la bienvenida arma una versión que
   reemplaza toda la secuencia, con una foto o video opcional (se elige entre
   los de la bienvenida). Así se mide si 1 mensaje cierra más que 8.
+- **Botones 1·2·3 en todos lados**: en el chat, en ⚡ Respuestas rápidas de
+  Sugerencias, de los pasos de seguimiento, de la bienvenida y del comentario
+  de una foto, y en el selector del seguimiento programado. Tocar la
+  respuesta pone la 1; tocar un número pone esa versión.
+- **Opciones 2 y 3 del director**: `contexto.py` lista las respuestas más
+  usadas sin prueba, primero las que menos hacen avanzar el chat
+  (`candidatas_a_opciones`); ahí propone `variantes`.
 - **Ediciones**: cuando una vendedora cambia el texto antes de mandarlo, se
   guarda lo que mandó (`variante_usos.texto_enviado`). El director las lee
   en `contexto.py` y son la fuente de las próximas versiones.
 
-## Grupos de respuestas rápidas
+## Orden de las respuestas rápidas
 
-Cada respuesta rápida tiene `grupo` (su cadena o tipo: Lima, Provincia,
-Objeciones, Confirmación…) y su número dentro del grupo. El panel del chat
-las muestra agrupadas en ese orden; al buscar, sale el grupo al lado.
+Ya no hay grupos: cada quien las ordena arrastrando del ⋮⋮ en el panel ⚡
+del chat (mouse o dedo) y el orden queda para todo el equipo
+(`PATCH /api/crm/quick-replies { ordenar: [ids] }`). Las nuevas van al final.
+
+## Envíos a varios chats: Lima o provincia
+
+Una sugerencia de respuesta rápida con destinatarios (o un seguimiento) que
+habla de adelanto/Shalom/Olva/agencia solo va a chats de provincia; una de
+ubicación/motorizado/"al recibir", solo a Lima (`src/lib/crm-destino.js`: el
+destino del chat es su última señal en 14 días). Se filtra al crearla y otra
+vez al aprobarla (los saltados dicen por qué). Una sugerencia igual a otra
+pendiente no se vuelve a crear.
 
 ## Qué palabras venden (sin IA)
 
