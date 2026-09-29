@@ -132,10 +132,19 @@ def main():
     if not cuerpo["mensajes"] and "resumen" not in cuerpo and not datos.get("respuestas_rapidas"):
         print("Nada que avisar.")
         return
-    # De a pocos: cada aviso va a todo el equipo, y el plan gratis de
-    # Cloudflare corta en 50 llamadas por request.
     mensajes = cuerpo.pop("mensajes")
-    total = {"enviados": 0, "fallidos": []}
+    total = {"enviados": 0, "fallidos": [], "sugerencias": 0}
+    # Primero ✨ Sugerencias del CRM (aprobar = programarlo): si Telegram
+    # falla después, las propuestas ya quedaron guardadas.
+    propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
+                   "motivo": m.get("motivo"), "texto": m.get("mensaje")} for m in mensajes]
+    propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
+    for i in range(0, len(propuestas), 20):
+        r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "sugerencias": propuestas[i:i + 20]}, SUGERENCIAS)
+        total["sugerencias"] += r.get("creadas", 0) + r.get("actualizadas", 0)
+        total.setdefault("sin_chat", []).extend(r.get("sin_chat", []))
+    print(f"Sugerencias guardadas en el CRM: {total['sugerencias']}", flush=True)
+    # Luego Telegram, de a pocos: cada aviso va a todo el equipo.
     lotes = [dict(cuerpo)] if "resumen" in cuerpo else []
     lotes += [{"mensajes": mensajes[i:i + LOTE]} for i in range(0, len(mensajes), LOTE)]
     for n, lote in enumerate(lotes):
@@ -144,14 +153,6 @@ def main():
         total["fallidos"] += r.get("fallidos", [])
         if n < len(lotes) - 1:
             time.sleep(1.5)
-    # Además, cada mensaje queda como propuesta en ✨ Sugerencias del CRM
-    # (aprobar = programarlo), y las respuestas rápidas nuevas que proponga.
-    propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
-                   "motivo": m.get("motivo"), "texto": m.get("mensaje")} for m in mensajes]
-    propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
-    for i in range(0, len(propuestas), 20):
-        r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "sugerencias": propuestas[i:i + 20]}, SUGERENCIAS)
-        total["sugerencias"] = total.get("sugerencias", 0) + r.get("creadas", 0) + r.get("actualizadas", 0)
     print(json.dumps(total, ensure_ascii=False))
 
 
