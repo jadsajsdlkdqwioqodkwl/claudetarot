@@ -153,6 +153,24 @@ export const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 export const origenSeguimientoLead = (nombre) => (nombre ? `${PREFIJO_SEGUIMIENTO_LEAD} · ${nombre}` : PREFIJO_SEGUIMIENTO_LEAD);
 
 /**
+ * Lo que se programa al aprobar una sugerencia del asesor (✨ Sugerencias).
+ * Cuenta como "tras no respuesta": si una vendedora le escribe a mano al
+ * cliente, lo que quedaba pendiente de la sugerencia se cancela (el chat ya
+ * cambió y el texto quedó viejo; antes salía igual y el cliente recibía el
+ * mensaje de la vendedora y encima el automático).
+ */
+export const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
+export const origenSugerencia = (quien) => `${PREFIJO_SUGERENCIA} · ${quien || "CRM"}`;
+
+/**
+ * Tope de insistencia (docs/negocio.md: "hasta 3–4 mensajes por cliente"):
+ * con este número de seguimientos automáticos ya enviados sin que el cliente
+ * responda, el cron no manda más texto libre. Se suman todas las fuentes (secuencia
+ * de leads, respuesta rápida, sugerencias, carrito), que antes podían apilarse.
+ */
+export const MAX_AUTOMATICOS_SIN_RESPUESTA = 4;
+
+/**
  * Seguimiento de una respuesta rápida: al mandar una que tiene secuencia
  * (`followup_pasos`, hasta 4 pasos con texto y/o archivo, o el viejo
  * `followup_body`), se programa cada paso `horas` después del anterior, sin
@@ -201,14 +219,14 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   ]);
 }
 
-/** Cancela solo los "tras no respuesta" (secuencia de leads) pendientes — lo que corresponde cuando nosotros le escribimos. */
+/** Cancela solo los "tras no respuesta" (secuencia de leads y sugerencias del asesor) pendientes — lo que corresponde cuando nosotros le escribimos. */
 export async function cancelarSeguimientosDeLead(db, conversationId) {
   await db
     .prepare(
       `UPDATE scheduled_messages SET status = 'cancelado'
-       WHERE conversation_id = ? AND status = 'pendiente' AND (created_by = ? OR created_by LIKE ?)`
+       WHERE conversation_id = ? AND status = 'pendiente' AND (created_by = ? OR created_by LIKE ? OR created_by LIKE ?)`
     )
-    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`)
+    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`)
     .run();
 }
 

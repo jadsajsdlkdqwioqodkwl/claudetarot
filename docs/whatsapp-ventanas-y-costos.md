@@ -47,8 +47,19 @@ para listar y mandar las ya aprobadas).
 Hasta ahora, el texto libre y las plantillas utility dentro de la ventana
 eran gratis sin excepción. **Desde el 1 oct 2026, Meta empieza a cobrar
 también por mensajes de servicio y utility dentro de la ventana** (antes
-gratis). Revisar el rate card actualizado en WhatsApp Manager cuando
-salga — no está en el PDF fuente el monto exacto en soles.
+gratis), los mande una persona o un bot. Revisar el rate card actualizado en
+WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
+
+- **1.000 mensajes de servicio gratis al mes por número**; se cobra desde el
+  1.001 (según los avisos de los BSP; confirmarlo en WhatsApp Manager).
+- El **free entry point de 72 h** de los anuncios Click-to-WhatsApp sigue:
+  todo lo que se manda en esas 72 h va gratis. En la práctica: **cerrar la
+  venta dentro de las 72 h desde que llegó del anuncio** sale gratis; lo que
+  se estira después, y los chats orgánicos (que no vienen de anuncio),
+  empiezan a costar por cada mensaje.
+- Cada paso de la bienvenida y cada seguimiento automático es un mensaje
+  cobrable fuera de las 72 h: por eso el tope de 4 automáticos seguidos sin
+  respuesta en `crm-cron.js` (`MAX_AUTOMATICOS_SIN_RESPUESTA`).
 
 ## Mapa de qué función manda qué
 

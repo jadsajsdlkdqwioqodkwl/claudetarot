@@ -95,6 +95,14 @@ import { onRequestGetChats as asesorChatsGet, onRequestPostMemoria as asesorMemo
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 import { onRequestGet as crmShalomGet, onRequestPost as crmShalomPost } from "./api/crm/shalom.js";
+import {
+  onRequestGet as crmVariantesGet,
+  onRequestPost as crmVariantesPost,
+  onRequestPatch as crmVariantesPatch,
+  onRequestDelete as crmVariantesDelete
+} from "./api/crm/variantes.js";
+import { actualizarEtapas } from "./lib/crm-embudo.js";
+import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet } from "./api/asesor-resumen.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -110,12 +118,15 @@ const ROUTES = {
   "/api/asesor/chats": { GET: asesorChatsGet },
   "/api/asesor/memoria": { POST: asesorMemoriaPost },
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
+  "/api/asesor/analisis": { POST: asesorAnalisisPost },
+  "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
   "/api/asesor/reportes": { GET: asesorReportesGet },
   "/api/crm/reportes": { GET: crmReportesGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
+  "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },
 
   "/api/crm/login": { POST: crmLogin },
   "/api/crm/login-info": { GET: crmLoginInfo },
@@ -224,7 +235,8 @@ export default {
   },
 
   // Dos crons (ver wrangler.jsonc → triggers.crons), distinguidos por
-  // event.cron: el de cada 5 min manda los seguimientos vencidos, el de
+  // event.cron: el de cada 5 min manda los seguimientos vencidos y actualiza
+  // la etapa del embudo, el de
   // cada 10 min vuelca los chats nuevos a Sheets.
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {
@@ -237,5 +249,8 @@ export default {
     // agenda filas; salen en esta misma pasada con los demás seguimientos.
     await agendarCarritosAbandonados(env).catch((err) => console.error("Carrito abandonado:", err.message));
     await procesarSeguimientosVencidos(env);
+    // Etapa del embudo de los chats que se movieron (sin IA): la usan las
+    // pruebas de mensajes y el resumen semanal.
+    await actualizarEtapas(env).catch((err) => console.error("Embudo:", err.message));
   }
 };

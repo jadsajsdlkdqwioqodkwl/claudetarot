@@ -7,11 +7,75 @@
 | Guardar chats, seguimientos programados, carrito (apagado) | Worker, cron `*/5` | Cloudflare |
 | Export de chats a la hoja de Google | Worker, cron `*/10` | Cloudflare (solo para humanos; el bot ya no la usa) |
 | Leer chats, clasificar pedidos, redactar mensajes, leer boletas | Routines 11:30 · 16:30 · 21:00 · 22:30 | Plan de Claude |
-| Director CRO (embudo, experimentos, respuestas rápidas nuevas) | Routine 7:52 | Plan de Claude |
-| Aprobar / enviar / programar | CRM → ✨ Sugerencias | — |
+| Director CRO (embudo, pruebas de mensajes, respuestas rápidas nuevas) | Routine 7:52 | Plan de Claude |
+| Coaching y voz del cliente (semanal) | Routine lunes 7:37 | Plan de Claude |
+| Etapa del embudo de cada chat, reparto de versiones en prueba | Worker, cron `*/5` | Cloudflare (sin IA) |
+| Resumen semanal por correo | Apps Script (`resumenSemanal`) → `GET /api/asesor/resumen` | Gratis (Gmail + Worker, sin IA) |
+| Aprobar / enviar / programar / decidir pruebas | CRM → ✨ Sugerencias y ⚡ editar respuesta | — |
+
+**Nada llama a la API de Claude** (se cobra por uso aparte del plan). Lo que
+queda de IA corre en las Routines con el plan. El Apps Script ya no la usa
+(se quitaron el análisis diario y el botón "Sacar pedidos (Claude)"): si en
+sus Propiedades del script quedó `ANTHROPIC_API_KEY`, bórrala.
 
 Endpoints del bot (cabecera `x-asesor-clave`): `/api/asesor/chats`, `/contexto`,
-`/sugerencias`, `/avisos`, `/ventas`, `/memoria`. Scripts en `scripts/asesor/`.
+`/sugerencias`, `/avisos`, `/ventas`, `/memoria`, `/analisis`, `/resumen`.
+Scripts en `scripts/asesor/`. Skills en `.claude/skills/` (ver su README).
+
+## Pruebas de mensajes (respuestas rápidas y bienvenida)
+
+- El director CRO **no crea respuestas rápidas parecidas**: propone
+  `variantes` en `salida.json` (`ref_tipo` + `ref_id`, los ids salen en
+  `contexto.py`) con la hipótesis en `motivo`. Llegan a ✨ Sugerencias solo
+  para el admin ("🧪 Probarla").
+- El Worker reparte qué versión sale: en la bienvenida, al mandarla; en las
+  respuestas rápidas, cuando la vendedora la elige (con `/` o con ⚡ en el
+  chat), su texto aparece en el cuadro y ella lo manda o lo edita como
+  siempre. Mide "avanzó de etapa", "respondió en 24 h", "cerró" y si la
+  editaron. Menos de 20 usos por versión = reparto parejo; después, muestreo
+  de Thompson con piso de 10 % (`src/lib/crm-variantes.js`).
+- Decide el admin: ⚡ → editar la respuesta (o Bienvenida → editar paso) →
+  "Quedarse con esta". El texto viejo queda guardado y la cuenta de la
+  original vuelve a 0 cada vez que su texto cambia.
+- Máximo 3 versiones en prueba por mensaje.
+
+## Análisis por chat (coaching)
+
+El asesor (y la Routine semanal) puede mandar `analisis` en `salida.json`:
+por chat, intención, resultado (ganado/perdido/abierto), motivo, objeción,
+calidad 1–5, vendedora, upsell y una nota de coaching. Se guarda en
+`chat_analisis` (uno por chat y día) y sale en el resumen semanal por
+vendedora. No avisa a nadie.
+
+## Routine semanal (lunes) — prompt sugerido
+
+> Trabaja en el repo claudetarot. Usa las skills customer-research,
+> objection-pattern-learning, conversation-quality-scoring,
+> win-loss-reason-extraction, sales-process-optimization y
+> follow-up-discipline (.claude/skills). Tú nunca mandas mensajes a clientes.
+> 1. `ASESOR_CLAVE=… python3 scripts/asesor/contexto.py --salida /tmp/sem/negocio.md`
+>    y `python3 scripts/asesor/embudo.py api --dias 7 --salida /tmp/sem`.
+> 2. Lee negocio.md, embudo.json, perdidos.txt y sin_respuesta.txt.
+> 3. Escribe /tmp/sem/salida.json con `origen: "semanal"`, `analisis` (un
+>    registro por chat que llegó a etapa 3+ esta semana, con nota de coaching
+>    concreta para la vendedora), hasta 3 `variantes` de respuestas rápidas o
+>    de la bienvenida con su hipótesis, y respuestas rápidas nuevas solo para
+>    objeciones que no tengan una. Envía con `scripts/asesor/enviar.py
+>    /tmp/sem/salida.json --solo-mensajes`.
+> 4. Escribe un informe de 250 palabras (voz del cliente: palabras que usan,
+>    por qué compran, por qué no; coaching por vendedora) y mándalo con
+>    `enviar.py --informe`. Anota 1–3 lecciones con `memoria.py`.
+
+## Resumen por correo sin gastar tokens
+
+Lo arma el Worker con datos de D1 (`GET /api/asesor/resumen?dias=7`): embudo
+vs. la semana anterior, pruebas en curso (y cuáles ya se pueden decidir),
+respuestas rápidas más usadas, equipo con coaching, objeciones, sugerencias y
+el último informe del director CRO (ya escrito; `enviar.py --informe` lo
+guarda entero). El Apps Script de la hoja de chats lo manda por Gmail los
+lunes 9:00: en `ASESOR.gs`, Propiedades del script `REPORTE_EMAIL` y
+`ASESOR_CLAVE`, y volver a correr **Asesor → Activar automatismos** (o
+**Mandar resumen semanal por correo (ahora)** para probar).
 
 ## Cómo aprende sin editar `negocio.md`
 
@@ -41,11 +105,20 @@ Hecho:
 - Las sugerencias se guardan antes de avisar por Telegram.
 - Ciclo de aprendizaje (arriba).
 
+Hecho (29/09, segunda vuelta):
+- Etapa del embudo por chat en el Worker (`conversations.etapa`, cron `*/5`,
+  mismas reglas que `embudo.py`). Base para medir las pruebas.
+- Pruebas de mensajes, análisis por chat y resumen semanal por correo (arriba).
+- Correcciones: el webhook ya no duplica mensajes cuando Meta reintenta; lo
+  programado desde una sugerencia se cancela si una vendedora escribe a mano;
+  tope de 4 seguimientos automáticos seguidos sin respuesta (sumando todas
+  las fuentes); "compraron" solo cuenta compras posteriores a la sugerencia;
+  `contexto.py` ya no se cae con respuestas rápidas sin texto.
+
 Siguiente, en orden de impacto:
-1. **Detección de ventas sin IA, en el Worker.** Las señales claras (mandó
-   ubicación, mandó imagen justo después de que le pidieron el adelanto, dio
-   DNI) pueden marcar "Venta posible" en el momento, en el cron `*/5`. El bot
-   solo confirmaría los dudosos: menos lectura y el CRM al día.
+1. **Marcar "Venta posible" desde la etapa 5**, para que no se pierdan
+   ventas sin etiquetar (hoy la etapa existe pero no toca las etiquetas ni
+   la CAPI).
 2. **Pedidos en D1 en lugar de JSON en Drive.** La corrida de las 22:30 hoy
    baja el archivo de las 21:00. Con una tabla `asesor_pedidos` (fecha,
    cliente, estado, nota) las corridas trabajarían por diferencia y el PDF

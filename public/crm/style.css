@@ -817,7 +817,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-enviar-grupo { display: inline-flex; border-radius: var(--radio-full); overflow: hidden; margin-left: 4px; }
 .sug-enviar-grupo button { border: 0; height: 36px; color: #fff; background: var(--verde-osc); }
 .sug-programar { width: 38px; justify-content: center; border-right: 1px solid rgba(255,255,255,.3) !important; }
-.sug-ahora { padding: 0 14px 0 10px; font-weight: 600; }
+.sug-ahora, .sug-probar { padding: 0 14px 0 10px; font-weight: 600; }
 .sug-enviar-grupo button:hover { background: var(--verde-header); }
 .sug-chat { max-height: 240px; overflow-y: auto; background: var(--fondo); border-radius: var(--radio-m); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
 .sug-msg { max-width: 85%; padding: 5px 8px; border-radius: var(--radio-m); font-size: 13px; line-height: 1.35; background: var(--panel); align-self: flex-start; word-wrap: break-word; }
@@ -835,3 +835,19 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-hora[hidden] { display: none; }
 .sug-hora input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); }
 .sug-hora button { border: 0; height: 34px; padding: 0 12px; border-radius: var(--radio-full); background: var(--verde-osc); color: #fff; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+
+/* Pruebas de mensajes (versiones de una respuesta rápida o de la bienvenida) */
+.pruebas:empty { display: none; }
+.pruebas { border: 1px dashed var(--borde); border-radius: var(--radio-m); padding: var(--espacio-s) var(--espacio-m); display: flex; flex-direction: column; gap: var(--espacio-s); }
+.prueba-version { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px solid var(--borde); font-size: 13px; }
+.prueba-version b { font-size: 13px; }
+.prueba-version .sub { font-size: 12px; color: var(--gris); }
+.prueba-version:first-of-type { border-top: 0; }
+.prueba-version .pv-cab { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.prueba-version .pv-texto { white-space: pre-wrap; }
+.prueba-version .pv-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+.prueba-version .pv-acciones button, .pruebas .pv-agregar { font-size: 12px; padding: 4px 10px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); cursor: pointer; }
+.prueba-version.lider .pv-cab b::after { content: " · va ganando"; color: var(--verde-osc); font-weight: 600; }
+.pruebas .pv-nueva textarea { width: 100%; min-height: 70px; }
+.titulo .badge-prueba { font-size: 11px; margin-left: 4px; }
+.sug-actual { white-space: pre-wrap; border-left: 3px solid var(--borde); padding-left: 8px; font-size: 12px; color: var(--gris); }

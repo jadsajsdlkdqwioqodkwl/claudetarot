@@ -32,7 +32,38 @@ def main():
     partes = [open(os.path.join(RAIZ, "docs", "negocio.md")).read().strip(), "",
               "## Respuestas rápidas vigentes (texto exacto)"]
     for q in datos.get("respuestas_rapidas", []):
-        partes += ["", f"### {q['title']}", q["body"].strip()]
+        partes += ["", f"### {q['title']} (rapida #{q['id']})", (q.get("body") or "(solo foto/video)").strip()]
+    bienv = datos.get("bienvenida", [])
+    if bienv:
+        partes += ["", "## Bienvenida automática (a quien llega de un anuncio), en orden — ids para proponer variantes"]
+        for b in bienv:
+            partes += ["", f"### bienvenida #{b['id']} · {b['title']}", (b.get("body") or "(solo foto/video)").strip()]
+    pr = datos.get("pruebas") or {}
+    if pr and not pr.get("error"):
+        titulos = {("rapida", q["id"]): q["title"] for q in datos.get("respuestas_rapidas", [])}
+        titulos.update({("bienvenida", b["id"]): f"Bienvenida · {b['title']}" for b in bienv})
+        partes += ["", "## Pruebas de mensajes en curso (el CRM reparte y mide; decide el admin)",
+                   "avanzó = el chat subió de etapa del embudo después de ese mensaje. Con menos de 20 usos por versión todavía no hay ganador."]
+        hay = False
+        for tipo, refs in (pr.get("en_curso") or {}).items():
+            for ref, vs in refs.items():
+                hay = True
+                nombre_ref = titulos.get((tipo, int(ref))) or f"{tipo} #{ref}"
+                partes.append(f"- {nombre_ref} ({tipo} #{ref}):")
+                for v in vs:
+                    nombre = "original" if v["id"] == 0 else f"versión #{v['id']}"
+                    partes.append(f"    · {nombre}: {v['usos']} usos, {v['avanzaron']} avanzaron, {v['respondieron']} respondieron en 24 h, "
+                                  f"{v['cerraron']} cerraron, {v['editadas']} editadas, sale {round(v['peso'] * 100)}%"
+                                  + (f" — {v['texto'][:160]}" if v.get("texto") else ""))
+        if not hay:
+            partes.append("- (ninguna en curso)")
+        uso = pr.get("uso_por_mensaje") or []
+        if uso:
+            partes += ["", "### Cómo le va a cada mensaje (45 días)"]
+            for u in uso[:25]:
+                nombre = titulos.get((u["tipo"], u["ref_id"])) or f"{u['tipo']} #{u['ref_id']}"
+                partes.append(f"- {nombre}: {u['usos']} usos, {u['avanzaron'] or 0} avanzaron, "
+                              f"{u['cerraron'] or 0} cerraron, {u['editadas'] or 0} editadas por la vendedora")
     pend = datos.get("sugerencias_pendientes", [])
     partes += ["", f"## Sugerencias que siguen pendientes de aprobar ({len(pend)})",
                "No las repitas; si una ya no sirve, dilo."]

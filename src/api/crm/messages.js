@@ -7,11 +7,15 @@
  *              media_key sale de /api/crm/upload-media
  *      quick_reply_id? — si el mensaje salió de una respuesta rápida con
  *              seguimiento, lo programa (ver programarSeguimientoDeRapida)
+ *      variante_id?, editada? — qué versión del texto de esa respuesta rápida
+ *              salió (0 = la original) y si la vendedora la cambió: se anota
+ *              en variante_usos para medir cuál funciona (crm-variantes.js)
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
+import { registrarUso } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -87,10 +91,17 @@ async function post({ request, env, agent }) {
 
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
   const quickReplyId = Number(payload?.quick_reply_id) || null;
-  const programarRapida = () => quickReplyId
-    ? programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message))
-    : null;
   const sentBy = agent?.displayName || agent?.username || null;
+  const programarRapida = async () => {
+    if (!quickReplyId) return;
+    await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));
+    let varianteId = Number(payload?.variante_id) || 0;
+    if (varianteId) {
+      const v = await env.CRM_DB.prepare("SELECT 1 FROM variantes WHERE id = ? AND tipo = 'rapida' AND ref_id = ?").bind(varianteId, quickReplyId).first().catch(() => null);
+      if (!v) varianteId = 0;
+    }
+    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada) });
+  };
 
   let replyTo = null;
   const replyToId = payload?.reply_to_id ? Number(payload.reply_to_id) : null;

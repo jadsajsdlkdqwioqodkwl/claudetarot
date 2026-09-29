@@ -14,6 +14,7 @@
  * avisos al Telegram del propio equipo.
  *
  * Cuerpo (todo opcional):
+ *   { informe: "texto" } → solo lo guarda (asesor_informes), no avisa a nadie
  *   { resumen: "texto", pdf_base64: "...", pdf_nombre: "pedidos.pdf",
  *     solo_dueno: true,   // informes (CRO): van solo al dueño
  *     mensajes: [{ whatsapp, nombre, motivo, mensaje }] }
@@ -21,6 +22,7 @@
 
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { aprendizaje } from "./asesor-datos.js";
+import { versionesEnPrueba } from "../lib/crm-variantes.js";
 
 // Cada aviso va a todo el equipo: con el tope de 50 llamadas por request del
 // plan gratis de Cloudflare, enviar.py los manda de a 5.
@@ -124,6 +126,14 @@ export async function onRequestPost({ request, env }) {
 
   const payload = await request.json().catch(() => null);
   if (!payload || typeof payload !== "object") return json({ error: "JSON inválido." }, 400);
+  // El informe entero del director CRO se guarda para el resumen semanal por
+  // correo (GET /api/asesor/resumen). Por Telegram ya salió en trozos.
+  if (payload.informe) {
+    await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)")
+      .bind(String(payload.origen || "director CRO").slice(0, 60), String(payload.informe).slice(0, 20000))
+      .run();
+    return json({ guardado: true });
+  }
   const dueno = env.TELEGRAM_CHAT_ID;
   const origen = new URL(request.url).origin;
   const res = { enviados: 0, fallidos: [], a_dueno: 0 };
@@ -198,7 +208,13 @@ export async function onRequestPost({ request, env }) {
  *     { tipo: "envio", whatsapp, nombre, motivo, texto, link },   // boleta lista: solo la ve el admin
 
  *     { tipo: "respuesta_rapida", titulo, texto, motivo,
- *       destinatarios: [{ whatsapp, nombre }] } ] }
+ *       destinatarios: [{ whatsapp, nombre }] },
+ *     { tipo: "variante", ref_tipo: "rapida" | "bienvenida", ref_id, texto, motivo } ] }
+ *
+ * "variante" = otra versión del texto de una respuesta rápida que ya existe
+ * (o de un paso de la bienvenida) para probarla contra la actual, en vez de
+ * crear una respuesta rápida nueva parecida. `motivo` es la hipótesis. Solo la
+ * ve el admin; al aprobarla entra a la prueba (crm-variantes.js).
  *
  * Un chat tiene a lo sumo un seguimiento pendiente: si ya había uno, se
  * reemplaza el texto (la propuesta más nueva sabe más del chat).
@@ -241,6 +257,25 @@ export async function onRequestPostSugerencias({ request, env }) {
     const texto = String(s?.texto || "").trim().slice(0, 4096);
     if (!texto) continue;
     const motivo = String(s.motivo || "").slice(0, 300) || null;
+
+    if (s.tipo === "variante") {
+      const refTipo = s.ref_tipo === "bienvenida" ? "bienvenida" : "rapida";
+      const refId = Number(s.ref_id);
+      const ref = refId && await env.CRM_DB.prepare(`SELECT id FROM ${refTipo === "rapida" ? "quick_replies" : "welcome_steps"} WHERE id = ?`).bind(refId).first();
+      if (!ref) {
+        res.sin_ref = (res.sin_ref || 0) + 1;
+        continue;
+      }
+      const repetida = await env.CRM_DB.prepare(
+        "SELECT 1 FROM asesor_sugerencias WHERE tipo = 'variante' AND ref_tipo = ? AND ref_id = ? AND texto = ? AND estado = 'pendiente'"
+      ).bind(refTipo, refId, texto).first();
+      if (repetida) continue;
+      await env.CRM_DB.prepare(
+        "INSERT INTO asesor_sugerencias (tipo, ref_tipo, ref_id, texto, texto_original, motivo, origen) VALUES ('variante', ?, ?, ?, ?, ?, ?)"
+      ).bind(refTipo, refId, texto, texto, motivo, origen).run();
+      res.creadas++;
+      continue;
+    }
 
     if (s.tipo === "respuesta_rapida") {
       const titulo = String(s.titulo || "").trim().slice(0, 80);
@@ -303,11 +338,41 @@ export async function onRequestGetContexto({ request, env }) {
   if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
-  const [rapidas, pendientes] = await Promise.all([
+  const [rapidas, pendientes, bienvenida, pruebas] = await Promise.all([
     env.CRM_DB.prepare("SELECT id, title, body FROM quick_replies ORDER BY id").all(),
     env.CRM_DB.prepare(
       "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
-    ).all()
+    ).all(),
+    env.CRM_DB.prepare("SELECT id, title, body FROM welcome_steps ORDER BY step_order").all(),
+    pruebasDeMensajes(env).catch((err) => ({ error: err.message }))
   ]);
-  return json({ respuestas_rapidas: rapidas.results, sugerencias_pendientes: pendientes.results, aprendizaje: await aprendizaje(env) });
+  return json({
+    respuestas_rapidas: rapidas.results,
+    bienvenida: bienvenida.results,
+    pruebas: pruebas,
+    sugerencias_pendientes: pendientes.results,
+    aprendizaje: await aprendizaje(env)
+  });
+}
+
+/**
+ * Cómo le va a cada mensaje: las pruebas en curso (cada versión con sus
+ * números) y, para todas las respuestas rápidas y pasos de bienvenida, cuánto
+ * se usaron y cuántos chats avanzaron después (45 días). Sin esto el director
+ * CRO proponía textos a ciegas.
+ */
+export async function pruebasDeMensajes(env) {
+  const [rapidas, bienvenida] = await Promise.all([
+    versionesEnPrueba(env.CRM_DB, "rapida"),
+    versionesEnPrueba(env.CRM_DB, "bienvenida")
+  ]);
+  const { results: uso } = await env.CRM_DB.prepare(
+    `SELECT u.tipo, u.ref_id, COUNT(*) AS usos, SUM(u.editada) AS editadas,
+       SUM(conv.etapa > u.etapa_antes AND conv.etapa_at > u.created_at) AS avanzaron,
+       SUM(conv.etapa >= 5 AND u.etapa_antes < 5 AND conv.etapa_at > u.created_at) AS cerraron
+     FROM variante_usos u JOIN conversations conv ON conv.id = u.conversation_id
+     WHERE u.created_at >= datetime('now', '-45 days')
+     GROUP BY u.tipo, u.ref_id ORDER BY usos DESC`
+  ).all();
+  return { en_curso: { rapida: rapidas, bienvenida }, uso_por_mensaje: uso };
 }

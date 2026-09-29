@@ -1,5 +1,5 @@
 /**
- * Corre cada minuto (ver wrangler.jsonc → triggers.crons) y manda los
+ * Corre cada 5 minutos (ver wrangler.jsonc → triggers.crons) y manda los
  * seguimientos programados que ya vencieron. Si el envío falla (número
  * bloqueado, ventana de 24h cerrada, etc.) queda marcado `fallido` en vez de
  * reintentarse solo — evita un bucle de reintentos contra un número inválido.
@@ -12,7 +12,7 @@
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
-import { registrarMensajeSaliente } from "./crm-db.js";
+import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
@@ -47,6 +47,16 @@ export async function acomodarAlHorario(env) {
   if (cambios.length) await env.CRM_DB.batch(cambios);
 }
 
+/** ¿Ya salieron MAX_AUTOMATICOS_SIN_RESPUESTA seguimientos automáticos desde el último mensaje del cliente? */
+async function yaInsistioDemasiado(env, conversationId) {
+  const r = await env.CRM_DB.prepare(
+    `SELECT COUNT(*) AS n FROM messages m JOIN conversations conv ON conv.id = m.conversation_id
+     WHERE m.conversation_id = ? AND m.direction = 'out' AND m.sent_by = 'Seguimiento automático'
+       AND m.created_at > COALESCE(conv.last_inbound_at, '1970-01-01')`
+  ).bind(conversationId).first();
+  return (r?.n || 0) >= MAX_AUTOMATICOS_SIN_RESPUESTA;
+}
+
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
   await acomodarAlHorario(env).catch((err) => console.error("Horario de envío:", err.message));
@@ -72,6 +82,10 @@ export async function procesarSeguimientosVencidos(env) {
 
   for (const s of vencidos) {
     try {
+      if (!s.template_name && !s.mandar_siempre && (await yaInsistioDemasiado(env, s.conv_id))) {
+        await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'").bind(s.id).run();
+        continue;
+      }
       if (s.template_name) {
         // Plantilla: para escribirle a alguien fuera de la ventana de 24h
         // (típico de un envío masivo a contactos viejos que no escribieron).

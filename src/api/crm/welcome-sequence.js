@@ -14,6 +14,7 @@
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
+import { guardarAnterior } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -97,7 +98,7 @@ async function del({ request, env }) {
   return json({ ok: true });
 }
 
-async function patch({ request, env }) {
+async function patch({ request, env, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -131,7 +132,7 @@ async function patch({ request, env }) {
   }
 
   // Edición de título/texto/media — sin `direction`.
-  const existente = await env.CRM_DB.prepare("SELECT id FROM welcome_steps WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, body FROM welcome_steps WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -148,6 +149,9 @@ async function patch({ request, env }) {
     if (!tieneMedia) return json({ error: "Necesita texto o al menos un archivo." }, 400);
   }
 
+  if ((existente.body || null) !== body) {
+    await guardarAnterior(env.CRM_DB, "bienvenida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
+  }
   await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
 
   if (mediaKeys !== null) {

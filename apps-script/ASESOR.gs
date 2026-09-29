@@ -9,9 +9,11 @@
  *      clientes esperando respuesta, pedidos del catálogo sin atender y
  *      ventanas de 24 h a punto de cerrarse. Cero tokens, cero mensajes al
  *      cliente: el aviso va a las vendedoras, nunca al número de WhatsApp.
- *   2. Reporte del día anterior, cada mañana: métricas calculadas aquí (gratis)
- *      y, si hay ANTHROPIC_API_KEY, UNA sola llamada a Claude con un resumen
- *      comprimido de los chats para las recomendaciones CRO.
+ *   2. Reporte del día anterior, cada mañana: métricas calculadas aquí (gratis).
+ *      Ya no llama a la API de Claude (se cobraba aparte del plan): el análisis
+ *      CRO lo hace la Routine del director con el plan.
+ *   3. Resumen semanal por correo (resumenSemanal): pruebas de mensajes,
+ *      embudo y coaching, armado por el Worker sin IA. Cero tokens.
  *
  * El envío automático al cliente (carrito abandonado) NO vive aquí: lo hace el
  * Worker, que tiene el token de WhatsApp, sabe si la ventana de 24 h sigue
@@ -25,8 +27,7 @@ const ASESOR = {
   COL: { FECHA: 0, WA: 1, NOMBRE: 2, QUIEN: 3, VENDEDOR: 4, TIPO: 5, MSG: 6, ORIGEN: 7, ANUNCIO: 8, CTWA: 9, NOTAS: 10, ASESORA: 11, EMBUDO: 13 },
   // Mensajes que manda el sistema, no una persona: no cuentan como respuesta.
   RE_AUTOMATICO: /autom[aá]tic|masivo|carrito/i,
-  MODELO_DEFAULT: "claude-opus-5",
-  // Cuánto de cada chat viaja a Claude: lo justo para entender qué pasó.
+  // Cuánto de cada chat entra al digest (lo usa digestParaIA, que prueba check:gs).
   MAX_CHATS_IA: 40,
   MAX_MSGS_POR_CHAT: 14,
   MAX_CHARS_MSG: 160
@@ -37,12 +38,10 @@ const ASESOR = {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Asesor")
-    .addItem("📦 Sacar pedidos para mañana (Claude)", "pedidosParaManana")
-    .addItem("📦 Sacar pedidos para hoy (Claude)", "pedidosParaHoy")
-    .addSeparator()
     .addItem("Reporte de ayer (ahora)", "reporteDeAyer")
     .addItem("Reporte de hoy hasta ahora", "reporteDeHoy")
     .addItem("Revisar alertas ahora", "revisarAlertas")
+    .addItem("Mandar resumen semanal por correo (ahora)", "resumenSemanal")
     .addSeparator()
     .addItem("Activar automatismos", "activarAsesor")
     .addItem("Desactivar automatismos", "desactivarAsesor")
@@ -54,12 +53,13 @@ function activarAsesor() {
   desactivarAsesor();
   ScriptApp.newTrigger("revisarAlertas").timeBased().everyMinutes(30).create();
   ScriptApp.newTrigger("reporteDeAyer").timeBased().atHour(8).nearMinute(5).everyDays(1).inTimezone(ASESOR.ZONA).create();
-  avisar_("✅ Asesor activo: alertas cada 30 min y reporte diario a las 8:00 (Lima).");
+  ScriptApp.newTrigger("resumenSemanal").timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).nearMinute(0).inTimezone(ASESOR.ZONA).create();
+  avisar_("✅ Asesor activo: alertas cada 30 min, reporte diario a las 8:00 y resumen semanal por correo los lunes a las 9:00 (Lima).");
 }
 
 function desactivarAsesor() {
   ScriptApp.getProjectTriggers()
-    .filter((t) => ["revisarAlertas", "reporteDeAyer"].includes(t.getHandlerFunction()))
+    .filter((t) => ["revisarAlertas", "reporteDeAyer", "resumenSemanal"].includes(t.getHandlerFunction()))
     .forEach((t) => ScriptApp.deleteTrigger(t));
 }
 
@@ -309,19 +309,9 @@ function generarReporte_(d) {
   const fecha = nombrePestana_(d);
   const chats = agruparChats(leerDia_(d));
   const m = metricasDelDia(chats);
-  let texto = textoMetricas(fecha, m);
+  const texto = textoMetricas(fecha, m);
 
-  let ia = "";
-  if (prop_("ANTHROPIC_API_KEY", "") && m.chatsConCliente > 0) {
-    try {
-      ia = analizarConClaude_(fecha, m, digestParaIA(chats));
-    } catch (err) {
-      ia = "⚠️ No se pudo generar el análisis IA: " + err.message;
-    }
-  }
-  if (ia) texto += "\n\n🧠 *Análisis y acciones*\n" + ia;
-
-  guardarReporte_(fecha, m, ia);
+  guardarReporte_(fecha, m, "");
   telegram_(texto);
   const correo = prop_("REPORTE_EMAIL", "");
   if (correo) MailApp.sendEmail(correo, "Reporte de ventas WhatsApp " + fecha, texto.replace(/\*/g, ""));
@@ -338,46 +328,31 @@ function guardarReporte_(fecha, m, ia) {
   hoja.appendRow([fecha, m.chatsConCliente, m.deAnuncio, m.conPedidoCatalogo, m.pedidoSinVenta, m.interes, m.ventas, m.conversion, m.sinRespuesta, m.respuestaMedianaMin === null ? "" : m.respuestaMedianaMin, ia]);
 }
 
-/**
- * Una sola llamada por día. El system prompt es fijo (se cachea) y lo que
- * cambia va al final. Todo lo que se puede contar se cuenta aquí, así Claude
- * solo lee conversaciones y opina — no gasta tokens sumando.
- */
-function analizarConClaude_(fecha, m, digest) {
-  const system =
-    "Eres el asesor comercial y logístico de una tienda online peruana que vende kits de tarot por WhatsApp " +
-    "con pago contra entrega (Lima) y envío por agencia Shalom (provincia). Las ventas las cierran vendedoras humanas; " +
-    "tú no escribes a clientes. Recibes las métricas del día (ya calculadas, confía en ellas) y transcripciones " +
-    "abreviadas (C = cliente, V = vendedora, BOT = mensaje automático). Devuelve en español, texto plano con viñetas " +
-    "y sin tablas, máximo 220 palabras:\n" +
-    "1) Por qué se perdieron ventas hoy: las 2-3 objeciones o fricciones más repetidas, citando #chat.\n" +
-    "2) CRO: 3 cambios concretos y medibles (guion, respuesta rápida, oferta, anuncio o tiempos), cada uno con el dato que lo justifica.\n" +
-    "3) Seguimiento de mañana: los #chat que vale la pena retomar y con qué mensaje exacto (una línea cada uno).\n" +
-    "No inventes datos que no estén en el texto. Si hay pocos chats, dilo y sé breve.";
-  const usuario = "Día: " + fecha + "\nMétricas: " + JSON.stringify(m) + "\n\nChats:\n" + digest;
+/* ───────────────────────── Resumen semanal por correo ───────────────────────── */
 
-  const res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
-    method: "post",
-    contentType: "application/json",
-    muteHttpExceptions: true,
-    headers: {
-      "x-api-key": prop_("ANTHROPIC_API_KEY", ""),
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": "server-side-fallback-2026-07-01"
-    },
-    payload: JSON.stringify({
-      model: prop_("CLAUDE_MODEL", ASESOR.MODELO_DEFAULT),
-      max_tokens: 4000,
-      output_config: { effort: prop_("CLAUDE_EFFORT", "low") },
-      fallbacks: "default",
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: usuario }]
-    })
+/**
+ * Lo arma el Worker con datos de D1, sin IA (GET /api/asesor/resumen): pruebas
+ * de mensajes (qué versión va ganando), embudo, coaching por vendedora,
+ * sugerencias pendientes y el último informe del director CRO (que la Routine
+ * ya escribió; no se gasta nada extra). Aquí solo se manda por Gmail.
+ *
+ * Propiedades del script: REPORTE_EMAIL (a quién), ASESOR_CLAVE (la misma de
+ * las Routines) y, si el dominio cambia, WORKER_URL.
+ */
+function resumenSemanal() {
+  const correo = prop_("REPORTE_EMAIL", "");
+  const clave = prop_("ASESOR_CLAVE", "");
+  if (!correo || !clave) return avisar_("Faltan REPORTE_EMAIL o ASESOR_CLAVE en Propiedades del script.");
+  const base = prop_("WORKER_URL", "https://kit-tarot-para-principiantes.tarotperu.store");
+  const res = UrlFetchApp.fetch(base + "/api/asesor/resumen?dias=7", {
+    headers: { "x-asesor-clave": clave }, muteHttpExceptions: true
   });
-  const cuerpo = JSON.parse(res.getContentText() || "{}");
-  if (res.getResponseCode() !== 200) throw new Error((cuerpo.error && cuerpo.error.message) || "HTTP " + res.getResponseCode());
-  if (cuerpo.stop_reason === "refusal") throw new Error("el modelo declinó el análisis");
-  return (cuerpo.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  if (res.getResponseCode() !== 200) {
+    telegram_("⚠️ No se pudo armar el resumen semanal: HTTP " + res.getResponseCode());
+    return;
+  }
+  const r = JSON.parse(res.getContentText());
+  MailApp.sendEmail({ to: correo, subject: r.asunto, htmlBody: r.html, body: r.texto });
 }
 
 /* ───────────────────────── Salida ───────────────────────── */

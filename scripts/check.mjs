@@ -783,5 +783,35 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("una plantilla de madrugada sale a las 06:00", ajustarAlHorario(L("2026-09-30T02:00"), null, ahora) === L("2026-09-30T06:00"));
 }
 
+{
+  console.log("\nEmbudo automático (crm-embudo.js)");
+  const { calcularEtapa } = await import("../src/lib/crm-embudo.js");
+  const c = (body) => ({ direction: "in", body });
+  const v = (body, sent_by = "Ana") => ({ direction: "out", body, sent_by });
+  check("sin mensajes del cliente es etapa 0", calcularEtapa([v("hola")]) === 0);
+  check("solo el saludo del anuncio es etapa 1", calcularEtapa([c("Hola! Me gustaría más información."), v("¡Hola!", "Bienvenida automática")]) === 1);
+  check("preguntar algo más es etapa 2", calcularEtapa([c("Hola! Me gustaría más información."), c("precio?")]) === 2);
+  check("decir Lima es etapa 3", calcularEtapa([c("precio?"), c("es para lima")]) === 3);
+  check("la vendedora pidió ubicación es etapa 4", calcularEtapa([c("precio?"), v("¿Me comparte su ubicación 📍?")]) === 4);
+  check("quedó agendado es etapa 5", calcularEtapa([c("precio?"), v("Perfecto, queda agendado para mañana")]) === 5);
+  check("un automático no cuenta como pedir cierre", calcularEtapa([c("precio?"), v("Envíe su ubicación", "Seguimiento automático")]) === 2);
+  check("la etiqueta purchase es etapa 5", calcularEtapa([c("hola")], "contact purchase") === 5);
+}
+
+{
+  console.log("\nPruebas de mensajes (crm-variantes.js)");
+  const { pesos, sortear, MIN_USOS } = await import("../src/lib/crm-variantes.js");
+  const suma = (ps) => Math.abs(ps.reduce((a, b) => a + b, 0) - 1) < 1e-9;
+  const parejo = pesos([{ usos: 3, avanzaron: 3 }, { usos: MIN_USOS + 5, avanzaron: 1 }]);
+  check("con pocos usos el reparto es parejo", parejo[0] === 0.5 && parejo[1] === 0.5);
+  const ps = pesos([{ usos: 60, avanzaron: 12 }, { usos: 60, avanzaron: 36 }]);
+  check("los pesos suman 1", suma(ps));
+  check("la que hace avanzar más sale más", ps[1] > 0.8);
+  check("la que va perdiendo sigue saliendo (piso)", ps[0] >= 0.1);
+  const tres = pesos([{ usos: 40, avanzaron: 5 }, { usos: 40, avanzaron: 6 }, { usos: 40, avanzaron: 30 }]);
+  check("con tres versiones también suman 1", suma(tres) && tres.every((p) => p >= 0.1 - 1e-9));
+  check("sortear respeta un peso de 1", sortear([0, 1, 0]) === 1);
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

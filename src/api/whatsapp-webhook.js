@@ -119,7 +119,7 @@ async function resolverNombresPedido(env, order) {
 async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
   if (!contacto._isNew || !contacto.ctwa_clid) return;
   try {
-    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática");
+    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true });
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
   }
@@ -176,6 +176,10 @@ async function procesarCambio(env, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
 
   for (const msg of value.messages || []) {
+    // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
+    // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
+    // doble en el embudo y volvía a cancelar/avisar.
+    if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
     const waId = msg.from;
     const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
     const conversacion = await obtenerOCrearConversacion(db, contacto.id);

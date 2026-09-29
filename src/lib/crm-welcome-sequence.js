@@ -11,14 +11,29 @@
  */
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, esperar } from "./crm-send.js";
+import { versionesEnPrueba, sortear, registrarUso } from "./crm-variantes.js";
 
-export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null) {
+/**
+ * `pruebas`: solo la bienvenida real (la del webhook). Si un paso tiene
+ * versiones en prueba (tabla `variantes`), sale una de ellas según el reparto
+ * de crm-variantes.js y queda anotado cuál salió. Las pruebas del sandbox y
+ * los reenvíos a mano mandan siempre el texto original y no cuentan.
+ */
+export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null, { pruebas = false } = {}) {
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT id, step_order, body FROM welcome_steps ORDER BY step_order ASC"
   ).all();
   const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : todos;
 
   if (!pasos.length) return 0;
+
+  let enPrueba = {};
+  if (pruebas) {
+    enPrueba = await versionesEnPrueba(env.CRM_DB, "bienvenida", pasos.map((p) => p.id)).catch((err) => {
+      console.error("Versiones de bienvenida:", err.message);
+      return {};
+    });
+  }
 
   // La automática arranca apenas llega el mensaje del cliente: un segundo
   // antes de marcarlo leído / "escribiendo…", que pegado a su mensaje
@@ -44,8 +59,13 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       ));
     }
     if (paso.body) {
+      const versiones = enPrueba[paso.id];
+      const elegida = versiones ? versiones[sortear(versiones.map((v) => v.peso))] : null;
       await pausaEnvio(env, conversationId);
-      await mandarTexto(env, conversationId, waId, paso.body, sentByLabel);
+      await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
+      if (pruebas) {
+        await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: paso.id, varianteId: elegida?.id || 0, conversationId, etapaAntes: 1, agente: sentByLabel });
+      }
     }
   }
 

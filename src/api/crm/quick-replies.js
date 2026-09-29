@@ -10,10 +10,16 @@
  * media_type?, media_mime? }], cada uno `horas` después del anterior. (Sigue
  * aceptando el formato viejo `followup_body` + `followup_hours` = un paso.)
  * Ver programarSeguimientoDeRapida.
+ *
+ * GET trae además `variantes` en las que tienen una prueba en curso: la
+ * original (id 0, texto null) y cada versión, con su `peso` — la
+ * probabilidad con que el CRM la pone en el cuadro al elegir la respuesta
+ * (crm-variantes.js). Se gestionan en /api/crm/variantes.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { HORAS_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
+import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
 /**
  * La secuencia de seguimiento de la respuesta rápida, validada. Devuelve los
@@ -72,9 +78,18 @@ async function get({ env }) {
 
   const porRapida = {};
   for (const m of media) (porRapida[m.quick_reply_id] ||= []).push(m);
+  const pruebas = await versionesEnPrueba(env.CRM_DB, "rapida").catch((err) => {
+    console.error("Versiones en prueba:", err.message);
+    return {};
+  });
 
   return json({
-    quick_replies: rapidas.map((r) => ({ ...r, followup_pasos: pasosDe(r), media: porRapida[r.id] || [] }))
+    quick_replies: rapidas.map((r) => ({
+      ...r,
+      followup_pasos: pasosDe(r),
+      media: porRapida[r.id] || [],
+      ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })) } : {})
+    }))
   });
 }
 
@@ -116,7 +131,7 @@ async function post({ request, env }) {
   return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), media: media.results } });
 }
 
-async function patch({ request, env }) {
+async function patch({ request, env, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -127,7 +142,7 @@ async function patch({ request, env }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, body FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -145,6 +160,10 @@ async function patch({ request, env }) {
   }
 
   const seguimiento = leerSeguimiento(payload);
+  // Texto nuevo = otro mensaje: se guarda el anterior y la cuenta de la original vuelve a 0.
+  if ((existente.body || null) !== body) {
+    await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
+  }
   await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ? WHERE id = ?")
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, id)
     .run();

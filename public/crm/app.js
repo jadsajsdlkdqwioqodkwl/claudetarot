@@ -44,6 +44,9 @@ const estado = {
   // La respuesta rápida cargada en el escribidor: al mandarla, el servidor
   // programa su seguimiento automático si tiene uno.
   rapidaUsadaId: null,
+  // Prueba de mensajes: qué versión del texto de la respuesta rápida se puso
+  // en el cuadro (0 = la original) y ese texto, para saber si la editaron.
+  rapidaVariante: null, // { id, texto }
   segRapidaMedia: null,
   segModo: "mensaje",
   editandoRapidaId: null,
@@ -517,6 +520,7 @@ function editarPasoBienvenida(s) {
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
   $("#seq-agregar-btn").textContent = "Guardar cambios";
   $("#seq-cancelar-edicion").style.display = "";
+  pintarPruebas($("#seq-pruebas"), "bienvenida", s.id);
   $("#seq-titulo").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -529,6 +533,7 @@ function cancelarEdicionPaso() {
   $("#seq-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
   $("#seq-agregar-btn").textContent = "Agregar paso";
   $("#seq-cancelar-edicion").style.display = "none";
+  $("#seq-pruebas").innerHTML = "";
 }
 $("#seq-cancelar-edicion").addEventListener("click", cancelarEdicionPaso);
 
@@ -1029,9 +1034,11 @@ const seguimientosLocales = new Map(); // conversation_id -> { seg_pendientes, s
 const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
+const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
 
 function esSeguimientoLead(s) {
-  return s.created_by === ORIGEN_SEGUIMIENTO_AUTO || (s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_LEAD);
+  const origen = s.created_by || "";
+  return origen === ORIGEN_SEGUIMIENTO_AUTO || origen.startsWith(PREFIJO_SEGUIMIENTO_LEAD) || origen.startsWith(PREFIJO_SUGERENCIA);
 }
 
 function esSeguimientoManual(s) {
@@ -1041,6 +1048,7 @@ function esSeguimientoManual(s) {
 /** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
 function etiquetaTipoSeguimiento(s) {
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
+  if ((s.created_by || "").startsWith(PREFIJO_SUGERENCIA)) return `<span class="tipo-seg lead">Sugerencia aprobada · ${escapar(s.created_by.slice(PREFIJO_SUGERENCIA.length).replace(/^ · /, ""))}</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg manual">Automático · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
   if (s.mandar_siempre) return `<span class="tipo-seg manual">Se manda sí o sí</span>`;
@@ -1509,6 +1517,7 @@ function guardarBorrador() {
     adjunto: estado.archivoAdjunto,
     rapida: estado.rapidaPendiente,
     rapidaUsadaId: estado.rapidaUsadaId,
+    rapidaVariante: estado.rapidaVariante,
     respondiendoA: estado.respondiendoA
   };
   if (b.texto.trim() || b.adjunto || b.rapida || b.respondiendoA) borradores.set(id, b);
@@ -1528,6 +1537,7 @@ function restaurarBorrador(id) {
   estado.archivoAdjunto = b.adjunto;
   estado.rapidaPendiente = b.rapida;
   estado.rapidaUsadaId = b.rapidaUsadaId || null;
+  estado.rapidaVariante = b.rapidaVariante || null;
   estado.respondiendoA = b.respondiendoA;
   pintarPreviewArchivo();
   pintarPreviewRespuesta();
@@ -1543,6 +1553,7 @@ async function abrirConversacion(c) {
   estado.respondiendoA = null;
   estado.rapidaPendiente = null;
   estado.rapidaUsadaId = null;
+  estado.rapidaVariante = null;
   estado.archivoAdjunto = null;
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
   // de chats, no salir del sitio — se logra metiendo un estado en el
@@ -3739,6 +3750,10 @@ async function enviarMensaje(e) {
   const replyToId = respondiendoA?.id || undefined;
   const rapidaUsadaId = estado.rapidaUsadaId || undefined;
   estado.rapidaUsadaId = null;
+  const variante = rapidaUsadaId && estado.rapidaVariante
+    ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim() }
+    : {};
+  estado.rapidaVariante = null;
 
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
@@ -3766,7 +3781,7 @@ async function enviarMensaje(e) {
         // `caption` es el pie de foto/video/documento. `file_name` queda en
         // el registro interno y, si es un documento, el cliente SÍ lo ve
         // como el nombre del archivo (ver enviarMedia en whatsapp.js).
-        body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
+        body: JSON.stringify({ conversation_id: conversationId, media_key, media_type: type, caption: texto || undefined, file_name: original_name, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
       });
       if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
     } else if (rapida) {
@@ -3776,7 +3791,7 @@ async function enviarMensaje(e) {
         pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type, quick_reply_id: !texto && i === 0 ? rapidaUsadaId : undefined })
+          body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type, quick_reply_id: !texto && i === 0 ? rapidaUsadaId : undefined, ...(!texto && i === 0 ? variante : {}) })
         })
       ));
       const fallidas = resultados.filter((r) => r.status === "rejected");
@@ -3785,7 +3800,7 @@ async function enviarMensaje(e) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
+          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
         });
       }
       if (fallidas.length) {
@@ -3795,13 +3810,13 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId })
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
       });
     }
   }, (err) => {
     alert(err.message);
     // Lo que no salió vuelve como borrador de SU chat para reintentar.
-    const b = { texto, adjunto, rapida, rapidaUsadaId, respondiendoA };
+    const b = { texto, adjunto, rapida, rapidaUsadaId, rapidaVariante: variante.variante_id !== undefined ? { id: variante.variante_id, texto } : null, respondiendoA };
     const cuadroLibre = estado.conversacionActivaId === conversationId && !$("#texto-envio")?.value && !estado.archivoAdjunto && !estado.rapidaPendiente;
     if (cuadroLibre) {
       borradores.set(conversationId, b);
@@ -3973,6 +3988,7 @@ function pintarSugerencias(lista) {
     return;
   }
   cont.innerHTML = lista.map((s) => {
+    if (s.tipo === "variante") return tarjetaVariante(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
     const cabecera = esRapida
@@ -4012,7 +4028,7 @@ function pintarSugerencias(lista) {
       </div>`;
   }).join("");
 
-  cont.querySelectorAll(".sug-texto, .sug-paso textarea").forEach((el) => agregarRapidasA(el));
+  cont.querySelectorAll(".tarjeta-sugerencia:not(.sug-variante) .sug-texto, .sug-paso textarea").forEach((el) => agregarRapidasA(el));
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
     if (card.querySelector(".sug-chat")) cargarChatSugerencia(card);
     card.querySelector(".sug-agregar-paso")?.addEventListener("click", () => {
@@ -4067,6 +4083,11 @@ function pintarSugerencias(lista) {
         setTimeout(() => e.target.closest("button")?.classList.remove("copiado"), 1200);
       } catch { alert("No se pudo copiar."); }
     });
+    card.querySelector(".sug-probar")?.addEventListener("click", (e) => accion("aprobar", e.currentTarget));
+    if (card.classList.contains("sug-variante")) {
+      card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
+      return;
+    }
     card.querySelector(".sug-ahora").addEventListener("click", (e) => accion("aprobar", e.currentTarget, { modo: "ahora" }));
     card.querySelector(".sug-programar").addEventListener("click", () => {
       const caja = card.querySelector(".sug-hora");
@@ -4099,7 +4120,26 @@ function pintarSugerencias(lista) {
   });
 }
 
-const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo"));
+const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) || card.classList.contains("sug-variante");
+
+/** Propuesta del director CRO: otra versión de un mensaje que ya existe, para probarla contra la actual. */
+function tarjetaVariante(s) {
+  return `
+    <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="">
+      <div class="sug-cabecera"><span class="sug-tipo">🧪 Probar otra versión · ${escapar(s.ref_titulo || "")}</span><span class="sug-etiqueta">Prueba</span></div>
+      ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+      <div class="sub">Texto actual:</div>
+      <div class="sub sug-actual">${escapar(s.ref_texto || "")}</div>
+      <div class="sub">Versión nueva (puedes editarla):</div>
+      <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">${escapar(s.origen || "")}</span>
+        <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-probar">🧪 Probarla</button></div>
+      </div>
+    </div>`;
+}
 
 function pasoHtml(p) {
   return `
@@ -4402,7 +4442,7 @@ function pintarQuickPanel() {
         ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
+          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${esAdmin && q.variantes ? `<span class="badge-prueba" title="Tiene versiones en prueba">🧪 ${q.variantes.length}</span>` : ""}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
         </div>
         <button class="editar" data-id="${q.id}" title="Editar">${icon("pencil")}</button>
@@ -4460,9 +4500,14 @@ function usarQuickReply(q) {
   $("#panel-rapidas").classList.remove("abierto");
   estado.rapidasPorSlash = false;
 
+  // Si la respuesta tiene una prueba en curso, el Worker ya dio el peso de
+  // cada versión: se sortea cuál va al cuadro. La vendedora no ve nada
+  // distinto: le aparece un texto y lo manda (o lo edita) como siempre.
+  const version = elegirVersion(q);
+  estado.rapidaVariante = { id: version.id, texto: version.texto };
   const input = $("#texto-envio");
   if (input) {
-    input.value = q.body || "";
+    input.value = version.texto;
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 120) + "px";
     input.focus();
@@ -4474,6 +4519,14 @@ function usarQuickReply(q) {
   pintarPreviewArchivo();
 }
 
+function elegirVersion(q) {
+  const vs = q.variantes;
+  if (!vs?.length) return { id: 0, texto: q.body || "" };
+  let r = Math.random();
+  const v = vs.find((x) => (r -= x.peso) <= 0) || vs[vs.length - 1];
+  return { id: v.id, texto: v.texto ?? q.body ?? "" };
+}
+
 function abrirModalRapidaNueva() {
   estado.editandoRapidaId = null;
   $("#rapida-modal-titulo").textContent = "Nueva respuesta rápida";
@@ -4482,6 +4535,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarSeguimientoRapida(null);
+  $("#rapida-pruebas").innerHTML = "";
   $("#modal-rapida-fondo").classList.add("abierto");
 }
 
@@ -4589,6 +4643,8 @@ function abrirModalRapidaEdicion(q) {
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarSeguimientoRapida(q);
+  $("#rapida-pruebas").innerHTML = "";
+  if (estado.miRol === "admin") pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
 
@@ -4647,6 +4703,87 @@ $("#rapida-crear").addEventListener("click", async () => {
     btn.textContent = "Guardar";
   }
 });
+
+/* ---------- 🧪 Pruebas de mensajes (solo admin) ---------- */
+
+/**
+ * Las versiones en prueba de una respuesta rápida o de un paso de la
+ * bienvenida, con cómo le va a cada una. El CRM reparte cuál sale (la que
+ * hace avanzar más chats sale más); aquí el admin agrega versiones, quita una
+ * o cierra la prueba quedándose con la mejor. Ver crm-variantes.js.
+ */
+async function pintarPruebas(cont, tipo, refId) {
+  cont.innerHTML = `<p class="sub">Cargando pruebas…</p>`;
+  let datos;
+  try {
+    datos = await pedir(`/api/crm/variantes?tipo=${tipo}&ref_id=${refId}`);
+  } catch (err) {
+    cont.innerHTML = `<p class="sub">${escapar(err.message)}</p>`;
+    return;
+  }
+  const vs = datos.versiones;
+  const enPrueba = vs.length > 1;
+  const lider = enPrueba ? vs.reduce((a, b) => (b.peso > a.peso ? b : a)) : null;
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
+  cont.innerHTML = `
+    <div class="rp-titulo">🧪 ${enPrueba ? "Versiones en prueba" : "Probar otra versión del texto"}</div>
+    <p class="ayuda-modal">${enPrueba
+      ? "El CRM va alternando estas versiones y manda más la que hace avanzar más chats (respondió, dijo destino, cerró). Decide cuando cada una tenga al menos 20 usos."
+      : "Agrega otra forma de decir este mensaje: el CRM las alterna y mide cuál hace avanzar más chats. Tú decides con cuál quedarte."}</p>
+    ${vs.map((v, i) => `
+      <div class="prueba-version${lider && v.id === lider.id && lider.usos >= 20 ? " lider" : ""}" data-id="${v.id}">
+        <div class="pv-cab">
+          <b>${v.id === 0 ? "Original" : `Versión ${String.fromCharCode(65 + i)}`}</b>
+          <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.respondieron, v.usos)}% respondió en 24 h${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
+        </div>
+        ${v.id ? `<div class="sub pv-texto">${escapar(v.texto)}</div>` : ""}
+        ${v.motivo ? `<div class="sub"><i>${escapar(v.motivo)}</i></div>` : ""}
+        ${enPrueba ? `<div class="pv-acciones">
+          <button type="button" class="pv-ganadora">Quedarse con esta</button>
+          ${v.id ? `<button type="button" class="pv-quitar">Quitar</button>` : ""}
+        </div>` : ""}
+      </div>`).join("")}
+    <button type="button" class="pv-agregar">+ Probar otra versión</button>
+    <div class="pv-nueva" hidden>
+      <textarea placeholder="Otra forma de decir el mismo mensaje"></textarea>
+      <button type="button" class="pv-guardar">Agregar a la prueba</button>
+    </div>`;
+
+  const recargar = async () => {
+    await pintarPruebas(cont, tipo, refId);
+    if (tipo === "rapida") cargarQuickReplies().catch(() => {});
+  };
+  const llamar = (method, body) => pedir("/api/crm/variantes", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  cont.querySelector(".pv-agregar").addEventListener("click", () => {
+    const caja = cont.querySelector(".pv-nueva");
+    caja.hidden = !caja.hidden;
+    if (!caja.hidden) caja.querySelector("textarea").focus();
+  });
+  cont.querySelector(".pv-guardar").addEventListener("click", async (e) => {
+    const texto = cont.querySelector(".pv-nueva textarea").value.trim();
+    if (!texto) return;
+    e.currentTarget.disabled = true;
+    try { await llamar("POST", { tipo, ref_id: refId, texto }); await recargar(); } catch (err) { alert(err.message); e.target.disabled = false; }
+  });
+  cont.querySelectorAll(".prueba-version").forEach((el) => {
+    const id = Number(el.dataset.id);
+    el.querySelector(".pv-ganadora")?.addEventListener("click", async () => {
+      if (!confirm(id ? "Esta versión pasa a ser el texto de siempre y la prueba se cierra. ¿Seguir?" : "Se queda el texto original y las otras versiones se retiran. ¿Seguir?")) return;
+      try {
+        await llamar("PATCH", { tipo, ref_id: refId, ganadora: id });
+        // El texto del formulario pasa a ser el ganador, para no pisarlo al guardar.
+        const campo = tipo === "rapida" ? $("#rapida-texto") : $("#seq-texto");
+        const ganadora = vs.find((v) => v.id === id);
+        if (id && ganadora && campo) campo.value = ganadora.texto;
+        await recargar();
+        if (tipo === "bienvenida") pintarSecuenciaBienvenida();
+      } catch (err) { alert(err.message); }
+    });
+    el.querySelector(".pv-quitar")?.addEventListener("click", async () => {
+      try { await llamar("DELETE", { id }); await recargar(); } catch (err) { alert(err.message); }
+    });
+  });
+}
 
 /* ---------- Seguimientos programados ---------- */
 

@@ -15,6 +15,10 @@
  *   Los chats con la ventana de 24 h cerrada no se programan: vuelven en
  *   `saltados` con el motivo, para que la vendedora use una plantilla.
  *
+ * Tipo "variante" (solo admin): otra versión del texto de una respuesta
+ * rápida o de un paso de la bienvenida. Aprobarla la mete en la prueba
+ * (tabla `variantes`); no manda nada a nadie.
+ *
  * Tipo "envio" (link de seguimiento con la boleta de Shalom lista): solo lo
  * ve y lo manda el admin. Como la boleta sale días después, casi siempre la
  * ventana ya cerró: entonces "Enviar ahora" usa la plantilla utility de
@@ -25,7 +29,7 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
-import { registrarMensajeSaliente } from "../../lib/crm-db.js";
+import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos } from "../asesor.js";
 
 const json = (data, status = 200) =>
@@ -58,9 +62,18 @@ async function get({ request, env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND ? IN (0, 1)
+     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo != 'variante' OR ? = 1)
      ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
   ).bind(esAdmin(agent) ? 1 : 0).all();
+  // Las versiones propuestas llevan el texto actual al lado, para comparar.
+  for (const s of results) {
+    if (s.tipo !== "variante") continue;
+    const ref = await env.CRM_DB.prepare(
+      s.ref_tipo === "bienvenida" ? "SELECT title, body FROM welcome_steps WHERE id = ?" : "SELECT title, body FROM quick_replies WHERE id = ?"
+    ).bind(s.ref_id).first();
+    s.ref_titulo = ref ? `${s.ref_tipo === "bienvenida" ? "Bienvenida · " : ""}${ref.title}` : "(ya no existe)";
+    s.ref_texto = ref?.body || "";
+  }
   return json({
     pendientes: results.length,
     sugerencias: results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos) }))
@@ -86,7 +99,7 @@ async function programar(env, conversationId, texto, quien, cuando) {
   await env.CRM_DB.prepare(
     "INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by) VALUES (?, ?, ?, ?)"
   )
-    .bind(conversationId, texto, sendAt.toISOString(), quien)
+    .bind(conversationId, texto, sendAt.toISOString(), origenSugerencia(quien))
     .run();
   return null;
 }
@@ -120,6 +133,7 @@ async function post({ request, env, agent }) {
   const s = await env.CRM_DB.prepare("SELECT * FROM asesor_sugerencias WHERE id = ?").bind(id).first();
   if (!s) return json({ error: "Esa sugerencia ya no existe." }, 404);
   if (s.tipo === "envio" && !esAdmin(agent)) return json({ error: "Solo el admin maneja los envíos." }, 403);
+  if (s.tipo === "variante" && !esAdmin(agent)) return json({ error: "Solo el admin decide qué se prueba." }, 403);
   if (s.estado !== "pendiente") return json({ error: `Ya fue ${s.estado} por ${s.resuelto_por || "otra persona"}.` }, 409);
 
   const quien = agent?.displayName || agent?.username || "CRM";
@@ -144,6 +158,21 @@ async function post({ request, env, agent }) {
   if (!texto) return json({ error: "El mensaje quedó vacío." }, 400);
   const programados = [];
   const saltados = [];
+
+  if (s.tipo === "variante") {
+    const tabla = s.ref_tipo === "bienvenida" ? "welcome_steps" : "quick_replies";
+    if (!(await env.CRM_DB.prepare(`SELECT 1 FROM ${tabla} WHERE id = ?`).bind(s.ref_id).first())) {
+      return json({ error: "Ese mensaje ya no existe." }, 422);
+    }
+    const { n } = await env.CRM_DB.prepare("SELECT COUNT(*) AS n FROM variantes WHERE tipo = ? AND ref_id = ? AND estado = 'activa'").bind(s.ref_tipo, s.ref_id).first();
+    if (n >= 3) return json({ error: "Ya hay 3 versiones en prueba de ese mensaje: cierra o quita una antes." }, 409);
+    await env.CRM_DB.prepare("INSERT INTO variantes (tipo, ref_id, texto, origen, motivo) VALUES (?, ?, ?, ?, ?)")
+      .bind(s.ref_tipo, s.ref_id, texto, s.origen || "asesor", s.motivo)
+      .run();
+    await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ? WHERE id = ?").bind(texto, id).run();
+    await cerrar("aprobada");
+    return json({ ok: true, enviados: 0, programados: 0, saltados });
+  }
 
   if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);

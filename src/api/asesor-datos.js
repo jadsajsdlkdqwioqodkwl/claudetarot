@@ -131,7 +131,11 @@ export async function aprendizaje(env) {
               SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = s.conversation_id
                           AND m.direction = 'in' AND m.created_at > s.resuelto_at
                           AND m.created_at <= datetime(s.resuelto_at, '+24 hours'))) AS respondieron,
-              SUM(COALESCE(conv.meta_tags, '') LIKE '%purchase%') AS compraron
+              -- Solo cuenta la compra que vino DESPUÉS de aprobar la sugerencia (antes
+              -- sumaba cualquier chat con la etiqueta purchase, aunque ya hubiera comprado).
+              SUM(EXISTS (SELECT 1 FROM capi_events e WHERE e.conversation_id = s.conversation_id
+                          AND e.event_name = 'Purchase' AND e.created_at > s.resuelto_at)
+                  OR (conv.etapa >= 5 AND conv.etapa_at > s.resuelto_at)) AS compraron
        FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
        WHERE s.estado = 'aprobada' AND s.tipo != 'respuesta_rapida' AND s.resuelto_at >= datetime('now', '-21 days')
        GROUP BY s.tipo, s.origen`

@@ -975,6 +975,24 @@ estrella dentro de un panel desplegable) por algo que se ve de entrada:
   degradado, fondo con un dejo de color en vez de gris plano, inputs con
   foco animado, botón con gradiente — nada de JavaScript nuevo, solo CSS.
 
+### Quinceava vuelta: pruebas de mensajes, embudo automático y resumen por correo
+
+- **Embudo por chat sin IA** (`conversations.etapa`, cron `*/5`,
+  `src/lib/crm-embudo.js`): 1 escribió … 5 cerró, mismas reglas que
+  `scripts/asesor/embudo.py`.
+- **Pruebas de mensajes** (`src/lib/crm-variantes.js`, migración 0034): una
+  respuesta rápida o un paso de la bienvenida puede tener hasta 3 versiones
+  más. Al elegir la respuesta con `/` o ⚡, el CRM pone en el cuadro una de
+  ellas (la que hace avanzar más chats sale más); la vendedora la manda o la
+  edita como siempre. El admin ve los números y decide en ⚡ → editar →
+  "🧪 Versiones en prueba". El director CRO las propone en ✨ Sugerencias.
+- **Resumen semanal por correo sin tokens**: `GET /api/asesor/resumen` +
+  `resumenSemanal` en `apps-script/ASESOR.gs`. Ver `docs/asesor.md`.
+- **Arreglos**: webhook sin mensajes duplicados, tope de 4 seguimientos
+  automáticos seguidos sin respuesta, lo aprobado desde ✨ Sugerencias se
+  cancela si una vendedora escribe a mano, y el Apps Script ya no llama a la
+  API de Claude (se cobraba aparte del plan).
+
 ### Por qué D1 y no Sheets
 
 Sheets tiene un límite práctico de escrituras por minuto y no está pensado para leer y
