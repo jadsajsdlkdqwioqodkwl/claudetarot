@@ -3994,6 +3994,7 @@ function pintarSugerencias(lista) {
   cont.innerHTML = lista.map((s) => {
     if (s.tipo === "variante") return tarjetaVariante(s);
     if (s.tipo === "prueba_lista") return tarjetaPruebaLista(s);
+    if (s.tipo === "saldo") return tarjetaSaldo(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
     const cabecera = esRapida
@@ -4089,6 +4090,18 @@ function pintarSugerencias(lista) {
       } catch { alert("No se pudo copiar."); }
     });
     card.querySelector(".sug-probar")?.addEventListener("click", (e) => accion("aprobar", e.currentTarget));
+    card.querySelector(".sug-abrir")?.addEventListener("click", async () => {
+      const convId = Number(card.dataset.conv);
+      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      if (!c) {
+        await cargarConversaciones();
+        c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      }
+      if (c) {
+        $("#modal-sugerencias-fondo").classList.remove("abierto");
+        abrirConversacion(c);
+      }
+    });
     if (card.classList.contains("sug-variante")) {
       card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
       return;
@@ -4110,22 +4123,28 @@ function pintarSugerencias(lista) {
       accion("aprobar", e.currentTarget, { modo: "programar", send_at: new Date(valor).toISOString() });
     });
     card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
-    card.querySelector(".sug-abrir")?.addEventListener("click", async () => {
-      const convId = Number(card.dataset.conv);
-      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
-      if (!c) {
-        await cargarConversaciones();
-        c = estado.conversaciones.find((x) => x.conversation_id === convId);
-      }
-      if (c) {
-        $("#modal-sugerencias-fondo").classList.remove("abierto");
-        abrirConversacion(c);
-      }
-    });
   });
 }
 
 const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) || card.classList.contains("sug-variante");
+
+/** El asesor vio la captura del saldo: quien maneja Shalom lo confirma y la página del cliente muestra la clave. */
+function tarjetaSaldo(s) {
+  return `
+    <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+      <div class="sug-cabecera"><span class="sug-tipo">💸 Pagó el saldo · ${escapar(s.nombre || "Cliente")}</span><span class="sub">${escapar(s.titulo || "")} · +${escapar(s.wa_id || "")}</span></div>
+      ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+      <div class="sug-chat"><p class="sub">Cargando conversación…</p></div>
+      <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">Revisa la captura antes de confirmar</span>
+        <button type="button" class="sug-icono sug-abrir" title="Abrir chat">${icon("chat")}</button>
+        <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="No es el saldo">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-probar">Confirmar saldo pagado</button></div>
+      </div>
+    </div>`;
+}
 
 /** Una prueba de mensajes ya tiene ganadora: decidir con un toque (lo crea el cron, solo admin). */
 function tarjetaPruebaLista(s) {
@@ -4185,7 +4204,8 @@ async function cargarChatSugerencia(card) {
     caja.innerHTML = mensajes.length
       ? mensajes.map((m) => `
           <div class="sug-msg ${m.direction === "in" ? "entrante" : "saliente"}">
-            <div>${m.body && m.type !== "location" ? formatearTextoWA(m.body) : `<em>${escapar(extractoMensaje(m.type, m.type === "location" ? m.body : m.file_name || ""))}</em>`}</div>
+            ${m.type === "image" && m.tiene_media ? `<img class="sug-foto" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />` : ""}
+            <div>${m.body && m.type !== "location" ? formatearTextoWA(m.body) : m.type === "image" && m.tiene_media ? "" : `<em>${escapar(extractoMensaje(m.type, m.type === "location" ? m.body : m.file_name || ""))}</em>`}</div>
             <span class="sub">${m.direction === "in" ? "" : escapar(m.sent_by || "") + " · "}${hora(m.created_at)}</span>
           </div>`).join("")
       : `<p class="sub">Sin mensajes.</p>`;
@@ -4251,6 +4271,7 @@ async function abrirShalom() {
       </div>
       ${p.sugerencia?.motivo ? `<div class="sub">${escapar(p.sugerencia.motivo)}</div>` : ""}
       <textarea class="sug-texto" rows="3">${escapar(p.sugerencia?.texto || mensajeShalomPorDefecto(p))}</textarea>
+      <div class="sub">${textoLinkAuto(p.link_auto)}</div>
       <div class="sub">${p.ventana_abierta ? "Ventana de 24 h abierta: sale como mensaje normal." : "Pasaron 24 h desde su último mensaje: sale con la plantilla de envío (si está aprobada) o cópialo."}</div>
       <div class="shalom-controles">
         <select class="shalom-estado" title="Estado del pedido">${ESTADOS_SHALOM.map((e) => `<option value="${e}"${e === p.estado ? " selected" : ""}>${NOMBRE_ESTADO_SHALOM[e]}</option>`).join("")}</select>
@@ -4540,6 +4561,12 @@ function pintarQuickPanel() {
 function usarQuickReply(q, indice = null) {
   $("#panel-rapidas").classList.remove("abierto");
   estado.rapidasPorSlash = false;
+  // "Link de envío (sale solo)": la manda el sistema con el link de cada
+  // cliente en {link}; a mano saldría con el {link} literal.
+  if (/\{link\}/i.test(q.body || "")) {
+    alert("Esta respuesta sale sola, con el link de cada cliente, 23 h después de su último mensaje. Para cambiar el texto, edítala con el lápiz.");
+    return;
+  }
 
   const versiones = versionesDe(q);
   const aMano = indice !== null && versiones;
@@ -5808,6 +5835,16 @@ $("#template-enviar").addEventListener("click", async () => {
 /* ---------- Panel de detalle ---------- */
 
 /** El código de Shalom del cliente como etiqueta: se ve de un vistazo, se copia de un toque y se edita en el lugar. */
+/** Estado del link que sale solo 23 h después del último mensaje del cliente (crm-links-envio.js). */
+function textoLinkAuto(l) {
+  const hora = (v) => (v ? new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "");
+  if (!l) return "🔗 Link automático: todavía no (se programa solo si la venta tiene celular y chat).";
+  if (l.estado === "enviado") return `🔗 Link automático: enviado ${hora(l.cuando)} ✓`;
+  if (l.estado === "pendiente" || l.estado === "enviando") return `🔗 Link automático: sale ${hora(l.cuando)} (23 h después de su último mensaje)`;
+  if (l.estado === "sin_ventana") return "🔗 Link automático: no alcanzó la ventana de 24 h; mándalo abajo.";
+  return `🔗 Link automático: ${l.estado} — mándalo abajo.`;
+}
+
 function pintarShalom(c, editando = false) {
   const cont = $("#detalle-shalom");
   if (!cont) return;

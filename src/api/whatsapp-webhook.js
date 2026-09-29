@@ -30,6 +30,7 @@ import {
 import { reportarEventoMeta } from "../lib/meta-capi.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
+import { reprogramarLinkDeEnvio } from "../lib/crm-links-envio.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
 
 const json = (data, status = 200) =>
@@ -116,10 +117,10 @@ async function resolverNombresPedido(env, order) {
 }
 
 /** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
-async function mandarBienvenidaSiAplica(env, contacto, conversacion) {
+async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId) {
   if (!contacto._isNew || !contacto.ctwa_clid) return;
   try {
-    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true });
+    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
   }
@@ -201,10 +202,12 @@ async function procesarCambio(env, db, value, origen) {
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, fileName, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
     await cancelarSeguimientosPendientes(db, conversacion.id);
+    // El link de envío automático (si tiene uno pendiente) sale 23 h después de este mensaje.
+    await reprogramarLinkDeEnvio(db, conversacion.id).catch((err) => console.error("Link de envío:", err.message));
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }
-    await mandarBienvenidaSiAplica(env, contacto, conversacion);
+    await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion);
     await reportarConversacionSiAplica(env, contacto, conversacion);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));

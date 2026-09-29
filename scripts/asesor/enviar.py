@@ -28,6 +28,7 @@ salida.json:
   "respuestas_rapidas": [{"titulo": "", "texto": "", "motivo": "",
                           "destinatarios": [{"whatsapp": "", "nombre": ""}]}],
   "variantes": [{"ref_tipo": "rapida|bienvenida", "ref_id": 12, "texto": "", "motivo": "hipótesis"}],
+  "saldos": [{"whatsapp": "", "nombre": "", "codigo": "TS-…", "monto": 69, "motivo": "mandó captura de Yape 29/09 18:40"}],
   "analisis": [{"whatsapp": "", "intencion": "alta|media|baja|ninguna", "resultado": "ganado|perdido|abierto",
                 "motivo": "", "objecion": "", "calidad": 1-5, "agente": "", "upsell": "", "nota": "coaching"}],
   "envios": [{"whatsapp": "", "nombre": "", "link": "https://…/TS-…", "motivo": "", "mensaje": ""}],
@@ -246,7 +247,7 @@ def main():
             r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "fecha": datos.get("fecha_analisis"),
                                   "chats": datos["analisis"][i:i + 100]}, ANALISIS)
             print(f"Análisis guardados: {r.get('guardados', 0)} (sin chat: {len(r.get('sin_chat', []))})", flush=True)
-    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not any(datos.get(k) for k in ("respuestas_rapidas", "envios", "variantes")):
+    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not any(datos.get(k) for k in ("respuestas_rapidas", "envios", "variantes", "saldos")):
         print("Nada que avisar.")
         return
     mensajes = cuerpo.pop("mensajes")
@@ -259,6 +260,10 @@ def main():
                              for p in m.get("pasos") or []]} for m in mensajes]
     propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
     propuestas += [dict(v, tipo="variante") for v in datos.get("variantes", [])]
+    # Capturas del pago del saldo que vio el asesor: las confirma una persona de Shalom con un toque.
+    propuestas += [{"tipo": "saldo", "whatsapp": s.get("whatsapp"), "nombre": s.get("nombre"), "codigo": s.get("codigo"),
+                    "texto": s.get("texto") or f"Captura de S/{s.get('monto', '')}", "motivo": s.get("motivo")}
+                   for s in datos.get("saldos", [])]
     # Links con la boleta lista: solo al admin, en el CRM. No van a Telegram.
     propuestas += [{"tipo": "envio", "whatsapp": e.get("whatsapp"), "nombre": e.get("nombre"), "link": e.get("link"),
                     "motivo": e.get("motivo"), "texto": e.get("mensaje")} for e in datos.get("envios", [])]

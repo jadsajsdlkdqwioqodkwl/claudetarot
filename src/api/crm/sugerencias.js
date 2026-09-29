@@ -19,6 +19,9 @@
  * rápida o de un paso de la bienvenida. Aprobarla la mete en la prueba
  * (tabla `variantes`); no manda nada a nadie.
  *
+ * Tipo "saldo" (quien maneja Shalom): el asesor vio la captura del pago del
+ * saldo; aprobarla deja el saldo en 0 en la hoja (la página muestra la clave).
+ *
  * Tipo "prueba_lista" (solo admin, la crea el cron): una prueba de mensajes
  * ya tiene ganadora (`titulo` = id de la versión, 0 = la original).
  * Aprobarla deja esa versión como el texto de siempre; descartarla sigue
@@ -37,6 +40,8 @@ import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos } from "../asesor.js";
 import { cerrarPrueba } from "../../lib/crm-variantes.js";
+import { manejaShalom } from "../../lib/ventas.js";
+import { saldoPagado } from "./shalom.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -60,7 +65,7 @@ async function get({ request, env, agent }) {
   const chat = Number(new URL(request.url).searchParams.get("chat"));
   if (chat) {
     const { results: mensajes } = await env.CRM_DB.prepare(
-      `SELECT id, direction, type, body, file_name, sent_by, created_at FROM messages
+      `SELECT id, direction, type, body, file_name, sent_by, created_at, (media_key IS NOT NULL OR media_id IS NOT NULL) AS tiene_media FROM messages
        WHERE conversation_id = ? ORDER BY id DESC LIMIT 20`
     ).bind(chat).all();
     return json({ mensajes: mensajes.reverse() });
@@ -68,9 +73,10 @@ async function get({ request, env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo NOT IN ('variante', 'prueba_lista') OR ? = 1)
+     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo NOT IN ('variante', 'prueba_lista') OR ?1 = 1)
+       AND (s.tipo != 'saldo' OR ?2 = 1)
      ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
-  ).bind(esAdmin(agent) ? 1 : 0).all();
+  ).bind(esAdmin(agent) ? 1 : 0, manejaShalom(agent, env) ? 1 : 0).all();
   // Las versiones propuestas llevan el texto actual al lado, para comparar.
   for (const s of results) {
     if (s.tipo !== "variante" && s.tipo !== "prueba_lista") continue;
@@ -151,6 +157,14 @@ async function post({ request, env, agent }) {
   if (payload.accion === "descartar") {
     await cerrar("descartada");
     return json({ ok: true });
+  }
+
+  if (s.tipo === "saldo") {
+    if (!manejaShalom(agent, env)) return json({ error: "Solo quien maneja los envíos de Shalom confirma saldos." }, 403);
+    const r = await saldoPagado(env, s.titulo);
+    if (!r.ok) return r;
+    await cerrar("aprobada");
+    return json({ ok: true, enviados: 0, programados: 0, saltados: [] });
   }
 
   if (s.tipo === "prueba_lista") {

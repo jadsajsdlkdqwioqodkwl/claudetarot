@@ -10,7 +10,7 @@
  * dice después de vender. Es correlación, no causa: sirve para elegir qué
  * probar, no para darlo por hecho.
  *
- * Todo sin IA, en el cron de 5 min, de a poco (VENTANA ids por pasada). La
+ * Todo sin IA, en el cron de 15 min, de a poco (VENTANA ids por pasada). La
  * etapa de cada mensaje se calcula con lo que había ANTES de él en el chat
  * (calcularEtapa), así también sirve para los mensajes viejos.
  */
@@ -56,52 +56,58 @@ export function frasesDe(texto) {
 export async function procesarFrases(env) {
   const db = env.CRM_DB;
   if (!db) return;
-  const fila = await db.prepare("SELECT value FROM crm_settings WHERE key = 'frases_ultimo_id'").first();
-  const tope = await db.prepare("SELECT MAX(id) AS m FROM messages").first();
-  const maxId = tope?.m || 0;
-  let desde = Number(fila?.value);
-  if (!Number.isFinite(desde)) desde = Math.max(0, maxId - 20000); // primera vez: lo que haya de las últimas semanas
+  // Pocas llamadas a D1 (el plan gratis corta en 50 por ejecución): estado,
+  // toda la historia de los chats de la ventana en UNA consulta, y batches.
+  const est = await db.prepare(
+    `SELECT (SELECT value FROM crm_settings WHERE key = 'frases_ultimo_id') AS ultimo,
+            (SELECT value FROM crm_settings WHERE key = 'frases_limpieza') AS limpieza,
+            (SELECT MAX(id) FROM messages) AS maxId`
+  ).first();
+  const maxId = est?.maxId || 0;
+  let desde = Number(est?.ultimo);
+  if (!Number.isFinite(desde) || est?.ultimo === null) desde = Math.max(0, maxId - 20000); // primera vez: las últimas semanas
   if (desde >= maxId) return;
   const hasta = Math.min(desde + VENTANA, maxId);
 
-  // Los chats que tuvieron mensajes en esta ventana, con su historia hasta el final de la ventana.
-  const { results: convs } = await db.prepare(
-    "SELECT DISTINCT conversation_id FROM messages WHERE id > ? AND id <= ? AND direction = 'out' AND type = 'text'"
+  // La historia (hasta el final de la ventana) de los chats donde el equipo escribió en la ventana.
+  const { results: hist } = await db.prepare(
+    `SELECT id, conversation_id, direction, type, body, sent_by, created_at FROM messages
+     WHERE id <= ?2 AND created_at >= datetime('now', '-30 days') AND conversation_id IN (
+       SELECT DISTINCT conversation_id FROM messages WHERE id > ?1 AND id <= ?2 AND direction = 'out' AND type = 'text')
+     ORDER BY conversation_id, id`
   ).bind(desde, hasta).all();
+  const porConv = {};
+  for (const m of hist) (porConv[m.conversation_id] ||= []).push(m);
+
   const inserts = [];
-  for (const { conversation_id } of convs) {
-    const { results: hist } = await db.prepare(
-      `SELECT id, direction, type, body, sent_by, created_at FROM messages
-       WHERE conversation_id = ? AND id <= ? ORDER BY id DESC LIMIT 300`
-    ).bind(conversation_id, hasta).all();
-    hist.reverse();
-    hist.forEach((m, i) => {
+  for (const [conv, msgs] of Object.entries(porConv)) {
+    msgs.forEach((m, i) => {
       if (m.id <= desde || m.direction !== "out" || m.type !== "text" || !m.body || RE_AUTO.test(m.sent_by || "")) return;
       // "Queda agendado", "su clave es…": se dicen DESPUÉS de vender, no ayudan a vender.
       if (RE_CERRO.test(m.body)) return;
-      const etapa = calcularEtapa(hist.slice(0, i));
+      const etapa = calcularEtapa(msgs.slice(0, i));
       for (const f of frasesDe(m.body)) {
         inserts.push(
           db.prepare("INSERT OR IGNORE INTO frases_uso (frase, conversation_id, etapa_antes, created_at) VALUES (?, ?, ?, ?)")
-            .bind(f, conversation_id, etapa, m.created_at)
+            .bind(f, Number(conv), etapa, m.created_at)
         );
       }
     });
   }
-  for (let i = 0; i < inserts.length; i += 400) await db.batch(inserts.slice(i, i + 400));
   const cambios = [
     db.prepare("INSERT INTO crm_settings (key, value) VALUES ('frases_ultimo_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(String(hasta))
   ];
   // Limpieza una vez al día.
   const hoy = new Date().toISOString().slice(0, 10);
-  const limpio = await db.prepare("SELECT value FROM crm_settings WHERE key = 'frases_limpieza'").first();
-  if (limpio?.value !== hoy) {
+  if (est?.limpieza !== hoy) {
     cambios.push(
       db.prepare("DELETE FROM frases_uso WHERE created_at < datetime('now', ?)").bind(`-${DIAS_GUARDAR} days`),
       db.prepare("INSERT INTO crm_settings (key, value) VALUES ('frases_limpieza', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(hoy)
     );
   }
-  await db.batch(cambios);
+  // Las frases y el avance del puntero van juntos: si algo falla, la ventana se reintenta entera.
+  const todo = [...inserts, ...cambios];
+  for (let i = 0; i < todo.length; i += 400) await db.batch(todo.slice(i, i + 400));
 }
 
 /**

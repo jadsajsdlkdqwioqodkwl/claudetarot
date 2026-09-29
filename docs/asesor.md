@@ -34,6 +34,42 @@ Endpoints del bot (cabecera `x-asesor-clave`): `/api/asesor/chats`, `/contexto`,
 `/sugerencias`, `/avisos`, `/ventas`, `/memoria`, `/analisis`, `/resumen`.
 Scripts en `scripts/asesor/`. Skills en `.claude/skills/` (ver su README).
 
+## Crons del Worker y el tope de 50 consultas
+
+El plan gratis de Cloudflare corta cada ejecución en **50 consultas a D1** y
+50 llamadas externas. Por eso cada cron hace poco y con consultas en lote:
+
+| Cron | Qué hace |
+|---|---|
+| `*/5` | Seguimientos vencidos: los reserva (pendiente → enviando) y manda hasta 12 por pasada, ~2 consultas cada uno. Lo reservado hace más de 15 min sin salir queda fallido (nunca se reenvía a ciegas). Carrito abandonado (apagado si no hay `CARRITO_AUTO_HORAS`), de a 8. |
+| `*/10` | Export de chats a la hoja de Google. |
+| `*/15` | Link de envío automático, resumen semanal / pruebas listas (una vez al día; esa pasada no hace más), etapa del embudo (3 consultas) y frases (≈4). |
+
+## Link de seguimiento automático
+
+Cada venta nueva de la pestaña **Ventas** (con código TS-…, de los últimos 2
+días) recibe sola su link **23 h después del último mensaje del cliente**,
+dentro de su ventana de 24 h: gratis y sin plantilla. Si el cliente vuelve a
+escribir, se corre a 23 h de ese mensaje. Sale aunque el cliente escriba
+(`mandar_siempre`). Para entonces la boleta suele estar subida; si no,
+aparece después en el mismo link.
+
+- **El texto** es la respuesta rápida **"Link de envío (sale solo)"** (grupo
+  Automáticos). La editan el admin y las vendedoras con el lápiz; `{link}` y
+  `{nombre}` se rellenan solos. **Borrarla apaga el envío automático.**
+- En **Links de Shalom** cada pedido dice si su link está programado (y a
+  qué hora), enviado, o si no alcanzó la ventana (entonces se manda desde ahí).
+- Código: `src/lib/crm-links-envio.js`, tabla `envio_links` (migración 0035).
+
+## Saldo desde la captura
+
+El asesor ve las imágenes de los chats. Si un cliente de provincia mandó la
+captura del pago del saldo, la propone en `saldos` de `salida.json` (con el
+código TS-… si lo sabe; si no, se busca por el celular en Ventas). Aparece en
+✨ Sugerencias como "💸 Pagó el saldo", con la conversación y la foto, solo
+para quien maneja Shalom. **Confirmar saldo pagado** deja el saldo en 0 y la
+página del cliente le muestra su clave. Nunca se marca solo.
+
 ## Pruebas de mensajes (respuestas rápidas y bienvenida)
 
 - El director CRO **no crea respuestas rápidas parecidas**: propone

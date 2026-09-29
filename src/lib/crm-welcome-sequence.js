@@ -19,7 +19,9 @@ import { versionesEnPrueba, sortear, registrarUso } from "./crm-variantes.js";
  * de crm-variantes.js y queda anotado cuál salió. Las pruebas del sandbox y
  * los reenvíos a mano mandan siempre el texto original y no cuentan.
  */
-export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null, { pruebas = false } = {}) {
+export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null, { pruebas = false, ultimoWaId } = {}) {
+  // Con el id del mensaje del cliente a mano, el "escribiendo…" no gasta una consulta por paso.
+  const escribiendo = ultimoWaId ? { ultimoWaId } : {};
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT id, step_order, body FROM welcome_steps ORDER BY step_order ASC"
   ).all();
@@ -51,7 +53,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       await pausaEnvio(env, conversationId, undefined, { escribiendo: false });
       await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
     }
-    await pausaEnvio(env, conversationId);
+    await pausaEnvio(env, conversationId, undefined, escribiendo);
     await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel);
     await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
     return 1;
@@ -80,7 +82,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       // "únicas" solo valen como primer paso: en otro paso no se eligen.
       const versiones = enPrueba[paso.id]?.filter((v) => !v.unico);
       const elegida = paso.id === primero.id ? elegidaPrimero : versiones ? versiones[sortear(versiones.map((v) => v.peso))] : null;
-      await pausaEnvio(env, conversationId);
+      await pausaEnvio(env, conversationId, undefined, escribiendo);
       await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
       if (pruebas) {
         await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: paso.id, varianteId: elegida?.id || 0, conversationId, etapaAntes: 1, agente: sentByLabel });

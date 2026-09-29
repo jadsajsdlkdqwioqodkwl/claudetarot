@@ -90,3 +90,16 @@ WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
   3. En cuanto el cliente responde al botón/plantilla, aprovechar esas
      24h gratis para coordinar hora exacta de entrega/cobro con texto
      libre.
+
+## Plantillas: no vencen
+
+Una plantilla **aprobada** no caduca: queda en WhatsApp Manager hasta que
+alguien la borre (Meta solo la pausa si recibe muchos bloqueos). Lo que dura
+poco es la **ventana** (24 h desde el último mensaje del cliente; 72 h si
+vino de anuncio). Si algo "duró unas horas", no era una plantilla aprobada
+(p. ej. un mensaje de ausencia o de bienvenida de la app WhatsApp Business).
+
+Crear una: WhatsApp Manager → **Administrar plantillas** → Crear plantilla →
+categoría **Utilidad** → idioma Español → cuerpo con variables {{1}}, {{2}}
+→ (opcional) botón de respuesta rápida → Enviar. Suele aprobarse en minutos.
+El nombre va en `PLANTILLA_ENVIO` (wrangler.jsonc).

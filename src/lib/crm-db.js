@@ -171,6 +171,15 @@ export const origenSugerencia = (quien) => `${PREFIJO_SUGERENCIA} · ${quien || 
 export const MAX_AUTOMATICOS_SIN_RESPUESTA = 4;
 
 /**
+ * El link de seguimiento del pedido (página /TS-…), que sale solo 23 h
+ * después del último mensaje del cliente (crm-links-envio.js). Va con
+ * `mandar_siempre` (no lo cancela que el cliente escriba: se corre la hora)
+ * y su texto es la respuesta rápida "Link de envío", editable por el equipo;
+ * `template_params` guarda { link, nombre } para rellenar {link} y {nombre}.
+ */
+export const ORIGEN_LINK_ENVIO = "Link de envío";
+
+/**
  * Seguimiento de una respuesta rápida: al mandar una que tiene secuencia
  * (`followup_pasos`, hasta 4 pasos con texto y/o archivo, o el viejo
  * `followup_body`), se programa cada paso `horas` después del anterior, sin

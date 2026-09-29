@@ -876,3 +876,5 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .pv-medias .sub { width: 100%; }
 .pv-media { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
 .pv-media img, .pv-media video { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+
+.sug-foto { max-width: 180px; max-height: 220px; border-radius: 8px; display: block; }

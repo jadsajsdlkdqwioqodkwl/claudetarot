@@ -4,8 +4,7 @@
  * dueño, con un botón a ✨ Sugerencias. Antes llegaba un mensaje por cada
  * propuesta (y el resumen y las pruebas por separado): demasiados.
  *
- * Como mucho uno cada ESPACIO_MIN minutos; el número es lo que está
- * pendiente en ese momento, así no se pierde nada si uno se salta.
+ * Como mucho uno cada ESPACIO_MIN minutos, y solo si hay algo pendiente.
  */
 
 import { llamarTelegram } from "./telegram.js";
@@ -33,7 +32,8 @@ export async function notificarRecomendaciones(env) {
     try {
       await llamarTelegram(env, "sendMessage", {
         chat_id: chatId,
-        text: `✨ Hay ${n} recomendacion${n === 1 ? "" : "es"} lista${n === 1 ? "" : "s"} para revisar y enviar en el CRM.`,
+        // Sin número: cada persona ve otra cantidad (las pruebas y los saldos son solo del admin / Shalom).
+        text: "✨ Hay nuevas recomendaciones listas para revisar y enviar en el CRM.",
         reply_markup: { inline_keyboard: [[{ text: "✨ Ver recomendaciones", url: `${SITIO}/crm/?sugerencias=1` }]] }
       });
       enviados++;

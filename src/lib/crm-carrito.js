@@ -61,6 +61,8 @@ export function queLeFalta(salientesDespues) {
   return null;
 }
 
+// De a 8 por pasada: cada uno gasta 2 consultas y el cron comparte el tope de
+// 50 consultas a D1 por ejecución (plan gratis) con los seguimientos.
 export async function agendarCarritosAbandonados(env) {
   const horas = Number(env.CARRITO_AUTO_HORAS);
   if (!env.CRM_DB || !(horas >= 1 && horas <= 20)) return;
@@ -78,7 +80,7 @@ export async function agendarCarritosAbandonados(env) {
                             OR (s.created_by = ?2 AND datetime(s.created_at) > datetime('now', '-7 days'))))
        AND (SELECT m2.direction FROM messages m2 WHERE m2.conversation_id = conv.id
             ORDER BY m2.id DESC LIMIT 1) = 'out'
-     LIMIT 30`
+     LIMIT 8`
   )
     .bind(`-${horas} hours`, AUTOR)
     .all();

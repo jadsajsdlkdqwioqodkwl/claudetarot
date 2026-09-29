@@ -104,6 +104,7 @@ import {
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
 import { procesarFrases } from "./lib/crm-frases.js";
+import { programarLinksDeEnvio } from "./lib/crm-links-envio.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -235,15 +236,29 @@ export default {
     return handler({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   },
 
-  // Dos crons (ver wrangler.jsonc → triggers.crons), distinguidos por
-  // event.cron: el de cada 5 min manda los seguimientos vencidos y actualiza
-  // la etapa del embudo, el de
-  // cada 10 min vuelca los chats nuevos a Sheets.
+  // Tres crons (ver wrangler.jsonc → triggers.crons), distinguidos por
+  // event.cron: cada 5 min manda los seguimientos vencidos; cada 10 vuelca
+  // los chats nuevos a Sheets; cada 15 programa los links de envío y hace lo
+  // analítico (embudo, frases, resumen semanal).
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {
       ctx.waitUntil(exportarChatsASheets(env));
-      // Resumen semanal y avisos de pruebas listas, por Telegram (sin IA).
-      ctx.waitUntil(enviarResumenSiToca(env).catch((err) => console.error("Resumen semanal:", err.message)));
+      return;
+    }
+    // Lo analítico y lo que lee la hoja Ventas va en su propia ejecución, con
+    // su propio tope de 50 consultas a D1 (plan gratis): así nunca le quita
+    // cupo al envío de seguimientos. Cada paso sigue aunque el anterior falle.
+    if (event.cron === "*/15 * * * *") {
+      await programarLinksDeEnvio(env).catch((err) => console.error("Links de envío:", err.message));
+      // El resumen (una vez al día) gasta muchas consultas: esa pasada no
+      // hace más; embudo y frases siguen en la de 15 min después.
+      const hizoResumen = await enviarResumenSiToca(env).catch((err) => {
+        console.error("Resumen semanal:", err.message);
+        return true;
+      });
+      if (hizoResumen) return;
+      await actualizarEtapas(env).catch((err) => console.error("Embudo:", err.message));
+      await procesarFrases(env).catch((err) => console.error("Frases:", err.message));
       return;
     }
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
@@ -252,10 +267,5 @@ export default {
     // agenda filas; salen en esta misma pasada con los demás seguimientos.
     await agendarCarritosAbandonados(env).catch((err) => console.error("Carrito abandonado:", err.message));
     await procesarSeguimientosVencidos(env);
-    // Etapa del embudo de los chats que se movieron (sin IA): la usan las
-    // pruebas de mensajes y el resumen semanal.
-    await actualizarEtapas(env).catch((err) => console.error("Embudo:", err.message));
-    // Qué frases del equipo acompañan las ventas (sin IA, de a poco).
-    await procesarFrases(env).catch((err) => console.error("Frases:", err.message));
   }
 };

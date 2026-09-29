@@ -18,8 +18,12 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
 export const PAUSA_ENVIO_MS = 2000;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true } = {}) {
-  if (escribiendo && env?.CRM_DB && conversationId) {
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true, ultimoWaId } = {}) {
+  // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
+  // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
+  if (escribiendo && ultimoWaId !== undefined) {
+    if (ultimoWaId) await mostrarEscribiendo(env, ultimoWaId).catch((err) => console.error("Escribiendo:", err.message));
+  } else if (escribiendo && env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
         `SELECT wa_message_id FROM messages

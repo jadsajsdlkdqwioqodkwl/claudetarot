@@ -26,7 +26,7 @@
     --urgent:#FF2A00; --gold:#FFD700;
     --aviso-bg:#F4F9FF; --aviso-line:#cfe4fb;
     --ok-bg:#e6f9ec; --ok-line:#b7ecc7;
-    --alerta-bg:#fff5f2; --alerta-line:rgba(255,42,0,.28);
+    --alerta-bg:#effaf9; --alerta-line:rgba(6,137,136,.25);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -60,12 +60,12 @@
   .cabecera .cod b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
                      color:var(--ink); letter-spacing:.5px; }
 
-  /* ── Aviso de apurarse ────────────────────────────────────── */
+  /* ── Recordatorio amable (ya son clientes: nada de apurarlos) ── */
   .alerta { display:flex; gap:10px; align-items:flex-start; margin-top:14px; padding:13px 15px;
             background:var(--alerta-bg); border:1.5px solid var(--alerta-line); border-radius:13px; }
-  .alerta svg { width:20px; height:20px; flex:0 0 20px; margin-top:1px; stroke:var(--urgent);
+  .alerta svg { width:20px; height:20px; flex:0 0 20px; margin-top:1px; stroke:var(--brand-teal);
                 fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-  .alerta p { font-size:13.5px; font-weight:700; color:var(--urgent); line-height:1.4; }
+  .alerta p { font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.4; }
 
   /* ── Línea de tiempo ──────────────────────────────────────── */
   .linea { margin-top:22px; background:var(--card); border:1.5px solid var(--line);
@@ -105,14 +105,6 @@
   .instr li.ojo svg { stroke:var(--urgent); }
   .instr b { font-weight:800; }
 
-  /* ── Aviso del flete: hay que escribir antes de ir ────────── */
-  .flete { margin-top:16px; background:#FFF8E8; border:1.5px solid #F0D9A8;
-           border-radius:14px; padding:16px 17px; }
-  .flete h3 { font-size:15px; font-weight:900; color:#8A5B00; display:flex; gap:8px;
-              align-items:center; }
-  .flete p { font-size:14px; color:#5C4200; margin-top:8px; line-height:1.5; }
-  .flete b { font-weight:800; }
-
   /* ── Clave de recojo ──────────────────────────────────────── */
   .clave { margin-top:16px; background:var(--card); border:2px dashed var(--brand-teal);
            border-radius:14px; padding:16px; text-align:center; }
@@ -120,10 +112,6 @@
                 color:var(--brand-teal); }
   .clave .val { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:27px;
                 font-weight:800; letter-spacing:2px; margin-top:6px; word-break:break-all; }
-  .clave button { margin-top:11px; border:1.5px solid var(--brand-teal); background:transparent;
-                  color:var(--brand-teal); font-family:inherit; font-size:13px; font-weight:800;
-                  padding:8px 18px; border-radius:9px; cursor:pointer; }
-  .clave button:active { transform:scale(.97); }
 
   /* ── Datos y voucher ──────────────────────────────────────── */
   .datos { margin-top:22px; background:var(--card); border:1.5px solid var(--line);
@@ -204,6 +192,15 @@
       <div class="cod">Código de seguimiento <b id="codigo"></b></div>
     </section>
 
+    <!-- La boleta arriba: es lo primero que el cliente viene a buscar. -->
+    <div id="bloqueVoucher" hidden>
+      <div class="rotulo" id="rotuloFotos">Comprobante de tu envío</div>
+      <figure class="voucher" id="voucher">
+        <img id="voucherImg" src="" alt="Foto del comprobante de envío">
+        <figcaption class="pie">Toca la foto para ampliarla</figcaption>
+      </figure>
+    </div>
+
     <div class="alerta" id="alerta" hidden>
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
       <p id="alertaTxt"></p>
@@ -214,14 +211,6 @@
     <section class="instr" id="instr"></section>
 
     <section class="datos" id="datos"></section>
-
-    <div id="bloqueVoucher" hidden>
-      <div class="rotulo" id="rotuloFotos">Comprobante de tu envío</div>
-      <figure class="voucher" id="voucher">
-        <img id="voucherImg" src="" alt="Foto del comprobante de envío">
-        <figcaption class="pie">Toca la foto para ampliarla</figcaption>
-      </figure>
-    </div>
 
     <a class="wa" id="wa" href="#" rel="noopener">
       <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"/></svg>
@@ -371,15 +360,14 @@
       }
 
       var lista = "";
-      lista += item("Lleva tu <b>DNI físico</b> — el original. Una foto o una copia no la aceptan.");
+      lista += item("Lleva tu <b>DNI físico</b> (el original; la agencia no acepta fotos ni copias).");
       lista += item("El paquete está registrado con <b>tu DNI</b>, el que nos diste al comprar.");
       if (e.claveTrasPago) lista += item("<b>Para recibir tu clave de recojo</b>, cancela tu saldo de <b>" + soles(e.saldo) +
         "</b> por Yape al <b>927 633 099</b> (Moisés O.) y mándanos la captura por WhatsApp. Apenas lo confirmemos, tu clave aparece aquí mismo.");
       if (e.clave) lista += item("Da la <b>clave de recojo</b> que ves abajo en el mostrador.");
       lista += item("¿Va otra persona por ti? Necesita <b>su propio DNI</b>" +
         (e.clave ? ", la clave" : "") + ", y que nos avises antes por WhatsApp para autorizarlo.");
-      lista += item("La agencia guarda tu paquete alrededor de <b>30 días</b>. Pasado ese plazo lo " +
-        "devuelven a nuestro almacén.", true);
+      lista += item("La agencia lo guarda unos <b>30 días</b>, así que tienes tiempo de sobra.");
 
       caja.innerHTML = "<h2>Ya puedes recogerlo 🎉</h2>" +
         "<p>Tu paquete ya está en la agencia que elegiste, la que figura en tu boleta.</p>" +
@@ -394,27 +382,6 @@
       "WhatsApp el mismo día y lo resolvemos.</p>";
   }
 
-  /* ── Aviso del flete ────────────────────────────────────────────── */
-
-  /**
-   * Lo que el cliente tiene que hacer ANTES de ir: avisarnos, para activarle
-   * la cobertura del flete. Va en su propia caja y no como un punto más de la
-   * lista porque es lo único de esta página que le pide una acción con plazo;
-   * perdido entre los otros puntos, se lee como un consejo y no se cumple.
-   */
-  function pintarFlete(e) {
-    if (e.estado !== "En destino" || !e.enAgencia) return;
-
-    var caja = document.createElement("div");
-    caja.className = "flete";
-    caja.innerHTML =
-      "<h3>📅 Avísanos antes de ir</h3>" +
-      "<p><b>Escríbenos el mismo día o un día antes de ir a Shalom.</b> Por política de la " +
-      "agencia, el pago del flete vence si no se recoge pronto; por ello lo activamos " +
-      "<b>48 horas antes</b> de tu visita y así solo pagas el saldo de tu producto.</p>";
-    $("instr").insertAdjacentElement("afterend", caja);
-  }
-
   /* ── Clave de recojo ────────────────────────────────────────────── */
 
   function pintarClave(e) {
@@ -423,36 +390,8 @@
     var caja = document.createElement("div");
     caja.className = "clave";
     caja.innerHTML = '<div class="rot">Clave de recojo</div>' +
-      '<div class="val" id="claveVal">' + esc(e.clave) + '</div>' +
-      '<button type="button" id="copiar">Copiar clave</button>';
-    // Después del aviso del flete si lo hay, para que el orden de lectura sea
-    // «qué hacer antes de ir» y luego «con qué ir».
-    document.querySelector(".flete") 
-      ? document.querySelector(".flete").insertAdjacentElement("afterend", caja)
-      : $("instr").insertAdjacentElement("afterend", caja);
-
-    $("copiar").addEventListener("click", function () {
-      var boton = this;
-      var listo = function () {
-        boton.textContent = "¡Copiada!";
-        setTimeout(function () { boton.textContent = "Copiar clave"; }, 1800);
-      };
-      // navigator.clipboard no existe fuera de HTTPS ni en navegadores viejos,
-      // y sin el respaldo el botón se quedaba mudo sin decir por qué.
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(e.clave).then(listo, seleccionar);
-      } else {
-        seleccionar();
-      }
-      function seleccionar() {
-        var rango = document.createRange();
-        rango.selectNodeContents($("claveVal"));
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(rango);
-        listo();
-      }
-    });
+      '<div class="val" id="claveVal">' + esc(e.clave) + '</div>';
+    $("instr").insertAdjacentElement("afterend", caja);
   }
 
   /* ── Datos del envío ────────────────────────────────────────────── */
@@ -506,8 +445,7 @@
     if (e.apurar) {
       $("alerta").hidden = false;
       $("alertaTxt").textContent =
-        "Tu paquete lleva " + e.diasEsperando + " días esperándote en la agencia. " +
-        "Recógelo pronto para que no lo devuelvan.";
+        "Tu paquete ya te está esperando en la agencia ☺️ Cuando puedas, pasa a recogerlo.";
     }
 
     if (e.estado === "Cancelado") {
@@ -517,7 +455,6 @@
     }
 
     instrucciones(e);
-    pintarFlete(e);
     pintarClave(e);
     pintarDatos(e);
 
@@ -557,18 +494,8 @@
       });
     }
 
-    // En la agencia el botón no es para consultar: es para avisar que va a ir,
-    // que es lo que dispara la cobertura del flete. Por eso cambia de texto y
-    // de mensaje justo en ese estado.
-    var vaARecoger = e.estado === "En destino" && e.enAgencia;
-    $("waTxt").textContent = vaARecoger
-      ? "Avisar que voy a recoger"
-      : "Tengo una consulta";
-    $("wa").href = waLink(vaARecoger
-      // En una sola línea a propósito: es el texto que ve el cliente y partirlo
-      // en dos trozos hace que nadie pueda buscarlo tal cual en el archivo.
-      ? "Hola, mi pedido ya llegó y me estaré acercando, por favor cubrir mi garantía de envío gratis y enviarme el comprobante 🙏😊 (" + e.codigo + ")"
-      : "Hola, consulto por mi pedido " + e.codigo + ".");
+    $("waTxt").textContent = "Escribirnos por WhatsApp";
+    $("wa").href = waLink("Hola, consulto por mi pedido " + e.codigo + " ☺️");
 
     $("cargando").hidden = true;
     $("envio").hidden = false;

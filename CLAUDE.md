@@ -14,7 +14,10 @@
    API de IA.
 4. `enviar.py` descarta lo que suena a bot y lo lista: reescríbelo y vuelve a
    mandarlo.
-5. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
+5. Saldos: si un cliente de provincia mandó la captura del pago del saldo
+   (Yape), ponlo en `saldos` de `salida.json` con su código TS-… y el monto
+   que ves en la imagen. Nunca lo marques pagado tú: una persona lo confirma.
+6. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
    recomendaciones nuevas") y el PDF de pedidos al dueño. El informe del
    director queda en CRM → Reportes.
 

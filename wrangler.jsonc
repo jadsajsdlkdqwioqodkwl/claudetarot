@@ -21,7 +21,7 @@
   // baja este cron de 1440 a 288 requests/día), el de cada 10 minutos vuelca
   // los mensajes nuevos del CRM a Google Sheets.
   "triggers": {
-    "crons": ["*/5 * * * *", "*/10 * * * *"]
+    "crons": ["*/5 * * * *", "*/10 * * * *", "*/15 * * * *"]
   },
 
   // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.

@@ -27,6 +27,10 @@ import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 import { aprendizaje } from "./asesor-datos.js";
 import { versionesEnPrueba } from "../lib/crm-variantes.js";
 import { frasesQueConvierten } from "../lib/crm-frases.js";
+import { getValues } from "../lib/google-sheets.js";
+import { hojaVentas } from "../lib/ventas-hoja.js";
+import { RANGO_DATOS_VENTA, indiceVenta } from "../lib/ventas.js";
+import { buscarFila } from "./asesor-ventas.js";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
@@ -154,7 +158,13 @@ async function guardarInformeComoPagina(env, origen, texto) {
 
  *     { tipo: "respuesta_rapida", titulo, texto, motivo,
  *       destinatarios: [{ whatsapp, nombre }] },
- *     { tipo: "variante", ref_tipo: "rapida" | "bienvenida", ref_id, texto, motivo } ] }
+ *     { tipo: "variante", ref_tipo: "rapida" | "bienvenida", ref_id, texto, motivo },
+ *     { tipo: "saldo", whatsapp, nombre, codigo?: "TS-…", texto, motivo } ] }
+ *
+ * "saldo": el cliente mandó la captura del pago del saldo (el asesor ve las
+ * imágenes del chat). Una persona de Shalom la revisa y con un toque deja el
+ * saldo en 0: su página de seguimiento le muestra la clave. Nada automático
+ * con plata sin que alguien lo mire.
  *
  * "variante" = otra versión del texto de una respuesta rápida que ya existe
  * (o de un paso de la bienvenida) para probarla contra la actual, en vez de
@@ -197,6 +207,7 @@ export async function onRequestPostSugerencias({ request, env }) {
   const lista = Array.isArray(payload?.sugerencias) ? payload.sugerencias.slice(0, 60) : [];
   const origen = String(payload?.origen || "asesor").slice(0, 60);
   const res = { creadas: 0, actualizadas: 0, sin_chat: [] };
+  let filasVentas = null;
 
   for (const s of lista) {
     const texto = String(s?.texto || "").trim().slice(0, 4096);
@@ -218,6 +229,31 @@ export async function onRequestPostSugerencias({ request, env }) {
       await env.CRM_DB.prepare(
         "INSERT INTO asesor_sugerencias (tipo, ref_tipo, ref_id, texto, texto_original, motivo, origen) VALUES ('variante', ?, ?, ?, ?, ?, ?)"
       ).bind(refTipo, refId, texto, texto, motivo, origen).run();
+      res.creadas++;
+      continue;
+    }
+
+    if (s.tipo === "saldo") {
+      let codigo = String(s.codigo || "").trim().toUpperCase();
+      const wa = String(s.whatsapp || "").replace(/\D/g, "");
+      const conv = await convDe(env, wa);
+      // Si el asesor no sabe el código, se busca su venta abierta por el celular en la hoja Ventas.
+      if (!/^TS-[A-Z0-9-]{3,24}$/.test(codigo) && wa.length >= 9) {
+        filasVentas ||= await getValues(env, `${hojaVentas(env)}!${RANGO_DATOS_VENTA}`).catch(() => []);
+        const hallada = buscarFila(filasVentas, { dni: wa.slice(-9) });
+        codigo = hallada ? String(hallada.valores[indiceVenta("Código")] || "").trim().toUpperCase() : "";
+      }
+      if (!/^TS-[A-Z0-9-]{3,24}$/.test(codigo) || !conv) {
+        res.sin_chat.push(wa || codigo);
+        continue;
+      }
+      const repetida = await env.CRM_DB.prepare(
+        "SELECT 1 FROM asesor_sugerencias WHERE tipo = 'saldo' AND titulo = ? AND estado = 'pendiente'"
+      ).bind(codigo).first();
+      if (repetida) continue;
+      await env.CRM_DB.prepare(
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen) VALUES ('saldo', ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(conv.id, wa, String(s.nombre || "").slice(0, 80), codigo, texto, texto, motivo, origen).run();
       res.creadas++;
       continue;
     }

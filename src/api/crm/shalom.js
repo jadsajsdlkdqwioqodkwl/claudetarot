@@ -95,6 +95,15 @@ async function get({ env }) {
     olvidarCache();
   }
 
+  // El link automático de cada pedido (crm-links-envio.js): programado, enviado o sin ventana.
+  const codigos = elegidas.map((f) => String(f[i("Código")]).trim().toUpperCase()).slice(0, 90);
+  const { results: links } = codigos.length ? await env.CRM_DB.prepare(
+    `SELECT e.codigo, e.estado, s.status, s.send_at, s.sent_at FROM envio_links e
+     LEFT JOIN scheduled_messages s ON s.id = e.scheduled_id WHERE e.codigo IN (${codigos.map(() => "?").join(",")})`
+  ).bind(...codigos).all().catch(() => ({ results: [] })) : { results: [] };
+  const linkDe = {};
+  for (const l of links) linkDe[l.codigo] = l;
+
   const pedidos = [];
   for (const f of elegidas) {
     const codigo = String(f[i("Código")]).trim().toUpperCase();
@@ -115,7 +124,11 @@ async function get({ env }) {
       clave: claveDe(f[i("Clave Shalom / Notas")]),
       estado: String(f[i("Estado")] || "Pendiente").trim(),
       fotos: String(f[i("Drive ID")] || "").startsWith("r2:") ? await contarFotos(env, codigo) : (f[i("Drive ID")] ? 1 : 0),
-      sugerencia: sug ? { id: sug.id, texto: sug.texto, motivo: sug.motivo } : null
+      sugerencia: sug ? { id: sug.id, texto: sug.texto, motivo: sug.motivo } : null,
+      link_auto: linkDe[codigo] ? {
+        estado: linkDe[codigo].estado === "sin_ventana" ? "sin_ventana" : linkDe[codigo].status || linkDe[codigo].estado,
+        cuando: linkDe[codigo].sent_at || linkDe[codigo].send_at || null
+      } : null
     });
   }
   return json({ pedidos, plantilla: Boolean(env.PLANTILLA_ENVIO) });
@@ -170,7 +183,7 @@ async function cambiarEstado(env, codigo, estado) {
   return json({ ok: true });
 }
 
-async function saldoPagado(env, codigo) {
+export async function saldoPagado(env, codigo) {
   const hallada = await filaDe(env, codigo);
   if (!hallada) return json({ error: "No encontré ese pedido." }, 404);
   await updateValues(env, `${hojaVentas(env)}!${col("Saldo")}${hallada.fila}`, [[0]]);

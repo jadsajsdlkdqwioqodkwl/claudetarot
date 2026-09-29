@@ -687,16 +687,14 @@ check("los pasos del envío viajan al navegador, no los adivina la página",
   Array.isArray(publica.pasos) && publica.pasos.length > enCasaEnCamino.pasos.length,
   publica.pasos.join(" → ") + "  vs  " + enCasaEnCamino.pasos.join(" → "));
 
-/* El aviso del flete y el mensaje que manda el cliente al ir a recoger. */
-check("la página avisa de escribir antes de ir a la agencia",
-  /Escríbenos el mismo día o un día antes/.test(seguimientoHtml) &&
-  seguimientoHtml.includes("48 horas antes"));
-check("ese aviso solo sale cuando hay agencia y el paquete ya llegó",
-  /function pintarFlete[\s\S]{0,220}?estado !== "En destino" \|\| !e\.enAgencia\) return/
-    .test(seguimientoHtml));
-check("el botón de WhatsApp pide cubrir el flete al ir a recoger",
-  seguimientoHtml.includes("cubrir mi garantía de envío gratis") &&
-  seguimientoHtml.includes("Avisar que voy a recoger"));
+/* Ya son clientes: la página no los apura ni les pone plazos. */
+check("sin el aviso de las 48 horas ni el del flete",
+  !seguimientoHtml.includes("48 horas") && !/function pintarFlete/.test(seguimientoHtml));
+check("sin «recógelo pronto para que no lo devuelvan»",
+  !/que no lo devuelvan/i.test(seguimientoHtml));
+check("la boleta va arriba, antes de la línea de tiempo",
+  seguimientoHtml.indexOf('id="bloqueVoucher"') < seguimientoHtml.indexOf('id="linea"'));
+check("sin botón de copiar la clave", !/Copiar clave/.test(seguimientoHtml));
 
 /* La hoja ya no guarda el nombre del cliente: la página no puede pedirlo. */
 check("la página no espera un nombre que la hoja ya no guarda",
@@ -796,6 +794,22 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("quedó agendado es etapa 5", calcularEtapa([c("precio?"), v("Perfecto, queda agendado para mañana")]) === 5);
   check("un automático no cuenta como pedir cierre", calcularEtapa([c("precio?"), v("Envíe su ubicación", "Seguimiento automático")]) === 2);
   check("la etiqueta purchase es etapa 5", calcularEtapa([c("hola")], "contact purchase") === 5);
+}
+
+{
+  console.log("\nLink de envío automático (crm-links-envio.js)");
+  const { momentoDelLink } = await import("../src/lib/crm-links-envio.js");
+  const { rellenar } = await import("../src/lib/crm-cron.js");
+  const ahora = Date.parse("2026-09-29T15:00:00Z");
+  check("sale 23 h después del último mensaje del cliente",
+    momentoDelLink("2026-09-29 10:00:00", ahora) === Date.parse("2026-09-30T09:00:00Z"));
+  check("si ya pasaron las 23 h pero queda ventana, sale en un minuto",
+    momentoDelLink("2026-09-28 15:30:00", ahora) === ahora + 60000);
+  check("sin ventana (o con menos de 15 min) no se programa",
+    momentoDelLink("2026-09-28 15:10:00", ahora) === null && momentoDelLink("2026-09-27 10:00:00", ahora) === null && momentoDelLink(null, ahora) === null);
+  check("rellena {link} y {nombre}",
+    rellenar("Hola {nombre} 👉 {link}", { link: "https://x/TS-1", nombre: "Ana" }) === "Hola Ana 👉 https://x/TS-1" &&
+    rellenar("sin datos {link}", null) === "sin datos {link}");
 }
 
 {

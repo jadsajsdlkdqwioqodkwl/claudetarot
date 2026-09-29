@@ -1,5 +1,5 @@
 /**
- * Etapa del embudo de cada chat, calculada en el Worker sin IA (cron de 5 min).
+ * Etapa del embudo de cada chat, calculada en el Worker sin IA (cron de 15 min).
  * Mismas reglas que scripts/asesor/embudo.py, para que el CRM y el informe
  * del director CRO cuenten igual:
  *
@@ -40,7 +40,12 @@ export function calcularEtapa(mensajes, metaTags = "") {
   return etapa;
 }
 
-/** Recalcula la etapa de los chats que se movieron desde la última pasada. */
+/**
+ * Recalcula la etapa de los chats que se movieron desde la última pasada.
+ * Tres llamadas a D1 en total (chats, sus mensajes con un IN, y un batch con
+ * los cambios): el plan gratis corta en 50 consultas por ejecución y un
+ * SELECT por chat no escalaba.
+ */
 export async function actualizarEtapas(env) {
   if (!env.CRM_DB) return;
   const { results: convs } = await env.CRM_DB.prepare(
@@ -52,18 +57,18 @@ export async function actualizarEtapas(env) {
   ).bind(`-${DIAS_EMBUDO} days`, LOTE).all();
   if (!convs.length) return;
 
-  const cambios = [];
-  for (const c of convs) {
-    const { results: mensajes } = await env.CRM_DB.prepare(
-      `SELECT direction, body, sent_by FROM messages
-       WHERE conversation_id = ? AND created_at >= datetime('now', ?) ORDER BY id ASC LIMIT 400`
-    ).bind(c.id, `-${DIAS_EMBUDO} days`).all();
-    const nueva = Math.max(calcularEtapa(mensajes, c.meta_tags), c.etapa || 0);
-    cambios.push(
-      nueva > (c.etapa || 0)
-        ? env.CRM_DB.prepare("UPDATE conversations SET etapa = ?, etapa_at = datetime('now'), etapa_revisada_at = datetime('now') WHERE id = ?").bind(nueva, c.id)
-        : env.CRM_DB.prepare("UPDATE conversations SET etapa_revisada_at = datetime('now') WHERE id = ?").bind(c.id)
-    );
-  }
-  await env.CRM_DB.batch(cambios);
+  const marcas = convs.map(() => "?").join(",");
+  const { results: mensajes } = await env.CRM_DB.prepare(
+    `SELECT conversation_id, direction, body, sent_by FROM messages
+     WHERE conversation_id IN (${marcas}) AND created_at >= datetime('now', ?) ORDER BY id ASC`
+  ).bind(...convs.map((c) => c.id), `-${DIAS_EMBUDO} days`).all();
+  const porConv = {};
+  for (const m of mensajes) (porConv[m.conversation_id] ||= []).push(m);
+
+  await env.CRM_DB.batch(convs.map((c) => {
+    const nueva = Math.max(calcularEtapa(porConv[c.id] || [], c.meta_tags), c.etapa || 0);
+    return nueva > (c.etapa || 0)
+      ? env.CRM_DB.prepare("UPDATE conversations SET etapa = ?, etapa_at = datetime('now'), etapa_revisada_at = datetime('now') WHERE id = ?").bind(nueva, c.id)
+      : env.CRM_DB.prepare("UPDATE conversations SET etapa_revisada_at = datetime('now') WHERE id = ?").bind(c.id);
+  }));
 }

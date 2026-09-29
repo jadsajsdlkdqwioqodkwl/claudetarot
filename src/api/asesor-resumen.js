@@ -310,19 +310,22 @@ export async function publicarResumen(env, r, fecha) {
  *     único aviso "hay recomendaciones nuevas" (crm-avisos.js).
  */
 export async function enviarResumenSiToca(env) {
-  if (!env.CRM_DB) return;
+  if (!env.CRM_DB) return false;
   const lima = new Date(Date.now() - LIMA_MS);
-  if (lima.getUTCHours() < 9) return;
+  if (lima.getUTCHours() < 9) return false;
   const hoy = lima.toISOString().slice(0, 10);
   const db = env.CRM_DB;
 
-  if (lima.getUTCDay() === 1 && env.CRM_MEDIA && (await ajuste(db, "resumen_semanal_enviado")) !== hoy) {
+  // Devuelve true si hizo algo pesado (el cron de 15 min no hace más en esa pasada).
+  const [semanal, revisadas] = await Promise.all([ajuste(db, "resumen_semanal_enviado"), ajuste(db, "pruebas_revisadas")]);
+  if (lima.getUTCDay() === 1 && env.CRM_MEDIA && semanal !== hoy) {
     const d = await datosResumen(env, 7);
     await publicarResumen(env, armarResumen(d, `${SITIO}/crm/`), hoy);
     await guardar(db, "resumen_semanal_enviado", hoy);
+    return true;
   }
 
-  if ((await ajuste(db, "pruebas_revisadas")) === hoy) return;
+  if (revisadas === hoy) return false;
   const pruebas = await pruebasDeMensajes(env);
   let avisadas = {};
   try { avisadas = JSON.parse((await ajuste(db, "pruebas_avisadas")) || "{}"); } catch { avisadas = {}; }
@@ -355,4 +358,5 @@ export async function enviarResumenSiToca(env) {
   await guardar(db, "pruebas_avisadas", JSON.stringify(avisadas));
   await guardar(db, "pruebas_revisadas", hoy);
   if (nuevas) await notificarRecomendaciones(env);
+  return true;
 }
