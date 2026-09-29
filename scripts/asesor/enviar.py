@@ -19,8 +19,15 @@ salida.json:
                "destino": "LIMA|PROVINCIA", "nombre": "", "whatsapp": "",
                "telefono": "", "dni": "", "direccion_o_agencia": "",
                "courier": "", "kits": 1, "pago": "", "fecha_entrega": "", "nota": ""}],
-  "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}]
+  "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}],
+  "respuestas_rapidas": [{"titulo": "", "texto": "", "motivo": "",
+                          "destinatarios": [{"whatsapp": "", "nombre": ""}]}],
+  "origen": "asesor 16:30"
 }
+
+Cada mensaje llega por Telegram a todo el equipo Y queda en ✨ Sugerencias del
+CRM, donde una persona lo aprueba (se programa) o lo descarta. Las respuestas
+rápidas propuestas solo van a ✨ Sugerencias.
 """
 import base64, glob, html, json, os, subprocess, sys, time, urllib.error, urllib.request
 
@@ -67,11 +74,12 @@ td.n::before{{counter-increment:n;content:counter(n)}}</style>
 
 LOTE = 5
 AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
+SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
 
 
-def al_worker(clave, cuerpo):
+def al_worker(clave, cuerpo, url=None):
     """El Worker tiene el token del bot y sabe qué vendedora atiende cada chat."""
-    req = urllib.request.Request(AVISOS, data=json.dumps(cuerpo).encode(),
+    req = urllib.request.Request(url or AVISOS, data=json.dumps(cuerpo).encode(),
                                  headers={"Content-Type": "application/json", "x-asesor-clave": clave})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -121,7 +129,7 @@ def main():
             print(f"\n→ {m.get('nombre')} (+{m.get('whatsapp')}) — {m.get('motivo', '')}\n{m.get('mensaje')}")
         print("\n(prueba, nada salió)")
         return
-    if not cuerpo["mensajes"] and "resumen" not in cuerpo:
+    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not datos.get("respuestas_rapidas"):
         print("Nada que avisar.")
         return
     # De a pocos: cada aviso va a todo el equipo, y el plan gratis de
@@ -136,6 +144,14 @@ def main():
         total["fallidos"] += r.get("fallidos", [])
         if n < len(lotes) - 1:
             time.sleep(1.5)
+    # Además, cada mensaje queda como propuesta en ✨ Sugerencias del CRM
+    # (aprobar = programarlo), y las respuestas rápidas nuevas que proponga.
+    propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
+                   "motivo": m.get("motivo"), "texto": m.get("mensaje")} for m in mensajes]
+    propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
+    for i in range(0, len(propuestas), 20):
+        r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "sugerencias": propuestas[i:i + 20]}, SUGERENCIAS)
+        total["sugerencias"] = total.get("sugerencias", 0) + r.get("creadas", 0) + r.get("actualizadas", 0)
     print(json.dumps(total, ensure_ascii=False))
 
 

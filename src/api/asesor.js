@@ -155,7 +155,10 @@ export async function onRequestPost({ request, env }) {
     const asignada = [conv?.assigned_agent, ...lista(conv?.shared_with)].filter(Boolean).join(", ");
     // Con el chat encontrado, el botón lo abre por id; si no, por número.
     const url = conv ? `${origen}/crm/?chat=${conv.id}` : `${origen}/crm/?wa=${wa}`;
-    const boton = { reply_markup: { inline_keyboard: [[{ text: "💬 Abrir chat en el CRM", url }]] } };
+    const boton = { reply_markup: { inline_keyboard: [[
+      { text: "💬 Abrir chat", url },
+      { text: "✅ Aprobar y programar", url: `${origen}/crm/?sugerencias=1` }
+    ]] } };
     for (const { chatId, leToca } of para) {
       try {
         await llamarTelegram(env, "sendMessage", {
@@ -166,6 +169,92 @@ export async function onRequestPost({ request, env }) {
       } catch (err) {
         res.fallidos.push({ whatsapp: wa, error: err.message });
       }
+    }
+  }
+  return json(res);
+}
+
+/**
+ * POST /api/asesor/sugerencias — la Routine deja propuestas que esperan a una
+ * persona en ✨ Sugerencias del CRM. No manda nada al cliente.
+ *
+ * { origen: "asesor 16:30",
+ *   sugerencias: [
+ *     { tipo: "seguimiento", whatsapp, nombre, motivo, texto },
+ *     { tipo: "respuesta_rapida", titulo, texto, motivo,
+ *       destinatarios: [{ whatsapp, nombre }] } ] }
+ *
+ * Un chat tiene a lo sumo un seguimiento pendiente: si ya había uno, se
+ * reemplaza el texto (la propuesta más nueva sabe más del chat).
+ */
+async function convDe(env, wa) {
+  if (wa.length < 9) return null;
+  return env.CRM_DB.prepare(
+    `SELECT conv.id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
+     WHERE c.wa_id LIKE ? ORDER BY conv.last_message_at DESC LIMIT 1`
+  )
+    .bind(`%${wa.slice(-9)}`)
+    .first();
+}
+
+export async function onRequestPostSugerencias({ request, env }) {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
+  if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
+  if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
+
+  const payload = await request.json().catch(() => null);
+  const lista = Array.isArray(payload?.sugerencias) ? payload.sugerencias.slice(0, 60) : [];
+  const origen = String(payload?.origen || "asesor").slice(0, 60);
+  const res = { creadas: 0, actualizadas: 0, sin_chat: [] };
+
+  for (const s of lista) {
+    const texto = String(s?.texto || "").trim().slice(0, 4096);
+    if (!texto) continue;
+    const motivo = String(s.motivo || "").slice(0, 300) || null;
+
+    if (s.tipo === "respuesta_rapida") {
+      const titulo = String(s.titulo || "").trim().slice(0, 80);
+      if (!titulo) continue;
+      const destinatarios = [];
+      for (const d of (Array.isArray(s.destinatarios) ? s.destinatarios : []).slice(0, 50)) {
+        const wa = String(d?.whatsapp || "").replace(/\D/g, "");
+        const conv = await convDe(env, wa);
+        if (conv) destinatarios.push({ conversation_id: conv.id, wa_id: wa, nombre: String(d.nombre || "").slice(0, 80) });
+        else if (wa) res.sin_chat.push(wa);
+      }
+      await env.CRM_DB.prepare(
+        "INSERT INTO asesor_sugerencias (tipo, titulo, texto, motivo, destinatarios, origen) VALUES ('respuesta_rapida', ?, ?, ?, ?, ?)"
+      )
+        .bind(titulo, texto, motivo, JSON.stringify(destinatarios), origen)
+        .run();
+      res.creadas++;
+      continue;
+    }
+
+    const wa = String(s.whatsapp || "").replace(/\D/g, "");
+    const conv = await convDe(env, wa);
+    if (!conv) {
+      res.sin_chat.push(wa);
+      continue;
+    }
+    const previa = await env.CRM_DB.prepare(
+      "SELECT id FROM asesor_sugerencias WHERE conversation_id = ? AND tipo = 'seguimiento' AND estado = 'pendiente'"
+    )
+      .bind(conv.id)
+      .first();
+    if (previa) {
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, motivo = ?, origen = ?, created_at = datetime('now') WHERE id = ?")
+        .bind(texto, motivo, origen, previa.id)
+        .run();
+      res.actualizadas++;
+    } else {
+      await env.CRM_DB.prepare(
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, texto, motivo, origen) VALUES ('seguimiento', ?, ?, ?, ?, ?, ?)"
+      )
+        .bind(conv.id, wa, String(s.nombre || "").slice(0, 80), texto, motivo, origen)
+        .run();
+      res.creadas++;
     }
   }
   return json(res);

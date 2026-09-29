@@ -38,7 +38,7 @@ const TIPOS_MEDIA = new Set(["image", "video", "document", "sticker"]);
  * del cliente: un seguimiento programado más tarde nunca llegaría.
  * Devuelve el error a mostrar, o null si la fecha entra en la ventana.
  */
-async function fueraDeVentana(db, conversationId, sendAt) {
+export async function fueraDeVentana(db, conversationId, sendAt) {
   const conv = await db.prepare("SELECT last_inbound_at FROM conversations WHERE id = ?").bind(conversationId).first();
   if (!conv?.last_inbound_at) return "El cliente todavía no escribió: WhatsApp no deja mandarle un seguimiento.";
   const limite = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;

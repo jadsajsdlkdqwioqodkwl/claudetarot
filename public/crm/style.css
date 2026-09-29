@@ -730,3 +730,15 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #editor-media.recortando #em-acercar,
 #editor-media.recortando #em-restablecer,
 #editor-media.recortando #em-quitar { display: none; }
+
+/* ✨ Sugerencias del asesor */
+#btn-sugerencias { position: relative; font-size: 18px; }
+.badge-sugerencias { position: absolute; top: -2px; right: -4px; background: #e11d48; color: #fff; border-radius: 999px; font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center; }
+.tarjeta-sugerencia { border: 1px solid var(--borde, #ddd); border-radius: var(--radio-m, 10px); padding: 10px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
+.tarjeta-sugerencia .sub { font-size: 12px; opacity: .7; }
+.tarjeta-sugerencia textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.sug-cabecera { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sug-titulo { flex: 1 1 100%; min-width: 0; }
+.sug-destinos { display: flex; flex-direction: column; gap: 2px; max-height: 160px; overflow-y: auto; }
+.sug-destinos label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.sug-acciones { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }

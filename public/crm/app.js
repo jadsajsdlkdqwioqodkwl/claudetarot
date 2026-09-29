@@ -208,6 +208,7 @@ async function mostrarApp() {
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   abrirChatDelLink(cargarConversaciones());
+  iniciarSugerencias();
   cargarAsesorasFiltro();
   cargarQuickReplies();
   configurarNotificaciones();
@@ -3740,6 +3741,126 @@ document.addEventListener("click", (e) => {
     cerrarPaneles();
   }
 });
+
+/* ---------- ✨ Sugerencias del asesor (proponen la Routine; aprueba una persona) ---------- */
+
+let sugerenciasTimer = null;
+
+function iniciarSugerencias() {
+  actualizarConteoSugerencias();
+  clearInterval(sugerenciasTimer);
+  sugerenciasTimer = setInterval(actualizarConteoSugerencias, 120000);
+  // El botón "✅ Aprobar y programar" de Telegram llega con /crm/?sugerencias=1.
+  const params = new URLSearchParams(location.search);
+  if (params.has("sugerencias")) {
+    params.delete("sugerencias");
+    history.replaceState(history.state, "", location.pathname + (params.toString() ? `?${params}` : "") + location.hash);
+    abrirSugerencias();
+  }
+}
+
+async function actualizarConteoSugerencias() {
+  const btn = $("#btn-sugerencias");
+  if (!btn) return;
+  try {
+    const { pendientes } = await pedir("/api/crm/sugerencias");
+    btn.style.display = pendientes ? "" : "none";
+    btn.innerHTML = `✨<span class="badge-sugerencias">${pendientes}</span>`;
+  } catch {
+    btn.style.display = "none";
+  }
+}
+
+async function abrirSugerencias() {
+  $("#modal-sugerencias-fondo").classList.add("abierto");
+  $("#lista-sugerencias").innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    const { sugerencias } = await pedir("/api/crm/sugerencias");
+    pintarSugerencias(sugerencias);
+  } catch (err) {
+    $("#lista-sugerencias").innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
+
+function pintarSugerencias(lista) {
+  const cont = $("#lista-sugerencias");
+  if (!lista.length) {
+    cont.innerHTML = `<p class="ayuda-modal">No hay sugerencias pendientes. 🎉</p>`;
+    return;
+  }
+  cont.innerHTML = lista.map((s) => {
+    const esRapida = s.tipo === "respuesta_rapida";
+    const cabecera = esRapida
+      ? `⚡ Nueva respuesta rápida: <input type="text" class="sug-titulo" value="${escapar(s.titulo || "")}" maxlength="80" />`
+      : `💬 ${escapar(s.nombre || "Cliente")} <span class="sub">+${escapar(s.wa_id || "")}${s.assigned_agent ? ` · ${escapar(s.assigned_agent)}` : ""}</span>`;
+    const destinos = esRapida && s.destinatarios.length
+      ? `<div class="sug-destinos"><div class="sub">Mandársela a:</div>${s.destinatarios.map((d) => `
+          <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}</label>`).join("")}</div>`
+      : "";
+    return `
+      <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+        <div class="sug-cabecera">${cabecera}</div>
+        ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+        <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
+        ${destinos}
+        <div class="sug-acciones">
+          ${s.conversation_id ? `<button type="button" class="sug-abrir">Abrir chat</button>` : ""}
+          <button type="button" class="sug-descartar cancelar">Descartar</button>
+          <button type="button" class="sug-aprobar crear">${esRapida ? "Aprobar" : "Aprobar y programar"}</button>
+        </div>
+        <div class="sub">${escapar(s.origen || "")}</div>
+      </div>`;
+  }).join("");
+
+  cont.querySelectorAll(".sug-texto").forEach((el) => agregarEmojisA(el));
+  cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
+    const id = Number(card.dataset.id);
+    const accion = async (tipo, boton) => {
+      const cuerpo = { id, accion: tipo };
+      if (tipo === "aprobar") {
+        cuerpo.texto = card.querySelector(".sug-texto").value;
+        const titulo = card.querySelector(".sug-titulo");
+        if (titulo) cuerpo.titulo = titulo.value;
+        cuerpo.destinatarios = [...card.querySelectorAll(".sug-destino:checked")].map((c) => Number(c.value));
+      }
+      boton.disabled = true;
+      try {
+        const r = await pedir("/api/crm/sugerencias", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cuerpo)
+        });
+        card.remove();
+        if (r.saltados?.length) alert(`No se programó para:\n${r.saltados.map((x) => `• ${x.nombre}: ${x.motivo}`).join("\n")}`);
+        if (tipo === "aprobar" && titulo_es_rapida(card)) cargarQuickReplies();
+        if (!$("#lista-sugerencias .tarjeta-sugerencia")) pintarSugerencias([]);
+        actualizarConteoSugerencias();
+      } catch (err) {
+        boton.disabled = false;
+        alert(err.message);
+      }
+    };
+    card.querySelector(".sug-aprobar").addEventListener("click", (e) => accion("aprobar", e.currentTarget));
+    card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
+    card.querySelector(".sug-abrir")?.addEventListener("click", async () => {
+      const convId = Number(card.dataset.conv);
+      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      if (!c) {
+        await cargarConversaciones();
+        c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      }
+      if (c) {
+        $("#modal-sugerencias-fondo").classList.remove("abierto");
+        abrirConversacion(c);
+      }
+    });
+  });
+}
+
+const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo"));
+
+$("#btn-sugerencias").addEventListener("click", abrirSugerencias);
+$("#sug-cerrar").addEventListener("click", () => $("#modal-sugerencias-fondo").classList.remove("abierto"));
 
 /* ---------- Respuestas rápidas ---------- */
 

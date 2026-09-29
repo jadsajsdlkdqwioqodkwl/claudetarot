@@ -63,6 +63,7 @@
         <div id="sesion-actual"></div>
       </div>
       <div class="acciones">
+        <button id="btn-sugerencias" title="Sugerencias del asesor para aprobar" style="display:none"></button>
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-instalar" class="accion-secundaria" title="Instalar como app" style="display:none"></button>
         <button id="btn-notificaciones" title="Activar notificaciones"></button>
@@ -282,6 +283,17 @@
     <button class="cancelar" id="avisos-desvincular" type="button" style="width:100%;display:none">Desvincular Telegram</button>
     <div class="acciones">
       <button class="cancelar" id="avisos-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-sugerencias-fondo">
+  <div class="modal modal-ancho">
+    <h2>✨ Sugerencias del asesor</h2>
+    <p class="ayuda-modal">Mensajes que propone el asesor. Nada le llega al cliente hasta que alguien lo aprueba: puedes editar el texto antes. Al aprobar se programa para dentro de 1 minuto y se cancela solo si el cliente escribe antes.</p>
+    <div id="lista-sugerencias"></div>
+    <div class="acciones">
+      <button class="cancelar" id="sug-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
