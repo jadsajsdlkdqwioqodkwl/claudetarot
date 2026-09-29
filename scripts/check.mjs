@@ -864,6 +864,10 @@ check("las letras de columna llegan hasta la última de la hoja",
     app.includes("sug-objecion") && app.includes("sug-idea-usar") && app.includes("tarjetaPregunta"));
   check("el seguimiento de una respuesta rápida muestra su texto, no solo el nombre", app.includes("quick_reply_body"));
   check("la lista de chats muestra el seguimiento de bienvenida y su hora", app.includes("seg_auto_proximo"));
+  const { PAUSA_ENVIO_MS } = await import("../src/lib/crm-send.js");
+  check("\"escribiendo…\" 1,5 s antes de cada mensaje", PAUSA_ENVIO_MS === 1500);
+  const sug = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
+  check("las sugerencias enviadas al toque también muestran \"escribiendo…\"", /pausaEnvio\(env, conversationId\);\s*await mandarTexto/.test(sug));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

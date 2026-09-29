@@ -43,7 +43,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
-import { mandarTexto } from "../../lib/crm-send.js";
+import { mandarTexto, pausaEnvio } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos } from "../asesor.js";
@@ -124,6 +124,8 @@ async function programar(env, conversationId, texto, quien, cuando) {
     ).bind(conversationId).first();
     if (!conv) return "No encontré el chat.";
     try {
+      // Como todo lo que sale: "escribiendo…" 1,5 s y recién el mensaje.
+      await pausaEnvio(env, conversationId);
       await mandarTexto(env, conversationId, conv.wa_id, texto, quien);
     } catch (err) {
       return `WhatsApp no lo aceptó: ${err.message}`;

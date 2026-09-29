@@ -59,8 +59,8 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
     return 1;
   }
 
-  // Cada texto con su propio "escribiendo…" (2 s); las fotos/videos de un
-  // paso van todas juntas, con 2 s de espacio antes y sin "escribiendo".
+  // Cada texto con su propio "escribiendo…" (1,5 s); las fotos/videos de un
+  // paso van todas juntas, con 1,5 s de espacio antes y sin "escribiendo".
   for (const paso of pasos) {
     const media = await env.CRM_DB.prepare(
       "SELECT * FROM welcome_step_media WHERE welcome_step_id = ? ORDER BY sort_order ASC"

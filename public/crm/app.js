@@ -3690,7 +3690,7 @@ configurarEditorMedia();
 
 /*
  * Envío en segundo plano: el mensaje aparece en el chat como "enviando" y el
- * cuadro queda libre al instante; la pausa de 2 s con "escribiendo…" (ver
+ * cuadro queda libre al instante; la pausa de 1,5 s con "escribiendo…" (ver
  * pausaEnvio en el servidor) la ve solo el cliente. Una cola por chat para
  * que varios envíos seguidos lleguen en el mismo orden en que se mandaron.
  */

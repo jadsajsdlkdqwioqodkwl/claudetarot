@@ -9,20 +9,25 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
 
 /**
  * Antes de mandarle algo al cliente (respuestas a mano, bienvenida y
- * seguimientos): le muestra "escribiendo…" y espera 2 s, para que no llegue
+ * seguimientos, sugerencias aprobadas): le muestra "escribiendo…" y espera 1,5 s, para que no llegue
  * al instante como un bot. La espera no es CPU ni suma requests del Worker;
  * el "escribiendo" es una llamada más a Meta (subrequest, sin costo), solo
  * si el cliente escribió en las últimas 24 h (si no, WhatsApp no lo muestra).
  * Con `escribiendo: false` es solo la espera (ej. antes de un grupo de fotos).
  */
-export const PAUSA_ENVIO_MS = 2000;
+export const PAUSA_ENVIO_MS = 1500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true, ultimoWaId } = {}) {
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
   // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
   if (escribiendo && ultimoWaId !== undefined) {
-    if (ultimoWaId) await mostrarEscribiendo(env, ultimoWaId).catch((err) => console.error("Escribiendo:", err.message));
+    if (ultimoWaId) {
+      await mostrarEscribiendo(env, ultimoWaId).catch(async (err) => {
+        console.error("Escribiendo:", err.message);
+        if (env?.CRM_DB) await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
+      });
+    }
   } else if (escribiendo && env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
