@@ -868,6 +868,28 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("\"escribiendo…\" 1,5 s antes de cada mensaje", PAUSA_ENVIO_MS === 1500);
   const sug = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
   check("las sugerencias enviadas al toque también muestran \"escribiendo…\"", /pausaEnvio\(env, conversationId\);\s*await mandarTexto/.test(sug));
+  // ⚠️ Regla del dueño: NINGÚN mensaje a un cliente sale sin su "escribiendo…" de 1,5 s.
+  const { readdirSync, statSync } = await import("node:fs");
+  const archivos = [];
+  const recorrer = (dir) => {
+    for (const f of readdirSync(dir)) {
+      const ruta = join(dir, f);
+      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      else if (f.endsWith(".js") && !ruta.endsWith(join("lib", "crm-send.js"))) archivos.push(ruta);
+    }
+  };
+  recorrer(fileURLToPath(new URL("../src", import.meta.url)));
+  const sinEscribiendo = [];
+  for (const ruta of archivos) {
+    const lineas = readFileSync(ruta, "utf8").split("\n");
+    lineas.forEach((l, i) => {
+      if (!/\b(mandarTexto|mandarMediaGuardada)\(/.test(l) || /^\s*(import|\*|\/\/)/.test(l)) return;
+      if (!lineas.slice(Math.max(0, i - 20), i).some((x) => /pausaEnvio\(/.test(x))) sinEscribiendo.push(`${ruta.split("/src/")[1]}:${i + 1}`);
+    });
+  }
+  check(`todo mensaje a un cliente va con "escribiendo…" antes${sinEscribiendo.length ? ` (falta en ${sinEscribiendo.join(", ")})` : ""}`, !sinEscribiendo.length);
+  const envio = readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8");
+  check("pausaEnvio muestra \"escribiendo…\" y espera", /mostrarEscribiendo\(env/.test(envio) && /await esperar\(ms\)/.test(envio));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

@@ -26,7 +26,7 @@ import {
 import { hojaVentas, olvidarCache } from "../../lib/ventas-hoja.js";
 import { buscarFila, conClave, clavesAbiertas } from "../asesor-ventas.js";
 import { fueraDeVentana } from "./scheduled.js";
-import { mandarTexto } from "../../lib/crm-send.js";
+import { mandarTexto, pausaEnvio } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente } from "../../lib/crm-db.js";
 
@@ -202,6 +202,7 @@ async function enviar(env, codigo, texto, quien) {
 
   let via = "texto";
   if (!(await fueraDeVentana(env.CRM_DB, chat.id, new Date()))) {
+    await pausaEnvio(env, chat.id); // "escribiendo…" 1,5 s: obligatorio antes de todo mensaje (ver crm-send.js)
     await mandarTexto(env, chat.id, chat.wa_id, texto, quien);
   } else if (env.PLANTILLA_ENVIO) {
     const nombre = (chat.nombre || "").split(/\s+/)[0] || "estimad@";

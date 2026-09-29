@@ -15,6 +15,16 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
  * si el cliente escribió en las últimas 24 h (si no, WhatsApp no lo muestra).
  * Con `escribiendo: false` es solo la espera (ej. antes de un grupo de fotos).
  */
+/*
+ * ⚠️ NO TOCAR — REGLA DEL DUEÑO, IMPORTANTÍSIMA.
+ * Todo mensaje que sale a un cliente (a mano, respuesta rápida, bienvenida,
+ * seguimiento, sugerencia aprobada, link de Shalom, catálogo) va precedido de
+ * pausaEnvio(): "escribiendo…" en su WhatsApp durante 1,5 s y recién el
+ * mensaje. No se quita, no se acorta, no se salta "para que vaya más rápido".
+ * Cualquier envío nuevo DEBE llamar a pausaEnvio() antes de mandarTexto() /
+ * mandarMediaGuardada(). `npm run check` falla si alguno no lo hace o si
+ * este valor cambia.
+ */
 export const PAUSA_ENVIO_MS = 1500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 

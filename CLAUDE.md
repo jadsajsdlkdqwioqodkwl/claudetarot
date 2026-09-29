@@ -36,6 +36,12 @@ Más detalle: `docs/asesor.md`.
 
 ## Si vas a tocar el código
 
+- ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo mensaje que sale a
+  un cliente lleva antes "escribiendo…" durante **1,5 s** (`pausaEnvio()` en
+  `src/lib/crm-send.js`, `PAUSA_ENVIO_MS = 1500`). No se quita, no se acorta
+  y todo envío nuevo lo llama antes de `mandarTexto()` / `mandarMediaGuardada()`.
+  `npm run check` falla si falta en algún envío.
+
 - `npm run check` y `npm run check:gs` antes de subir (el chequeo "la foto de
   la variante es una banda horizontal" ya fallaba antes).
 - Las migraciones de D1 se aplican a mano (no las aplica el deploy).
