@@ -44,6 +44,8 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio } from "../../lib/crm-send.js";
+import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
+import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos } from "../asesor.js";
@@ -79,6 +81,8 @@ async function get({ request, env, agent }) {
     ).bind(chat).all();
     return json({ mensajes: mensajes.reverse() });
   }
+  // Las que ya no sirven (se le escribió, compró, ventana cerrada) se cierran solas.
+  await limpiarSugerenciasViejas(env.CRM_DB).catch((err) => console.error("Limpiar sugerencias:", err.message));
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
@@ -110,6 +114,23 @@ async function get({ request, env, agent }) {
   for (const s of lista) {
     if (!Array.isArray(s.destinatarios)) continue;
     for (const d of s.destinatarios) if (d && typeof d === "object") d.last_inbound_at = ultimo[Number(d.conversation_id)] || null;
+  }
+  // Los seguimientos que ya tiene programados cada chat: se ven en la tarjeta
+  // para no mandarle una sugerencia encima de otra cadena.
+  const chats = [...new Set(lista.flatMap((s) => [s.conversation_id, ...(Array.isArray(s.destinatarios) ? s.destinatarios.map((d) => d?.conversation_id) : [])]).map(Number).filter(Boolean))];
+  const pendientesDe = {};
+  for (let i = 0; i < chats.length && i < 450; i += 90) {
+    const lote = chats.slice(i, i + 90);
+    const { results: filas } = await env.CRM_DB.prepare(
+      `SELECT s.conversation_id, s.send_at, s.created_by, substr(COALESCE(s.body, q.body, s.catalogo_nombre, ''), 1, 160) AS texto
+       FROM scheduled_messages s LEFT JOIN quick_replies q ON q.id = s.quick_reply_id
+       WHERE s.status = 'pendiente' AND s.conversation_id IN (${lote.map(() => "?").join(",")}) ORDER BY s.send_at`
+    ).bind(...lote).all();
+    for (const f of filas) (pendientesDe[f.conversation_id] ||= []).push(f);
+  }
+  for (const s of lista) {
+    if (s.conversation_id) s.seguimientos = pendientesDe[s.conversation_id] || [];
+    if (Array.isArray(s.destinatarios)) for (const d of s.destinatarios) if (d && typeof d === "object") d.seguimientos = pendientesDe[Number(d.conversation_id)] || [];
   }
   return json({ pendientes: results.length, sugerencias: lista });
 }
@@ -174,7 +195,8 @@ async function post({ request, env, agent }) {
 
   const quien = agent?.displayName || agent?.username || "CRM";
   const cerrar = (estado) =>
-    env.CRM_DB.prepare("UPDATE asesor_sugerencias SET estado = ?, resuelto_por = ?, resuelto_at = datetime('now') WHERE id = ? AND estado = 'pendiente'")
+    // 'obsoleta' también: si justo se limpió porque ESTE envío ya quedó en el chat.
+    env.CRM_DB.prepare("UPDATE asesor_sugerencias SET estado = ?, resuelto_por = ?, resuelto_at = datetime('now') WHERE id = ? AND estado IN ('pendiente', 'obsoleta')")
       .bind(estado, quien, id)
       .run();
 
@@ -196,12 +218,19 @@ async function post({ request, env, agent }) {
     if (!texto) return json({ error: "El mensaje está vacío." }, 400);
     const destino = (await destinosDeChats(env.CRM_DB, [convId]))[convId];
     if (!textoSirvePara(texto, destino)) return json({ error: `Este chat es de ${destino}: el mensaje es para el otro destino.` }, 422);
+    await cancelarSeguimientosDeLead(env.CRM_DB, convId);
     const error = await programar(env, convId, texto, quien, "ahora");
     if (error) return json({ error }, 422);
     d.enviado = new Date().toISOString();
     d.enviado_por = quien;
-    await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET destinatarios = ? WHERE id = ?").bind(JSON.stringify(lista), id).run();
-    return json({ ok: true });
+    // Cuando ya se le mandó a todos los chats, la sugerencia se cierra sola.
+    const quedan = lista.filter((x) => x && typeof x === "object" && !x.enviado).length;
+    await env.CRM_DB.prepare(
+      `UPDATE asesor_sugerencias SET destinatarios = ?, estado = CASE WHEN ? = 0 THEN 'aprobada' ELSE estado END,
+         resuelto_por = CASE WHEN ? = 0 THEN ? ELSE resuelto_por END, resuelto_at = CASE WHEN ? = 0 THEN datetime('now') ELSE resuelto_at END
+       WHERE id = ?`
+    ).bind(JSON.stringify(lista), quedan, quedan, quien, quedan, id).run();
+    return json({ ok: true, quedan });
   }
 
   if (s.tipo === "pregunta" || payload.accion === "responder") {
@@ -263,6 +292,8 @@ async function post({ request, env, agent }) {
 
   if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
+    // Una sola cadena por chat: lo que se aprueba reemplaza a los automáticos pendientes.
+    await cancelarSeguimientosDeLead(env.CRM_DB, s.conversation_id);
     let error = await programar(env, s.conversation_id, texto, quien, cuando);
     // Envío con la ventana cerrada: sale con la plantilla.
     if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {

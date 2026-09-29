@@ -1274,6 +1274,7 @@ function avisarLocalmente() {
 }
 
 function pintarLista() {
+  pintarRelojChat();
   const cont = $("#conversaciones");
   cont.innerHTML = "";
   for (const c of estado.conversaciones) {
@@ -2068,7 +2069,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel">+${escapar(c.wa_id)}</div>
+          <div class="tel">+${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -2108,6 +2109,7 @@ function pintarChatBase(c) {
       <div id="panel-adjuntar"></div>
     </form>`;
   $("#form-envio").addEventListener("submit", enviarMensaje);
+  pintarRelojChat();
   // Enter en un buscador de un panel (catálogo, respuestas rápidas) no debe
   // enviar el form: el navegador lo convierte en un "clic" en Enviar, que
   // además cerraba el panel.
@@ -4041,6 +4043,7 @@ function pintarSugerencias(lista) {
               <span class="reloj" data-cierra="${cierreVentana(d.last_inbound_at) || ""}"></span>
               ${d.enviado ? `<span class="sub">· enviado ✓ ${escapar(d.enviado_por || "")}</span>` : `<button type="button" class="sug-dest-leer">Leer chat</button>`}
             </div>
+            ${htmlSeguimientosActivos(d.seguimientos)}
             <div class="sug-dest-cuerpo" hidden></div>
           </div>`).join("")}</div>`
       : "";
@@ -4052,6 +4055,7 @@ function pintarSugerencias(lista) {
       <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}" data-cierra="${conChat ? cierreVentana(s.last_inbound_at) || "" : ""}">
         <div class="sug-cabecera">${cabecera}</div>
         ${conChat ? `<div class="reloj reloj-tarjeta"></div>` : ""}
+        ${conChat ? htmlSeguimientosActivos(s.seguimientos) : ""}
         ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
         ${s.objecion ? `<div class="sug-objecion">🧭 Lo que probablemente lo frena: <b>${escapar(s.objecion)}</b></div>` : ""}
         ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
@@ -4121,6 +4125,9 @@ function pintarSugerencias(lista) {
         }
       }
       boton.disabled = true;
+      // Desaparece al toque (el envío tarda ~2 s por el "escribiendo…"); si
+      // falla, vuelve a aparecer con el aviso.
+      card.hidden = true;
       try {
         const r = await pedir("/api/crm/sugerencias", {
           method: "POST",
@@ -4133,6 +4140,14 @@ function pintarSugerencias(lista) {
         if (!$("#lista-sugerencias .tarjeta-sugerencia")) pintarSugerencias([]);
         actualizarConteoSugerencias();
       } catch (err) {
+        // Otra persona ya la resolvió: se quita, no vuelve.
+        if (/^Ya fue /.test(err.message)) {
+          card.remove();
+          if (!$("#lista-sugerencias .tarjeta-sugerencia")) pintarSugerencias([]);
+          actualizarConteoSugerencias();
+          return alert(err.message);
+        }
+        card.hidden = false;
         boton.disabled = false;
         alert(err.message);
       }
@@ -4210,14 +4225,21 @@ function pintarSugerencias(lista) {
           const boton = ev.currentTarget;
           boton.disabled = true;
           try {
-            await pedir("/api/crm/sugerencias", {
+            fila.hidden = true;
+            const r = await pedir("/api/crm/sugerencias", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id, accion: "enviar_a", conversation_id: Number(fila.dataset.conv), texto: cuerpo.querySelector(".sug-dest-texto").value })
             });
-            cuerpo.hidden = true;
-            fila.querySelector(".sug-dest-leer")?.replaceWith(Object.assign(document.createElement("span"), { className: "sub", textContent: "· enviado ✓" }));
+            fila.remove();
+            // Ya se le mandó a todos: la sugerencia se cerró.
+            if (r.quedan === 0) {
+              card.remove();
+              if (!$("#lista-sugerencias .tarjeta-sugerencia")) pintarSugerencias([]);
+              actualizarConteoSugerencias();
+            }
           } catch (err) {
+            fila.hidden = false;
             boton.disabled = false;
             alert(err.message);
           }
@@ -4318,6 +4340,29 @@ function pasoHtml(p) {
       <textarea rows="3">${escapar(p.texto || "")}</textarea>
     </div>`;
 }
+
+/** Los seguimientos que ese chat ya tiene programados (para no mandarle otra cadena encima). */
+function htmlSeguimientosActivos(lista) {
+  if (!lista?.length) return `<div class="sug-segs vacio">Sin seguimientos programados.</div>`;
+  const hora = (v) => new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return `<div class="sug-segs">⚠️ Ya tiene ${lista.length} seguimiento${lista.length === 1 ? "" : "s"} programado${lista.length === 1 ? "" : "s"} (si mandas esta, los automáticos se cancelan):
+    ${lista.slice(0, 3).map((x) => `<div class="sub">· ${escapar(hora(x.send_at))} — ${escapar(x.created_by || "")}: ${escapar(x.texto || "")}</div>`).join("")}</div>`;
+}
+
+/**
+ * Cronómetro en la cabecera del chat abierto: cuánto queda de su ventana de
+ * 24 h para escribirle gratis. Rojo con menos de 1 h.
+ */
+function pintarRelojChat() {
+  const el = $("#reloj-chat");
+  if (!el) return;
+  const c = estado.conversaciones?.find((x) => x.conversation_id === estado.conversacionActivaId);
+  const cierra = cierreVentana(c?.last_inbound_at);
+  const queda = cierra ? cierra - Date.now() : 0;
+  el.className = `reloj${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
+  el.textContent = !cierra ? "· ⏱ no escribió" : queda <= 0 ? "· ⏱ ventana cerrada" : `· ⏱ ${duracion(queda)} para escribirle`;
+}
+setInterval(pintarRelojChat, 30000);
 
 /** Cuándo se cierra la ventana de 24 h (ms), o null si nunca escribió. */
 function cierreVentana(ultimoEntrante) {

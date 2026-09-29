@@ -32,6 +32,7 @@ import { hojaVentas } from "../lib/ventas-hoja.js";
 import { RANGO_DATOS_VENTA, indiceVenta } from "../lib/ventas.js";
 import { buscarFila } from "./asesor-ventas.js";
 import { destinosDeChats, textoSirvePara } from "../lib/crm-destino.js";
+import { limpiarSugerenciasViejas } from "../lib/crm-sugerencias.js";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
@@ -360,6 +361,7 @@ export async function onRequestGetContexto({ request, env }) {
   if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
+  await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
   const [rapidas, pendientes, bienvenida, pruebas, noCierran] = await Promise.all([
     env.CRM_DB.prepare(
       `SELECT q.id, q.title, q.body, q.grupo, q.sort_order,

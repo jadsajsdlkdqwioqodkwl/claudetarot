@@ -823,6 +823,10 @@ check("las letras de columna llegan hasta la última de la hoja",
   const masivo = readFileSync(new URL("../src/api/crm/bulk-send.js", import.meta.url), "utf8");
   check("sin envíos masivos", masivo.includes("onRequestPost = conAdmin(apagado)"));
   const sugs = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
+  check("las sugerencias se cierran solas si se le escribió al cliente, compró o se cerró su ventana",
+    readFileSync(new URL("../src/lib/crm-sugerencias.js", import.meta.url), "utf8").includes("se le escribió al cliente") && sugs.includes("limpiarSugerenciasViejas(env.CRM_DB)"));
+  check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
+    sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));
   check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));
 }
 

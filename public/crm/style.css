@@ -911,3 +911,11 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-dest-enviar { background: var(--verde-osc); color: #fff; border-color: var(--verde-osc); margin-top: 4px; }
 .sug-dest-cuerpo { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .sug-dest-texto { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; }
+
+/* Cronómetro más visible y seguimientos activos en ✨ Sugerencias */
+.reloj-tarjeta { display: inline-block; background: #e7f6ee; border-radius: var(--radio-full); padding: 3px 10px; font-size: 13px; }
+.reloj-tarjeta.urgente { background: #fde8e7; }
+.reloj-tarjeta.cerrada { background: var(--fondo); }
+#reloj-chat { font-size: 11px; }
+.sug-segs { font-size: 12px; background: #fff6e0; color: #6d5400; border-radius: var(--radio-s); padding: 4px 8px; margin: 4px 0; }
+.sug-segs.vacio { background: transparent; color: var(--gris); padding: 0; }

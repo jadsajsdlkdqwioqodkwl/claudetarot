@@ -125,6 +125,18 @@ Ya no hay grupos: cada quien las ordena arrastrando del ⋮⋮ en el panel ⚡
 del chat (mouse o dedo) y el orden queda para todo el equipo
 (`PATCH /api/crm/quick-replies { ordenar: [ids] }`). Las nuevas van al final.
 
+## Sugerencias que no se acumulan
+
+- Una sugerencia para un chat se cierra sola (estado `obsoleta`, con el
+  motivo) apenas se le escribe al cliente por cualquier lado, si ya compró o
+  si se cerró su ventana de 24 h (`src/lib/crm-sugerencias.js`, corre antes
+  de listar, de contar y en `contexto.py`).
+- Al darle Enviar desaparece al toque (si falla, vuelve con el aviso). Si
+  otra persona ya la resolvió, se quita.
+- Cada tarjeta muestra el cronómetro de la ventana y los seguimientos que ese
+  chat ya tiene programados; aprobarla cancela los automáticos pendientes.
+- El cronómetro también está en la cabecera de cada chat.
+
 ## Sin envíos en bloque
 
 - Una respuesta rápida que el bot propone "para varios chats" ya no se manda
