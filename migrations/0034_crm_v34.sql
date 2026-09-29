@@ -1,4 +1,5 @@
 -- Embudo automático, pruebas de mensajes y análisis del asesor.
+-- Aplicada a mano vía D1 MCP el 2026-09-29.
 --
 -- · conversations.etapa: la etapa más alta del embudo a la que llegó el chat
 --   (1 escribió … 5 cerró), calculada sin IA en el cron */5 (crm-embudo.js).

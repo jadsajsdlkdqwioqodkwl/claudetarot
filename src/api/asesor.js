@@ -1,6 +1,8 @@
 /**
  * POST /api/asesor/avisos — la puerta por la que el asesor (la Routine de
- * Claude Code que lee los chats 3 veces al día) les avisa a las vendedoras.
+ * Claude Code que lee los chats 3 veces al día) avisa. Hoy solo manda el
+ * PDF de pedidos al dueño y UN aviso "hay recomendaciones nuevas" al equipo
+ * (crm-avisos.js); las propuestas en sí quedan en ✨ Sugerencias.
  *
  * Existe para que la Routine no necesite el token del bot: el Worker ya lo
  * tiene, y además sabe qué vendedora atiende cada chat y si vinculó su
@@ -21,13 +23,11 @@
  */
 
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
+import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 import { aprendizaje } from "./asesor-datos.js";
 import { versionesEnPrueba } from "../lib/crm-variantes.js";
 import { frasesQueConvierten } from "../lib/crm-frases.js";
 
-// Cada aviso va a todo el equipo: con el tope de 50 llamadas por request del
-// plan gratis de Cloudflare, enviar.py los manda de a 5.
-const MAX_MENSAJES = 8;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
 const json = (data, status = 200) =>
@@ -72,42 +72,6 @@ async function dentroDelLimite(env, ip) {
   }
 }
 
-const lista = (texto) => String(texto || "").split("\n").map((s) => s.trim()).filter(Boolean);
-
-/**
- * A quién le llega cada aviso: a TODAS las que vincularon Telegram y al dueño
- * (copia para todo el equipo), marcando a quién le toca. Le toca a la
- * asignada y a las que comparten el chat; si nadie lo tiene asignado, a
- * cualquiera que lo tome.
- */
-export function destinatarios(conv, agentes, chatDueno) {
-  const nombres = new Set([conv?.assigned_agent, ...lista(conv?.shared_with)].filter(Boolean));
-  const salida = new Map();
-  for (const a of agentes) {
-    if (!a.telegram_chat_id) continue;
-    const id = String(a.telegram_chat_id);
-    const leToca = nombres.has(a.display_name) || nombres.has(a.username);
-    salida.set(id, { chatId: id, leToca: leToca || salida.get(id)?.leToca || false });
-  }
-  if (chatDueno && !salida.has(String(chatDueno))) salida.set(String(chatDueno), { chatId: String(chatDueno), leToca: false });
-  return [...salida.values()];
-}
-
-export function textoAviso(m, { asignada, leToca }) {
-  const wa = String(m.whatsapp || "").replace(/\D/g, "");
-  const quien = leToca ? "👉 <b>Te toca a ti</b>" : asignada ? `👀 Copia · le toca a <b>${escaparHtml(asignada)}</b>` : "🙋 Sin asignar · puede tomarlo cualquiera";
-  return (
-    `✍️ <b>Manda este mensaje</b> a ${escaparHtml(m.nombre || "sin nombre")} (+${escaparHtml(wa)})\n` +
-    `${quien}\n` +
-    (m.motivo ? `<i>${escaparHtml(m.motivo)}</i>\n` : "") +
-    `\n<code>${escaparHtml(m.mensaje || "")}</code>\n\n` +
-    (Array.isArray(m.pasos) && m.pasos.length
-      ? `<i>+${m.pasos.length} seguimiento(s) más si no responde: aprobarlos en Sugerencias del CRM.</i>\n`
-      : "") +
-    `<i>Toca el texto para copiarlo y el botón para abrir el chat.</i>`
-  );
-}
-
 async function mandarPdf(env, chatId, base64, nombre, resumen) {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   if (bytes.length > MAX_PDF_BYTES) throw new Error("PDF demasiado grande");
@@ -127,75 +91,55 @@ export async function onRequestPost({ request, env }) {
 
   const payload = await request.json().catch(() => null);
   if (!payload || typeof payload !== "object") return json({ error: "JSON inválido." }, 400);
-  // El informe entero del director CRO se guarda para el resumen semanal por
-  // correo (GET /api/asesor/resumen). Por Telegram ya salió en trozos.
+  // El informe del director CRO ya no va por Telegram: se guarda y queda
+  // como página en CRM → Reportes (y en el resumen semanal).
   if (payload.informe) {
-    await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)")
-      .bind(String(payload.origen || "director CRO").slice(0, 60), String(payload.informe).slice(0, 20000))
-      .run();
-    return json({ guardado: true });
+    const texto = String(payload.informe).slice(0, 20000);
+    const origenInforme = String(payload.origen || "director CRO").slice(0, 60);
+    await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)").bind(origenInforme, texto).run();
+    const link = await guardarInformeComoPagina(env, origenInforme, texto).catch(() => null);
+    return json({ guardado: true, link });
   }
   const dueno = env.TELEGRAM_CHAT_ID;
-  const origen = new URL(request.url).origin;
   const res = { enviados: 0, fallidos: [], a_dueno: 0 };
 
+  // El PDF de pedidos sigue llegando al dueño (es para despachar).
   if (payload.pdf_base64) {
     try {
       await mandarPdf(env, dueno, payload.pdf_base64, payload.pdf_nombre, payload.resumen);
       res.enviados++;
+      res.a_dueno++;
     } catch (err) {
       res.fallidos.push({ que: "pdf", error: err.message });
     }
-  } else if (payload.resumen) {
-    try {
-      await llamarTelegram(env, "sendMessage", { chat_id: dueno, text: String(payload.resumen).slice(0, 4000), disable_web_page_preview: true });
-      res.enviados++;
-    } catch (err) {
-      res.fallidos.push({ que: "resumen", error: err.message });
-    }
   }
-
-  const mensajes = Array.isArray(payload.mensajes) ? payload.mensajes.slice(0, MAX_MENSAJES) : [];
-  if (!mensajes.length) return json(res);
-
-  const { results: agentes } = await env.CRM_DB.prepare(
-    "SELECT display_name, username, telegram_chat_id FROM agents WHERE active = 1 AND telegram_chat_id IS NOT NULL"
-  ).all();
-
-  for (const m of mensajes) {
-    const wa = String(m?.whatsapp || "").replace(/\D/g, "");
-    if (wa.length < 9 || !m.mensaje) {
-      res.fallidos.push({ whatsapp: wa, error: "falta número o mensaje" });
-      continue;
-    }
-    const conv = await env.CRM_DB.prepare(
-      `SELECT conv.id, conv.assigned_agent, conv.shared_with FROM conversations conv
-       JOIN contacts c ON c.id = conv.contact_id
-       WHERE c.wa_id LIKE ? ORDER BY conv.last_message_at DESC LIMIT 1`
-    )
-      .bind(`%${wa.slice(-9)}`)
-      .first();
-    const para = payload.solo_dueno ? [{ chatId: String(dueno), leToca: false }] : destinatarios(conv, agentes, dueno);
-    const asignada = [conv?.assigned_agent, ...lista(conv?.shared_with)].filter(Boolean).join(", ");
-    // Con el chat encontrado, el botón lo abre por id; si no, por número.
-    const url = conv ? `${origen}/crm/?chat=${conv.id}` : `${origen}/crm/?wa=${wa}`;
-    const boton = { reply_markup: { inline_keyboard: [[
-      { text: "💬 Abrir chat", url },
-      { text: "✨ Ver sugerencias", url: `${origen}/crm/?sugerencias=1` }
-    ]] } };
-    for (const { chatId, leToca } of para) {
-      try {
-        await llamarTelegram(env, "sendMessage", {
-          chat_id: chatId, text: textoAviso(m, { asignada, leToca }), parse_mode: "HTML", disable_web_page_preview: true, ...boton
-        });
-        res.enviados++;
-        if (chatId === String(dueno)) res.a_dueno++;
-      } catch (err) {
-        res.fallidos.push({ whatsapp: wa, error: err.message });
-      }
-    }
+  // Lo demás (cada mensaje sugerido, los trozos del informe, los resúmenes
+  // sueltos) ya no se manda uno por uno: las propuestas quedan en ✨
+  // Sugerencias y sale un solo aviso "hay recomendaciones nuevas" al equipo.
+  const mensajes = Array.isArray(payload.mensajes) ? payload.mensajes : [];
+  if (mensajes.length || payload.nuevas_recomendaciones) {
+    const r = await notificarRecomendaciones(env);
+    res.enviados += r.enviados || 0;
+    if (r.omitido) res.omitido = r.omitido;
   }
   return json(res);
+}
+
+/** El informe del director como página en CRM → Reportes. */
+async function guardarInformeComoPagina(env, origen, texto) {
+  if (!env.CRM_MEDIA) return null;
+  const fecha = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+  const id = `informe-cro-${fecha}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.html`;
+  const pagina = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<meta name="robots" content="noindex"><title>Informe ${escaparHtml(origen)} ${fecha}</title></head>` +
+    `<body style="margin:0;padding:16px;font:15px/1.55 system-ui,sans-serif;color:#1f2937;max-width:720px">` +
+    `<h2 style="font-size:17px">Informe ${escaparHtml(origen)} · ${fecha}</h2>` +
+    `<div style="white-space:pre-wrap">${escaparHtml(texto)}</div></body></html>`;
+  await env.CRM_MEDIA.put(`reportes/${id}`, pagina, {
+    httpMetadata: { contentType: "text/html; charset=utf-8" },
+    customMetadata: { titulo: `Informe ${origen} ${fecha}` }
+  });
+  return `${new URL("https://kit-tarot-para-principiantes.tarotperu.store").origin}/r/${id}`;
 }
 
 /**

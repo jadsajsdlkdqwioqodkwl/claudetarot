@@ -43,7 +43,8 @@ prueba. El "analisis" de cada chat se guarda para el coaching y el resumen
 semanal (no avisa a nadie). Los "envios" (link con la boleta
 ya lista) no van a Telegram ni a las vendedoras: solo al admin en ✨ Sugerencias.
 """
-import base64, glob, html, json, os, subprocess, sys, time, urllib.error, urllib.request
+import base64, glob, html, json, os, re, subprocess, sys, urllib.error, urllib.request
+from collections import Counter
 
 ORDEN = ["CONFIRMADO", "POR_CONFIRMAR", "OTRO_DIA", "INTENCION"]
 TITULOS = {
@@ -108,7 +109,6 @@ td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}
     return ruta_pdf, kits
 
 
-LOTE = 5
 AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
 SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
 ANALISIS = AVISOS.replace("/avisos", "/analisis")
@@ -133,6 +133,54 @@ def subir_reporte(clave, pdf_base64, nombre, titulo):
     return r["url"]
 
 
+# Lo que delata a un bot (ver .claude/skills/voz-tarot-store). Las vendedoras
+# no escriben así; si un texto lo tiene, no se guarda y la Routine lo rehace.
+RE_ROBOT = [
+    (re.compile(r"—|–"), "usa guion largo (—)"),
+    (re.compile(r"\bno dude[sn]? en\b|\bestoy aqu[ií] para\b|\bcon gusto te ayudo\b|\bespero que est[eé]s? bien\b", re.I), "frase de plantilla"),
+    (re.compile(r"\bentiendo (tu|su) (preocupaci[oó]n|inquietud)\b|\bcomprendo perfectamente\b", re.I), "frase de manual de ventas"),
+    (re.compile(r"\b[A-ZÁÉÍÓÚÑ]{5,}\b"), "palabra en MAYÚSCULAS"),
+    (re.compile(r"\b(tú|tu|te|tienes|puedes|quieres)\b", re.I), "tutea (el equipo trata de usted)"),
+]
+
+
+def problemas_de(texto):
+    """Lo que delata a un bot en un texto para clientes (vacío = pasa)."""
+    p = [motivo for patron, motivo in RE_ROBOT if patron.search(texto)]
+    if len(texto) > 420:
+        p.append(f"muy largo ({len(texto)} caracteres; las vendedoras escriben 1–3 líneas)")
+    if texto.count("?") > 1:
+        p.append("más de una pregunta")
+    if sum(1 for c in texto if ord(c) > 0x2600) > 4:
+        p.append("demasiados emojis")
+    return p
+
+
+def revisar_estilo(datos):
+    """Saca de datos las propuestas que suenan a bot (no se guardan) y devuelve por qué.
+    También las que repiten el mismo texto a más de 2 clientes: hay que personalizarlas."""
+    repetidos = Counter(m.get("mensaje") for m in datos.get("mensajes", []) if m.get("mensaje"))
+    fuera = []
+
+    def pasa(quien, textos):
+        malos = [f"{', '.join(problemas_de(x))}: {x[:100]}" for x in textos if x and problemas_de(x)]
+        if malos:
+            fuera.append(f"- {quien}: " + " | ".join(malos))
+        return not malos
+
+    mensajes = []
+    for m in datos.get("mensajes", []):
+        textos = [m.get("mensaje") or ""] + [p.get("mensaje") or p.get("texto") or "" for p in m.get("pasos") or []]
+        if repetidos[m.get("mensaje")] > 2:
+            fuera.append(f"- {m.get('nombre') or m.get('whatsapp')}: el mismo texto para {repetidos[m.get('mensaje')]} clientes; personalízalo con lo que dijo cada uno")
+        elif pasa(m.get("nombre") or m.get("whatsapp"), textos):
+            mensajes.append(m)
+    datos["mensajes"] = mensajes
+    datos["respuestas_rapidas"] = [r for r in datos.get("respuestas_rapidas", []) if pasa(r.get("titulo"), [r.get("texto") or ""])]
+    datos["variantes"] = [v for v in datos.get("variantes", []) if pasa(f"versión {v.get('ref_tipo')} #{v.get('ref_id')}", [v.get("texto") or ""])]
+    return fuera
+
+
 def main():
     args = sys.argv[1:]
     prueba, solo_mensajes = "--prueba" in args, "--solo-mensajes" in args
@@ -141,18 +189,21 @@ def main():
     if not clave and not prueba and "--solo-pdf" not in args:
         sys.exit("Falta ASESOR_CLAVE en el entorno (o usa --prueba).")
 
-    if informe:  # informe CRO: solo al dueño, en trozos que entren en un mensaje
+    if informe:  # informe CRO: queda en CRM → Reportes y en el resumen semanal; no va por Telegram
         texto = open(informe).read().strip()
-        trozos = [texto[i:i + 3800] for i in range(0, len(texto), 3800)]
-        for t in trozos:
-            print(t) if prueba else al_worker(clave, {"resumen": t, "solo_dueno": True})
-        if not prueba:  # entero, para el resumen semanal por correo
-            al_worker(clave, {"informe": texto, "origen": "director CRO"})
-        print(f"Informe: {len(trozos)} mensaje(s){' (prueba, nada salió)' if prueba else ''}")
+        if prueba:
+            print(texto + "\n(prueba, nada se guardó)")
+            return
+        r = al_worker(clave, {"informe": texto, "origen": "director CRO"})
+        print(f"Informe guardado: {r.get('link') or 'ok'}")
         return
 
     ruta = next(a for a in args if not a.startswith("--"))
     datos = json.load(open(ruta))
+    fuera = revisar_estilo(datos)
+    if fuera:
+        print("NO SE GUARDARON (suenan a bot; reescríbelas como las vendedoras, skill voz-tarot-store, "
+              "y vuelve a mandarlas en otro salida.json):\n" + "\n".join(fuera), flush=True)
     carpeta = os.path.dirname(os.path.abspath(ruta))
     if "--solo-pdf" in args:  # arma el PDF (y con clave lo sube a CRM → Reportes); no avisa a nadie
         pdf = armar_pdf(datos, carpeta)[0]
@@ -216,15 +267,15 @@ def main():
         total["sugerencias"] += r.get("creadas", 0) + r.get("actualizadas", 0)
         total.setdefault("sin_chat", []).extend(r.get("sin_chat", []))
     print(f"Sugerencias guardadas en el CRM: {total['sugerencias']}", flush=True)
-    # Luego Telegram, de a pocos: cada aviso va a todo el equipo.
-    lotes = [dict(cuerpo)] if "resumen" in cuerpo else []
-    lotes += [{"mensajes": mensajes[i:i + LOTE]} for i in range(0, len(mensajes), LOTE)]
-    for n, lote in enumerate(lotes):
-        r = al_worker(clave, lote)
+    # Telegram: el PDF de pedidos al dueño (si hay) y UN solo aviso al equipo
+    # "hay recomendaciones nuevas". Los mensajes en sí quedan en ✨ Sugerencias.
+    aviso = {"nuevas_recomendaciones": total["sugerencias"]} if total["sugerencias"] else {}
+    if "pdf_base64" in cuerpo:
+        aviso.update(cuerpo)
+    if aviso:
+        r = al_worker(clave, aviso)
         total["enviados"] += r.get("enviados", 0)
         total["fallidos"] += r.get("fallidos", [])
-        if n < len(lotes) - 1:
-            time.sleep(1.5)
     print(json.dumps(total, ensure_ascii=False))
 
 

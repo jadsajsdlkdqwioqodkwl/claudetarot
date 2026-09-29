@@ -19,6 +19,11 @@
  * rápida o de un paso de la bienvenida. Aprobarla la mete en la prueba
  * (tabla `variantes`); no manda nada a nadie.
  *
+ * Tipo "prueba_lista" (solo admin, la crea el cron): una prueba de mensajes
+ * ya tiene ganadora (`titulo` = id de la versión, 0 = la original).
+ * Aprobarla deja esa versión como el texto de siempre; descartarla sigue
+ * probando.
+ *
  * Tipo "envio" (link de seguimiento con la boleta de Shalom lista): solo lo
  * ve y lo manda el admin. Como la boleta sale días después, casi siempre la
  * ventana ya cerró: entonces "Enviar ahora" usa la plantilla utility de
@@ -31,6 +36,7 @@ import { mandarTexto } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos } from "../asesor.js";
+import { cerrarPrueba } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -62,12 +68,12 @@ async function get({ request, env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo != 'variante' OR ? = 1)
+     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo NOT IN ('variante', 'prueba_lista') OR ? = 1)
      ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
   ).bind(esAdmin(agent) ? 1 : 0).all();
   // Las versiones propuestas llevan el texto actual al lado, para comparar.
   for (const s of results) {
-    if (s.tipo !== "variante") continue;
+    if (s.tipo !== "variante" && s.tipo !== "prueba_lista") continue;
     const ref = await env.CRM_DB.prepare(
       s.ref_tipo === "bienvenida" ? "SELECT title, body FROM welcome_steps WHERE id = ?" : "SELECT title, body FROM quick_replies WHERE id = ?"
     ).bind(s.ref_id).first();
@@ -133,7 +139,7 @@ async function post({ request, env, agent }) {
   const s = await env.CRM_DB.prepare("SELECT * FROM asesor_sugerencias WHERE id = ?").bind(id).first();
   if (!s) return json({ error: "Esa sugerencia ya no existe." }, 404);
   if (s.tipo === "envio" && !esAdmin(agent)) return json({ error: "Solo el admin maneja los envíos." }, 403);
-  if (s.tipo === "variante" && !esAdmin(agent)) return json({ error: "Solo el admin decide qué se prueba." }, 403);
+  if ((s.tipo === "variante" || s.tipo === "prueba_lista") && !esAdmin(agent)) return json({ error: "Solo el admin decide qué se prueba." }, 403);
   if (s.estado !== "pendiente") return json({ error: `Ya fue ${s.estado} por ${s.resuelto_por || "otra persona"}.` }, 409);
 
   const quien = agent?.displayName || agent?.username || "CRM";
@@ -145,6 +151,16 @@ async function post({ request, env, agent }) {
   if (payload.accion === "descartar") {
     await cerrar("descartada");
     return json({ ok: true });
+  }
+
+  if (s.tipo === "prueba_lista") {
+    try {
+      await cerrarPrueba(env.CRM_DB, s.ref_tipo, s.ref_id, Number(s.titulo) || 0, quien);
+    } catch (err) {
+      return json({ error: err.message }, 409);
+    }
+    await cerrar("aprobada");
+    return json({ ok: true, enviados: 0, programados: 0, saltados: [] });
   }
 
   let cuando = null;

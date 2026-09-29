@@ -3993,6 +3993,7 @@ function pintarSugerencias(lista) {
   }
   cont.innerHTML = lista.map((s) => {
     if (s.tipo === "variante") return tarjetaVariante(s);
+    if (s.tipo === "prueba_lista") return tarjetaPruebaLista(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
     const cabecera = esRapida
@@ -4125,6 +4126,23 @@ function pintarSugerencias(lista) {
 }
 
 const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) || card.classList.contains("sug-variante");
+
+/** Una prueba de mensajes ya tiene ganadora: decidir con un toque (lo crea el cron, solo admin). */
+function tarjetaPruebaLista(s) {
+  return `
+    <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="">
+      <div class="sug-cabecera"><span class="sug-tipo">🧪 Prueba lista · ${escapar(s.ref_titulo || "")}</span></div>
+      <div class="sub sug-actual">${escapar(s.motivo || "")}</div>
+      ${s.texto ? `<div class="sub">Texto ganador:</div><div class="sub sug-actual">${escapar(s.texto)}</div>` : ""}
+      <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">Descartar = seguir probando</span>
+        <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="Seguir probando">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-probar">Quedarme con la ganadora</button></div>
+      </div>
+    </div>`;
+}
 
 /** Propuesta del director CRO: otra versión de un mensaje que ya existe, para probarla contra la actual. */
 function tarjetaVariante(s) {

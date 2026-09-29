@@ -13,6 +13,18 @@
 | Resumen semanal por correo | Apps Script (`resumenSemanal`) → `GET /api/asesor/resumen` | Gratis (Gmail + Worker, sin IA) |
 | Aprobar / enviar / programar / decidir pruebas | CRM → ✨ Sugerencias y ⚡ editar respuesta | — |
 
+**Telegram, lo único que sale**: el PDF de pedidos al dueño y **un solo aviso**
+al equipo y al dueño, "✨ Hay N recomendaciones listas para revisar y enviar",
+como mucho uno por hora (`src/lib/crm-avisos.js`). Antes llegaba un mensaje
+por cada propuesta, los trozos del informe y el resumen: ya no. El informe
+del director queda en CRM → Reportes.
+
+**Cómo escribe el bot**: `CLAUDE.md` (lo lee cada Routine) le pide leer
+`docs/negocio.md`, `contexto.py` y la skill `voz-tarot-store` (ejemplos
+reales de las vendedoras). `enviar.py` descarta y lista las propuestas con
+tics de bot (guion largo, MAYÚSCULAS, tuteo, más de una pregunta, más de 4
+emojis, más de 420 caracteres, el mismo texto a más de 2 clientes).
+
 **Nada llama a la API de Claude** (se cobra por uso aparte del plan). Lo que
 queda de IA corre en las Routines con el plan. El Apps Script ya no la usa
 (se quitaron el análisis diario y el botón "Sacar pedidos (Claude)"): si en
@@ -104,10 +116,9 @@ Al director CRO diario (7:52) conviene sumarle el paso 4 en su prompt.
 
 ## Resumen por correo sin gastar tokens
 
-**Llega solo por Telegram** (sin configurar nada): los lunes desde las 9:00
-el Worker arma el resumen, lo guarda como página en CRM → Reportes y le manda
-al dueño un mensaje con lo principal y el botón "Ver resumen completo". Y
-cada día, si una prueba ya tiene ganadora, avisa una vez por Telegram.
+**Dónde se ve**: los lunes desde las 9:00 el Worker lo guarda como página en
+**CRM → Reportes** (sin avisar). Cuando una prueba ya tiene ganadora, entra a
+✨ Sugerencias (solo admin) como "🧪 Prueba lista" para decidir con un toque.
 Además, opcional, por correo:
 
 Lo arma el Worker con datos de D1 (`GET /api/asesor/resumen?dias=7`): embudo

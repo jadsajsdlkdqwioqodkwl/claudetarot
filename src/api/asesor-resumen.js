@@ -13,17 +13,15 @@
  *      con datos de D1, sin IA: no gasta tokens. Lo único escrito por IA que
  *      trae es el último informe del director CRO, que ya estaba escrito.
  *
- * Cómo le llega al dueño (enviarResumenSiToca, cron de 10 min):
- *   · lunes desde las 9:00 (Lima): el resumen queda como página en CRM →
- *     Reportes y sale por Telegram al dueño con el botón para abrirla;
- *   · cada día desde las 9:00: aviso por Telegram de cada prueba de mensajes
- *     que ya tiene ganadora (una sola vez por prueba y ganadora).
- *   · además, si se configura, por correo (resumenSemanal en ASESOR.gs).
+ * Dónde se ve (enviarResumenSiToca, cron de 10 min): los lunes queda como
+ * página en CRM → Reportes; las pruebas con ganadora entran a ✨ Sugerencias.
+ * Opcional, por correo (resumenSemanal en ASESOR.gs).
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor, pruebasDeMensajes } from "./asesor.js";
 import { MIN_USOS } from "../lib/crm-variantes.js";
-import { escaparHtml, llamarTelegram } from "../lib/telegram.js";
+import { escaparHtml } from "../lib/telegram.js";
+import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 
 const SITIO = "https://kit-tarot-para-principiantes.tarotperu.store";
 
@@ -304,38 +302,26 @@ export async function publicarResumen(env, r, fecha) {
 }
 
 /**
- * Cron de 10 min: el resumen de los lunes y los avisos de pruebas listas,
- * por Telegram al dueño. Sin IA; si algo falla, se reintenta en la próxima pasada.
+ * Cron de 10 min, sin IA y sin mensajes sueltos por Telegram:
+ *   · lunes desde las 9:00 (Lima): el resumen semanal queda como página en
+ *     CRM → Reportes (no avisa);
+ *   · cada día desde las 9:00: cada prueba de mensajes que ya tiene ganadora
+ *     entra a ✨ Sugerencias (solo admin) para decidir con un toque, y sale el
+ *     único aviso "hay recomendaciones nuevas" (crm-avisos.js).
  */
 export async function enviarResumenSiToca(env) {
-  if (!env.CRM_DB || !env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  if (!env.CRM_DB) return;
   const lima = new Date(Date.now() - LIMA_MS);
   if (lima.getUTCHours() < 9) return;
   const hoy = lima.toISOString().slice(0, 10);
   const db = env.CRM_DB;
 
-  // Lunes: el resumen de la semana.
   if (lima.getUTCDay() === 1 && env.CRM_MEDIA && (await ajuste(db, "resumen_semanal_enviado")) !== hoy) {
     const d = await datosResumen(env, 7);
-    const r = armarResumen(d, `${SITIO}/crm/`);
-    const link = await publicarResumen(env, r, hoy);
-    const listas = d.pruebas_en_curso.filter((p) => p.listo);
-    const e = d.embudo;
-    const lineas = [
-      `📊 <b>${escaparHtml(r.asunto)}</b>`,
-      "",
-      `Embudo: ${e.e1 || 0} escribieron → ${e.e2 || 0} conversaron → ${e.e5 || 0} cerraron`,
-      ...listas.map((p) => `🧪 Lista para decidir: <b>${escaparHtml(p.titulo)}</b>, gana la versión ${escaparHtml(p.lider)}`),
-      ...(d.frases?.mejores || []).slice(0, 3).map((x) => `▲ "${escaparHtml(x.frase)}" ${x.cierre}% cerró (promedio ${d.frases.promedio}%)`)
-    ];
-    await llamarTelegram(env, "sendMessage", {
-      chat_id: env.TELEGRAM_CHAT_ID, text: lineas.join("\n"), parse_mode: "HTML", disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [[{ text: "📊 Ver resumen completo", url: link }]] }
-    });
+    await publicarResumen(env, armarResumen(d, `${SITIO}/crm/`), hoy);
     await guardar(db, "resumen_semanal_enviado", hoy);
   }
 
-  // Cada día: pruebas que ya tienen ganadora (una vez por prueba y ganadora).
   if ((await ajuste(db, "pruebas_revisadas")) === hoy) return;
   const pruebas = await pruebasDeMensajes(env);
   let avisadas = {};
@@ -347,6 +333,7 @@ export async function enviarResumenSiToca(env) {
   ]);
   for (const r of rs.results) titulos[`rapida:${r.id}`] = r.title;
   for (const w of ws.results) titulos[`bienvenida:${w.id}`] = `Bienvenida · ${w.title}`;
+  let nuevas = 0;
   for (const tipo of ["rapida", "bienvenida"]) {
     for (const [ref, vs] of Object.entries(pruebas.en_curso[tipo] || {})) {
       const lider = vs.reduce((a, b) => (b.peso > a.peso ? b : a), vs[0]);
@@ -354,15 +341,18 @@ export async function enviarResumenSiToca(env) {
       const clave = `${tipo}:${ref}:${lider.id}`;
       if (!listo || avisadas[clave]) continue;
       const i = vs.indexOf(lider);
-      const detalle = vs.map((v, k) => `${k + 1}: ${pct(v.avanzaron, v.usos)}% avanzó (${v.usos})`).join(" · ");
-      await llamarTelegram(env, "sendMessage", {
-        chat_id: env.TELEGRAM_CHAT_ID, parse_mode: "HTML", disable_web_page_preview: true,
-        text: `🧪 <b>${escaparHtml(titulos[`${tipo}:${ref}`] || `#${ref}`)}</b>: gana la versión ${i + 1}\n${detalle}\n\nPara quedarte con ella: ⚡ → editar esa respuesta → "Quedarse con esta".`,
-        reply_markup: { inline_keyboard: [[{ text: "Abrir el CRM", url: `${SITIO}/crm/` }]] }
-      });
+      const detalle = vs.map((v, k) => `Versión ${k + 1}: ${pct(v.avanzaron, v.usos)}% avanzó, ${pct(v.cerraron, v.usos)}% cerró (${v.usos} usos)`).join("\n");
+      // tipo 'prueba_lista': `titulo` guarda el id de la versión ganadora (0 = la original).
+      await db.prepare(
+        `INSERT INTO asesor_sugerencias (tipo, ref_tipo, ref_id, titulo, texto, texto_original, motivo, origen)
+         VALUES ('prueba_lista', ?, ?, ?, ?, ?, ?, 'pruebas de mensajes')`
+      ).bind(tipo, Number(ref), String(lider.id), lider.texto || "", lider.texto || "",
+        `${titulos[`${tipo}:${ref}`] || `#${ref}`}: gana la versión ${i + 1}.\n${detalle}`).run();
       avisadas[clave] = hoy;
+      nuevas++;
     }
   }
   await guardar(db, "pruebas_avisadas", JSON.stringify(avisadas));
   await guardar(db, "pruebas_revisadas", hoy);
+  if (nuevas) await notificarRecomendaciones(env);
 }
