@@ -130,7 +130,65 @@ export async function versionesEnPrueba(db, tipo, refIds = null) {
     const ps = pesos(brazos);
     porRef[ref] = brazos.map((b, i) => ({ ...b, peso: Math.round(ps[i] * 1000) / 1000 }));
   }
+  if (tipo === "rapida" && ids.length) {
+    const ordenes = await ordenesFijos(db, ids);
+    for (const ref of ids) if (ordenes[ref]) porRef[ref] = ordenar(porRef[ref], ordenes[ref]);
+  }
   return porRef;
+}
+
+/** Lee quick_replies.orden_versiones: { [ref_id]: [ids] } solo de las que tienen orden fijo. */
+async function ordenesFijos(db, refIds) {
+  const marcas = refIds.map(() => "?").join(",");
+  const { results } = await db.prepare(
+    `SELECT id, orden_versiones FROM quick_replies WHERE id IN (${marcas}) AND orden_versiones IS NOT NULL`
+  ).bind(...refIds).all().catch(() => ({ results: [] }));
+  const out = {};
+  for (const r of results) {
+    try {
+      const o = JSON.parse(r.orden_versiones);
+      if (Array.isArray(o) && o.length) out[r.id] = o.map(Number);
+    } catch { /* orden roto: sin orden fijo */ }
+  }
+  return out;
+}
+
+/**
+ * Pone las versiones en el orden que eligió el admin. La primera queda
+ * `predeterminada` (sale al tocar el mensaje, sin sorteo). Las que no están
+ * en el orden (agregadas después) van al final.
+ */
+function ordenar(versiones, orden) {
+  const pos = (v) => { const i = orden.indexOf(v.id); return i < 0 ? orden.length + v.id : i; };
+  return [...versiones].sort((a, b) => pos(a) - pos(b)).map((v, i) => ({ ...v, predeterminada: i === 0 }));
+}
+
+/**
+ * El admin fija el orden de las versiones de una respuesta rápida sin cerrar
+ * la prueba (`orden`: ids, 0 = original; la primera es la predeterminada).
+ * `orden` null = volver al sorteo.
+ */
+export async function guardarOrden(db, refId, orden) {
+  if (orden === null) {
+    await db.prepare("UPDATE quick_replies SET orden_versiones = NULL WHERE id = ?").bind(refId).run();
+    return;
+  }
+  const { results } = await db.prepare("SELECT id FROM variantes WHERE tipo = 'rapida' AND ref_id = ? AND estado = 'activa'").bind(refId).all();
+  const validos = new Set([0, ...results.map((r) => r.id)]);
+  const limpio = [...new Set(orden.map(Number))].filter((id) => validos.has(id));
+  for (const id of validos) if (!limpio.includes(id)) limpio.push(id);
+  await db.prepare("UPDATE quick_replies SET orden_versiones = ? WHERE id = ?").bind(JSON.stringify(limpio), refId).run();
+}
+
+/** Una versión editada entra con otro id: toma el lugar de la vieja en el orden fijo. */
+export async function reemplazarEnOrden(db, refId, viejoId, nuevoId) {
+  const r = await db.prepare("SELECT orden_versiones FROM quick_replies WHERE id = ?").bind(refId).first().catch(() => null);
+  if (!r?.orden_versiones) return;
+  let o;
+  try { o = JSON.parse(r.orden_versiones); } catch { return; }
+  if (!Array.isArray(o)) return;
+  await db.prepare("UPDATE quick_replies SET orden_versiones = ? WHERE id = ?")
+    .bind(JSON.stringify(o.map((id) => (Number(id) === viejoId ? nuevoId : Number(id)))), refId).run();
 }
 
 /** El texto de la original cambió (a mano o al cerrar una prueba): se guarda el viejo y su cuenta vuelve a 0. */
@@ -178,5 +236,7 @@ export async function cerrarPrueba(db, tipo, refId, ganadoraId, quien) {
     db.prepare("UPDATE variantes SET estado = 'retirada', cerrada_at = datetime('now'), cerrada_por = ? WHERE tipo = ? AND ref_id = ? AND estado = 'activa'")
       .bind(quien, tipo, refId)
   );
+  // Sin prueba, no hay orden de versiones que guardar.
+  if (tipo === "rapida") cambios.push(db.prepare("UPDATE quick_replies SET orden_versiones = NULL WHERE id = ?").bind(refId));
   await db.batch(cambios);
 }

@@ -844,6 +844,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .prueba-version .sub { font-size: 12px; color: var(--gris); }
 .prueba-version:first-of-type { border-top: 0; }
 .prueba-version .pv-cab { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.prueba-version .pv-orden { width: auto; padding: 0 4px; margin-right: 2px; font-weight: 700; }
 .prueba-version .pv-texto { white-space: pre-wrap; }
 .prueba-version .pv-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
 .prueba-version .pv-acciones button, .pruebas .pv-botones button, .pruebas .pv-guardar, .pv-guardar-edicion { font-size: 12px; padding: 4px 10px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); cursor: pointer; }

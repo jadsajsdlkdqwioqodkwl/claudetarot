@@ -3,7 +3,7 @@
  * paso de la bienvenida. Ver crm-variantes.js.
  *
  * Ver, agregar y editar: todo el equipo (las vendedoras son las que mejor
- * saben cómo decirlo). Cerrar la prueba y quitar versiones: solo el admin.
+ * saben cómo decirlo). Cerrar la prueba, quitar versiones y ordenarlas: solo el admin.
  *
  * GET    /api/crm/variantes?tipo=rapida|bienvenida&ref_id=N
  *        → { original, versiones: [{ id (0 = original), texto, usos,
@@ -16,11 +16,15 @@
  *        números) y entra la nueva, que empieza de 0 — es otro mensaje.
  * PATCH  { tipo, ref_id, ganadora } → (admin) cierra la prueba: `ganadora`
  *        (id, 0 = la original) queda como el texto de siempre
+ * PATCH  { tipo: "rapida", ref_id, orden: [ids] | null } → (admin) ordena las
+ *        versiones sin cerrar la prueba: la primera es la predeterminada (sale
+ *        al tocar el mensaje, sin sorteo) y los botones 1·2·3·4 siguen ese
+ *        orden. null = volver a que el CRM sortee.
  * DELETE { id } → (admin) retira una sola versión
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { versionesEnPrueba, estadisticas, cerrarPrueba } from "../../lib/crm-variantes.js";
+import { versionesEnPrueba, estadisticas, cerrarPrueba, guardarOrden, reemplazarEnOrden } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -83,11 +87,13 @@ async function editar(env, agent, id, texto) {
   const v = await env.CRM_DB.prepare("SELECT * FROM variantes WHERE id = ? AND estado = 'activa'").bind(id).first();
   if (!v) return json({ error: "Esa versión ya no está en prueba." }, 404);
   if (v.texto === texto) return json({ ok: true });
-  await env.CRM_DB.batch([
+  const [, nueva] = await env.CRM_DB.batch([
     env.CRM_DB.prepare("UPDATE variantes SET estado = 'retirada', cerrada_at = datetime('now'), cerrada_por = ? WHERE id = ?").bind(quien(agent), id),
-    env.CRM_DB.prepare("INSERT INTO variantes (tipo, ref_id, texto, origen, motivo, unico, media_key, media_type, media_mime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    env.CRM_DB.prepare("INSERT INTO variantes (tipo, ref_id, texto, origen, motivo, unico, media_key, media_type, media_mime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id")
       .bind(v.tipo, v.ref_id, texto, `${v.origen || "?"} · editada por ${quien(agent)}`, v.motivo, v.unico, v.media_key, v.media_type, v.media_mime)
   ]);
+  const nuevoId = nueva?.results?.[0]?.id;
+  if (v.tipo === "rapida" && nuevoId) await reemplazarEnOrden(env.CRM_DB, v.ref_id, id, nuevoId);
   return json({ ok: true });
 }
 
@@ -101,6 +107,12 @@ async function patch({ request, env, agent }) {
   if (!esAdmin(agent)) return soloAdmin();
   const refId = Number(p?.ref_id);
   if (!TABLAS[p?.tipo] || !refId) return json({ error: "Falta tipo o ref_id." }, 400);
+  if (p.orden !== undefined) {
+    if (p.tipo !== "rapida") return json({ error: "El orden de versiones es para respuestas rápidas." }, 400);
+    if (p.orden !== null && !Array.isArray(p.orden)) return json({ error: "orden inválido." }, 400);
+    await guardarOrden(env.CRM_DB, refId, p.orden);
+    return json({ ok: true });
+  }
   try {
     await cerrarPrueba(env.CRM_DB, p.tipo, refId, Number(p.ganadora) || 0, quien(agent));
   } catch (err) {

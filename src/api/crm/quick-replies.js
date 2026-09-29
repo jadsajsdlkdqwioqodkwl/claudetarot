@@ -17,7 +17,9 @@
  * GET trae además `variantes` en las que tienen una prueba en curso: la
  * original (id 0, texto null) y cada versión, con su `peso` — la
  * probabilidad con que el CRM la pone en el cuadro al elegir la respuesta
- * (crm-variantes.js). Se gestionan en /api/crm/variantes.
+ * (crm-variantes.js). Se gestionan en /api/crm/variantes. Vienen en el
+ * orden que fijó el admin, si fijó uno; entonces `orden_fijo` es true y la
+ * primera es la predeterminada (sale al tocar el mensaje, sin sorteo).
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -98,7 +100,7 @@ async function get({ env }) {
       ...r,
       followup_pasos: pasosDe(r),
       media: porRapida[r.id] || [],
-      ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })) } : {})
+      ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })), orden_fijo: Boolean(pruebas[r.id][0]?.predeterminada) } : {})
     }))
   });
 }

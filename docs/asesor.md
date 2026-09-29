@@ -74,7 +74,7 @@ página del cliente le muestra su clave. Nunca se marca solo.
   respuestas rápidas, cuando la vendedora la elige (con `/` o con ⚡ en el
   chat), su texto aparece en el cuadro y ella lo manda o lo edita como
   siempre. Debajo de cada respuesta con versiones hay botones **1·2·3** (1 =
-  la original), y encima del cuadro también, para cambiar de versión con un
+  la original, salvo que el admin haya fijado otro orden), y encima del cuadro también, para cambiar de versión con un
   toque. Lo elegido a mano queda anotado (`a_mano`) y no cuenta para el
   reparto ni para los números de la prueba: la vendedora elige según el
   cliente y la comparación dejaría de ser pareja. Mide "avanzó de etapa", "respondió en 24 h", "cerró" y si la
@@ -83,6 +83,13 @@ página del cliente le muestra su clave. Nunca se marca solo.
 - Decide el admin: ⚡ → editar la respuesta (o Bienvenida → editar paso) →
   "Quedarse con esta". El texto viejo queda guardado y la cuenta de la
   original vuelve a 0 cada vez que su texto cambia.
+- **Orden fijo sin cerrar la prueba** (respuestas rápidas, solo admin): en
+  ⚡ → editar la respuesta, cada versión tiene un selector de número
+  (1·2·3·4). Al cambiarlo se fija el orden (`quick_replies.orden_versiones`,
+  `PATCH /api/crm/variantes { tipo: "rapida", ref_id, orden: [ids] }`): la 1
+  es la **predeterminada** (va al tocar el mensaje, sin sorteo) y los
+  botones del chat siguen ese orden. "Volver a que el CRM las alterne"
+  (`orden: null`) regresa al sorteo. Cerrar la prueba borra el orden.
 - Máximo 3 versiones en prueba por mensaje.
 - **Todo el equipo** puede ver, agregar y editar versiones (⚡ → lápiz de la
   respuesta). Editar crea una versión nueva que se mide desde 0. Cerrar la
