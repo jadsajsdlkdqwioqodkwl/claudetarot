@@ -20,6 +20,7 @@
  */
 
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
+import { aprendizaje } from "./asesor-datos.js";
 
 // Cada aviso va a todo el equipo: con el tope de 50 llamadas por request del
 // plan gratis de Cloudflare, enviar.py los manda de a 5.
@@ -234,9 +235,9 @@ export async function onRequestPostSugerencias({ request, env }) {
         else if (wa) res.sin_chat.push(wa);
       }
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, titulo, texto, motivo, destinatarios, origen) VALUES ('respuesta_rapida', ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, titulo, texto, texto_original, motivo, destinatarios, origen) VALUES ('respuesta_rapida', ?, ?, ?, ?, ?, ?)"
       )
-        .bind(titulo, texto, motivo, JSON.stringify(destinatarios), origen)
+        .bind(titulo, texto, texto, motivo, JSON.stringify(destinatarios), origen)
         .run();
       res.creadas++;
       continue;
@@ -256,15 +257,15 @@ export async function onRequestPostSugerencias({ request, env }) {
       .bind(conv.id, tipo)
       .first();
     if (previa) {
-      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), created_at = datetime('now') WHERE id = ?")
-        .bind(texto, motivo, origen, link, previa.id)
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), created_at = datetime('now') WHERE id = ?")
+        .bind(texto, texto, motivo, origen, link, previa.id)
         .run();
       res.actualizadas++;
     } else {
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, motivo, origen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
       )
-        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, motivo, origen)
+        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen)
         .run();
       res.creadas++;
     }
@@ -275,8 +276,8 @@ export async function onRequestPostSugerencias({ request, env }) {
 /**
  * GET /api/asesor/contexto — lo que la Routine necesita saber del negocio en
  * vivo: las respuestas rápidas vigentes (el texto exacto que usan las
- * vendedoras) y cuáles son las sugerencias que siguen pendientes, para no
- * repetirlas. Solo lectura.
+ * vendedoras), las sugerencias que siguen pendientes (para no repetirlas) y
+ * el aprendizaje: cómo le fue a lo que propuso antes y su memoria.
  */
 export async function onRequestGetContexto({ request, env }) {
   const ip = request.headers.get("CF-Connecting-IP");
@@ -289,5 +290,5 @@ export async function onRequestGetContexto({ request, env }) {
       "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
     ).all()
   ]);
-  return json({ respuestas_rapidas: rapidas.results, sugerencias_pendientes: pendientes.results });
+  return json({ respuestas_rapidas: rapidas.results, sugerencias_pendientes: pendientes.results, aprendizaje: await aprendizaje(env) });
 }

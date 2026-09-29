@@ -2,6 +2,7 @@
 Embudo de ventas por WhatsApp, calculado sin IA, para el informe CRO diario.
 
     python3 scripts/asesor/embudo.py chats.xlsx --dias 7 --salida /tmp/cro
+    ASESOR_CLAVE=... python3 scripts/asesor/embudo.py api --dias 7 --salida /tmp/cro
 
 Escribe /tmp/cro/embudo.json (números) y /tmp/cro/perdidos.txt (transcripciones
 cortas de los chats que llegaron lejos y no cerraron: ahí están las objeciones).
@@ -43,7 +44,7 @@ def minutos(t):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("xlsx")
+    ap.add_argument("xlsx", help='el .xlsx de la hoja de chats, o "api" para leer directo de la base')
     ap.add_argument("--dias", type=int, default=7)
     ap.add_argument("--hoy", default=(dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))
     ap.add_argument("--salida", default="/tmp/cro")

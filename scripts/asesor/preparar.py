@@ -6,18 +6,20 @@ pestañas diarias de los últimos --dias días y escribe transcripciones cortas
 por cliente, en archivos de ~60 000 caracteres para leerlos de a uno:
 
     python3 scripts/asesor/preparar.py chats.xlsx --dias 3 --salida /tmp/asesor
+    ASESOR_CLAVE=... python3 scripts/asesor/preparar.py api --dias 3 --salida /tmp/asesor
+
+Con "api" en lugar del .xlsx lee directo de la base del CRM (sin la hoja ni
+Drive, y sin los 10 minutos de retraso del export). --activos-horas N deja
+solo los chats que tuvieron algún mensaje en las últimas N horas.
 
 Todo lo que se puede decidir sin leer (qué chats tienen algo, quién escribió
 último, si ya salió un recordatorio automático) se decide aquí, para que Claude
 gaste su lectura solo en lo que importa.
 """
-import argparse, datetime as dt, json, os, re, sys
+import argparse, datetime as dt, json, os, re, sys, urllib.error, urllib.request
 from collections import OrderedDict
 
-try:
-    import openpyxl
-except ImportError:
-    sys.exit("Falta openpyxl: pip install openpyxl")
+API_CHATS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/chats"
 
 RE_PESTANA = re.compile(r"^(\d{2})-(\d{2})-(\d{4})$")
 RE_AUTO = re.compile(r"autom[aá]tic|masivo|carrito|prueba de bienvenida", re.I)
@@ -32,8 +34,32 @@ def texto_fecha(v):
     return v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, dt.datetime) else str(v or "")
 
 
-def leer_filas(xlsx, desde, hoy):
+def leer_api(desde, hoy, activos_horas=0):
+    """Las mismas filas, directo de D1 por el Worker."""
+    clave = os.environ.get("ASESOR_CLAVE", "")
+    if not clave:
+        sys.exit("Falta ASESOR_CLAVE en el entorno.")
+    hoy_lima = (dt.datetime.utcnow() - dt.timedelta(hours=5)).date()
+    dias = (hoy_lima - desde).days + 1  # el Worker cuenta los días hacia atrás desde hoy (Lima)
+    url = f"{API_CHATS}?dias={max(dias, 1)}" + (f"&activos_horas={activos_horas}" if activos_horas else "")
+    # Cloudflare corta (error 1010) el User-Agent por defecto de Python.
+    req = urllib.request.Request(url, headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            filas = json.load(r)["filas"]
+    except urllib.error.HTTPError as err:
+        sys.exit(f"El Worker rechazó la consulta ({err.code}): {err.read().decode()[:300]}")
+    return [f for f in filas if desde <= dt.date.fromisoformat(f["t"][:10]) <= hoy]
+
+
+def leer_filas(xlsx, desde, hoy, activos_horas=0):
     """Filas de las pestañas diarias entre desde y hoy (inclusive), ordenadas por fecha."""
+    if xlsx == "api":
+        return leer_api(desde, hoy, activos_horas)
+    try:
+        import openpyxl
+    except ImportError:
+        sys.exit("Falta openpyxl: pip install openpyxl")
     wb = openpyxl.load_workbook(xlsx, read_only=True)
     filas = []
     for ws in wb.worksheets:
@@ -56,15 +82,16 @@ def leer_filas(xlsx, desde, hoy):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("xlsx")
+    ap.add_argument("xlsx", help='el .xlsx de la hoja de chats, o "api" para leer directo de la base')
     ap.add_argument("--dias", type=int, default=3)
     ap.add_argument("--hoy", default=(dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))
     ap.add_argument("--salida", default="/tmp/asesor")
+    ap.add_argument("--activos-horas", type=int, default=0)
     a = ap.parse_args()
 
     hoy = dt.date.fromisoformat(a.hoy)
     desde = hoy - dt.timedelta(days=a.dias - 1)
-    filas = leer_filas(a.xlsx, desde, hoy)
+    filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas)
 
     chats = OrderedDict()
     for f in filas:

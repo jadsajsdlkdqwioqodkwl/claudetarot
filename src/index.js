@@ -91,6 +91,7 @@ import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-passwor
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
 import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
+import { onRequestGetChats as asesorChatsGet, onRequestPostMemoria as asesorMemoriaPost } from "./api/asesor-datos.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 
 const ROUTES = {
@@ -104,6 +105,8 @@ const ROUTES = {
   "/api/asesor/avisos": { POST: asesorAvisosPost },
   "/api/asesor/sugerencias": { POST: asesorSugerenciasPost },
   "/api/asesor/contexto": { GET: asesorContextoGet },
+  "/api/asesor/chats": { GET: asesorChatsGet },
+  "/api/asesor/memoria": { POST: asesorMemoriaPost },
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
 
