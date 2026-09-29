@@ -11,6 +11,10 @@ que tiene el token del bot y reparte:
     ... --solo-mensajes        sin PDF (corridas de 11:30 y 16:00)
     ... --informe informe.txt  informe CRO, solo al dueño
     ... --prueba               no manda nada, imprime lo que mandaría
+    ... --solo-pdf             solo arma el PDF (con ASESOR_CLAVE también lo sube a CRM → Reportes)
+
+Cada PDF queda guardado en el servidor: el link sale en el resumen de Telegram
+y en el botón Reportes del CRM (solo admin).
 
 salida.json:
 {
@@ -49,7 +53,11 @@ def tabla(filas, cols):
 
 
 def armar_pdf(datos, carpeta):
-    pedidos, fecha = datos.get("pedidos", []), datos.get("fecha_objetivo", "")
+    fecha = datos.get("fecha_objetivo", "")
+    todos = datos.get("pedidos", [])
+    # Las incidencias van en su propia sección, no como filas de pedidos.
+    pedidos = [p for p in todos if (p.get("nombre") or "").upper() != "INCIDENCIA"]
+    incidencias = datos.get("incidencias") or [p.get("nota", "").lstrip("🚨 ") for p in todos if p not in pedidos]
     cols = [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Teléfono recibe", "telefono"), ("DNI", "dni"),
             ("Dirección / Agencia", "direccion_o_agencia"), ("Courier", "courier"), ("Kits", "kits"),
             ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
@@ -58,14 +66,32 @@ def armar_pdf(datos, carpeta):
         filas = [p for p in pedidos if p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
             partes.append(f"<h2>{titulo} ({len(filas)})</h2>" + tabla(filas, cols))
-    kits = sum(int(p.get("kits") or 1) for p in pedidos if p.get("estado") == "CONFIRMADO")
+    if incidencias:
+        partes.append(f"<h2>🚨 Incidencias ({len(incidencias)})</h2><ol class=inc>"
+                      + "".join(f"<li>{e(i)}</li>" for i in incidencias) + "</ol>")
+    conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO"]
+    kits = sum(int(p.get("kits") or 1) for p in conf)
+    cuenta = lambda f: sum(1 for p in pedidos if f(p))
+    cajas = [("Kits a despachar", kits),
+             ("Lima confirmados", cuenta(lambda p: p.get("estado") == "CONFIRMADO" and p.get("destino") == "LIMA")),
+             ("Provincia confirmados", cuenta(lambda p: p.get("estado") == "CONFIRMADO" and p.get("destino") == "PROVINCIA")),
+             ("Por confirmar", cuenta(lambda p: p.get("estado") == "POR_CONFIRMAR")),
+             ("Otros días", cuenta(lambda p: p.get("estado") == "OTRO_DIA")),
+             ("Intención", cuenta(lambda p: p.get("estado") == "INTENCION")),
+             ("Incidencias", len(incidencias))]
+    resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
+    origen = datos.get("origen", "asesor")
     doc = f"""<!doctype html><meta charset=utf-8><style>
-@page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:10px}}
-h1{{font-size:18px;margin:0}} h2{{font-size:13px;border-bottom:2px solid #333;margin:14px 0 4px}}
+@page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:10px;color:#111}}
+h1{{font-size:20px;margin:0}} h2{{font-size:13px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}}
+.sub{{color:#666;margin:2px 0 10px}}
+.cajas{{display:flex;gap:8px;margin:8px 0}} .cajas div{{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px}}
+.cajas b{{display:block;font-size:18px;color:#075E54}} .cajas span{{color:#555}}
 table{{border-collapse:collapse;width:100%;counter-reset:n}} tr{{page-break-inside:avoid}}
-th{{background:#333;color:#fff;text-align:left;padding:3px 5px}} td{{border:1px solid #ccc;padding:3px 5px;vertical-align:top}}
-td.n::before{{counter-increment:n;content:counter(n)}}</style>
-<h1>Pedidos para {e(fecha)}</h1><p>{kits} kits confirmados · generado por el asesor nocturno</p>{''.join(partes)}"""
+th{{background:#075E54;color:#fff;text-align:left;padding:3px 5px}} td{{border:1px solid #ccc;padding:3px 5px;vertical-align:top}}
+td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}</style>
+<h1>Reporte de ventas · despacho del {e(fecha)}</h1>
+<p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
     ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, f"pedidos-{fecha}.pdf")
     with open(ruta_html, "w") as fh:
         fh.write(doc)
@@ -93,12 +119,18 @@ def al_worker(clave, cuerpo, url=None):
         sys.exit(f"El Worker rechazó el aviso ({err.code}): {err.read().decode()[:300]}")
 
 
+def subir_reporte(clave, pdf_base64, nombre, titulo):
+    """Guarda el PDF en el servidor (CRM → Reportes) y devuelve su link."""
+    r = al_worker(clave, {"pdf_base64": pdf_base64, "nombre": nombre, "titulo": titulo}, AVISOS.replace("/avisos", "/reporte"))
+    return r["url"]
+
+
 def main():
     args = sys.argv[1:]
     prueba, solo_mensajes = "--prueba" in args, "--solo-mensajes" in args
     informe = args[args.index("--informe") + 1] if "--informe" in args else None
     clave = os.environ.get("ASESOR_CLAVE", "")
-    if not clave and not prueba:
+    if not clave and not prueba and "--solo-pdf" not in args:
         sys.exit("Falta ASESOR_CLAVE en el entorno (o usa --prueba).")
 
     if informe:  # informe CRO: solo al dueño, en trozos que entren en un mensaje
@@ -112,6 +144,15 @@ def main():
     ruta = next(a for a in args if not a.startswith("--"))
     datos = json.load(open(ruta))
     carpeta = os.path.dirname(os.path.abspath(ruta))
+    if "--solo-pdf" in args:  # arma el PDF (y con clave lo sube a CRM → Reportes); no avisa a nadie
+        pdf = armar_pdf(datos, carpeta)[0]
+        print(f"PDF: {pdf}")
+        if clave:
+            with open(pdf, "rb") as fh:
+                link = subir_reporte(clave, base64.b64encode(fh.read()).decode(), os.path.basename(pdf),
+                                     f"Pedidos {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
+            print(f"REPORTE PDF: {link}")
+        return
     ped = datos.get("pedidos", [])
     cuenta = lambda est, des=None: sum(1 for p in ped if p.get("estado") == est and (des is None or p.get("destino") == des))
     cuerpo = {"mensajes": datos.get("mensajes", [])}
@@ -125,6 +166,11 @@ def main():
             cuerpo["pdf_base64"] = base64.b64encode(fh.read()).decode()
         cuerpo["pdf_nombre"] = os.path.basename(pdf)
         print(f"PDF: {pdf}")
+        if not prueba:
+            link = subir_reporte(clave, cuerpo["pdf_base64"], cuerpo["pdf_nombre"],
+                                 f"Pedidos {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
+            cuerpo["resumen"] += f"\n📄 Reporte: {link}"
+            print(f"REPORTE PDF: {link}", flush=True)
     elif cuerpo["mensajes"]:
         cuerpo["resumen"] = f"🧭 Asesor — {len(cuerpo['mensajes'])} mensajes sugeridos a las vendedoras"
 

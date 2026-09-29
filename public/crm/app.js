@@ -119,6 +119,7 @@ function debounce(fn, ms) {
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-sugerencias").innerHTML = icon("sparkle");
+  $("#btn-reportes").innerHTML = icon("doc");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
@@ -208,6 +209,7 @@ async function mostrarApp() {
   $("#btn-avisos").style.display = esCuentaDeVendedor ? "" : "none";
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
+  $("#btn-reportes").style.display = role === "admin" ? "" : "none";
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
   cargarAsesorasFiltro();
@@ -3951,6 +3953,26 @@ async function cargarChatSugerencia(card) {
 
 $("#btn-sugerencias").addEventListener("click", abrirSugerencias);
 $("#sug-cerrar").addEventListener("click", () => $("#modal-sugerencias-fondo").classList.remove("abierto"));
+
+/* ---------- Reportes de ventas (PDF del asesor) ---------- */
+
+$("#btn-reportes").addEventListener("click", async () => {
+  $("#modal-reportes-fondo").classList.add("abierto");
+  const cont = $("#lista-reportes");
+  cont.innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    const { reportes } = await pedir("/api/crm/reportes");
+    cont.innerHTML = reportes.length
+      ? reportes.map((r) => `
+          <a class="fila-reporte" href="${escapar(r.url)}" target="_blank" rel="noopener">
+            ${icon("doc")}<span><b>${escapar(r.titulo)}</b><span class="sub">${escapar(new Date(r.fecha).toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short" }))}</span></span>
+          </a>`).join("")
+      : `<p class="ayuda-modal">Todavía no hay reportes.</p>`;
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+});
+$("#rep-cerrar").addEventListener("click", () => $("#modal-reportes-fondo").classList.remove("abierto"));
 
 /* ---------- Respuestas rápidas ---------- */
 

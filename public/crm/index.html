@@ -64,6 +64,7 @@
       </div>
       <div class="acciones">
         <button id="btn-sugerencias" title="Sugerencias del asesor para aprobar" style="display:none"></button>
+        <button id="btn-reportes" title="Reportes de ventas (PDF)" style="display:none"></button>
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-instalar" class="accion-secundaria" title="Instalar como app" style="display:none"></button>
         <button id="btn-notificaciones" title="Activar notificaciones"></button>
@@ -283,6 +284,17 @@
     <button class="cancelar" id="avisos-desvincular" type="button" style="width:100%;display:none">Desvincular Telegram</button>
     <div class="acciones">
       <button class="cancelar" id="avisos-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-reportes-fondo">
+  <div class="modal">
+    <h2>Reportes de ventas</h2>
+    <p class="ayuda-modal">Los PDF que arma el asesor cada noche (21:00 y el final de las 22:30). Toca uno para abrirlo.</p>
+    <div id="lista-reportes"></div>
+    <div class="acciones">
+      <button class="cancelar" id="rep-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

@@ -92,6 +92,7 @@ import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
 import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
 import { onRequestGetChats as asesorChatsGet, onRequestPostMemoria as asesorMemoriaPost } from "./api/asesor-datos.js";
+import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 
 const ROUTES = {
@@ -107,6 +108,8 @@ const ROUTES = {
   "/api/asesor/contexto": { GET: asesorContextoGet },
   "/api/asesor/chats": { GET: asesorChatsGet },
   "/api/asesor/memoria": { POST: asesorMemoriaPost },
+  "/api/asesor/reporte": { POST: asesorReportePost },
+  "/api/crm/reportes": { GET: crmReportesGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
 
@@ -192,6 +195,11 @@ export default {
       return request.method === "GET"
         ? voucher({ request, env, waitUntil: ctx.waitUntil.bind(ctx) })
         : json({ error: "Método no permitido." }, 405);
+    }
+
+    // /r/<id>.pdf: los reportes de ventas del asesor (link imposible de adivinar).
+    if (pathname.startsWith("/r/")) {
+      return request.method === "GET" ? reportePdf({ request, env }) : json({ error: "Método no permitido." }, 405);
     }
 
     if (RE_RUTA_SEGUIMIENTO.test(pathname)) {
