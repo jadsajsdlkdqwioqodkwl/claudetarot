@@ -1540,6 +1540,7 @@ function restaurarBorrador(id) {
   estado.rapidaVariante = b.rapidaVariante || null;
   estado.respondiendoA = b.respondiendoA;
   pintarPreviewArchivo();
+  pintarVersionesRapida();
   pintarPreviewRespuesta();
 }
 
@@ -1554,6 +1555,7 @@ async function abrirConversacion(c) {
   estado.rapidaPendiente = null;
   estado.rapidaUsadaId = null;
   estado.rapidaVariante = null;
+  pintarVersionesRapida();
   estado.archivoAdjunto = null;
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
   // de chats, no salir del sitio — se logra metiendo un estado en el
@@ -2078,6 +2080,7 @@ function pintarChatBase(c) {
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-respuesta" style="display:none"></div>
     <div id="preview-archivo" style="display:none"></div>
+    <div id="versiones-rapida" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
@@ -3751,9 +3754,10 @@ async function enviarMensaje(e) {
   const rapidaUsadaId = estado.rapidaUsadaId || undefined;
   estado.rapidaUsadaId = null;
   const variante = rapidaUsadaId && estado.rapidaVariante
-    ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim() }
+    ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim(), a_mano: estado.rapidaVariante.aMano || undefined }
     : {};
   estado.rapidaVariante = null;
+  pintarVersionesRapida();
 
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
@@ -4442,8 +4446,9 @@ function pintarQuickPanel() {
         ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${esAdmin && q.variantes ? `<span class="badge-prueba" title="Tiene versiones en prueba">🧪 ${q.variantes.length}</span>` : ""}</div>
+          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
+          ${botonesVersiones(q)}
         </div>
         <button class="editar" data-id="${q.id}" title="Editar">${icon("pencil")}</button>
         <button class="borrar" data-id="${q.id}" title="Borrar">${icon("close")}</button>
@@ -4496,36 +4501,81 @@ function pintarQuickPanel() {
 }
 
 /** Elegir una respuesta rápida ya no la manda al toque — la pone en el escribidor (texto y/o adjunto pendiente) para que el vendedor la revise/edite y mande con Enter o el botón, como cualquier otro mensaje. */
-function usarQuickReply(q) {
+/**
+ * Pone la respuesta rápida en el cuadro. Si tiene versiones en prueba:
+ *   · tocando la respuesta, el CRM sortea cuál va (según cómo le va a cada una);
+ *   · tocando uno de sus botones 1·2·3 (en la lista o encima del cuadro), va
+ *     esa versión. Queda anotado que la eligió a mano: no cuenta para el reparto.
+ */
+function usarQuickReply(q, indice = null) {
   $("#panel-rapidas").classList.remove("abierto");
   estado.rapidasPorSlash = false;
 
-  // Si la respuesta tiene una prueba en curso, el Worker ya dio el peso de
-  // cada versión: se sortea cuál va al cuadro. La vendedora no ve nada
-  // distinto: le aparece un texto y lo manda (o lo edita) como siempre.
-  const version = elegirVersion(q);
-  estado.rapidaVariante = { id: version.id, texto: version.texto };
-  const input = $("#texto-envio");
-  if (input) {
-    input.value = version.texto;
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 120) + "px";
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  }
+  const versiones = versionesDe(q);
+  const aMano = indice !== null && versiones;
+  const i = aMano ? indice : versiones ? sortearVersion(q) : 0;
+  const version = versiones ? versiones[i] : { id: 0, texto: q.body || "" };
+  estado.rapidaVariante = { id: version.id, texto: version.texto, aMano: Boolean(aMano), indice: i, q };
+  ponerTextoRapida(version.texto);
 
   estado.rapidaPendiente = q.media.length ? { media: q.media } : null;
   estado.rapidaUsadaId = q.id;
   pintarPreviewArchivo();
+  pintarVersionesRapida();
 }
 
-function elegirVersion(q) {
-  const vs = q.variantes;
-  if (!vs?.length) return { id: 0, texto: q.body || "" };
-  let r = Math.random();
-  const v = vs.find((x) => (r -= x.peso) <= 0) || vs[vs.length - 1];
-  return { id: v.id, texto: v.texto ?? q.body ?? "" };
+function ponerTextoRapida(texto) {
+  const input = $("#texto-envio");
+  if (!input) return;
+  input.value = texto;
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
 }
+
+/** [{ id, texto }] de cada versión (la 1 es la original), o null si no hay prueba. */
+function versionesDe(q) {
+  if (!q.variantes?.length) return null;
+  return q.variantes.map((v) => ({ id: v.id, texto: v.texto ?? q.body ?? "" }));
+}
+
+function sortearVersion(q) {
+  let r = Math.random();
+  const i = q.variantes.findIndex((x) => (r -= x.peso) <= 0);
+  return i < 0 ? q.variantes.length - 1 : i;
+}
+
+/** Botones 1·2·3 de una respuesta rápida (lista y encima del cuadro). */
+function botonesVersiones(q, activa = null) {
+  const vs = versionesDe(q);
+  if (!vs) return "";
+  return `<div class="versiones">${vs.map((v, i) =>
+    `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}</button>`).join("")}</div>`;
+}
+
+/** La barrita encima del cuadro para cambiar de versión con un toque. */
+function pintarVersionesRapida() {
+  const cont = $("#versiones-rapida");
+  if (!cont) return;
+  const rv = estado.rapidaVariante;
+  if (!rv?.q || !versionesDe(rv.q) || !estado.rapidaUsadaId) {
+    cont.style.display = "none";
+    cont.innerHTML = "";
+    return;
+  }
+  cont.style.display = "flex";
+  cont.innerHTML = `<span class="sub">${escapar(rv.q.title)} · versión</span>${botonesVersiones(rv.q, rv.indice)}`;
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("#panel-rapidas .version, #versiones-rapida .version");
+  if (!b) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const q = (estado.quickReplies || []).find((x) => x.id === Number(b.dataset.q)) || estado.rapidaVariante?.q;
+  if (q) usarQuickReply(q, Number(b.dataset.i));
+}, true);
 
 function abrirModalRapidaNueva() {
   estado.editandoRapidaId = null;

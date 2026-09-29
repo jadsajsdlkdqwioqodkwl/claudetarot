@@ -93,6 +93,9 @@ export async function estadisticas(db, tipo, refIds) {
        SUM(u.editada) AS editadas
      FROM variante_usos u JOIN conversations conv ON conv.id = u.conversation_id
      WHERE u.tipo = ? AND u.ref_id IN (${marcas}) AND u.created_at >= datetime('now', ?)
+       -- Solo las que eligió el CRM: si la vendedora escoge a mano (botones 1·2·3),
+       -- escoge según el cliente y la comparación deja de ser pareja.
+       AND u.a_mano = 0
        -- La original (0) cuenta desde el último cambio de su texto: lo de antes era otro mensaje.
        AND (u.variante_id != 0 OR u.created_at >= COALESCE((SELECT MAX(x.created_at) FROM variantes x
             WHERE x.tipo = u.tipo AND x.ref_id = u.ref_id AND x.estado = 'anterior'), '1970-01-01'))
@@ -136,7 +139,7 @@ export function guardarAnterior(db, tipo, refId, textoViejo, quien) {
 }
 
 /** Deja constancia de que salió una versión en un chat. Nunca rompe el envío. */
-export async function registrarUso(db, { tipo, refId, varianteId = 0, conversationId, etapaAntes = null, agente = null, editada = false }) {
+export async function registrarUso(db, { tipo, refId, varianteId = 0, conversationId, etapaAntes = null, agente = null, editada = false, aMano = false }) {
   try {
     let etapa = etapaAntes;
     if (etapa === null) {
@@ -144,8 +147,8 @@ export async function registrarUso(db, { tipo, refId, varianteId = 0, conversati
       etapa = c?.etapa || 0;
     }
     await db.prepare(
-      "INSERT INTO variante_usos (tipo, ref_id, variante_id, conversation_id, etapa_antes, agente, editada) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(tipo, refId, varianteId || 0, conversationId, etapa, agente, editada ? 1 : 0).run();
+      "INSERT INTO variante_usos (tipo, ref_id, variante_id, conversation_id, etapa_antes, agente, editada, a_mano) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(tipo, refId, varianteId || 0, conversationId, etapa, agente, editada ? 1 : 0, aMano ? 1 : 0).run();
   } catch (err) {
     console.error("Uso de versión:", err.message);
   }

@@ -31,7 +31,11 @@ Scripts en `scripts/asesor/`. Skills en `.claude/skills/` (ver su README).
 - El Worker reparte qué versión sale: en la bienvenida, al mandarla; en las
   respuestas rápidas, cuando la vendedora la elige (con `/` o con ⚡ en el
   chat), su texto aparece en el cuadro y ella lo manda o lo edita como
-  siempre. Mide "avanzó de etapa", "respondió en 24 h", "cerró" y si la
+  siempre. Debajo de cada respuesta con versiones hay botones **1·2·3** (1 =
+  la original), y encima del cuadro también, para cambiar de versión con un
+  toque. Lo elegido a mano queda anotado (`a_mano`) y no cuenta para el
+  reparto ni para los números de la prueba: la vendedora elige según el
+  cliente y la comparación dejaría de ser pareja. Mide "avanzó de etapa", "respondió en 24 h", "cerró" y si la
   editaron. Menos de 20 usos por versión = reparto parejo; después, muestreo
   de Thompson con piso de 10 % (`src/lib/crm-variantes.js`).
 - Decide el admin: ⚡ → editar la respuesta (o Bienvenida → editar paso) →

@@ -7,8 +7,9 @@
  *              media_key sale de /api/crm/upload-media
  *      quick_reply_id? — si el mensaje salió de una respuesta rápida con
  *              seguimiento, lo programa (ver programarSeguimientoDeRapida)
- *      variante_id?, editada? — qué versión del texto de esa respuesta rápida
- *              salió (0 = la original) y si la vendedora la cambió: se anota
+ *      variante_id?, editada?, a_mano? — qué versión del texto de esa respuesta
+ *              rápida salió (0 = la original), si la vendedora la cambió y si
+ *              la eligió ella con los botones 1·2·3: se anota
  *              en variante_usos para medir cuál funciona (crm-variantes.js)
  */
 
@@ -100,7 +101,7 @@ async function post({ request, env, agent }) {
       const v = await env.CRM_DB.prepare("SELECT 1 FROM variantes WHERE id = ? AND tipo = 'rapida' AND ref_id = ?").bind(varianteId, quickReplyId).first().catch(() => null);
       if (!v) varianteId = 0;
     }
-    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada) });
+    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada), aMano: Boolean(payload?.a_mano) });
   };
 
   let replyTo = null;

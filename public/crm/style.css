@@ -849,5 +849,13 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .prueba-version .pv-acciones button, .pruebas .pv-agregar { font-size: 12px; padding: 4px 10px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); cursor: pointer; }
 .prueba-version.lider .pv-cab b::after { content: " · va ganando"; color: var(--verde-osc); font-weight: 600; }
 .pruebas .pv-nueva textarea { width: 100%; min-height: 70px; }
-.titulo .badge-prueba { font-size: 11px; margin-left: 4px; }
 .sug-actual { white-space: pre-wrap; border-left: 3px solid var(--borde); padding-left: 8px; font-size: 12px; color: var(--gris); }
+
+/* Botones 1·2·3: versiones de una respuesta rápida, en la lista y encima del cuadro */
+.versiones { display: flex; gap: 4px; margin-top: 4px; }
+.versiones .version { width: 24px; height: 24px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); color: var(--gris); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.versiones .version:hover { border-color: var(--verde-osc); color: var(--verde-osc); }
+.versiones .version.activa { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
+#versiones-rapida { align-items: center; gap: 8px; padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#versiones-rapida .versiones { margin-top: 0; }
+#versiones-rapida .sub { font-size: 12px; color: var(--gris); }

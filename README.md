@@ -984,7 +984,8 @@ estrella dentro de un panel desplegable) por algo que se ve de entrada:
   respuesta rápida o un paso de la bienvenida puede tener hasta 3 versiones
   más. Al elegir la respuesta con `/` o ⚡, el CRM pone en el cuadro una de
   ellas (la que hace avanzar más chats sale más); la vendedora la manda o la
-  edita como siempre. El admin ve los números y decide en ⚡ → editar →
+  edita como siempre, o elige otra con los botones 1·2·3 (debajo de la
+  respuesta y encima del cuadro). El admin ve los números y decide en ⚡ → editar →
   "🧪 Versiones en prueba". El director CRO las propone en ✨ Sugerencias.
 - **Resumen semanal por correo sin tokens**: `GET /api/asesor/resumen` +
   `resumenSemanal` en `apps-script/ASESOR.gs`. Ver `docs/asesor.md`.

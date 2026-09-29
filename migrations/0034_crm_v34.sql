@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS variante_usos (
   etapa_antes INTEGER NOT NULL DEFAULT 0,
   agente TEXT,
   editada INTEGER NOT NULL DEFAULT 0,    -- la vendedora cambió el texto antes de mandarlo
+  a_mano INTEGER NOT NULL DEFAULT 0,     -- la vendedora eligió la versión con los botones 1·2·3 (no cuenta para el reparto)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_usos_ref ON variante_usos(tipo, ref_id, created_at);
