@@ -1626,6 +1626,34 @@ document.querySelectorAll(".modal-fondo").forEach((el) => {
   }).observe(el, { attributes: true, attributeFilter: ["class"] });
 });
 
+/**
+ * Botón ✕ de cerrar, grande y siempre arriba a la derecha de cada modal.
+ * Si el modal tiene su propio "Cerrar"/"Cancelar", lo aprieta (así hace su
+ * limpieza); si no, simplemente lo cierra. Escape cierra el de más arriba.
+ */
+function cerrarModal(fondo) {
+  const propio = fondo.querySelector(".modal [id$='-cerrar'], .modal [id$='-cancelar'], .modal .acciones .cancelar");
+  if (propio && !propio.classList.contains("modal-x")) propio.click();
+  if (fondo.classList.contains("abierto")) fondo.classList.remove("abierto");
+}
+document.querySelectorAll(".modal-fondo").forEach((fondo) => {
+  const modal = fondo.querySelector(".modal");
+  if (!modal || fondo.id === "editor-media-fondo") return;
+  const x = document.createElement("button");
+  x.type = "button";
+  x.className = "modal-x";
+  x.title = "Cerrar";
+  x.setAttribute("aria-label", "Cerrar");
+  x.innerHTML = icon("close");
+  x.addEventListener("click", () => cerrarModal(fondo));
+  modal.prepend(x);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const ultimo = pilaModales[pilaModales.length - 1];
+  if (ultimo && ultimo.id !== "editor-media-fondo") cerrarModal(ultimo);
+});
+
 // El "atrás" del teléfono (o el del navegador) dispara esto en vez de salir
 // del sitio cuando hay algo abierto — ver los pushState en abrirConversacion,
 // al abrir "Detalle" y en el observer de modales de más arriba. Cierra lo de

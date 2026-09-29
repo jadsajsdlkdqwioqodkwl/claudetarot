@@ -360,7 +360,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 
 .modal-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 100; }
 .modal-fondo.abierto { display: flex; }
-.modal { background: var(--panel); border-radius: var(--radio-m); padding: 20px; width: 320px; }
+.modal { background: var(--panel); border-radius: var(--radio-m); padding: 20px; width: 320px; position: relative; }
 .modal h2 { font-size: 15px; margin: 0 0 12px; }
 .modal input[type="text"], .modal input[type="password"], .modal textarea { width: 100%; padding: 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; margin-bottom: 10px; font-family: inherit; }
 .modal textarea { min-height: 70px; resize: vertical; }
@@ -919,3 +919,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #reloj-chat { font-size: 11px; }
 .sug-segs { font-size: 12px; background: #fff6e0; color: #6d5400; border-radius: var(--radio-s); padding: 4px 8px; margin: 4px 0; }
 .sug-segs.vacio { background: transparent; color: var(--gris); padding: 0; }
+
+/* ✕ de cerrar en todos los modales, arriba a la derecha */
+.modal > .modal-x { position: sticky; top: 0; float: right; margin: -10px -10px 4px 8px; width: 36px; height: 36px; border: 0; border-radius: var(--radio-full); background: var(--fondo); color: var(--texto, #111); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; z-index: 5; }
+.modal > .modal-x:hover { background: #fde8e7; color: var(--peligro); }
+.modal > .modal-x .icono-svg, .modal > .modal-x svg { width: 20px; height: 20px; }

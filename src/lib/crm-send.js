@@ -28,10 +28,27 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
 export const PAUSA_ENVIO_MS = 1500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/*
+ * Mensajes seguidos: si el anterior a este chat salió hace un instante,
+ * WhatsApp todavía lo está entregando y el "escribiendo…" nuevo no llega a
+ * verse (el celular lo apaga al recibir el mensaje anterior). Por eso, antes
+ * del "escribiendo…", se espera a que pasen ESPACIO_ENTRE_MENSAJES_MS desde
+ * el último envío a ese chat. No reemplaza los 1,5 s: se suman.
+ */
+export const ESPACIO_ENTRE_MENSAJES_MS = 2000;
+const ultimoEnvio = new Map(); // conversation_id -> ms del último envío (dentro de esta ejecución)
+
+async function esperarEspacio(conversationId, ultimoOutDb) {
+  const previo = Math.max(ultimoEnvio.get(conversationId) || 0, ultimoOutDb || 0);
+  const falta = previo + ESPACIO_ENTRE_MENSAJES_MS - Date.now();
+  if (previo && falta > 0) await esperar(Math.min(falta, ESPACIO_ENTRE_MENSAJES_MS));
+}
+
 export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true, ultimoWaId } = {}) {
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
   // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
   if (escribiendo && ultimoWaId !== undefined) {
+    await esperarEspacio(conversationId, 0);
     if (ultimoWaId) {
       await mostrarEscribiendo(env, ultimoWaId).catch(async (err) => {
         console.error("Escribiendo:", err.message);
@@ -41,13 +58,17 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { esc
   } else if (escribiendo && env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
-        `SELECT wa_message_id FROM messages
-         WHERE conversation_id = ? AND direction = 'in' AND type <> 'call' AND wa_message_id IS NOT NULL
-           AND created_at >= datetime('now', '-1 day')
-         ORDER BY id DESC LIMIT 1`
+        `SELECT
+           (SELECT wa_message_id FROM messages
+            WHERE conversation_id = ?1 AND direction = 'in' AND type <> 'call' AND wa_message_id IS NOT NULL
+              AND created_at >= datetime('now', '-1 day')
+            ORDER BY id DESC LIMIT 1) AS wa_message_id,
+           (SELECT MAX(created_at) FROM messages WHERE conversation_id = ?1 AND direction = 'out') AS ultimo_out`
       )
         .bind(conversationId)
         .first();
+      const ultimoOut = ultimo?.ultimo_out ? new Date(String(ultimo.ultimo_out).replace(" ", "T") + "Z").getTime() : 0;
+      await esperarEspacio(conversationId, Number.isNaN(ultimoOut) ? 0 : ultimoOut);
       if (ultimo?.wa_message_id) await mostrarEscribiendo(env, ultimo.wa_message_id);
     } catch (err) {
       // Nunca frena el envío. Queda el último error guardado para poder
@@ -61,6 +82,7 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { esc
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones) {
   const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);
+  ultimoEnvio.set(conversationId, Date.now());
   await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id }, opciones);
   return waMessageId;
 }
@@ -90,6 +112,7 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
 
   const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
   const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
+  ultimoEnvio.set(conversationId, Date.now());
 
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
     waMessageId,
