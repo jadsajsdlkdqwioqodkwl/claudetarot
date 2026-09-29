@@ -26,7 +26,7 @@ import {
 import { hojaVentas, olvidarCache } from "../../lib/ventas-hoja.js";
 import { buscarFila, conClave, clavesAbiertas } from "../asesor-ventas.js";
 import { fueraDeVentana } from "./scheduled.js";
-import { mandarTexto, pausaEnvio } from "../../lib/crm-send.js";
+import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente } from "../../lib/crm-db.js";
 
@@ -203,7 +203,7 @@ async function enviar(env, codigo, texto, quien) {
   } else if (env.PLANTILLA_ENVIO) {
     const nombre = (chat.nombre || "").split(/\s+/)[0] || "estimad@";
     const link = `${SITIO}/${codigo}`;
-    const waMessageId = await enviarTemplate(env, chat.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, link]);
+    const waMessageId = await mandarConEscribiendo(env, chat.id, () => enviarTemplate(env, chat.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, link]));
     await registrarMensajeSaliente(env.CRM_DB, chat.id, { waMessageId, type: "template", body: `Plantilla: ${env.PLANTILLA_ENVIO} · ${link}`, sentBy: quien });
     via = "plantilla";
   } else {

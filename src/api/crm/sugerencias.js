@@ -43,7 +43,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
-import { mandarTexto, pausaEnvio } from "../../lib/crm-send.js";
+import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
 import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
@@ -172,7 +172,7 @@ async function conPlantilla(env, s, quien) {
   if (!conv) return "No encontré el chat.";
   const nombre = (s.nombre || "").split(/\s+/)[0] || "estimad@";
   try {
-    const waMessageId = await enviarTemplate(env, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]);
+    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, () => enviarTemplate(env, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]));
     await registrarMensajeSaliente(env.CRM_DB, s.conversation_id, {
       waMessageId, type: "template", body: `Plantilla: ${env.PLANTILLA_ENVIO} · ${s.titulo}`, sentBy: quien
     });

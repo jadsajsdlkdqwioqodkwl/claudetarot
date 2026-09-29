@@ -8,22 +8,26 @@ import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiend
 import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "./crm-db.js";
 
 /**
- * Antes de mandarle algo al cliente (respuestas a mano, bienvenida y
- * seguimientos, sugerencias aprobadas): le muestra "escribiendo…" y espera 1,5 s, para que no llegue
- * al instante como un bot. La espera no es CPU ni suma requests del Worker;
- * el "escribiendo" es una llamada más a Meta (subrequest, sin costo), solo
- * si el cliente escribió en las últimas 24 h (si no, WhatsApp no lo muestra).
- * Con `escribiendo: false` es solo la espera (ej. antes de un grupo de fotos).
+ * Antes de mandarle algo al cliente: le muestra "escribiendo…" y espera 1,5 s,
+ * para que no llegue al instante como un bot. La espera no es CPU ni suma
+ * requests del Worker; el "escribiendo" es una llamada más a Meta
+ * (subrequest, sin costo). WhatsApp lo muestra marcando como leído el último
+ * mensaje del cliente: si el cliente nunca escribió, no hay cómo mostrarlo
+ * (solo queda la espera).
  */
 /*
  * ⚠️ NO TOCAR — REGLA DEL DUEÑO, IMPORTANTÍSIMA.
- * Todo mensaje que sale a un cliente (a mano, respuesta rápida, bienvenida,
- * seguimiento, sugerencia aprobada, link de Shalom, catálogo) va precedido de
- * pausaEnvio(): "escribiendo…" en su WhatsApp durante 1,5 s y recién el
- * mensaje. No se quita, no se acorta, no se salta "para que vaya más rápido".
- * Cualquier envío nuevo DEBE llamar a pausaEnvio() antes de mandarTexto() /
- * mandarMediaGuardada(). `npm run check` falla si alguno no lo hace o si
- * este valor cambia.
+ * Todo mensaje que sale a un cliente (a mano, pegado, respuesta rápida,
+ * bienvenida, seguimiento, sugerencia aprobada, link de Shalom, catálogo,
+ * producto, plantilla, fotos/videos/audios/documentos) va precedido de
+ * "escribiendo…" en su WhatsApp durante 1,5 s y recién el mensaje. No se
+ * quita, no se acorta, no se salta "para que vaya más rápido".
+ *
+ * Está garantizado aquí mismo, no depende de quien llama: mandarTexto(),
+ * mandarMediaGuardada() y mandarConEscribiendo() (catálogo, producto,
+ * plantilla) hacen su propia pausaEnvio() si nadie la hizo justo antes para
+ * ese mensaje. Cada pausa sirve para UN solo mensaje. `npm run check` falla
+ * si algún envío a Meta no pasa por estas funciones o si este valor cambia.
  */
 export const PAUSA_ENVIO_MS = 1500;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -34,9 +38,16 @@ export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
  * verse (el celular lo apaga al recibir el mensaje anterior). Por eso, antes
  * del "escribiendo…", se espera a que pasen ESPACIO_ENTRE_MENSAJES_MS desde
  * el último envío a ese chat. No reemplaza los 1,5 s: se suman.
+ *
+ * Dos envíos al mismo chat a la vez (dos Enter seguidos, pegar y mandar
+ * rápido, un seguimiento que sale justo cuando la vendedora escribe) toman
+ * turno en D1 (envio_turnos): cada uno tiene su propio "escribiendo…"
+ * visible, uno detrás del otro.
  */
 export const ESPACIO_ENTRE_MENSAJES_MS = 2000;
+const ESPERA_MAXIMA_TURNO_MS = 30000;
 const ultimoEnvio = new Map(); // conversation_id -> ms del último envío (dentro de esta ejecución)
+const pausasHechas = new Map(); // conversation_id -> [ms] pausas hechas que todavía no usó ningún mensaje
 
 async function esperarEspacio(conversationId, ultimoOutDb) {
   const previo = Math.max(ultimoEnvio.get(conversationId) || 0, ultimoOutDb || 0);
@@ -44,45 +55,117 @@ async function esperarEspacio(conversationId, ultimoOutDb) {
   if (previo && falta > 0) await esperar(Math.min(falta, ESPACIO_ENTRE_MENSAJES_MS));
 }
 
-export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { escribiendo = true, ultimoWaId } = {}) {
+/** Reserva el turno de este mensaje en el chat; devuelve cuántos ms esperar antes del "escribiendo…". */
+async function reservarTurno(env, conversationId, ms) {
+  if (!env?.CRM_DB || !conversationId) return 0;
+  try {
+    const ahora = Date.now();
+    const r = await env.CRM_DB.prepare(
+      `INSERT INTO envio_turnos (conversation_id, fin) VALUES (?1, ?2 + ?4)
+       ON CONFLICT(conversation_id) DO UPDATE SET fin = MAX(fin + ?3, ?2) + ?4
+       RETURNING fin`
+    ).bind(conversationId, ahora, ESPACIO_ENTRE_MENSAJES_MS, ms).first();
+    return Math.min(Math.max((r?.fin || 0) - ms - ahora, 0), ESPERA_MAXIMA_TURNO_MS);
+  } catch (err) {
+    console.error("Turno de envío:", err.message);
+    return 0;
+  }
+}
+
+async function avisarErrorEscribiendo(env, conversationId, err) {
+  console.error("Escribiendo:", err.message);
+  if (env?.CRM_DB) await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
+}
+
+/** "Escribiendo…" con un reintento: nunca frena el envío. */
+async function escribiendoEn(env, conversationId, waMessageId) {
+  if (!waMessageId) return;
+  try {
+    await mostrarEscribiendo(env, waMessageId);
+  } catch {
+    try {
+      await esperar(300);
+      await mostrarEscribiendo(env, waMessageId);
+    } catch (err) {
+      await avisarErrorEscribiendo(env, conversationId, err);
+    }
+  }
+}
+
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId } = {}) {
+  // Nunca menos de 1,5 s, pase lo que pase.
+  ms = Math.max(Number(ms) || 0, PAUSA_ENVIO_MS);
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
   // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
-  if (escribiendo && ultimoWaId !== undefined) {
-    await esperarEspacio(conversationId, 0);
-    if (ultimoWaId) {
-      await mostrarEscribiendo(env, ultimoWaId).catch(async (err) => {
-        console.error("Escribiendo:", err.message);
-        if (env?.CRM_DB) await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
-      });
-    }
-  } else if (escribiendo && env?.CRM_DB && conversationId) {
+  let waIn = ultimoWaId || null;
+  let ultimoOut = 0;
+  if (env?.CRM_DB && conversationId) {
     try {
       const ultimo = await env.CRM_DB.prepare(
         `SELECT
-           (SELECT wa_message_id FROM messages
+           ${waIn ? "NULL" : `(SELECT wa_message_id FROM messages
             WHERE conversation_id = ?1 AND direction = 'in' AND type <> 'call' AND wa_message_id IS NOT NULL
-              AND created_at >= datetime('now', '-1 day')
-            ORDER BY id DESC LIMIT 1) AS wa_message_id,
+            ORDER BY id DESC LIMIT 1)`} AS wa_message_id,
            (SELECT MAX(created_at) FROM messages WHERE conversation_id = ?1 AND direction = 'out') AS ultimo_out`
       )
         .bind(conversationId)
         .first();
-      const ultimoOut = ultimo?.ultimo_out ? new Date(String(ultimo.ultimo_out).replace(" ", "T") + "Z").getTime() : 0;
-      await esperarEspacio(conversationId, Number.isNaN(ultimoOut) ? 0 : ultimoOut);
-      if (ultimo?.wa_message_id) await mostrarEscribiendo(env, ultimo.wa_message_id);
+      waIn = waIn || ultimo?.wa_message_id || null;
+      const t = ultimo?.ultimo_out ? new Date(String(ultimo.ultimo_out).replace(" ", "T") + "Z").getTime() : 0;
+      ultimoOut = Number.isNaN(t) ? 0 : t;
     } catch (err) {
-      // Nunca frena el envío. Queda el último error guardado para poder
-      // diagnosticar sin acceso a los logs del Worker.
-      console.error("Escribiendo:", err.message);
-      await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
+      await avisarErrorEscribiendo(env, conversationId, err);
     }
   }
+  await esperarEspacio(conversationId, ultimoOut);
+  const turno = await reservarTurno(env, conversationId, ms);
+  if (turno) await esperar(turno);
+  await escribiendoEn(env, conversationId, waIn);
   await esperar(ms);
+  if (conversationId) (pausasHechas.get(conversationId) || pausasHechas.set(conversationId, []).get(conversationId)).push(Date.now());
+}
+
+/**
+ * Cada mensaje usa una pausa hecha para él (hace menos de 10 s); si no hay
+ * ninguna, la hace aquí. Así ningún envío sale sin "escribiendo…", aunque
+ * quien llama se haya olvidado de pausaEnvio().
+ */
+async function asegurarPausa(env, conversationId) {
+  if (!conversationId) return pausaEnvio(env, conversationId);
+  const lista = (pausasHechas.get(conversationId) || []).filter((t) => Date.now() - t < 10000);
+  if (!lista.length) {
+    pausasHechas.delete(conversationId);
+    await pausaEnvio(env, conversationId);
+    return asegurarPausa(env, conversationId);
+  }
+  lista.shift();
+  if (lista.length) pausasHechas.set(conversationId, lista);
+  else pausasHechas.delete(conversationId);
+}
+
+async function marcarEnviado(env, conversationId) {
+  ultimoEnvio.set(conversationId, Date.now());
+  // Si el envío tardó (subir un video), el turno del siguiente cuenta desde ahora.
+  await env?.CRM_DB?.prepare("UPDATE envio_turnos SET fin = MAX(fin, ?2) WHERE conversation_id = ?1")
+    .bind(conversationId, Date.now()).run().catch(() => {});
+}
+
+/**
+ * Catálogo, producto o plantilla (lo que no pasa por mandarTexto /
+ * mandarMediaGuardada): `enviar` es la llamada a Meta; antes va su
+ * "escribiendo…" de 1,5 s.
+ */
+export async function mandarConEscribiendo(env, conversationId, enviar) {
+  await asegurarPausa(env, conversationId);
+  const waMessageId = await enviar();
+  await marcarEnviado(env, conversationId);
+  return waMessageId;
 }
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones) {
+  await asegurarPausa(env, conversationId);
   const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);
-  ultimoEnvio.set(conversationId, Date.now());
+  await marcarEnviado(env, conversationId);
   await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id }, opciones);
   return waMessageId;
 }
@@ -111,8 +194,9 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   fileName = fileName || obj.customMetadata?.originalName || undefined;
 
   const mediaId = await subirMedia(env, blob, mime, mediaKey.split("/").pop());
+  await asegurarPausa(env, conversationId);
   const waMessageId = await enviarMedia(env, waId, type, mediaId, caption, replyTo?.wa_message_id, fileName);
-  ultimoEnvio.set(conversationId, Date.now());
+  await marcarEnviado(env, conversationId);
 
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
     waMessageId,

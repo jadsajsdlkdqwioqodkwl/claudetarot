@@ -10,7 +10,7 @@
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
-import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo } from "./crm-send.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
@@ -154,7 +154,8 @@ export async function procesarSeguimientosVencidos(env) {
         // Plantilla: para escribirle a alguien fuera de la ventana de 24h
         // (típico de un envío masivo a contactos viejos que no escribieron).
         const parametros = s.template_params ? JSON.parse(s.template_params) : [];
-        const waMessageId = await enviarTemplate(env, s.wa_id, s.template_name, s.template_language || "es", parametros);
+        await pausaEnvio(env, s.conv_id, undefined, escribiendo);
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, () => enviarTemplate(env, s.wa_id, s.template_name, s.template_language || "es", parametros));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",
@@ -165,6 +166,7 @@ export async function procesarSeguimientosVencidos(env) {
         // Catálogo completo o un producto. Si además lleva foto/video, va antes.
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
         if (s.media_key_real) {
+          // La foto/video usa esa pausa; el catálogo hace la suya (mandarConEscribiendo).
           await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
         }
         let waMessageId;
@@ -175,10 +177,10 @@ export async function procesarSeguimientosVencidos(env) {
           const { results: portadas } = await env.CRM_DB.prepare(
             "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
           ).bind(env.WHATSAPP_CATALOG_ID || "").all().catch(() => ({ results: [] }));
-          waMessageId = await enviarCatalogoConPortada(env, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id));
+          waMessageId = await mandarConEscribiendo(env, s.conv_id, () => enviarCatalogoConPortada(env, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
         } else {
           if (!env.WHATSAPP_CATALOG_ID) throw new Error("Falta WHATSAPP_CATALOG_ID.");
-          waMessageId = await enviarProducto(env, s.wa_id, env.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined);
+          waMessageId = await mandarConEscribiendo(env, s.conv_id, () => enviarProducto(env, s.wa_id, env.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
         }
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,

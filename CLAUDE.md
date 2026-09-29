@@ -40,7 +40,10 @@ Más detalle: `docs/asesor.md`.
   un cliente lleva antes "escribiendo…" durante **1,5 s** (`pausaEnvio()` en
   `src/lib/crm-send.js`, `PAUSA_ENVIO_MS = 1500`). No se quita, no se acorta
   y todo envío nuevo lo llama antes de `mandarTexto()` / `mandarMediaGuardada()`.
-  `npm run check` falla si falta en algún envío.
+  `npm run check` falla si falta en algún envío. Está garantizado dentro de
+  `mandarTexto()`, `mandarMediaGuardada()` y `mandarConEscribiendo()`
+  (catálogo, producto, plantilla): si nadie hizo la pausa, la hacen ellas.
+  Nunca llames directo a `enviarTexto/enviarMedia/enviarTemplate/enviarCatalogo*/enviarProducto`.
 
 - `npm run check` y `npm run check:gs` antes de subir (el chequeo "la foto de
   la variante es una banda horizontal" ya fallaba antes).

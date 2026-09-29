@@ -17,7 +17,7 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
-import { pausaEnvio } from "../../lib/crm-send.js";
+import { pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -59,7 +59,7 @@ async function post({ request, env, agent }) {
 
   try {
     await pausaEnvio(env, conversationId);
-    const waMessageId = await enviarTemplate(env, conv.wa_id, name, language, parametros);
+    const waMessageId = await mandarConEscribiendo(env, conversationId, () => enviarTemplate(env, conv.wa_id, name, language, parametros));
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "template",

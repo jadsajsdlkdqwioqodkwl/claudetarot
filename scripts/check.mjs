@@ -906,7 +906,24 @@ check("las letras de columna llegan hasta la última de la hoja",
     });
   }
   check(`todo mensaje a un cliente va con "escribiendo…" antes${sinEscribiendo.length ? ` (falta en ${sinEscribiendo.join(", ")})` : ""}`, !sinEscribiendo.length);
+  // Ninguna llamada directa a Meta que mande un mensaje: todo pasa por crm-send.js,
+  // que garantiza el "escribiendo…" (salvo los códigos de acceso del CRM a las vendedoras).
+  const directos = [];
+  const PERMITIDOS = [join("lib", "whatsapp.js"), join("lib", "crm-send.js"), join("crm", "login.js"), join("crm", "forgot-password.js")];
+  for (const ruta of archivos) {
+    if (PERMITIDOS.some((x) => ruta.endsWith(x))) continue;
+    const lineas = readFileSync(ruta, "utf8").split("\n");
+    lineas.forEach((l, i) => {
+      if (/^\s*(import|\*|\/\/)/.test(l)) return;
+      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
+    });
+  }
+  check(`catálogo, producto y plantilla también van con "escribiendo…"${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);
   const envio = readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8");
+  check("mandarTexto, mandarMediaGuardada y mandarConEscribiendo hacen su propia pausa si falta",
+    (envio.match(/await asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviar/g) || []).length === 3);
+  check("ningún envío salta el \"escribiendo…\"", !/escribiendo:\s*false/.test(envio) && !/escribiendo:\s*false/.test(readFileSync(new URL("../src/lib/crm-welcome-sequence.js", import.meta.url), "utf8")));
+  check("dos envíos al mismo chat a la vez toman turno", /envio_turnos/.test(envio));
   check("mensajes seguidos: espera a que se entregue el anterior antes del \"escribiendo…\"",
     /ESPACIO_ENTRE_MENSAJES_MS = 2000/.test(envio) && /esperarEspacio\(conversationId/.test(envio));
   check("los botoncitos 1·2·3 solo eligen la versión; se pone al tocar el mensaje",
