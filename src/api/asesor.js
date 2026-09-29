@@ -234,6 +234,23 @@ export async function onRequestPostSugerencias({ request, env }) {
       continue;
     }
 
+    // El bot le pregunta al dueño algo que no está en negocio.md ("¿puedo
+    // ofrecer…?"). Solo lo ve el admin; la respuesta va a la memoria.
+    if (s.tipo === "pregunta") {
+      const repetida = await env.CRM_DB.prepare(
+        "SELECT 1 FROM asesor_sugerencias WHERE tipo = 'pregunta' AND texto = ? AND estado = 'pendiente'"
+      ).bind(texto).first();
+      if (repetida) continue;
+      const opciones = (Array.isArray(s.opciones) ? s.opciones : []).map((o) => String(o || "").trim().slice(0, 200)).filter(Boolean).slice(0, 4);
+      const wa = String(s.whatsapp || "").replace(/\D/g, "");
+      const conv = wa ? await convDe(env, wa) : null;
+      await env.CRM_DB.prepare(
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, texto, texto_original, motivo, idea, origen) VALUES ('pregunta', ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(conv?.id || null, wa || null, String(s.nombre || "").slice(0, 80) || null, texto, texto, motivo, JSON.stringify({ opciones }), origen).run();
+      res.creadas++;
+      continue;
+    }
+
     if (s.tipo === "saldo") {
       let codigo = String(s.codigo || "").trim().toUpperCase();
       const wa = String(s.whatsapp || "").replace(/\D/g, "");
@@ -292,6 +309,10 @@ export async function onRequestPostSugerencias({ request, env }) {
 
     const tipo = s.tipo === "envio" ? "envio" : "seguimiento";
     const pasos = normalizarPasos(s.pasos);
+    // Qué frena a este cliente y otra opción para la próxima (la vendedora decide).
+    const objecion = String(s.objecion || "").trim().slice(0, 200) || null;
+    const ideaTexto = String(s.idea?.texto || s.idea?.mensaje || "").trim().slice(0, 1000);
+    const idea = ideaTexto ? JSON.stringify({ titulo: String(s.idea.titulo || "").trim().slice(0, 160) || null, texto: ideaTexto }) : null;
     const link = tipo === "envio" ? String(s.link || "").slice(0, 200) || null : null;
     const wa = String(s.whatsapp || "").replace(/\D/g, "");
     const conv = await convDe(env, wa);
@@ -312,15 +333,15 @@ export async function onRequestPostSugerencias({ request, env }) {
       .bind(conv.id, tipo)
       .first();
     if (previa) {
-      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), pasos = ?, created_at = datetime('now') WHERE id = ?")
-        .bind(texto, texto, motivo, origen, link, pasos, previa.id)
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), pasos = ?, objecion = ?, idea = ?, created_at = datetime('now') WHERE id = ?")
+        .bind(texto, texto, motivo, origen, link, pasos, objecion, idea, previa.id)
         .run();
       res.actualizadas++;
     } else {
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen, pasos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen, pasos, objecion, idea) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       )
-        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen, pasos)
+        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen, pasos, objecion, idea)
         .run();
       res.creadas++;
     }
@@ -339,7 +360,7 @@ export async function onRequestGetContexto({ request, env }) {
   if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
-  const [rapidas, pendientes, bienvenida, pruebas] = await Promise.all([
+  const [rapidas, pendientes, bienvenida, pruebas, noCierran] = await Promise.all([
     env.CRM_DB.prepare(
       `SELECT q.id, q.title, q.body, q.grupo, q.sort_order,
          (SELECT group_concat(media_type) FROM quick_reply_media m WHERE m.quick_reply_id = q.id) AS media
@@ -353,15 +374,62 @@ export async function onRequestGetContexto({ request, env }) {
          (SELECT group_concat(media_type) FROM welcome_step_media m WHERE m.welcome_step_id = s.id) AS media
        FROM welcome_steps s ORDER BY s.step_order`
     ).all(),
-    pruebasDeMensajes(env).catch((err) => ({ error: err.message }))
+    pruebasDeMensajes(env).catch((err) => ({ error: err.message })),
+    porQueNoCierran(env).catch((err) => ({ error: err.message }))
   ]);
   return json({
     respuestas_rapidas: rapidas.results,
     bienvenida: bienvenida.results,
     pruebas: pruebas,
     sugerencias_pendientes: pendientes.results,
+    no_cierran: noCierran,
     aprendizaje: await aprendizaje(env)
   });
+}
+
+/**
+ * Por qué no se concretan las ventas, para que el director CRO no mande
+ * seguimientos a ciegas ("separa hoy y sale mañana"):
+ *   · estancados: chats a los que se les pidió el cierre (ubicación o
+ *     adelanto) en los últimos 14 días y no cerraron, cuántos contestaron
+ *     algo después y cuántos se quedaron callados;
+ *   · objeciones: lo que el análisis por chat anotó en los perdidos/abiertos
+ *     (30 días), con ejemplos del motivo;
+ *   · por_objecion: cómo les fue a los seguimientos aprobados según la
+ *     objeción que atacaban (¿respondió en 24 h?, ¿compró?).
+ */
+export async function porQueNoCierran(env) {
+  const [estancados, objeciones, porObjecion, preguntas] = await Promise.all([
+    env.CRM_DB.prepare(
+      `SELECT COUNT(*) AS pidieron_cierre,
+         SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in' AND m.created_at > conv.etapa_at)) AS contestaron_despues,
+         SUM(conv.last_inbound_at < datetime('now', '-24 hours')) AS ventana_cerrada
+       FROM conversations conv
+       WHERE conv.etapa = 4 AND conv.etapa_at >= datetime('now', '-14 days') AND conv.etapa_at <= datetime('now', '-6 hours')`
+    ).first(),
+    env.CRM_DB.prepare(
+      `SELECT lower(trim(objecion)) AS objecion, COUNT(*) AS chats, SUM(resultado = 'perdido') AS perdidos,
+         substr(group_concat(motivo, ' | '), 1, 400) AS ejemplos
+       FROM chat_analisis
+       WHERE fecha >= date('now', '-30 days') AND resultado IN ('perdido', 'abierto') AND COALESCE(trim(objecion), '') != ''
+       GROUP BY 1 ORDER BY chats DESC LIMIT 12`
+    ).all(),
+    env.CRM_DB.prepare(
+      `SELECT lower(trim(s.objecion)) AS objecion, COUNT(*) AS aprobadas,
+         SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = s.conversation_id AND m.direction = 'in'
+                     AND m.created_at > s.resuelto_at AND m.created_at <= datetime(s.resuelto_at, '+24 hours'))) AS respondieron,
+         SUM(conv.etapa >= 5 AND conv.etapa_at > s.resuelto_at) AS compraron
+       FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
+       WHERE s.estado = 'aprobada' AND s.tipo = 'seguimiento' AND COALESCE(trim(s.objecion), '') != ''
+         AND s.resuelto_at >= datetime('now', '-45 days')
+       GROUP BY 1 ORDER BY aprobadas DESC LIMIT 12`
+    ).all(),
+    env.CRM_DB.prepare(
+      `SELECT texto AS pregunta, respuesta, resuelto_por AS quien, resuelto_at FROM asesor_sugerencias
+       WHERE tipo = 'pregunta' AND estado = 'respondida' ORDER BY resuelto_at DESC LIMIT 15`
+    ).all()
+  ]);
+  return { estancados, objeciones: objeciones.results, por_objecion: porObjecion.results, preguntas_respondidas: preguntas.results };
 }
 
 /**

@@ -86,6 +86,24 @@ def main():
                        "Correlación, no causa: úsalo para decidir qué probar."]
             partes += [f"- ▲ \"{f['frase']}\": {f['cierre']}% cerró ({f['chats']} chats)" for f in fr["mejores"]]
             partes += [f"- ▼ \"{f['frase']}\": {f['cierre']}% cerró ({f['chats']} chats)" for f in fr.get("peores", [])]
+    nc = datos.get("no_cierran") or {}
+    if nc and not nc.get("error"):
+        partes += ["", "## Por qué no cierran (antes de proponer un seguimiento, diagnostica la objeción)"]
+        e = nc.get("estancados") or {}
+        if e.get("pidieron_cierre"):
+            partes.append(f"- 14 días: a {e['pidieron_cierre']} chats se les pidió el cierre (ubicación o adelanto) y no cerraron; "
+                          f"{e.get('contestaron_despues') or 0} contestaron algo después, {e['pidieron_cierre'] - (e.get('contestaron_despues') or 0)} "
+                          f"se quedaron callados, {e.get('ventana_cerrada') or 0} ya sin ventana de 24 h.")
+        for o in nc.get("objeciones") or []:
+            partes.append(f"- Objeción \"{o['objecion']}\": {o['chats']} chats ({o.get('perdidos') or 0} perdidos). Ej.: {(o.get('ejemplos') or '')[:220]}")
+        po = nc.get("por_objecion") or []
+        if po:
+            partes += ["", "### Cómo les fue a los seguimientos según la objeción que atacaban (45 días)"]
+            partes += [f"- {o['objecion']}: {o['aprobadas']} aprobados, {o.get('respondieron') or 0} respondieron en 24 h, {o.get('compraron') or 0} compraron" for o in po]
+        pr_ = nc.get("preguntas_respondidas") or []
+        if pr_:
+            partes += ["", "### Lo que el dueño ya respondió (no lo vuelvas a preguntar; úsalo)"]
+            partes += [f"- {q['pregunta'][:200]} → {q['respuesta'][:300]}" for q in pr_]
     pend = datos.get("sugerencias_pendientes", [])
     partes += ["", f"## Sugerencias que siguen pendientes de aprobar ({len(pend)})",
                "No las repitas; si una ya no sirve, dilo."]

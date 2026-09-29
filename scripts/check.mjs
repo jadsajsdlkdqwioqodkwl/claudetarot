@@ -860,6 +860,10 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("las respuestas rápidas se ordenan arrastrando (sin grupos)", app.includes("activarArrastreRapidas") && !app.includes("ordenarPorGrupo"));
   check("los buscadores de los editores muestran las versiones 1·2·3", app.includes("itemRapidaHtml") && app.includes("pintarVersionesSeg"));
   check("las recomendaciones tienen cronómetro de ventana", app.includes("pintarRelojes"));
+  check("las sugerencias muestran objeción, otra opción y preguntas al dueño",
+    app.includes("sug-objecion") && app.includes("sug-idea-usar") && app.includes("tarjetaPregunta"));
+  check("el seguimiento de una respuesta rápida muestra su texto, no solo el nombre", app.includes("quick_reply_body"));
+  check("la lista de chats muestra el seguimiento de bienvenida y su hora", app.includes("seg_auto_proximo"));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

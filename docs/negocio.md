@@ -60,3 +60,10 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
   al recoger.
 - "¿Puedo leerme a mí mismo?" → sí, el kit está hecho para aprender solo.
 - "Hoy no puedo recibir" → se agenda para otro día o se separa con S/10.
+- **Silencio después del adelanto (provincia)**: casi siempre es desconfianza
+  de pagar antes a alguien que no conoce, o que no terminó de entender qué
+  trae el kit. Primero se le da espacio ("¿le quedó alguna duda?", ofrecer
+  fotos de envíos o el Instagram); después, si hace falta, la herramienta de
+  cierre.
+- "Estoy de viaje" / "a fin de mes" → separar con S/10 para esa fecha (se
+  puede sumar el collar amuleto de regalo, no el descuento).

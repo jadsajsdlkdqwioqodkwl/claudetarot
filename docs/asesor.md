@@ -109,6 +109,22 @@ página del cliente le muestra su clave. Nunca se marca solo.
   guarda lo que mandó (`variante_usos.texto_enviado`). El director las lee
   en `contexto.py` y son la fuente de las próximas versiones.
 
+## Objeción, otra opción y preguntas al dueño
+
+- Cada seguimiento propuesto trae `objecion` (lo que probablemente frena al
+  cliente) e `idea` opcional ({ titulo, mensaje }: otra salida para ese
+  cliente). En ✨ Sugerencias se ven arriba ("🧭 Lo que probablemente lo
+  frena") y en una cajita "💡 Otra opción" con **Usar como mensaje** y
+  **Agregar como paso**.
+- `preguntas` en `salida.json`: el bot le pregunta al dueño algo que no está
+  en negocio.md. Solo el admin la ve ("❓ El asesor te pregunta", con botones
+  de opciones y un cuadro de respuesta). La respuesta queda en
+  `asesor_memoria` (tema "respuesta del dueño") y en `contexto.py`.
+- `contexto.py` → "Por qué no cierran": chats a los que se pidió el cierre
+  y no cerraron (cuántos callaron), objeciones de los análisis por chat y
+  cómo les fue a los seguimientos según la objeción que atacaban.
+- Migración 0036.
+
 ## Orden de las respuestas rápidas
 
 Ya no hay grupos: cada quien las ordena arrastrando del ⋮⋮ en el panel ⚡

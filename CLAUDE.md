@@ -12,6 +12,12 @@
    Seguimientos y envíos a varios chats: cada mensaje aporta algo nuevo (no
    "¿sigue interesad@?") y va solo a los chats de su destino (Lima o
    provincia); ver reglas 10–12 de voz-tarot-store.
+   Antes de un seguimiento, diagnostica qué lo frena (desconfianza, falta de
+   información, precio, tiempo) y ponlo en `objecion`; al que calló tras el
+   pedido de cierre, primero dale espacio para contar su duda, no lo
+   empujes. Otras salidas para ese cliente van en `idea`; si no están en
+   negocio.md, pregúntale al dueño en `preguntas` (reglas 13–16 de
+   voz-tarot-store).
    Opciones 2 y 3: para las respuestas rápidas de "Dónde proponer opciones
    2 y 3" en contexto.py, propón `variantes` (no respuestas rápidas nuevas).
 3. **Nunca mandas mensajes a clientes.** Todo va a ✨ Sugerencias vía

@@ -70,6 +70,44 @@ las respuestas rápidas vigentes y **cómo editaron las vendedoras los textos**
     Perú y en Lima paga recién al recibir ☺️ ¿Para qué distrito o ciudad
     sería?".
 
+## Por qué no cierra: diagnostica antes de insistir
+
+13. **Primero la objeción, después el mensaje.** Antes de proponer un
+    seguimiento, lee el chat y anota en `objecion` lo que probablemente lo
+    frena, aunque el cliente no lo haya dicho. Las más comunes:
+    - **desconfianza** (sobre todo en provincia, cuando le piden pagar el
+      adelanto a un número que no conoce): calló justo después del Yape;
+    - **falta de información**: preguntó una sola cosa y no sabe qué trae el
+      kit, cómo se aprende o cómo recoge en la agencia;
+    - **precio**: preguntó el precio y se enfrió, o dijo "caro";
+    - **tiempo**: viaja, no está, "a fin de mes", "cuando cobre";
+    - **para regalo / consulta a alguien**: tiene que preguntarle a otra persona.
+    Mira también "Por qué no cierran" en `contexto.py`: qué objeciones se
+    repiten y a cuáles seguimientos les fue mejor.
+14. **Dale espacio para ser escuchado.** Si se quedó callado después de que
+    le pidieron el cierre, el primer seguimiento no empuja ("separe hoy y
+    sale mañana"): nombra con cariño la duda probable y le deja la puerta
+    abierta para contarla. Ejemplos:
+    - desconfianza: "Estimad@, a veces da un poco de desconfianza mandar el
+      adelanto a alguien que no conoce ☺️ Si quiere le paso fotos de envíos
+      de hoy o nuestro Instagram, ¿le quedó alguna duda?"
+    - información: "¿Le gustaría que le cuente cómo se aprende con el kit? Cada
+      carta ya trae su significado, así que puede empezar sin saber nada ✨"
+    - tiempo: "Entiendo linda, no hay apuro ☺️ ¿Para qué fecha le vendría mejor?"
+    Recién en el paso siguiente (si responde o si sigue callado) va la
+    herramienta de cierre que corresponde a esa objeción.
+15. **Otra opción para la próxima (`idea`)**: si ves una salida que la
+    vendedora podría ofrecerle a ESTE cliente más adelante (ej. viaja: "le
+    separamos su kit con S/10 hasta que regrese, y le guardamos un collar de
+    regalo"), ponla en `idea` con `titulo` (la idea en pocas palabras) y
+    `mensaje` (el texto listo). Sale en una cajita en ✨ Sugerencias y la
+    vendedora la usa con un toque. Solo con lo permitido en negocio.md.
+16. **Si la mejor salida no está en negocio.md, pregunta.** Ponla en
+    `preguntas` ("¿Puedo ofrecer separar con S/10 y un collar de regalo a
+    quien viaja?", con `opciones` para responder con un toque). El dueño
+    responde en ✨ Sugerencias y su respuesta aparece en `contexto.py`
+    ("Lo que el dueño ya respondió"): úsala y no vuelvas a preguntar lo mismo.
+
 ## Antes de proponer, revisa
 
 - ¿Lo mandaría Danitza, Priscila o Moi tal cual, sin cambiarle nada?

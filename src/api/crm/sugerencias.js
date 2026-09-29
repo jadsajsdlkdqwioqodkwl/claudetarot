@@ -22,6 +22,14 @@
  * Tipo "saldo" (quien maneja Shalom): el asesor vio la captura del pago del
  * saldo; aprobarla deja el saldo en 0 en la hoja (la página muestra la clave).
  *
+ * Tipo "pregunta" (solo admin): el bot pregunta si puede ofrecer algo que
+ * no está en docs/negocio.md. { id, accion: "responder", respuesta } guarda
+ * la respuesta en asesor_memoria (la lee en la próxima corrida).
+ *
+ * Los seguimientos traen `objecion` (lo que probablemente frena al cliente)
+ * e `idea` ({ titulo, texto }: otra opción para la próxima), que la
+ * vendedora usa con un toque o ignora.
+ *
  * Tipo "prueba_lista" (solo admin, la crea el cron): una prueba de mensajes
  * ya tiene ganadora (`titulo` = id de la versión, 0 = la original).
  * Aprobarla deja esa versión como el texto de siempre; descartarla sigue
@@ -74,7 +82,7 @@ async function get({ request, env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo NOT IN ('variante', 'prueba_lista') OR ?1 = 1)
+     WHERE s.estado = 'pendiente' AND s.tipo != 'envio' AND (s.tipo NOT IN ('variante', 'prueba_lista', 'pregunta') OR ?1 = 1)
        AND (s.tipo != 'saldo' OR ?2 = 1)
      ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
   ).bind(esAdmin(agent) ? 1 : 0, manejaShalom(agent, env) ? 1 : 0).all();
@@ -89,8 +97,8 @@ async function get({ request, env, agent }) {
   }
   // Para el cronómetro: cuándo escribió por última vez cada destinatario de
   // una respuesta rápida (una consulta por cada 90 chats, tope de parámetros de D1).
-  const lista = results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos) }));
-  const ids = [...new Set(lista.flatMap((s) => (Array.isArray(s.destinatarios) ? s.destinatarios : []).map((d) => Number(d.conversation_id)).filter(Boolean)))];
+  const lista = results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios), pasos: parsear(s.pasos), idea: s.idea ? parsear(s.idea) : null }));
+  const ids = [...new Set(lista.flatMap((s) => (Array.isArray(s.destinatarios) ? s.destinatarios : []).map((d) => Number(d?.conversation_id)).filter(Boolean)))];
   const ultimo = {};
   for (let i = 0; i < ids.length && i < 450; i += 90) {
     const lote = ids.slice(i, i + 90);
@@ -101,7 +109,7 @@ async function get({ request, env, agent }) {
   }
   for (const s of lista) {
     if (!Array.isArray(s.destinatarios)) continue;
-    for (const d of s.destinatarios) d.last_inbound_at = ultimo[Number(d.conversation_id)] || null;
+    for (const d of s.destinatarios) if (d && typeof d === "object") d.last_inbound_at = ultimo[Number(d.conversation_id)] || null;
   }
   return json({ pendientes: results.length, sugerencias: lista });
 }
@@ -154,12 +162,12 @@ async function conPlantilla(env, s, quien) {
 async function post({ request, env, agent }) {
   const payload = await request.json().catch(() => null);
   const id = Number(payload?.id);
-  if (!id || !["aprobar", "descartar"].includes(payload?.accion)) return json({ error: "Solicitud inválida." }, 400);
+  if (!id || !["aprobar", "descartar", "responder"].includes(payload?.accion)) return json({ error: "Solicitud inválida." }, 400);
 
   const s = await env.CRM_DB.prepare("SELECT * FROM asesor_sugerencias WHERE id = ?").bind(id).first();
   if (!s) return json({ error: "Esa sugerencia ya no existe." }, 404);
   if (s.tipo === "envio" && !esAdmin(agent)) return json({ error: "Solo el admin maneja los envíos." }, 403);
-  if ((s.tipo === "variante" || s.tipo === "prueba_lista") && !esAdmin(agent)) return json({ error: "Solo el admin decide qué se prueba." }, 403);
+  if ((s.tipo === "variante" || s.tipo === "prueba_lista" || s.tipo === "pregunta") && !esAdmin(agent)) return json({ error: "Solo el admin decide qué se prueba." }, 403);
   if (s.estado !== "pendiente") return json({ error: `Ya fue ${s.estado} por ${s.resuelto_por || "otra persona"}.` }, 409);
 
   const quien = agent?.displayName || agent?.username || "CRM";
@@ -171,6 +179,18 @@ async function post({ request, env, agent }) {
   if (payload.accion === "descartar") {
     await cerrar("descartada");
     return json({ ok: true });
+  }
+
+  if (s.tipo === "pregunta" || payload.accion === "responder") {
+    const respuesta = String(payload.respuesta || "").trim().slice(0, 1000);
+    if (s.tipo !== "pregunta" || !respuesta) return json({ error: "Escribe la respuesta." }, 400);
+    await env.CRM_DB.batch([
+      env.CRM_DB.prepare("UPDATE asesor_sugerencias SET estado = 'respondida', respuesta = ?, resuelto_por = ?, resuelto_at = datetime('now') WHERE id = ? AND estado = 'pendiente'")
+        .bind(respuesta, quien, id),
+      env.CRM_DB.prepare("INSERT INTO asesor_memoria (tema, nota, fuente) VALUES ('respuesta del dueño', ?, ?)")
+        .bind(`Pregunta: ${s.texto}\nRespuesta: ${respuesta}`, `${quien} (✨ Sugerencias)`)
+    ]);
+    return json({ ok: true, enviados: 0, programados: 0, saltados: [] });
   }
 
   if (s.tipo === "saldo") {

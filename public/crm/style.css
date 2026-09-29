@@ -817,7 +817,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .sug-enviar-grupo { display: inline-flex; border-radius: var(--radio-full); overflow: hidden; margin-left: 4px; }
 .sug-enviar-grupo button { border: 0; height: 36px; color: #fff; background: var(--verde-osc); }
 .sug-programar { width: 38px; justify-content: center; border-right: 1px solid rgba(255,255,255,.3) !important; }
-.sug-ahora, .sug-probar { padding: 0 14px 0 10px; font-weight: 600; }
+.sug-ahora, .sug-probar, .sug-responder { padding: 0 14px 0 10px; font-weight: 600; }
 .sug-enviar-grupo button:hover { background: var(--verde-header); }
 .sug-chat { max-height: 240px; overflow-y: auto; background: var(--fondo); border-radius: var(--radio-m); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
 .sug-msg { max-width: 85%; padding: 5px 8px; border-radius: var(--radio-m); font-size: 13px; line-height: 1.35; background: var(--panel); align-self: flex-start; word-wrap: break-word; }
@@ -889,3 +889,17 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .reloj-paso { margin-left: 4px; font-weight: 500; }
 .reloj.urgente { color: #d93025; }
 .reloj.cerrada { color: var(--gris); font-weight: 500; }
+.badge-seguimiento.bienvenida { background: #f3e8fd; color: #6b3fa0; }
+
+/* Sugerencias: objeción probable, otra opción y preguntas al dueño */
+.sug-objecion { font-size: 12px; color: #8a5a00; background: #fff6e0; border-radius: var(--radio-s); padding: 4px 8px; margin: 4px 0; }
+.sug-idea { border: 1px dashed #c9a227; background: #fffbea; border-radius: var(--radio-m); padding: 8px 10px; margin: 8px 0; font-size: 13px; }
+.sug-idea-cab { font-size: 12px; color: #6d5400; margin-bottom: 4px; }
+.sug-idea-texto { white-space: pre-wrap; }
+.sug-idea-botones { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.sug-idea-botones button, .sug-opcion { font: inherit; font-size: 12px; border: 1px solid var(--borde); background: var(--panel); border-radius: var(--radio-full); padding: 3px 10px; cursor: pointer; }
+.sug-idea-botones button:hover, .sug-opcion:hover { border-color: var(--verde-osc); color: var(--verde-osc); }
+.sug-pregunta-texto { font-size: 14px; margin: 6px 0; white-space: pre-wrap; }
+.sug-opciones { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.sug-respuesta { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; margin: 4px 0; }
+.sug-responder { font: inherit; }

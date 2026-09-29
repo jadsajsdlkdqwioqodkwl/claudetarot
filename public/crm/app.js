@@ -1058,13 +1058,15 @@ function etiquetaTipoSeguimiento(s) {
 /** Recalcula la etiqueta de la lista para un chat a partir de sus pendientes. */
 function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
   const manuales = scheduled.filter(esSeguimientoManual);
+  const bienvenida = scheduled.filter((x) => x.created_by === ORIGEN_SEGUIMIENTO_AUTO && !x.batch_id);
   const seg = {
     seg_pendientes: manuales.length || null,
-    seg_proximo: manuales.length ? manuales.map((x) => x.send_at).sort()[0] : null
+    seg_proximo: manuales.length ? manuales.map((x) => x.send_at).sort()[0] : null,
+    seg_auto_proximo: bienvenida.length ? bienvenida.map((x) => x.send_at).sort()[0] : null
   };
   const conv = estado.conversaciones.find((x) => x.conversation_id === conversationId);
   seguimientosLocales.set(conversationId, { ...seg, t: Date.now() });
-  if (conv && (conv.seg_pendientes !== seg.seg_pendientes || conv.seg_proximo !== seg.seg_proximo)) {
+  if (conv && (conv.seg_pendientes !== seg.seg_pendientes || conv.seg_proximo !== seg.seg_proximo || conv.seg_auto_proximo !== seg.seg_auto_proximo)) {
     Object.assign(conv, seg);
     pintarLista();
   }
@@ -1105,7 +1107,7 @@ function sincronizar() {
     for (const [id, local] of seguimientosLocales) {
       if (local.t <= inicio) { seguimientosLocales.delete(id); continue; }
       const conv = estado.conversaciones.find((x) => x.conversation_id === id);
-      if (conv) { conv.seg_pendientes = local.seg_pendientes; conv.seg_proximo = local.seg_proximo; }
+      if (conv) { conv.seg_pendientes = local.seg_pendientes; conv.seg_proximo = local.seg_proximo; conv.seg_auto_proximo = local.seg_auto_proximo; }
     }
     if (data.chat && data.chat.conversation_id === estado.conversacionActivaId) aplicarMensajes(data.chat.conversation_id, data.chat);
     pintarLista();
@@ -1305,6 +1307,7 @@ function pintarLista() {
         ${badgeEtapa(c)}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
+        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2704,6 +2707,13 @@ async function actualizarHistorialCapi(conversationId) {
 function textoSeguimiento(s) {
   if (s.catalogo) return etiquetaCatalogo(s) + (s.body ? ` — ${s.body}` : "");
   if (s.body) return s.body;
+  // Respuesta rápida: el texto que va a salir (con {link} y {nombre} ya puestos), no solo su nombre.
+  if (s.quick_reply_body) {
+    let datos = {};
+    try { datos = JSON.parse(s.template_params || "{}") || {}; } catch { datos = {}; }
+    const texto = s.quick_reply_body.replace(/\{(link|nombre)\}/gi, (m, k) => datos[k.toLowerCase()] ?? m);
+    return s.quick_reply_title ? `${s.quick_reply_title}: ${texto}` : texto;
+  }
   if (s.quick_reply_title) return s.quick_reply_title;
   if (s.template_name) return `Plantilla: ${s.template_name}`;
   if (s.media_key) return "Foto/video";
@@ -4016,6 +4026,7 @@ function pintarSugerencias(lista) {
     if (s.tipo === "variante") return tarjetaVariante(s);
     if (s.tipo === "prueba_lista") return tarjetaPruebaLista(s);
     if (s.tipo === "saldo") return tarjetaSaldo(s);
+    if (s.tipo === "pregunta") return tarjetaPregunta(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
     const cabecera = esRapida
@@ -4035,10 +4046,20 @@ function pintarSugerencias(lista) {
         <div class="sug-cabecera">${cabecera}</div>
         ${conChat ? `<div class="reloj reloj-tarjeta"></div>` : ""}
         ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+        ${s.objecion ? `<div class="sug-objecion">🧭 Lo que probablemente lo frena: <b>${escapar(s.objecion)}</b></div>` : ""}
         ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
         ${!esRapida && (s.pasos || []).length ? `<div class="sub sug-etapa">Mensaje 1</div>` : ""}
         <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
         ${pasos}
+        ${s.idea?.texto ? `
+        <div class="sug-idea">
+          <div class="sug-idea-cab">💡 Otra opción para este cliente${s.idea.titulo ? `: <b>${escapar(s.idea.titulo)}</b>` : ""}</div>
+          <div class="sug-idea-texto">${escapar(s.idea.texto)}</div>
+          <div class="sug-idea-botones">
+            <button type="button" class="sug-idea-usar">Usar como mensaje</button>
+            ${esEnvio ? "" : `<button type="button" class="sug-idea-paso">Agregar como paso</button>`}
+          </div>
+        </div>` : ""}
         ${destinos}
         <div class="sug-acciones">
           <span class="sub sug-origen">${escapar(s.origen || "")}</span>
@@ -4121,6 +4142,29 @@ function pintarSugerencias(lista) {
       } catch { alert("No se pudo copiar."); }
     });
     card.querySelector(".sug-probar")?.addEventListener("click", (e) => accion("aprobar", e.currentTarget));
+    // 💡 La otra opción: reemplaza el mensaje, o se suma como paso si no responde.
+    card.querySelector(".sug-idea-usar")?.addEventListener("click", () => {
+      const t = card.querySelector(".sug-texto");
+      t.value = card.querySelector(".sug-idea-texto").textContent;
+      t.focus();
+    });
+    card.querySelector(".sug-idea-paso")?.addEventListener("click", () => {
+      const lista = card.querySelector(".sug-pasos");
+      if (lista.children.length >= 3) return alert("Máximo 3 pasos extra.");
+      lista.insertAdjacentHTML("beforeend", pasoHtml({ horas: 4, texto: card.querySelector(".sug-idea-texto").textContent }));
+      agregarRapidasA(lista.lastElementChild.querySelector("textarea"));
+      card.querySelector(".sug-etapa") || card.querySelector(".sug-texto").insertAdjacentHTML("beforebegin", `<div class="sub sug-etapa">Mensaje 1</div>`);
+      pintarRelojes();
+    });
+    // ❓ Pregunta del bot al dueño: la respuesta queda en su memoria.
+    card.querySelectorAll(".sug-opcion").forEach((b) => b.addEventListener("click", () => {
+      card.querySelector(".sug-respuesta").value = b.textContent;
+    }));
+    card.querySelector(".sug-responder")?.addEventListener("click", (e) => {
+      const respuesta = card.querySelector(".sug-respuesta").value.trim();
+      if (!respuesta) return alert("Escribe la respuesta.");
+      accion("responder", e.currentTarget, { respuesta });
+    });
     card.querySelector(".sug-abrir")?.addEventListener("click", async () => {
       const convId = Number(card.dataset.conv);
       let c = estado.conversaciones.find((x) => x.conversation_id === convId);
@@ -4173,6 +4217,27 @@ function tarjetaSaldo(s) {
         <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
         <button type="button" class="sug-icono sug-descartar" title="No es el saldo">${icon("trash")}</button>
         <div class="sug-enviar-grupo"><button type="button" class="sug-probar">Confirmar saldo pagado</button></div>
+      </div>
+    </div>`;
+}
+
+/** El bot pregunta si puede ofrecer algo que no está en las reglas (solo admin). */
+function tarjetaPregunta(s) {
+  const opciones = Array.isArray(s.idea?.opciones) ? s.idea.opciones : [];
+  return `
+    <div class="tarjeta-sugerencia sug-variante sug-pregunta" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+      <div class="sug-cabecera"><span class="sug-tipo">❓ El asesor te pregunta</span>${s.nombre ? `<span class="sub">por ${escapar(s.nombre)}</span>` : ""}</div>
+      <div class="sug-pregunta-texto">${escapar(s.texto)}</div>
+      ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
+      ${opciones.length ? `<div class="sug-opciones">${opciones.map((o) => `<button type="button" class="sug-opcion">${escapar(o)}</button>`).join("")}</div>` : ""}
+      <textarea class="sug-respuesta" rows="2" placeholder="Tu respuesta (el asesor la recuerda para las próximas veces)"></textarea>
+      <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">${escapar(s.origen || "")}</span>
+        ${s.conversation_id ? `<button type="button" class="sug-icono sug-abrir" title="Abrir chat">${icon("chat")}</button>` : ""}
+        <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="No responder">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-responder">Responder</button></div>
       </div>
     </div>`;
 }
@@ -5090,7 +5155,7 @@ function abrirModalProgramarSeguimiento(modo) {
   const sel = $("#seg-rapida");
   sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
-    estado.quickReplies.map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
+    estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${q.body ? ` — ${escapar(recortarTexto(q.body.replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
   prepararChipsVentana();
   elegirCuando($("#seg-chips button[data-ventana]:not(:disabled)") || $("#seg-chips button:not(:disabled)"));
   ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");
@@ -5255,7 +5320,7 @@ function pintarPreviewSecuenciaSeg() {
   cont.innerHTML = `<ol class="lead-timeline seg-timeline">${seq.steps.map((p) => {
     acum += p.delay_minutes;
     const cuando = new Date(ahora + acum * 60000).toLocaleString("es-PE", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 70))}</li>`;
+    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
   }).join("")}</ol>`;
 }
 
@@ -6242,7 +6307,7 @@ async function pintarLeadDetalle(c) {
         <div class="titulo">${icon("clock")} ${escapar(seq.title)}${d.settings.ad_followup_auto ? ` <span class="pill-auto">automático en clientes nuevos</span>` : ""}</div>
         <ol class="lead-timeline">${seq.steps.map((p) => {
           acum += p.delay_minutes;
-          return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 70))}</li>`;
+          return `<li><strong>En ${formatearMomento(acum)}</strong>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
         }).join("")}</ol>
         <div class="lead-estado" id="detalle-leads-estado"></div>
       </div>

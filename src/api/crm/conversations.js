@@ -123,16 +123,21 @@ async function handler({ request, env, agent }) {
         lm.type AS last_type,
         lm.direction AS last_direction,
         seg.pendientes AS seg_pendientes,
-        seg.proximo AS seg_proximo
+        seg.proximo AS seg_proximo,
+        seg.auto_proximo AS seg_auto_proximo
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
-     -- Seguimientos manuales pendientes (ni envío masivo ni el automático de
-     -- leads) para la etiqueta de la lista: una sola pasada por los
-     -- pendientes (índice status, send_at), no una subconsulta por chat.
+     -- Seguimientos pendientes para las etiquetas de la lista: los manuales
+     -- (ni envío masivo ni la secuencia de leads) y, aparte, la hora del
+     -- próximo seguimiento automático de bienvenida del lead nuevo. Una sola
+     -- pasada por los pendientes (índice status, send_at).
      LEFT JOIN (
-       SELECT conversation_id, COUNT(*) AS pendientes, MIN(send_at) AS proximo
+       SELECT conversation_id,
+         SUM(COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?) AS pendientes,
+         MIN(CASE WHEN COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ? THEN send_at END) AS proximo,
+         MIN(CASE WHEN created_by = ? THEN send_at END) AS auto_proximo
        FROM scheduled_messages
-       WHERE status = 'pendiente' AND batch_id IS NULL AND COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
+       WHERE status = 'pendiente' AND batch_id IS NULL
        GROUP BY conversation_id
      ) seg ON seg.conversation_id = conv.id
      -- Un solo salto al último mensaje (índice conversation_id, id) en vez de
@@ -142,7 +147,7 @@ async function handler({ request, env, agent }) {
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT ? OFFSET ?`
   )
-    .bind(...(clave ? [`%${clave}%`] : []), ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ...params, limite + 1, offset)
+    .bind(...(clave ? [`%${clave}%`] : []), ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, ...params, limite + 1, offset)
     .all();
 
   const hayMas = results.length > limite;
