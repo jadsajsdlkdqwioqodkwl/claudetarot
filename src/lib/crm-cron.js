@@ -13,12 +13,43 @@
 import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "./crm-send.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
+import { ajustarAlHorario } from "./horario.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
 
+/**
+ * Corre antes de mandar: todo lo pendiente que caería entre las 23:30 y las
+ * 06:00 (Lima) se reprograma según horario.js (a las 06:00 si la ventana de
+ * 24 h sigue abierta; si no, a las 23:29; si tampoco se puede, se cancela).
+ */
+export async function acomodarAlHorario(env) {
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT s.id, s.send_at, s.template_name, conv.last_inbound_at
+     FROM scheduled_messages s JOIN conversations conv ON conv.id = s.conversation_id
+     WHERE s.status = 'pendiente' ORDER BY s.send_at ASC LIMIT 500`
+  ).all();
+  const ahora = Date.now();
+  const cambios = [];
+  for (const s of results) {
+    const envio = new Date(s.send_at.includes("T") ? s.send_at : s.send_at.replace(" ", "T") + "Z").getTime();
+    if (Number.isNaN(envio)) continue;
+    const vence = s.template_name || !s.last_inbound_at
+      ? null
+      : new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;
+    const nuevo = ajustarAlHorario(Math.max(envio, ahora), vence, ahora, env.HORARIO_ENVIO);
+    if (nuevo === null) {
+      cambios.push(env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'").bind(s.id));
+    } else if (nuevo !== Math.max(envio, ahora)) {
+      cambios.push(env.CRM_DB.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ? AND status = 'pendiente'").bind(new Date(nuevo).toISOString(), s.id));
+    }
+  }
+  if (cambios.length) await env.CRM_DB.batch(cambios);
+}
+
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
+  await acomodarAlHorario(env).catch((err) => console.error("Horario de envío:", err.message));
 
   // El media puede venir de tres lados: subido directo al programar el
   // seguimiento (s.media_key), o de la respuesta rápida elegida — su primera

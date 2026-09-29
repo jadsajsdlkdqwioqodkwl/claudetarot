@@ -768,5 +768,20 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("en empate gana la primera (3114)", elegirClaveShalom(["3114", "3144", "3143"], []) === "3114");
 }
 
+/* Horario de envío: nada sale entre 23:30 y 06:00 (Lima). */
+{
+  const { ajustarAlHorario } = await import("../src/lib/horario.js");
+  const L = (t) => Date.parse(t + "-05:00");
+  const ahora = L("2026-09-29T20:00");
+  check("de día no se mueve", ajustarAlHorario(L("2026-09-29T15:00"), L("2026-09-30T10:00"), ahora) === L("2026-09-29T15:00"));
+  check("pasadas las 23:30 se corre a las 06:00 si la ventana sigue abierta",
+    ajustarAlHorario(L("2026-09-29T23:45"), L("2026-09-30T10:00"), ahora) === L("2026-09-30T06:00"));
+  check("si la ventana cierra antes de las 06:00 se adelanta a las 23:29",
+    ajustarAlHorario(L("2026-09-30T02:00"), L("2026-09-30T05:00"), ahora) === L("2026-09-29T23:29"));
+  check("si ya no hay hora posible se cancela",
+    ajustarAlHorario(L("2026-09-30T01:00"), L("2026-09-30T05:00"), L("2026-09-30T00:30")) === null);
+  check("una plantilla de madrugada sale a las 06:00", ajustarAlHorario(L("2026-09-30T02:00"), null, ahora) === L("2026-09-30T06:00"));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

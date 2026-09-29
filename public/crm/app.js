@@ -35,6 +35,10 @@ const estado = {
   filtroAgente: "",
   filtroEtiqueta: "",
   filtroTexto: "",
+  filtroDias: 0,
+  buscarEn: "",
+  limiteLista: 200,
+  hayMasChats: false,
   archivoAdjunto: null,
   rapidaPendiente: null,
   // La respuesta rápida cargada en el escribidor: al mandarla, el servidor
@@ -1064,6 +1068,9 @@ function sincronizar() {
   else if (estado.filtroAgente) params.set("agente", estado.filtroAgente);
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
+  if (estado.filtroDias) params.set("dias", estado.filtroDias);
+  if (estado.filtroTexto && estado.buscarEn) params.set("en", estado.buscarEn);
+  if (estado.limiteLista > 200) params.set("limite", estado.limiteLista);
   // Con la pestaña oculta no se pide el chat: eso lo marcaría leído sin que nadie lo vea.
   const chatId = document.hidden ? null : estado.conversacionActivaId;
   if (chatId) params.set("chat", chatId);
@@ -1076,6 +1083,7 @@ function sincronizar() {
   const promesa = (async () => {
     const data = await pedir(`/api/crm/conversations?${clave}`);
     estado.conversaciones = data.conversations;
+    estado.hayMasChats = Boolean(data.hay_mas);
     for (const [id, local] of asignacionesLocales) {
       if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
       const conv = estado.conversaciones.find((x) => x.conversation_id === id);
@@ -1259,7 +1267,7 @@ function pintarLista() {
   const cont = $("#conversaciones");
   cont.innerHTML = "";
   for (const c of estado.conversaciones) {
-    const nombre = c.profile_name || c.wa_id;
+    const nombre = c.contact_name || c.profile_name || c.wa_id;
     const div = document.createElement("div");
     const seleccionado = estado.seleccionados.has(c.conversation_id);
     const noLeidos = sinLeer(c);
@@ -1267,6 +1275,10 @@ function pintarLista() {
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
+    // Buscando: en vez del último mensaje, el mensaje donde coincidió, resaltado.
+    const previewHtml = estado.filtroTexto && c.coincidencia
+      ? `${icon("search")} ${resaltarBusqueda(c.coincidencia.replace(/\s+/g, " "))}`
+      : estado.filtroTexto ? resaltarBusqueda(prefijoYo + previewTexto) : escapar(prefijoYo + previewTexto);
 
     div.innerHTML = `
       <input type="checkbox" class="conv-check" ${seleccionado ? "checked" : ""} />
@@ -1277,7 +1289,7 @@ function pintarLista() {
           <span class="hora">${horaCorta(c.last_message_at)}</span>
         </div>
         <div class="fila2">
-          <span class="preview">${escapar(prefijoYo + previewTexto)}</span>
+          <span class="preview">${previewHtml}</span>
           ${noLeidos ? `<span class="badge">${noLeidos}</span>` : ""}
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
@@ -1300,6 +1312,20 @@ function pintarLista() {
       clicEstrella(c);
     });
     cont.appendChild(div);
+  }
+  if (!estado.conversaciones.length && estado.filtroTexto) {
+    cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">Nada con "${escapar(estado.filtroTexto)}"${estado.filtroDias ? " en ese periodo. Prueba con Todo el historial." : "."}</p>`);
+  }
+  if (estado.hayMasChats) {
+    const mas = document.createElement("button");
+    mas.type = "button";
+    mas.className = "cargar-mas-chats";
+    mas.textContent = "Cargar más chats";
+    mas.addEventListener("click", () => {
+      estado.limiteLista = Math.min((estado.limiteLista || 200) + 200, 2000);
+      cargarConversaciones();
+    });
+    cont.appendChild(mas);
   }
 }
 
@@ -1386,8 +1412,43 @@ function pintarEstrellaHeader(c) {
 
 $("#buscar").addEventListener("input", debounce((e) => {
   estado.filtroTexto = e.target.value.trim();
+  estado.limiteLista = 200;
+  $("#buscador").classList.toggle("buscando", Boolean(estado.filtroTexto));
   cargarConversaciones();
 }, 300));
+$("#buscar-dias").addEventListener("change", (e) => {
+  estado.filtroDias = Number(e.target.value) || 0;
+  estado.limiteLista = 200;
+  cargarConversaciones();
+});
+$("#buscar-en").addEventListener("change", (e) => {
+  estado.buscarEn = e.target.value;
+  cargarConversaciones();
+});
+
+/** El texto escapado con las palabras buscadas resaltadas (sin importar tildes ni mayúsculas). */
+function resaltarBusqueda(texto) {
+  const palabras = (estado.filtroTexto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
+  const chars = [...String(texto)];
+  if (!palabras.length) return escapar(texto);
+  // Cada carácter original a su versión sin tilde (una letra por carácter).
+  const limpio = chars.map((ch) => ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().slice(0, 1) || " ").join("");
+  const dentro = new Array(chars.length).fill(false);
+  for (const w of palabras) {
+    let i = limpio.indexOf(w);
+    while (i !== -1) {
+      for (let k = i; k < i + w.length; k++) dentro[k] = true;
+      i = limpio.indexOf(w, i + w.length);
+    }
+  }
+  let out = "";
+  chars.forEach((ch, i) => {
+    if (dentro[i] && !dentro[i - 1]) out += "<mark>";
+    out += escapar(ch);
+    if (dentro[i] && !dentro[i + 1]) out += "</mark>";
+  });
+  return out;
+}
 
 function pintarFiltros() {
   $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta);

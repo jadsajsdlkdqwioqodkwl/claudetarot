@@ -80,7 +80,21 @@
     </header>
     <div id="buscador">
       <span class="icono-buscar"></span>
-      <input type="text" id="buscar" placeholder="Buscar contacto…" />
+      <input type="text" id="buscar" placeholder="Buscar nombre, número, DNI, dirección o lo que dijo…" />
+      <div id="buscador-opciones">
+        <select id="buscar-dias" title="Desde cuándo">
+          <option value="0">Todo el historial</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="90">Últimos 3 meses</option>
+          <option value="180">Últimos 6 meses</option>
+          <option value="365">Último año</option>
+        </select>
+        <select id="buscar-en" title="Dónde buscar las palabras">
+          <option value="">En todo el chat</option>
+          <option value="cliente">Solo lo que dijo el cliente</option>
+        </select>
+      </div>
     </div>
     <div id="filtros">
       <button data-mine="" class="activo">Todos</button>

@@ -3,7 +3,15 @@
  * con el contacto y el último mensaje, ordenadas por actividad reciente.
  * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta)
  * &agente=Nombre (las de esa asesora, dueña o compartiendo)
- * &etiqueta=contact|lead|purchase &q=texto
+ * &etiqueta=contact|lead|purchase &q=texto &dias=N (0 = todo) &offset=N
+ *
+ * Búsqueda (&q): sin tildes ni mayúsculas, por palabras (todas tienen que
+ * aparecer, cada una en cualquier lado): nombre, número (con o sin 51),
+ * notas, clave Shalom, anuncio, asesora y el TEXTO de los mensajes (un DNI,
+ * una dirección, "amuleto"…). Si coincidió en un mensaje, la fila trae ese
+ * extracto en `coincidencia`. &dias limita a chats con actividad en los
+ * últimos N días; &en=cliente busca solo en lo que escribió el cliente;
+ * &limite=N trae hasta N (200 por defecto, máx. 2000) y &offset salta.
  * Con &chat=<id> trae además los últimos mensajes de ese chat (y lo marca
  * leído): el poll del CRM es un solo request en vez de dos — el plan gratis
  * de Workers tiene tope de requests por día.
@@ -12,6 +20,30 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
 import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
+
+/** Minúsculas y sin tildes, en SQL (SQLite no trae unaccent y su lower() no toca las tildes). */
+const TILDES = [["á", "a"], ["é", "e"], ["í", "i"], ["ó", "o"], ["ú", "u"], ["ü", "u"], ["ñ", "n"],
+  ["Á", "a"], ["É", "e"], ["Í", "i"], ["Ó", "o"], ["Ú", "u"], ["Ü", "u"], ["Ñ", "n"]];
+export function norm(col) {
+  return TILDES.reduce((expr, [de, a]) => `replace(${expr}, '${de}', '${a}')`, `lower(COALESCE(${col}, ''))`);
+}
+
+/**
+ * Qué mensajes cuentan al buscar: nunca los automáticos (la bienvenida y el
+ * seguimiento dicen lo mismo en todos los chats y taparían todo); con
+ * &en=cliente, solo lo que escribió el cliente.
+ */
+const FILTRO_MENSAJES = (soloCliente, t) => soloCliente
+  ? `${t}.direction = 'in'`
+  : `(${t}.direction = 'in' OR (COALESCE(${t}.sent_by, '') NOT IN ('Bienvenida automática', 'Seguimiento automático') AND COALESCE(${t}.sent_by, '') NOT LIKE 'Prueba de bienvenida%'))`;
+
+/** Las palabras de la búsqueda, sin tildes; el número sin espacios ni "+". Hasta 5. */
+export function tokensBusqueda(q) {
+  const limpio = String(q || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/(\d)[\s.-]+(?=\d)/g, "$1").replace(/\+/g, "");
+  return [...new Set(limpio.split(/[^a-z0-9@]+/).filter((t) => t.length >= 2))].slice(0, 5);
+}
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -38,11 +70,30 @@ async function handler({ request, env, agent }) {
     condiciones.push("instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ?) > 0");
     params.push(` ${etiqueta} `);
   }
-  if (q) {
-    condiciones.push("(c.profile_name LIKE ? OR c.wa_id LIKE ?)");
-    params.push(`%${q}%`, `%${q}%`);
+  const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
+  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+  // Cuántos traer: 200 por defecto; "Cargar más" en el CRM sube de a 200 (hasta 2000).
+  const limite = Math.min(Math.max(Number(url.searchParams.get("limite")) || 200, 50), 2000);
+  const soloCliente = url.searchParams.get("en") === "cliente";
+  if (dias) {
+    condiciones.push("conv.last_message_at >= datetime('now', ?)");
+    params.push(`-${dias} days`);
+  }
+  const tokens = tokensBusqueda(q);
+  for (const t of tokens) {
+    const tel = /^\d{4,}$/.test(t) ? (t.length === 11 && t.startsWith("51") ? t.slice(2) : t) : null;
+    condiciones.push(`(
+      ${norm("c.profile_name")} LIKE ? OR ${norm("c.name")} LIKE ? OR ${norm("c.notes")} LIKE ?
+      OR ${norm("c.ad_headline")} LIKE ? OR ${norm("conv.assigned_agent")} LIKE ?
+      OR COALESCE(c.shalom_code, '') LIKE ? ${tel ? "OR c.wa_id LIKE ?" : ""}
+      OR conv.id IN (SELECT m.conversation_id FROM messages m WHERE ${norm("m.body")} LIKE ? AND ${FILTRO_MENSAJES(soloCliente, "m")})
+    )`);
+    const like = `%${t}%`;
+    params.push(like, like, like, like, like, like, ...(tel ? [`%${tel}%`] : []), like);
   }
   const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+  // Para mostrar dónde coincidió: el mensaje más reciente con la palabra más larga.
+  const clave = [...tokens].sort((a, b) => b.length - a.length)[0] || null;
 
   // Primero el chat (marca leído), así la lista ya sale con su unread_count en 0.
   const chat = chatId ? await leerMensajes(env, chatId) : null;
@@ -65,6 +116,8 @@ async function handler({ request, env, agent }) {
         c.ad_headline,
         c.notes,
         c.shalom_code,
+        c.name AS contact_name,
+        ${clave ? `(SELECT substr(m2.body, 1, 200) FROM messages m2 WHERE m2.conversation_id = conv.id AND ${norm("m2.body")} LIKE ? AND ${FILTRO_MENSAJES(soloCliente, "m2")} ORDER BY m2.id DESC LIMIT 1)` : "NULL"} AS coincidencia,
         lm.body AS last_body,
         lm.type AS last_type,
         lm.direction AS last_direction,
@@ -86,12 +139,16 @@ async function handler({ request, env, agent }) {
      LEFT JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
      ${where}
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
-     LIMIT 200`
+     LIMIT ? OFFSET ?`
   )
-    .bind(ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ...params)
+    .bind(...(clave ? [`%${clave}%`] : []), ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ...params, limite + 1, offset)
     .all();
 
-  return json(chat ? { conversations: results, chat: { conversation_id: chatId, ...chat } } : { conversations: results });
+  const hayMas = results.length > limite;
+  const conversations = hayMas ? results.slice(0, limite) : results;
+  return json(chat
+    ? { conversations, hay_mas: hayMas, chat: { conversation_id: chatId, ...chat } }
+    : { conversations, hay_mas: hayMas });
 }
 
 export const onRequestGet = conAuth(handler);

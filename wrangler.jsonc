@@ -136,6 +136,10 @@
     "SHALOM_AGENTES": "danitza",
     // Claves de recojo de Shalom que se reparten entre los pedidos (una por pedido).
     "CLAVES_SHALOM": "3114,3144,3143",
+    // Horario en que salen los mensajes programados (hora de Lima). Fuera de
+    // él se reprograman: a las 06:00 si la ventana de 24 h sigue abierta, si
+    // no a las 23:29, y si ya no se puede se cancelan (ver src/lib/horario.js).
+    "HORARIO_ENVIO": "06:00-23:30",
 
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el
