@@ -92,6 +92,24 @@ export async function onRequestGet(context) {
   }
 
   const driveId = venta?.["Drive ID"] || "";
+
+  // Las boletas que sube el asesor (la Routine que lee las fotos de Shalom)
+  // viven en R2, no en Drive: "r2:boletas/TS-…". Solo se acepta la de este
+  // mismo código, así una celda mal escrita no puede servir la foto de otro.
+  if (driveId.startsWith("r2:")) {
+    const clave = driveId.slice(3);
+    const obj = clave === `boletas/${codigo}` && env.CRM_MEDIA ? await env.CRM_MEDIA.get(clave) : null;
+    if (!obj) return error("No pudimos cargar la foto del voucher.", 404);
+    return new Response(obj.body, {
+      headers: {
+        "Content-Type": obj.httpMetadata?.contentType || "image/jpeg",
+        "Cache-Control": `public, max-age=${CACHE_SEGUNDOS}`,
+        "X-Content-Type-Options": "nosniff",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    });
+  }
+
   if (!RE_DRIVE_ID.test(driveId)) return error("Este envío todavía no tiene voucher.", 404);
 
   const imagen = await traerImagen(driveId);

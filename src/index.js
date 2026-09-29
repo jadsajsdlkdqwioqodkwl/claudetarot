@@ -90,6 +90,7 @@ import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-passwor
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost } from "./api/asesor.js";
+import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 
 const ROUTES = {
@@ -102,6 +103,7 @@ const ROUTES = {
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
   "/api/asesor/avisos": { POST: asesorAvisosPost },
   "/api/asesor/sugerencias": { POST: asesorSugerenciasPost },
+  "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
 
   "/api/crm/login": { POST: crmLogin },

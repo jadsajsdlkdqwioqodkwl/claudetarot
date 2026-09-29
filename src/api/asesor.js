@@ -44,6 +44,14 @@ function igualesSinFiltrar(a, b) {
   return d === 0;
 }
 
+export async function autorizadoAsesor(request, env) {
+  return autorizado(request, env);
+}
+
+export async function dentroDelLimiteAsesor(env, ip) {
+  return dentroDelLimite(env, ip);
+}
+
 async function autorizado(request, env) {
   const esperado = String(env.ASESOR_CLAVE_SHA256 || "").toLowerCase();
   const clave = request.headers.get("x-asesor-clave") || "";
