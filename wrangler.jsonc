@@ -129,6 +129,9 @@
     // CARRITO_MENSAJE_LIMA / CARRITO_MENSAJE_PROVINCIA (opcionales) cambian
     // el texto; {nombre} = su primer nombre.
     "CARRITO_AUTO_HORAS": "",
+    // Plantilla utility aprobada en Meta para mandar el link de seguimiento
+    // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
+    "PLANTILLA_ENVIO": "",
 
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el

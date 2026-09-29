@@ -118,6 +118,7 @@ function debounce(fn, ms) {
 
 function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
+  $("#btn-sugerencias").innerHTML = icon("sparkle");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
@@ -3765,7 +3766,7 @@ async function actualizarConteoSugerencias() {
   try {
     const { pendientes } = await pedir("/api/crm/sugerencias");
     btn.style.display = pendientes ? "" : "none";
-    btn.innerHTML = `✨<span class="badge-sugerencias">${pendientes}</span>`;
+    btn.innerHTML = `${icon("sparkle")}<span class="badge-sugerencias">${pendientes}</span>`;
   } catch {
     btn.style.display = "none";
   }
@@ -3790,9 +3791,10 @@ function pintarSugerencias(lista) {
   }
   cont.innerHTML = lista.map((s) => {
     const esRapida = s.tipo === "respuesta_rapida";
+    const esEnvio = s.tipo === "envio";
     const cabecera = esRapida
-      ? `⚡ Nueva respuesta rápida: <input type="text" class="sug-titulo" value="${escapar(s.titulo || "")}" maxlength="80" />`
-      : `💬 ${escapar(s.nombre || "Cliente")} <span class="sub">+${escapar(s.wa_id || "")}${s.assigned_agent ? ` · ${escapar(s.assigned_agent)}` : ""}</span>`;
+      ? `<span class="sug-tipo">${icon("bolt")} Respuesta rápida nueva</span><input type="text" class="sug-titulo" value="${escapar(s.titulo || "")}" maxlength="80" placeholder="Título" />`
+      : `<span class="sug-tipo">${icon(esEnvio ? "bag" : "chat")} ${escapar(s.nombre || "Cliente")}</span><span class="sub">+${escapar(s.wa_id || "")}${s.assigned_agent ? ` · ${escapar(s.assigned_agent)}` : ""}</span>${esEnvio ? `<span class="sug-etiqueta">Envío</span>` : ""}`;
     const destinos = esRapida && s.destinatarios.length
       ? `<div class="sug-destinos"><div class="sub">Mandársela a:</div>${s.destinatarios.map((d) => `
           <label><input type="checkbox" class="sug-destino" value="${d.conversation_id}" checked /> ${escapar(d.nombre || d.wa_id)}</label>`).join("")}</div>`
@@ -3804,16 +3806,19 @@ function pintarSugerencias(lista) {
         <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
         ${destinos}
         <div class="sug-acciones">
-          ${s.conversation_id ? `<button type="button" class="sug-abrir">Abrir chat</button>` : ""}
-          <button type="button" class="sug-descartar cancelar">🗑️ Descartar</button>
-          <button type="button" class="sug-programar">🕐 Programar</button>
-          <button type="button" class="sug-ahora crear">📤 Enviar ahora</button>
+          <span class="sub sug-origen">${escapar(s.origen || "")}</span>
+          ${s.conversation_id ? `<button type="button" class="sug-icono sug-abrir" title="Abrir chat">${icon("chat")}</button>` : ""}
+          <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
+          <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
+          <div class="sug-enviar-grupo">
+            <button type="button" class="sug-programar" title="Programar">${icon("clock")}</button>
+            <button type="button" class="sug-ahora" title="Enviar ahora">${icon("send")} Enviar</button>
+          </div>
         </div>
         <div class="sug-hora" hidden>
           <input type="datetime-local" class="sug-cuando" />
-          <button type="button" class="sug-confirmar-programa crear">Programar</button>
+          <button type="button" class="sug-confirmar-programa">${icon("clock")} Programar</button>
         </div>
-        <div class="sub">${escapar(s.origen || "")}</div>
       </div>`;
   }).join("");
 
@@ -3845,6 +3850,13 @@ function pintarSugerencias(lista) {
         alert(err.message);
       }
     };
+    card.querySelector(".sug-copiar").addEventListener("click", async (e) => {
+      try {
+        await navigator.clipboard.writeText(card.querySelector(".sug-texto").value);
+        e.currentTarget.classList.add("copiado");
+        setTimeout(() => e.target.closest("button")?.classList.remove("copiado"), 1200);
+      } catch { alert("No se pudo copiar."); }
+    });
     card.querySelector(".sug-ahora").addEventListener("click", (e) => accion("aprobar", e.currentTarget, { modo: "ahora" }));
     card.querySelector(".sug-programar").addEventListener("click", () => {
       const caja = card.querySelector(".sug-hora");

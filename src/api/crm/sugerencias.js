@@ -14,11 +14,18 @@
  *       elegido, se le manda o programa ese texto.
  *   Los chats con la ventana de 24 h cerrada no se programan: vuelven en
  *   `saltados` con el motivo, para que la vendedora use una plantilla.
+ *
+ * Tipo "envio" (link de seguimiento con la boleta de Shalom lista): solo lo
+ * ve y lo manda el admin. Como la boleta sale días después, casi siempre la
+ * ventana ya cerró: entonces "Enviar ahora" usa la plantilla utility de
+ * PLANTILLA_ENVIO ({{1}} = nombre, {{2}} = link), si está configurada.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto } from "../../lib/crm-send.js";
+import { enviarTemplate } from "../../lib/whatsapp.js";
+import { registrarMensajeSaliente } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -34,12 +41,15 @@ const parsear = (texto) => {
   }
 };
 
-async function get({ env }) {
+const esAdmin = (agent) => !agent || agent.role === "admin";
+
+async function get({ env, agent }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
-  ).all();
+     WHERE s.estado = 'pendiente' AND (? OR s.tipo != 'envio')
+     ORDER BY s.tipo DESC, s.created_at DESC LIMIT 200`
+  ).bind(esAdmin(agent) ? 1 : 0).all();
   return json({
     pendientes: results.length,
     sugerencias: results.map((s) => ({ ...s, destinatarios: parsear(s.destinatarios) }))
@@ -70,6 +80,27 @@ async function programar(env, conversationId, texto, quien, cuando) {
   return null;
 }
 
+/** Ventana cerrada: el link sale con la plantilla utility aprobada en Meta. */
+async function conPlantilla(env, s, quien) {
+  if (!env.PLANTILLA_ENVIO) {
+    return "Pasaron más de 24 h y todavía no hay plantilla de envío aprobada (PLANTILLA_ENVIO): no se le puede escribir gratis.";
+  }
+  const conv = await env.CRM_DB.prepare(
+    "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
+  ).bind(s.conversation_id).first();
+  if (!conv) return "No encontré el chat.";
+  const nombre = (s.nombre || "").split(/\s+/)[0] || "estimad@";
+  try {
+    const waMessageId = await enviarTemplate(env, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]);
+    await registrarMensajeSaliente(env.CRM_DB, s.conversation_id, {
+      waMessageId, type: "template", body: `Plantilla: ${env.PLANTILLA_ENVIO} · ${s.titulo}`, sentBy: quien
+    });
+    return null;
+  } catch (err) {
+    return `WhatsApp rechazó la plantilla: ${err.message}`;
+  }
+}
+
 async function post({ request, env, agent }) {
   const payload = await request.json().catch(() => null);
   const id = Number(payload?.id);
@@ -77,6 +108,7 @@ async function post({ request, env, agent }) {
 
   const s = await env.CRM_DB.prepare("SELECT * FROM asesor_sugerencias WHERE id = ?").bind(id).first();
   if (!s) return json({ error: "Esa sugerencia ya no existe." }, 404);
+  if (s.tipo === "envio" && !esAdmin(agent)) return json({ error: "Solo el admin maneja los envíos." }, 403);
   if (s.estado !== "pendiente") return json({ error: `Ya fue ${s.estado} por ${s.resuelto_por || "otra persona"}.` }, 409);
 
   const quien = agent?.displayName || agent?.username || "CRM";
@@ -102,9 +134,13 @@ async function post({ request, env, agent }) {
   const programados = [];
   const saltados = [];
 
-  if (s.tipo === "seguimiento") {
+  if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
-    const error = await programar(env, s.conversation_id, texto, quien, cuando);
+    let error = await programar(env, s.conversation_id, texto, quien, cuando);
+    // Envío con la ventana cerrada: sale con la plantilla.
+    if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {
+      error = await conPlantilla(env, s, quien);
+    }
     if (error) return json({ error }, 422);
     programados.push(s.conversation_id);
   } else {

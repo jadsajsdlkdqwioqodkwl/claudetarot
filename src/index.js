@@ -89,7 +89,7 @@ import { onRequestPost as crmExportResetPost } from "./api/crm/export-reset.js";
 import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-password.js";
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
-import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost } from "./api/asesor.js";
+import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
 import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 
@@ -103,6 +103,7 @@ const ROUTES = {
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
   "/api/asesor/avisos": { POST: asesorAvisosPost },
   "/api/asesor/sugerencias": { POST: asesorSugerenciasPost },
+  "/api/asesor/contexto": { GET: asesorContextoGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
 

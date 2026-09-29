@@ -189,6 +189,8 @@ export async function onRequestPost({ request, env }) {
  * { origen: "asesor 16:30",
  *   sugerencias: [
  *     { tipo: "seguimiento", whatsapp, nombre, motivo, texto },
+ *     { tipo: "envio", whatsapp, nombre, motivo, texto, link },   // boleta lista: solo la ve el admin
+
  *     { tipo: "respuesta_rapida", titulo, texto, motivo,
  *       destinatarios: [{ whatsapp, nombre }] } ] }
  *
@@ -240,6 +242,8 @@ export async function onRequestPostSugerencias({ request, env }) {
       continue;
     }
 
+    const tipo = s.tipo === "envio" ? "envio" : "seguimiento";
+    const link = tipo === "envio" ? String(s.link || "").slice(0, 200) || null : null;
     const wa = String(s.whatsapp || "").replace(/\D/g, "");
     const conv = await convDe(env, wa);
     if (!conv) {
@@ -247,23 +251,43 @@ export async function onRequestPostSugerencias({ request, env }) {
       continue;
     }
     const previa = await env.CRM_DB.prepare(
-      "SELECT id FROM asesor_sugerencias WHERE conversation_id = ? AND tipo = 'seguimiento' AND estado = 'pendiente'"
+      "SELECT id FROM asesor_sugerencias WHERE conversation_id = ? AND tipo = ? AND estado = 'pendiente'"
     )
-      .bind(conv.id)
+      .bind(conv.id, tipo)
       .first();
     if (previa) {
-      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, motivo = ?, origen = ?, created_at = datetime('now') WHERE id = ?")
-        .bind(texto, motivo, origen, previa.id)
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), created_at = datetime('now') WHERE id = ?")
+        .bind(texto, motivo, origen, link, previa.id)
         .run();
       res.actualizadas++;
     } else {
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, texto, motivo, origen) VALUES ('seguimiento', ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, motivo, origen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
       )
-        .bind(conv.id, wa, String(s.nombre || "").slice(0, 80), texto, motivo, origen)
+        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, motivo, origen)
         .run();
       res.creadas++;
     }
   }
   return json(res);
+}
+
+/**
+ * GET /api/asesor/contexto — lo que la Routine necesita saber del negocio en
+ * vivo: las respuestas rápidas vigentes (el texto exacto que usan las
+ * vendedoras) y cuáles son las sugerencias que siguen pendientes, para no
+ * repetirlas. Solo lectura.
+ */
+export async function onRequestGetContexto({ request, env }) {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
+  if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
+  if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
+  const [rapidas, pendientes] = await Promise.all([
+    env.CRM_DB.prepare("SELECT id, title, body FROM quick_replies ORDER BY id").all(),
+    env.CRM_DB.prepare(
+      "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
+    ).all()
+  ]);
+  return json({ respuestas_rapidas: rapidas.results, sugerencias_pendientes: pendientes.results });
 }

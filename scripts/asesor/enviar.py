@@ -22,12 +22,14 @@ salida.json:
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": ""}],
   "respuestas_rapidas": [{"titulo": "", "texto": "", "motivo": "",
                           "destinatarios": [{"whatsapp": "", "nombre": ""}]}],
+  "envios": [{"whatsapp": "", "nombre": "", "link": "https://…/TS-…", "motivo": "", "mensaje": ""}],
   "origen": "asesor 16:30"
 }
 
 Cada mensaje llega por Telegram a todo el equipo Y queda en ✨ Sugerencias del
 CRM, donde una persona lo aprueba (se programa) o lo descarta. Las respuestas
-rápidas propuestas solo van a ✨ Sugerencias.
+rápidas propuestas solo van a ✨ Sugerencias. Los "envios" (link con la boleta
+ya lista) no van a Telegram ni a las vendedoras: solo al admin en ✨ Sugerencias.
 """
 import base64, glob, html, json, os, subprocess, sys, time, urllib.error, urllib.request
 
@@ -129,7 +131,7 @@ def main():
             print(f"\n→ {m.get('nombre')} (+{m.get('whatsapp')}) — {m.get('motivo', '')}\n{m.get('mensaje')}")
         print("\n(prueba, nada salió)")
         return
-    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not datos.get("respuestas_rapidas"):
+    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not datos.get("respuestas_rapidas") and not datos.get("envios"):
         print("Nada que avisar.")
         return
     mensajes = cuerpo.pop("mensajes")
@@ -139,6 +141,9 @@ def main():
     propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
                    "motivo": m.get("motivo"), "texto": m.get("mensaje")} for m in mensajes]
     propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
+    # Links con la boleta lista: solo al admin, en el CRM. No van a Telegram.
+    propuestas += [{"tipo": "envio", "whatsapp": e.get("whatsapp"), "nombre": e.get("nombre"), "link": e.get("link"),
+                    "motivo": e.get("motivo"), "texto": e.get("mensaje")} for e in datos.get("envios", [])]
     for i in range(0, len(propuestas), 20):
         r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "sugerencias": propuestas[i:i + 20]}, SUGERENCIAS)
         total["sugerencias"] += r.get("creadas", 0) + r.get("actualizadas", 0)

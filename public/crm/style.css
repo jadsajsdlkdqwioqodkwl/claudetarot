@@ -731,16 +731,32 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #editor-media.recortando #em-restablecer,
 #editor-media.recortando #em-quitar { display: none; }
 
-/* ✨ Sugerencias del asesor */
-#btn-sugerencias { position: relative; font-size: 18px; }
-.badge-sugerencias { position: absolute; top: -2px; right: -4px; background: #e11d48; color: #fff; border-radius: 999px; font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center; }
-.tarjeta-sugerencia { border: 1px solid var(--borde, #ddd); border-radius: var(--radio-m, 10px); padding: 10px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
-.tarjeta-sugerencia .sub { font-size: 12px; opacity: .7; }
+/* Sugerencias del asesor */
+#btn-sugerencias { position: relative; }
+.badge-sugerencias { position: absolute; top: -2px; right: -4px; background: #e11d48; color: #fff; border-radius: var(--radio-full); font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center; }
+.tarjeta-sugerencia { border: 1px solid var(--borde); border-radius: var(--radio-m); padding: var(--espacio-m); margin: 0 0 var(--espacio-m); display: flex; flex-direction: column; gap: var(--espacio-s); background: var(--panel); }
+.tarjeta-sugerencia .sub { font-size: 12px; color: var(--gris); }
 .tarjeta-sugerencia textarea { width: 100%; box-sizing: border-box; font: inherit; }
-.sug-cabecera { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sug-cabecera { display: flex; gap: var(--espacio-s); align-items: center; flex-wrap: wrap; }
+.sug-tipo { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.sug-tipo .icono-svg { color: var(--verde-osc); }
 .sug-titulo { flex: 1 1 100%; min-width: 0; }
 .sug-destinos { display: flex; flex-direction: column; gap: 2px; max-height: 160px; overflow-y: auto; }
 .sug-destinos label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
-.sug-acciones { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
-.sug-hora { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 6px; }
+.sug-acciones { display: flex; gap: 4px; align-items: center; }
+.sug-origen { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sug-acciones button, .sug-hora button { cursor: pointer; font: inherit; display: inline-flex; align-items: center; gap: 6px; }
+.sug-icono { width: 36px; height: 36px; justify-content: center; border: 0; border-radius: var(--radio-full); background: transparent; color: var(--gris); }
+.sug-icono:hover { background: var(--hover); }
+.sug-descartar:hover { color: var(--peligro); }
+.sug-copiar.copiado { color: var(--verde-osc); background: var(--hover); }
+.sug-etiqueta { font-size: 11px; font-weight: 600; color: var(--verde-osc); border: 1px solid currentColor; border-radius: var(--radio-full); padding: 0 8px; }
+.sug-enviar-grupo { display: inline-flex; border-radius: var(--radio-full); overflow: hidden; margin-left: 4px; }
+.sug-enviar-grupo button { border: 0; height: 36px; color: #fff; background: var(--verde-osc); }
+.sug-programar { width: 38px; justify-content: center; border-right: 1px solid rgba(255,255,255,.3) !important; }
+.sug-ahora { padding: 0 14px 0 10px; font-weight: 600; }
+.sug-enviar-grupo button:hover { background: var(--verde-header); }
+.sug-hora { display: flex; gap: var(--espacio-s); justify-content: flex-end; align-items: center; }
 .sug-hora[hidden] { display: none; }
+.sug-hora input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); }
+.sug-hora button { border: 0; height: 34px; padding: 0 12px; border-radius: var(--radio-full); background: var(--verde-osc); color: #fff; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
