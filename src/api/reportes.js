@@ -6,7 +6,7 @@
  *      devuelve el link. Lo sube enviar.py, así el PDF no pasa por el modelo.
  * GET  /r/<id>.pdf           el PDF (quien tenga el link).
  * GET  /api/crm/reportes     (sesión de admin) los últimos reportes, para el
- *      botón Reportes del CRM.
+ *      botón Reportes del CRM. /api/asesor/reportes: lo mismo con la clave.
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
@@ -73,3 +73,10 @@ async function listar({ env, agent }) {
 }
 
 export const onRequestGetReportes = conAuth(listar);
+
+/** GET /api/asesor/reportes (x-asesor-clave): la misma lista, para las Routines. */
+export async function onRequestGetReportesAsesor({ request, env }) {
+  if (!(await dentroDelLimiteAsesor(env, request.headers.get("CF-Connecting-IP")))) return json({ error: "Demasiados intentos." }, 429);
+  if (!(await autorizadoAsesor(request, env))) return json({ error: "No autorizado." }, 401);
+  return listar({ env });
+}
