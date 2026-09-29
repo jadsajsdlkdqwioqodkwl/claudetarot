@@ -4,8 +4,10 @@ Embudo de ventas por WhatsApp, calculado sin IA, para el informe CRO diario.
     python3 scripts/asesor/embudo.py chats.xlsx --dias 7 --salida /tmp/cro
     ASESOR_CLAVE=... python3 scripts/asesor/embudo.py api --dias 7 --salida /tmp/cro
 
-Escribe /tmp/cro/embudo.json (números) y /tmp/cro/perdidos.txt (transcripciones
-cortas de los chats que llegaron lejos y no cerraron: ahí están las objeciones).
+Escribe /tmp/cro/embudo.json (números), /tmp/cro/perdidos.txt (transcripciones
+cortas de los chats que llegaron lejos y no cerraron: ahí están las objeciones)
+y /tmp/cro/sin_respuesta.txt (clientes que escribieron algo más que el saludo y
+a los que ninguna persona contestó: la fuga más barata de tapar).
 
 Etapas, por chat (la más alta a la que llegó):
   1 escribió            el cliente escribió (aunque sea el saludo del anuncio)
@@ -26,6 +28,7 @@ from preparar import leer_filas, RE_AUTO, RE_SALUDO  # noqa: E402
 
 RE_DESTINO = re.compile(r"lima|provincia|para (lima|provincia)|le podemos enviar mediante|para .{3,25} le podemos hacer envio", re.I)
 RE_PIDE_CIERRE = re.compile(r"ubicaci[oó]n|qui[eé]n lo va a recibir|confirma(r)? (el|la) (pago|captura|adelanto)|adelanto", re.I)
+RE_ARCHIVO = re.compile(r"^(WhatsApp (Image|Video)|IMG[-_]|VID[-_]).*\.(jpe?g|png|mp4|webp)$", re.I)
 RE_CERRO = re.compile(r"queda(do)? (todo )?agendad|le estamos enviando el comprobante|le env[ií]o el comprobante|su clave es|mañana mismo le estamos enviando", re.I)
 OBJECIONES = {
     "precio / caro": r"caro|descuento|rebaja|menos|79|precio real",
@@ -56,7 +59,25 @@ def main():
     for f in filas:
         chats.setdefault(f["wa"], []).append(f)
 
+    def linea(m):
+        cuerpo = re.sub(r"\s+", " ", m["msg"]).strip()
+        if not cuerpo or RE_ARCHIVO.match(cuerpo):
+            cuerpo = f"[{m['tipo']}]"
+        return f"{m['t'][5:16]} {'C' if m['quien'] == 'Cliente' else 'V'}: {cuerpo[:200]}"
+
+    def resumir(lineas):
+        """Junta las líneas iguales seguidas (5 fotos de referencias = una línea ×5)."""
+        out = []
+        for l in lineas:
+            base = l[12:]
+            if out and out[-1][0] == base:
+                out[-1][1] += 1
+            else:
+                out.append([base, 1, l])
+        return [l if n == 1 else f"{l} ×{n}" for _, n, l in out]
+
     etapas = Counter()
+    sin_respuesta = []
     por = {k: defaultdict(Counter) for k in ("anuncio", "vendedora", "apertura", "dia")}
     tiempos, objeciones, perdidos = [], Counter(), []
     for wa, ms in chats.items():
@@ -87,18 +108,24 @@ def main():
             por[k][v]["conversaron"] += etapa >= 2
             por[k][v]["cerraron"] += etapa >= 5
 
-        if humanos:
-            primero_cli = minutos(cli[0]["t"])
+        # Tiempo de respuesta medido desde la primera pregunta REAL del cliente
+        # (no el saludo automático del anuncio, que llega a cualquier hora).
+        real = next((m for m in cli if not RE_SALUDO.match(m["msg"].strip())), None)
+        if humanos and real:
+            primero_cli = minutos(real["t"])
             resp = next((minutos(m["t"]) for m in humanos if minutos(m["t"]) >= primero_cli), None)
             if resp is not None:
                 tiempos.append((resp - primero_cli, etapa >= 5))
+        # Escribió algo más que el saludo y NINGUNA persona le contestó: venta regalada.
+        if etapa >= 2 and not humanos:
+            lineas = [linea(m) for m in ms if m["quien"] == "Cliente" or not RE_AUTO.search(m["vend"])]
+            sin_respuesta.append(f"=== {wa} | {claves['anuncio']}\n" + "\n".join(resumir(lineas)[-8:]))
         for nombre, patron in OBJECIONES.items():
             if re.search(patron, texto_c, re.I):
                 objeciones[nombre] += 1
         if etapa in (3, 4):
-            lineas = [f"{m['t'][5:16]} {'C' if m['quien'] == 'Cliente' else 'V'}: {re.sub(chr(10), ' ', m['msg'])[:200] or '[' + m['tipo'] + ']'}"
-                      for m in ms if m["quien"] == "Cliente" or not RE_AUTO.search(m["vend"])]
-            perdidos.append(f"=== {wa} etapa {etapa} | {claves['anuncio']}\n" + "\n".join(lineas[-12:]))
+            lineas = [linea(m) for m in ms if m["quien"] == "Cliente" or not RE_AUTO.search(m["vend"])]
+            perdidos.append(f"=== {wa} etapa {etapa} | {claves['anuncio']}\n" + "\n".join(resumir(lineas)[-12:]))
 
     def tabla(d, minimo=3):
         filas_t = [{"clave": k, **v, "cierre_%": round(100 * v["cerraron"] / v["chats"], 1)} for k, v in d.items() if v["chats"] >= minimo]
@@ -113,6 +140,8 @@ def main():
         "cierre_si_respuesta_<=10min_%": round(100 * sum(rapidos) / len(rapidos), 1) if rapidos else None,
         "cierre_si_respuesta_>30min_%": round(100 * sum(lentos) / len(lentos), 1) if lentos else None,
         "respuestas_medidas": len(tiempos),
+        "minutos_primera_respuesta_mediana": sorted(t for t, _ in tiempos)[len(tiempos) // 2] if tiempos else None,
+        "escribieron_y_nadie_respondio": len(sin_respuesta),
         "objeciones": objeciones.most_common(),
         "por_anuncio": tabla(por["anuncio"]),
         "por_vendedora": tabla(por["vendedora"]),
@@ -124,8 +153,11 @@ def main():
         json.dump(salida, fh, ensure_ascii=False, indent=1)
     with open(os.path.join(a.salida, "perdidos.txt"), "w") as fh:
         fh.write("\n\n".join(perdidos[-60:]))
+    with open(os.path.join(a.salida, "sin_respuesta.txt"), "w") as fh:
+        fh.write("\n\n".join(sin_respuesta[-60:]))
     print(json.dumps({k: salida[k] for k in ("rango", "embudo", "objeciones")}, ensure_ascii=False, indent=1))
     print(f"perdidos.txt: {min(len(perdidos), 60)} chats que llegaron a etapa 3-4 y no cerraron")
+    print(f"sin_respuesta.txt: {len(sin_respuesta)} clientes escribieron algo más que el saludo y ninguna persona les contestó")
 
 
 if __name__ == "__main__":

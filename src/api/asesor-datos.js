@@ -67,7 +67,9 @@ export async function onRequestGetChats({ request, env }) {
     quien: m.direction === "in" ? "Cliente" : "Vendedor",
     vend: m.sent_by || "",
     tipo: m.type || "text",
-    msg: (m.body || m.file_name || "").slice(0, 2000),
+    // En fotos, videos y archivos el cuerpo es el pie de foto; el nombre del
+    // archivo ("WhatsApp Image 2026-…jpeg") solo mete ruido: se lee como [image].
+    msg: (m.body || (m.type === "document" ? m.file_name : "") || "").slice(0, 2000),
     anuncio: m.ad_headline || "",
     asesora: m.assigned_agent || "",
     embudo: m.meta_tags || ""

@@ -2467,13 +2467,29 @@ const tieneEtiqueta = (c, etiqueta) => ` ${c.meta_tags || ""} `.includes(` ${eti
 const ETAPAS = [["purchase", "Compra"], ["lead", "Interés"], ["contact", "Contacto"]];
 
 /** La etapa más avanzada del chat, como etiqueta en la lista. */
+/** "28/09" en hora de Lima, desde la fecha UTC de D1 (o una ISO). */
+function diaMesLima(fecha) {
+  if (!fecha) return "";
+  const d = new Date(fecha.includes("T") ? fecha : fecha.replace(" ", "T") + "Z");
+  if (Number.isNaN(d.getTime())) return "";
+  const l = new Date(d.getTime() - 5 * 3600 * 1000);
+  return `${String(l.getUTCDate()).padStart(2, "0")}/${String(l.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 function badgeEtapa(c) {
   const etapa = ETAPAS.find(([e]) => tieneEtiqueta(c, e));
-  return etapa ? `<span class="badge-etapa etapa-${etapa[0]}">${etapa[1]}</span>` : "";
+  if (!etapa) return "";
+  // La compra lleva el día en que se marcó: "Compra · 28/09".
+  const dia = etapa[0] === "purchase" ? diaMesLima(c.compra_at) : "";
+  return `<span class="badge-etapa etapa-${etapa[0]}"${dia ? ` title="Compra marcada el ${dia}"` : ""}>${etapa[1]}${dia ? ` · ${dia}` : ""}</span>`;
 }
 
 function ponerEtiquetaLocal(c, etiqueta) {
-  if (tieneEtiqueta(c, etiqueta)) return;
+  if (etiqueta === "purchase") {
+    const ahora = new Date().toISOString();
+    for (const x of [c, estado.conversaciones.find((y) => y.conversation_id === c.conversation_id)]) if (x) x.compra_at = ahora;
+  }
+  if (tieneEtiqueta(c, etiqueta)) return pintarLista();
   const meta_tags = `${c.meta_tags || ""} ${etiqueta}`.trim();
   for (const x of [c, estado.conversaciones.find((y) => y.conversation_id === c.conversation_id)]) if (x) x.meta_tags = meta_tags;
   etiquetasLocales.set(c.conversation_id, { meta_tags, t: Date.now() });

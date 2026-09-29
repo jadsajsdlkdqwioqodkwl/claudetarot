@@ -117,6 +117,7 @@ async function handler({ request, env, agent }) {
         c.notes,
         c.shalom_code,
         c.name AS contact_name,
+        (SELECT MAX(e.created_at) FROM capi_events e WHERE e.conversation_id = conv.id AND e.event_name = 'Purchase') AS compra_at,
         ${clave ? `(SELECT substr(m2.body, 1, 200) FROM messages m2 WHERE m2.conversation_id = conv.id AND ${norm("m2.body")} LIKE ? AND ${FILTRO_MENSAJES(soloCliente, "m2")} ORDER BY m2.id DESC LIMIT 1)` : "NULL"} AS coincidencia,
         lm.body AS last_body,
         lm.type AS last_type,
