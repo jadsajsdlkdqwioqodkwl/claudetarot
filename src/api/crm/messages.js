@@ -101,7 +101,7 @@ async function post({ request, env, agent }) {
       const v = await env.CRM_DB.prepare("SELECT 1 FROM variantes WHERE id = ? AND tipo = 'rapida' AND ref_id = ?").bind(varianteId, quickReplyId).first().catch(() => null);
       if (!v) varianteId = 0;
     }
-    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada), aMano: Boolean(payload?.a_mano) });
+    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada), aMano: Boolean(payload?.a_mano), textoEnviado: payload?.body || payload?.caption || null });
   };
 
   let replyTo = null;

@@ -141,6 +141,11 @@
   <div class="modal">
     <h2 id="rapida-modal-titulo">Nueva respuesta rápida</h2>
     <input type="text" id="rapida-titulo" placeholder="Título (ej. Precio, Horario…)" />
+    <div class="fila-grupo">
+      <input type="text" id="rapida-grupo" list="grupos-rapidas" placeholder="Grupo (ej. Lima, Provincia, Objeciones)" maxlength="40" />
+      <input type="number" id="rapida-orden" min="0" max="999" placeholder="N.º" title="Su número dentro del grupo: mensaje 1, 2, 3…" />
+    </div>
+    <datalist id="grupos-rapidas"></datalist>
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
     <div id="rapida-pruebas" class="pruebas"></div>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />

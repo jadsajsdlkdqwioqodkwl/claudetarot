@@ -102,7 +102,8 @@ import {
   onRequestDelete as crmVariantesDelete
 } from "./api/crm/variantes.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
-import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet } from "./api/asesor-resumen.js";
+import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
+import { procesarFrases } from "./lib/crm-frases.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -241,6 +242,8 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {
       ctx.waitUntil(exportarChatsASheets(env));
+      // Resumen semanal y avisos de pruebas listas, por Telegram (sin IA).
+      ctx.waitUntil(enviarResumenSiToca(env).catch((err) => console.error("Resumen semanal:", err.message)));
       return;
     }
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
@@ -252,5 +255,7 @@ export default {
     // Etapa del embudo de los chats que se movieron (sin IA): la usan las
     // pruebas de mensajes y el resumen semanal.
     await actualizarEtapas(env).catch((err) => console.error("Embudo:", err.message));
+    // Qué frases del equipo acompañan las ventas (sin IA, de a poco).
+    await procesarFrases(env).catch((err) => console.error("Frases:", err.message));
   }
 };

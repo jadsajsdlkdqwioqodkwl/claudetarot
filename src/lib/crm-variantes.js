@@ -112,7 +112,8 @@ export async function estadisticas(db, tipo, refIds) {
  */
 export async function versionesEnPrueba(db, tipo, refIds = null) {
   const { results: activas } = await db.prepare(
-    `SELECT id, ref_id, texto, origen, motivo, created_at FROM variantes WHERE tipo = ? AND estado = 'activa' ORDER BY id`
+    `SELECT id, ref_id, texto, origen, motivo, unico, media_key, media_type, media_mime, created_at
+     FROM variantes WHERE tipo = ? AND estado = 'activa' ORDER BY id`
   ).bind(tipo).all();
   const porRef = {};
   for (const v of activas) {
@@ -139,7 +140,7 @@ export function guardarAnterior(db, tipo, refId, textoViejo, quien) {
 }
 
 /** Deja constancia de que salió una versión en un chat. Nunca rompe el envío. */
-export async function registrarUso(db, { tipo, refId, varianteId = 0, conversationId, etapaAntes = null, agente = null, editada = false, aMano = false }) {
+export async function registrarUso(db, { tipo, refId, varianteId = 0, conversationId, etapaAntes = null, agente = null, editada = false, aMano = false, textoEnviado = null }) {
   try {
     let etapa = etapaAntes;
     if (etapa === null) {
@@ -147,8 +148,8 @@ export async function registrarUso(db, { tipo, refId, varianteId = 0, conversati
       etapa = c?.etapa || 0;
     }
     await db.prepare(
-      "INSERT INTO variante_usos (tipo, ref_id, variante_id, conversation_id, etapa_antes, agente, editada, a_mano) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    ).bind(tipo, refId, varianteId || 0, conversationId, etapa, agente, editada ? 1 : 0, aMano ? 1 : 0).run();
+      "INSERT INTO variante_usos (tipo, ref_id, variante_id, conversation_id, etapa_antes, agente, editada, a_mano, texto_enviado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(tipo, refId, varianteId || 0, conversationId, etapa, agente, editada ? 1 : 0, aMano ? 1 : 0, editada && textoEnviado ? String(textoEnviado).slice(0, 2000) : null).run();
   } catch (err) {
     console.error("Uso de versión:", err.message);
   }

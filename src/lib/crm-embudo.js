@@ -18,7 +18,7 @@ export const RE_AUTO = /autom[aá]tic|masivo|carrito|prueba de bienvenida/i;
 export const RE_SALUDO = /^¡?hola!? me gustar[ií]a m[aá]s informaci[oó]n\.?$/i;
 const RE_DESTINO = /lima|provincia|para (lima|provincia)|le podemos enviar mediante|para .{3,25} le podemos hacer envio/i;
 const RE_PIDE_CIERRE = /ubicaci[oó]n|qui[eé]n lo va a recibir|confirma(r)? (el|la) (pago|captura|adelanto)|adelanto/i;
-const RE_CERRO = /queda(do)? (todo )?agendad|le estamos enviando el comprobante|le env[ií]o el comprobante|su clave es|mañana mismo le estamos enviando/i;
+export const RE_CERRO = /queda(do)? (todo )?agendad|le estamos enviando el comprobante|le env[ií]o el comprobante|su clave es|mañana mismo le estamos enviando/i;
 
 const DIAS_EMBUDO = 14;
 const LOTE = 40;

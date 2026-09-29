@@ -40,6 +40,23 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   // WhatsApp no llegaba a mostrarlo.
   await esperar(1000);
 
+  // Versión "en un solo mensaje": si salió sorteada una versión `unico` del
+  // primer paso, reemplaza TODA la secuencia (su foto/video, si tiene, y su
+  // texto) y los demás pasos no se mandan.
+  const primero = pasos[0];
+  const vPrimero = enPrueba[primero.id];
+  const elegidaPrimero = vPrimero ? vPrimero[sortear(vPrimero.map((v) => v.peso))] : null;
+  if (elegidaPrimero?.unico) {
+    if (elegidaPrimero.media_key) {
+      await pausaEnvio(env, conversationId, undefined, { escribiendo: false });
+      await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
+    }
+    await pausaEnvio(env, conversationId);
+    await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel);
+    await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
+    return 1;
+  }
+
   // Cada texto con su propio "escribiendo…" (2 s); las fotos/videos de un
   // paso van todas juntas, con 2 s de espacio antes y sin "escribiendo".
   for (const paso of pasos) {
@@ -59,8 +76,10 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       ));
     }
     if (paso.body) {
-      const versiones = enPrueba[paso.id];
-      const elegida = versiones ? versiones[sortear(versiones.map((v) => v.peso))] : null;
+      // El primer paso ya se sorteó arriba; los demás, aquí. Las versiones
+      // "únicas" solo valen como primer paso: en otro paso no se eligen.
+      const versiones = enPrueba[paso.id]?.filter((v) => !v.unico);
+      const elegida = paso.id === primero.id ? elegidaPrimero : versiones ? versiones[sortear(versiones.map((v) => v.peso))] : null;
       await pausaEnvio(env, conversationId);
       await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
       if (pruebas) {

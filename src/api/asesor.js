@@ -23,6 +23,7 @@
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { aprendizaje } from "./asesor-datos.js";
 import { versionesEnPrueba } from "../lib/crm-variantes.js";
+import { frasesQueConvierten } from "../lib/crm-frases.js";
 
 // Cada aviso va a todo el equipo: con el tope de 50 llamadas por request del
 // plan gratis de Cloudflare, enviar.py los manda de a 5.
@@ -339,11 +340,19 @@ export async function onRequestGetContexto({ request, env }) {
   if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
   const [rapidas, pendientes, bienvenida, pruebas] = await Promise.all([
-    env.CRM_DB.prepare("SELECT id, title, body FROM quick_replies ORDER BY id").all(),
+    env.CRM_DB.prepare(
+      `SELECT q.id, q.title, q.body, q.grupo, q.sort_order,
+         (SELECT group_concat(media_type) FROM quick_reply_media m WHERE m.quick_reply_id = q.id) AS media
+       FROM quick_replies q ORDER BY COALESCE(q.grupo, 'zzz'), q.sort_order, q.id`
+    ).all(),
     env.CRM_DB.prepare(
       "SELECT tipo, wa_id, nombre, titulo, substr(texto, 1, 300) AS texto, origen, created_at FROM asesor_sugerencias WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 100"
     ).all(),
-    env.CRM_DB.prepare("SELECT id, title, body FROM welcome_steps ORDER BY step_order").all(),
+    env.CRM_DB.prepare(
+      `SELECT s.id, s.title, s.body,
+         (SELECT group_concat(media_type) FROM welcome_step_media m WHERE m.welcome_step_id = s.id) AS media
+       FROM welcome_steps s ORDER BY s.step_order`
+    ).all(),
     pruebasDeMensajes(env).catch((err) => ({ error: err.message }))
   ]);
   return json({
@@ -374,5 +383,15 @@ export async function pruebasDeMensajes(env) {
      WHERE u.created_at >= datetime('now', '-45 days')
      GROUP BY u.tipo, u.ref_id ORDER BY usos DESC`
   ).all();
-  return { en_curso: { rapida: rapidas, bienvenida }, uso_por_mensaje: uso };
+  // Cómo cambian las vendedoras los textos antes de mandarlos: lo que más
+  // enseña sobre cómo escribir (y qué versión probar después).
+  const { results: ediciones } = await env.CRM_DB.prepare(
+    `SELECT u.tipo, u.ref_id, u.variante_id, u.agente, u.texto_enviado, u.created_at,
+       (conv.etapa > u.etapa_antes AND conv.etapa_at > u.created_at) AS avanzo
+     FROM variante_usos u JOIN conversations conv ON conv.id = u.conversation_id
+     WHERE u.editada = 1 AND u.texto_enviado IS NOT NULL AND u.created_at >= datetime('now', '-30 days')
+     ORDER BY u.created_at DESC LIMIT 40`
+  ).all();
+  const frases = await frasesQueConvierten(env.CRM_DB, 30).catch(() => null);
+  return { en_curso: { rapida: rapidas, bienvenida }, uso_por_mensaje: uso, ediciones, frases };
 }

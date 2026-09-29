@@ -799,6 +799,16 @@ check("las letras de columna llegan hasta la última de la hoja",
 }
 
 {
+  console.log("\nFrases que venden (crm-frases.js)");
+  const { frasesDe, normalizar } = await import("../src/lib/crm-frases.js");
+  check("normaliza tildes y signos", normalizar("¡Envío GRATIS!") === "envio gratis");
+  const fs = frasesDe("Le regalamos el collar amuleto, ¿para Lima o provincia?");
+  check("saca frases de 2 y 3 palabras", fs.includes("regalamos el collar") && fs.includes("collar amuleto"));
+  check("no empieza ni termina en palabra vacía", !fs.some((f) => /^(el|la|de|para|o) |\s(el|la|de|para|o)$/.test(f)));
+  check("un saludo solo no da frases", frasesDe("Hola buenas tardes").length === 0);
+}
+
+{
   console.log("\nPruebas de mensajes (crm-variantes.js)");
   const { pesos, sortear, MIN_USOS } = await import("../src/lib/crm-variantes.js");
   const suma = (ps) => Math.abs(ps.reduce((a, b) => a + b, 0) - 1) < 1e-9;

@@ -4401,13 +4401,20 @@ function buscarRapidas(lista, consulta) {
   const tokens = normalizarBusqueda(consulta).split(" ").filter(Boolean);
   if (!tokens.length) return lista;
   const puntuadas = lista.map((q) => {
-    const titulo = normalizarBusqueda(q.title).split(" ");
+    const titulo = normalizarBusqueda(`${q.title} ${q.grupo || ""}`).split(" ");
     const cuerpo = normalizarBusqueda(q.body).split(" ");
     const porToken = tokens.map((t) => Math.max(puntajeToken(t, titulo) * 2, puntajeToken(t, cuerpo)));
     return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) };
   }).filter((x) => x.puntaje > 0);
   const conTodas = puntuadas.filter((x) => x.todas);
   return (conTodas.length ? conTodas : puntuadas).sort((a, b) => b.puntaje - a.puntaje).map((x) => x.q);
+}
+
+/** Por grupo (los sin grupo al final) y dentro de cada grupo por su número. */
+function ordenarPorGrupo(lista) {
+  const grupos = [...new Set(lista.map((q) => q.grupo).filter(Boolean))];
+  const pos = (g) => (g ? grupos.indexOf(g) : grupos.length);
+  return [...lista].sort((a, b) => pos(a.grupo) - pos(b.grupo) || (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 }
 
 async function cargarQuickReplies() {
@@ -4434,19 +4441,24 @@ function pintarQuickPanel() {
   const panel = $("#panel-rapidas");
   if (!panel) return;
 
-  const lista = buscarRapidas(estado.quickReplies, estado.filtroRapidas);
-  const esAdmin = estado.miRol === "admin";
+  const buscando = Boolean(estado.filtroRapidas.trim());
+  // Sin búsqueda: agrupadas por su cadena o tipo (Lima 1, 2, 3 · Objeciones…),
+  // en su orden. Buscando: por relevancia, con el grupo al lado del título.
+  const lista = buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : ordenarPorGrupo(estado.quickReplies);
+  let grupoPrevio;
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
     ${lista.map((q) => {
       const foto = q.media[0];
-      return `
+      const cabecera = !buscando && q.grupo !== grupoPrevio && (estado.quickReplies.some((x) => x.grupo)) ? `<div class="grupo-rapidas">${escapar(q.grupo || "Otras")}</div>` : "";
+      grupoPrevio = q.grupo;
+      return `${cabecera}
       <div class="item" data-id="${q.id}">
         ${foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
+          <div class="titulo">${q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${buscando && q.grupo ? `<span class="grupo-chip">${escapar(q.grupo)}</span>` : ""}</div>
           ${q.body ? `<div class="cuerpo">${escapar(q.body)}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -4583,6 +4595,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-titulo").value = "";
   $("#rapida-texto").value = "";
   $("#rapida-archivo").value = "";
+  llenarGrupoRapida(null);
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarSeguimientoRapida(null);
   $("#rapida-pruebas").innerHTML = "";
@@ -4683,18 +4696,26 @@ $("#rapida-seg-global").addEventListener("change", async (e) => {
   }
 });
 
+/** Grupo y número en el modal, con los grupos que ya existen para elegir. */
+function llenarGrupoRapida(q) {
+  const grupos = [...new Set((estado.quickReplies || []).map((x) => x.grupo).filter(Boolean))];
+  $("#grupos-rapidas").innerHTML = grupos.map((g) => `<option value="${escapar(g)}"></option>`).join("");
+  $("#rapida-grupo").value = q?.grupo || "";
+  $("#rapida-orden").value = q ? q.sort_order || "" : "";
+}
+
 function abrirModalRapidaEdicion(q) {
   estado.editandoRapidaId = q.id;
   $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
   $("#rapida-titulo").value = q.title;
   $("#rapida-texto").value = q.body || "";
+  llenarGrupoRapida(q);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = q.media.length
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarSeguimientoRapida(q);
-  $("#rapida-pruebas").innerHTML = "";
-  if (estado.miRol === "admin") pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
+  pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
 
@@ -4731,13 +4752,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, grupo: $("#rapida-grupo").value, orden: $("#rapida-orden").value === "" ? undefined : Number($("#rapida-orden").value) })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, grupo: $("#rapida-grupo").value, orden: $("#rapida-orden").value === "" ? undefined : Number($("#rapida-orden").value) })
       });
     }
     await cargarQuickReplies();
@@ -4754,77 +4775,144 @@ $("#rapida-crear").addEventListener("click", async () => {
   }
 });
 
-/* ---------- 🧪 Pruebas de mensajes (solo admin) ---------- */
+/* ---------- 🧪 Pruebas de mensajes ---------- */
 
 /**
- * Las versiones en prueba de una respuesta rápida o de un paso de la
- * bienvenida, con cómo le va a cada una. El CRM reparte cuál sale (la que
- * hace avanzar más chats sale más); aquí el admin agrega versiones, quita una
- * o cierra la prueba quedándose con la mejor. Ver crm-variantes.js.
+ * Las versiones de una respuesta rápida o de un paso de la bienvenida, con
+ * cómo le va a cada una. Todo el equipo puede ver, agregar y editar versiones
+ * (editar = versión nueva, sus números empiezan de 0). Cerrar la prueba
+ * ("Quedarse con esta") y quitar versiones: solo el admin.
+ *
+ * "En un solo mensaje": en una respuesta rápida de una cadena (Lima 1, 2, 3)
+ * arma una versión de la 1 que junta los textos de la cadena; en la
+ * bienvenida, una versión del primer paso que reemplaza toda la secuencia,
+ * con una foto o video opcional.
  */
 async function pintarPruebas(cont, tipo, refId) {
-  cont.innerHTML = `<p class="sub">Cargando pruebas…</p>`;
-  let datos;
+  cont.innerHTML = `<p class="sub">Cargando versiones…</p>`;
+  let datos, pasos = [];
   try {
-    datos = await pedir(`/api/crm/variantes?tipo=${tipo}&ref_id=${refId}`);
+    [datos, pasos] = await Promise.all([
+      pedir(`/api/crm/variantes?tipo=${tipo}&ref_id=${refId}`),
+      tipo === "bienvenida" ? pedir("/api/crm/welcome-sequence").then((r) => r.steps) : Promise.resolve([])
+    ]);
   } catch (err) {
     cont.innerHTML = `<p class="sub">${escapar(err.message)}</p>`;
     return;
   }
+  const esAdmin = estado.miRol === "admin";
   const vs = datos.versiones;
   const enPrueba = vs.length > 1;
-  const lider = enPrueba ? vs.reduce((a, b) => (b.peso > a.peso ? b : a)) : null;
+  // "Va ganando" solo cuando todas tienen datos suficientes (20 usos elegidos por el CRM).
+  const lider = enPrueba && vs.every((v) => v.usos >= 20) ? vs.reduce((a, b) => (b.peso > a.peso ? b : a)) : null;
   const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
+
+  // Qué juntaría la versión "en un solo mensaje".
+  let combinado = null;
+  if (tipo === "rapida") {
+    const q = (estado.quickReplies || []).find((x) => x.id === refId);
+    const cadena = q?.grupo ? ordenarPorGrupo(estado.quickReplies.filter((x) => x.grupo === q.grupo && x.body)) : [];
+    const desde = cadena.findIndex((x) => x.id === refId);
+    if (desde >= 0 && cadena.length - desde > 1) {
+      combinado = { texto: cadena.slice(desde).map((x) => x.body.trim()).join("\n\n"), nota: `Junta ${cadena.length - desde} mensajes del grupo ${q.grupo}.` };
+    }
+  } else if (pasos[0]?.id === refId && pasos.length > 1) {
+    combinado = { texto: pasos.map((p) => (p.body || "").trim()).filter(Boolean).join("\n\n"), nota: "Reemplaza toda la bienvenida por un solo mensaje.", media: pasos.flatMap((p) => p.media) };
+  }
+
   cont.innerHTML = `
-    <div class="rp-titulo">🧪 ${enPrueba ? "Versiones en prueba" : "Probar otra versión del texto"}</div>
+    <div class="rp-titulo">🧪 ${enPrueba ? "Versiones en prueba" : "Versiones del mensaje"}</div>
     <p class="ayuda-modal">${enPrueba
-      ? "El CRM va alternando estas versiones y manda más la que hace avanzar más chats (respondió, dijo destino, cerró). Decide cuando cada una tenga al menos 20 usos."
-      : "Agrega otra forma de decir este mensaje: el CRM las alterna y mide cuál hace avanzar más chats. Tú decides con cuál quedarte."}</p>
+      ? "El CRM las alterna y manda más la que hace avanzar más chats. Con los botones 1·2·3 del chat también se puede elegir a mano. Se decide cuando cada una tenga al menos 20 usos."
+      : "Agrega otra forma de decir este mensaje: el CRM las alterna y mide cuál hace avanzar más chats."}</p>
     ${vs.map((v, i) => `
-      <div class="prueba-version${lider && v.id === lider.id && lider.usos >= 20 ? " lider" : ""}" data-id="${v.id}">
+      <div class="prueba-version${lider && v.id === lider.id ? " lider" : ""}" data-id="${v.id}">
         <div class="pv-cab">
-          <b>${v.id === 0 ? "Original" : `Versión ${String.fromCharCode(65 + i)}`}</b>
-          <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.respondieron, v.usos)}% respondió en 24 h${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
+          <b>${i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}</b>
+          <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.cerraron, v.usos)}% cerró · ${pct(v.respondieron, v.usos)}% respondió${v.editadas ? ` · ${v.editadas} editadas` : ""}${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
         </div>
-        ${v.id ? `<div class="sub pv-texto">${escapar(v.texto)}</div>` : ""}
+        ${v.id ? `<div class="sub pv-texto">${v.media_key ? `${icon(v.media_type === "video" ? "video" : "image")} ` : ""}${escapar(v.texto)}</div>` : ""}
         ${v.motivo ? `<div class="sub"><i>${escapar(v.motivo)}</i></div>` : ""}
-        ${enPrueba ? `<div class="pv-acciones">
-          <button type="button" class="pv-ganadora">Quedarse con esta</button>
-          ${v.id ? `<button type="button" class="pv-quitar">Quitar</button>` : ""}
-        </div>` : ""}
+        <div class="pv-acciones">
+          ${v.id ? `<button type="button" class="pv-editar">Editar</button>` : ""}
+          ${enPrueba && esAdmin ? `<button type="button" class="pv-ganadora">Quedarse con esta</button>` : ""}
+          ${v.id && esAdmin ? `<button type="button" class="pv-quitar">Quitar</button>` : ""}
+        </div>
       </div>`).join("")}
-    <button type="button" class="pv-agregar">+ Probar otra versión</button>
+    <div class="pv-botones">
+      <button type="button" class="pv-agregar">+ Otra versión</button>
+      ${combinado ? `<button type="button" class="pv-combinada">+ En un solo mensaje</button>` : ""}
+    </div>
     <div class="pv-nueva" hidden>
+      <div class="sub pv-nota"></div>
       <textarea placeholder="Otra forma de decir el mismo mensaje"></textarea>
-      <button type="button" class="pv-guardar">Agregar a la prueba</button>
+      <div class="pv-medias"></div>
+      <button type="button" class="pv-guardar">Agregar versión</button>
     </div>`;
 
   const recargar = async () => {
+    if (tipo === "rapida") await cargarQuickReplies().catch(() => {});
     await pintarPruebas(cont, tipo, refId);
-    if (tipo === "rapida") cargarQuickReplies().catch(() => {});
   };
   const llamar = (method, body) => pedir("/api/crm/variantes", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const caja = cont.querySelector(".pv-nueva");
+  let modoUnico = false;
+
+  const abrirCaja = (texto, nota, medias) => {
+    caja.hidden = false;
+    caja.querySelector("textarea").value = texto;
+    caja.querySelector(".pv-nota").textContent = nota || "";
+    caja.querySelector(".pv-medias").innerHTML = medias?.length ? `<div class="sub">Foto o video que va con el mensaje (opcional):</div>
+      <label class="pv-media"><input type="radio" name="pv-media-${refId}" value="" checked /> Ninguno</label>
+      ${medias.map((m, k) => `<label class="pv-media"><input type="radio" name="pv-media-${refId}" value="${k}" />
+        ${m.media_type === "video" ? `<video src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" muted></video>` : `<img src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" alt="" />`}</label>`).join("")}` : "";
+    caja._medias = medias || [];
+    caja.querySelector("textarea").focus();
+  };
   cont.querySelector(".pv-agregar").addEventListener("click", () => {
-    const caja = cont.querySelector(".pv-nueva");
-    caja.hidden = !caja.hidden;
-    if (!caja.hidden) caja.querySelector("textarea").focus();
+    modoUnico = false;
+    if (!caja.hidden && !caja.querySelector(".pv-nota").textContent) { caja.hidden = true; return; }
+    abrirCaja("", "", null);
+  });
+  cont.querySelector(".pv-combinada")?.addEventListener("click", () => {
+    modoUnico = tipo === "bienvenida";
+    abrirCaja(combinado.texto, `${combinado.nota} Revísalo y acórtalo antes de agregarlo.`, combinado.media);
   });
   cont.querySelector(".pv-guardar").addEventListener("click", async (e) => {
-    const texto = cont.querySelector(".pv-nueva textarea").value.trim();
+    const texto = caja.querySelector("textarea").value.trim();
     if (!texto) return;
+    const elegida = caja.querySelector(".pv-medias input:checked")?.value;
+    const media = elegida ? caja._medias[Number(elegida)] : null;
     e.currentTarget.disabled = true;
-    try { await llamar("POST", { tipo, ref_id: refId, texto }); await recargar(); } catch (err) { alert(err.message); e.target.disabled = false; }
+    try {
+      await llamar("POST", {
+        tipo, ref_id: refId, texto, unico: modoUnico || undefined,
+        ...(media ? { media_key: media.media_key, media_type: media.media_type, media_mime: media.media_mime } : {})
+      });
+      await recargar();
+    } catch (err) { alert(err.message); e.target.disabled = false; }
   });
+
   cont.querySelectorAll(".prueba-version").forEach((el) => {
     const id = Number(el.dataset.id);
+    const v = vs.find((x) => x.id === id);
+    el.querySelector(".pv-editar")?.addEventListener("click", () => {
+      if (el.querySelector(".pv-editor")) return;
+      el.insertAdjacentHTML("beforeend", `<div class="pv-editor"><textarea>${escapar(v.texto)}</textarea>
+        <div class="sub">Al guardar, esta versión empieza a medirse de nuevo (es otro mensaje).</div>
+        <button type="button" class="pv-guardar-edicion">Guardar</button></div>`);
+      el.querySelector(".pv-editor textarea").focus();
+      el.querySelector(".pv-guardar-edicion").addEventListener("click", async () => {
+        try { await llamar("PATCH", { id, texto: el.querySelector(".pv-editor textarea").value }); await recargar(); } catch (err) { alert(err.message); }
+      });
+    });
     el.querySelector(".pv-ganadora")?.addEventListener("click", async () => {
       if (!confirm(id ? "Esta versión pasa a ser el texto de siempre y la prueba se cierra. ¿Seguir?" : "Se queda el texto original y las otras versiones se retiran. ¿Seguir?")) return;
       try {
         await llamar("PATCH", { tipo, ref_id: refId, ganadora: id });
         // El texto del formulario pasa a ser el ganador, para no pisarlo al guardar.
         const campo = tipo === "rapida" ? $("#rapida-texto") : $("#seq-texto");
-        const ganadora = vs.find((v) => v.id === id);
-        if (id && ganadora && campo) campo.value = ganadora.texto;
+        if (id && v && campo && !v.unico) campo.value = v.texto;
         await recargar();
         if (tipo === "bienvenida") pintarSecuenciaBienvenida();
       } catch (err) { alert(err.message); }

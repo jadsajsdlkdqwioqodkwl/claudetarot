@@ -12,6 +12,12 @@
 --   objeción, por qué se ganó o perdió, calidad de la atención).
 -- · asesor_informes: el texto de cada informe del director CRO, para el
 --   resumen semanal por correo (sin volver a gastar tokens).
+-- · quick_replies.grupo: la cadena o tipo al que pertenece la respuesta
+--   ("Lima", "Provincia", "Objeciones", "Confirmación"…); se agrupan así en
+--   el CRM y su orden dentro del grupo es sort_order (mensaje 1, 2, 3…).
+-- · frases_uso: qué frases (2–3 palabras) escribió el equipo en cada chat y
+--   en qué etapa estaba; de ahí sale qué palabras convierten más. Lo llena
+--   el cron sin IA (crm-frases.js) y se limpia a los 60 días.
 -- · asesor_sugerencias.ref_tipo/ref_id: a qué respuesta rápida o paso de
 --   bienvenida apunta una sugerencia tipo 'variante'.
 
@@ -28,6 +34,10 @@ CREATE TABLE IF NOT EXISTS variantes (
   estado TEXT NOT NULL DEFAULT 'activa', -- activa | ganadora | retirada | anterior
   origen TEXT,                         -- "director CRO", "admin", …
   motivo TEXT,                         -- la hipótesis
+  unico INTEGER NOT NULL DEFAULT 0,    -- bienvenida: esta versión reemplaza TODA la secuencia (un solo mensaje)
+  media_key TEXT,                      -- bienvenida única: foto/video que va con el texto (opcional)
+  media_type TEXT,
+  media_mime TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   cerrada_at TEXT,
   cerrada_por TEXT
@@ -44,6 +54,7 @@ CREATE TABLE IF NOT EXISTS variante_usos (
   agente TEXT,
   editada INTEGER NOT NULL DEFAULT 0,    -- la vendedora cambió el texto antes de mandarlo
   a_mano INTEGER NOT NULL DEFAULT 0,     -- la vendedora eligió la versión con los botones 1·2·3 (no cuenta para el reparto)
+  texto_enviado TEXT,                    -- si la editó: lo que mandó de verdad (para aprender de sus cambios)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_usos_ref ON variante_usos(tipo, ref_id, created_at);
@@ -76,3 +87,14 @@ CREATE TABLE IF NOT EXISTS asesor_informes (
 
 ALTER TABLE asesor_sugerencias ADD COLUMN ref_tipo TEXT;
 ALTER TABLE asesor_sugerencias ADD COLUMN ref_id INTEGER;
+
+ALTER TABLE quick_replies ADD COLUMN grupo TEXT;
+
+CREATE TABLE IF NOT EXISTS frases_uso (
+  frase TEXT NOT NULL,
+  conversation_id INTEGER NOT NULL,
+  etapa_antes INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (frase, conversation_id)
+);
+CREATE INDEX IF NOT EXISTS idx_frases_fecha ON frases_uso(created_at);

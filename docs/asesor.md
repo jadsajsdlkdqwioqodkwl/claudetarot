@@ -42,6 +42,31 @@ Scripts en `scripts/asesor/`. Skills en `.claude/skills/` (ver su README).
   "Quedarse con esta". El texto viejo queda guardado y la cuenta de la
   original vuelve a 0 cada vez que su texto cambia.
 - Máximo 3 versiones en prueba por mensaje.
+- **Todo el equipo** puede ver, agregar y editar versiones (⚡ → lápiz de la
+  respuesta). Editar crea una versión nueva que se mide desde 0. Cerrar la
+  prueba y quitar versiones: solo el admin.
+- **En un solo mensaje**: en una respuesta de una cadena (grupo "Lima", n.º 1,
+  2, 3…) el botón "+ En un solo mensaje" arma una versión de la n.º 1 que junta
+  la cadena. En el primer paso de la bienvenida arma una versión que
+  reemplaza toda la secuencia, con una foto o video opcional (se elige entre
+  los de la bienvenida). Así se mide si 1 mensaje cierra más que 8.
+- **Ediciones**: cuando una vendedora cambia el texto antes de mandarlo, se
+  guarda lo que mandó (`variante_usos.texto_enviado`). El director las lee
+  en `contexto.py` y son la fuente de las próximas versiones.
+
+## Grupos de respuestas rápidas
+
+Cada respuesta rápida tiene `grupo` (su cadena o tipo: Lima, Provincia,
+Objeciones, Confirmación…) y su número dentro del grupo. El panel del chat
+las muestra agrupadas en ese orden; al buscar, sale el grupo al lado.
+
+## Qué palabras venden (sin IA)
+
+El cron de 5 min parte cada mensaje del equipo en frases de 2–3 palabras
+(`frases_uso`, `src/lib/crm-frases.js`) con la etapa en que estaba el chat.
+El resumen y `contexto.py` muestran las frases con más y menos cierre
+comparadas con el promedio, solo las dichas antes de pedir el cierre. Es
+correlación: sirve para elegir qué probar.
 
 ## Análisis por chat (coaching)
 
@@ -66,11 +91,24 @@ vendedora. No avisa a nadie.
 >    de la bienvenida con su hipótesis, y respuestas rápidas nuevas solo para
 >    objeciones que no tengan una. Envía con `scripts/asesor/enviar.py
 >    /tmp/sem/salida.json --solo-mensajes`.
-> 4. Escribe un informe de 250 palabras (voz del cliente: palabras que usan,
+> 4. Revisa las ediciones de las vendedoras, las frases que venden y las
+>    fotos/videos de cada mensaje (contexto.py): propone versiones con esas
+>    palabras (escritas como ellas, cortas, sin "—" ni frases de manual) y
+>    di qué foto o video conviene poner o quitar en la bienvenida y en cada
+>    respuesta, describiéndola.
+> 5. Escribe un informe de 250 palabras (voz del cliente: palabras que usan,
 >    por qué compran, por qué no; coaching por vendedora) y mándalo con
 >    `enviar.py --informe`. Anota 1–3 lecciones con `memoria.py`.
 
+Al director CRO diario (7:52) conviene sumarle el paso 4 en su prompt.
+
 ## Resumen por correo sin gastar tokens
+
+**Llega solo por Telegram** (sin configurar nada): los lunes desde las 9:00
+el Worker arma el resumen, lo guarda como página en CRM → Reportes y le manda
+al dueño un mensaje con lo principal y el botón "Ver resumen completo". Y
+cada día, si una prueba ya tiene ganadora, avisa una vez por Telegram.
+Además, opcional, por correo:
 
 Lo arma el Worker con datos de D1 (`GET /api/asesor/resumen?dias=7`): embudo
 vs. la semana anterior, pruebas en curso (y cuáles ya se pueden decidir),

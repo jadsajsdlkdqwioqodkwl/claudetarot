@@ -5,6 +5,10 @@
  *        conserva la media que ya tenía (no hace falta volver a subir fotos/videos solo para cambiar el texto)
  * DELETE /api/crm/quick-replies — borra { id }
  *
+ * POST y PATCH aceptan `grupo` (la cadena o tipo: "Lima", "Provincia",
+ * "Objeciones", "Confirmación"…) y `orden` (su número dentro del grupo: el
+ * mensaje 1, 2, 3 de la cadena). El CRM las muestra agrupadas así.
+ *
  * POST y PATCH aceptan además `followup_pasos`: la secuencia de seguimiento
  * si el cliente no responde, hasta 4 pasos [{ horas, body?, media_key?,
  * media_type?, media_mime? }], cada uno `horas` después del anterior. (Sigue
@@ -62,6 +66,13 @@ function pasosDe(r) {
   return r.followup_body ? [{ horas: r.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: r.followup_body }] : [];
 }
 
+/** Grupo (cadena o tipo: "Lima", "Objeciones"…) y número dentro del grupo. */
+function leerGrupo(payload) {
+  const grupo = String(payload?.grupo || "").trim().replace(/\s+/g, " ").slice(0, 40) || null;
+  const orden = Number(payload?.orden);
+  return { grupo, orden: Number.isFinite(orden) && orden >= 0 && orden <= 999 ? Math.round(orden) : null };
+}
+
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -70,7 +81,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-    "SELECT id, title, body, followup_body, followup_hours, followup_pasos, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
+"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -109,10 +120,11 @@ async function post({ request, env }) {
   if (!body && !mediaKeys.length) return json({ error: "Necesita texto o al menos un archivo." }, 400);
 
   const seguimiento = leerSeguimiento(payload);
+  const { grupo, orden } = leerGrupo(payload);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos) VALUES (?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden ?? 0)
     .first();
 
   let i = 0;
@@ -164,8 +176,9 @@ async function patch({ request, env, agent }) {
   if ((existente.body || null) !== body) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ? WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, id)
+  const { grupo, orden } = leerGrupo(payload);
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, grupo = ?, sort_order = COALESCE(?, sort_order) WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden, id)
     .run();
 
   if (mediaKeys !== null) {
@@ -188,7 +201,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), media: media.results } });
 }
 
 async function del({ request, env }) {

@@ -31,13 +31,19 @@ def main():
 
     partes = [open(os.path.join(RAIZ, "docs", "negocio.md")).read().strip(), "",
               "## Respuestas rápidas vigentes (texto exacto)"]
+    grupo_actual = object()
     for q in datos.get("respuestas_rapidas", []):
-        partes += ["", f"### {q['title']} (rapida #{q['id']})", (q.get("body") or "(solo foto/video)").strip()]
+        if q.get("grupo") != grupo_actual:
+            grupo_actual = q.get("grupo")
+            partes += ["", f"### Grupo: {grupo_actual or '(sin grupo)'}"]
+        media = f" · con {q['media']}" if q.get("media") else ""
+        partes += ["", f"#### {q['title']} (rapida #{q['id']}, n.º {q.get('sort_order') or 0} del grupo{media})", (q.get("body") or "(solo foto/video)").strip()]
     bienv = datos.get("bienvenida", [])
     if bienv:
         partes += ["", "## Bienvenida automática (a quien llega de un anuncio), en orden — ids para proponer variantes"]
         for b in bienv:
-            partes += ["", f"### bienvenida #{b['id']} · {b['title']}", (b.get("body") or "(solo foto/video)").strip()]
+            media = f" · con {b['media']}" if b.get("media") else ""
+            partes += ["", f"### bienvenida #{b['id']} · {b['title']}{media}", (b.get("body") or "(solo foto/video)").strip()]
     pr = datos.get("pruebas") or {}
     if pr and not pr.get("error"):
         titulos = {("rapida", q["id"]): q["title"] for q in datos.get("respuestas_rapidas", [])}
@@ -64,6 +70,19 @@ def main():
                 nombre = titulos.get((u["tipo"], u["ref_id"])) or f"{u['tipo']} #{u['ref_id']}"
                 partes.append(f"- {nombre}: {u['usos']} usos, {u['avanzaron'] or 0} avanzaron, "
                               f"{u['cerraron'] or 0} cerraron, {u['editadas'] or 0} editadas por la vendedora")
+        ed = pr.get("ediciones") or []
+        if ed:
+            partes += ["", "### Cómo editaron las vendedoras los textos antes de mandarlos (30 días) — la fuente para nuevas versiones",
+                       "Si varias cambian lo mismo, esa es la próxima versión a probar. avanzó = el chat subió de etapa después."]
+            for e in ed[:25]:
+                nombre = titulos.get((e["tipo"], e["ref_id"])) or f"{e['tipo']} #{e['ref_id']}"
+                partes.append(f"- {nombre} · {e.get('agente') or '?'} · {'avanzó' if e.get('avanzo') else 'no avanzó'}: {e['texto_enviado'][:300]}")
+        fr = pr.get("frases") or {}
+        if fr.get("mejores"):
+            partes += ["", f"### Frases del equipo y cierre (30 días, antes de pedir el cierre; promedio {fr['promedio']}% en {fr['chats']} chats)",
+                       "Correlación, no causa: úsalo para decidir qué probar."]
+            partes += [f"- ▲ \"{f['frase']}\": {f['cierre']}% cerró ({f['chats']} chats)" for f in fr["mejores"]]
+            partes += [f"- ▼ \"{f['frase']}\": {f['cierre']}% cerró ({f['chats']} chats)" for f in fr.get("peores", [])]
     pend = datos.get("sugerencias_pendientes", [])
     partes += ["", f"## Sugerencias que siguen pendientes de aprobar ({len(pend)})",
                "No las repitas; si una ya no sirve, dilo."]

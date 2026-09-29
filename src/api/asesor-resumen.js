@@ -9,15 +9,23 @@
  *      estaba, se reemplaza). Alimenta el coaching y el resumen.
  *
  * GET  /api/asesor/resumen?dias=7
- *      { asunto, html, texto, datos } — el resumen semanal que manda por correo
- *      el Apps Script (resumenSemanal en ASESOR.gs). Lo arma el Worker con
- *      datos de D1, sin IA: no gasta tokens. Lo único escrito por IA que trae
- *      es el último informe del director CRO, que ya estaba escrito.
+ *      { asunto, html, texto, datos } — el resumen semanal. Lo arma el Worker
+ *      con datos de D1, sin IA: no gasta tokens. Lo único escrito por IA que
+ *      trae es el último informe del director CRO, que ya estaba escrito.
+ *
+ * Cómo le llega al dueño (enviarResumenSiToca, cron de 10 min):
+ *   · lunes desde las 9:00 (Lima): el resumen queda como página en CRM →
+ *     Reportes y sale por Telegram al dueño con el botón para abrirla;
+ *   · cada día desde las 9:00: aviso por Telegram de cada prueba de mensajes
+ *     que ya tiene ganadora (una sola vez por prueba y ganadora).
+ *   · además, si se configura, por correo (resumenSemanal en ASESOR.gs).
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor, pruebasDeMensajes } from "./asesor.js";
 import { MIN_USOS } from "../lib/crm-variantes.js";
-import { escaparHtml } from "../lib/telegram.js";
+import { escaparHtml, llamarTelegram } from "../lib/telegram.js";
+
+const SITIO = "https://kit-tarot-para-principiantes.tarotperu.store";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -114,12 +122,16 @@ export async function datosResumen(env, dias) {
     ).bind(rango).all(),
     db.prepare("SELECT origen, texto, created_at FROM asesor_informes ORDER BY id DESC LIMIT 1").first(),
     Promise.all([
-      db.prepare("SELECT id, title, body FROM quick_replies").all(),
+      db.prepare("SELECT id, title, body, grupo FROM quick_replies").all(),
       db.prepare("SELECT id, title, body FROM welcome_steps").all()
     ])
   ]);
   const titulo = {};
-  for (const r of nombres[0].results) titulo[`rapida:${r.id}`] = { titulo: r.title, texto: r.body };
+  const grupoDe = {};
+  for (const r of nombres[0].results) {
+    titulo[`rapida:${r.id}`] = { titulo: r.title, texto: r.body };
+    grupoDe[r.id] = r.grupo;
+  }
   for (const r of nombres[1].results) titulo[`bienvenida:${r.id}`] = { titulo: `Bienvenida · ${r.title}`, texto: r.body };
 
   // Coaching: hasta 2 notas por vendedora, las más recientes.
@@ -134,7 +146,7 @@ export async function datosResumen(env, dias) {
     for (const [ref, versiones] of Object.entries(pruebas.en_curso[tipo] || {})) {
       const info = titulo[`${tipo}:${ref}`] || { titulo: `#${ref}`, texto: "" };
       const lista = versiones.map((v, i) => ({
-        nombre: v.id === 0 ? "Original" : `Versión ${String.fromCharCode(65 + i)}`,
+        nombre: v.id === 0 ? "1 · original" : `${i + 1}${v.unico ? " · un solo mensaje" : ""}`,
         texto: v.texto || info.texto || "",
         usos: v.usos, respondieron: pct(v.respondieron, v.usos), avanzaron: pct(v.avanzaron, v.usos),
         cerraron: pct(v.cerraron, v.usos), editadas: v.editadas, peso: v.peso, motivo: v.motivo || null
@@ -144,10 +156,18 @@ export async function datosResumen(env, dias) {
       enCurso.push({ tipo, ref_id: Number(ref), titulo: info.titulo, versiones: lista, lider: lider.nombre, listo });
     }
   }
+  // Ediciones: qué respuestas cambian más las vendedoras y cómo.
+  const edPorRef = {};
+  for (const e of pruebas.ediciones || []) {
+    const k = `${e.tipo}:${e.ref_id}`;
+    const l = (edPorRef[k] ||= { titulo: titulo[k]?.titulo || `#${e.ref_id}`, ejemplos: [] });
+    if (l.ejemplos.length < 2) l.ejemplos.push({ agente: e.agente, texto: e.texto_enviado, avanzo: e.avanzo });
+  }
+
   const usoRapidas = pruebas.uso_por_mensaje
     .filter((u) => u.tipo === "rapida" && u.usos >= 5)
-    .slice(0, 8)
-    .map((u) => ({ titulo: titulo[`rapida:${u.ref_id}`]?.titulo || `#${u.ref_id}`, usos: u.usos, avanzaron: pct(u.avanzaron, u.usos), editadas: pct(u.editadas, u.usos) }));
+    .slice(0, 12)
+    .map((u) => ({ titulo: titulo[`rapida:${u.ref_id}`]?.titulo || `#${u.ref_id}`, grupo: grupoDe[u.ref_id] || null, usos: u.usos, avanzaron: pct(u.avanzaron, u.usos), cerraron: pct(u.cerraron, u.usos), editadas: pct(u.editadas, u.usos) }));
 
   return {
     dias,
@@ -160,6 +180,8 @@ export async function datosResumen(env, dias) {
     objeciones: objeciones.results,
     motivos_perdida: perdidas.results,
     sugerencias: sugerencias.results,
+    frases: pruebas.frases,
+    ediciones: Object.values(edPorRef),
     informe
   };
 }
@@ -200,7 +222,7 @@ export function armarResumen(d, urlCrm) {
   h.push(`<h2 style="${ESTILO.h2}">🧪 Pruebas de mensajes en curso</h2>`);
   if (!d.pruebas_en_curso.length) h.push(`<p style="${ESTILO.p}">No hay pruebas en curso. El director CRO las propone en ✨ Sugerencias.</p>`);
   for (const p of d.pruebas_en_curso) {
-    h.push(`<p style="${ESTILO.p}"><b>${escaparHtml(p.titulo)}</b> — ${p.listo ? `✅ <b>lista para decidir: gana ${escaparHtml(p.lider)}</b>` : `va adelante ${escaparHtml(p.lider)} (faltan datos)`}</p>`);
+    h.push(`<p style="${ESTILO.p}"><b>${escaparHtml(p.titulo)}</b> — ${p.listo ? `✅ <b>lista para decidir: gana la versión ${escaparHtml(p.lider)}</b>` : `va adelante la versión ${escaparHtml(p.lider)} (faltan datos)`}</p>`);
     h.push(tabla(["Versión", "Texto", "Usos", "Respondió 24 h", "Avanzó", "Cerró"],
       p.versiones.map((v) => [escaparHtml(v.nombre), escaparHtml(v.texto.slice(0, 160)) + (v.motivo ? `<br><i style="color:#6b7280">${escaparHtml(v.motivo)}</i>` : ""), v.usos, `${v.respondieron}%`, `<b>${v.avanzaron}%</b>`, `${v.cerraron}%`])));
     t.push(`PRUEBA ${p.titulo}: ${p.versiones.map((v) => `${v.nombre} ${v.usos} usos, ${v.avanzaron}% avanzó`).join(" | ")}${p.listo ? ` → gana ${p.lider}` : ""}`);
@@ -211,8 +233,22 @@ export function armarResumen(d, urlCrm) {
   if (listas.length) h.push(`<p style="${ESTILO.p}">Para decidir: CRM → ⚡ Respuestas rápidas → editar la respuesta → <b>Quedarse con esta</b>.${urlCrm ? ` <a href="${urlCrm}">Abrir el CRM</a>` : ""}</p>`);
 
   h.push(`<h2 style="${ESTILO.h2}">Respuestas rápidas más usadas</h2>`);
-  h.push(tabla(["Respuesta", "Usos", "Avanzó después", "La editaron"],
-    d.rapidas_mas_usadas.map((r) => [escaparHtml(r.titulo), r.usos, `${r.avanzaron}%`, `${r.editadas}%`])));
+  h.push(tabla(["Grupo", "Respuesta", "Usos", "Avanzó después", "Cerró", "La editaron"],
+    d.rapidas_mas_usadas.map((r) => [escaparHtml(r.grupo || "—"), escaparHtml(r.titulo), r.usos, `${r.avanzaron}%`, `${r.cerraron}%`, `${r.editadas}%`])));
+
+  const f = d.frases;
+  if (f?.mejores?.length) {
+    h.push(`<h2 style="${ESTILO.h2}">Palabras que acompañan las ventas</h2>`);
+    h.push(`<p style="${ESTILO.p}">Frases que escribió el equipo antes de pedir el cierre (30 días). Promedio: <b>${f.promedio}%</b> cerró en ${f.chats} chats. Es correlación, no causa: sirve para decidir qué probar.</p>`);
+    h.push(tabla(["Frase", "Chats", "Cerró"], f.mejores.slice(0, 8).map((x) => [`▲ ${escaparHtml(x.frase)}`, x.chats, `<b>${x.cierre}%</b>`])));
+    h.push(tabla(["Frase", "Chats", "Cerró"], (f.peores || []).slice(0, 6).map((x) => [`▼ ${escaparHtml(x.frase)}`, x.chats, `${x.cierre}%`])));
+    t.push(`FRASES (promedio ${f.promedio}%): ` + f.mejores.slice(0, 5).map((x) => `"${x.frase}" ${x.cierre}%`).join(" · "));
+  }
+  if (d.ediciones?.length) {
+    h.push(`<h2 style="${ESTILO.h2}">Cómo editan las vendedoras las respuestas</h2>`);
+    h.push(tabla(["Respuesta", "Lo que mandaron de verdad"], d.ediciones.slice(0, 8).map((e) => [escaparHtml(e.titulo),
+      e.ejemplos.map((x) => `${x.avanzo ? "✅" : "·"} ${escaparHtml(x.agente || "")}: ${escaparHtml(String(x.texto).slice(0, 200))}`).join("<br>")])));
+  }
 
   h.push(`<h2 style="${ESTILO.h2}">Equipo</h2>`);
   h.push(tabla(["Vendedora", "Chats", "Cerró", "Calidad (1–5)", "Coaching"],
@@ -243,4 +279,90 @@ export async function onRequestGetResumen({ request, env }) {
   const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 7, 1), 31);
   const datos = await datosResumen(env, dias);
   return json({ ...armarResumen(datos, `${new URL(request.url).origin}/crm/`), datos });
+}
+
+const LIMA_MS = 5 * 3600 * 1000;
+
+async function ajuste(db, key) {
+  return (await db.prepare("SELECT value FROM crm_settings WHERE key = ?").bind(key).first())?.value ?? null;
+}
+function guardar(db, key, value) {
+  return db.prepare("INSERT INTO crm_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(key, value).run();
+}
+
+/** Guarda el resumen como página (CRM → Reportes) y devuelve su link. */
+export async function publicarResumen(env, r, fecha) {
+  const id = `resumen-${fecha}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.html`;
+  const pagina = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<meta name="robots" content="noindex"><title>${escaparHtml(r.asunto)}</title></head>` +
+    `<body style="margin:0;padding:16px;background:#fff">${r.html}</body></html>`;
+  await env.CRM_MEDIA.put(`reportes/${id}`, pagina, {
+    httpMetadata: { contentType: "text/html; charset=utf-8" },
+    customMetadata: { titulo: `Resumen semanal ${fecha}` }
+  });
+  return `${SITIO}/r/${id}`;
+}
+
+/**
+ * Cron de 10 min: el resumen de los lunes y los avisos de pruebas listas,
+ * por Telegram al dueño. Sin IA; si algo falla, se reintenta en la próxima pasada.
+ */
+export async function enviarResumenSiToca(env) {
+  if (!env.CRM_DB || !env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  const lima = new Date(Date.now() - LIMA_MS);
+  if (lima.getUTCHours() < 9) return;
+  const hoy = lima.toISOString().slice(0, 10);
+  const db = env.CRM_DB;
+
+  // Lunes: el resumen de la semana.
+  if (lima.getUTCDay() === 1 && env.CRM_MEDIA && (await ajuste(db, "resumen_semanal_enviado")) !== hoy) {
+    const d = await datosResumen(env, 7);
+    const r = armarResumen(d, `${SITIO}/crm/`);
+    const link = await publicarResumen(env, r, hoy);
+    const listas = d.pruebas_en_curso.filter((p) => p.listo);
+    const e = d.embudo;
+    const lineas = [
+      `📊 <b>${escaparHtml(r.asunto)}</b>`,
+      "",
+      `Embudo: ${e.e1 || 0} escribieron → ${e.e2 || 0} conversaron → ${e.e5 || 0} cerraron`,
+      ...listas.map((p) => `🧪 Lista para decidir: <b>${escaparHtml(p.titulo)}</b>, gana la versión ${escaparHtml(p.lider)}`),
+      ...(d.frases?.mejores || []).slice(0, 3).map((x) => `▲ "${escaparHtml(x.frase)}" ${x.cierre}% cerró (promedio ${d.frases.promedio}%)`)
+    ];
+    await llamarTelegram(env, "sendMessage", {
+      chat_id: env.TELEGRAM_CHAT_ID, text: lineas.join("\n"), parse_mode: "HTML", disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: "📊 Ver resumen completo", url: link }]] }
+    });
+    await guardar(db, "resumen_semanal_enviado", hoy);
+  }
+
+  // Cada día: pruebas que ya tienen ganadora (una vez por prueba y ganadora).
+  if ((await ajuste(db, "pruebas_revisadas")) === hoy) return;
+  const pruebas = await pruebasDeMensajes(env);
+  let avisadas = {};
+  try { avisadas = JSON.parse((await ajuste(db, "pruebas_avisadas")) || "{}"); } catch { avisadas = {}; }
+  const titulos = {};
+  const [rs, ws] = await Promise.all([
+    db.prepare("SELECT id, title FROM quick_replies").all(),
+    db.prepare("SELECT id, title FROM welcome_steps").all()
+  ]);
+  for (const r of rs.results) titulos[`rapida:${r.id}`] = r.title;
+  for (const w of ws.results) titulos[`bienvenida:${w.id}`] = `Bienvenida · ${w.title}`;
+  for (const tipo of ["rapida", "bienvenida"]) {
+    for (const [ref, vs] of Object.entries(pruebas.en_curso[tipo] || {})) {
+      const lider = vs.reduce((a, b) => (b.peso > a.peso ? b : a), vs[0]);
+      const listo = vs.every((v) => v.usos >= MIN_USOS) && lider.peso >= 0.85;
+      const clave = `${tipo}:${ref}:${lider.id}`;
+      if (!listo || avisadas[clave]) continue;
+      const i = vs.indexOf(lider);
+      const detalle = vs.map((v, k) => `${k + 1}: ${pct(v.avanzaron, v.usos)}% avanzó (${v.usos})`).join(" · ");
+      await llamarTelegram(env, "sendMessage", {
+        chat_id: env.TELEGRAM_CHAT_ID, parse_mode: "HTML", disable_web_page_preview: true,
+        text: `🧪 <b>${escaparHtml(titulos[`${tipo}:${ref}`] || `#${ref}`)}</b>: gana la versión ${i + 1}\n${detalle}\n\nPara quedarte con ella: ⚡ → editar esa respuesta → "Quedarse con esta".`,
+        reply_markup: { inline_keyboard: [[{ text: "Abrir el CRM", url: `${SITIO}/crm/` }]] }
+      });
+      avisadas[clave] = hoy;
+    }
+  }
+  await guardar(db, "pruebas_avisadas", JSON.stringify(avisadas));
+  await guardar(db, "pruebas_revisadas", hoy);
 }

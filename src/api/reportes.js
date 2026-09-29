@@ -5,6 +5,7 @@
  *      Lo guarda en R2 (reportes/…) con un nombre imposible de adivinar y
  *      devuelve el link. Lo sube enviar.py, así el PDF no pasa por el modelo.
  * GET  /r/<id>.pdf           el PDF (quien tenga el link).
+ * GET  /r/<id>.html          el resumen semanal (lo guarda asesor-resumen.js).
  * GET  /api/crm/reportes     (sesión de admin) los últimos reportes, para el
  *      botón Reportes del CRM. /api/asesor/reportes: lo mismo con la clave.
  */
@@ -19,7 +20,7 @@ const json = (data, status = 200) =>
   });
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const RE_ID = /^[a-z0-9-]{8,120}\.pdf$/;
+const RE_ID = /^[a-z0-9-]{8,120}\.(pdf|html)$/;
 
 export async function onRequestPostReporte({ request, env }) {
   if (!(await dentroDelLimiteAsesor(env, request.headers.get("CF-Connecting-IP")))) return json({ error: "Demasiados intentos." }, 429);
@@ -47,6 +48,12 @@ export async function reportePdf({ request, env }) {
   if (!RE_ID.test(id) || !env.CRM_MEDIA) return new Response("No encontrado", { status: 404 });
   const obj = await env.CRM_MEDIA.get(`reportes/${id}`);
   if (!obj) return new Response("No encontrado", { status: 404 });
+  if (id.endsWith(".html")) {
+    // El resumen semanal (asesor-resumen.js): una página, no un PDF.
+    return new Response(obj.body, {
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex, nofollow" }
+    });
+  }
   return new Response(obj.body, {
     headers: {
       "Content-Type": "application/pdf",
