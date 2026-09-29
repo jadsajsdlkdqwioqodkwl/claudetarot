@@ -144,3 +144,27 @@ export async function aprendizaje(env) {
     memoria: memoria.results
   };
 }
+
+/**
+ * GET /api/asesor/anuncios?dias=7 — lo que Meta no sabe: por cada anuncio
+ * (ad_source_id del click-to-WhatsApp), cuántos chats trajo, cuántos pasaron
+ * del saludo automático y cuántos terminaron en compra (etiqueta purchase).
+ * El director CRO lo cruza con el gasto de Meta para sacar el costo por venta.
+ */
+export async function onRequestGetAnuncios({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 7, 1), 60);
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT COALESCE(c.ad_source_id, '') AS ad_id, MAX(c.ad_headline) AS titular,
+            COUNT(*) AS chats,
+            SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
+                        AND m.body NOT LIKE '%gustaría más información%')) AS conversaron,
+            SUM(COALESCE(conv.meta_tags, '') LIKE '%lead%') AS leads,
+            SUM(COALESCE(conv.meta_tags, '') LIKE '%purchase%') AS compras
+     FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
+     WHERE conv.created_at >= datetime('now', ?)
+     GROUP BY 1 ORDER BY chats DESC LIMIT 100`
+  ).bind(`-${dias} days`).all();
+  return json({ dias, anuncios: results, nota: "compras = chats etiquetados purchase en el CRM (puede quedarse corto si las vendedoras no marcan la venta)" });
+}
