@@ -19,7 +19,7 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
  * ⚠️ NO TOCAR — REGLA DEL DUEÑO, IMPORTANTÍSIMA.
  * Todo TEXTO que sale a un cliente (a mano, pegado, respuesta rápida,
  * bienvenida, seguimiento, sugerencia aprobada, link de Shalom, plantilla)
- * va precedido de "escribiendo…" en su WhatsApp durante 1,5 s y recién el
+ * va precedido de "escribiendo…" en su WhatsApp durante 2 s (respuesta rápida 1,5 s, texto de bienvenida 1 s) y recién el
  * mensaje. No se quita, no se acorta, no se salta "para que vaya más rápido".
  *
  * Fotos, videos, audios, documentos, stickers, catálogo y producto salen al
@@ -33,12 +33,13 @@ import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "
  * mensaje. `npm run check` falla si algún envío a Meta no pasa por estas
  * funciones o si este valor cambia.
  */
-export const PAUSA_ENVIO_MS = 1500;
+export const PAUSA_ENVIO_MS = 2000; // mensaje normal: 2 s
+export const PAUSA_RAPIDA_MS = 1500; // respuesta rápida: 1,5 s
 /*
- * Bienvenida automática: el dueño la quiere rapidito (2026-09-29): cada texto
- * con "escribiendo…" de solo 0,5 s y sin el espacio entre mensajes.
+ * Bienvenida automática: el TEXTO lleva "escribiendo…" de 1 s y sin el
+ * espacio entre mensajes. Fotos y archivos, sin "escribiendo…".
  */
-export const PAUSA_BIENVENIDA_MS = 500;
+export const PAUSA_BIENVENIDA_MS = 1000;
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /*
@@ -102,8 +103,8 @@ async function escribiendoEn(env, conversationId, waMessageId) {
 }
 
 export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId, rapido = false } = {}) {
-  // Nunca menos de 1,5 s, pase lo que pase (la bienvenida, `rapido`: 0,5 s).
-  ms = rapido ? Math.max(Number(ms) || 0, PAUSA_BIENVENIDA_MS) : Math.max(Number(ms) || 0, PAUSA_ENVIO_MS);
+  // Nunca menos que el mínimo, pase lo que pase (bienvenida `rapido`: 1 s; respuesta rápida: 1,5 s; normal: 2 s).
+  ms = rapido ? Math.max(Number(ms) || 0, PAUSA_BIENVENIDA_MS) : Math.max(Number(ms) || 0, PAUSA_RAPIDA_MS);
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
   // tiene (el cron, el webhook), así no se gasta una consulta a D1 por envío.
   let waIn = ultimoWaId || null;
@@ -113,7 +114,7 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ult
       const ultimo = await env.CRM_DB.prepare(
         `SELECT
            ${waIn ? "NULL" : `(SELECT wa_message_id FROM messages
-            WHERE conversation_id = ?1 AND direction = 'in' AND type <> 'call' AND wa_message_id IS NOT NULL
+            WHERE conversation_id = ?1 AND direction = 'in' AND type NOT IN ('call', 'reaction', 'system') AND wa_message_id IS NOT NULL
             ORDER BY id DESC LIMIT 1)`} AS wa_message_id,
            (SELECT MAX(created_at) FROM messages WHERE conversation_id = ?1 AND direction = 'out') AS ultimo_out`
       )

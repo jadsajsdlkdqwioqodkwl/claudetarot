@@ -21,7 +21,7 @@ import { versionesEnPrueba, elegirVersion, registrarUso } from "./crm-variantes.
  */
 export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentByLabel, stepIds = null, { pruebas = false, ultimoWaId } = {}) {
   // Con el id del mensaje del cliente a mano, el "escribiendo…" no gasta una consulta por paso.
-  // Rapidito (decisión del dueño): "escribiendo…" de 0,5 s por texto, sin espacio entre mensajes.
+  // Rapidito (decisión del dueño): "escribiendo…" de 1 s por texto, sin espacio entre mensajes.
   const escribiendo = ultimoWaId ? { ultimoWaId, rapido: true } : { rapido: true };
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT * FROM welcome_steps ORDER BY step_order ASC"
@@ -70,7 +70,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   }
 
   // Fotos y videos al toque, en el orden elegido; cada texto con su propio
-  // "escribiendo…" (0,5 s). Por defecto primero las fotos y después el
+  // "escribiendo…" (1 s). Por defecto primero las fotos y después el
   // texto del paso; con `texto_primero`, al revés.
   for (const paso of pasos) {
     // Sin `caption` en cada foto/video — si no, el texto del paso sale

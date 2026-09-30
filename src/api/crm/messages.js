@@ -14,7 +14,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { mandarTexto, mandarMediaGuardada, pausaEnvio } from "../../lib/crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 
@@ -130,7 +130,7 @@ async function post({ request, env, agent }) {
     const texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
-    await pausaEnvio(env, conversationId);
+    await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined);
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida();
