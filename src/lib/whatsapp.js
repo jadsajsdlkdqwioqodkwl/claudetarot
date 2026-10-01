@@ -6,7 +6,7 @@
  * destino siempre en formato E.164 sin "+" (como lo manda la propia API).
  */
 
-const GRAPH_VERSION = "v21.0";
+const GRAPH_VERSION = "v23.0"; // "escribiendo…" (typing_indicator) no existe en v21: Meta lo ignora sin error
 
 function graphUrl(env, path) {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${path}`;
