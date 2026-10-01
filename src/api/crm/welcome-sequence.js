@@ -172,6 +172,13 @@ async function patch({ request, env, agent }) {
 
   if ((existente.body || null) !== body) {
     await guardarAnterior(env.CRM_DB, "bienvenida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
+    // Las versiones en prueba eran alternativas al texto viejo y seguirían saliendo
+    // (o una ⭐ con el texto viejo taparía el nuevo): se retiran para que salga el nuevo.
+    await env.CRM_DB.batch([
+      env.CRM_DB.prepare("UPDATE variantes SET estado = 'retirada', cerrada_at = datetime('now'), cerrada_por = ? WHERE tipo = 'bienvenida' AND ref_id = ? AND estado = 'activa'")
+        .bind(agent?.displayName || agent?.username || null, id),
+      env.CRM_DB.prepare("UPDATE welcome_steps SET orden_versiones = NULL WHERE id = ?").bind(id)
+    ]).catch(() => {});
   }
   await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ?, texto_primero = COALESCE(?, texto_primero) WHERE id = ?")
     .bind(title, body, payload?.texto_primero === undefined ? null : payload.texto_primero ? 1 : 0, id).run();
