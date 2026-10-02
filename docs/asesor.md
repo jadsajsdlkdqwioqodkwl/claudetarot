@@ -6,14 +6,15 @@
 |---|---|---|
 | Guardar chats, seguimientos programados, carrito (apagado) | Worker, cron `*/5` | Cloudflare |
 | Export de chats a la hoja de Google | Worker, cron `*/10` | Cloudflare (solo para humanos; el bot ya no la usa) |
-| Leer chats, clasificar pedidos, redactar mensajes, leer boletas | Routines 11:30 · 16:30 · 21:00 · 22:30 | Plan de Claude |
+| Leer chats, clasificar pedidos, redactar mensajes, leer boletas | Routines 10:30 · 11:30 · 16:30 · 21:00 · 22:30 (+ «Reporte a pedido», se corre a mano) | Plan de Claude |
 | Director CRO (embudo, pruebas de mensajes, respuestas rápidas nuevas) | Routine 7:52 | Plan de Claude |
 | Coaching y voz del cliente (semanal) | Routine lunes 7:37 | Plan de Claude |
 | Etapa del embudo de cada chat, reparto de versiones en prueba | Worker, cron `*/5` | Cloudflare (sin IA) |
 | Resumen semanal por correo | Apps Script (`resumenSemanal`) → `GET /api/asesor/resumen` | Gratis (Gmail + Worker, sin IA) |
 | Aprobar / enviar / programar / decidir pruebas | CRM → ✨ Sugerencias y ⚡ editar respuesta | — |
 
-**Telegram, lo único que sale**: el PDF de pedidos al dueño y **un solo aviso**
+**Telegram, lo único que sale**: el PDF de pedidos (con su link) al dueño y a
+Danitza (`REPORTE_AGENTES`, si vinculó Telegram en el CRM) y **un solo aviso**
 al equipo y al dueño, "✨ Hay N recomendaciones listas para revisar y enviar",
 como mucho uno por hora (`src/lib/crm-avisos.js`). Antes llegaba un mensaje
 por cada propuesta, los trozos del informe y el resumen: ya no. El informe

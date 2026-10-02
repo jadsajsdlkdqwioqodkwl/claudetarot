@@ -118,6 +118,17 @@ export async function onRequestPost({ request, env }) {
     } catch (err) {
       res.fallidos.push({ que: "pdf", error: err.message });
     }
+    // Y a las del equipo en REPORTE_AGENTES (Danitza) que vincularon su
+    // Telegram en el CRM: mismo PDF, con el link al reporte en el texto.
+    for (const chatId of await chatsReporte(env, dueno)) {
+      try {
+        await mandarPdf(env, chatId, payload.pdf_base64, payload.pdf_nombre, payload.resumen);
+        res.enviados++;
+        res.a_equipo = (res.a_equipo || 0) + 1;
+      } catch (err) {
+        res.fallidos.push({ que: "pdf equipo", error: err.message });
+      }
+    }
   }
   // Lo demás (cada mensaje sugerido, los trozos del informe, los resúmenes
   // sueltos) ya no se manda uno por uno: las propuestas quedan en ✨
@@ -129,6 +140,19 @@ export async function onRequestPost({ request, env }) {
     if (r.omitido) res.omitido = r.omitido;
   }
   return json(res);
+}
+
+/** Telegram de los usuarios de REPORTE_AGENTES (username, separados por coma) que lo vincularon. */
+async function chatsReporte(env, dueno) {
+  const usuarios = String(env.REPORTE_AGENTES ?? "danitza").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
+  if (!usuarios.length) return [];
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT telegram_chat_id FROM agents WHERE active = 1 AND telegram_chat_id IS NOT NULL
+     AND LOWER(username) IN (${usuarios.map(() => "?").join(",")})`
+  )
+    .bind(...usuarios)
+    .all();
+  return [...new Set(results.map((a) => String(a.telegram_chat_id)))].filter((c) => c !== String(dueno));
 }
 
 /** El informe del director como página en CRM → Reportes. */

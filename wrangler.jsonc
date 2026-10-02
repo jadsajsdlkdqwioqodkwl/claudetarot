@@ -134,6 +134,9 @@
     "PLANTILLA_ENVIO": "",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",
+    // Usuarios (username) que además del dueño reciben por Telegram el PDF de
+    // pedidos con su link (tienen que haber vinculado Telegram en el CRM).
+    "REPORTE_AGENTES": "danitza",
     // Claves de recojo de Shalom que se reparten entre los pedidos (una por pedido).
     "CLAVES_SHALOM": "3114,3144,3143",
     // Horario en que salen los mensajes programados (hora de Lima). Fuera de
