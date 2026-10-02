@@ -62,6 +62,9 @@ TITULOS = {
 # pedido de un día pasado agendado para esta fecha. Va en su propia sección,
 # después de los confirmados y ANTES de los por confirmar, para que no se pierda.
 ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGENDADO": "📌 Agendado de otro día"}
+# Incidencia que obliga a mandar algo (reposición, cambio, motorizado…): va arriba y marcada.
+ENVIO = re.compile(r"reposici|repon[eé]|cambi(o|ar) (de|el|la|por)|motoriz|devoluci|llev[aá](r|rle|rsela)\b"
+                   r"|falt\w* (la |el |una |un )?(carta|mazo|collar|manual|tapete|kit)", re.I)
 especial = lambda p: str(p.get("tipo") or "").upper().replace("Ó", "O") in ESPECIALES
 e = lambda s: html.escape(str(s if s is not None else ""))
 num_kits = lambda p: 1 if p.get("kits") in (None, "") else int(p.get("kits"))
@@ -87,9 +90,9 @@ def empaque(p):
 
 def tabla(filas, cols):
     cab = "".join(f"<th>{e(n)}</th>" for n, _ in cols)
-    cuerpo = "".join(("<tr class=extra>" if p.get("_empaque") else "<tr>")
+    cuerpo = "".join(("<tr class=alerta>" if "🚨" in str(p.get("nota") or "") else "<tr class=extra>" if p.get("_empaque") else "<tr>")
                      + "".join(f"<td>{e(p.get(k, ''))}</td>" for _, k in cols) + "</tr>" for p in filas)
-    cuerpo = cuerpo.replace("<tr>", "<tr><td class=n></td>").replace("<tr class=extra>", "<tr class=extra><td class=n></td>")
+    cuerpo = re.sub(r"<tr( class=\w+)?>", lambda m: m.group(0) + "<td class=n></td>", cuerpo)
     return f"<table><tr><th>#</th>{cab}</tr>" + cuerpo + "</table>"
 
 
@@ -112,17 +115,31 @@ def armar_pdf(datos, carpeta):
                   + ("<div class=emp>" + tabla(raros, [("Cliente", "nombre"), ("Destino", "destino"), ("Kits", "kits"),
                                                        ("Qué agregar / quitar", "_empaque")]) + "</div>" if raros else "")
                   + "<p class=emp>Todos los demás pedidos que salen llevan <b>1 kit normal</b>, sin nada extra.</p>")
+    # Segundo, las incidencias: en cuadro grande y rojo, no en letra chica al final.
+    # Las que piden mandar algo (reposición, cambio, motorizado) van primero.
+    inc_filas = [{"texto": str(p.get("nota") or "").lstrip("🚨 ").strip(), "whatsapp": p.get("whatsapp", "")}
+                 for p in todos if (p.get("nombre") or "").upper() == "INCIDENCIA" and (p.get("nota") or "").strip()]
+    vistos = " ".join(f["texto"].lower() for f in inc_filas)
+    inc_filas += [{"texto": str(i).lstrip("🚨 ").strip(), "whatsapp": ""} for i in incidencias
+                  if str(i).strip() and (str(i).lstrip("🚨 ").split() or [""])[0].strip(":,").lower() not in vistos]
+    for f in inc_filas:
+        f["envio"] = "🛵 SÍ — mandar motorizado / agregar al despacho" if ENVIO.search(f["texto"]) else ""
+        f["texto"] = "🚨 " + f["texto"]
+    inc_filas.sort(key=lambda f: not f["envio"])
+    if inc_filas:
+        partes.append(f"<h2 class=inc>🚨🚨 ATENCIÓN — INCIDENCIAS ({len(inc_filas)})</h2><div class=inc>"
+                      + tabla(inc_filas, [("Qué pasa / qué hacer", "texto"), ("¿Requiere envío?", "envio"),
+                                          ("WhatsApp", "whatsapp")]) + "</div>")
     esp = [dict(p, tipo=ESPECIALES[str(p.get("tipo")).upper().replace("Ó", "O")]) for p in pedidos if especial(p)]
     for (estado, destino), titulo in TITULOS.items():
         if estado == "POR_CONFIRMAR" and esp:
-            partes.append(f"<h2 class=esp>📦 Cambios, reposiciones y agendados de otros días — SALEN EN ESTE DESPACHO ({len(esp)})</h2>"
-                          + "<div class=esp>" + tabla(esp, [("Tipo", "tipo"), ("Destino", "destino")] + cols) + "</div>")
+            partes.append(f"<h2 class=esp>🚨 SALEN EN ESTE DESPACHO: cambios, reposiciones y agendados de otros días ({len(esp)})</h2>"
+                          + "<div class=esp>" + tabla(esp, [("Tipo", "tipo"), ("Destino", "destino"), ("Cliente", "nombre"),
+                                                            ("WhatsApp", "whatsapp"), ("Dirección / Agencia", "direccion_o_agencia"),
+                                                            ("Kits", "kits"), ("📦 Qué lleva", "_empaque"), ("Nota", "nota")]) + "</div>")
         filas = [p for p in pedidos if not especial(p) and p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
             partes.append(f"<h2>{titulo} ({len(filas)})</h2>" + tabla(filas, cols))
-    if incidencias:
-        partes.append(f"<h2>🚨 Incidencias ({len(incidencias)})</h2><ol class=inc>"
-                      + "".join(f"<li>{e(i)}</li>" for i in incidencias) + "</ol>")
     conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
     kits = sum(num_kits(p) for p in conf)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
@@ -138,17 +155,20 @@ def armar_pdf(datos, carpeta):
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
     doc = f"""<!doctype html><meta charset=utf-8><style>
-@page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:10px;color:#111}}
-h1{{font-size:20px;margin:0}} h2{{font-size:13px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}}
+@page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111}}
+h1{{font-size:24px;margin:0}} h2{{font-size:17px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}}
 .sub{{color:#666;margin:2px 0 10px}}
 .cajas{{display:flex;gap:8px;margin:8px 0}} .cajas div{{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px}}
-.cajas b{{display:block;font-size:18px;color:#075E54}} .cajas span{{color:#555}}
+.cajas b{{display:block;font-size:24px;color:#075E54}} .cajas span{{color:#555}}
 table{{border-collapse:collapse;width:100%;counter-reset:n}} tr{{page-break-inside:avoid}}
-th{{background:#075E54;color:#fff;text-align:left;padding:3px 5px}} td{{border:1px solid #ccc;padding:3px 5px;vertical-align:top}}
+th{{background:#075E54;color:#fff;text-align:left;padding:5px 6px}} td{{border:1px solid #bbb;padding:5px 6px;vertical-align:top}}
 td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}
-tr.extra td{{background:#fef9c3;font-weight:600}} h2.emp{{color:#854d0e;border-color:#ca8a04;font-size:15px}}
-div.emp th{{background:#ca8a04}} div.emp td{{background:#fef9c3;font-size:12px;font-weight:700}} p.emp{{margin:4px 0 8px;font-size:11px}}
-h2.esp{{color:#9a3412;border-color:#ea580c}} div.esp th{{background:#ea580c}} div.esp td{{background:#fff7ed}}</style>
+tr.extra td{{background:#fef9c3;font-weight:600}} h2.emp{{color:#854d0e;border-color:#ca8a04;font-size:19px}}
+div.emp th{{background:#ca8a04}} div.emp td{{background:#fef9c3;font-size:15px;font-weight:700}} p.emp{{margin:4px 0 8px;font-size:14px}}
+body > table td:last-child, div.esp td:last-child{{width:24%}} body > table td:nth-last-child(4){{width:9%}}
+h2.inc{{color:#b91c1c;border-color:#dc2626;font-size:19px}} div.inc th{{background:#dc2626}}
+div.inc td{{background:#fee2e2;font-size:15px;font-weight:700}} tr.alerta td{{background:#fee2e2;font-weight:700}}
+h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{background:#ea580c}} div.esp td{{background:#ffedd5;font-size:15px;font-weight:700}}</style>
 <h1>Reporte de ventas · despacho del {e(fecha)}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
     ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, f"pedidos-{fecha}.pdf")

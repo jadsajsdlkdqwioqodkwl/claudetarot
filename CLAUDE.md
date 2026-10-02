@@ -39,7 +39,11 @@
    lleva (ej. solo una carta de reposición, con `kits: 0`). Revisa el chat
    completo: lo que no esté en `empaque` no se empaca. La `nota` sigue con
    lo de entrega y cobro (saldo, horario, avisar antes, piso).
-8. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
+8. Reclamo que obliga a mandar algo (carta o mazo que faltó, cambio, llevarle
+   algo con motorizado): va SIEMPRE como pedido con `tipo` REPOSICION o CAMBIO,
+   dirección, `empaque` (qué llevar) y nota que empiece con "🚨 ", además de
+   en `incidencias`. Toda nota que pida atención empieza con "🚨 ".
+9. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
    recomendaciones nuevas") y el PDF de pedidos al dueño. El informe del
    director queda en CRM → Reportes.
 

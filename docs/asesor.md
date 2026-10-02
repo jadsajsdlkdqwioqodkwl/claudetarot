@@ -26,6 +26,10 @@ collar, solo una carta…; `kits: 0` si no lleva kit). El PDF abre con "📦 PAR
 EL QUE EMPACA": la lista de esos pedidos; las filas con extras salen en amarillo
 (`empaque()` en `scripts/asesor/enviar.py`; sin `empaque`, toma la frase 📦 de la nota).
 
+**Incidencias**: van arriba, en un cuadro rojo grande (no al final), y primero las
+que piden mandar algo (🛵, `ENVIO` en `enviar.py`). Las filas con "🚨" en la nota
+salen en rojo.
+
 **Provincia confirmada**: mandó la captura del adelanto **o** la vendedora ya le
 confirmó el pedido ("gracias por la confianza", "le enviamos el comprobante",
 "recibido"): eso quiere decir que el Yape llegó aunque no haya captura en el
