@@ -140,6 +140,16 @@ def armar_pdf(datos, carpeta):
         filas = [p for p in pedidos if not especial(p) and p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
             partes.append(f"<h2>{titulo} ({len(filas)})</h2>" + tabla(filas, cols))
+    # Todos los formularios de la página de las últimas 24 h, hayan terminado o no
+    # en venta (GET /api/asesor/pedidos-web; main() los trae y los deja en datos).
+    web = datos.get("pedidos_web") or []
+    if web:
+        compraron = sum(1 for w in web if w.get("resultado") == "COMPRÓ")
+        partes.append(f"<h2 class=web>🌐 Pedidos de la web — últimas 24 h ({len(web)}; compraron {compraron})</h2>"
+                      + "<div class=web>" + tabla(web, [("Hora", "hora"), ("Cliente", "nombre"), ("WhatsApp", "whatsapp"),
+                                                        ("Destino", "destino"), ("Dirección / Agencia", "direccion_o_agencia"),
+                                                        ("Producto", "producto"), ("Total S/", "total"),
+                                                        ("Resultado", "resultado")]) + "</div>")
     conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
     kits = sum(num_kits(p) for p in conf)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
@@ -151,7 +161,8 @@ def armar_pdf(datos, carpeta):
              ("Por confirmar", cuenta(normal("POR_CONFIRMAR"))),
              ("Otros días", cuenta(normal("OTRO_DIA"))),
              ("Intención", cuenta(normal("INTENCION"))),
-             ("Incidencias", len(incidencias))]
+             ("Incidencias", len(incidencias)),
+             ("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
     doc = f"""<!doctype html><meta charset=utf-8><style>
@@ -168,7 +179,8 @@ div.emp th{{background:#ca8a04}} div.emp td{{background:#fef9c3;font-size:15px;f
 body > table td:last-child, div.esp td:last-child{{width:24%}} body > table td:nth-last-child(4){{width:9%}}
 h2.inc{{color:#b91c1c;border-color:#dc2626;font-size:19px}} div.inc th{{background:#dc2626}}
 div.inc td{{background:#fee2e2;font-size:15px;font-weight:700}} tr.alerta td{{background:#fee2e2;font-weight:700}}
-h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{background:#ea580c}} div.esp td{{background:#ffedd5;font-size:15px;font-weight:700}}</style>
+h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{background:#ea580c}} div.esp td{{background:#ffedd5;font-size:15px;font-weight:700}}
+h2.web{{color:#1d4ed8;border-color:#2563eb}} div.web th{{background:#2563eb}}</style>
 <h1>Reporte de ventas · despacho del {e(fecha)}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
     ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, f"pedidos-{fecha}.pdf")
@@ -182,6 +194,7 @@ h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{backgrou
 
 AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
 SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
+PEDIDOS_WEB = AVISOS.replace("/avisos", "/pedidos-web")
 ANALISIS = AVISOS.replace("/avisos", "/analisis")
 
 
@@ -196,6 +209,20 @@ def al_worker(clave, cuerpo, url=None):
             return json.load(r)
     except urllib.error.HTTPError as err:
         sys.exit(f"El Worker rechazó el aviso ({err.code}): {err.read().decode()[:300]}")
+
+
+def traer_pedidos_web(clave, datos, horas=24):
+    """Los formularios de la página (vendieran o no) para la sección 🌐 del PDF.
+    Si salida.json ya trae "pedidos_web", se usan esos. Un fallo no frena el reporte."""
+    if "pedidos_web" in datos or not clave:
+        return
+    req = urllib.request.Request(f"{PEDIDOS_WEB}?horas={horas}",
+                                 headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            datos["pedidos_web"] = json.load(r).get("pedidos", [])
+    except Exception as err:  # noqa: BLE001
+        print(f"No se pudieron traer los pedidos de la web: {err}", flush=True)
 
 
 def subir_reporte(clave, pdf_base64, nombre, titulo):
@@ -277,6 +304,8 @@ def main():
         print("NO SE GUARDARON (suenan a bot; reescríbelas como las vendedoras, skill voz-tarot-store, "
               "y vuelve a mandarlas en otro salida.json):\n" + "\n".join(fuera), flush=True)
     carpeta = os.path.dirname(os.path.abspath(ruta))
+    if "--solo-pdf" in args or not solo_mensajes:
+        traer_pedidos_web(clave, datos)
     if "--solo-pdf" in args:  # arma el PDF (y con clave lo sube a CRM → Reportes); no avisa a nadie
         pdf = armar_pdf(datos, carpeta)[0]
         print(f"PDF: {pdf}")
@@ -295,7 +324,9 @@ def main():
                              f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
                              + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) else "")
                              + f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
-                             f"✍️ Mensajes sugeridos a las vendedoras: {len(cuerpo['mensajes'])}")
+                             + (f"🌐 Pedidos de la web (24 h): {len(datos['pedidos_web'])} · compraron "
+                                f"{sum(1 for w in datos['pedidos_web'] if w.get('resultado') == 'COMPRÓ')}\n" if datos.get("pedidos_web") else "")
+                             + f"✍️ Mensajes sugeridos a las vendedoras: {len(cuerpo['mensajes'])}")
         with open(pdf, "rb") as fh:
             cuerpo["pdf_base64"] = base64.b64encode(fh.read()).decode()
         cuerpo["pdf_nombre"] = os.path.basename(pdf)

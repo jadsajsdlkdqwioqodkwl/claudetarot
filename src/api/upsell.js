@@ -14,6 +14,7 @@ import { getValues, updateValues } from "../lib/google-sheets.js";
 import { COLUMNAS, indiceDe, letraDe } from "../lib/hoja.js";
 import { UPSELLS } from "../lib/pedido.js";
 import { notificarTelegram, mensajeBumpAgregado } from "../lib/telegram.js";
+import { anotarBumpPedidoWeb } from "../lib/pedidos-web.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -87,6 +88,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       bump: item.etiqueta,
       total
     })));
+    waitUntil(anotarBumpPedidoWeb(env, fila, item.etiqueta, total));
 
     return json({ ok: true, total });
   } catch (err) {

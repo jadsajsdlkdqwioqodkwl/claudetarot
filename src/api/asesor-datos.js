@@ -174,3 +174,45 @@ export async function onRequestGetAnuncios({ request, env }) {
   ).bind(`-${dias} days`).all();
   return json({ dias, anuncios: results, nota: "compras = chats etiquetados purchase en el CRM (puede quedarse corto si las vendedoras no marcan la venta)" });
 }
+
+/**
+ * GET /api/asesor/pedidos-web?horas=24
+ *      Los formularios de la página de las últimas `horas` (máx. 72), hayan
+ *      terminado o no en venta, con lo que pasó en su chat de WhatsApp: si el
+ *      cliente escribió después del pedido, la etapa del embudo y si compró.
+ *      Lo lee enviar.py para la sección "🌐 Pedidos de la web" del PDF.
+ */
+export async function onRequestGetPedidosWeb({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const horas = Math.min(Math.max(Number(new URL(request.url).searchParams.get("horas")) || 24, 1), 72);
+  const desde = sqlFecha(new Date(Date.now() - horas * 3600000));
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT p.id, p.created_at, p.nombre, p.wa_id, p.envio, p.destino, p.etiqueta, p.bump, p.total,
+            conv.etapa, conv.meta_tags,
+            (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
+               AND m.created_at >= p.created_at) AS mensajes_cliente
+     FROM pedidos_web p
+     LEFT JOIN contacts c ON c.wa_id = p.wa_id
+     LEFT JOIN conversations conv ON conv.contact_id = c.id
+     WHERE p.created_at >= ?
+     ORDER BY p.created_at ASC
+     LIMIT 300`
+  ).bind(desde).all();
+  const pedidos = results.map((p) => {
+    const compro = /\bpurchase\b/.test(p.meta_tags || "") || Number(p.etapa) >= 5;
+    return {
+      hora: aLima(p.created_at).slice(5, 16),
+      nombre: p.nombre,
+      whatsapp: p.wa_id,
+      destino: p.envio === "casa" ? "LIMA" : "PROVINCIA",
+      direccion_o_agencia: p.destino,
+      producto: p.bump ? `${p.etiqueta} + ${p.bump}` : p.etiqueta,
+      total: p.total,
+      escribio: p.mensajes_cliente > 0,
+      etapa: p.etapa ?? null,
+      resultado: compro ? "COMPRÓ" : p.mensajes_cliente > 0 ? "EN CONVERSACIÓN" : "SIN RESPUESTA"
+    };
+  });
+  return json({ horas, pedidos });
+}

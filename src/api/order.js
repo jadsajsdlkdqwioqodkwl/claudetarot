@@ -10,6 +10,7 @@
 import { appendRow } from "../lib/google-sheets.js";
 import { VARIANTES, clean, toE164Peru, makeEventId } from "../lib/pedido.js";
 import { notificarTelegram, mensajeLeadNuevo } from "../lib/telegram.js";
+import { registrarPedidoWeb } from "../lib/pedidos-web.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -171,6 +172,8 @@ export async function onRequestPost(context) {
   // El pedido ya quedó guardado; el aviso a Telegram va en segundo plano y
   // nunca puede atrasar ni tumbar la respuesta al cliente.
   waitUntil(notificarTelegram(env, mensajeLeadNuevo(order)));
+  // A D1, para la sección "Pedidos de la web" del reporte diario.
+  waitUntil(registrarPedidoWeb(env, order, fila));
 
   return json({ ok: true, fila, total: order.total, eventId: order.eventId });
 }

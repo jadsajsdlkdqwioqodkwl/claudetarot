@@ -36,6 +36,12 @@ confirmó el pedido ("gracias por la confianza", "le enviamos el comprobante",
 chat. Más nombre, DNI y agencia. En `pago`: "Adelanto S/20 (confirmado por
 <vendedora>, sin captura)".
 
+**Pedidos de la web**: cada formulario de la página queda en D1 (`pedidos_web`,
+migración 0042, `src/lib/pedidos-web.js`), haya terminado o no en venta.
+`enviar.py` trae los de las últimas 24 h (`GET /api/asesor/pedidos-web`) y el
+PDF los pone en "🌐 Pedidos de la web" con su resultado (COMPRÓ, EN
+CONVERSACIÓN, SIN RESPUESTA), más una caja con el total.
+
 **Cambios, reposiciones y agendados de otros días**: todo pedido que sale en
 el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
 `AGENDADO`) en `salida.json`. El PDF los pone en su propia sección, en naranja,
