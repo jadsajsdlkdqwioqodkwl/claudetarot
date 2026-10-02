@@ -44,6 +44,15 @@ reprogramaciones.
 - **Collar amuleto adicional** de regalo (además del que ya trae el kit).
 - Separar un pedido para otra fecha con un adelanto mínimo de S/10.
 No combinar las dos primeras en el mismo cliente sin que lo decida el dueño.
+- **Escalera de los toques automáticos** (aprobada por el dueño el 02/10,
+  `docs/plan-seguimientos.md`): día 7 collar extra "si lo separa esta semana";
+  día 14 kit S/79 **o** 2 kits S/149; día 30 separar con S/10. Cada oferta
+  reemplaza a la anterior. Si el cliente responde a un toque, se le respeta la
+  oferta de ese toque.
+- **Clientes que ya compraron**: The Classic Tarot a S/49 (precio de la web)
+  en vez de S/69; mazo Gold S/139.
+- **Referidos** (aprobado por el dueño el 02/10): si una amiga escribe de parte
+  de una clienta y compra, las dos reciben un collar amuleto de regalo.
 Cualquier otra promoción (2x1, más descuento, envío express) = decisión del dueño.
 
 ## Reglas de WhatsApp
