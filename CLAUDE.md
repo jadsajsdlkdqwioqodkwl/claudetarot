@@ -32,7 +32,14 @@
    vendedora ya le confirmó el pedido ("gracias por la confianza", "le
    enviamos el comprobante"…: el Yape llegó aunque no haya captura en el chat),
    y dio nombre, DNI y agencia. No lo dejes en POR_CONFIRMAR por falta de captura.
-7. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
+7. EMPAQUE (importantísimo): el que empaca asume que TODO pedido es 1 kit
+   normal y solo se guía del PDF. Todo lo que no sea eso va en `empaque` de
+   cada pedido (y con "📦 " al inicio de la `nota`): 2 o más kits, mazo u
+   oráculo extra, otro modelo, collar o regalo extra prometido, lo que NO
+   lleva (ej. solo una carta de reposición, con `kits: 0`). Revisa el chat
+   completo: lo que no esté en `empaque` no se empaca. La `nota` sigue con
+   lo de entrega y cobro (saldo, horario, avisar antes, piso).
+8. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
    recomendaciones nuevas") y el PDF de pedidos al dueño. El informe del
    director queda en CRM → Reportes.
 

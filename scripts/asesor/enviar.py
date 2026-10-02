@@ -23,7 +23,8 @@ salida.json:
                "destino": "LIMA|PROVINCIA", "nombre": "", "whatsapp": "",
                "telefono": "", "dni": "", "direccion_o_agencia": "",
                "courier": "", "kits": 1, "pago": "", "fecha_entrega": "", "nota": "",
-               "tipo": "CAMBIO|REPOSICION|AGENDADO"}],   # tipo: solo si no es venta nueva del día (ver ESPECIALES)
+               "tipo": "CAMBIO|REPOSICION|AGENDADO",   # solo si no es venta nueva del día (ver ESPECIALES)
+               "empaque": "+ mazo The Classic Tarot · + collar amuleto"}],   # lo que NO es 1 kit normal; vacío si es 1 kit
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": "",
                 "objecion": "lo que probablemente lo frena (desconfianza por el adelanto, falta de info…)",
                 "idea": {"titulo": "otra opción para la próxima", "mensaje": "texto listo"},   # opcional
@@ -63,12 +64,33 @@ TITULOS = {
 ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGENDADO": "📌 Agendado de otro día"}
 especial = lambda p: str(p.get("tipo") or "").upper().replace("Ó", "O") in ESPECIALES
 e = lambda s: html.escape(str(s if s is not None else ""))
+num_kits = lambda p: 1 if p.get("kits") in (None, "") else int(p.get("kits"))
+
+
+def empaque(p):
+    """Lo que el que empaca agrega o quita a "1 kit normal". Él asume que todo
+    pedido es 1 kit y solo se guía del PDF: si un extra no sale aquí, no va.
+    Toma el campo `empaque`; si no está, la frase de la nota que empieza con 📦."""
+    extra = str(p.get("empaque") or "").strip()
+    if not extra and "📦" in str(p.get("nota") or ""):
+        m = re.search(r"📦\s*(.+?)(?:(?<=\.)\s|$)", str(p["nota"]))
+        extra = m.group(1).strip() if m else ""
+    partes, k = [], num_kits(p)
+    if k == 0 and "no lleva kit" not in extra.lower():
+        partes.append("NO lleva kit")
+    elif k > 1 and f"{k} kit" not in extra.lower():
+        partes.append(f"{k} KITS")
+    if extra:
+        partes.append(extra)
+    return " · ".join(partes)
 
 
 def tabla(filas, cols):
     cab = "".join(f"<th>{e(n)}</th>" for n, _ in cols)
-    cuerpo = "".join("<tr>" + "".join(f"<td>{e(p.get(k, ''))}</td>" for _, k in cols) + "</tr>" for p in filas)
-    return f"<table><tr><th>#</th>{cab}</tr>" + cuerpo.replace("<tr>", "<tr><td class=n></td>", -1) + "</table>"
+    cuerpo = "".join(("<tr class=extra>" if p.get("_empaque") else "<tr>")
+                     + "".join(f"<td>{e(p.get(k, ''))}</td>" for _, k in cols) + "</tr>" for p in filas)
+    cuerpo = cuerpo.replace("<tr>", "<tr><td class=n></td>").replace("<tr class=extra>", "<tr class=extra><td class=n></td>")
+    return f"<table><tr><th>#</th>{cab}</tr>" + cuerpo + "</table>"
 
 
 def armar_pdf(datos, carpeta):
@@ -77,10 +99,19 @@ def armar_pdf(datos, carpeta):
     # Las incidencias van en su propia sección, no como filas de pedidos.
     pedidos = [p for p in todos if (p.get("nombre") or "").upper() != "INCIDENCIA"]
     incidencias = datos.get("incidencias") or [p.get("nota", "").lstrip("🚨 ") for p in todos if p not in pedidos]
+    pedidos = [dict(p, _empaque=empaque(p)) for p in pedidos]
     cols = [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Teléfono recibe", "telefono"), ("DNI", "dni"),
             ("Dirección / Agencia", "direccion_o_agencia"), ("Courier", "courier"), ("Kits", "kits"),
-            ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
+            ("📦 Empaque (extras)", "_empaque"), ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
     partes = []
+    # Primero, para el que empaca: todo lo que sale y NO es 1 kit normal.
+    salen = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
+    raros = [p for p in salen if p["_empaque"]]
+    partes.append("<h2 class=emp>📦 PARA EL QUE EMPACA — lo que NO es 1 kit normal "
+                  f"({len(raros)} de {len(salen)} pedidos que salen)</h2>"
+                  + ("<div class=emp>" + tabla(raros, [("Cliente", "nombre"), ("Destino", "destino"), ("Kits", "kits"),
+                                                       ("Qué agregar / quitar", "_empaque")]) + "</div>" if raros else "")
+                  + "<p class=emp>Todos los demás pedidos que salen llevan <b>1 kit normal</b>, sin nada extra.</p>")
     esp = [dict(p, tipo=ESPECIALES[str(p.get("tipo")).upper().replace("Ó", "O")]) for p in pedidos if especial(p)]
     for (estado, destino), titulo in TITULOS.items():
         if estado == "POR_CONFIRMAR" and esp:
@@ -93,7 +124,7 @@ def armar_pdf(datos, carpeta):
         partes.append(f"<h2>🚨 Incidencias ({len(incidencias)})</h2><ol class=inc>"
                       + "".join(f"<li>{e(i)}</li>" for i in incidencias) + "</ol>")
     conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
-    kits = sum((1 if p.get("kits") in (None, "") else int(p.get("kits"))) for p in conf)
+    kits = sum(num_kits(p) for p in conf)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
     normal = lambda est, des=None: lambda p: not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des)
     cajas = [("Kits a despachar", kits),
@@ -115,6 +146,8 @@ h1{{font-size:20px;margin:0}} h2{{font-size:13px;border-bottom:2px solid #075E54
 table{{border-collapse:collapse;width:100%;counter-reset:n}} tr{{page-break-inside:avoid}}
 th{{background:#075E54;color:#fff;text-align:left;padding:3px 5px}} td{{border:1px solid #ccc;padding:3px 5px;vertical-align:top}}
 td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}
+tr.extra td{{background:#fef9c3;font-weight:600}} h2.emp{{color:#854d0e;border-color:#ca8a04;font-size:15px}}
+div.emp th{{background:#ca8a04}} div.emp td{{background:#fef9c3;font-size:12px;font-weight:700}} p.emp{{margin:4px 0 8px;font-size:11px}}
 h2.esp{{color:#9a3412;border-color:#ea580c}} div.esp th{{background:#ea580c}} div.esp td{{background:#fff7ed}}</style>
 <h1>Reporte de ventas · despacho del {e(fecha)}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""

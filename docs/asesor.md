@@ -20,6 +20,12 @@ como mucho uno por hora (`src/lib/crm-avisos.js`). Antes llegaba un mensaje
 por cada propuesta, los trozos del informe y el resumen: ya no. El informe
 del director queda en CRM → Reportes.
 
+**Empaque**: el que empaca asume que todo pedido es 1 kit normal y solo se guía
+del PDF. Cada pedido lleva `empaque` con lo que NO es eso (2 kits, mazo extra,
+collar, solo una carta…; `kits: 0` si no lleva kit). El PDF abre con "📦 PARA
+EL QUE EMPACA": la lista de esos pedidos; las filas con extras salen en amarillo
+(`empaque()` en `scripts/asesor/enviar.py`; sin `empaque`, toma la frase 📦 de la nota).
+
 **Provincia confirmada**: mandó la captura del adelanto **o** la vendedora ya le
 confirmó el pedido ("gracias por la confianza", "le enviamos el comprobante",
 "recibido"): eso quiere decir que el Yape llegó aunque no haya captura en el
