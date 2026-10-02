@@ -71,6 +71,19 @@ export async function listarTemplates(env) {
   return datos.data || [];
 }
 
+/**
+ * Manda a revisión de Meta un Message Template nuevo (suele aprobarse en
+ * minutos). `componentes` en el formato de la Graph API.
+ */
+export async function crearTemplate(env, { nombre, categoria, idioma, componentes }) {
+  return llamar(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates`, {
+    name: nombre,
+    category: categoria,
+    language: idioma,
+    components: componentes
+  });
+}
+
 /** Manda un template ya aprobado — el único tipo de mensaje válido fuera de la ventana de 24h. */
 export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
   const components = parametros?.length

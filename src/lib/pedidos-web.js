@@ -14,9 +14,10 @@
  * fallida | vencida (pasaron 12 h sin poder mandarla).
  */
 
-import { enviarTemplate, listarTemplates } from "./whatsapp.js";
+import { enviarTemplate } from "./whatsapp.js";
+import { plantillaAprobada } from "./plantillas.js";
 import { mandarConEscribiendo } from "./crm-send.js";
-import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeSaliente, obtenerAjuste, guardarAjuste } from "./crm-db.js";
+import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeSaliente } from "./crm-db.js";
 import { enSilencio } from "./horario.js";
 
 export const ORIGEN_PEDIDO_WEB = "Pedido web (automático)";
@@ -56,26 +57,6 @@ export async function anotarBumpPedidoWeb(env, fila, bump, total) {
     .catch((err) => console.error("Pedido web (bump):", err.message));
 }
 
-/**
- * El idioma de la plantilla si ya está aprobada en Meta; null si no (en
- * revisión, rechazada o no existe: los pedidos esperan). Se guarda 10 min en
- * crm_settings para no consultar a Meta en cada pasada.
- */
-async function idiomaAprobado(env, nombre) {
-  const db = env.CRM_DB;
-  const clave = `plantilla_estado:${nombre}`;
-  const guardado = await obtenerAjuste(db, clave).catch(() => null);
-  if (guardado) {
-    const [estado, at, idioma] = String(guardado).split("|");
-    if (estado === "APPROVED") return idioma;
-    if (Date.now() - Number(at) < 10 * 60 * 1000) return null;
-  }
-  const lista = (await listarTemplates(env)).filter((t) => t.name === nombre);
-  const t = lista.find((x) => x.status === "APPROVED") || lista[0];
-  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}`);
-  return t?.status === "APPROVED" ? t.language : null;
-}
-
 /** Cron de cada minuto: manda la plantilla a los pedidos web de hace 3+ min que no nos escribieron. */
 export async function procesarPedidosWeb(env) {
   const db = env.CRM_DB;
@@ -106,8 +87,9 @@ export async function procesarPedidosWeb(env) {
   }
   const mandar = results.filter((p) => !yaEscribio(p));
   if (!mandar.length || enSilencio(Date.now(), env.HORARIO_ENVIO)) return;
-  const idioma = await idiomaAprobado(env, nombre).catch((err) => (console.error("Plantilla pedido web:", err.message), null));
-  if (!idioma) return;
+  const aprobada = await plantillaAprobada(env, nombre).catch((err) => (console.error("Plantilla pedido web:", err.message), null));
+  if (!aprobada) return;
+  const idioma = aprobada.idioma;
 
   for (const p of mandar) {
     // Reserva (pendiente → enviando) para que dos pasadas no manden dos veces.
