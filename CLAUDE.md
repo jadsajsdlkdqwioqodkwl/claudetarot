@@ -28,7 +28,11 @@
 5. Saldos: si un cliente de provincia mandó la captura del pago del saldo
    (Yape), ponlo en `saldos` de `salida.json` con su código TS-… y el monto
    que ves en la imagen. Nunca lo marques pagado tú: una persona lo confirma.
-6. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
+6. Pedido de provincia CONFIRMADO: mandó la captura del adelanto **o** la
+   vendedora ya le confirmó el pedido ("gracias por la confianza", "le
+   enviamos el comprobante"…: el Yape llegó aunque no haya captura en el chat),
+   y dio nombre, DNI y agencia. No lo dejes en POR_CONFIRMAR por falta de captura.
+7. Telegram: no mandes avisos sueltos. `enviar.py` manda uno solo ("hay
    recomendaciones nuevas") y el PDF de pedidos al dueño. El informe del
    director queda en CRM → Reportes.
 

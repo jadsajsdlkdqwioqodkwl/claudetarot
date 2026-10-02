@@ -93,7 +93,7 @@ def armar_pdf(datos, carpeta):
         partes.append(f"<h2>🚨 Incidencias ({len(incidencias)})</h2><ol class=inc>"
                       + "".join(f"<li>{e(i)}</li>" for i in incidencias) + "</ol>")
     conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
-    kits = sum(int(p.get("kits") or 1) for p in conf)
+    kits = sum((1 if p.get("kits") in (None, "") else int(p.get("kits"))) for p in conf)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
     normal = lambda est, des=None: lambda p: not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des)
     cajas = [("Kits a despachar", kits),

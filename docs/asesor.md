@@ -20,6 +20,12 @@ como mucho uno por hora (`src/lib/crm-avisos.js`). Antes llegaba un mensaje
 por cada propuesta, los trozos del informe y el resumen: ya no. El informe
 del director queda en CRM → Reportes.
 
+**Provincia confirmada**: mandó la captura del adelanto **o** la vendedora ya le
+confirmó el pedido ("gracias por la confianza", "le enviamos el comprobante",
+"recibido"): eso quiere decir que el Yape llegó aunque no haya captura en el
+chat. Más nombre, DNI y agencia. En `pago`: "Adelanto S/20 (confirmado por
+<vendedora>, sin captura)".
+
 **Cambios, reposiciones y agendados de otros días**: todo pedido que sale en
 el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
 `AGENDADO`) en `salida.json`. El PDF los pone en su propia sección, en naranja,
