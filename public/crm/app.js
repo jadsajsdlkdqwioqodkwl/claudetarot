@@ -4991,7 +4991,9 @@ function usarQuickReply(q, indice = null) {
   ponerTextoRapida(version.texto);
 
   // "Con catálogo": sale el catálogo o el producto en vez de sus fotos/videos.
-  estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null }
+  // En una prueba, cada versión puede salir con otra cosa (fotos vs catálogo).
+  const envio = envioDeVersion(q, version);
+  estado.rapidaPendiente = envio.catalogo ? { media: [], catalogo: envio.catalogo, catalogo_nombre: envio.catalogo_nombre }
     : q.media.length ? { media: q.media } : null;
   estado.rapidaUsadaId = q.id;
   pintarPreviewArchivo();
@@ -5013,10 +5015,20 @@ function textoRapida(q) {
   return versionesDe(q)?.[0]?.texto ?? q?.body ?? "";
 }
 
+/**
+ * Con qué sale una versión: su catalogo si eligió uno ("-" = sus fotos/videos),
+ * si no, lo de la respuesta. { catalogo: null } = con fotos.
+ */
+function envioDeVersion(q, v) {
+  if (v?.catalogo === "-") return { catalogo: null, catalogo_nombre: null };
+  if (v?.catalogo) return { catalogo: v.catalogo, catalogo_nombre: v.catalogo_nombre || null };
+  return { catalogo: q.catalogo || null, catalogo_nombre: q.catalogo_nombre || null };
+}
+
 /** [{ id, texto }] de cada versión (la 1 es la original, o la ⭐ predeterminada si hay orden fijo), o null si no hay prueba. */
 function versionesDe(q) {
   if (!q.variantes?.length) return null;
-  return q.variantes.map((v) => ({ id: v.id, texto: v.texto ?? q.body ?? "" }));
+  return q.variantes.map((v) => ({ id: v.id, texto: v.texto ?? q.body ?? "", catalogo: v.catalogo || null, catalogo_nombre: v.catalogo_nombre || null }));
 }
 
 function sortearVersion(q) {
@@ -5285,6 +5297,14 @@ async function pintarPruebas(cont, tipo, refId) {
   // Todo el equipo ordena las versiones sin cerrar la prueba; la 1 es la predeterminada.
   const ordenable = enPrueba;
   const fijo = vs.some((v) => v.predeterminada);
+  // Respuesta rápida: con qué sale cada versión (fotos o catálogo), para probar uno contra otro.
+  const qPrueba = tipo === "rapida" ? (estado.quickReplies || []).find((x) => x.id === refId) : null;
+  const saleCon = (v) => {
+    if (!qPrueba) return "";
+    const e = envioDeVersion(qPrueba, v);
+    return e.catalogo ? etiquetaCatalogo(e) : qPrueba.media?.length ? `${icon("image")} Con sus fotos/videos` : "";
+  };
+  const selectEnvio = (clase) => `<select class="sel-catalogo ${clase}"><option value="">Igual que la respuesta</option><option value="-">Sus fotos/videos</option><option value="*">🛍️ Catálogo completo</option></select>`;
 
   // Qué juntaría la versión "en un solo mensaje".
   let combinado = null;
@@ -5314,6 +5334,7 @@ async function pintarPruebas(cont, tipo, refId) {
           <b>${ordenable ? `<select class="pv-orden" title="Orden (la 1 es la predeterminada)">${vs.map((_, k) => `<option value="${k}"${k === i ? " selected" : ""}>${k + 1}</option>`).join("")}</select>` : i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}${fijo && i === 0 ? " · ⭐ predeterminada" : ""}</b>
           <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.cerraron, v.usos)}% cerró · ${pct(v.respondieron, v.usos)}% respondió${v.editadas ? ` · ${v.editadas} editadas` : ""}${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
         </div>
+        ${saleCon(v) ? `<div class="sub pv-envio">${saleCon(v)}</div>` : ""}
         ${v.id ? `<div class="sub pv-texto">${v.media_key ? `${icon(v.media_type === "video" ? "video" : "image")} ` : ""}${escapar(v.texto)}</div>` : ""}
         ${v.motivo ? `<div class="sub"><i>${escapar(v.motivo)}</i></div>` : ""}
         <div class="pv-acciones">
@@ -5330,6 +5351,7 @@ async function pintarPruebas(cont, tipo, refId) {
     <div class="pv-nueva" hidden>
       <div class="sub pv-nota"></div>
       <textarea placeholder="Otra forma de decir el mismo mensaje"></textarea>
+      ${tipo === "rapida" ? `<div class="sub">Se manda con (para probar fotos contra catálogo; con el mismo texto, deja el cuadro vacío):</div>${selectEnvio("pv-envio-nueva")}` : ""}
       <div class="pv-medias"></div>
       <button type="button" class="pv-guardar">Agregar versión</button>
     </div>`;
@@ -5354,6 +5376,7 @@ async function pintarPruebas(cont, tipo, refId) {
       ${medias.map((m, k) => `<label class="pv-media"><input type="radio" name="pv-media-${refId}" value="${k}" />
         ${m.media_type === "video" ? `<video src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" muted></video>` : `<img src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" alt="" />`}</label>`).join("")}` : "";
     caja._medias = medias || [];
+    ponerCatalogoEnSelect(caja.querySelector(".pv-envio-nueva"), "");
     agregarRapidasA(caja.querySelector("textarea"));
     caja.querySelector("textarea").focus();
   };
@@ -5368,13 +5391,15 @@ async function pintarPruebas(cont, tipo, refId) {
   });
   cont.querySelector(".pv-guardar").addEventListener("click", async (e) => {
     const texto = caja.querySelector("textarea").value.trim();
-    if (!texto) return;
+    const envio = catalogoDeSelect(caja.querySelector(".pv-envio-nueva"));
+    if (!texto && !envio.catalogo) return;
     const elegida = caja.querySelector(".pv-medias input:checked")?.value;
     const media = elegida ? caja._medias[Number(elegida)] : null;
     e.currentTarget.disabled = true;
     try {
       await llamar("POST", {
         tipo, ref_id: refId, texto, unico: modoUnico || undefined,
+        ...(tipo === "rapida" && envio.catalogo ? envio : {}),
         ...(media ? { media_key: media.media_key, media_type: media.media_type, media_mime: media.media_mime } : {})
       });
       await recargar();
@@ -5400,11 +5425,14 @@ async function pintarPruebas(cont, tipo, refId) {
     el.querySelector(".pv-editar")?.addEventListener("click", () => {
       if (el.querySelector(".pv-editor")) return;
       el.insertAdjacentHTML("beforeend", `<div class="pv-editor"><textarea>${escapar(v.texto)}</textarea>
+        ${tipo === "rapida" ? `<div class="sub">Se manda con:</div>${selectEnvio("pv-envio-edicion")}` : ""}
         <div class="sub">Al guardar, esta versión empieza a medirse de nuevo (es otro mensaje).</div>
         <button type="button" class="pv-guardar-edicion">Guardar</button></div>`);
+      ponerCatalogoEnSelect(el.querySelector(".pv-envio-edicion"), v.catalogo || "", v.catalogo_nombre);
       el.querySelector(".pv-editor textarea").focus();
       el.querySelector(".pv-guardar-edicion").addEventListener("click", async () => {
-        try { await llamar("PATCH", { id, texto: el.querySelector(".pv-editor textarea").value }); await recargar(); } catch (err) { alert(err.message); }
+        const sel = el.querySelector(".pv-envio-edicion");
+        try { await llamar("PATCH", { id, texto: el.querySelector(".pv-editor textarea").value, ...(sel ? catalogoDeSelect(sel) : {}) }); await recargar(); } catch (err) { alert(err.message); }
       });
     });
     el.querySelector(".pv-ganadora")?.addEventListener("click", async () => {
@@ -5414,6 +5442,7 @@ async function pintarPruebas(cont, tipo, refId) {
         // El texto del formulario pasa a ser el ganador, para no pisarlo al guardar.
         const campo = tipo === "rapida" ? $("#rapida-texto") : $("#seq-texto");
         if (id && v && campo && !v.unico) campo.value = v.texto;
+        if (id && v?.catalogo && tipo === "rapida") pintarCatalogoRapida({ catalogo: v.catalogo === "-" ? null : v.catalogo, catalogo_nombre: v.catalogo_nombre });
         await recargar();
         if (tipo === "bienvenida") pintarSecuenciaBienvenida();
       } catch (err) { alert(err.message); }

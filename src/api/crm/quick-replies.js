@@ -106,7 +106,7 @@ async function get({ env }) {
       ...r,
       followup_pasos: pasosDe(r),
       media: porRapida[r.id] || [],
-      ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })), orden_fijo: Boolean(pruebas[r.id][0]?.predeterminada) } : {})
+      ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso, catalogo: v.catalogo || null, catalogo_nombre: v.catalogo_nombre || null })), orden_fijo: Boolean(pruebas[r.id][0]?.predeterminada) } : {})
     }))
   });
 }
@@ -194,8 +194,9 @@ async function patch({ request, env, agent }) {
   }
 
   const seguimiento = leerSeguimiento(payload);
-  // Texto nuevo = otro mensaje: se guarda el anterior y la cuenta de la original vuelve a 0.
-  if ((existente.body || null) !== body) {
+  // Texto nuevo, o pasar de fotos a catálogo (o al revés) = otro mensaje:
+  // se guarda el anterior y la cuenta de la original vuelve a 0.
+  if ((existente.body || null) !== body || (existente.catalogo || null) !== (catalogo || null)) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
   const { grupo, orden } = leerGrupo(payload);

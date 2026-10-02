@@ -122,7 +122,7 @@ export async function estadisticas(db, tipo, refIds) {
  */
 export async function versionesEnPrueba(db, tipo, refIds = null) {
   const { results: activas } = await db.prepare(
-    `SELECT id, ref_id, texto, origen, motivo, unico, media_key, media_type, media_mime, created_at
+    `SELECT id, ref_id, texto, origen, motivo, unico, media_key, media_type, media_mime, catalogo, catalogo_nombre, created_at
      FROM variantes WHERE tipo = ? AND estado = 'activa' ORDER BY id`
   ).bind(tipo).all();
   const porRef = {};
@@ -232,7 +232,7 @@ export async function registrarUso(db, { tipo, refId, varianteId = 0, conversati
 
 /**
  * El admin cierra una prueba: la versión elegida pasa a ser el texto de la
- * respuesta rápida / paso (0 = quedarse con la original) y las demás se
+ * respuesta rápida / paso (y, en una respuesta rápida, con qué sale: fotos o catálogo) (0 = quedarse con la original) y las demás se
  * retiran. El texto anterior queda guardado como 'anterior' para el historial.
  */
 export async function cerrarPrueba(db, tipo, refId, ganadoraId, quien) {
@@ -241,11 +241,16 @@ export async function cerrarPrueba(db, tipo, refId, ganadoraId, quien) {
   if (!actual) throw new Error("No existe.");
   const cambios = [];
   if (ganadoraId) {
-    const v = await db.prepare("SELECT texto FROM variantes WHERE id = ? AND tipo = ? AND ref_id = ? AND estado = 'activa'").bind(ganadoraId, tipo, refId).first();
+    const v = await db.prepare("SELECT texto, catalogo, catalogo_nombre FROM variantes WHERE id = ? AND tipo = ? AND ref_id = ? AND estado = 'activa'").bind(ganadoraId, tipo, refId).first();
     if (!v) throw new Error("Esa versión ya no está en prueba.");
     cambios.push(
       guardarAnterior(db, tipo, refId, actual.body, quien),
       db.prepare(`UPDATE ${tabla} SET body = ? WHERE id = ?`).bind(v.texto, refId),
+      // Respuesta rápida: si la ganadora salía con otra cosa (fotos o catálogo), la respuesta queda así.
+      ...(tipo === "rapida" && v.catalogo
+        ? [db.prepare("UPDATE quick_replies SET catalogo = ?, catalogo_nombre = ? WHERE id = ?")
+            .bind(v.catalogo === "-" ? null : v.catalogo, v.catalogo === "-" ? null : v.catalogo_nombre, refId)]
+        : []),
       db.prepare("UPDATE variantes SET estado = 'ganadora', cerrada_at = datetime('now'), cerrada_por = ? WHERE id = ?").bind(quien, ganadoraId)
     );
   }
