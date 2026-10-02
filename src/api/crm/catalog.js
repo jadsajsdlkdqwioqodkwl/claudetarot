@@ -2,12 +2,16 @@
  * GET  /api/crm/catalog?conversation_id=1 — pedidos armados desde el catálogo en esa conversación
  * POST /api/crm/catalog — { conversation_id, text? } → manda el botón "Ver catálogo" completo
  *      { conversation_id, product_retailer_id, text? } → manda un solo producto
+ *      Ambos aceptan quick_reply_id (+ variante_id, editada, a_mano) cuando el
+ *      catálogo es lo único que sale de una respuesta rápida "con catálogo":
+ *      programa su seguimiento y anota el uso, como /api/crm/messages.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
-import { nombresDeProductos, guardarProductosEnCache } from "../../lib/crm-db.js";
+import { nombresDeProductos, guardarProductosEnCache, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
+import { registrarUso } from "../../lib/crm-variantes.js";
 import { mandarAlToque } from "../../lib/crm-send.js";
 
 const json = (data, status = 200) =>
@@ -86,6 +90,18 @@ async function post({ request, env, agent }) {
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   const sentBy = agent?.displayName || agent?.username || null;
+  // Después de cancelarSeguimientosDeLead: si no, se cancelaría el que se acaba de programar.
+  const quickReplyId = Number(payload?.quick_reply_id) || null;
+  const programarRapida = async () => {
+    if (!quickReplyId) return;
+    await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));
+    let varianteId = Number(payload?.variante_id) || 0;
+    if (varianteId) {
+      const v = await env.CRM_DB.prepare("SELECT 1 FROM variantes WHERE id = ? AND tipo = 'rapida' AND ref_id = ?").bind(varianteId, quickReplyId).first().catch(() => null);
+      if (!v) varianteId = 0;
+    }
+    await registrarUso(env.CRM_DB, { tipo: "rapida", refId: quickReplyId, varianteId, conversationId, agente: sentBy, editada: Boolean(payload?.editada), aMano: Boolean(payload?.a_mano), textoEnviado: payload?.text || null });
+  };
   const retailerId = payload?.product_retailer_id ? String(payload.product_retailer_id) : null;
 
   try {
@@ -108,6 +124,7 @@ async function post({ request, env, agent }) {
         sentBy
       });
       await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+      await programarRapida();
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -128,6 +145,7 @@ async function post({ request, env, agent }) {
       sentBy
     });
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+    await programarRapida();
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     return json({ error: `WhatsApp rechazó el envío: ${err.message}` }, 502);

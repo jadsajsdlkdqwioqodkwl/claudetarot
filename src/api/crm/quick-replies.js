@@ -14,6 +14,12 @@
  * aceptando el formato viejo `followup_body` + `followup_hours` = un paso.)
  * Ver programarSeguimientoDeRapida.
  *
+ * POST y PATCH aceptan además `catalogo` ("*" = catálogo completo, o el
+ * retailer_id de un producto) y `catalogo_nombre`: la respuesta sale con el
+ * catálogo en vez de sus fotos/videos (las fotos se conservan, por si se
+ * vuelve a "con fotos"). null = con fotos. En PATCH, sin `catalogo` en el
+ * payload se conserva el que tenía.
+ *
  * GET trae además `variantes` en las que tienen una prueba en curso: la
  * original (id 0, texto null) y cada versión, con su `peso` — la
  * probabilidad con que el CRM la pone en el cuadro al elegir la respuesta
@@ -23,7 +29,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { HORAS_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
+import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo } from "../../lib/crm-db.js";
 import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
 /**
@@ -82,7 +88,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
+"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -117,16 +123,18 @@ async function post({ request, env }) {
   const body = String(payload?.body || "").trim().slice(0, 4096) || null;
   const mediaKeys = Array.isArray(payload?.media_keys) ? payload.media_keys.slice(0, 10) : [];
 
+  const { catalogo, catalogoNombre } = leerCatalogo(payload);
+
   if (!title) return json({ error: "Falta un título." }, 400);
-  if (!body && !mediaKeys.length) return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  if (!body && !mediaKeys.length && !catalogo) return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
 
   const seguimiento = leerSeguimiento(payload);
   const { grupo, orden } = leerGrupo(payload);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, orden)
     .first();
 
   let i = 0;
@@ -163,7 +171,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, body FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -171,13 +179,18 @@ async function patch({ request, env, agent }) {
   // `null` = no la mandaron, así que se conserva la media que ya tenía.
   const mediaKeys = Array.isArray(payload?.media_keys) ? payload.media_keys.slice(0, 10) : null;
 
+  // Sin `catalogo` en el payload se conserva el que tenía; con null se quita.
+  const { catalogo, catalogoNombre } = "catalogo" in (payload || {})
+    ? leerCatalogo(payload)
+    : { catalogo: existente.catalogo || null, catalogoNombre: existente.catalogo_nombre || null };
+
   if (!title) return json({ error: "Falta un título." }, 400);
-  if (!body && mediaKeys !== null && !mediaKeys.length) {
-    return json({ error: "Necesita texto o al menos un archivo." }, 400);
+  if (!body && !catalogo && mediaKeys !== null && !mediaKeys.length) {
+    return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
   }
-  if (!body && mediaKeys === null) {
+  if (!body && !catalogo && mediaKeys === null) {
     const tieneMedia = await env.CRM_DB.prepare("SELECT 1 FROM quick_reply_media WHERE quick_reply_id = ? LIMIT 1").bind(id).first();
-    if (!tieneMedia) return json({ error: "Necesita texto o al menos un archivo." }, 400);
+    if (!tieneMedia) return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
   }
 
   const seguimiento = leerSeguimiento(payload);
@@ -186,8 +199,8 @@ async function patch({ request, env, agent }) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
   const { grupo, orden } = leerGrupo(payload);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, orden, id)
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, grupo, orden, id)
     .run();
 
   if (mediaKeys !== null) {
@@ -210,7 +223,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, media: media.results } });
 }
 
 async function del({ request, env }) {
