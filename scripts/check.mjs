@@ -151,7 +151,7 @@ check("los datos del cliente NO viajan por la URL",
   !/gracias\?[^']*(nombre|tel|dir)/i.test(html));
 check("los datos del cliente viajan por sessionStorage",
   html.includes("sessionStorage.setItem('pedido'") && gracias.includes("sessionStorage.getItem('pedido')"));
-check("/gracias enlaza al WhatsApp correcto", gracias.includes("'51928529656'"));
+check("/gracias enlaza al WhatsApp correcto", gracias.includes("'51927066862'"));
 check("el mensaje de WhatsApp lleva los datos del cliente",
   ["Nombre: ", "WhatsApp: ", "Producto: ", "Direccion: ", "Total a pagar: "]
     .every((t) => gracias.includes(t)));

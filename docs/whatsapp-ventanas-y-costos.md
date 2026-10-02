@@ -69,6 +69,7 @@ WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
 | Seguimiento programado por chat (`scheduled.js` POST, sin `template_name`) | **siempre texto libre**, no admite plantilla | Si `send_at` cae fuera de ventana, el cron (`crm-cron.js`) lo marca `'fallido'` — no cobra, pero tampoco llega. El panel solo muestra `'pendiente'`, no avisa de los fallidos |
 | Envío masivo modo texto (`bulk-send.js`) | texto libre | Mismo riesgo: falla fuera de ventana, no cobra |
 | Envío masivo modo plantilla / "Enviar plantilla" en el chat (`templates.js`) | plantilla | Cobra fuera de ventana/free-entry, gratis dentro |
+| Pedido web a los 3 min (`pedidos-web.js`, cron de cada minuto) | plantilla utility `pedido_web_recibido` | Solo si el cliente no escribió antes; cobra como utility fuera de ventana. Tocar un botón abre 24 h |
 | Reportar venta (`capi-send.js` → Meta Conversions API) | no es mensaje de WhatsApp | Nunca cobra, sea con `ctwa_clid` o el modo manual `system_generated` |
 | OTP de login (`login.js`) | texto libre | Gratis si el vendedor escribió al número hace <24h; con TOTP app, cero mensajes por WhatsApp |
 

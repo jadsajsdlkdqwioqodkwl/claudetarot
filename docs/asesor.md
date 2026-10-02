@@ -42,6 +42,13 @@ migración 0042, `src/lib/pedidos-web.js`), haya terminado o no en venta.
 PDF los pone en "🌐 Pedidos de la web" con su resultado (COMPRÓ, EN
 CONVERSACIÓN, SIN RESPUESTA), más una caja con el total.
 
+**WhatsApp automático a los pedidos web**: a los 3 min del formulario, si el
+cliente no nos escribió (desde 30 min antes del pedido), le sale la plantilla
+`pedido_web_recibido` ("Hola ☺️ recibimos su pedido desde nuestra web…" +
+botones "Sí, confirmo" / "Tengo una consulta"). La corre el cron de cada
+minuto (`procesarPedidosWeb`); respeta `HORARIO_ENVIO` y, si la plantilla no
+existe en Meta, la crea. `PLANTILLA_PEDIDO_WEB` vacío = apagado.
+
 **Cambios, reposiciones y agendados de otros días**: todo pedido que sale en
 el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
 `AGENDADO`) en `salida.json`. El PDF los pone en su propia sección, en naranja,
@@ -70,7 +77,7 @@ El plan gratis de Cloudflare corta cada ejecución en **50 consultas a D1** y
 
 | Cron | Qué hace |
 |---|---|
-| `*/5` | Seguimientos vencidos: los reserva (pendiente → enviando) y manda hasta 12 por pasada, ~2 consultas cada uno. Lo reservado hace más de 15 min sin salir queda fallido (nunca se reenvía a ciegas). Carrito abandonado (apagado si no hay `CARRITO_AUTO_HORAS`), de a 8. |
+| `* * * * *` | Plantilla de pedidos web a los 3 min. En los minutos múltiplos de 5, además: seguimientos vencidos: los reserva (pendiente → enviando) y manda hasta 12 por pasada, ~2 consultas cada uno. Lo reservado hace más de 15 min sin salir queda fallido (nunca se reenvía a ciegas). Carrito abandonado (apagado si no hay `CARRITO_AUTO_HORAS`), de a 8. |
 | `*/10` | Export de chats a la hoja de Google. |
 | `*/15` | Link de envío automático, resumen semanal / pruebas listas (una vez al día; esa pasada no hace más), etapa del embudo (3 consultas) y frases (≈4). |
 

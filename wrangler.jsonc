@@ -15,13 +15,12 @@
     "enabled": true
   },
 
-  // Dos crons con trabajos distintos (se distinguen por `event.cron` en
-  // src/index.js): el de cada 5 minutos manda los seguimientos vencidos (un
-  // seguimiento programado puede salir hasta 5 min tarde — nadie lo nota, y
-  // baja este cron de 1440 a 288 requests/día), el de cada 10 minutos vuelca
-  // los mensajes nuevos del CRM a Google Sheets.
+  // Crons con trabajos distintos (se distinguen por `event.cron` en
+  // src/index.js): el de cada minuto manda el WhatsApp de los pedidos web a
+  // los 3 min y, en los minutos múltiplos de 5, los seguimientos vencidos; el
+  // de cada 10 minutos vuelca los mensajes nuevos del CRM a Google Sheets.
   "triggers": {
-    "crons": ["*/5 * * * *", "*/10 * * * *", "*/15 * * * *"]
+    "crons": ["* * * * *", "*/10 * * * *", "*/15 * * * *"]
   },
 
   // Base del CRM: contactos, conversaciones y mensajes de WhatsApp.
@@ -132,6 +131,10 @@
     // Plantilla utility aprobada en Meta para mandar el link de seguimiento
     // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
     "PLANTILLA_ENVIO": "",
+    // Plantilla "recibimos su pedido" + 2 botones que le sale al cliente de la
+    // web a los 3 min si no nos escribió antes (src/lib/pedidos-web.js). Si no
+    // existe en Meta, el Worker la crea solo. Vacío = apagado.
+    "PLANTILLA_PEDIDO_WEB": "pedido_web_recibido",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",
     // Usuarios (username) que además del dueño reciben por Telegram el PDF de

@@ -45,6 +45,7 @@ import {
   onRequestDelete as crmScheduledDelete
 } from "./api/crm/scheduled.js";
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
+import { procesarPedidosWeb } from "./lib/pedidos-web.js";
 import { agendarCarritosAbandonados } from "./lib/crm-carrito.js";
 import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
@@ -266,6 +267,11 @@ export default {
       await procesarFrases(env).catch((err) => console.error("Frases:", err.message));
       return;
     }
+    // "* * * * *": cada minuto, el WhatsApp de "recibimos su pedido" a los
+    // pedidos web de hace 3 min. Lo de antes del cron de 5 min (seguimientos,
+    // carrito) sigue corriendo solo en los minutos múltiplos de 5.
+    await procesarPedidosWeb(env).catch((err) => console.error("Pedidos web:", err.message));
+    if (new Date(event.scheduledTime).getUTCMinutes() % 5 !== 0) return;
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
     // "escribiendo…" de 1 s por mensaje, un lote grande de seguimientos
     // vencidos a la vez puede tardar más que eso. El carrito abandonado solo

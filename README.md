@@ -371,7 +371,7 @@ order bump, `closeAll()` redirige con `?v=<total>`.
 
 Es una confirmación tradicional: tilde verde, resumen del pedido (producto, extra,
 entrega, dirección, y el total a pagar al recibir) y un botón grande de WhatsApp a
-**+51 928 529 656**. **No muestra ningún código de pedido.**
+**+51 927 066 862**. **No muestra ningún código de pedido.**
 
 Lleva un contador regresivo de 10 minutos ("Tienes 10:00 minutos para asegurar tu
 orden") para meter urgencia a que escriba por WhatsApp, y un aviso verde con lo
