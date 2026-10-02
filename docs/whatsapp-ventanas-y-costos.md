@@ -52,7 +52,7 @@ para listar y mandar las ya aprobadas).
   paso de texto: salen como mensaje interactivo, solo dentro de las 24 h, sin
   aprobación de Meta. Cuando el cliente toca uno llega como su respuesta
   (texto del botón) y reabre la ventana.
-- Migración `0042_crm_v42.sql` (aplicar a mano).
+- Migración `0042_crm_v42.sql` (ya aplicada).
 
 ## ⚠️ Cambio del 1 de octubre de 2026
 

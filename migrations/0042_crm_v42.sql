@@ -1,4 +1,4 @@
--- PENDIENTE de aplicar a mano (el deploy no la aplica).
+-- Aplicada a mano vía D1 MCP el 2026-10-02.
 -- · scheduled_messages.botones / followup_sequence_steps.botones: hasta 3
 --   botones de opciones (JSON, ej. ["Sí, lo quiero","Tengo una duda"]) que
 --   salen debajo del texto del seguimiento (mensaje interactivo de WhatsApp,
