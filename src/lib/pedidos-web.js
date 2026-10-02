@@ -5,16 +5,16 @@
  *    para el reporte diario (GET /api/asesor/pedidos-web → sección
  *    "🌐 Pedidos de la web" del PDF que arma scripts/asesor/enviar.py).
  * 2. A los 3 minutos, si el cliente no nos escribió primero, le sale la
- *    plantilla PLANTILLA_PEDIDO_WEB ("recibimos su pedido" + 2 botones) con
+ *    plantilla PLANTILLA_PEDIDO_WEB ("recibimos su pedido" + botón CONFIRMA TU PEDIDO) con
  *    su "escribiendo…" antes (mandarConEscribiendo). Lo hace el cron de cada
- *    minuto (procesarPedidosWeb). Si la plantilla no existe en Meta, la crea;
- *    mientras no esté aprobada, los pedidos esperan.
+ *    minuto (procesarPedidosWeb). Mientras la plantilla no esté aprobada en
+ *    Meta, los pedidos esperan (hasta 12 h).
  *
  * Estados de plantilla_estado: pendiente → enviada | omitida (ya escribió) |
  * fallida | vencida (pasaron 12 h sin poder mandarla).
  */
 
-import { enviarTemplate, listarTemplates, crearTemplate } from "./whatsapp.js";
+import { enviarTemplate, listarTemplates } from "./whatsapp.js";
 import { mandarConEscribiendo } from "./crm-send.js";
 import { obtenerOCrearContacto, obtenerOCrearConversacion, registrarMensajeSaliente, obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { enSilencio } from "./horario.js";
@@ -23,21 +23,13 @@ export const ORIGEN_PEDIDO_WEB = "Pedido web (automático)";
 export const MINUTOS_ESPERA_PEDIDO_WEB = 3;
 const POR_PASADA = 5;
 
-/** Texto de la plantilla. Si se cambia aquí, hay que borrarla en WhatsApp Manager para que se cree de nuevo. */
-export const PLANTILLA_PEDIDO_WEB = {
-  categoria: "UTILITY",
-  idioma: "es",
-  componentes: [
-    { type: "BODY", text: "Hola ☺️ recibimos su pedido desde nuestra web. ¿Le confirmamos el envío por aquí? ✨" },
-    {
-      type: "BUTTONS",
-      buttons: [
-        { type: "QUICK_REPLY", text: "Sí, confirmo" },
-        { type: "QUICK_REPLY", text: "Tengo una consulta" }
-      ]
-    }
-  ]
-};
+/**
+ * La plantilla la arma el dueño en WhatsApp Manager (Utility, Spanish PER):
+ * "Hola 😊 recibimos su pedido desde nuestra web. Para poder confirmarle por
+ * favor presione confirmar para brindarle las opciones de envío 🚚" + botón
+ * "CONFIRMA TU PEDIDO". Sin variables. El idioma sale de la propia plantilla.
+ */
+const TEXTO_REGISTRO = "recibimos su pedido desde nuestra web (botón CONFIRMA TU PEDIDO)";
 
 export async function registrarPedidoWeb(env, order, fila) {
   if (!env.CRM_DB) return;
@@ -65,26 +57,23 @@ export async function anotarBumpPedidoWeb(env, fila, bump, total) {
 }
 
 /**
- * ¿La plantilla está aprobada? Si no existe, la manda a revisión. El estado
- * se guarda 10 min en ajustes para no consultar a Meta en cada pasada.
+ * El idioma de la plantilla si ya está aprobada en Meta; null si no (en
+ * revisión, rechazada o no existe: los pedidos esperan). Se guarda 10 min en
+ * crm_settings para no consultar a Meta en cada pasada.
  */
-async function plantillaLista(env, nombre) {
+async function idiomaAprobado(env, nombre) {
   const db = env.CRM_DB;
   const clave = `plantilla_estado:${nombre}`;
   const guardado = await obtenerAjuste(db, clave).catch(() => null);
   if (guardado) {
-    const [estado, at] = String(guardado).split("|");
-    if (estado === "APPROVED") return true;
-    if (Date.now() - Number(at) < 10 * 60 * 1000) return false;
+    const [estado, at, idioma] = String(guardado).split("|");
+    if (estado === "APPROVED") return idioma;
+    if (Date.now() - Number(at) < 10 * 60 * 1000) return null;
   }
-  const existente = (await listarTemplates(env)).find((t) => t.name === nombre && t.language === PLANTILLA_PEDIDO_WEB.idioma);
-  let estado = existente?.status;
-  if (!existente) {
-    const r = await crearTemplate(env, { nombre, ...PLANTILLA_PEDIDO_WEB });
-    estado = r?.status || "PENDING";
-  }
-  await guardarAjuste(db, clave, `${estado}|${Date.now()}`);
-  return estado === "APPROVED";
+  const lista = (await listarTemplates(env)).filter((t) => t.name === nombre);
+  const t = lista.find((x) => x.status === "APPROVED") || lista[0];
+  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}`);
+  return t?.status === "APPROVED" ? t.language : null;
 }
 
 /** Cron de cada minuto: manda la plantilla a los pedidos web de hace 3+ min que no nos escribieron. */
@@ -117,7 +106,8 @@ export async function procesarPedidosWeb(env) {
   }
   const mandar = results.filter((p) => !yaEscribio(p));
   if (!mandar.length || enSilencio(Date.now(), env.HORARIO_ENVIO)) return;
-  if (!(await plantillaLista(env, nombre).catch((err) => (console.error("Plantilla pedido web:", err.message), false)))) return;
+  const idioma = await idiomaAprobado(env, nombre).catch((err) => (console.error("Plantilla pedido web:", err.message), null));
+  if (!idioma) return;
 
   for (const p of mandar) {
     // Reserva (pendiente → enviando) para que dos pasadas no manden dos veces.
@@ -130,11 +120,11 @@ export async function procesarPedidosWeb(env) {
       const contacto = await obtenerOCrearContacto(db, p.wa_id, null, null);
       if (!contacto.name && p.nombre) await db.prepare("UPDATE contacts SET name = ? WHERE id = ?").bind(p.nombre, contacto.id).run();
       const conv = await obtenerOCrearConversacion(db, contacto.id);
-      const waMessageId = await mandarConEscribiendo(env, conv.id, () => enviarTemplate(env, p.wa_id, nombre, PLANTILLA_PEDIDO_WEB.idioma, []));
+      const waMessageId = await mandarConEscribiendo(env, conv.id, () => enviarTemplate(env, p.wa_id, nombre, idioma, []));
       await registrarMensajeSaliente(db, conv.id, {
         waMessageId,
         type: "template",
-        body: `Plantilla: ${nombre} · ${PLANTILLA_PEDIDO_WEB.componentes[0].text}`,
+        body: `Plantilla: ${nombre} · ${TEXTO_REGISTRO}`,
         sentBy: ORIGEN_PEDIDO_WEB
       }, { subirEnBandeja: false });
       await db.prepare("UPDATE pedidos_web SET plantilla_estado = 'enviada', plantilla_at = datetime('now') WHERE id = ?").bind(p.id).run();

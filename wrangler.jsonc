@@ -131,9 +131,9 @@
     // Plantilla utility aprobada en Meta para mandar el link de seguimiento
     // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
     "PLANTILLA_ENVIO": "",
-    // Plantilla "recibimos su pedido" + 2 botones que le sale al cliente de la
-    // web a los 3 min si no nos escribió antes (src/lib/pedidos-web.js). Si no
-    // existe en Meta, el Worker la crea solo. Vacío = apagado.
+    // Plantilla "recibimos su pedido" + botón CONFIRMA TU PEDIDO (la armó el
+    // dueño en WhatsApp Manager, Spanish PER) que le sale al cliente de la web a
+    // los 3 min si no nos escribió antes (src/lib/pedidos-web.js). Vacío = apagado.
     "PLANTILLA_PEDIDO_WEB": "pedido_web_recibido",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",

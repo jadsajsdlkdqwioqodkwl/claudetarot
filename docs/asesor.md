@@ -44,10 +44,10 @@ CONVERSACIÓN, SIN RESPUESTA), más una caja con el total.
 
 **WhatsApp automático a los pedidos web**: a los 3 min del formulario, si el
 cliente no nos escribió (desde 30 min antes del pedido), le sale la plantilla
-`pedido_web_recibido` ("Hola ☺️ recibimos su pedido desde nuestra web…" +
-botones "Sí, confirmo" / "Tengo una consulta"). La corre el cron de cada
-minuto (`procesarPedidosWeb`); respeta `HORARIO_ENVIO` y, si la plantilla no
-existe en Meta, la crea. `PLANTILLA_PEDIDO_WEB` vacío = apagado.
+`pedido_web_recibido` (WhatsApp Manager, Spanish PER: "Hola 😊 recibimos su
+pedido desde nuestra web…" + botón "CONFIRMA TU PEDIDO"). La corre el cron de
+cada minuto (`procesarPedidosWeb`); respeta `HORARIO_ENVIO` y espera a que
+Meta la apruebe. `PLANTILLA_PEDIDO_WEB` vacío = apagado.
 
 **Cambios, reposiciones y agendados de otros días**: todo pedido que sale en
 el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
