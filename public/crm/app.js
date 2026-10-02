@@ -2661,7 +2661,50 @@ function catalogoDeSelect(sel) {
 
 /** Texto corto de un paso de secuencia: catálogo, texto, o "Foto/video". */
 function resumenPaso(p) {
-  return [etiquetaCatalogo(p), p.body].filter(Boolean).join(" — ") || "Foto/video";
+  if (p.template_name) return etiquetaPlantilla(p);
+  const botones = botonesDeSeg(p);
+  return [etiquetaCatalogo(p), p.body, botones.length ? botones.map((b) => `[${b}]`).join(" ") : ""].filter(Boolean).join(" — ") || "Foto/video";
+}
+
+/** Los botones de opciones de un seguimiento o paso (guardados como JSON). */
+function botonesDeSeg(x) {
+  try {
+    const lista = JSON.parse(x?.botones || "[]");
+    return Array.isArray(lista) ? lista.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function chipsBotones(x) {
+  const lista = botonesDeSeg(x);
+  return lista.length ? `<div class="chips-botones">${lista.map((b) => `<span>${escapar(b)}</span>`).join("")}</div>` : "";
+}
+
+/** "📄 Plantilla: nombre (variables)" de un seguimiento o paso con plantilla. */
+function etiquetaPlantilla(x) {
+  let vars = [];
+  try { vars = JSON.parse(x?.template_params || "[]"); } catch { vars = []; }
+  return `📄 Plantilla: ${x.template_name}${Array.isArray(vars) && vars.length ? ` (${vars.join(" · ")})` : ""}`;
+}
+
+/* Plantillas aprobadas de Meta, para programarlas como seguimiento (se piden una vez por sesión). */
+let plantillasAprobadas = null;
+async function cargarPlantillasAprobadas() {
+  if (!plantillasAprobadas) {
+    const { templates } = await pedir("/api/crm/templates");
+    plantillasAprobadas = templates.filter((t) => t.status === "APPROVED");
+  }
+  return plantillasAprobadas;
+}
+function cuerpoPlantilla(t) {
+  return (t?.components || []).find((c) => c.type === "BODY")?.text || "";
+}
+function botonesPlantilla(t) {
+  return ((t?.components || []).find((c) => c.type === "BUTTONS")?.buttons || []).map((b) => b.text).filter(Boolean);
+}
+function variablesPlantilla(t) {
+  return new Set(cuerpoPlantilla(t).match(/{{\d+}}/g) || []).size;
 }
 
 /** Cómo se ve en las listas un paso o seguimiento con catálogo. */
@@ -2798,7 +2841,7 @@ function textoSeguimiento(s) {
     return s.quick_reply_title ? `${s.quick_reply_title}: ${texto}` : texto;
   }
   if (s.quick_reply_title) return s.quick_reply_title;
-  if (s.template_name) return `Plantilla: ${s.template_name}`;
+  if (s.template_name) return etiquetaPlantilla(s);
   if (s.media_key) return "Foto/video";
   return "";
 }
@@ -5480,12 +5523,16 @@ function limiteVentana() {
 /** Desactiva los botones que caerían pasadas las 24 h. */
 function prepararChipsVentana() {
   const limite = limiteVentana();
+  // Una plantilla llega aunque hayan pasado las 24 h: solo tiene que ser una hora futura.
+  const libre = estado.segModo === "plantilla";
   document.querySelectorAll("#seg-chips button").forEach((b) => {
     const f = b.dataset.otra !== undefined ? null : fechaDeChip(b);
-    b.disabled = !limite || limite.getTime() <= Date.now() || (f && (f.getTime() > limite.getTime() || f.getTime() <= Date.now()));
+    b.disabled = libre
+      ? Boolean(b.dataset.ventana && !f) || Boolean(f && f.getTime() <= Date.now())
+      : !limite || limite.getTime() <= Date.now() || (f && (f.getTime() > limite.getTime() || f.getTime() <= Date.now()));
   });
   const input = $("#seg-fecha");
-  input.max = limite ? aInputLocal(limite) : "";
+  input.max = limite && !libre ? aInputLocal(limite) : "";
   input.min = aInputLocal(new Date());
 }
 
@@ -5525,6 +5572,12 @@ function pintarCuando() {
   const el = $("#seg-cuando");
   const limite = limiteVentana();
   const fmt = (d) => d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  if (estado.segModo === "plantilla") {
+    const pasada = v && new Date(v).getTime() <= Date.now();
+    el.classList.toggle("error", Boolean(pasada));
+    el.textContent = !v ? "Elige cuándo." : pasada ? "Esa hora ya pasó — elige una futura." : `Se manda el ${fmt(new Date(v))} (como plantilla, llega aunque hayan pasado 24 h)`;
+    return;
+  }
   if (!limite || limite.getTime() <= Date.now()) {
     el.textContent = "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle un seguimiento.";
     el.classList.add("error");
@@ -5558,10 +5611,10 @@ function pintarReglaSeguimiento() {
   if (!el) return;
   const leadId = datosLead?.settings?.ad_followup_sequence_id;
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
-  $("#seg-siempre-fila").style.display = estado.segModo === "mensaje" ? "flex" : "none";
+  $("#seg-siempre-fila").style.display = estado.segModo !== "secuencia" ? "flex" : "none";
   el.textContent = esLead
     ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
-    : estado.segModo === "mensaje" && $("#seg-siempre").checked
+    : estado.segModo !== "secuencia" && $("#seg-siempre").checked
       ? "Se manda sí o sí a esa hora, aunque el cliente o tú escriban antes. Solo lo cancelas tú desde el panel derecho."
       : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
 }
@@ -5570,9 +5623,19 @@ function ponerModoSeguimiento(modo) {
   estado.segModo = modo;
   document.querySelectorAll("#seg-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.modo === modo));
   $("#seg-modo-mensaje").style.display = modo === "mensaje" ? "" : "none";
+  $("#seg-modo-plantilla").style.display = modo === "plantilla" ? "" : "none";
   $("#seg-modo-secuencia").style.display = modo === "secuencia" ? "" : "none";
-  $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
+  $("#seg-bloque-cuando").style.display = modo === "secuencia" ? "none" : "";
+  $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : modo === "plantilla" ? "Programar plantilla" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
   if (modo === "secuencia") cargarSecuenciasSeguimiento();
+  if (modo === "plantilla") cargarPlantillasSeg();
+  if (modo !== "secuencia") {
+    // La plantilla no tiene el límite de 24 h: se recalculan los botones de "¿Cuándo?".
+    prepararChipsVentana();
+    const activo = $("#seg-chips button.activo");
+    if (activo?.disabled) elegirCuando($("#seg-chips button:not(:disabled)"));
+    else pintarCuando();
+  }
   pintarReglaSeguimiento();
 }
 
@@ -5580,6 +5643,84 @@ $("#seg-tabs").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-modo]");
   if (btn) ponerModoSeguimiento(btn.dataset.modo);
 });
+
+async function cargarPlantillasSeg() {
+  const sel = $("#seg-plantilla");
+  const previa = sel.value;
+  $("#seg-plantilla-preview").innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  let lista;
+  try {
+    lista = await cargarPlantillasAprobadas();
+  } catch (err) {
+    $("#seg-plantilla-preview").innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+    return;
+  }
+  sel.innerHTML = lista.length
+    ? lista.map((t, i) => `<option value="${i}">${escapar(t.name)} · ${escapar(t.language)}</option>`).join("")
+    : `<option value="">No hay plantillas aprobadas</option>`;
+  sel.disabled = !lista.length;
+  if (previa && lista[Number(previa)]) sel.value = previa;
+  pintarPlantillaSeg();
+}
+
+function plantillaSegElegida() {
+  const v = $("#seg-plantilla").value;
+  return v === "" ? null : plantillasAprobadas?.[Number(v)] || null;
+}
+
+function pintarPlantillaSeg() {
+  const cont = $("#seg-plantilla-preview");
+  const t = plantillaSegElegida();
+  if (!t) {
+    cont.innerHTML = `<p class="ayuda-modal">Créalas en WhatsApp Manager → Message Templates (los botones de opciones se agregan ahí, al crearla). Meta tarda de minutos a ~24 h en aprobarlas.</p>`;
+    return;
+  }
+  const botones = botonesPlantilla(t);
+  cont.innerHTML = `
+    <p class="ayuda-modal">${escapar(cuerpoPlantilla(t) || t.name)}</p>
+    ${botones.length ? `<div class="chips-botones" style="margin-bottom:10px">${botones.map((b) => `<span>${escapar(b)}</span>`).join("")}</div>` : ""}
+    ${Array.from({ length: variablesPlantilla(t) }, (_, i) => `<input type="text" class="param-plantilla-seg" placeholder="Variable {{${i + 1}}}" />`).join("")}
+    <p class="ayuda-modal">Cobra según su categoría (${escapar(t.category || "")}): ver costos de WhatsApp.</p>`;
+}
+
+$("#seg-plantilla").addEventListener("change", pintarPlantillaSeg);
+
+async function programarPlantillaDesdeModal(fecha) {
+  const t = plantillaSegElegida();
+  if (!t) return alert("Elige una plantilla aprobada.");
+  if (!fecha) return alert("Elige cuándo se manda.");
+  if (new Date(fecha).getTime() <= Date.now()) { pintarCuando(); return alert("Esa hora ya pasó — elige una futura."); }
+  const template_params = [...document.querySelectorAll("#seg-plantilla-preview .param-plantilla-seg")].map((i) => i.value.trim());
+  if (template_params.some((v) => !v)) return alert("Completa las variables de la plantilla.");
+  const btn = $("#seg-crear");
+  btn.disabled = true;
+  try {
+    await pedir("/api/crm/scheduled", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: estado.segConversacionId,
+        send_at: new Date(fecha).toISOString(),
+        template_name: t.name,
+        template_language: t.language,
+        template_params,
+        mandar_siempre: $("#seg-siempre").checked
+      })
+    });
+    $("#modal-seguimiento-fondo").classList.remove("abierto");
+    limpiarFormSeguimiento();
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/** Los botones de opciones escritos en el modal de seguimiento. */
+function botonesDelModal() {
+  return [...document.querySelectorAll("#seg-botones .seg-boton")].map((i) => i.value.trim()).filter(Boolean);
+}
 
 let secuenciasSeguimiento = [];
 
@@ -5690,6 +5831,8 @@ function limpiarFormSeguimiento() {
   $("#seg-rapida").value = "";
   pintarVersionesSeg(null);
   $("#seg-siempre").checked = false;
+  document.querySelectorAll("#seg-botones .seg-boton").forEach((i) => { i.value = ""; });
+  document.querySelectorAll("#seg-plantilla-preview .param-plantilla-seg").forEach((i) => { i.value = ""; });
   ponerCatalogoEnSelect($("#seg-catalogo"), "");
   pintarPreviewSegRapida();
 }
@@ -5709,6 +5852,8 @@ function abrirModalEditarSeguimiento(s) {
   $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
   elegirCuando($("#seg-chips button[data-otra]"));
   $("#seg-texto").value = s.body || "";
+  const botones = botonesDeSeg(s);
+  document.querySelectorAll("#seg-botones .seg-boton").forEach((i, n) => { i.value = botones[n] || ""; });
   $("#seg-siempre").checked = Boolean(s.mandar_siempre);
   pintarReglaSeguimiento();
   $("#modal-seguimiento-fondo").classList.add("abierto");
@@ -5733,6 +5878,7 @@ async function pintarSeguimientosPanel() {
       <div>
         <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· masivo</span>` : ""}</div>
         <div class="cuerpo">${escapar(textoSeguimiento(s))}</div>
+        ${chipsBotones(s)}
       </div>
       ${seguimientoEditable(s) ? `<button class="editar" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
       <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
@@ -5805,6 +5951,7 @@ $("#seg-crear").addEventListener("click", async () => {
   const chip = $("#seg-chips button.activo");
   if (chip && chip.dataset.otra === undefined) $("#seg-fecha").value = aInputLocal(fechaDeChip(chip));
   const fecha = $("#seg-fecha").value;
+  if (estado.segModo === "plantilla") return programarPlantillaDesdeModal(fecha);
   if (fecha && new Date(fecha).getTime() <= Date.now()) { pintarCuando(); return alert("Esa hora ya pasó — elige una futura."); }
   const limite = limiteVentana();
   if (fecha && (!limite || new Date(fecha).getTime() > limite.getTime())) { pintarCuando(); return alert($("#seg-cuando").textContent); }
@@ -5816,6 +5963,9 @@ $("#seg-crear").addEventListener("click", async () => {
   if (editandoId && !texto) return alert("Escribe un texto.");
   const cat = catalogoDeSelect($("#seg-catalogo"));
   if (!texto && !quickReplyId && !archivo && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video, elige una respuesta rápida o el catálogo.");
+  const botones = botonesDelModal();
+  if (botones.length && !texto) return alert("Los botones van debajo de un texto: escribe el mensaje.");
+  if (botones.length && cat.catalogo) return alert("El catálogo no puede llevar botones de opciones: quita el catálogo o los botones.");
 
   const btn = $("#seg-crear");
   btn.disabled = true;
@@ -5824,7 +5974,7 @@ $("#seg-crear").addEventListener("click", async () => {
       await pedir("/api/crm/scheduled", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto, mandar_siempre: $("#seg-siempre").checked })
+        body: JSON.stringify({ id: editandoId, send_at: new Date(fecha).toISOString(), body: texto, mandar_siempre: $("#seg-siempre").checked, botones })
       });
       $("#modal-seguimiento-fondo").classList.remove("abierto");
       limpiarFormSeguimiento();
@@ -5854,6 +6004,7 @@ $("#seg-crear").addEventListener("click", async () => {
         quick_reply_id: quickReplyId || undefined,
         media_key, media_type, media_mime,
         ...cat,
+        botones,
         mandar_siempre: $("#seg-siempre").checked
       })
     });
@@ -5899,9 +6050,23 @@ $("#fs-cerrar").addEventListener("click", () => {
 });
 
 async function cargarYPintarSecuencias() {
-  const { sequences } = await pedir("/api/crm/followup-sequences");
+  const [{ sequences }] = await Promise.all([
+    pedir("/api/crm/followup-sequences"),
+    // Para los pasos con plantilla; si Meta no responde, se arman igual sin plantillas.
+    cargarPlantillasAprobadas().catch(() => [])
+  ]);
   estadoSecuencias = sequences;
   pintarListaSecuencias();
+}
+
+/** Un paso con plantilla no lleva texto, botones, catálogo ni archivo propios: se esconden. */
+function ajustarPasoPlantilla(fila) {
+  const conPlantilla = fila.querySelector(".fs-paso-plantilla").value !== "";
+  for (const sel of [".fs-paso-texto", ".fs-paso-botones", ".fs-paso-catalogo", ".fs-paso-archivo"]) {
+    const el = fila.querySelector(sel);
+    if (el) el.style.display = conPlantilla ? "none" : "";
+  }
+  fila.querySelector(".fs-paso-vars").style.display = conPlantilla ? "" : "none";
 }
 
 function pintarListaSecuencias() {
@@ -5925,8 +6090,10 @@ function pintarListaSecuencias() {
           <div class="fila-seguimiento">
             <div>
               <div class="nombre">${i + 1}. +${formatearDelay(p.delay_minutes)}${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""}</div>
+              ${p.template_name ? `<div class="sub">${escapar(etiquetaPlantilla(p))}</div>` : ""}
               ${p.catalogo ? `<div class="sub">${escapar(etiquetaCatalogo(p))}</div>` : ""}
               ${p.body ? `<div class="sub">${escapar(p.body)}</div>` : ""}
+              ${chipsBotones(p)}
             </div>
             <div style="display:flex;gap:4px">
               <button class="editar-paso fs-editar-paso" data-id="${p.id}" data-seq="${s.id}" title="Editar">${icon("pencil")}</button>
@@ -5944,7 +6111,17 @@ function pintarListaSecuencias() {
             </select>
           </div>
           <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
+          <select class="fs-paso-plantilla">
+            <option value="">Mensaje normal (dentro de las 24 h)</option>
+            ${(plantillasAprobadas || []).map((t, i) => `<option value="${i}">📄 Plantilla: ${escapar(t.name)} · ${escapar(t.language)}</option>`).join("")}
+          </select>
+          <input type="text" class="fs-paso-vars" placeholder="Variables de la plantilla, separadas por | (si tiene)" style="display:none" />
           <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
+          <div class="fs-paso-botones">
+            <input type="text" class="fs-paso-boton" maxlength="20" placeholder="Botón 1 (opcional)" />
+            <input type="text" class="fs-paso-boton" maxlength="20" placeholder="Botón 2 (opcional)" />
+            <input type="text" class="fs-paso-boton" maxlength="20" placeholder="Botón 3 (opcional)" />
+          </div>
           <select class="sel-catalogo fs-paso-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
           <input type="file" class="fs-paso-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
@@ -5954,6 +6131,9 @@ function pintarListaSecuencias() {
 
   cont.querySelectorAll(".fs-paso-texto").forEach(agregarEmojisA);
   cont.querySelectorAll(".fs-paso-catalogo").forEach((sel) => ponerCatalogoEnSelect(sel, ""));
+  cont.querySelectorAll(".fs-paso-plantilla").forEach((sel) => {
+    sel.addEventListener("change", () => ajustarPasoPlantilla(sel.closest(".fs-pasos")));
+  });
 
   cont.querySelectorAll(".fs-editar").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -6036,6 +6216,17 @@ function pintarListaSecuencias() {
       const unidad = p.delay_minutes % 1440 === 0 ? 1440 : p.delay_minutes % 60 === 0 ? 60 : 1;
       fila.querySelector(".fs-paso-texto").value = p.body || "";
       fila.querySelector(".fs-paso-archivo").value = "";
+      const botones = botonesDeSeg(p);
+      fila.querySelectorAll(".fs-paso-boton").forEach((i, n) => { i.value = botones[n] || ""; });
+      const iPlantilla = p.template_name
+        ? (plantillasAprobadas || []).findIndex((t) => t.name === p.template_name && (!p.template_language || t.language === p.template_language))
+        : -1;
+      if (p.template_name && iPlantilla < 0) alert(`La plantilla "${p.template_name}" ya no está aprobada en Meta: elige otra o cámbialo a mensaje normal.`);
+      fila.querySelector(".fs-paso-plantilla").value = iPlantilla >= 0 ? String(iPlantilla) : "";
+      let vars = [];
+      try { vars = JSON.parse(p.template_params || "[]"); } catch { vars = []; }
+      fila.querySelector(".fs-paso-vars").value = Array.isArray(vars) ? vars.join(" | ") : "";
+      ajustarPasoPlantilla(fila);
       ponerCatalogoEnSelect(fila.querySelector(".fs-paso-catalogo"), p.catalogo, p.catalogo_nombre);
       fila.querySelector(".fs-delay-valor").value = p.delay_minutes / unidad;
       fila.querySelector(".fs-delay-unidad").value = String(unidad);
@@ -6066,13 +6257,24 @@ function pintarListaSecuencias() {
       const unidad = Number(fila.querySelector(".fs-delay-unidad").value);
       const editando = Number(btn.dataset.editando) || null;
       const cat = catalogoDeSelect(fila.querySelector(".fs-paso-catalogo"));
-      if (!texto && !archivo && !editando && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video o elige el catálogo.");
+      const elegida = fila.querySelector(".fs-paso-plantilla").value;
+      const plantilla = elegida === "" ? null : plantillasAprobadas?.[Number(elegida)] || null;
+      const botones = [...fila.querySelectorAll(".fs-paso-boton")].map((i) => i.value.trim()).filter(Boolean);
+      if (plantilla) {
+        const vars = fila.querySelector(".fs-paso-vars").value.split("|").map((v) => v.trim()).filter(Boolean);
+        const faltan = variablesPlantilla(plantilla) - vars.length;
+        if (faltan > 0) return alert(`A esta plantilla le faltan ${faltan} variable(s): escríbelas separadas por |`);
+      } else {
+        if (!texto && !archivo && !editando && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video, elige el catálogo o una plantilla.");
+        if (botones.length && !texto) return alert("Los botones van debajo de un texto: escribe el mensaje.");
+        if (botones.length && cat.catalogo) return alert("El catálogo no puede llevar botones de opciones: quita el catálogo o los botones.");
+      }
 
       btn.disabled = true;
       btn.textContent = archivo ? "Subiendo…" : "Guardando…";
       try {
         let media_key, media_type, media_mime;
-        if (archivo) {
+        if (archivo && !plantilla) {
           const subida = await subirArchivo(archivo);
           media_key = subida.media_key;
           media_type = subida.type;
@@ -6083,10 +6285,20 @@ function pintarListaSecuencias() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...(editando ? { step_id: editando } : { sequence_id: Number(btn.dataset.id) }),
-            body: texto || undefined,
-            media_key, media_type, media_mime,
             delay_minutes: valor * unidad,
-            ...cat
+            ...(plantilla
+              ? {
+                  template_name: plantilla.name,
+                  template_language: plantilla.language,
+                  template_params: fila.querySelector(".fs-paso-vars").value.split("|").map((v) => v.trim()).filter(Boolean)
+                }
+              : {
+                  body: texto || undefined,
+                  media_key, media_type, media_mime,
+                  ...cat,
+                  botones,
+                  template_name: null
+                })
           })
         });
         const seqId = btn.dataset.id;

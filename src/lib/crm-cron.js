@@ -5,14 +5,16 @@
  * reintentarse solo — evita un bucle de reintentos contra un número inválido.
  *
  * Este cron nunca manda plantilla salvo que `s.template_name` venga seteado
- * (solo lo pone bulk-send) — un seguimiento sin eso es texto libre y por
- * eso falla en silencio fuera de ventana en vez de cobrar. Ver
+ * (bulk-send, un seguimiento programado como plantilla o un paso de
+ * secuencia con plantilla) — un seguimiento sin eso es texto libre y por
+ * eso falla en silencio fuera de ventana en vez de cobrar. Con `s.botones`
+ * el texto sale con sus botones de opciones (mensaje interactivo). Ver
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
-import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
+import { enviarTemplate, enviarCatalogoConPortada, enviarProducto, enviarBotones } from "./whatsapp.js";
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 
@@ -63,6 +65,17 @@ export function rellenar(texto, datos) {
   return String(texto)
     .replace(/\{link\}/gi, datos.link || "")
     .replace(/\{nombre\}/gi, datos.nombre || "estimad@");
+}
+
+/** Los botones de opciones guardados en el seguimiento (JSON), o null. */
+function botonesDe(s) {
+  if (!s.botones) return null;
+  try {
+    const lista = JSON.parse(s.botones);
+    return Array.isArray(lista) && lista.length ? lista.slice(0, 3).map(String) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function procesarSeguimientosVencidos(env) {
@@ -122,7 +135,7 @@ export async function procesarSeguimientosVencidos(env) {
     const escribiendo = { ultimoWaId: s.ultimo_wa_in || null };
     try {
       // Reglas anti-choque para lo que programó el sistema (no una persona):
-      if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
+      if (!s.batch_id && !s.mandar_siempre && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);
         // · a quien ya compró no le sale un "si no responde";
         // · el mismo texto ya le llegó en los últimos 2 días: no se repite;
@@ -186,6 +199,21 @@ export async function procesarSeguimientosVencidos(env) {
           waMessageId,
           type: s.catalogo === "*" ? "catalog" : "product",
           body: s.catalogo === "*" ? "[Catálogo enviado]" : (s.catalogo_nombre || "Producto del catálogo"),
+          sentBy: "Seguimiento automático"
+        }, SIN_SUBIR);
+      } else if (botonesDe(s) && texto) {
+        // Texto con botones de opciones. Si lleva foto/video, sale antes y
+        // al toque; el texto con los botones, con su "escribiendo…".
+        const botones = botonesDe(s);
+        if (s.media_key_real) {
+          await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
+        }
+        await pausaEnvio(env, s.conv_id, undefined, escribiendo);
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, () => enviarBotones(env, s.wa_id, texto, botones));
+        await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
+          waMessageId,
+          type: "text",
+          body: `${texto}\n\n${botones.map((b) => `[${b}]`).join(" ")}`,
           sentBy: "Seguimiento automático"
         }, SIN_SUBIR);
       } else if (s.media_key_real) {

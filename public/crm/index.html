@@ -167,10 +167,11 @@
     <h2 id="seg-modal-titulo">Programar seguimiento</h2>
     <div class="seg-tabs" id="seg-tabs">
       <button type="button" data-modo="mensaje" class="activo">Un mensaje</button>
+      <button type="button" data-modo="plantilla">Una plantilla</button>
       <button type="button" data-modo="secuencia">Una secuencia</button>
     </div>
 
-    <div id="seg-modo-mensaje">
+    <div id="seg-bloque-cuando">
       <div class="seg-label">¿Cuándo?</div>
       <div class="seg-chips" id="seg-chips">
         <button type="button" data-ventana="23">23 h después de su último mensaje</button>
@@ -183,13 +184,27 @@
       </div>
       <input type="datetime-local" id="seg-fecha" style="display:none" />
       <div class="seg-cuando" id="seg-cuando"></div>
+    </div>
 
+    <div id="seg-modo-mensaje">
       <div class="seg-label">¿Qué le mandas?</div>
       <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
       <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
       <div id="seg-rapida-preview" style="display:none"></div>
+      <div class="seg-label">Botones de opciones (opcional, máx. 3)</div>
+      <div class="seg-botones" id="seg-botones">
+        <input type="text" class="seg-boton" maxlength="20" placeholder="Botón 1" />
+        <input type="text" class="seg-boton" maxlength="20" placeholder="Botón 2" />
+        <input type="text" class="seg-boton" maxlength="20" placeholder="Botón 3" />
+      </div>
       <select id="seg-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
       <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+    </div>
+
+    <div id="seg-modo-plantilla" style="display:none">
+      <div class="seg-label">Plantilla aprobada</div>
+      <select id="seg-plantilla"></select>
+      <div id="seg-plantilla-preview"></div>
     </div>
 
     <div id="seg-modo-secuencia" style="display:none">

@@ -290,12 +290,40 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
     acumuladoMs += p.delay_minutes * 60 * 1000;
     const sendAt = new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
-      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null);
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre,
+         botones, template_name, template_language, template_params)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(conversationId, p.template_name ? null : p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null,
+      p.botones || null, p.template_name || null, p.template_name ? (p.template_language || "es") : null, p.template_name ? (p.template_params || null) : null);
   });
   await db.batch(inserts);
   return pasos.length;
+}
+
+/**
+ * Los botones de opciones de un seguimiento, tal como llegan del CRM: hasta 3,
+ * de máx. 20 caracteres (límite de WhatsApp), sin vacíos ni repetidos.
+ * Devuelve el JSON a guardar, o null si no lleva botones.
+ */
+export function leerBotones(payload) {
+  const lista = Array.isArray(payload?.botones) ? payload.botones : [];
+  const limpios = [...new Set(lista.map((b) => String(b || "").trim().slice(0, 20)).filter(Boolean))].slice(0, 3);
+  return limpios.length ? JSON.stringify(limpios) : null;
+}
+
+/**
+ * La plantilla de un seguimiento, tal como llega del CRM. Las variables
+ * ({{1}}, {{2}}…) se guardan como JSON. Sin template_name → todo null.
+ */
+export function leerPlantilla(payload) {
+  const nombre = payload?.template_name ? String(payload.template_name).slice(0, 512) : null;
+  if (!nombre) return { templateName: null, templateLanguage: null, templateParams: null };
+  const params = Array.isArray(payload?.template_params) ? payload.template_params.map((p) => String(p ?? "").slice(0, 1024)) : [];
+  return {
+    templateName: nombre,
+    templateLanguage: payload?.template_language ? String(payload.template_language).slice(0, 20) : "es",
+    templateParams: params.length ? JSON.stringify(params) : null
+  };
 }
 
 /**

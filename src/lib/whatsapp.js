@@ -87,6 +87,28 @@ export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
 }
 
 /**
+ * Texto con hasta 3 botones de opciones debajo (mensaje interactivo
+ * "button"). Solo dentro de la ventana de 24 h; no necesita aprobación de
+ * Meta. Cada botón: máx. 20 caracteres. Cuando el cliente toca uno, llega
+ * como button_reply con ese mismo texto (ver whatsapp-webhook.js).
+ */
+export async function enviarBotones(env, waId, texto, botones) {
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: String(texto).slice(0, 1024) },
+      action: {
+        buttons: botones.slice(0, 3).map((b, i) => ({ type: "reply", reply: { id: `op_${i + 1}`, title: String(b).slice(0, 20) } }))
+      }
+    }
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
+/**
  * Manda el catálogo conectado a este número como un mensaje interactivo con
  * botón "Ver catálogo". No necesita el Catalog ID: usa el que ya está
  * conectado al número en WhatsApp Manager.

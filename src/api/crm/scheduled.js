@@ -5,26 +5,25 @@
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  *      + catalogo? ("*" = catálogo completo, o el retailer_id de un producto) y catalogo_nombre?
  *      + mandar_siempre? — true: sale aunque el cliente o nosotros escribamos antes
- * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre? } → edita un pendiente de texto libre
+ *      + botones? — hasta 3 textos (máx. 20 caracteres) que salen como botones de opciones debajo del texto
+ *      { conversation_id, send_at, template_name, template_language?, template_params? } — una plantilla
+ *        aprobada: puede caer fuera de la ventana de 24 h (ahí es lo único que WhatsApp acepta)
+ * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre?, botones? } → edita un pendiente de texto libre
  *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
  *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
  * DELETE /api/crm/scheduled — { id } → cancela uno pendiente
  *                              { conversation_id, all: true } → cancela todos los pendientes de ese chat
  *
- * La fecha no puede pasar de 24 h desde el último mensaje del cliente
- * (fueraDeVentana): después WhatsApp ya no acepta texto libre.
- *
- * Siempre texto libre — no acepta template_name (eso solo lo maneja
- * bulk-send.js). Para un seguimiento que sabes que caerá fuera de la
- * ventana de 24h/72h (típico de provincia, cobro días después), no uses
- * esto: usa bulk-send en modo plantilla o mándala a mano desde el chat,
- * o este seguimiento va a fallar en silencio en vez de llegar. Ver
- * docs/whatsapp-ventanas-y-costos.md.
+ * Sin plantilla, la fecha no puede pasar de 24 h desde el último mensaje del
+ * cliente (fueraDeVentana): después WhatsApp ya no acepta texto libre. Para
+ * un seguimiento que caerá fuera de la ventana (típico de provincia, cobro
+ * días después), prográmalo como plantilla. Las plantillas cobran según su
+ * categoría: ver docs/whatsapp-ventanas-y-costos.md.
  */
 
 import { textoPorDefectoSql } from "../../lib/crm-variantes.js";
 import { conAuth } from "../../lib/crm-auth.js";
-import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { leerCatalogo, leerBotones, leerPlantilla, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -85,8 +84,15 @@ async function post({ request, env, agent }) {
   if (!sendAt || Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
+  const { templateName, templateLanguage, templateParams } = leerPlantilla(payload);
+  if (templateName) return programarPlantilla(env, agent, conversationId, sendAt, templateName, templateLanguage, templateParams, payload);
+
   const { catalogo, catalogoNombre } = leerCatalogo(payload);
+  const botones = leerBotones(payload);
   if (!body && !quickReplyId && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida o el catálogo." }, 400);
+  if (botones && !body) return json({ error: "Los botones van debajo de un texto: escribe el mensaje." }, 400);
+  if (botones && catalogo) return json({ error: "El catálogo no puede llevar botones de opciones." }, 400);
+  if (botones && body.length > 1024) return json({ error: "Con botones, el texto puede tener hasta 1024 caracteres." }, 400);
   const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
 
@@ -104,12 +110,34 @@ async function post({ request, env, agent }) {
   await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre, botones)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0)
+    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0, botones)
     .first();
 
+  return json({ ok: true, scheduled: creado });
+}
+
+/**
+ * Plantilla programada: sin límite de 24 h (es lo único que WhatsApp acepta
+ * fuera de la ventana). Solo hace falta que el chat tenga un número.
+ */
+async function programarPlantilla(env, agent, conversationId, sendAt, templateName, templateLanguage, templateParams, payload) {
+  const conv = await env.CRM_DB.prepare("SELECT id FROM conversations WHERE id = ?").bind(conversationId).first();
+  if (!conv) return json({ error: "Conversación no encontrada." }, 404);
+  const igual = await env.CRM_DB.prepare(
+    "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND template_name = ? AND send_at = ? LIMIT 1"
+  ).bind(conversationId, templateName, sendAt.toISOString()).first();
+  if (igual) return json({ error: "Esa plantilla ya está programada para este chat a esa hora." }, 409);
+  await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+
+  const creado = await env.CRM_DB.prepare(
+    `INSERT INTO scheduled_messages (conversation_id, send_at, created_by, template_name, template_language, template_params, mandar_siempre)
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+  )
+    .bind(conversationId, sendAt.toISOString(), agent?.displayName || agent?.username || null, templateName, templateLanguage, templateParams, payload?.mandar_siempre ? 1 : 0)
+    .first();
   return json({ ok: true, scheduled: creado });
 }
 
@@ -139,8 +167,10 @@ async function patch({ request, env }) {
   if (errorVentana) return json({ error: errorVentana }, 422);
 
   const mandarSiempre = payload?.mandar_siempre !== undefined ? (payload.mandar_siempre ? 1 : 0) : actual.mandar_siempre;
-  await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ?, mandar_siempre = ? WHERE id = ?")
-    .bind(body, sendAt.toISOString(), mandarSiempre, id)
+  const botones = payload?.botones !== undefined ? leerBotones(payload) : actual.botones;
+  if (botones && body.length > 1024) return json({ error: "Con botones, el texto puede tener hasta 1024 caracteres." }, 400);
+  await env.CRM_DB.prepare("UPDATE scheduled_messages SET body = ?, send_at = ?, mandar_siempre = ?, botones = ? WHERE id = ?")
+    .bind(body, sendAt.toISOString(), mandarSiempre, botones, id)
     .run();
 
   return json({ ok: true });

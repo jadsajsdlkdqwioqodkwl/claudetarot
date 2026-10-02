@@ -498,6 +498,13 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .seg-cuando::first-letter { text-transform: uppercase; }
 .seg-cuando.error { color: var(--peligro); }
 #seg-secuencia-preview { margin-bottom: 10px; }
+/* Botones de opciones de un seguimiento (hasta 3, debajo del texto) */
+.seg-botones, .fs-paso-botones { display: flex; gap: 6px; }
+.modal .seg-botones input[type="text"], .modal .fs-paso-botones input[type="text"] { flex: 1; min-width: 0; }
+@media (max-width: 480px) { .seg-botones, .fs-paso-botones { flex-direction: column; gap: 0; } }
+#seg-plantilla-preview { margin-bottom: 10px; }
+.chips-botones { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chips-botones span { border: 1px solid var(--borde); border-radius: var(--radio-full); padding: 2px 8px; font-size: 11px; color: var(--verde-osc); }
 .seg-timeline { margin-top: 0; }
 .seg-timeline .sub { color: var(--gris); }
 /* Mensaje propio todavía en cola / en camino (ver encolarEnvio). */

@@ -42,6 +42,18 @@ Business Manager (no existe todavía una función en este repo para crear
 plantillas — solo `listarTemplates`/`enviarTemplate` en `src/lib/whatsapp.js`
 para listar y mandar las ya aprobadas).
 
+**Programar plantillas y botones en seguimientos (CRM):**
+- *Programar seguimiento → Una plantilla*: elige una plantilla aprobada, sus
+  variables y la hora. No tiene el límite de 24 h (es lo único que WhatsApp
+  acepta fuera de la ventana). Los botones de una plantilla se crean en Meta.
+- *Secuencias*: cada paso puede ser "Mensaje normal" o una plantilla
+  (variables separadas por `|`).
+- *Botones de opciones* (hasta 3, máx. 20 caracteres) en un seguimiento o
+  paso de texto: salen como mensaje interactivo, solo dentro de las 24 h, sin
+  aprobación de Meta. Cuando el cliente toca uno llega como su respuesta
+  (texto del botón) y reabre la ventana.
+- Migración `0042_crm_v42.sql` (aplicar a mano).
+
 ## ⚠️ Cambio del 1 de octubre de 2026
 
 Hasta ahora, el texto libre y las plantillas utility dentro de la ventana

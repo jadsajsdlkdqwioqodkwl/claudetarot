@@ -915,7 +915,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     const lineas = readFileSync(ruta, "utf8").split("\n");
     lineas.forEach((l, i) => {
       if (/^\s*(import|\*|\/\/)/.test(l)) return;
-      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(|mandarAlToque\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
+      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto|enviarBotones)\(/.test(l) && !/mandarConEscribiendo\(|mandarAlToque\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
     });
   }
   check(`ninguna llamada directa a Meta (plantilla con "escribiendo…", catálogo/producto al toque)${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);

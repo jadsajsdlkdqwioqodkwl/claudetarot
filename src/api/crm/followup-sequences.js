@@ -9,6 +9,9 @@
  * POST   /api/crm/followup-sequences — { title } → crea una secuencia vacía
  *                                       { sequence_id, body?, media_key?, media_type?, media_mime?, delay_minutes, catalogo?, catalogo_nombre? } → agrega un paso al final
  *                                       (catalogo: "*" = catálogo completo, o el retailer_id de un producto)
+ *                                       + botones? (hasta 3, máx. 20 caracteres) — salen debajo del texto
+ *                                       o { sequence_id, template_name, template_language?, template_params?, delay_minutes }
+ *                                       → el paso sale como plantilla (sirve fuera de la ventana de 24 h)
  * DELETE /api/crm/followup-sequences — { sequence_id } → borra la secuencia entera
  *                                       { step_id } → borra un solo paso
  * PATCH  /api/crm/followup-sequences — { step_id, direction: "up"|"down" } → reordena un paso
@@ -17,7 +20,17 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { leerCatalogo } from "../../lib/crm-db.js";
+import { leerCatalogo, leerBotones, leerPlantilla } from "../../lib/crm-db.js";
+
+/** Lo que tiene que llevar un paso para poder guardarse. null = está bien. */
+function errorDePaso({ body, mediaKey, catalogo, botones, templateName }) {
+  if (templateName) return null;
+  if (!body && !mediaKey && !catalogo) return "Necesita un texto, una foto/video, el catálogo o una plantilla.";
+  if (botones && !body) return "Los botones van debajo de un texto: escribe el mensaje.";
+  if (botones && catalogo) return "El catálogo no puede llevar botones de opciones.";
+  if (botones && body.length > 1024) return "Con botones, el texto puede tener hasta 1024 caracteres.";
+  return null;
+}
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -59,8 +72,11 @@ async function post({ request, env }) {
     const mediaMime = mediaKey && payload?.media_mime ? String(payload.media_mime) : null;
     const delayMinutes = Math.max(1, Number(payload?.delay_minutes) || 60);
     const { catalogo, catalogoNombre } = leerCatalogo(payload);
+    const botones = leerBotones(payload);
+    const { templateName, templateLanguage, templateParams } = leerPlantilla(payload);
 
-    if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
+    const error = errorDePaso({ body, mediaKey, catalogo, botones, templateName });
+    if (error) return json({ error }, 400);
 
     const existe = await env.CRM_DB.prepare("SELECT id FROM followup_sequences WHERE id = ?").bind(sequenceId).first();
     if (!existe) return json({ error: "Esa secuencia no existe." }, 404);
@@ -69,10 +85,12 @@ async function post({ request, env }) {
       .bind(sequenceId)
       .first();
     const creado = await env.CRM_DB.prepare(
-      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes, catalogo, catalogo_nombre)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes, catalogo, catalogo_nombre,
+         botones, template_name, template_language, template_params)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
     )
-      .bind(sequenceId, (max?.m || 0) + 1, body, mediaKey, mediaType, mediaMime, delayMinutes, catalogo, catalogoNombre)
+      .bind(sequenceId, (max?.m || 0) + 1, templateName ? null : body, templateName ? null : mediaKey, templateName ? null : mediaType, templateName ? null : mediaMime,
+        delayMinutes, templateName ? null : catalogo, templateName ? null : catalogoNombre, templateName ? null : botones, templateName, templateLanguage, templateParams)
       .first();
 
     return json({ ok: true, step: creado });
@@ -153,14 +171,25 @@ async function patch({ request, env }) {
     const { catalogo, catalogoNombre } = "catalogo" in (payload || {})
       ? leerCatalogo(payload)
       : { catalogo: actual.catalogo, catalogoNombre: actual.catalogo_nombre };
-    if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
+    // Sin `botones` / `template_name` en el payload se conserva lo que tenía; con null o vacío se quita.
+    const botones = "botones" in (payload || {}) ? leerBotones(payload) : actual.botones;
+    const plantilla = "template_name" in (payload || {})
+      ? leerPlantilla(payload)
+      : { templateName: actual.template_name, templateLanguage: actual.template_language, templateParams: actual.template_params };
+    const { templateName } = plantilla;
+    const error = errorDePaso({ body, mediaKey, catalogo, botones, templateName });
+    if (error) return json({ error }, 400);
 
     await env.CRM_DB.prepare(
-      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ?, catalogo = ?, catalogo_nombre = ? WHERE id = ?"
+      `UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ?, catalogo = ?, catalogo_nombre = ?,
+         botones = ?, template_name = ?, template_language = ?, template_params = ? WHERE id = ?`
     )
-      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, stepId)
+      .bind(templateName ? null : body, delayMinutes, templateName ? null : mediaKey, templateName ? null : mediaType, templateName ? null : mediaMime,
+        templateName ? null : catalogo, templateName ? null : catalogoNombre, templateName ? null : botones,
+        templateName, plantilla.templateLanguage, plantilla.templateParams, stepId)
       .run();
-    if (nuevaMedia && actual.media_key && env.CRM_MEDIA) await env.CRM_MEDIA.delete(actual.media_key).catch(() => {});
+    // La foto/video vieja se borra si se reemplazó o si el paso pasó a ser plantilla.
+    if ((nuevaMedia || templateName) && actual.media_key && env.CRM_MEDIA) await env.CRM_MEDIA.delete(actual.media_key).catch(() => {});
     return json({ ok: true });
   }
   if (!["up", "down"].includes(direction)) return json({ error: "direction inválido." }, 400);
