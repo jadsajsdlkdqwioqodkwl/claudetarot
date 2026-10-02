@@ -1790,6 +1790,19 @@ $("#btn-avisos").addEventListener("click", async () => {
 
 $("#avisos-cerrar").addEventListener("click", () => $("#modal-avisos-fondo").classList.remove("abierto"));
 
+$("#sin-visto").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sin_visto: e.target.checked })
+    });
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    alert(err.message);
+  }
+});
+
 $("#avisos-canal").addEventListener("change", async (e) => {
   const datos = await accionAvisos({ channel: e.target.value }, e.target);
   if (datos) pintarAvisos(datos);
@@ -6154,6 +6167,13 @@ async function pintarEquipo() {
   document.querySelectorAll("#eq-nombre, #eq-usuario, #eq-password, #eq-wa, #eq-rol, #eq-crear").forEach((el) => {
     el.style.display = esAdmin ? "" : "none";
   });
+  $("#sin-visto-fila").style.display = "none";
+  if (esAdmin) {
+    pedir("/api/crm/settings").then((s) => {
+      $("#sin-visto").checked = s.sin_visto;
+      $("#sin-visto-fila").style.display = "flex";
+    }).catch(() => {});
+  }
   const { agents } = await pedir("/api/crm/agents");
   const cont = $("#lista-equipo");
   cont.innerHTML = agents.map((a) => `

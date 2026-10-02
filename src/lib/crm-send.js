@@ -5,7 +5,7 @@
  */
 
 import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
-import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste } from "./crm-db.js";
+import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste, obtenerAjuste } from "./crm-db.js";
 
 /**
  * Antes de mandarle un TEXTO al cliente: le muestra "escribiendo…" y espera 1,5 s,
@@ -87,9 +87,29 @@ async function avisarErrorEscribiendo(env, conversationId, err) {
   if (env?.CRM_DB) await guardarAjuste(env.CRM_DB, "ultimo_error_escribiendo", `${new Date().toISOString()} conv ${conversationId}: ${err.message}`).catch(() => {});
 }
 
+/*
+ * Ajuste "sin visto" (CRM → Equipo, solo admin): el cliente nunca ve en
+ * azul que leímos lo suyo. Meta solo deja mostrar "escribiendo…" marcando
+ * como leído, así que con esto encendido no hay "escribiendo…": la pausa
+ * de antes de cada texto se respeta igual. Los vistos del cliente a lo
+ * nuestro llegan por el webhook como siempre.
+ */
+let sinVistoCache = { at: 0, valor: false };
+export async function sinVisto(env) {
+  if (!env?.CRM_DB) return false;
+  if (Date.now() - sinVistoCache.at < 30000) return sinVistoCache.valor;
+  try {
+    sinVistoCache = { at: Date.now(), valor: (await obtenerAjuste(env.CRM_DB, "sin_visto")) === "1" };
+  } catch (err) {
+    console.error("Ajuste sin_visto:", err.message);
+  }
+  return sinVistoCache.valor;
+}
+
 /** "Escribiendo…" con un reintento: nunca frena el envío. */
 async function escribiendoEn(env, conversationId, waMessageId) {
   if (!waMessageId) return;
+  if (await sinVisto(env)) return;
   try {
     await mostrarEscribiendo(env, waMessageId);
   } catch {

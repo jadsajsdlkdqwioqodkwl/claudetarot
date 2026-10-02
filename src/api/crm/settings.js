@@ -12,7 +12,10 @@
  *         comportaba antes de existir este ajuste).
  *       - quick_followup_auto: si las respuestas rápidas con seguimiento lo
  *         programan al mandarlas. Sin valor guardado cuenta como encendido.
- * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean } → solo admin
+ *       - sin_visto: si está encendido, nunca se marca como leído (doble check
+ *         azul) lo que manda el cliente. Los vistos del cliente a nuestros
+ *         mensajes se siguen viendo igual. Sin valor guardado: apagado.
+ * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean, sin_visto?: boolean } → solo admin
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -25,17 +28,19 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, sinVisto] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
-    obtenerAjuste(env.CRM_DB, "quick_followup_auto")
+    obtenerAjuste(env.CRM_DB, "quick_followup_auto"),
+    obtenerAjuste(env.CRM_DB, "sin_visto")
   ]);
   return json({
     ad_welcome_quick_reply_id: adWelcomeQuickReplyId ? Number(adWelcomeQuickReplyId) : null,
     ad_followup_sequence_id: adFollowupSequenceId ? Number(adFollowupSequenceId) : null,
     ad_followup_auto: adFollowupAuto !== "0",
-    quick_followup_auto: quickFollowupAuto !== "0"
+    quick_followup_auto: quickFollowupAuto !== "0",
+    sin_visto: sinVisto === "1"
   });
 }
 
@@ -60,6 +65,9 @@ async function patch({ request, env }) {
   }
   if ("quick_followup_auto" in payload) {
     await guardarAjuste(env.CRM_DB, "quick_followup_auto", payload.quick_followup_auto ? "1" : "0");
+  }
+  if ("sin_visto" in payload) {
+    await guardarAjuste(env.CRM_DB, "sin_visto", payload.sin_visto ? "1" : "0");
   }
   return json({ ok: true });
 }

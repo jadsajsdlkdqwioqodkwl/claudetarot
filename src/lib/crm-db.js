@@ -102,8 +102,9 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
 
 export async function actualizarEstadoMensaje(db, waMessageId, status, errorDetail) {
   await db
-    .prepare("UPDATE messages SET status = ?, error_detail = ? WHERE wa_message_id = ?")
-    .bind(status, errorDetail || null, waMessageId)
+    // Un "sent"/"delivered" que llega tarde no tapa el visto del cliente.
+    .prepare("UPDATE messages SET status = ?, error_detail = ? WHERE wa_message_id = ? AND NOT (status = 'read' AND ? IN ('sent', 'delivered'))")
+    .bind(status, errorDetail || null, waMessageId, status)
     .run();
 }
 
