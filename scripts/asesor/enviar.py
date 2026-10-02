@@ -22,7 +22,8 @@ salida.json:
   "pedidos": [{"estado": "CONFIRMADO|POR_CONFIRMAR|OTRO_DIA|INTENCION",
                "destino": "LIMA|PROVINCIA", "nombre": "", "whatsapp": "",
                "telefono": "", "dni": "", "direccion_o_agencia": "",
-               "courier": "", "kits": 1, "pago": "", "fecha_entrega": "", "nota": ""}],
+               "courier": "", "kits": 1, "pago": "", "fecha_entrega": "", "nota": "",
+               "tipo": "CAMBIO|REPOSICION|AGENDADO"}],   # tipo: solo si no es venta nueva del día (ver ESPECIALES)
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": "",
                 "objecion": "lo que probablemente lo frena (desconfianza por el adelanto, falta de info…)",
                 "idea": {"titulo": "otra opción para la próxima", "mensaje": "texto listo"},   # opcional
@@ -56,6 +57,11 @@ TITULOS = {
     ("CONFIRMADO", "LIMA"): "✅ Lima — confirmados", ("CONFIRMADO", "PROVINCIA"): "✅ Provincia — confirmados",
     ("POR_CONFIRMAR", None): "🟡 Por confirmar", ("OTRO_DIA", None): "📅 Otros días", ("INTENCION", None): "🔥 Intención de compra",
 }
+# Lo que sale el día del despacho sin ser venta nueva: cambio, reposición o un
+# pedido de un día pasado agendado para esta fecha. Va en su propia sección,
+# después de los confirmados y ANTES de los por confirmar, para que no se pierda.
+ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGENDADO": "📌 Agendado de otro día"}
+especial = lambda p: str(p.get("tipo") or "").upper().replace("Ó", "O") in ESPECIALES
 e = lambda s: html.escape(str(s if s is not None else ""))
 
 
@@ -75,22 +81,28 @@ def armar_pdf(datos, carpeta):
             ("Dirección / Agencia", "direccion_o_agencia"), ("Courier", "courier"), ("Kits", "kits"),
             ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
     partes = []
+    esp = [dict(p, tipo=ESPECIALES[str(p.get("tipo")).upper().replace("Ó", "O")]) for p in pedidos if especial(p)]
     for (estado, destino), titulo in TITULOS.items():
-        filas = [p for p in pedidos if p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
+        if estado == "POR_CONFIRMAR" and esp:
+            partes.append(f"<h2 class=esp>📦 Cambios, reposiciones y agendados de otros días — SALEN EN ESTE DESPACHO ({len(esp)})</h2>"
+                          + "<div class=esp>" + tabla(esp, [("Tipo", "tipo"), ("Destino", "destino")] + cols) + "</div>")
+        filas = [p for p in pedidos if not especial(p) and p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
             partes.append(f"<h2>{titulo} ({len(filas)})</h2>" + tabla(filas, cols))
     if incidencias:
         partes.append(f"<h2>🚨 Incidencias ({len(incidencias)})</h2><ol class=inc>"
                       + "".join(f"<li>{e(i)}</li>" for i in incidencias) + "</ol>")
-    conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO"]
+    conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
     kits = sum(int(p.get("kits") or 1) for p in conf)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
+    normal = lambda est, des=None: lambda p: not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des)
     cajas = [("Kits a despachar", kits),
-             ("Lima confirmados", cuenta(lambda p: p.get("estado") == "CONFIRMADO" and p.get("destino") == "LIMA")),
-             ("Provincia confirmados", cuenta(lambda p: p.get("estado") == "CONFIRMADO" and p.get("destino") == "PROVINCIA")),
-             ("Por confirmar", cuenta(lambda p: p.get("estado") == "POR_CONFIRMAR")),
-             ("Otros días", cuenta(lambda p: p.get("estado") == "OTRO_DIA")),
-             ("Intención", cuenta(lambda p: p.get("estado") == "INTENCION")),
+             ("Lima confirmados", cuenta(normal("CONFIRMADO", "LIMA"))),
+             ("Provincia confirmados", cuenta(normal("CONFIRMADO", "PROVINCIA"))),
+             ("Cambios / reposiciones / agendados", len(esp)),
+             ("Por confirmar", cuenta(normal("POR_CONFIRMAR"))),
+             ("Otros días", cuenta(normal("OTRO_DIA"))),
+             ("Intención", cuenta(normal("INTENCION"))),
              ("Incidencias", len(incidencias))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
@@ -102,7 +114,8 @@ h1{{font-size:20px;margin:0}} h2{{font-size:13px;border-bottom:2px solid #075E54
 .cajas b{{display:block;font-size:18px;color:#075E54}} .cajas span{{color:#555}}
 table{{border-collapse:collapse;width:100%;counter-reset:n}} tr{{page-break-inside:avoid}}
 th{{background:#075E54;color:#fff;text-align:left;padding:3px 5px}} td{{border:1px solid #ccc;padding:3px 5px;vertical-align:top}}
-td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}</style>
+td.n::before{{counter-increment:n;content:counter(n)}} ol.inc li{{margin:3px 0}}
+h2.esp{{color:#9a3412;border-color:#ea580c}} div.esp th{{background:#ea580c}} div.esp td{{background:#fff7ed}}</style>
 <h1>Reporte de ventas · despacho del {e(fecha)}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
     ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, f"pedidos-{fecha}.pdf")
@@ -221,13 +234,14 @@ def main():
             print(f"REPORTE PDF: {link}")
         return
     ped = datos.get("pedidos", [])
-    cuenta = lambda est, des=None: sum(1 for p in ped if p.get("estado") == est and (des is None or p.get("destino") == des))
+    cuenta = lambda est, des=None: sum(1 for p in ped if not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des))
     cuerpo = {"mensajes": datos.get("mensajes", [])}
     if not solo_mensajes:
         pdf, kits = armar_pdf(datos, carpeta)
         cuerpo["resumen"] = (f"🧭 Asesor — pedidos para {datos.get('fecha_objetivo', '')}\n"
                              f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
-                             f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
+                             + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) else "")
+                             + f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
                              f"✍️ Mensajes sugeridos a las vendedoras: {len(cuerpo['mensajes'])}")
         with open(pdf, "rb") as fh:
             cuerpo["pdf_base64"] = base64.b64encode(fh.read()).decode()

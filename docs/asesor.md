@@ -20,6 +20,12 @@ como mucho uno por hora (`src/lib/crm-avisos.js`). Antes llegaba un mensaje
 por cada propuesta, los trozos del informe y el resumen: ya no. El informe
 del director queda en CRM → Reportes.
 
+**Cambios, reposiciones y agendados de otros días**: todo pedido que sale en
+el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
+`AGENDADO`) en `salida.json`. El PDF los pone en su propia sección, en naranja,
+después de los confirmados y antes de los por confirmar, y cuentan en los kits
+a despachar (`ESPECIALES` en `scripts/asesor/enviar.py`).
+
 **Cómo escribe el bot**: `CLAUDE.md` (lo lee cada Routine) le pide leer
 `docs/negocio.md`, `contexto.py` y la skill `voz-tarot-store` (ejemplos
 reales de las vendedoras). `enviar.py` descarta y lista las propuestas con
