@@ -376,23 +376,3 @@ de agradecimiento con un primer tip de lectura.
 ## Bitácora de aprendizajes (lo más nuevo arriba)
 
 Formato: `AAAA-MM-DD · fuente · aprendizaje (números)`.
-
-- **2026-10-03 · Meta Ads (cuenta USD 1785535595797328), máximo histórico ·
-  Hook "Si siempre te ha dado curiosidad el Tarot pero no sabías por dónde
-  empezar…"** es el ganador de la cuenta: anuncio "si siempre 8/26" (video de
-  34 s) US$701,69, 307.764 impresiones, 1.505 conversaciones a US$0,47, CTR
-  3,18 %, CPM US$2,28. Su variante "video mejorado" (59 s, S/89 con "precio
-  regular S/120", bolsa de terciopelo) costó el doble por conversación
-  (US$0,96), CPM US$4,41 y retuvo menos (llegó al final el 1,2 % de las
-  impresiones vs. 3,5 %). El tiempo medio de reproducción fue igual (5 s) en
-  ambos: el hook no fue el problema. Lo más probable es que perdiera por durar
-  casi el doble y por el precio más alto (S/89 vs. S/79 "solo por esta
-  semana"). Detalle:
-  `docs/anuncios/analisis-si-siempre-2026-10.md`.
-- **2026-10-03 · Meta Ads · Duración:** los videos de 59-74 s ("video
-  mejorado", "claude1") retienen bastante menos que el de 34 s. Para variantes
-  de video, mantener ≤ 35 s.
-- **2026-10-03 · Conflicto:** el anuncio ganador usa "energía", "protección" e
-  "intención" (lenguaje espiritual que este brief recomienda evitar) y aun así
-  ganó. No está probado que quitarlo ayude: probarlo como variable aislada
-  antes de sacarlo de todo.
