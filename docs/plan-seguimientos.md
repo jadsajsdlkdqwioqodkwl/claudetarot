@@ -29,81 +29,42 @@ cuestan.
 ## El plan
 
 Los toques van por **comportamiento**, no por calendario fijo: el día se
-cuenta desde el último mensaje del cliente (o desde la compra), y si responde,
-el reloj vuelve a 0. Según Dashly y ChatDaddy, las secuencias por
-comportamiento convierten 30–50 % más que las por tiempo, y lo sano en
-WhatsApp son 5–10 mensajes en 14–30 días.
-
-### La escalera de ofertas (aprobada por el dueño el 02/10)
-
-Regla de oro de recuperación (AsisteClick, eGrow): **el primer toque no regala
-nada**, porque muchos compran solo con el recordatorio; el incentivo sube un
-escalón por toque y **cada oferta reemplaza a la anterior, no se suman**. El
-envío gratis y la contraentrega ya los tienes, así que no sirven de
-incentivo: la escalera usa regalo, precio, bundle y compromiso mínimo.
-
-| Escalón | Palanca | Por qué funciona | Costo para ti |
-|---|---|---|---|
-| Día 2 | **Valor**: "cada carta trae su significado" | Ataca la objeción n.º 1 ("no sé leer tarot") sin tocar el margen | 0 |
-| Día 7 | **Regalo**: collar amuleto extra (S/19 de valor) "si lo separa esta semana" | Un regalo se percibe más valioso que S/10 de descuento y cuesta menos; plazo real | Costo del collar |
-| Día 14 | **Precio o bundle**: kit S/79 **o** 2 kits S/149 "para regalar" (S/74,50 c/u) | Elección entre dos sí (no "¿sí o no?"); el bundle sube el ticket a S/149 | S/10 o margen del 2.º kit |
-| Día 30 | **Compromiso mínimo**: separar con S/10 y recibirlo cuando quiera | Baja la barrera al mínimo; el "cierro su consulta" (breakup) es lo que más responde | 0 |
-
-Clientes (ya compraron), sin descuento sobre el kit:
-
-| Escalón | Palanca | Ticket |
-|---|---|---|
-| Día 7 | **Valor**: tirada de 3 cartas para practicar | Abre 24 h gratis; pide foto/reseña; detecta reclamos |
-| Día 14 | **Precio de cliente**: The Classic S/49 en vez de S/69 (el precio de la web) | +S/49 |
-| Día 30 | **Referidos**: la amiga que escriba de su parte y ella reciben un collar | Cliente nuevo por el costo de 2 collares |
-| Día 60 | **Upgrade**: mazo Gold S/139 | +S/139 |
+cuenta desde el último mensaje del cliente, y si responde, el reloj vuelve a
+0. Lo hacen los equipos de WhatsApp que más venden: según Dashly/ChatDaddy,
+las secuencias por comportamiento convierten 30–50 % más que las por tiempo,
+y lo sano en WhatsApp son 5–10 mensajes en 14–30 días.
 
 ### A. No compró (etapa 2 o más)
 
-| Toque | Cuándo | Plantilla | Mensaje | Botones |
+| Toque | Cuándo | A quién | Costo | Mensaje (plantilla, botones) |
 |---|---|---|---|---|
-| Ventana (ya existe) | 4–12 h | — | Seguimientos de respuestas rápidas y sugerencias, máx. 2 sin respuesta | — |
-| **Día 2** (gratis: 72 h del anuncio) | 40–66 h de silencio, lead de < 70 h | `toque_d2` | Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo? | Sí, sepárelo · Tengo una duda |
-| **Día 7** Lima | 7 días de silencio | `toque_d7_lima` | Hola {{1}} ☺️ si agenda su kit esta semana le regalamos un collar amuleto extra, y lo paga recién cuando el motorizado se lo entrega 🫶 ¿Se lo agendo? | Sí, agéndelo · Tengo una duda |
-| **Día 7** provincia | 7 días de silencio | `toque_d7_provincia` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra 🫶 Con S/20 de adelanto se lo enviamos a su agencia y el resto lo paga al recoger. ¿Se lo separo? | Sí, sepárelo · Me da desconfianza |
-| **Día 7** sin destino | 7 días de silencio | `toque_d7` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra, con envío gratis a todo el Perú 🫶 ¿Sería para Lima o para provincia? | Lima · Provincia |
-| **Día 14** | 7 días tras el día 7 | `toque_d14` | Hola {{1}} ☺️ por estos 2 días le dejamos su kit en S/79, o 2 kits en S/149 si quiere regalarle uno a alguien especial ✨ ¿Cuál le separo? | 1 kit a S/79 · 2 kits a S/149 |
-| **Día 30** | 16 días tras el día 14 | `toque_d30` | Hola {{1}} ☺️ no quiero incomodarle. Si aún le interesa, puede separar su kit con solo S/10 y lo recibe cuando usted quiera ✨ ¿Se lo dejo separado? | Sí, separarlo · Cerrar consulta |
+| Ventana (ya existe) | 4–12 h | Todos | Gratis | Seguimientos de respuestas rápidas y sugerencias, máx. 2 sin respuesta |
+| **Día 2** | 40–66 h de silencio | Etapa ≥ 2, lead de < 70 h | **Gratis** (72 h del anuncio) | "Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo?" · [Sí, sepárelo] [Tengo una duda] |
+| **Día 7** | 7 días de silencio | Etapa ≥ 3 | Pagado | "Hola {{1}} ☺️ esta semana salieron kits a todo el Perú con envío gratis, y en Lima se paga recién al recibir 🫶 ¿Le gustaría que le separe uno?" · [Sí, quiero el mío] [Tengo una duda] |
+| **Día 14** | 7 días después del de día 7 | Si salió el de día 7 | Pagado | "Hola {{1}} ☺️ para que se anime le podemos dejar su kit de tarot en S/79 con envío gratis ✨ ¿Se lo separo?" · [Sí, lo quiero] [Ahora no] |
+| **Día 30** | 16 días después | Si salió el de día 14 | Pagado | "Hola {{1}} ☺️ no quiero incomodarle, ¿le sigue interesando el kit de tarot o cierro su consulta?" · [Aún me interesa] [Cerrar consulta] |
 
-El botón **"Me da desconfianza"** es a propósito: en provincia el silencio
-después del adelanto casi siempre es desconfianza (negocio.md). El botón le da
-permiso de decirlo y abre la ventana para que la vendedora mande fotos de
-envíos reales o el Instagram (regla 14 de voz-tarot-store).
+Por qué así:
+- **Día 2** cae justo cuando se apaga el 96 % de las compras y todavía es
+  gratis. Ataca la objeción más común ("no sé leer tarot") con lo que el
+  cliente aún no sabe.
+- **Día 7**: prueba social y riesgo cero (envío gratis, contraentrega en Lima).
+- **Día 14**: la herramienta de cierre que permite `negocio.md` para quien se
+  enfrió: S/79. No se combina con el collar.
+- **Día 30**: el mensaje de "cierro su consulta" (breakup) es el que más
+  responde de toda la cadena. El botón "Cerrar consulta" lo saca para siempre.
 
 ### B. Ya compró
 
-| Toque | Cuándo | Plantilla | Mensaje | Botones |
-|---|---|---|---|---|
-| **Día 7** | 7 días tras la compra | `toque_post7` | Hola {{1}} ☺️ ¿qué tal le va con su kit? Si gusta le mando una tirada sencilla de 3 cartas para practicar esta semana ✨ | Sí, mándemela · Todo bien, gracias |
-| **Día 14** | 7 días después | `toque_post14` | Hola {{1}} ☺️ como ya es cliente le dejamos el mazo The Classic Tarot en S/49 en vez de S/69, para practicar con otro diseño ✨ ¿Se lo envío? | Sí, lo quiero · Ahora no |
-| **Día 30** | 16 días después | `toque_post30` | Hola {{1}} ☺️ si alguna amiga quiere aprender tarot y nos escribe de su parte, a las dos les regalamos un collar amuleto ✨ Solo reenvíele este mensaje 🫶 | Genial, lo comparto · Gracias |
-| **Día 60** | 30 días después | `toque_post60` | Hola {{1}} ☺️ si ya domina sus cartas, el siguiente paso es el mazo Gold con bordes dorados, está en S/139 ✨ ¿Le mando fotos? | Sí, mándemelas · Ahora no |
+| Toque | Cuándo | Mensaje | Para qué |
+|---|---|---|---|
+| **Día 7** | 7 días tras la compra | "¿Qué tal le va con su kit? Si gusta le mando una tirada sencilla para practicar esta semana ✨" · [Sí, mándemela] [Todo bien, gracias] | Abre la ventana gratis de 24 h, pide foto o reseña y detecta reclamos a tiempo |
+| **Día 14** | 7 días después | "A varias clientas les gustó sumar el mazo The Classic Tarot para practicar con otro diseño, está en S/69 ✨ ¿Le cuento más?" · [Sí, cuénteme] [Ahora no] | Venta cruzada (también oráculos y collares S/19 a mano) |
+| **Día 30** | 16 días después | "Gracias por confiar en nosotros. Si alguna amiga quiere aprender tarot, puede escribirnos de su parte y la atendemos con cariño ✨" | Referidos, sin promoción |
 
-### Qué responde la vendedora cuando tocan un botón
-
-El botón abre 24 h de texto libre gratis. Al tocarlo, la conversación sube en
-el CRM; la vendedora sigue con su voz de siempre:
-
-| Botón | Respuesta de la vendedora |
-|---|---|
-| Sí, sepárelo / Sí, agéndelo / Sí, separarlo | Lima: "Claro!! ☺️ Me indica su ubicación 📍 y teléfono de quién lo va a recibir por favor ✨" · Provincia: "Muchas gracias! Me indica sus datos: nombre, DNI y agencia ☺️✨" (y el Yape de S/20) |
-| Tengo una duda | "Claro ☺️ cuénteme, ¿qué le gustaría saber?" (y escuchar: no empujar) |
-| Me da desconfianza | "Le entiendo ☺️ le paso fotos de los envíos de hoy por Shalom y nuestro Instagram para que nos conozca ✨" + fotos/video. Recién después, el adelanto |
-| Lima / Provincia | Sigue la cadena Lima 1 o Provincia 1, recordándole el collar de regalo de esta semana |
-| 1 kit a S/79 / 2 kits a S/149 | Pedir datos como arriba; anotar el precio en la nota del pedido (y "2 kits" en `empaque`) |
-| Cerrar consulta | "Gracias por avisarnos ☺️ cualquier cosa aquí estamos ✨" (no vuelve a recibir toques) |
-| Sí, mándemela (tirada) | Mandar la tirada de 3 cartas (pasado · presente · futuro) con una foto; pedir que mande la foto de la suya |
-| Sí, lo quiero (Classic S/49) | Lima: agenda con motorizado; provincia: adelanto según negocio.md. `empaque`: "mazo The Classic Tarot" |
-| Genial, lo comparto | "Gracias ☺️ cuando su amiga escriba, le guardamos su collar a las dos ✨" (anotar a quién refirió) |
-| Sí, mándemelas (Gold) | Fotos del mazo Gold y precio S/139 |
-
-Conviene guardar estas respuestas como respuestas rápidas en el CRM (⚡) con
-el nombre del botón, para que la vendedora las mande con un toque.
+**Pregunta para el dueño**: ¿se puede ofrecer un collar de regalo a la clienta
+y a la amiga que llegue de su parte? No está en `negocio.md`; si dices que
+sí, se agrega al texto del día 30.
 
 ### Reglas que no se rompen
 
@@ -129,10 +90,10 @@ cliente que toca un botón abre 24 h de texto libre gratis para la vendedora.
 
 ## Cómo está hecho (y cómo prenderlo)
 
-- `src/lib/toques.js`: el motor y los textos. Las 11 plantillas de arriba
+- `src/lib/toques.js`: el motor. Las plantillas `toque_d2`, `toque_d7`,
+  `toque_d14`, `toque_d30`, `toque_post7`, `toque_post14` y `toque_post30`
   (Marketing, es_PE) **se crean solas en Meta** la primera vez que les toca a
-  alguien; el día 7 elige la versión Lima, provincia o sin destino según el
-  chat (`crm-destino.js`).
+  alguien.
 - `migrations/0043_crm_v43.sql`: tabla `toques`.
 - `src/lib/plantillas.js`: aprobada/idioma/{{1}} de cada plantilla, compartido
   con el pedido web.
@@ -142,12 +103,10 @@ cliente que toca un botón abre 24 h de texto libre gratis para la vendedora.
   2. En `src/index.js`, dentro del cron de cada minuto, llamar a
      `procesarToques(env)` en los minutos `% 5 === 2` (su propia ejecución,
      por el tope de 50 consultas a D1).
-  3. En `wrangler.jsonc`: `"TOQUES": "d2,d7,d14,d30,post7,post14,post30,post60"` y
+  3. En `wrangler.jsonc`: `"TOQUES": "d2,d7,d14,d30,post7,post14,post30"` y
      `"TOQUES_MAX_DIA": "40"`.
 
-Fuentes: [AsisteClick — carritos abandonados por WhatsApp](https://asisteclick.com/en/blog/recuperar-carritos-abandonados-whatsapp/),
-[eGrow — WhatsApp abandoned cart templates](https://www.egrow.com/en/blog/whatsapp-abandoned-cart-template-2026),
-[Dashly — WhatsApp lead nurturing](https://www.dashly.io/blog/whatsapp-lead-nurturing/),
+Fuentes: [Dashly — WhatsApp lead nurturing](https://www.dashly.io/blog/whatsapp-lead-nurturing/),
 [ChatDaddy — WhatsApp Lead Nurturing](https://chatdaddy.tech/blog/whatsapp-lead-nurturing),
 [WATI — WhatsApp drip campaign](https://www.wati.io/blog/whatsapp-drip-campaign),
 [Meta — Pricing on the WhatsApp Business Platform](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing).

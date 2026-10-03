@@ -28,7 +28,6 @@ import { mandarConEscribiendo } from "./crm-send.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 import { plantillaAprobada, primerNombre } from "./plantillas.js";
 import { enSilencio } from "./horario.js";
-import { destinosDeChats } from "./crm-destino.js";
 
 export const ORIGEN_TOQUE = "Toque automático";
 const POR_PASADA = 4; // ~9 consultas a D1 por envío: entra en el tope de 50 por ejecución
@@ -38,85 +37,63 @@ const botones = (a, b) => ({ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", t
 const cuerpo = (text) => ({ type: "BODY", text, example: { body_text: [["María"]] } });
 
 /**
- * La escalera de ofertas (docs/plan-seguimientos.md, aprobada por el dueño el
- * 02/10): cada toque sube un escalón y REEMPLAZA la oferta anterior, no se
- * suman. Día 2 sin oferta (solo valor), día 7 regalo (collar extra), día 14
- * precio (S/79) o 2 kits para regalar, día 30 compromiso mínimo (separar con
- * S/10). A clientes: valor, mazo a precio de clienta, referidos y el Gold.
- *
  * dias: cuándo sale. etapaMin: etapa del embudo mínima (2 conversó, 3 dijo
- * destino). requiere: el toque anterior de la cadena. Con `por_destino` hay
- * una plantilla por destino del chat (lima / provincia / general si no se
- * sabe), así cada uno lee lo que le aplica. Textos con la skill voz-tarot-store.
+ * destino, 4 le pidieron cierre). requiere: el toque anterior de la cadena.
+ * Los textos siguen la skill voz-tarot-store (de usted, una sola pregunta).
  */
 export const TOQUES = {
   d2: {
     tipo: "lead", dias: 2, etapaMin: 2, soloRecientes: true,
-    general: [
+    componentes: [
       cuerpo("Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo?"),
       botones("Sí, sepárelo", "Tengo una duda")
     ]
   },
   d7: {
-    tipo: "lead", dias: 7, etapaMin: 2, por_destino: true,
-    lima: [
-      cuerpo("Hola {{1}} ☺️ si agenda su kit esta semana le regalamos un collar amuleto extra, y lo paga recién cuando el motorizado se lo entrega 🫶 ¿Se lo agendo?"),
-      botones("Sí, agéndelo", "Tengo una duda")
-    ],
-    provincia: [
-      cuerpo("Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra 🫶 Con S/20 de adelanto se lo enviamos a su agencia y el resto lo paga al recoger. ¿Se lo separo?"),
-      botones("Sí, sepárelo", "Me da desconfianza")
-    ],
-    general: [
-      cuerpo("Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra, con envío gratis a todo el Perú 🫶 ¿Sería para Lima o para provincia?"),
-      botones("Lima", "Provincia")
+    tipo: "lead", dias: 7, etapaMin: 3,
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ esta semana salieron kits a todo el Perú con envío gratis, y en Lima se paga recién al recibir 🫶 ¿Le gustaría que le separe uno?"),
+      botones("Sí, quiero el mío", "Tengo una duda")
     ]
   },
   d14: {
-    tipo: "lead", dias: 14, etapaMin: 2, requiere: "d7",
-    general: [
-      cuerpo("Hola {{1}} ☺️ por estos 2 días le dejamos su kit en S/79, o 2 kits en S/149 si quiere regalarle uno a alguien especial ✨ ¿Cuál le separo?"),
-      botones("1 kit a S/79", "2 kits a S/149")
+    tipo: "lead", dias: 14, etapaMin: 3, requiere: "d7",
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ para que se anime le podemos dejar su kit de tarot en S/79 con envío gratis ✨ ¿Se lo separo?"),
+      botones("Sí, lo quiero", "Ahora no")
     ]
   },
   d30: {
-    tipo: "lead", dias: 30, etapaMin: 2, requiere: "d14",
-    general: [
-      cuerpo("Hola {{1}} ☺️ no quiero incomodarle. Si aún le interesa, puede separar su kit con solo S/10 y lo recibe cuando usted quiera ✨ ¿Se lo dejo separado?"),
-      botones("Sí, separarlo", "Cerrar consulta")
+    tipo: "lead", dias: 30, etapaMin: 3, requiere: "d14",
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ no quiero incomodarle, ¿le sigue interesando el kit de tarot o cierro su consulta?"),
+      botones("Aún me interesa", "Cerrar consulta")
     ]
   },
   post7: {
     tipo: "cliente", dias: 7,
-    general: [
-      cuerpo("Hola {{1}} ☺️ ¿qué tal le va con su kit? Si gusta le mando una tirada sencilla de 3 cartas para practicar esta semana ✨"),
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ ¿qué tal le va con su kit? Si gusta le mando una tirada sencilla para practicar esta semana ✨"),
       botones("Sí, mándemela", "Todo bien, gracias")
     ]
   },
   post14: {
     tipo: "cliente", dias: 14, requiere: "post7",
-    general: [
-      cuerpo("Hola {{1}} ☺️ como ya es cliente le dejamos el mazo The Classic Tarot en S/49 en vez de S/69, para practicar con otro diseño ✨ ¿Se lo envío?"),
-      botones("Sí, lo quiero", "Ahora no")
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ a varias clientas les gustó sumar el mazo The Classic Tarot para practicar con otro diseño, está en S/69 ✨ ¿Le cuento más?"),
+      botones("Sí, cuénteme", "Ahora no")
     ]
   },
   post30: {
     tipo: "cliente", dias: 30, requiere: "post14",
-    general: [
-      cuerpo("Hola {{1}} ☺️ si alguna amiga quiere aprender tarot y nos escribe de su parte, a las dos les regalamos un collar amuleto ✨ Solo reenvíele este mensaje 🫶"),
-      botones("Genial, lo comparto", "Gracias")
-    ]
-  },
-  post60: {
-    tipo: "cliente", dias: 60, requiere: "post30",
-    general: [
-      cuerpo("Hola {{1}} ☺️ si ya domina sus cartas, el siguiente paso es el mazo Gold con bordes dorados, está en S/139 ✨ ¿Le mando fotos?"),
-      botones("Sí, mándemelas", "Ahora no")
+    componentes: [
+      cuerpo("Hola {{1}} ☺️ gracias por confiar en nosotros. Si alguna amiga quiere aprender tarot, puede escribirnos de su parte y la atendemos con cariño ✨"),
+      botones("Claro, le paso", "Gracias")
     ]
   }
 };
 
-const nombrePlantilla = (id, variante) => (variante === "general" ? `toque_${id}` : `toque_${id}_${variante}`);
+const nombrePlantilla = (id) => `toque_${id}`;
 
 // Pidió que no le escriban (incluye el botón "Cerrar consulta" del toque de 30 días).
 const NO_ESCRIBIR = ["cerrar consulta", "no me interesa", "no estoy interesad", "no me escrib", "no me mand", "no me moleste", "no gracias", "ya no quiero"];
@@ -183,17 +160,9 @@ export async function procesarToques(env) {
     const def = TOQUES[id];
     const lista = await candidatos(db, id, def, cupo + 2);
     if (!lista.length) continue;
-    const destinos = def.por_destino ? await destinosDeChats(db, lista.map((c) => c.id)).catch(() => ({})) : {};
-    const aprobadas = {};
-    const plantillaDe = async (variante) => {
-      if (!(variante in aprobadas)) {
-        const nombre = nombrePlantilla(id, variante);
-        aprobadas[variante] = await plantillaAprobada(env, nombre, { categoria: "MARKETING", idioma: IDIOMA, componentes: def[variante] })
-          .then((a) => a && { ...a, nombre })
-          .catch((err) => (console.error(`Plantilla ${nombre}:`, err.message), null));
-      }
-      return aprobadas[variante];
-    };
+    const nombre = nombrePlantilla(id);
+    const aprobada = await plantillaAprobada(env, nombre, { categoria: "MARKETING", idioma: IDIOMA, componentes: def.componentes })
+      .catch((err) => (console.error(`Plantilla ${nombre}:`, err.message), null));
 
     for (const c of lista) {
       if (cupo <= 0) break;
@@ -202,17 +171,14 @@ export async function procesarToques(env) {
         await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'control')").bind(c.id, id).run();
         continue;
       }
-      const variante = def.por_destino && def[destinos[c.id]] ? destinos[c.id] : "general";
-      const aprobada = await plantillaDe(variante);
-      if (!aprobada) continue; // en revisión: se reintenta en la próxima pasada
-      const nombre = aprobada.nombre;
+      if (!aprobada) break; // en revisión: se reintenta en la próxima pasada
       const r = await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'enviando')").bind(c.id, id).run();
       if (!r.meta?.changes) continue;
       cupo--;
       try {
         const params = aprobada.conNombre ? [primerNombre(c.nombre)] : [];
         const waMessageId = await mandarConEscribiendo(env, c.id, () => enviarTemplate(env, c.wa_id, nombre, aprobada.idioma, params));
-        const texto = def[variante][0].text.replace("{{1}}", params[0] || "");
+        const texto = def.componentes[0].text.replace("{{1}}", params[0] || "");
         await registrarMensajeSaliente(db, c.id, { waMessageId, type: "template", body: `Plantilla: ${nombre} · ${texto}`, sentBy: ORIGEN_TOQUE }, { subirEnBandeja: false });
         await db.prepare("UPDATE toques SET estado = 'enviada' WHERE conversation_id = ? AND toque = ?").bind(c.id, id).run();
       } catch (err) {
