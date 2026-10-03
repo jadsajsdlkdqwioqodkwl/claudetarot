@@ -7,6 +7,13 @@
  *      columnas que la hoja de chats. Con `activos_horas`, solo los chats que
  *      tuvieron algún mensaje en esas últimas horas (pero con su historial
  *      completo de esos días), para las corridas que solo miran lo nuevo.
+ *      Con `promesas_dias=21` agrega `promesas`: los mensajes de esos días (de
+ *      esos mismos chats, automáticos incluidos) que hablan de collar, regalo,
+ *      mazo, oráculo, kits, yapa o gratis. El collar del toque del día 7 se
+ *      promete antes de la ventana que se lee y el que empaca debe saberlo
+ *      (scripts/asesor/promesas.py filtra las promesas de verdad). Sin
+ *      `activos_horas`, de todos los chats con mensajes en esos días; con
+ *      `solo_promesas=1` no trae `filas`.
  *
  * POST /api/asesor/memoria
  *      { fuente, agregar: [{ tema, nota }], retirar: [id] }
@@ -46,7 +53,10 @@ export async function onRequestGetChats({ request, env }) {
   const desde = new Date(hoyLima.getTime() - (dias - 1) * 86400000 + LIMA_MS);
   const activosDesde = activosHoras > 0 ? new Date(Date.now() - activosHoras * 3600000) : desde;
 
-  const { results } = await env.CRM_DB.prepare(
+  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
+  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
+
+  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
     `SELECT m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name, c.ad_headline,
             conv.assigned_agent, conv.meta_tags
@@ -60,7 +70,7 @@ export async function onRequestGetChats({ request, env }) {
     .bind(sqlFecha(desde), sqlFecha(activosDesde > desde ? activosDesde : desde))
     .all();
 
-  const filas = results.map((m) => ({
+  const aFila = (m) => ({
     t: aLima(m.created_at),
     wa: m.wa_id,
     nombre: m.contact_name || m.profile_name || "",
@@ -73,8 +83,29 @@ export async function onRequestGetChats({ request, env }) {
     anuncio: m.ad_headline || "",
     asesora: m.assigned_agent || "",
     embudo: m.meta_tags || ""
-  }));
-  return json({ desde: aLima(sqlFecha(desde)), filas });
+  });
+  const filas = results.map(aFila);
+
+  if (!promesasDias) return json({ desde: aLima(sqlFecha(desde)), filas });
+  const promesasDesde = new Date(Date.now() - promesasDias * 86400000);
+  const { results: prom } = await env.CRM_DB.prepare(
+    `SELECT m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
+            c.wa_id, c.profile_name, c.name AS contact_name, c.ad_headline,
+            conv.assigned_agent, conv.meta_tags
+     FROM conversations conv
+     JOIN contacts c ON c.id = conv.contact_id
+     JOIN messages m ON m.conversation_id = conv.id AND m.created_at >= ?
+     WHERE conv.last_message_at >= ?
+       AND COALESCE(m.sent_by, '') NOT LIKE '%ienvenida%'
+       AND (m.body LIKE '%collar%' OR m.body LIKE '%regal%' OR m.body LIKE '%obsequ%' OR m.body LIKE '%yap%'
+            OR m.body LIKE '%mazo%' OR m.body LIKE '%culo%' OR m.body LIKE '%kits%' OR m.body LIKE '%gratis%'
+            OR m.body LIKE '%adicional%' OR m.body LIKE '%extra%' OR m.body LIKE '%agreg%' OR m.body LIKE '%inclu%')
+     ORDER BY m.created_at DESC, m.id DESC
+     LIMIT 5000`
+  )
+    .bind(sqlFecha(promesasDesde), sqlFecha(activosHoras > 0 ? activosDesde : promesasDesde))
+    .all();
+  return json({ desde: aLima(sqlFecha(desde)), filas, promesas: prom.reverse().map(aFila) });
 }
 
 export async function onRequestPostMemoria({ request, env }) {
@@ -161,7 +192,10 @@ export async function onRequestGetAnuncios({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 7, 1), 60);
-  const { results } = await env.CRM_DB.prepare(
+  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
+  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
+
+  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
     `SELECT COALESCE(c.ad_source_id, '') AS ad_id, MAX(c.ad_headline) AS titular,
             COUNT(*) AS chats,
             SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
@@ -187,7 +221,10 @@ export async function onRequestGetPedidosWeb({ request, env }) {
   if (cortar) return cortar;
   const horas = Math.min(Math.max(Number(new URL(request.url).searchParams.get("horas")) || 24, 1), 72);
   const desde = sqlFecha(new Date(Date.now() - horas * 3600000));
-  const { results } = await env.CRM_DB.prepare(
+  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
+  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
+
+  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
     `SELECT p.id, p.created_at, p.nombre, p.wa_id, p.envio, p.destino, p.etiqueta, p.bump, p.total,
             conv.etapa, conv.meta_tags,
             (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'

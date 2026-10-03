@@ -53,6 +53,9 @@ ya lista) no van a Telegram ni a las vendedoras: solo al admin en ✨ Sugerencia
 import base64, glob, html, json, os, re, subprocess, sys, urllib.error, urllib.request
 from collections import Counter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import promesas as prom
+
 ORDEN = ["CONFIRMADO", "POR_CONFIRMAR", "OTRO_DIA", "INTENCION"]
 TITULOS = {
     ("CONFIRMADO", "LIMA"): "✅ Lima — confirmados", ("CONFIRMADO", "PROVINCIA"): "✅ Provincia — confirmados",
@@ -86,6 +89,34 @@ def empaque(p):
     if extra:
         partes.append(extra)
     return " · ".join(partes)
+
+
+def revisar_promesas(datos, carpeta, clave):
+    """Red de seguridad del empaque: lo prometido en el chat (collar extra del
+    toque del día 7, regalo, mazo, 2 kits…) que no está en `empaque` se agrega
+    con ⚠️ para que el que empaca lo vea. Lee las promesas de 30 días del
+    Worker y, si no hay clave, las del meta.json de preparar.py."""
+    pedidos = [p for p in datos.get("pedidos", []) if (p.get("nombre") or "").upper() != "INCIDENCIA"
+               and prom.nueve(p.get("whatsapp") or p.get("telefono"))]
+    if not pedidos:
+        return []
+    todas = prom.traer(clave, 30) if clave else {}
+    meta = os.path.join(carpeta, "meta.json")
+    if os.path.exists(meta):
+        for wa, m in json.load(open(meta)).items():
+            v = todas.setdefault(prom.nueve(wa), [])
+            v += [x for x in m.get("promesas") or [] if x not in v]
+    avisos = []
+    for p in pedidos:
+        lista = todas.get(prom.nueve(p.get("whatsapp"))) or todas.get(prom.nueve(p.get("telefono"))) or []
+        faltan = prom.falta_en_empaque(lista, empaque(p))
+        if not faltan:
+            continue
+        frase = " | ".join(f"«{x}»" for x in faltan[-3:])
+        p["empaque"] = (str(p.get("empaque") or "").strip() + " · " if str(p.get("empaque") or "").strip() else "") \
+            + f"⚠️ VERIFICAR, en el chat se le prometió: {frase}"
+        avisos.append(f"- {p.get('nombre') or p.get('whatsapp')} ({p.get('estado')}): {frase}")
+    return avisos
 
 
 def tabla(filas, cols):
@@ -304,6 +335,10 @@ def main():
         print("NO SE GUARDARON (suenan a bot; reescríbelas como las vendedoras, skill voz-tarot-store, "
               "y vuelve a mandarlas en otro salida.json):\n" + "\n".join(fuera), flush=True)
     carpeta = os.path.dirname(os.path.abspath(ruta))
+    faltan = revisar_promesas(datos, carpeta, clave)
+    if faltan:
+        print("📦 PROMESAS DEL CHAT QUE NO ESTABAN EN `empaque` (se agregaron con ⚠️ al PDF; revisa cada chat y "
+              "pon el extra en `empaque` del pedido, o vuelve a mandarlo si no aplica):\n" + "\n".join(faltan), flush=True)
     if "--solo-pdf" in args or not solo_mensajes:
         traer_pedidos_web(clave, datos)
     if "--solo-pdf" in args:  # arma el PDF (y con clave lo sube a CRM → Reportes); no avisa a nadie

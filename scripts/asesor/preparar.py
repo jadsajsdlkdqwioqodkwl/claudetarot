@@ -15,9 +15,19 @@ solo los chats que tuvieron algún mensaje en las últimas N horas.
 Todo lo que se puede decidir sin leer (qué chats tienen algo, quién escribió
 último, si ya salió un recordatorio automático) se decide aquí, para que Claude
 gaste su lectura solo en lo que importa.
+
+Se lee TODO: los mensajes automáticos (toque del día 7, seguimiento
+programado, envío masivo, pedido web) salen como V(auto: …), porque ahí van
+promesas como el collar extra; solo la bienvenida se resume en una línea.
+Ningún mensaje del equipo se corta. Cada chat abre con "📦 PROMETIDO" si en
+los últimos 21 días se le prometió algo más que 1 kit normal (promesas.py),
+aunque haya sido antes de la ventana que se lee.
 """
 import argparse, datetime as dt, json, os, re, sys, urllib.error, urllib.request
 from collections import OrderedDict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import promesas as prom
 
 API_CHATS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/chats"
 
@@ -26,8 +36,11 @@ RE_AUTO = re.compile(r"autom[aá]tic|masivo|carrito|prueba de bienvenida", re.I)
 # El anuncio viejo decía "Hola! Me gustaría…" y el nuevo "¡Hola! Me gustaría…".
 RE_SALUDO = re.compile(r"^¡?hola!? me gustar[ií]a m[aá]s informaci[oó]n\.?$", re.I)
 # Recordatorios que ya le escribieron al cliente (la bienvenida automática NO cuenta).
-RE_RECORDATORIO = re.compile(r"seguimiento autom|carrito|masivo", re.I)
-MAX_CLIENTE, MAX_EQUIPO, MAX_ARCHIVO = 400, 160, 60000
+RE_RECORDATORIO = re.compile(r"seguimiento autom|toque autom|carrito|masivo", re.I)
+RE_BIENVENIDA = re.compile(r"bienvenida", re.I)
+# Nada del equipo se corta: una promesa al final de un mensaje largo es la que
+# más se pierde. (El Worker ya corta a 2000.)
+MAX_CLIENTE, MAX_EQUIPO, MAX_ARCHIVO = 2000, 2000, 60000
 
 
 def texto_fecha(v):
@@ -92,6 +105,11 @@ def main():
     hoy = dt.date.fromisoformat(a.hoy)
     desde = hoy - dt.timedelta(days=a.dias - 1)
     filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas)
+    # Promesas de 21 días (el collar del día 7 suele estar fuera de la ventana).
+    promesas = prom.de_filas(filas)
+    if a.xlsx == "api":
+        for k, v in prom.traer(os.environ.get("ASESOR_CLAVE", ""), 21, a.activos_horas).items():
+            promesas[k] = v + [x for x in promesas.get(k, []) if x not in v]
 
     chats = OrderedDict()
     for f in filas:
@@ -113,22 +131,32 @@ def main():
             "recordatorio_auto_despues": any(RE_RECORDATORIO.search(m["vend"]) for m in despues),
             "asesora": next((m["asesora"] for m in reversed(ms) if m["asesora"]), ""),
             "embudo": next((m["embudo"] for m in reversed(ms) if m["embudo"]), ""),
+            "promesas": promesas.get(prom.nueve(wa), []),
         }
-        lineas, anterior = [], ""
+        lineas, anterior, bienvenida = [], "", False
         for m in ms:
             es_cli = m["quien"] == "Cliente"
-            if not es_cli and RE_AUTO.search(m["vend"]):
+            auto = not es_cli and RE_AUTO.search(m["vend"])
+            if auto and RE_BIENVENIDA.search(m["vend"]):
+                if not bienvenida:
+                    lineas.append(f"{m['t'][5:16]} V(auto: {m['vend']}): [bienvenida automática: kit normal, ya trae collar]")
+                bienvenida = True
                 continue
             cuerpo = re.sub(r"\s+", " ", m["msg"]).strip() or f"[{m['tipo']}]"
             if es_cli and m["tipo"] == "image" and m["msg"]:
                 cuerpo = "[imagen] " + cuerpo
             cuerpo = cuerpo[: MAX_CLIENTE if es_cli else MAX_EQUIPO]
-            linea = f"{m['t'][5:16]} {'C' if es_cli else 'V(' + (m['vend'] or '?') + ')'}: {cuerpo}"
+            quien = "C" if es_cli else f"V(auto: {m['vend']})" if auto else f"V({m['vend'] or '?'})"
+            linea = f"{m['t'][5:16]} {quien}: {cuerpo}"
             if linea != anterior:
                 lineas.append(linea)
             anterior = linea
         extra = " | ya salió recordatorio automático" if meta[wa]["recordatorio_auto_despues"] else ""
-        elegidos.append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n" + "\n".join(lineas))
+        aviso = ""
+        if meta[wa]["promesas"]:
+            aviso = ("📦 PROMETIDO (va en `empaque` si compra o ya compró; el que empaca no lo ve si no):\n"
+                     + "\n".join(f"   📦 {p}" for p in meta[wa]["promesas"]) + "\n")
+        elegidos.append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n{aviso}" + "\n".join(lineas))
 
     os.makedirs(a.salida, exist_ok=True)
     for f in os.listdir(a.salida):
@@ -153,6 +181,7 @@ def main():
         "numeros": len(chats), "chats_a_leer": len(elegidos),
         "archivos": [f"chats_{i:02d}.txt" for i in range(1, len(partes) + 1)],
         "sin_respuesta": sum(1 for v in meta.values() if v["ultimo"] == "cliente"),
+        "con_promesas": [wa for wa, v in meta.items() if v["promesas"]],
     }, ensure_ascii=False, indent=1))
 
 

@@ -26,6 +26,18 @@ collar, solo una carta…; `kits: 0` si no lleva kit). El PDF abre con "📦 PAR
 EL QUE EMPACA": la lista de esos pedidos; las filas con extras salen en amarillo
 (`empaque()` en `scripts/asesor/enviar.py`; sin `empaque`, toma la frase 📦 de la nota).
 
+**Promesas del chat** (`scripts/asesor/promesas.py`): antes `preparar.py`
+descartaba los mensajes automáticos y cortaba los del equipo a 160
+caracteres, así que el collar extra del toque del día 7 (plantilla, "Toque
+automático") nunca llegaba a la Routine (caso 945865432). Ahora se leen todos
+(`V(auto: …)`, solo la bienvenida se resume), nada del equipo se corta y cada
+chat abre con "📦 PROMETIDO" si en 21 días se le prometió collar extra,
+regalo, mazo, oráculo, carta, 2 kits, yapa o algo gratis. `enviar.py` vuelve a
+buscar las promesas de 30 días (`/api/asesor/chats?promesas_dias=30&solo_promesas=1`)
+y si un pedido no las tiene en `empaque`, las agrega con "⚠️ VERIFICAR" (sale
+en amarillo para el que empaca) y lo imprime para que la Routine lo corrija.
+Sin el Worker desplegado, cae a leer 14 días de chats.
+
 **Incidencias**: van arriba, en un cuadro rojo grande (no al final), y primero las
 que piden mandar algo (🛵, `ENVIO` en `enviar.py`). Las filas con "🚨" en la nota
 salen en rojo.

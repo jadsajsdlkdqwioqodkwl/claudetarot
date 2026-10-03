@@ -39,6 +39,11 @@
    lleva (ej. solo una carta de reposición, con `kits: 0`). Revisa el chat
    completo: lo que no esté en `empaque` no se empaca. La `nota` sigue con
    lo de entrega y cobro (saldo, horario, avisar antes, piso).
+   Lee también los mensajes `V(auto: …)`: el toque del día 7 ("le regalamos
+   un collar amuleto extra"), el de referidos y los seguimientos programados
+   prometen extras. Todo chat con "📦 PROMETIDO" arriba (preparar.py, 21 días
+   atrás) que compra lleva eso en `empaque`. Si se te pasa, `enviar.py` lo
+   agrega con "⚠️ VERIFICAR" y lo lista: corrige el `empaque` y vuelve a mandar.
 8. Reclamo que obliga a mandar algo (carta o mazo que faltó, cambio, llevarle
    algo con motorizado): va SIEMPRE como pedido con `tipo` REPOSICION o CAMBIO,
    dirección, `empaque` (qué llevar) y nota que empiece con "🚨 ", además de
