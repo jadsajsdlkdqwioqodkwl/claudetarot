@@ -49,6 +49,16 @@
 
 Más detalle: `docs/asesor.md`.
 
+## Si vas a proponer anuncios (copys, estáticos, hooks, guiones de video)
+
+- Parte de `docs/anuncios/brief-avatar-oferta.md` (investigación, avatar y
+  offer brief; PDF original al lado). Precios y regalos: `docs/negocio.md`.
+- **Mantenlo al día:** cada aprendizaje nuevo (resultado de un anuncio con
+  números, frase nueva de clientes, objeción, cambio de oferta) se corrige en
+  su sección y se anota con fecha y fuente en la "Bitácora de aprendizajes"
+  del final. Dato propio > fuente externa.
+- Análisis de anuncios: `docs/anuncios/` (ej. `analisis-si-siempre-2026-10.md`).
+
 ## Si vas a tocar el código
 
 - ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo TEXTO que sale a
