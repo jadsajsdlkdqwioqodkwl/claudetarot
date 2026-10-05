@@ -103,6 +103,7 @@
       <button data-etiqueta="contact" title="Conversación iniciada">Contacto</button>
       <button data-etiqueta="lead">Interés</button>
       <button data-etiqueta="purchase">Compra</button>
+      <button id="btn-filtro-ocultos" type="button" title="Chats ocultos y contactos bloqueados">Ocultos</button>
       <button id="btn-seleccionar-chats" title="Elegir varios chats para aplicarles una secuencia" style="display:none">Seleccionar</button>
     </div>
     <div id="conversaciones"></div>
@@ -123,6 +124,21 @@
   </section>
 
   <aside id="detalle"></aside>
+</div>
+
+<div id="menu-chat"></div>
+
+<div class="modal-fondo" id="modal-preview-fondo">
+  <div class="modal modal-ancho modal-preview">
+    <h2 id="preview-titulo"></h2>
+    <div id="preview-mensajes"></div>
+    <div class="acciones">
+      <button class="cancelar" id="preview-cerrar" type="button">Cerrar</button>
+      <button class="cancelar" id="preview-ocultar" type="button"></button>
+      <button class="cancelar" id="preview-bloquear" type="button"></button>
+      <button class="crear" id="preview-abrir" type="button">Abrir chat</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-fondo" id="modal-contacto-fondo">

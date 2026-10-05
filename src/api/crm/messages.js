@@ -1,6 +1,7 @@
 /**
  * GET  /api/crm/messages?conversation_id=1 — historial de una conversación,
- *      y de paso la marca como leída (unread_count a 0).
+ *      y de paso la marca como leída (unread_count a 0). Con &preview=1 no
+ *      la marca: es el "ver sin entrar" de la lista.
  * POST /api/crm/messages — manda un mensaje y lo guarda como saliente:
  *      texto:  { conversation_id, body }
  *      media:  { conversation_id, media_key, media_type, caption? } — el
@@ -40,11 +41,12 @@ async function get({ request, env }) {
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const beforeId = Number(url.searchParams.get("before_id")) || null;
-  return json(await leerMensajes(env, conversationId, beforeId));
+  const preview = url.searchParams.get("preview") === "1";
+  return json(await leerMensajes(env, conversationId, beforeId, { marcarLeido: !preview }));
 }
 
 /** También lo usa /api/crm/conversations?chat=<id>, para que el poll sea un solo request. */
-export async function leerMensajes(env, conversationId, beforeId = null) {
+export async function leerMensajes(env, conversationId, beforeId = null, { marcarLeido = true } = {}) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT m.id, m.direction, m.type, m.body, m.file_name, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
        m.reply_to_message_id, m.client_reaction, m.agent_reaction,
@@ -59,7 +61,7 @@ export async function leerMensajes(env, conversationId, beforeId = null) {
 
   results.reverse();
 
-  if (!beforeId) {
+  if (!beforeId && marcarLeido) {
     await env.CRM_DB.prepare("UPDATE conversations SET unread_count = 0 WHERE id = ? AND unread_count != 0")
       .bind(conversationId)
       .run();

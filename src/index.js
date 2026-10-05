@@ -26,6 +26,7 @@ import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
 import { onRequestGet as crmMedia } from "./api/crm/media.js";
 import { onRequestPatch as crmAssignPatch } from "./api/crm/assign.js";
+import { onRequestPost as crmChatEstadoPost } from "./api/crm/chat-estado.js";
 import {
   onRequestGet as crmQuickRepliesGet,
   onRequestPost as crmQuickRepliesPost,
@@ -144,6 +145,7 @@ const ROUTES = {
   "/api/crm/upload-media": { POST: crmUploadMedia },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
+  "/api/crm/chat-estado": { POST: crmChatEstadoPost },
   "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, PATCH: crmQuickRepliesPatch, DELETE: crmQuickRepliesDelete },
   "/api/crm/login-verify": { POST: crmLoginVerify },
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },

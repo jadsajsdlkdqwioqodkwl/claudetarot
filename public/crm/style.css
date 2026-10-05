@@ -940,3 +940,23 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #panel-rapidas .item.expandida .cuerpo { -webkit-line-clamp: unset; display: block; white-space: pre-wrap; color: var(--texto, inherit); }
 .rapida-item.expandida > span { white-space: pre-wrap; }
 .versiones .version-min { border: 0; background: transparent; cursor: pointer; font-size: 14px; padding: 0 6px; color: var(--gris); }
+
+/* Ocultar / bloquear / ver sin entrar */
+.conv-item .btn-conv-menu { background: none; border: none; padding: 2px; cursor: pointer; color: var(--gris); display: inline-flex; flex-shrink: 0; }
+.conv-item .btn-conv-menu .icono-svg { width: 16px; height: 16px; }
+.badge-oculto { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #e9edef; color: #54656f; margin-top: 3px; margin-left: 4px; }
+.badge-oculto.bloqueado { background: #fde2e1; color: #b3261e; }
+.badge-oculto .icono-svg { width: 10px; height: 10px; }
+#filtros #btn-filtro-ocultos.activo { background: #54656f; border-color: #54656f; color: #fff; }
+#menu-chat { display: none; position: fixed; min-width: 210px; max-width: calc(100vw - 16px); background: var(--panel); color: var(--texto); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); z-index: 60; padding: 6px 0; }
+#menu-chat.abierto { display: block; }
+#menu-chat button { display: flex; align-items: center; width: 100%; gap: 12px; padding: 11px 16px; background: none; border: none; color: var(--texto); font-size: 14px; text-align: left; cursor: pointer; font-family: inherit; }
+#menu-chat button:hover { background: var(--hover); }
+#menu-chat button .icono-svg { width: 18px; height: 18px; color: var(--gris); flex-shrink: 0; }
+#menu-chat button.peligro, #menu-chat button.peligro .icono-svg { color: #b3261e; }
+.modal.modal-preview { width: 440px; max-width: calc(100vw - 24px); }
+#preview-mensajes { max-height: 60vh; overflow-y: auto; background: #efeae2; border-radius: var(--radio-m); padding: 10px; display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+#preview-mensajes .msg-fila { max-width: 85%; }
+#preview-mensajes .msg img, #preview-mensajes .msg video { max-height: 260px; cursor: zoom-in; }
+#preview-mensajes .vacio { color: var(--gris); font-size: 13px; text-align: center; padding: 20px 0; }
+.modal-preview .acciones { flex-wrap: wrap; }

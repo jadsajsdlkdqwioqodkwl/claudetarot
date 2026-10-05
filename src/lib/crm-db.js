@@ -71,7 +71,8 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
        SET unread_count = unread_count + 1,
            last_message_at = datetime('now'),
            last_inbound_at = datetime('now'),
-           status = 'abierta'
+           status = 'abierta',
+           hidden = 0
        WHERE id = ?`
     )
     .bind(conversationId)

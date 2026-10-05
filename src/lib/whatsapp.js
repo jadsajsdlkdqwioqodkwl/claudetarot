@@ -37,6 +37,23 @@ async function llamar(env, path, body) {
   return datos;
 }
 
+/**
+ * Bloquea (o desbloquea) a un usuario en el número de WhatsApp: deja de
+ * poder escribirnos. Meta solo deja bloquear a quien nos escribió en las
+ * últimas 24 h; si no, tira error y el CRM lo deja bloqueado solo por dentro.
+ */
+export async function bloquearUsuario(env, waId, bloquear = true) {
+  const res = await fetch(graphUrl(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/block_users`), {
+    method: bloquear ? "POST" : "DELETE",
+    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", block_users: [{ user: waId }] })
+  });
+  const datos = await res.json().catch(() => ({}));
+  const fallo = datos?.error || datos?.block_users?.failed_users?.[0]?.errors?.[0];
+  if (!res.ok || fallo) throw new Error(fallo?.error_data?.details || fallo?.message || `HTTP ${res.status}`);
+  return datos;
+}
+
 /** Manda un mensaje de texto libre. Solo funciona dentro de la ventana de 24h. */
 export async function enviarTexto(env, waId, texto, replyToWaMessageId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {

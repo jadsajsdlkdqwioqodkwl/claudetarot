@@ -34,6 +34,7 @@ const estado = {
   filtroMias: false,
   filtroAgente: "",
   filtroEtiqueta: "",
+  filtroOcultos: false,
   filtroTexto: "",
   filtroDias: 0,
   buscarEn: "",
@@ -1117,6 +1118,7 @@ function sincronizar() {
   if (estado.filtroMias) params.set("mine", "1");
   else if (estado.filtroAgente) params.set("agente", estado.filtroAgente);
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
+  if (estado.filtroOcultos) params.set("ocultos", "1");
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
   if (estado.filtroDias) params.set("dias", estado.filtroDias);
   if (estado.filtroTexto && estado.buscarEn) params.set("en", estado.buscarEn);
@@ -1342,10 +1344,12 @@ function pintarLista() {
         <div class="fila2">
           <span class="preview">${previewHtml}</span>
           ${noLeidos ? `<span class="badge">${noLeidos}</span>` : ""}
+          <button class="btn-conv-menu" type="button" title="Ver sin entrar, ocultar o bloquear">${icon("more")}</button>
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${badgeEtapa(c)}
+        ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
@@ -1355,7 +1359,8 @@ function pintarLista() {
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu")) return;
+      if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
     });
@@ -1363,7 +1368,33 @@ function pintarLista() {
       e.stopPropagation();
       clicEstrella(c);
     });
+    div.querySelector(".btn-conv-menu").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const r = e.currentTarget.getBoundingClientRect();
+      abrirMenuChat(c, r.right, r.bottom);
+    });
+    // Clic derecho (o dejar apretado en el celular): el mismo menú.
+    div.addEventListener("contextmenu", (e) => {
+      if (estado.modoSeleccion) return;
+      e.preventDefault();
+      abrirMenuChat(c, e.clientX, e.clientY);
+    });
+    let timerMantener = null;
+    div.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || estado.modoSeleccion) return;
+      timerMantener = setTimeout(() => {
+        div.dataset.mantenido = "1";
+        abrirMenuChat(c, e.clientX, e.clientY);
+      }, 550);
+    });
+    ["pointerup", "pointercancel", "pointermove", "pointerleave"].forEach((ev) => div.addEventListener(ev, (e) => {
+      if (ev === "pointermove" && Math.abs(e.movementX) + Math.abs(e.movementY) < 4) return;
+      clearTimeout(timerMantener);
+    }));
     cont.appendChild(div);
+  }
+  if (!estado.conversaciones.length && estado.filtroOcultos && !estado.filtroTexto) {
+    cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">No hay chats ocultos ni contactos bloqueados.</p>`);
   }
   if (!estado.conversaciones.length && estado.filtroTexto) {
     cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">Nada con "${escapar(estado.filtroTexto)}"${estado.filtroDias ? " en ese periodo. Prueba con Todo el historial." : "."}</p>`);
@@ -1503,7 +1534,8 @@ function resaltarBusqueda(texto) {
 }
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta);
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos);
+  $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
   $("#filtro-agente").value = estado.filtroAgente;
   $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
@@ -1522,9 +1554,125 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroMias = false;
     estado.filtroAgente = "";
     estado.filtroEtiqueta = "";
+    estado.filtroOcultos = false;
   }
   pintarFiltros();
   cargarConversaciones();
+});
+
+$("#btn-filtro-ocultos").addEventListener("click", () => {
+  estado.filtroOcultos = !estado.filtroOcultos;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+/* ---------- Menú de cada chat: ver sin entrar, ocultar, bloquear ---------- */
+
+function cerrarMenuChat() {
+  $("#menu-chat").classList.remove("abierto");
+}
+
+function abrirMenuChat(c, x, y) {
+  const menu = $("#menu-chat");
+  menu.innerHTML = `
+    <button type="button" data-accion="ver">${icon("eye")}<span>Ver sin entrar</span></button>
+    <button type="button" data-accion="${c.hidden ? "mostrar" : "ocultar"}">${icon(c.hidden ? "eye" : "eyeOff")}<span>${c.hidden ? "Volver a mostrar" : "Ocultar chat"}</span></button>
+    <button type="button" data-accion="${c.blocked ? "desbloquear" : "bloquear"}" class="${c.blocked ? "" : "peligro"}">${icon("slash")}<span>${c.blocked ? "Desbloquear contacto" : "Bloquear contacto"}</span></button>`;
+  menu.classList.add("abierto");
+  const { width, height } = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(x - width, window.innerWidth - width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  menu.querySelectorAll("button").forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    cerrarMenuChat();
+    if (b.dataset.accion === "ver") previsualizarChat(c);
+    else cambiarEstadoChat(c, b.dataset.accion);
+  }));
+}
+document.addEventListener("click", (e) => { if (!e.target.closest("#menu-chat")) cerrarMenuChat(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuChat(); });
+$("#conversaciones").addEventListener("scroll", cerrarMenuChat, { passive: true });
+
+async function cambiarEstadoChat(c, accion) {
+  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  if (accion === "bloquear" && !confirm(`¿Bloquear a ${nombre}? No podrá escribirte por WhatsApp y su chat sale de la lista (lo ves en "Ocultos").`)) return false;
+  try {
+    const r = await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion }) });
+    if (r.hidden !== undefined) c.hidden = r.hidden;
+    if (r.blocked !== undefined) c.blocked = r.blocked;
+    if (r.aviso) alert(r.aviso);
+    // Sale de la lista (o vuelve) al toque, sin esperar el próximo poll.
+    const fuera = Boolean(c.hidden || c.blocked);
+    if (!estado.filtroTexto && fuera !== estado.filtroOcultos) {
+      estado.conversaciones = estado.conversaciones.filter((x) => x.conversation_id !== c.conversation_id);
+    }
+    pintarLista();
+    actualizarAvisosNoLeidos();
+    ultimoSync = { clave: null, t: 0 };
+    cargarConversaciones().catch(() => {});
+    return true;
+  } catch (err) {
+    alert(err.message);
+    return false;
+  }
+}
+
+let chatPrevisualizado = null;
+
+/** Los últimos mensajes (fotos incluidas) sin abrir el chat ni marcarlo leído. */
+async function previsualizarChat(c) {
+  chatPrevisualizado = c;
+  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  $("#preview-titulo").textContent = nombre;
+  pintarBotonesPreview();
+  const cont = $("#preview-mensajes");
+  cont.innerHTML = `<p class="vacio">Cargando…</p>`;
+  $("#modal-preview-fondo").classList.add("abierto");
+  try {
+    const { messages } = await pedir(`/api/crm/messages?conversation_id=${c.conversation_id}&preview=1`);
+    if (chatPrevisualizado !== c) return;
+    cont.innerHTML = messages.length
+      ? messages.map((m) => `
+        <div class="msg-fila ${m.direction}">
+          <div class="msg ${m.direction}">
+            ${quoteHtml(m)}
+            ${contenidoMensaje(m)}
+            <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${escapar(fechaCorta(m.created_at))}</span>
+          </div>
+        </div>`).join("")
+      : `<p class="vacio">Sin mensajes.</p>`;
+    cont.querySelectorAll(".msg img:not(.sticker)").forEach((img) => img.addEventListener("click", () => window.open(img.src, "_blank", "noopener")));
+    cont.scrollTop = cont.scrollHeight;
+    // Las fotos cargan después: que el scroll quede abajo igual.
+    cont.querySelectorAll("img").forEach((img) => img.addEventListener("load", () => { cont.scrollTop = cont.scrollHeight; }, { once: true }));
+  } catch (err) {
+    cont.innerHTML = `<p class="vacio">${escapar(err.message)}</p>`;
+  }
+}
+
+function pintarBotonesPreview() {
+  const c = chatPrevisualizado;
+  if (!c) return;
+  $("#preview-ocultar").textContent = c.hidden ? "Volver a mostrar" : "Ocultar";
+  $("#preview-bloquear").textContent = c.blocked ? "Desbloquear" : "Bloquear";
+}
+
+$("#preview-cerrar").addEventListener("click", () => {
+  chatPrevisualizado = null;
+  $("#modal-preview-fondo").classList.remove("abierto");
+});
+$("#preview-abrir").addEventListener("click", () => {
+  const c = chatPrevisualizado;
+  $("#preview-cerrar").click();
+  if (c) abrirConversacion(c);
+});
+$("#preview-ocultar").addEventListener("click", async () => {
+  const c = chatPrevisualizado;
+  if (c && await cambiarEstadoChat(c, c.hidden ? "mostrar" : "ocultar")) pintarBotonesPreview();
+});
+$("#preview-bloquear").addEventListener("click", async () => {
+  const c = chatPrevisualizado;
+  if (c && await cambiarEstadoChat(c, c.blocked ? "desbloquear" : "bloquear")) pintarBotonesPreview();
 });
 
 $("#filtro-agente").addEventListener("change", (e) => {

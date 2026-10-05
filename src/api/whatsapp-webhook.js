@@ -204,6 +204,8 @@ async function procesarCambio(env, db, value, origen) {
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }
+    // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
+    if (contacto.blocked) continue;
     await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion);
     await reportarConversacionSiAplica(env, contacto, conversacion);
@@ -241,6 +243,7 @@ async function procesarLlamadas(env, db, value, origen) {
 
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
     await cancelarSeguimientosPendientes(db, conversacion.id);
+    if (contacto.blocked) continue;
     await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body, origen }).catch((err) => console.error("Push:", err.message));
   }
 }

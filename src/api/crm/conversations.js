@@ -12,6 +12,8 @@
  * extracto en `coincidencia`. &dias limita a chats con actividad en los
  * últimos N días; &en=cliente busca solo en lo que escribió el cliente;
  * &limite=N trae hasta N (200 por defecto, máx. 2000) y &offset salta.
+ * Ocultos y bloqueados no salen, salvo con &ocultos=1 (solo esos) o
+ * buscando (&q), que los trae con su marca.
  * Con &chat=<id> trae además los últimos mensajes de ese chat (y lo marca
  * leído): el poll del CRM es un solo request en vez de dos — el plan gratis
  * de Workers tiene tope de requests por día.
@@ -80,6 +82,8 @@ async function handler({ request, env, agent }) {
     params.push(`-${dias} days`);
   }
   const tokens = tokensBusqueda(q);
+  if (url.searchParams.get("ocultos") === "1") condiciones.push("(conv.hidden = 1 OR c.blocked = 1)");
+  else if (!tokens.length) condiciones.push("conv.hidden = 0 AND c.blocked = 0");
   for (const t of tokens) {
     const tel = /^\d{4,}$/.test(t) ? (t.length === 11 && t.startsWith("51") ? t.slice(2) : t) : null;
     condiciones.push(`(
@@ -108,6 +112,8 @@ async function handler({ request, env, agent }) {
         conv.meta_tags,
         conv.last_message_at,
         conv.last_inbound_at,
+        conv.hidden,
+        c.blocked,
         c.id AS contact_id,
         c.wa_id,
         c.profile_name,
