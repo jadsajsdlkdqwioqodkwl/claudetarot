@@ -16,7 +16,7 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 | **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de reglas_aprendidas + precios) |
 | **Ángulos** | tú | Memoria de todo lo renderizado: A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario del dueño · K Estado (ganador / variar: … / descartado: …). El Project la lee para no repetir y para avisar "AGOTADO" |
 | **Memoria** | el Project (una vez) | Fecha · Tipo · Idea: lo que el Project recordaba de antes. Pásalo a Reglas/Instrucciones y deja la fila |
-| **Copy Meta** | tú (después de cada render) + el dueño (L Nota, M Comentario) | A Lote · B ID · C Lo que dice la imagen · D Consciencia · E Texto principal · F–H Titular 1–3 · I Descripción · J Botón · K Estado · L Nota · M Comentario. Reglas del copy: `creativos/copy-meta.md`, espejo editable en la pestaña **Copy reglas** (A Sección · B Regla, una fila por `## `). Antes de escribir copy, si la pestaña difiere del archivo, pasa los cambios del dueño al archivo |
+| **Copy Meta** | tú (después de cada render) + el dueño (M Nota, N Comentario) | A Lote · B ID · C Imagen (=IMAGE igual que Creativos C) · D Lo que dice la imagen · E Consciencia · F Texto principal · G–I Titular 1–3 · J Descripción · K Botón · L Estado · M Nota · N Comentario. Reglas del copy: `creativos/copy-meta.md`, espejo editable en la pestaña **Copy reglas** (A Sección · B Regla, una fila por `## `). Antes de escribir copy, si la pestaña difiere del archivo, pasa los cambios del dueño al archivo |
 | **Fotos** | tú, cuando cambian las refs | A Nombre · B Imagen · C Para qué sirve (de refs.json) |
 
 Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):

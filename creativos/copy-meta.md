@@ -15,7 +15,7 @@ No cambias la imagen: la completas. Antes de escribir, mírala (hoja de contacto
 
 ## 2. Dónde escribes
 
-Pestaña **Copy Meta** de la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, una fila por imagen, debajo de la última con datos: A Lote · B ID · C Lo que dice la imagen (1 línea) · D Consciencia · E Texto principal · F Titular 1 · G Titular 2 · H Titular 3 · I Descripción · J Botón · K Estado: "para revisar" · L Nota (vacío) · M Comentario (vacío). El borrador de la columna Copy de Prompts es solo un insumo: reescríbelo con estas reglas.
+Pestaña **Copy Meta** de la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, una fila por imagen, debajo de la última con datos: A Lote · B ID · C Imagen (la misma fórmula =IMAGE(...) de la columna C de Creativos para ese Lote e ID, que sale de `filas.mjs`) · D Lo que dice la imagen (1 línea) · E Consciencia · F Texto principal · G Titular 1 · H Titular 2 · I Titular 3 · J Descripción · K Botón · L Estado: "para revisar" · M Nota (vacío) · N Comentario (vacío). El borrador de la columna Copy de Prompts es solo un insumo: reescríbelo con estas reglas.
 
 ## 3. A quién le hablas
 
