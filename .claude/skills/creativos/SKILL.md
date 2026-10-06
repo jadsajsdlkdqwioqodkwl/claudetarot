@@ -10,10 +10,10 @@ Sheets). Antes de mover o renombrar algo, `docs/MAPA.md`.
 
 | Pestaña | Quién escribe | Columnas |
 |---|---|---|
-| **Prompts** | el Project de conceptos | A Lote · B ID · C Ángulo · D Consciencia · E Producto · F Titular · G Copy · H Refs (`foto: rol \| foto: rol`) · I Prompt JSON · J Estado (pendiente / hecho / error / pausado) · K Nota · L Avatar |
+| **Prompts** | el Project de conceptos | A Lote · B ID · C Ángulo · D Consciencia · E Producto · F Titular · G Copy · H Refs (`foto: rol \| foto: rol`) · I Prompt JSON · J Estado (pendiente / hecho / error / pausado) · K Nota · L Avatar · M Titular (novedoso) |
 | **Creativos** | tú (`filas.mjs`) + el dueño (D, E) | A Lote · B ID · C Imagen · D Nota 1-5 · E Comentario · F Ángulo · G Consciencia · H Producto · I Titular · J Copy · K Refs · L Archivo · M Avatar |
 | **Copy Meta** | tú + el dueño (M, N) | A Lote · B ID · C Imagen · D Lo que dice la imagen · E Consciencia · F Texto principal · G–I Titular 1–3 · J Descripción · K Botón · L Estado · M Nota · N Comentario |
-| **Ángulos** | tú | A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario · K Estado (ganador / variar: … / descartado: …) · L Avatar |
+| **Ángulos** | tú | A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario · K Estado (ganador / variar: … / descartado: …) · L Avatar · M Titular (novedoso) |
 | **Avatares** | tú + Routine de voz del cliente | razones de compra (A1, A2…) × 5 niveles de consciencia, con Cobertura por fórmulas. Lógica en `creativos/avatares.md` |
 | **Instrucciones** · **Reglas** · **Copy reglas** | tú | espejo de `creativos/instrucciones.md`, `reglas_aprendidas.md`, `copy-meta.md` (A Sección · B Texto) |
 | **Voz del cliente** · **Fotos** · **Memoria** | Routine diaria · tú · Project | ver `docs/MAPA.md` |
@@ -26,7 +26,7 @@ Genera todo lo pendiente. Un JSON ya usado no se vuelve a crear: queda
 "hecho" en Prompts (col. J) y su lote tiene carpeta en `creativos/lotes/`
 (`desde-hoja.mjs` salta esos lotes aunque la hoja no esté marcada).
 
-1. `get_values` de `Prompts!A1:L` → guárdalo en el scratchpad (no lo leas entero).
+1. `get_values` de `Prompts!A1:M` → guárdalo en el scratchpad (no lo leas entero).
 2. Repite mientras haya pendientes:
    a. `node scripts/creativos/desde-hoja.mjs <json> creativos/lotes/Lnnn`
       (Lnnn = siguiente libre). Toma el primer lote pendiente. Si imprime
@@ -46,7 +46,9 @@ Genera todo lo pendiente. Un JSON ya usado no se vuelve a crear: queda
    en `main` para que `=IMAGE` las muestre.
 4. Por cada lote nuevo:
    - `node scripts/creativos/filas.mjs creativos/lotes/Lnnn` → filas debajo
-     de la última de **Creativos**.
+     de la última de **Creativos**. Si creaste varios lotes, junta sus filas y
+     ordénalas por avatar (A1, A2…) antes de escribirlas: el dueño revisa por
+     avatar. Copy Meta y Ángulos van en el mismo orden.
    - `node scripts/creativos/filas.mjs creativos/lotes/Lnnn --angulos` →
      filas en **Ángulos**.
    - **Copy Meta**: una fila por imagen siguiendo `creativos/copy-meta.md`

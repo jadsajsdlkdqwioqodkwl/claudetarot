@@ -22,7 +22,7 @@ Pestaña **Copy Meta** de la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, 
 Del brief (https://docs.google.com/document/d/1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0, léelo para frases reales):
 
 - Persona curiosa de 25 a 45+ años, 60–70 % mujeres y 30–40 % hombres, en Perú. Escribe neutro en género.
-- No sabe nada de tarot y quiere aprender a leerse a sí misma. Su única duda es ella misma ("no sé nada", "¿es fácil aprender?"), no el precio ni el envío.
+- No sabe nada de tarot y compra por una razón: la de su avatar (pestaña Avatares; el avatar de cada anuncio está en Creativos col. M). El texto y los titulares le hablan a esa razón. Su duda es ella misma ("no sé nada", "¿es fácil aprender?"), no el precio ni el envío.
 - Compra como quien compra un curso o un hobby, no por algo espiritual ni místico.
 - Preguntas que siempre hace: cuántas cartas son, si trae arcanos mayores y menores, si trae manual y si está en español, qué es el collar, cuánto demora, si hay tienda física.
 
@@ -95,5 +95,7 @@ Si algo falla, reescribe esa parte.
 ## 10. Aprendizajes
 
 (Claude Code agrega aquí lo que aprende de las notas y comentarios de la pestaña Copy Meta, con fecha y lote. Manda sobre todo lo anterior.)
+
+- 2026-10-06 · L007/L008: si el titular de la imagen es "novedoso" (Prompts col. M), un titular de Meta lo repite corto y los otros dos dicen claro que es un kit de tarot para aprender.
 
 - 2026-10-06 · L002/L003: sin notas de copy todavía. Dato del dueño: el collar amuleto no trae tarjeta de significado; es una carta de tarot colgante. Corregido en C07 de L002 y C10 de L003.

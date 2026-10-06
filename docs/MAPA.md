@@ -63,6 +63,12 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-06 · Creativos: columna M "Titular (novedoso)" al final de Prompts y
+  Ángulos (20 % de titulares evocadores por lote); filas de Creativos, Copy
+  Meta y Ángulos ordenadas por avatar; reglas de CTA de compra y de formatos
+  que esconden el producto (`desde-hoja.mjs` avisa); REGLAS_RENDER: cartas
+  sin dibujo, números legibles, flechas con destino.
+
 - 2026-10-06 · Avatares: pestaña Avatares (8 razones de compra × 5 niveles,
   Cobertura por fórmulas), columna Avatar al final de Prompts (L), Creativos
   (M), Ángulos (L) y Voz del cliente (I); `creativos/avatares.md`;
