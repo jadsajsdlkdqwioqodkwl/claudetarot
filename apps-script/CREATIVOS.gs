@@ -51,7 +51,10 @@ function guardarEnDrive() {
     const lote = String(f[COL_LOTE - 1] || "sin-lote");
     const nombre = lote + "_" + f[COL_ID - 1] + "_" + archivo.split("/").pop();
     const file = carpeta_(raiz, lote).createFile(res.getBlob().setName(nombre));
-    hoja.getRange(i + 2, COL_DRIVE).setFormula('=HYPERLINK("' + file.getUrl() + '","Abrir en Drive")');
+    // Link como texto enriquecido: una fórmula HYPERLINK depende del separador
+    // del idioma de la hoja (en español es ";") y salía #ERROR!.
+    const link = SpreadsheetApp.newRichTextValue().setText("Abrir en Drive").setLinkUrl(file.getUrl()).build();
+    hoja.getRange(i + 2, COL_DRIVE).setRichTextValue(link);
   });
 }
 
