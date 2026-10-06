@@ -39,3 +39,15 @@ tarot; nunca imágenes genéricas.
 ## Fotos de referencia
 Ver `refs/refs.json` (nombre → qué muestra y para qué sirve). Cada concepto
 declara `refs: [{foto, rol}]`; el rol se le dice al modelo junto a la foto.
+
+## Lo que aprendimos de los anuncios (lo actualiza Claude Code con cada feedback)
+Insights de fondo sobre el cliente y lo que vende; las reglas operativas
+(formatos, fotos, errores de render) están en `reglas_aprendidas.md`.
+- Lo que más funciona es mostrar el producto **en uso** y enseñar cómo se lee
+  (carta con flechas, tutorial paso a paso): L001-C02 y C10, nota 5.
+- El creativo es el targeting: si la imagen no muestra tarot, atrae a otro
+  público (L001-C04, C07).
+
+## Bitácora de aprendizajes (lo más nuevo arriba)
+Formato: AAAA-MM-DD · lote · aprendizaje (con notas o números).
+- 2026-10-06 · L001 · Ganan "producto en uso" y "enseñar a leer" (5/5); pierden imágenes genéricas sin tarot (1–2/5) y repetir la misma foto del kit (1/5).

@@ -1,7 +1,7 @@
 /**
  * Versión final para Meta: 1080×1350 PNG (4:5), recortada al centro si
  * Gemini no devolvió 4:5 exacto. La original 2K queda en img/ y la final en
- * final/; esa es la que va a la hoja y a Drive.
+ * final/; esa es la que va a la hoja y la que se sube a Meta.
  *
  *   node scripts/creativos/final.mjs creativos/lotes/L001     (rehace todas)
  *

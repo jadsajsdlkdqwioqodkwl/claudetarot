@@ -24,7 +24,7 @@ creativos/
       lote.json          conceptos: ángulo, titular, copy, refs, prompt JSON
       render.json        qué modelo hizo cada imagen (o el error)
       img/C01.flash.jpg  original 2K de Gemini (…y C01.pro.jpg si pasó a Pro)
-      final/C01.flash.png  1080×1350 PNG para Meta: va a la hoja y a Drive
+      final/C01.flash.png  1080×1350 PNG para Meta: va a la hoja y es la que se sube
       feedback.json      notas y comentarios bajados de la hoja
       pro.json           IDs que se pasan a Pro
 scripts/creativos/
@@ -38,6 +38,5 @@ Modelos: Flash `gemini-3.1-flash-image` (2K, ~US$0.10) y Pro
 `gemini-3-pro-image` (2K, ~US$0.134). Se cambian con las variables
 `MODELO_FLASH` / `MODELO_PRO`. Clave: `GEMINI_API_KEY` en el entorno.
 
-Copia a Drive en resolución completa: `apps-script/CREATIVOS.gs` (va en el
-Apps Script de la hoja de creativos, no en la del CRM). Deja cada imagen en
-Mi unidad / Creativos Tarot Store / <Lote> y el link en la columna O.
+Descarga: abre la imagen de la columna C (o el archivo de la columna N en
+GitHub); la de `final/` ya es 1080×1350 PNG.

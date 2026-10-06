@@ -11,7 +11,7 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 | Pestaña | Quién escribe | Columnas |
 |---|---|---|
 | **Prompts** | el Project del dueño (o tú con "lote nuevo") | A Lote · B ID · C Calidad (flash/pro, vacío = flash) · D Ángulo · E Consciencia · F Producto · G Titular · H Copy · I Refs (`foto: rol \| foto: rol`) · J Prompt JSON · K Estado (pendiente/hecho/error) · L Nota |
-| **Creativos** | tú (`filas.mjs`) + el dueño (E, F, G) | A Lote · B ID · C Imagen · D Calidad · E Nota 1-5 · F Comentario · G ¿A Pro? · H Ángulo · I Consciencia · J Producto · K Titular · L Copy · M Refs · N Archivo · O Drive (lo llena `apps-script/CREATIVOS.gs` solo; no la toques) |
+| **Creativos** | tú (`filas.mjs`) + el dueño (E, F, G) | A Lote · B ID · C Imagen · D Calidad · E Nota 1-5 · F Comentario · G ¿A Pro? · H Ángulo · I Consciencia · J Producto · K Titular · L Copy · M Refs · N Archivo |
 | **Instrucciones** | tú (espejo de `creativos/instrucciones.md`) | A Sección · B Instrucción. Son las instrucciones del Project: el Project de claude.ai solo tiene un arranque (`creativos/prompt-project.md`) que le dice que lea esta pestaña |
 | **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de reglas_aprendidas + precios) |
 | **Ángulos** | tú | Memoria de todo lo renderizado: A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario del dueño · K Estado (ganador / variar: … / descartado: …). El Project la lee para no repetir y para avisar "AGOTADO" |
@@ -29,14 +29,13 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
    Escribe `lote.json` (y `pro.json` si alguna fila pidió pro) e imprime las
    filas tomadas y avisos.
 3. `npm run creativos:render -- creativos/lotes/Lnnn` (Flash 2K a todo; deja
-   también `final/Cxx.flash.png` 1080×1350, que es lo que va a la hoja y a Drive; un lote de la hoja por corrida, repite desde 1 para el siguiente). Si
+   también `final/Cxx.flash.png` 1080×1350, que es lo que va a la hoja; un lote de la hoja por corrida, repite desde 1 para el siguiente). Si
    hay `pro.json`, también `… --pro`. Falla por política/texto → ajusta ese
    prompt en lote.json y `--solo Cxx`.
 4. Mira las imágenes (Read). Texto roto o producto deformado → corrige el
    prompt y re-renderiza antes de mostrarla.
 5. Commit + push a `main` (solo `creativos/`; nada de `src/` ni `public/`).
-   Las imágenes tienen que estar en `main` para `=IMAGE` y para que
-   CREATIVOS.gs las copie a Drive (Mi unidad / Creativos Tarot Store).
+   Las imágenes tienen que estar en `main` para que `=IMAGE` las muestre.
    Error 402 = sin créditos en AI Studio: avisa al dueño, no reintentes.
 6. `node scripts/creativos/filas.mjs creativos/lotes/Lnnn` (y `--pro` si
    corrió) → agrega las filas debajo de la última de Creativos.
@@ -76,6 +75,11 @@ prompt. Escribe las filas en Prompts (Estado `pendiente`) y sigue con
    pasa lo útil a Reglas.
 3d. Prompts pendientes escritos antes de este feedback que ya chocan con las
    reglas nuevas → `pausado` con el motivo en L.
+3f. **Brief**: integra lo aprendido en `creativos/brief.md` (sección que
+   corresponda + "Lo que aprendimos de los anuncios") y agrega una línea
+   arriba en "Bitácora de aprendizajes" (fecha · lote · aprendizaje con
+   notas). Lo obsoleto se marca, no se borra. Si un comentario del dueño
+   contradice el brief, gana el comentario.
 3e. Copy Meta con Nota o Comentario nuevos → destila en la sección
    "10. Aprendizajes" de `creativos/copy-meta.md` (con fecha y lote) y
    reescribe esa fila en la pestaña **Copy reglas**.

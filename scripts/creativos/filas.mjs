@@ -7,7 +7,7 @@
  *   node scripts/creativos/filas.mjs creativos/lotes/L001 --angulos   (filas para la pestaña Ángulos)
  *
  * Columnas: Lote | ID | Imagen | Calidad | Nota (1-5) | Comentario | ¿A Pro? |
- *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo | (O: Drive, lo llena apps-script/CREATIVOS.gs)
+ *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
