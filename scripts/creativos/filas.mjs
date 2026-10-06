@@ -1,0 +1,49 @@
+/**
+ * Filas para la pestaña "Creativos" de la hoja, en JSON (las escribe Claude
+ * con el conector de Google Sheets). Correr DESPUÉS de hacer push de las
+ * imágenes: la fórmula =IMAGE() apunta al commit actual en GitHub.
+ *
+ *   node scripts/creativos/filas.mjs creativos/lotes/L001 [--pro]
+ *
+ * Columnas: Lote | ID | Imagen | Calidad | Nota (1-5) | Comentario | ¿A Pro? |
+ *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo
+ */
+import { readFileSync, existsSync } from "node:fs";
+import { join, resolve, dirname, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const args = process.argv.slice(2);
+const dir = resolve(root, args.find((a) => !a.startsWith("--")));
+const calidad = args.includes("--pro") ? "pro" : "flash";
+
+const lote = JSON.parse(readFileSync(join(dir, "lote.json"), "utf8"));
+const render = existsSync(join(dir, "render.json")) ? JSON.parse(readFileSync(join(dir, "render.json"), "utf8")) : {};
+const sha = execSync("git rev-parse HEAD", { cwd: root }).toString().trim();
+const remoto = execSync("git remote get-url origin", { cwd: root }).toString().trim();
+const repo = remoto.match(/github\.com[/:]([^/]+\/[^/.]+)/)?.[1] || "jadsajsdlkdqwioqodkwl/claudetarot";
+const base = `https://raw.githubusercontent.com/${repo}/${sha}/${relative(root, dir)}`;
+
+const filas = [];
+for (const c of lote.conceptos) {
+  const r = render[`${c.id}.${calidad}`];
+  if (!r) continue;
+  filas.push([
+    lote.lote,
+    c.id,
+    r.archivo ? `=IMAGE("${base}/${r.archivo}")` : `ERROR: ${r.error}`,
+    calidad,
+    "",
+    "",
+    false,
+    c.angulo || "",
+    c.consciencia || "",
+    c.producto || "",
+    c.titular || "",
+    c.copy || "",
+    (c.refs || []).map((x) => x.foto).join(", "),
+    r.archivo ? `${relative(root, dir)}/${r.archivo}` : "",
+  ]);
+}
+console.log(JSON.stringify(filas, null, 1));

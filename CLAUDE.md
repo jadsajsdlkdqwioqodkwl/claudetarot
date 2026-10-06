@@ -54,6 +54,12 @@
 
 Más detalle: `docs/asesor.md`.
 
+## Si vas a hacer anuncios / creativos
+
+Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en
+`creativos/lotes/`, render con `scripts/creativos/render.mjs` (Nano Banana,
+`GEMINI_API_KEY`), feedback en la hoja y `creativos/reglas_aprendidas.md`.
+
 ## Si vas a tocar el código
 
 - ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo TEXTO que sale a
