@@ -96,4 +96,4 @@ Si algo falla, reescribe esa parte.
 
 (Claude Code agrega aquí lo que aprende de las notas y comentarios de la pestaña Copy Meta, con fecha y lote. Manda sobre todo lo anterior.)
 
-- (vacío hasta el primer feedback de copy)
+- 2026-10-06 · L002/L003: sin notas de copy todavía. Dato del dueño: el collar amuleto no trae tarjeta de significado; es una carta de tarot colgante. Corregido en C07 de L002 y C10 de L003.
