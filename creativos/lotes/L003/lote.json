@@ -1,0 +1,370 @@
+{
+  "lote": "L003",
+  "lote_hoja": "P2026-10-05g",
+  "creado": "2026-10-06",
+  "aspecto": "4:5",
+  "conceptos": [
+    {
+      "id": "C01",
+      "calidad": "flash",
+      "angulo": "Unboxing: lo que encuentras al abrir la caja",
+      "consciencia": "producto",
+      "producto": "protagonista",
+      "titular": "Esto es lo que encuentras al abrir la caja",
+      "copy": "Esto es lo que encuentras al abrir la caja: un tapete floral para tus tiradas, 78 cartas con el significado impreso, un manual en español paso a paso y un collar amuleto de regalo. Todo por S/89, con envío gratis a todo el Perú. En Lima pagas cuando lo recibes.",
+      "refs": [
+        {
+          "foto": "kit_etiquetado",
+          "rol": "reproduce exactamente las piezas de este kit (caja morada, cartas, guía, tapete floral, amuleto) saliendo de la caja; ignora las etiquetas de texto de la referencia"
+        }
+      ],
+      "prompt": {
+        "concepto": "unboxing: las piezas del kit saliendo de la caja abierta",
+        "formato": "unboxing",
+        "escena": "vista cenital de dos manos que abren una caja morada sobre una mesa; de la caja salen en orden el tapete floral desplegado, las cartas en abanico, la guía abierta y un collar amuleto; fondo amarillo girasol con confeti plano de estrellas y flores",
+        "composicion": "titular arriba; caja y piezas en diagonal en el centro; apoyo en una tarjeta bajo las piezas; incluye y dato en cintas; cta en botón abajo",
+        "estilo": "fotografía de producto dinámica con gráficos planos alegres",
+        "iluminacion": "luz de estudio brillante con destellos suaves",
+        "paleta": "amarillo girasol, turquesa, rosa chicle, morado de la caja",
+        "producto": "kit_etiquetado: reproduce idénticas las piezas de la referencia, integradas saliendo de la caja con la misma luz y perspectiva, sin pegar la foto entera, sin bordes recortados ni halos, ignorando las etiquetas de texto de la referencia",
+        "textos": {
+          "titular": "«Esto es lo que encuentras al abrir la caja» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«Un tapete floral para tus tiradas, 78 cartas listas para barajar, un manual en español paso a paso y un collar amuleto esperándote.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "«Las 78 cartas traen el significado impreso.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«S/89 con envío gratis. En Lima pagas al recibir.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Abrir mi caja» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular morado oscuro grueso con contorno blanco; apoyo oscuro sobre tarjeta blanca; incluye blanco sobre cinta turquesa; dato oscuro sobre cinta rosa; cta blanco sobre botón morado",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 62
+    },
+    {
+      "id": "C02",
+      "calidad": "flash",
+      "angulo": "Para qué sirve cada pieza del kit",
+      "consciencia": "solucion",
+      "producto": "protagonista",
+      "titular": "Para qué sirve cada pieza de tu kit",
+      "copy": "Cada pieza del kit tiene su trabajo: el tapete es tu mesa de lectura, las 78 cartas traen su significado impreso, el manual te explica cada tirada y el collar amuleto es un regalo para ti. Kit completo por S/89 con envío gratis. Escríbenos para pedir el tuyo.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente las piezas de este kit, mismos colores y diseño, ordenadas como flat lay cenital"
+        }
+      ],
+      "prompt": {
+        "concepto": "flat lay con una etiqueta que explica para qué sirve cada pieza",
+        "formato": "flat lay con etiquetas",
+        "escena": "flat lay cenital sobre fondo azul cielo brillante con motas de confeti; las piezas del kit ordenadas con aire entre ellas; de cada pieza sale una línea fina blanca hacia una etiqueta de papel de color tipo tag con cuerdita",
+        "composicion": "titular arriba; piezas en el centro; cuatro etiquetas repartidas alrededor, dos a cada lado; apoyo y dato en franjas inferiores; cta en botón abajo",
+        "estilo": "fotografía de producto cenital nítida con etiquetas gráficas planas",
+        "iluminacion": "luz de estudio pareja y brillante, sombras suaves",
+        "paleta": "azul cielo, amarillo limón, rosa chicle, coral, blanco",
+        "producto": "kit_completo: reproduce idénticas las piezas de la referencia (tapete floral, cartas en abanico con El Mago, guía abierta, collar luna, caja morada) ordenadas con la misma luz y perspectiva, sin pegar la foto entera, sin bordes recortados ni halos",
+        "textos": {
+          "titular": "«Para qué sirve cada pieza de tu kit» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "etiqueta_tapete": "«Tapete: tu mesa de lectura» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "etiqueta_cartas": "«Cartas: 78 con su significado impreso» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "etiqueta_manual": "«Manual: te explica cada tirada» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "etiqueta_collar": "«Collar: tu amuleto de regalo» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«Juntas te llevan de no saber nada a tu primera lectura.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«22 arcanos mayores y 56 menores. Kit por S/89.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Quiero las cuatro piezas» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular blanco grueso con contorno azul oscuro; etiquetas en texto oscuro sobre tags de colores distintos; apoyo oscuro sobre franja blanca; dato blanco sobre franja coral; cta oscuro sobre botón amarillo",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 63
+    },
+    {
+      "id": "C03",
+      "calidad": "flash",
+      "angulo": "Pesadilla: tienes las cartas y no sabes qué hacer con ellas",
+      "consciencia": "problema",
+      "producto": "sin kit",
+      "titular": "Tienes las cartas en la mano y no sabes qué hacer",
+      "copy": "Es común comprar cartas bonitas y quedarte mirando sin saber por dónde empezar. Este kit sí te dice qué hacer: cada carta trae su significado impreso y el manual en español te guía paso a paso. Incluye 78 cartas, tapete floral y collar amuleto de regalo por S/89, con envío gratis.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "reproduce exactamente el diseño real de estas cartas, sostenidas y esparcidas sobre la mesa"
+        }
+      ],
+      "prompt": {
+        "concepto": "escenario pesadilla con cartas reales: la persona las tiene y no sabe qué hacer",
+        "formato": "escenario pesadilla",
+        "escena": "persona sentada en una mesa de cocina colorida con gesto de duda, sosteniendo una de las cartas de la referencia y con las otras cinco esparcidas frente a ella; sobre su cabeza una nube de signos de interrogación, relojes y garabatos abstractos de colores; fondo naranja mandarina con papel tapiz de lunares",
+        "composicion": "titular arriba; persona y cartas en el centro; apoyo en una banda bajo la mesa; incluye y dato en cintas; cta en botón abajo",
+        "estilo": "mezcla de ilustración editorial pop para la persona y fotografía nítida para las cartas",
+        "iluminacion": "plana y brillante, con sombra suave bajo las cartas",
+        "paleta": "naranja mandarina, azul cobalto, amarillo limón, rosa chicle",
+        "producto": "sin kit: no mostrar caja ni piezas del kit; seis_cartas: reproduce idénticas las seis cartas de la referencia, sin cambiar sus dibujos, con la misma luz y perspectiva que la mesa, sin bordes recortados ni halos",
+        "textos": {
+          "titular": "«Tienes las cartas en la mano y no sabes qué hacer» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«Es común comprar cartas bonitas y quedarte mirando sin saber por dónde empezar.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "«Este kit trae significado impreso, manual en español, tapete floral y collar amuleto.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«S/89 con envío gratis a todo el Perú.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Quiero saber qué hacer» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular blanco grueso con contorno azul oscuro; apoyo oscuro sobre banda amarilla; incluye y dato oscuros sobre cintas blancas; cta blanco sobre botón azul cobalto",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; la nube de garabatos son formas abstractas, nunca letras; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 64
+    },
+    {
+      "id": "C04",
+      "calidad": "flash",
+      "angulo": "Tutorial: cómo se lee una carta en cuatro pasos",
+      "consciencia": "solucion",
+      "producto": "en uso",
+      "titular": "Cómo leer una carta en cuatro pasos sencillos",
+      "copy": "Leer una carta es más fácil de lo que parece cuando sigues un orden: miras el dibujo, lees la palabra clave, revisas si salió al derecho o invertida y abres el manual en español. Con este kit practicas desde el primer día. 78 cartas, tapete floral y collar amuleto de regalo por S/89.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "reproduce exactamente esta escena, la mano con la carta Templanza y la guía abierta, en primer plano"
+        }
+      ],
+      "prompt": {
+        "concepto": "tutorial de lectura de una carta con cuatro pasos numerados",
+        "formato": "tutorial paso a paso",
+        "escena": "primer plano de la mano con la carta y la guía abierta de la referencia sobre fondo amarillo limón liso con rayos turquesa; cuatro insignias redondas numeradas con los dígitos 1, 2, 3 y 4 conectadas por flechas curvas rosadas apuntan al dibujo, a la zona del significado, a la orientación de la carta y a la guía",
+        "composicion": "titular arriba; escena en el centro; los cuatro pasos en una columna a la derecha; dato en una cinta; cta en botón abajo",
+        "estilo": "fotografía nítida con gráficos planos de instrucción",
+        "iluminacion": "luz de estudio brillante y cálida",
+        "paleta": "amarillo limón, turquesa, rosa chicle, blanco",
+        "producto": "mano_carta_y_guia: reproduce la mano, la carta y la guía idénticas, integradas con la misma luz y perspectiva, sin bordes recortados ni halos, sin cambiar la carta ni la guía",
+        "textos": {
+          "titular": "«Cómo leer una carta en cuatro pasos sencillos» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "paso_1": "«Mira el dibujo y di qué ves.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "paso_2": "«Lee la palabra clave impresa en la carta.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "paso_3": "«Fíjate si salió al derecho o invertida.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "paso_4": "«Abre el manual en español y une las pistas.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«Cada carta del kit trae su significado impreso.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Aprender mi primera carta» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular oscuro grueso con contorno blanco; pasos oscuros sobre tarjetas blancas con insignia numerada rosa; dato blanco sobre cinta turquesa; cta blanco sobre botón rosa",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; las insignias llevan solo los dígitos 1, 2, 3 y 4; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 65
+    },
+    {
+      "id": "C05",
+      "calidad": "flash",
+      "angulo": "Gran beneficio: un hobby nuevo que sorprende a tus amigos",
+      "consciencia": "inconsciente",
+      "producto": "sin kit",
+      "titular": "Un hobby nuevo que sorprende a tus amigos",
+      "copy": "Imagina sacar una carta en la próxima reunión y explicar qué significa, aunque hace una semana no supieras nada de tarot. Este kit te lleva de cero a tu primera lectura con 78 cartas de significado impreso, manual en español, tapete floral y collar amuleto de regalo. S/89 con envío gratis.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "reproduce exactamente el diseño real de estas cartas, en abanico sobre la mesa de la reunión"
+        }
+      ],
+      "prompt": {
+        "concepto": "beneficio social: aprender tarot y sorprender a los amigos en una reunión",
+        "formato": "gran beneficio",
+        "escena": "sala acogedora y colorida con cuatro personas alrededor de una mesa baja, risas y asombro; una mano abanica las seis cartas de la referencia al centro de la mesa junto a vasos de colores y snacks; cojines estampados, plantas y guirnaldas de luces cálidas al fondo",
+        "composicion": "titular arriba; escena de la reunión en el centro; apoyo en una tarjeta inferior; incluye y dato en cintas; cta en botón abajo",
+        "estilo": "fotografía lifestyle colorida y alegre con las cartas nítidas en primer plano",
+        "iluminacion": "luz cálida de tarde con guirnaldas encendidas, sombras suaves",
+        "paleta": "naranja, turquesa, rosa chicle, amarillo",
+        "producto": "sin kit: no mostrar caja ni piezas del kit; seis_cartas: reproduce idénticas las seis cartas de la referencia, sin cambiar sus dibujos, con la misma luz y perspectiva que la mesa, sin bordes recortados ni halos",
+        "textos": {
+          "titular": "«Un hobby nuevo que sorprende a tus amigos» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«Saca una carta en la próxima reunión y explica qué significa, aunque hace una semana no supieras nada.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "«Kit con 78 cartas, manual en español, tapete floral y collar amuleto de regalo.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«Aprendes desde cero con el manual paso a paso. S/89, envío gratis.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Quiero sorprenderlos» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular blanco grueso con contorno marrón oscuro; apoyo oscuro sobre tarjeta blanca; incluye y dato blancos sobre cintas turquesa y rosa; cta oscuro sobre botón amarillo",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; ninguna persona real reconocible; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 66
+    },
+    {
+      "id": "C06",
+      "calidad": "flash",
+      "angulo": "Cuatro razones para empezar si no sabes nada de tarot",
+      "consciencia": "problema",
+      "producto": "en uso",
+      "titular": "Cuatro razones para empezar si no sabes nada",
+      "copy": "Si no sabes nada de tarot, estas cuatro razones te explican por qué este kit es para ti: significado impreso en cada carta, manual en español paso a paso, tapete floral para tus tiradas y pago al recibir en Lima. Son S/89 con envío gratis a todo el Perú y un collar amuleto de regalo.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "reproduce exactamente esta carta, La Emperatriz con todos sus datos impresos, grande a la izquierda"
+        }
+      ],
+      "prompt": {
+        "concepto": "lista de cuatro razones numeradas para quien no sabe nada de tarot",
+        "formato": "razones por qué en lista",
+        "escena": "fondo verde lima brillante con círculos concéntricos amarillos; la carta de la referencia grande e inclinada a la izquierda con sombra suave; a la derecha cuatro cintas de colores apiladas, cada una con un círculo numerado con los dígitos 1, 2, 3 y 4",
+        "composicion": "titular arriba; carta a la izquierda; cuatro razones en cintas a la derecha; incluye y dato en una franja inferior; cta en botón abajo",
+        "estilo": "publicidad de lista con producto fotográfico nítido y gráficos planos",
+        "iluminacion": "luz de estudio brillante con brillo limpio sobre la carta",
+        "paleta": "verde lima brillante, naranja, azul cobalto, amarillo, blanco",
+        "producto": "carta_explicada: reproduce la carta idéntica, con sus datos y dibujos, con la misma luz y perspectiva, sin bordes recortados ni halos",
+        "textos": {
+          "titular": "«Cuatro razones para empezar si no sabes nada» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "razon_1": "«Cada carta trae su significado impreso.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "razon_2": "«El manual está en español y va paso a paso.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "razon_3": "«El tapete floral es tu mesa para las tiradas.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "razon_4": "«En Lima pagas al recibir.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "«Incluye un collar amuleto de regalo.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«S/89 con envío gratis a todo el Perú.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Empezar por la razón uno» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular oscuro grueso con contorno blanco; razones oscuras sobre cintas blancas con círculo numerado naranja; incluye y dato oscuros sobre franja amarilla; cta blanco sobre botón azul cobalto",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; los círculos llevan solo los dígitos 1, 2, 3 y 4; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 67
+    },
+    {
+      "id": "C07",
+      "calidad": "flash",
+      "angulo": "De la carta a la lectura: el manual te acompaña con flechas",
+      "consciencia": "producto",
+      "producto": "en uso",
+      "titular": "Así se pasa de una carta a una lectura",
+      "copy": "Pasar de una carta a una lectura es fácil cuando el manual en español te acompaña: sacas la carta, buscas su página y entiendes qué te dice. Kit completo con 78 cartas de significado impreso, tapete floral y collar amuleto de regalo por S/89, con envío gratis a todo el Perú.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "reproduce exactamente esta escena, la mano con la carta Templanza y la guía abierta, centrada"
+        }
+      ],
+      "prompt": {
+        "concepto": "flechas que llevan de la carta a su página del manual y a la lectura",
+        "formato": "características con flechas",
+        "escena": "la mano, la carta y la guía abierta de la referencia centradas sobre fondo lavanda vibrante con puntos amarillos; tres flechas gruesas de colores distintos parten de la carta hacia la página de la guía y de la página hacia una tarjeta de lectura vacía con un check verde grande",
+        "composicion": "titular arriba; escena con las tres flechas en el centro; cada etiqueta junto a su flecha; apoyo y dato en franjas inferiores; cta en botón abajo",
+        "estilo": "infografía de producto con flechas dibujadas a mano y fotografía nítida",
+        "iluminacion": "luz de estudio suave y cálida",
+        "paleta": "lavanda vibrante, amarillo limón, menta, coral",
+        "producto": "mano_carta_y_guia: reproduce la mano, la carta y la guía idénticas, con la misma luz y perspectiva, sin bordes recortados ni halos, sin cambiar la carta ni la guía",
+        "textos": {
+          "titular": "«Así se pasa de una carta a una lectura» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "flecha_1": "«La carta que sacaste» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "flecha_2": "«Su página en el manual» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "flecha_3": "«Tu primera lectura» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«El manual en español te acompaña en cada paso, sin palabras raras.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«78 cartas con significado impreso, tapete floral y collar amuleto por S/89.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Abrir mi manual» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular morado oscuro grueso con contorno blanco; etiquetas oscuras sobre tarjetas blancas junto a cada flecha; apoyo oscuro sobre franja amarilla; dato blanco sobre franja coral; cta oscuro sobre botón menta",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; la tarjeta de lectura vacía no lleva letras; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 68
+    },
+    {
+      "id": "C08",
+      "calidad": "flash",
+      "angulo": "Oferta de dos kits para aprender en compañía",
+      "consciencia": "muy consciente",
+      "producto": "protagonista",
+      "titular": "Aprendan juntos: dos kits completos por S/149",
+      "copy": "Dos kits completos por S/149 para empezar desde cero con alguien más: tu pareja, un amigo o un familiar. Cada kit trae 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto. Envío gratis a todo el Perú. Escríbenos y pide los dos.",
+      "refs": [
+        {
+          "foto": "kit_etiquetado",
+          "rol": "usa solo como referencia de cómo son las piezas reales (caja, cartas, manual, tapete, collar). Reproduce las piezas idénticas pero SIN las etiquetas, flechas, textos ni el fondo de esta foto, integradas en la escena con la misma luz, sin bordes recortados, sin piezas transparentes, desvanecidas ni superpuestas"
+        }
+      ],
+      "prompt": {
+        "concepto": "oferta de dos kits para aprender en compañía",
+        "formato": "oferta cargada",
+        "escena": "dos juegos idénticos de las piezas del kit dispuestos uno junto al otro sobre fondo magenta con rayos dorados y confeti; una cinta amarilla de regalo cruzando uno de los juegos; una gran estrella de precio dorada con borde rojo sin texto propio; marcas de verificación verdes",
+        "composicion": "titular arriba; los dos juegos en el centro con la estrella; apoyo en una franja bajo las piezas; incluye y dato en cintas; cta en botón abajo",
+        "estilo": "publicidad festiva de oferta con fotografía de producto nítida y gráficos planos",
+        "iluminacion": "luz de estudio muy brillante con destellos dorados",
+        "paleta": "magenta, dorado, turquesa, blanco",
+        "producto": "kit_etiquetado: reproduce idénticas las piezas de la referencia dos veces, integradas con la misma luz y perspectiva, sin pegar la foto entera, sin bordes recortados ni halos, ignorando las etiquetas de texto de la referencia",
+        "textos": {
+          "titular": "Aprendan juntos: dos kits completos por S/149 (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Uno para ti y otro para tu pareja, un amigo o un familiar, y así practican las tiradas entre los dos. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Cada kit trae 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Pedir los dos kits (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular blanco grueso con contorno morado oscuro; apoyo oscuro sobre franja blanca; incluye blanco sobre cinta turquesa; dato oscuro sobre cinta amarilla; cta oscuro sobre botón dorado",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; la estrella de precio no lleva texto propio; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "reglas_extra": "No dibujes comillas « » alrededor de los textos. No dejes barras ni bloques vacíos. Ningún texto cortado. Las piezas del kit van completas y sólidas, nunca semitransparentes ni pegadas como foto."
+      },
+      "fila_hoja": 69
+    },
+    {
+      "id": "C09",
+      "calidad": "flash",
+      "angulo": "Curiosidad: por qué el tarot se aprende mirando los dibujos",
+      "consciencia": "inconsciente",
+      "producto": "en uso",
+      "titular": "Por qué el tarot se aprende mirando los dibujos",
+      "copy": "Los dibujos del tarot clásico cuentan una escena en cada carta, y por eso se aprende mirando. Este kit reúne las 78 con su significado impreso y un manual en español para que descubras qué dice cada una. Incluye tapete floral y collar amuleto de regalo por S/89, con envío gratis.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "reproduce exactamente esta carta, La Emperatriz con todos sus datos impresos, como foto principal de la nota"
+        }
+      ],
+      "prompt": {
+        "concepto": "nota de prensa genérica sobre por qué el tarot se aprende mirando",
+        "formato": "nota de prensa o medio",
+        "escena": "página de periódico genérico de colores vivos sobre fondo naranja coral, con una franja superior en blanco y sin nombre de medio, columnas de texto representadas por líneas de color sin letras, y la carta de la referencia como gran foto principal con borde de foto de prensa; una lupa ilustrada y destellos",
+        "composicion": "titular de nota arriba; foto de la carta en el centro-izquierda; apoyo en columnas a la derecha; incluye y dato en una caja destacada abajo; cta en botón abajo",
+        "estilo": "parodia de periódico moderna con foto nítida y gráficos planos",
+        "iluminacion": "luz de estudio pareja sobre la foto, plana en el resto",
+        "paleta": "naranja coral, crema, azul cobalto, amarillo",
+        "producto": "carta_explicada: reproduce la carta idéntica, con sus datos y dibujos, como foto de la nota con la misma luz, sin bordes recortados ni halos",
+        "textos": {
+          "titular": "Por qué el tarot se aprende mirando los dibujos (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Cada una de las 78 cartas muestra una escena completa, y esa escena ya te da pistas antes de leer una sola palabra. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "El kit suma el significado impreso en cada carta y un manual en español. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Aprendes mirando, sin memorizar. Kit por S/89 con envío gratis. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Quiero probarlo (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular en tipografía de periódico gruesa oscura sobre papel crema; apoyo e incluye en tipografía de columna oscura; dato blanco sobre caja azul cobalto; cta blanco sobre botón coral",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin nombre de periódico, fecha, firmas ni otras palabras; las columnas son líneas de color sin letras; sin piezas transparentes, desvanecidas ni superpuestas",
+        "reglas_extra": "No dibujes comillas « » alrededor de los textos. No dejes barras ni bloques vacíos. Ningún texto cortado. Las piezas del kit van completas y sólidas, nunca semitransparentes ni pegadas como foto."
+      },
+      "fila_hoja": 70
+    },
+    {
+      "id": "C10",
+      "calidad": "flash",
+      "angulo": "Humor: pides un kit para aprender y te llega un collar de regalo",
+      "consciencia": "muy consciente",
+      "producto": "protagonista",
+      "titular": "Querías aprender tarot y te llega un collar de regalo",
+      "copy": "Pides un kit para empezar tarot desde cero y con él recibes un collar amuleto dorado con su tarjeta de significado, de regalo. Además trae 78 cartas con el significado impreso, manual en español y tapete floral por S/89. Envío gratis a todo el Perú. Escríbenos y lo pides.",
+      "refs": [
+        {
+          "foto": "collares_amuleto",
+          "rol": "reproduce exactamente un collar amuleto dorado con su tarjeta de significado, grande en el centro"
+        }
+      ],
+      "prompt": {
+        "concepto": "meme sobre el regalo inesperado del collar al comprar el kit",
+        "formato": "humor o meme",
+        "escena": "fondo amarillo canario con rayos azul cobalto y confeti; un collar amuleto dorado con su tarjeta de significado, grande y brillante en el centro, sostenido por una mano ilustrada con gesto de sorpresa alegre; destellos y un lazo de regalo azul",
+        "composicion": "texto superior tipo meme con el titular; collar en el centro; apoyo e incluye en una banda inferior; dato en una cinta; cta en botón abajo",
+        "estilo": "meme ilustrado pop con el collar en fotografía nítida",
+        "iluminacion": "luz de estudio brillante con destellos dorados",
+        "paleta": "amarillo canario, azul cobalto, dorado, blanco",
+        "producto": "collares_amuleto: muestra un solo collar con su tarjeta, tomando el diseño exacto de uno de los tres de la referencia, integrado con la misma luz y perspectiva, sin bordes recortados ni halos, sin inventar otro diseño",
+        "textos": {
+          "titular": "«Querías aprender tarot y te llega un collar de regalo» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "«Así de rápido pasa: pides el kit para empezar desde cero y el collar amuleto llega con su tarjeta de significado.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "«El kit trae 78 cartas, manual en español y tapete floral.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "«S/89 con envío gratis a todo el Perú.» (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "«Quiero mi regalo» (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular en tipografía gruesa tipo meme, azul oscuro con contorno blanco; apoyo e incluye oscuros sobre banda blanca; dato blanco sobre cinta azul cobalto; cta oscuro sobre botón dorado",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; la tarjeta del collar se mantiene como en la referencia, sin texto nuevo; sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "fila_hoja": 71
+    }
+  ]
+}

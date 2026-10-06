@@ -1,0 +1,52 @@
+{
+  "C04.flash": {
+    "archivo": "img/C04.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:39.769Z"
+  },
+  "C03.flash": {
+    "archivo": "img/C03.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:40.265Z"
+  },
+  "C01.flash": {
+    "archivo": "img/C01.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:41.188Z"
+  },
+  "C02.flash": {
+    "archivo": "img/C02.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:42.400Z"
+  },
+  "C06.flash": {
+    "archivo": "img/C06.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:51.970Z"
+  },
+  "C05.flash": {
+    "archivo": "img/C05.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:53.546Z"
+  },
+  "C07.flash": {
+    "archivo": "img/C07.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:29:55.280Z"
+  },
+  "C08.flash": {
+    "archivo": "img/C08.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:31:00.284Z"
+  },
+  "C09.flash": {
+    "archivo": "img/C09.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:31:00.854Z"
+  },
+  "C10.flash": {
+    "archivo": "img/C10.flash.jpg",
+    "modelo": "gemini-3.1-flash-image",
+    "fecha": "2026-10-06T04:30:07.243Z"
+  }
+}

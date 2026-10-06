@@ -77,10 +77,11 @@ const conceptos = tomadas.map(({ f, fila }) => {
 const usos = {};
 for (const c of conceptos) for (const r of c.refs) usos[r.foto] = (usos[r.foto] || 0) + 1;
 for (const [foto, n] of Object.entries(usos)) {
+  if (foto === "kit_etiquetado") avisos.push(`"kit_etiquetado" no se usa: Gemini pega la foto con sus etiquetas (L002-C04, L003-C08)`);
   const max = foto === "kit_completo" ? 1 : 2;
   if (n > max) avisos.push(`"${foto}" se usa ${n} veces en el lote (máx. ${max})`);
 }
-const PROHIBIDO = [/whats\s*app/i, /ver kit/i, /\s\+\s/, /\busa\b[^.]{1,40},\s*no\b/i, /\bhoy,\s*no\b/i, /\boriginal\b/i];
+const PROHIBIDO = [/[«»]/, /whats\s*app/i, /ver kit/i, /\s\+\s/, /\busa\b[^.]{1,40},\s*no\b/i, /\bhoy,\s*no\b/i, /\boriginal\b/i];
 for (const c of conceptos) {
   const textos = JSON.stringify(typeof c.prompt === "string" ? c.prompt : c.prompt.textos ?? c.prompt);
   for (const re of PROHIBIDO) if (re.test(textos)) avisos.push(`${c.id}: texto con ${re} (ver reglas_aprendidas.md)`);
