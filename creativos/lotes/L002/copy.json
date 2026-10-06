@@ -1,0 +1,102 @@
+{
+  "C01": {
+    "texto": "Cuatro piezas y no te falta nada para tu primera lectura.\n\nLas 78 cartas con su significado impreso, el manual en español paso a paso, el tapete floral para tus tiradas y el collar amuleto de regalo llegan juntos en la misma caja.\n\nS/89 con envío gratis a todo el Perú. En Lima pagas al recibir; a provincia va por Shalom u Olva con adelanto de S/20. Escríbenos y te lo separamos.",
+    "titulares": [
+      "Cuatro piezas, cero cosas por comprar",
+      "Todo llega junto por S/89",
+      "Pagas al recibir en Lima"
+    ],
+    "descripcion": "Envío gratis a todo el Perú",
+    "boton": "Enviar mensaje (o Comprar)"
+  },
+  "C02": {
+    "texto": "Siete datos impresos en cada carta, para que no tengas que memorizar nada.\n\nSu significado, su versión invertida, su número, su chakra, su planeta, su signo y la respuesta Sí o No. Miras la carta y sigues las pistas.\n\nLas 78 del kit vienen así, con manual en español, tapete floral y collar amuleto de regalo. S/89 con envío gratis. Escríbenos y te lo separamos.",
+    "titulares": [
+      "Siete pistas impresas en cada carta",
+      "La respuesta Sí o No ya viene ahí",
+      "Cada carta se explica sola"
+    ],
+    "descripcion": "Manual en español incluido",
+    "boton": "Enviar mensaje"
+  },
+  "C03": {
+    "texto": "Tu nuevo ritual de la mañana dura cinco minutos.\n\nSacas una carta, lees su significado impreso, confirmas en el manual en español y anotas la idea que te deja para el día. Así se aprende tarot sin darte cuenta.\n\nKit con 78 cartas, manual, tapete floral y collar amuleto de regalo. S/89 con envío gratis a todo el Perú. Escríbenos y te lo separamos.",
+    "titulares": [
+      "Tu ritual de cinco minutos",
+      "Una carta cada mañana",
+      "Aprende tarot sin darte cuenta"
+    ],
+    "descripcion": "En Lima pagas al recibir",
+    "boton": "Enviar mensaje"
+  },
+  "C04": {
+    "texto": "Misión aceptada: pasar de no saber nada a leer tus propias cartas.\n\nTu equipo: 78 cartas con el significado impreso, un manual en español que te dice qué hacer en cada paso, un tapete floral y un collar amuleto de regalo.\n\nNo necesitas experiencia previa. S/89 con envío gratis a todo el Perú; en Lima pagas al recibir. Escríbenos y empieza la misión.",
+    "titulares": [
+      "Misión: leer tus propias cartas",
+      "Experiencia previa: ninguna",
+      "El kit para empezar de cero"
+    ],
+    "descripcion": "Hecho para principiantes",
+    "boton": "Enviar mensaje"
+  },
+  "C05": {
+    "texto": "\"Me gustaría saber leer, pero no sé nada.\" Justo para eso hicimos este kit.\n\nCada carta trae su significado impreso y el manual en español te guía desde la primera tirada. Empiezas sin saber nada y lees desde el primer día.\n\nTrae 78 cartas, tapete floral y un collar amuleto de regalo. S/89 con envío gratis; en Lima pagas al recibir, a provincia con adelanto de S/20. Escríbenos.",
+    "titulares": [
+      "Si no sabes nada, es para ti",
+      "Tu primera lectura sin saber nada",
+      "Lo que siempre quisiste aprender"
+    ],
+    "descripcion": "Hecho para principiantes",
+    "boton": "Enviar mensaje"
+  },
+  "C06": {
+    "texto": "Antes de decidir algo importante, saca una carta.\n\nNo es para que la carta decida por ti: es un momento para parar, ordenar tus ideas y mirar tu duda desde otro lado. Con el significado impreso entiendes su mensaje sin memorizar.\n\nKit de tarot para empezar de cero: 78 cartas, manual en español y tapete floral por S/89, con envío gratis. Escríbenos y te lo separamos.",
+    "titulares": [
+      "Una carta antes de decidir",
+      "Piénsalo con calma, carta en mano",
+      "Ordena tus ideas en cinco minutos"
+    ],
+    "descripcion": "Envío gratis a todo el Perú",
+    "boton": "Enviar mensaje"
+  },
+  "C07": {
+    "texto": "El collar que viene de regalo tiene su propia tarjeta de significado.\n\nEs un collar amuleto dorado que llega con tu kit, sin costo extra. Junto a él recibes 78 cartas con el significado impreso, un manual en español paso a paso y un tapete floral.\n\nS/89 con envío gratis a todo el Perú; en Lima pagas cuando lo recibes. Escríbenos y te contamos qué significa el tuyo.",
+    "titulares": [
+      "El collar viene con su significado",
+      "Collar amuleto de regalo",
+      "78 cartas, manual y un regalo"
+    ],
+    "descripcion": "En Lima pagas al recibir",
+    "boton": "Enviar mensaje"
+  },
+  "C08": {
+    "texto": "Esa cara es la de quien sacó su primera carta y la entendió.\n\nPasa porque cada carta trae impreso su significado, su versión invertida y su número. Miras y lees, sin abrir diez páginas.\n\nKit para empezar de cero con 78 cartas, manual en español, tapete floral y collar amuleto de regalo. S/89 con envío gratis a todo el Perú. Escríbenos y te lo separamos.",
+    "titulares": [
+      "La carta se explica sola",
+      "Miras la carta y ya entiendes",
+      "Sin abrir diez páginas"
+    ],
+    "descripcion": "Envío gratis a todo el Perú",
+    "boton": "Enviar mensaje"
+  },
+  "C09": {
+    "texto": "Requisito para empezar: haber tenido curiosidad alguna vez.\n\nEl kit se aprende en casa, a tu ritmo, con el manual en español abierto al lado y el significado impreso en cada una de las 78 cartas. No necesitas curso ni profesor.\n\nIncluye tapete floral y collar amuleto de regalo por S/89, con envío gratis a todo el Perú. Escríbenos y te lo separamos.",
+    "titulares": [
+      "Experiencia requerida: ninguna",
+      "Aprende en casa, a tu ritmo",
+      "Sin curso y sin profesor"
+    ],
+    "descripcion": "Manual en español incluido",
+    "boton": "Enviar mensaje"
+  },
+  "C10": {
+    "texto": "Pedirlo te toma un mensaje y en pocos días sacas tu primera carta.\n\nNos escribes, eliges tu kit y lo recibes. En Lima pagas cuando te llega; a provincia lo enviamos por Shalom u Olva con adelanto de S/20 y el resto lo pagas al recoger.\n\nKit completo por S/89 con 78 cartas, manual en español, tapete floral y collar amuleto. Envío gratis a todo el Perú. Escríbenos.",
+    "titulares": [
+      "Un mensaje y ya está en camino",
+      "En Lima pagas cuando te llega",
+      "Kit completo a S/89, envío gratis"
+    ],
+    "descripcion": "Envío gratis a todo el Perú",
+    "boton": "Enviar mensaje (o Comprar)"
+  }
+}
