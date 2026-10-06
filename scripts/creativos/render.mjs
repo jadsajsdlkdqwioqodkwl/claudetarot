@@ -23,11 +23,13 @@ const MODELO = { id: process.env.MODELO_FLASH || "gemini-3.1-flash-image", size:
 // (fondo mal recortado, piezas pegadas o transparentes, objetos y textos
 // duplicados, comillas dibujadas). Ver creativos/reglas_aprendidas.md.
 const REGLAS_RENDER = `REGLAS DE RENDER (obligatorias):
-- Una sola escena fotográfica o ilustrada coherente, con una sola luz y una sola perspectiva. Nada de collage ni fotos pegadas encima.
+- Una escena coherente, con una sola luz y una sola perspectiva. Nunca pegues encima las fotos de referencia; si el formato es collage o scrapbook, cada elemento se dibuja dentro de ese estilo.
 - Si hay producto de las imágenes de referencia, recrea cada pieza dentro de la escena, sólida y opaca, con sombra propia y apoyada en una superficie. Prohibido: bordes recortados, halos blancos, restos del fondo original, piezas flotando, transparentes, desvanecidas o superpuestas.
 - No copies de las fotos de referencia sus etiquetas, flechas, textos ni su fondo: solo el aspecto de las piezas.
 - Cada objeto aparece una sola vez salvo que el prompt pida varios: una caja, un manual, un tapete, un collar. No dupliques cartas idénticas ni manos.
 - Cada texto se escribe una sola vez, completo, sin cortar palabras, sin letras inventadas y sin comillas. Nada de texto fuera de los que pide el prompt.
+- Todos los textos en español, tal como vienen en el prompt (nunca traducidos).
+- No escribas en la imagen los nombres de los campos del prompt (CTA, titular, apoyo, dato, incluye…): solo su contenido.
 - Nada importante en el 10 % de los bordes. Sin barras, cajas ni franjas vacías.`;
 const PARALELO = 4;
 
