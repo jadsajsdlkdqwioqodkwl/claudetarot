@@ -16,8 +16,8 @@ https://docs.google.com/spreadsheets/d/19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn
 (ID 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY)
 
 Cada vez que te pida un lote o ideas:
-1. Lee completas, en este orden, las pestañas Instrucciones, Reglas, Ángulos y
-   Fotos, y las últimas filas de Prompts.
+1. Lee completas, en este orden, las pestañas Instrucciones, Reglas,
+   Avatares, Ángulos y Fotos, y las últimas filas de Prompts.
 2. Sigue la pestaña Instrucciones al pie de la letra. Lo que diga la hoja manda
    sobre estas líneas, sobre los archivos de este Project y sobre tu memoria.
 3. Escribe solo en las pestañas que Instrucciones te indique (Prompts y, una

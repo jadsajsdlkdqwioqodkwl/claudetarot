@@ -7,7 +7,8 @@
  *   node scripts/creativos/filas.mjs creativos/lotes/L001 --angulos   (filas para la pestaña Ángulos)
  *
  * Columnas: Lote | ID | Imagen | Nota (1-5) | Comentario | Ángulo |
- *           Consciencia | Producto | Titular | Copy | Refs | Archivo
+ *           Consciencia | Producto | Titular | Copy | Refs | Archivo | Avatar
+ * (--angulos: … | Comentario | Estado | Avatar)
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
@@ -30,7 +31,7 @@ const loteNombre = lote.lote_hoja ? `${lote.lote} ${lote.lote_hoja}` : lote.lote
 if (args.includes("--angulos")) {
   const filas = lote.conceptos
     .filter((c) => render[`${c.id}.flash`] || render[`${c.id}.pro`])
-    .map((c) => [loteNombre, c.id, c.formato || "", c.angulo || "", c.consciencia || "", c.producto || "", c.titular || "", (c.refs || []).map((x) => x.foto).join(", "), "", "", ""]);
+    .map((c) => [loteNombre, c.id, c.formato || "", c.angulo || "", c.consciencia || "", c.producto || "", c.titular || "", (c.refs || []).map((x) => x.foto).join(", "), "", "", "", c.avatar || ""]);
   console.log(JSON.stringify(filas));
   process.exit(0);
 }
@@ -52,6 +53,7 @@ for (const c of lote.conceptos) {
     c.copy || "",
     (c.refs || []).map((x) => x.foto).join(", "),
     r.archivo ? `${relative(root, dir)}/${r.final || r.archivo}` : "",
+    c.avatar || "",
   ]);
 }
 console.log(JSON.stringify(filas.sort((a, b) => a[1].localeCompare(b[1]))));

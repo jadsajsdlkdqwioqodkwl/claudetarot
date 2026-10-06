@@ -30,14 +30,33 @@ hallazgo nuevo de los chats, debajo de la última:
 A Fecha · B Tipo (frase | objeción | avatar | ángulo | por qué compró) ·
 C Hallazgo (1–2 líneas) · D Cita textual del cliente (sin nombres ni
 teléfonos) · E Cuántos chats · F Consciencia (solo ángulos) · G Gancho estilo
-Gary Halbert (solo ángulos) · H Usado en lote (vacío). Máximo 15 filas por
-día; avatares solo si se repiten en 2+ chats. Esta pestaña la lee el Project
-de conceptos para los anuncios.
+Gary Halbert (solo ángulos) · H Usado en lote (vacío) · I Avatar (A1, A2…
+de la pestaña Avatares; "NUEVO" si la razón de compra no calza en ninguno).
+Máximo 15 filas por día. Esta pestaña la lee el Project de conceptos.
 
-## 3. Informe
+## 3. Pestaña Avatares (razones de compra)
+
+Un avatar es un tipo de cliente que compra por una razón (lógica en
+`creativos/avatares.md`). Busca en los chats por qué compra cada cliente
+(para qué lo quiere, para quién, qué probó antes).
+- Si calza en un avatar: súmale los chats en F y, si su cita es mejor que la
+  de E, reemplázala (textual, sin nombres ni teléfonos).
+- Si una razón NUEVA aparece en 2+ chats: agrega una fila (A9, A10…) con
+  deseo, avatar, razón, cita, chats, dolor, ganancia y un gancho por nivel
+  (I–M: inconsciente y problema desde el dolor; solución, producto y
+  decisión desde la ganancia; reglas de copy de `creativos/copy-meta.md`),
+  N con la misma fórmula COUNTIFS de las otras filas y O "probar". Agrega
+  también su fila en la tabla de Cobertura (copia la de arriba, cambia el ID).
+- No borres avatares; no toques la columna O (la pone REVISA COMENTARIOS).
+
+En el Doc del brief mantén una sección "Avatares (razones de compra)" con
+una línea por avatar: ID · quién es · por qué compra · cita · chats · estado.
+
+## 4. Informe
 
 Paso 6 de `rutina-brief-drive.md` (Telegram al dueño con `enviar.py
---informe`), sumando cuántas filas agregaste a Voz del cliente. Si te falta el
+--informe`), sumando cuántas filas agregaste a Voz del cliente y los avatares nuevos o
+que sumaron chats. Si te falta el
 conector de Google Docs o de Google Sheets, dilo en la primera línea del
 informe ("conecta Google Docs / Google Sheets a esta rutina") y no escribas en
 Drive por otro camino.

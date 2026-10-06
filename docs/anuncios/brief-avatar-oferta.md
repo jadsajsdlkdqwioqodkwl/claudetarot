@@ -214,6 +214,22 @@ mirando." Mejor para orgánico que para anuncio de conversión.
 
 ## PARTE 2: Avatar Sheet
 
+### Avatares (razones de compra)
+
+Un avatar es un tipo de cliente que compra por una razón. Fuente viva: pestaña
+**Avatares** de la hoja de creativos (lógica en `creativos/avatares.md`).
+Foto al 2026-10-06 (chats de 30 días; casi todos solo preguntan precio, así
+que A2–A8 son hipótesis a probar con anuncios):
+
+- A1 · Curios@ de toda la vida · siempre quiso aprender y no supo por dónde empezar · 9 chats
+- A2 · Busca un pasatiempo lejos del celular · 0 chats (brief: "solo juego el solitario")
+- A3 · Quiere leerse a sí mism@ · 1 chat
+- A4 · Tiene una pregunta concreta (algo perdido, un trámite, una decisión) · 1 chat
+- A5 · Quiere leerle a familia y amigos · 1 chat
+- A6 · Lo regala a alguien a quien le gusta el tarot · 1 chat
+- A7 · Pensó en clases o videos y no tiene tiempo · 3 chats
+- A8 · Ya le leyeron las cartas y quiere hacerlo por su cuenta · hipótesis
+
 ### Demografía
 
 - **Edad:** 25-45, presencia importante de 40+; también desde los 20.

@@ -2,6 +2,7 @@
 
 > Antes de mover, renombrar, borrar o recrear un archivo, documento, hoja o
 > Routine, lee `docs/MAPA.md` (qué se conecta con qué y qué no se toca).
+> Todo cambio al workflow actualiza `docs/MAPA.md` en el mismo commit.
 
 ## Si vas a proponer textos para clientes (asesor, director CRO, semanal)
 

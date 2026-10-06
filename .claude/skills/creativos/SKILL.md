@@ -10,10 +10,11 @@ Sheets). Antes de mover o renombrar algo, `docs/MAPA.md`.
 
 | Pestaña | Quién escribe | Columnas |
 |---|---|---|
-| **Prompts** | el Project de conceptos | A Lote · B ID · C Ángulo · D Consciencia · E Producto · F Titular · G Copy · H Refs (`foto: rol \| foto: rol`) · I Prompt JSON · J Estado (pendiente / hecho / error / pausado) · K Nota |
-| **Creativos** | tú (`filas.mjs`) + el dueño (D, E) | A Lote · B ID · C Imagen · D Nota 1-5 · E Comentario · F Ángulo · G Consciencia · H Producto · I Titular · J Copy · K Refs · L Archivo |
+| **Prompts** | el Project de conceptos | A Lote · B ID · C Ángulo · D Consciencia · E Producto · F Titular · G Copy · H Refs (`foto: rol \| foto: rol`) · I Prompt JSON · J Estado (pendiente / hecho / error / pausado) · K Nota · L Avatar |
+| **Creativos** | tú (`filas.mjs`) + el dueño (D, E) | A Lote · B ID · C Imagen · D Nota 1-5 · E Comentario · F Ángulo · G Consciencia · H Producto · I Titular · J Copy · K Refs · L Archivo · M Avatar |
 | **Copy Meta** | tú + el dueño (M, N) | A Lote · B ID · C Imagen · D Lo que dice la imagen · E Consciencia · F Texto principal · G–I Titular 1–3 · J Descripción · K Botón · L Estado · M Nota · N Comentario |
-| **Ángulos** | tú | A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario · K Estado (ganador / variar: … / descartado: …) |
+| **Ángulos** | tú | A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario · K Estado (ganador / variar: … / descartado: …) · L Avatar |
+| **Avatares** | tú + Routine de voz del cliente | razones de compra (A1, A2…) × 5 niveles de consciencia, con Cobertura por fórmulas. Lógica en `creativos/avatares.md` |
 | **Instrucciones** · **Reglas** · **Copy reglas** | tú | espejo de `creativos/instrucciones.md`, `reglas_aprendidas.md`, `copy-meta.md` (A Sección · B Texto) |
 | **Voz del cliente** · **Fotos** · **Memoria** | Routine diaria · tú · Project | ver `docs/MAPA.md` |
 
@@ -25,12 +26,14 @@ Genera todo lo pendiente. Un JSON ya usado no se vuelve a crear: queda
 "hecho" en Prompts (col. J) y su lote tiene carpeta en `creativos/lotes/`
 (`desde-hoja.mjs` salta esos lotes aunque la hoja no esté marcada).
 
-1. `get_values` de `Prompts!A1:K` → guárdalo en el scratchpad (no lo leas entero).
+1. `get_values` de `Prompts!A1:L` → guárdalo en el scratchpad (no lo leas entero).
 2. Repite mientras haya pendientes:
    a. `node scripts/creativos/desde-hoja.mjs <json> creativos/lotes/Lnnn`
       (Lnnn = siguiente libre). Toma el primer lote pendiente. Si imprime
-      avisos (foto prohibida o repetida, comillas, WhatsApp…), corrige ese
-      prompt en `lote.json` antes de renderizar.
+      avisos (foto prohibida o repetida, comillas, WhatsApp, avatar faltante
+      o poco variado…), corrige ese prompt en `lote.json` antes de renderizar
+      (si falta el avatar, asígnalo según `creativos/avatares.md` y escríbelo
+      también en Prompts col. L).
    b. `npm run creativos:render -- creativos/lotes/Lnnn`: Flash 2K + versión
       final 1080×1350 PNG en `final/`. Cada prompt lleva al final las
       REGLAS_RENDER de `render.mjs` (sin recortes, sin duplicados, sin
@@ -59,8 +62,8 @@ las reglas y al brief. Solo filas con nota o comentario nuevo.
 
 1. Guarda por lote `creativos/lotes/Lnnn/feedback.json`
    (`{"C01": {"nota": 4, "comentario": "…"}}`).
-2. Analiza en qué se parecen las de 4–5 y las de 1–2 (formato, consciencia,
-   producto, foto, titular, CTA, paleta, largo). Separa "no vende" de "salió
+2. Analiza en qué se parecen las de 4–5 y las de 1–2 (avatar, formato,
+   consciencia, producto, foto, titular, CTA, paleta, largo). Separa "no vende" de "salió
    mal dibujado".
 3. Escribe lo aprendido:
    - `creativos/reglas_aprendidas.md` (destila todo el feedback acumulado) →
@@ -68,6 +71,9 @@ las reglas y al brief. Solo filas con nota o comentario nuevo.
    - Errores de render nuevos → también a `REGLAS_RENDER` de
      `scripts/creativos/render.mjs` (para que no se repitan en ningún prompt).
    - **Ángulos**: Nota, Comentario y Estado de cada fila calificada.
+   - **Avatares** col. O: "gana" si sus anuncios promedian 4+, "no vende" si
+     promedian ≤2 con 3+ anuncios, "saturado" si ya tiene muchos y los demás
+     están en 0.
    - Si cambia cómo debe trabajar el Project: `creativos/instrucciones.md` →
      pestaña **Instrucciones** (una fila por `## Sección`).
    - Copy: sección "10. Aprendizajes" de `creativos/copy-meta.md` → pestaña

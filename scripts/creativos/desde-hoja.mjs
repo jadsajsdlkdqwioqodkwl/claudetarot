@@ -4,13 +4,13 @@
  *
  *   node scripts/creativos/desde-hoja.mjs <prompts.json> creativos/lotes/L001
  *
- * <prompts.json> es lo que devuelve get_values de Prompts!A1:K (con la fila
+ * <prompts.json> es lo que devuelve get_values de Prompts!A1:L (con la fila
  * de encabezados). Solo toma las filas con Estado vacío o "pendiente" y del
  * mismo Lote que la primera pendiente (o sin lote). Imprime los números de
  * fila tomados para marcarlas "hecho" después.
  *
  * Columnas: Lote | ID | Ángulo | Consciencia | Producto | Titular |
- *           Copy | Refs | Prompt JSON | Estado | Nota
+ *           Copy | Refs | Prompt JSON | Estado | Nota | Avatar
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
@@ -24,7 +24,7 @@ if (!entrada || !salida) {
 }
 
 let datos = JSON.parse(readFileSync(entrada, "utf8"));
-if (datos.values) datos = datos.values;
+if (!Array.isArray(datos)) datos = datos.values;
 const [, ...filas] = datos;
 const refsValidas = Object.keys(JSON.parse(readFileSync(join(root, "creativos/refs/refs.json"), "utf8")));
 const dir = resolve(root, salida);
@@ -53,7 +53,7 @@ if (!tomadas.length) {
 
 const avisos = [];
 const conceptos = tomadas.map(({ f, fila }) => {
-  const [, id, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota] = f;
+  const [, id, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota, avatar] = f;
   let prompt;
   try {
     prompt = JSON.parse(promptTxt);
@@ -77,6 +77,7 @@ const conceptos = tomadas.map(({ f, fila }) => {
   return {
     id: String(id).trim(),
     angulo, consciencia, producto, titular, copy, refs, prompt,
+    avatar: String(avatar || "").trim().toUpperCase(),
     formato: String(nota || "").replace(/^formato:\s*/i, "").trim(),
     fila_hoja: fila,
   };
@@ -92,6 +93,14 @@ for (const [foto, n] of Object.entries(usos)) {
   const max = foto === "kit_completo" ? 1 : 2;
   if (n > max) avisos.push(`"${foto}" se usa ${n} veces en el lote (máx. ${max})`);
 }
+// Diversidad de avatares (creativos/avatares.md): 5+ distintos, ninguno más de 3.
+const porAvatar = {};
+for (const c of conceptos) {
+  if (!c.avatar) avisos.push(`${c.id}: sin avatar (Prompts col. L)`);
+  else porAvatar[c.avatar] = (porAvatar[c.avatar] || 0) + 1;
+}
+for (const [a, n] of Object.entries(porAvatar)) if (n > 3) avisos.push(`avatar ${a} se usa ${n} veces en el lote (máx. 3)`);
+if (conceptos.length >= 8 && Object.keys(porAvatar).length < 5) avisos.push(`solo ${Object.keys(porAvatar).length} avatares distintos en el lote (mín. 5)`);
 const PROHIBIDO = [/[«»]/, /whats\s*app/i, /ver kit/i, /\s\+\s/, /\busa\b[^.]{1,40},\s*no\b/i, /\bhoy,\s*no\b/i, /\boriginal\b/i];
 for (const c of conceptos) {
   const textos = JSON.stringify(typeof c.prompt === "string" ? c.prompt : c.prompt.textos ?? c.prompt);
