@@ -1,5 +1,8 @@
 # Tarot Store Perú — reglas para Claude (Routines y sesiones)
 
+> Antes de mover, renombrar, borrar o recrear un archivo, documento, hoja o
+> Routine, lee `docs/MAPA.md` (qué se conecta con qué y qué no se toca).
+
 ## Si vas a proponer textos para clientes (asesor, director CRO, semanal)
 
 1. Lee `docs/negocio.md` (reglas fijas del negocio) y corre

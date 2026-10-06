@@ -1,58 +1,41 @@
-# Routine diaria: voz del cliente → brief y ángulos de anuncios
+# Routine diaria: voz del cliente → brief (Google Doc) y ángulos
 
-La corre la Routine "Voz del cliente → brief" todos los días a mediodía (Lima).
-Sigue estos pasos al pie de la letra. Gasta pocos tokens: los scripts bajan y
-recortan los chats, tú lees e interpretas. No inventes: todo lo que escribas
-sale de un chat real.
+La corre la Routine "Voz del cliente → brief y ángulos" a mediodía (Lima).
+Es la rutina del brief de `docs/anuncios/rutina-brief-drive.md` más la pestaña
+Voz del cliente. Gasta pocos tokens; no inventes: todo sale de un chat real.
 
-## 1. Datos (últimas 24 h)
+**El brief vivo es el Google Doc `1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0`.
+Se edita SIEMPRE ese mismo documento (lo leen el Project de conceptos y otras
+skills por ese link). Prohibido crear otro, copiarlo o mandarlo a la papelera.**
+
+## 1. Brief
+
+Haz los pasos 1 a 5 de `docs/anuncios/rutina-brief-drive.md` (leer negocio.md
+y el Doc, juntar lo nuevo de los clientes, actualizar el brief según "Cómo
+mantener este documento" y reescribir el MISMO Doc con el conector de Google
+Docs). Además de lo que ese paso 3 lista, lee las transcripciones de las
+últimas 24 h:
 
     ASESOR_CLAVE=$CLAVE python3 scripts/asesor/preparar.py api --dias 1 --salida /tmp/voz
 
-Lee los archivos que deja en /tmp/voz (transcripciones por cliente). Lee
-también `docs/anuncios/brief-avatar-oferta.md` completo y las últimas 40 filas
-de la pestaña **Voz del cliente** de la hoja
-19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY (para no repetir).
+## 2. Pestaña Voz del cliente
 
-Si no hubo chats nuevos con algo más que el saludo, termina sin cambiar nada.
+En la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, pestaña **Voz del
+cliente** (lee antes sus últimas 40 filas para no repetir), una fila por
+hallazgo nuevo de los chats, debajo de la última:
+A Fecha · B Tipo (frase | objeción | avatar | ángulo | por qué compró) ·
+C Hallazgo (1–2 líneas) · D Cita textual del cliente (sin nombres ni
+teléfonos) · E Cuántos chats · F Consciencia (solo ángulos) · G Gancho estilo
+Gary Halbert (solo ángulos) · H Usado en lote (vacío). Máximo 15 filas por
+día; avatares solo si se repiten en 2+ chats. Esta pestaña la lee el Project
+de conceptos para los anuncios.
 
-## 2. Qué buscar
+## 3. Informe
 
-Solo mensajes del CLIENTE (no de la vendedora ni automáticos):
+Paso 6 de `rutina-brief-drive.md` (Telegram al dueño con `enviar.py
+--informe`), sumando cuántas filas agregaste a Voz del cliente. Si te falta el
+conector de Google Docs o de Google Sheets, dilo en la primera línea del
+informe ("conecta Google Docs / Google Sheets a esta rutina") y no escribas en
+Drive por otro camino.
 
-- **Frases reales**: cómo describe su situación, sus ganas, sus dudas, con sus
-  palabras exactas (sin nombres ni teléfonos).
-- **Objeciones**: qué lo frena (precio, confianza, tiempo, "no sé nada",
-  envío…) y si se destrabó, con qué respuesta.
-- **Avatares**: quién compra o pregunta (edad o etapa si la dice, hombre/mujer,
-  Lima/provincia, para sí o para regalo, experiencia previa). Marca solo
-  patrones que aparezcan en 2 o más chats.
-- **Ángulos de venta**: ideas de anuncio que salen de lo anterior (un deseo, un
-  miedo, una pregunta frecuente, un uso que no habíamos visto). Cada ángulo
-  con su nivel de consciencia y una frase de gancho estilo Gary Halbert.
-- **Por qué compraron** los que cerraron (la última duda antes del sí).
-
-## 3. Dónde lo escribes
-
-a) Pestaña **Voz del cliente** de la hoja: una fila por hallazgo nuevo, debajo
-   de la última:
-   A Fecha · B Tipo (frase | objeción | avatar | ángulo | por qué compró) ·
-   C Hallazgo (1–2 líneas) · D Cita textual del cliente · E Cuántos chats ·
-   F Consciencia (solo ángulos) · G Gancho (solo ángulos) · H Usado en lote (vacío).
-   Máximo 15 filas por día; prioriza lo nuevo y lo que más se repite.
-
-b) **Brief** `docs/anuncios/brief-avatar-oferta.md`: si algo cambia lo que el
-   brief dice (frase real nueva en "Frases reales de clientes", objeción nueva
-   en "Objeciones", dato de avatar en "Demografía" o "Insights"), corrige esa
-   sección y agrega arriba en "Bitácora de aprendizajes" una línea
-   `AAAA-MM-DD · chats CRM (N) · aprendizaje`. Sigue las reglas de
-   "Cómo mantener este documento" (datos propios > externos, no borrar, marcar
-   obsoleto). Si nada cambia el brief, no lo toques.
-
-c) Commit y push a `main` SOLO de `docs/anuncios/brief-avatar-oferta.md`
-   (mensaje: "Brief: voz del cliente AAAA-MM-DD"). Nada más del repo.
-
-## 4. Respuesta final
-
-Solo: cuántos chats leíste, cuántas filas agregaste y, en 3 líneas, lo más
-importante que aprendiste hoy.
+No hagas commits ni cambies código.

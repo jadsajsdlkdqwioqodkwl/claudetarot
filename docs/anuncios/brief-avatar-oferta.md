@@ -1,8 +1,7 @@
 # Kit Tarot de Aprendizaje — Investigación, Avatar y Offer Brief
 
-*Lo actualiza todos los días la Routine "Voz del cliente → brief"
-(`docs/anuncios/voz-del-cliente.md`) con los chats del CRM; los hallazgos
-sueltos quedan en la pestaña Voz del cliente de la hoja de creativos.*
+*Copia de respaldo. La versión viva es el Google Doc
+1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0 (ver `docs/MAPA.md`).*
 
 **Documento base para anuncios.** Cualquier IA (o persona) que proponga copys,
 ángulos de anuncios estáticos, guiones de video o hooks parte de aquí. Original
