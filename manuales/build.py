@@ -52,7 +52,8 @@ body{font-family:Aptos;color:#000}
 .txt.c4 .e img{width:30pt;margin-left:-3pt}
 .txt.c4 p{margin-bottom:4pt}
 .pn{position:absolute;left:0;right:0;top:254.6pt;text-align:center;font-size:11.04pt;line-height:1.2}
-.cover{position:absolute;left:%(coverx)spt;top:0.05pt;width:209.69pt;height:299.05pt;z-index:5}
+.cover{position:absolute;left:%(coverx)spt;top:%(covery)spt;width:%(fw)spt;height:%(fh)spt;object-fit:cover;z-index:2}
+.lines{z-index:3}
 .logo{position:absolute;left:45.45pt;top:73.1pt;width:105pt;height:104pt}
 .phone{position:absolute;left:0;right:0;top:189.6pt;text-align:center;font-family:BahnL;font-size:18pt;line-height:1;color:#80340d;white-space:pre}
 """
@@ -89,7 +90,7 @@ def build(tag, pages, outdir):
     os.makedirs(outdir, exist_ok=True)
     # Rider-Waite: miniaturas como en el original (37 pt, pegadas al marco a 6,2 pt)
     imgp = dict(imgw=37, imggap=8.3, imgml=-6.3) if tag == "rw" else dict(imgw=38, imggap=8, imgml=0)
-    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2 - (FW - 209.69) / 2, **imgp)
+    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2, covery=Y1, **imgp)
     outs = []
     for name, rows in IMPOSICION.items():
         html = ('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head><body>%s</body></html>'
