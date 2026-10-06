@@ -4,7 +4,9 @@ Notas de negocio sobre cuándo un mensaje de WhatsApp cuesta y cuándo no,
 para tenerlo siempre a mano al tocar `crm-cron.js`, `crm-welcome-sequence.js`,
 `crm-send.js`, `templates.js`, `scheduled.js` o `bulk-send.js`. Basado en el
 PDF oficial de Meta "Pricing on the WhatsApp Business Platform" (vigente
-desde el 1 jul 2025, con el cambio del 1 oct 2026 ya incorporado).
+desde el 1 jul 2025, con el cambio del 1 oct 2026 ya incorporado) y en la
+página oficial de precios revisada el 06/10/2026
+(https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing).
 
 ## Las dos ventanas
 
@@ -13,21 +15,26 @@ desde el 1 jul 2025, con el cambio del 1 oct 2026 ya incorporado).
   cada mensaje nuevo del cliente — incluido tocar el botón de una
   plantilla con quick-reply. Mientras esté abierta, texto libre y
   plantillas utility van gratis.
-- **Free entry point (72h)**: si el cliente te escribió desde un anuncio
-  Click-to-WhatsApp (o un botón de Facebook Page) y tú le respondes
-  dentro de la primera hora del día 1 (las 24h de servicio), se abre
-  además una ventana de **72 horas** donde **las plantillas nunca
-  cobran**, así el cliente no te haya vuelto a escribir. El texto libre
-  dentro de esas 72h solo es gratis si la ventana de 24h normal también
-  sigue abierta (o sea, si el cliente te escribió recientemente).
-  **No son 7 días** — son 3.
+- **Free entry point (FEP), ahora 7 días** (antes 72 h; Meta lo amplió el
+  28/09/2026 y así figura hoy en su página de precios: "The FEP window may
+  remain open for up to 7 days"): si el cliente te escribió desde un anuncio
+  Click-to-WhatsApp (desde la app de Android o iOS) y tú le respondes dentro
+  de las 24 h de servicio, se abre una ventana de **hasta 7 días desde tu
+  respuesta** donde Meta **no cobra ningún mensaje**: ni plantillas de
+  marketing, utility o autenticación, ni texto libre (servicio), aunque la
+  ventana de 24 h ya se haya cerrado. En Tarot Store la bienvenida automática
+  responde al minuto, así que los 7 días se cuentan, en la práctica, desde que
+  llegó el chat (`conversations.created_at`). El código usa 160 h (8 h de
+  margen): `FEP_HORAS` en `src/lib/toques.js`.
+  Lo único que sigue cobrándose dentro del FEP son los mensajes del "Meta
+  Business Agent" (no lo usamos).
 
 ## Categorías de plantilla — quién paga
 
 | Categoría | ¿Cuándo cobra? |
 |---|---|
-| **Marketing** | Siempre, dentro o fuera de ventana |
-| **Utility** | Solo fuera de la ventana de 24h (y fuera del free entry point de 72h si vino de ad) |
+| **Marketing** | Siempre, salvo dentro de los 7 días del free entry point del anuncio |
+| **Utility** | Solo fuera de la ventana de 24h (y fuera del free entry point de 7 días si vino de ad) |
 | **Authentication** | Misma regla que utility |
 | **Service** (texto libre, no-plantilla) | Solo fuera de la ventana de 24h |
 
@@ -52,20 +59,28 @@ WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
 
 - **1.000 mensajes de servicio gratis al mes por número**; se cobra desde el
   1.001 (según los avisos de los BSP; confirmarlo en WhatsApp Manager).
-- El **free entry point de 72 h** de los anuncios Click-to-WhatsApp sigue:
-  todo lo que se manda en esas 72 h va gratis. En la práctica: **cerrar la
-  venta dentro de las 72 h desde que llegó del anuncio** sale gratis; lo que
-  se estira después, y los chats orgánicos (que no vienen de anuncio),
-  empiezan a costar por cada mensaje.
+- El **free entry point** de los anuncios Click-to-WhatsApp sigue y ahora dura
+  **7 días**: todo lo que se manda en esa semana va gratis. En la práctica:
+  **cerrar la venta, y hacer los seguimientos, dentro de los 7 días desde que
+  llegó del anuncio** sale gratis; lo que se estira después, y los chats
+  orgánicos (que no vienen de anuncio), cuesta por cada mensaje.
 - Cada paso de la bienvenida y cada seguimiento automático es un mensaje
-  cobrable fuera de las 72 h: por eso el tope de 4 automáticos seguidos sin
+  cobrable fuera de esos 7 días: por eso el tope de automáticos seguidos sin
   respuesta en `crm-cron.js` (`MAX_AUTOMATICOS_SIN_RESPUESTA`).
+- Qué cambia con 7 días (06/10/2026): el 96 % de las compras llega en los
+  primeros 3 días, pero ~360 chats con intención real se quedaban sin un solo
+  mensaje del día 2 al 30. Ahora toda la primera semana de seguimiento
+  (`frio2`, `d2`, `frio6` y el `d7` adelantado de `src/lib/toques.js`) es
+  gratis, incluso para los que solo mandaron el saludo del anuncio. Lo pagado
+  queda para la semana 2 en adelante y solo para quien conversó (etapa 2+).
+  Detalle: `docs/plan-seguimientos.md`.
 
 ## Mapa de qué función manda qué
 
 | Dónde en el código | Tipo de mensaje | Nota |
 |---|---|---|
-| `mandarBienvenidaSiAplica` (`whatsapp-webhook.js`) → `mandarSecuenciaBienvenida` | texto libre | Se dispara al toque del primer mensaje del ad — abre el free entry point de 72h |
+| `mandarBienvenidaSiAplica` (`whatsapp-webhook.js`) → `mandarSecuenciaBienvenida` | texto libre | Se dispara al toque del primer mensaje del ad — abre el free entry point de 7 días |
+| Toques de los días 2/6/7/14/30 (`toques.js`, cron en los minutos `% 5 === 2`) | plantilla marketing con 2 botones | Gratis dentro de los 7 días del anuncio (`gratis`, `enFep`); pagada después. Apagado mientras `TOQUES` esté vacío |
 | Seguimiento programado por chat (`scheduled.js` POST, sin `template_name`) | **siempre texto libre**, no admite plantilla | Si `send_at` cae fuera de ventana, el cron (`crm-cron.js`) lo marca `'fallido'` — no cobra, pero tampoco llega. El panel solo muestra `'pendiente'`, no avisa de los fallidos |
 | Envío masivo modo texto (`bulk-send.js`) | texto libre | Mismo riesgo: falla fuera de ventana, no cobra |
 | Envío masivo modo plantilla / "Enviar plantilla" en el chat (`templates.js`) | plantilla | Cobra fuera de ventana/free-entry, gratis dentro |
@@ -76,7 +91,7 @@ WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
 ## Recomendación por escenario COD
 
 - **Lima (cierra en ≤3 días):** no requiere cambios — la bienvenida
-  automática ya abre el free entry point de 72h, y mientras los
+  automática ya abre el free entry point de 7 días, y mientras los
   seguimientos de cobro se programen dentro de esa ventana, todo texto
   libre sin costo.
 - **Provincia (el pago llega días después, vía courier):**
@@ -96,7 +111,7 @@ WhatsApp Manager — no está en el PDF fuente el monto exacto en soles.
 
 Una plantilla **aprobada** no caduca: queda en WhatsApp Manager hasta que
 alguien la borre (Meta solo la pausa si recibe muchos bloqueos). Lo que dura
-poco es la **ventana** (24 h desde el último mensaje del cliente; 72 h si
+poco es la **ventana** (24 h desde el último mensaje del cliente; 7 días si
 vino de anuncio). Si algo "duró unas horas", no era una plantilla aprobada
 (p. ej. un mensaje de ausencia o de bienvenida de la app WhatsApp Business).
 

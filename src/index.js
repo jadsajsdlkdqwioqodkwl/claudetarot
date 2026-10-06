@@ -47,6 +47,7 @@ import {
 } from "./api/crm/scheduled.js";
 import { procesarSeguimientosVencidos } from "./lib/crm-cron.js";
 import { procesarPedidosWeb } from "./lib/pedidos-web.js";
+import { procesarToques } from "./lib/toques.js";
 import { agendarCarritosAbandonados } from "./lib/crm-carrito.js";
 import { exportarChatsASheets } from "./lib/crm-sheets-export.js";
 import { onRequestGet as crmTemplatesGet, onRequestPost as crmTemplatesPost } from "./api/crm/templates.js";
@@ -93,7 +94,7 @@ import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-passwor
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
 import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
-import { onRequestGetChats as asesorChatsGet, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet } from "./api/asesor-datos.js";
+import { onRequestGetChats as asesorChatsGet, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet, onRequestGetToques as asesorToquesGet } from "./api/asesor-datos.js";
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 import { onRequestGet as crmShalomGet, onRequestPost as crmShalomPost } from "./api/crm/shalom.js";
@@ -124,6 +125,7 @@ const ROUTES = {
   "/api/asesor/pedidos-web": { GET: asesorPedidosWebGet },
   "/api/asesor/memoria": { POST: asesorMemoriaPost },
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
+  "/api/asesor/toques": { GET: asesorToquesGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
@@ -273,7 +275,14 @@ export default {
     // pedidos web de hace 3 min. Lo de antes del cron de 5 min (seguimientos,
     // carrito) sigue corriendo solo en los minutos múltiplos de 5.
     await procesarPedidosWeb(env).catch((err) => console.error("Pedidos web:", err.message));
-    if (new Date(event.scheduledTime).getUTCMinutes() % 5 !== 0) return;
+    const minuto = new Date(event.scheduledTime).getUTCMinutes();
+    // Toques de los días 2/7/14/30 (src/lib/toques.js), en su propia ejecución
+    // por el tope de 50 consultas a D1. No hace nada mientras TOQUES esté vacío.
+    if (minuto % 5 === 2) {
+      await procesarToques(env).catch((err) => console.error("Toques:", err.message));
+      return;
+    }
+    if (minuto % 5 !== 0) return;
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
     // "escribiendo…" de 1 s por mensaje, un lote grande de seguimientos
     // vencidos a la vez puede tardar más que eso. El carrito abandonado solo

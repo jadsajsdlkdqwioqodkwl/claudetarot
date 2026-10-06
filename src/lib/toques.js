@@ -10,6 +10,17 @@
  *  - Se prende con TOQUES en wrangler.jsonc (lista de ids; vacío = apagado).
  *    Cada plantilla se crea sola en Meta si no existe; mientras no esté
  *    aprobada, ese toque espera.
+ *  - Ventana gratis del anuncio (FEP): desde el 28/09/2026 Meta no cobra
+ *    NINGÚN mensaje (plantillas de marketing incluidas) durante 7 días desde
+ *    que respondimos al primer mensaje del anuncio (antes eran 72 h). Como la
+ *    bienvenida responde al minuto, se cuenta desde conv.created_at con 8 h de
+ *    margen (FEP_HORAS). Los toques `gratis` solo salen dentro de esa ventana
+ *    y a chats que vinieron de un anuncio (ctwa_clid); los demás se pagan.
+ *    Dos cadenas de leads:
+ *      · frío (etapa 1: solo el saludo del anuncio, nunca respondió): frio2 y
+ *        frio6, siempre gratis, nunca se le paga una plantilla;
+ *      · interesado (etapa 2+): d2 gratis, d7 (gratis si aún está en la
+ *        ventana: sale desde las 132 h de silencio), d14 y d30 pagados.
  *  - Una vez por chat cada toque. 14 exige que haya salido 7, y 30 exige 14.
  *  - Los días se cuentan desde el último mensaje del cliente (no compró) o
  *    desde la compra (cliente). Si respondió, el reloj vuelve a 0.
@@ -20,7 +31,8 @@
  *  - Grupo de control: 1 de cada 5 chats (id % 5 = 0) no recibe nada y queda
  *    anotado como 'control', para medir si los toques venden de verdad
  *    (GET /api/asesor/toques).
- *  - Tope diario TOQUES_MAX_DIA (40 por defecto): son plantillas pagadas.
+ *  - Tope diario TOQUES_MAX_DIA (40 por defecto) solo para los toques pagados;
+ *    los `gratis` no lo gastan.
  */
 
 import { enviarTemplate } from "./whatsapp.js";
@@ -33,6 +45,8 @@ import { destinosDeChats } from "./crm-destino.js";
 export const ORIGEN_TOQUE = "Toque automático";
 const POR_PASADA = 4; // ~9 consultas a D1 por envío: entra en el tope de 50 por ejecución
 const IDIOMA = "es_PE";
+export const FEP_HORAS = 160; // 7 días gratis del anuncio menos 8 h de margen
+const EN_FEP = `c.ctwa_clid IS NOT NULL AND conv.created_at >= datetime('now', '-${FEP_HORAS} hours')`;
 
 const botones = (a, b) => ({ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: a }, { type: "QUICK_REPLY", text: b }] });
 const cuerpo = (text) => ({ type: "BODY", text, example: { body_text: [["María"]] } });
@@ -44,21 +58,41 @@ const cuerpo = (text) => ({ type: "BODY", text, example: { body_text: [["María"
  * precio (S/79) o 2 kits para regalar, día 30 compromiso mínimo (separar con
  * S/10). A clientes: valor, mazo a precio de clienta, referidos y el Gold.
  *
- * dias: cuándo sale. etapaMin: etapa del embudo mínima (2 conversó, 3 dijo
- * destino). requiere: el toque anterior de la cadena. Con `por_destino` hay
- * una plantilla por destino del chat (lima / provincia / general si no se
- * sabe), así cada uno lee lo que le aplica. Textos con la skill voz-tarot-store.
+ * dias: cuándo sale (días de silencio; `horas` [desde, hasta] lo afina).
+ * etapaMin / etapaMax: etapa del embudo (1 solo saludó, 2 conversó, 3 dijo
+ * destino). requiere: el toque anterior de la cadena. gratis: solo dentro de
+ * la ventana gratis del anuncio. enFep: para un toque pagado, horas de
+ * silencio desde las que sale antes si el chat sigue en la ventana gratis.
+ * Con `por_destino` hay una plantilla por destino del chat (lima / provincia /
+ * general si no se sabe), así cada uno lee lo que le aplica. Textos con la
+ * skill voz-tarot-store.
  */
 export const TOQUES = {
+  // Cadena fría (gratis): solo mandó el saludo del anuncio y no contestó la bienvenida.
+  frio2: {
+    tipo: "lead", dias: 2, horas: [40, 66], etapaMin: 1, etapaMax: 1, gratis: true,
+    general: [
+      cuerpo("Hola {{1}} ☺️ vi que preguntó por el kit de tarot y no alcanzamos a conversar. Le cuento que el envío es gratis a todo el Perú y en Lima paga recién al recibir ✨ ¿Sería para Lima o para provincia?"),
+      botones("Lima", "Provincia")
+    ]
+  },
+  frio6: {
+    tipo: "lead", dias: 6, horas: [132, FEP_HORAS], etapaMin: 1, etapaMax: 1, gratis: true,
+    general: [
+      cuerpo("Hola {{1}} ☺️ si separa su kit de tarot esta semana le regalamos un collar amuleto extra 🫶 Trae las 78 cartas con su significado impreso, manual y tapete, con envío gratis a todo el Perú ✨ ¿Le cuento cómo le llega?"),
+      botones("Sí, cuénteme", "Ahora no")
+    ]
+  },
+  // Cadena de interesados (etapa 2+): d2 gratis; d7 gratis si aún está en la ventana; d14 y d30 pagados.
   d2: {
-    tipo: "lead", dias: 2, etapaMin: 2, soloRecientes: true,
+    tipo: "lead", dias: 2, horas: [40, 66], etapaMin: 2, gratis: true,
     general: [
       cuerpo("Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo?"),
       botones("Sí, sepárelo", "Tengo una duda")
     ]
   },
   d7: {
-    tipo: "lead", dias: 7, etapaMin: 2, por_destino: true,
+    tipo: "lead", dias: 7, etapaMin: 2, por_destino: true, enFep: 132,
     lima: [
       cuerpo("Hola {{1}} ☺️ si agenda su kit esta semana le regalamos un collar amuleto extra, y lo paga recién cuando el motorizado se lo entrega 🫶 ¿Se lo agendo?"),
       botones("Sí, agéndelo", "Tengo una duda")
@@ -120,30 +154,39 @@ const nombrePlantilla = (id, variante) => (variante === "general" ? `toque_${id}
 
 // Pidió que no le escriban (incluye el botón "Cerrar consulta" del toque de 30 días).
 const NO_ESCRIBIR = ["cerrar consulta", "no me interesa", "no estoy interesad", "no me escrib", "no me mand", "no me moleste", "no gracias", "ya no quiero"];
-const SQL_NO_ESCRIBIR = NO_ESCRIBIR.map(() => "lower(i.body) LIKE ?").join(" OR ");
+// Botones de "no" de los toques, solo si el mensaje es exactamente eso ("ahora no estoy en casa" no cuenta).
+const SQL_NO_ESCRIBIR = NO_ESCRIBIR.map(() => "lower(i.body) LIKE ?").join(" OR ") + " OR lower(trim(i.body)) = 'ahora no'";
 
 /** Chats a los que hoy les toca `id` (como mucho `limite`). */
-async function candidatos(db, id, def, limite) {
+export async function candidatos(db, id, def, limite) {
   const desde = def.tipo === "lead" ? "conv.last_inbound_at" : "compra.t";
-  const ventana = def.tipo === "lead" && def.dias === 2
-    ? ["-66 hours", "-40 hours"] // día 2: entre 40 y 66 h de silencio
-    : [`-${def.dias + 2} days`, `-${def.dias} days`];
+  const [hDesde, hHasta] = def.horas || [def.dias * 24, (def.dias + 2) * 24];
+  // Silencio dentro de la ventana del toque; un toque pagado con `enFep`
+  // sale antes (desde esas horas de silencio) si el chat sigue en los 7 días gratis.
+  let silencio = `(datetime(${desde}) >= datetime('now', ?) AND datetime(${desde}) < datetime('now', ?))`;
+  const params = [`-${hHasta} hours`, `-${hDesde} hours`];
+  if (def.enFep) {
+    silencio = `(${silencio} OR (${EN_FEP} AND datetime(${desde}) < datetime('now', ?)))`;
+    params.push(`-${def.enFep} hours`);
+  }
   const filtros = [
     `${desde} IS NOT NULL`,
-    `datetime(${desde}) >= datetime('now', ?)`,
-    `datetime(${desde}) < datetime('now', ?)`,
+    silencio,
     "NOT EXISTS (SELECT 1 FROM toques t WHERE t.conversation_id = conv.id AND t.toque = ?)",
     `NOT EXISTS (SELECT 1 FROM messages o WHERE o.conversation_id = conv.id AND o.direction = 'out' AND o.created_at >= datetime('now', '-20 hours'))`,
     `NOT EXISTS (SELECT 1 FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status IN ('pendiente', 'enviando'))`,
     `NOT EXISTS (SELECT 1 FROM messages i WHERE i.conversation_id = conv.id AND i.direction = 'in' AND (${SQL_NO_ESCRIBIR}))`
   ];
-  const params = [...ventana, id, ...NO_ESCRIBIR.map((t) => `%${t}%`)];
+  params.push(id, ...NO_ESCRIBIR.map((t) => `%${t}%`));
   if (def.tipo === "lead") {
     filtros.push("conv.etapa >= ?", "conv.etapa < 5", "instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') = 0");
     params.push(def.etapaMin);
-    // Día 2: solo leads nuevos (dentro de las 72 h gratis del anuncio).
-    if (def.soloRecientes) filtros.push("conv.created_at >= datetime('now', '-70 hours')");
+    if (def.etapaMax) {
+      filtros.push("conv.etapa <= ?");
+      params.push(def.etapaMax);
+    }
   }
+  if (def.gratis) filtros.push(EN_FEP); // solo mientras Meta no cobra
   if (def.requiere) {
     filtros.push("EXISTS (SELECT 1 FROM toques t WHERE t.conversation_id = conv.id AND t.toque = ? AND t.estado IN ('enviada', 'control'))");
     params.push(def.requiere);
@@ -175,13 +218,19 @@ export async function procesarToques(env) {
   if (enSilencio(Date.now(), env.HORARIO_ENVIO)) return;
 
   await db.prepare("UPDATE toques SET estado = 'fallida', error = 'se cortó la pasada' WHERE estado = 'enviando' AND created_at < datetime('now', '-15 minutes')").run();
-  const hoy = await db.prepare("SELECT COUNT(*) AS n FROM toques WHERE estado = 'enviada' AND created_at >= datetime('now', '-24 hours')").first();
-  let cupo = Math.min(POR_PASADA, Math.max((Number(env.TOQUES_MAX_DIA) || 40) - (hoy?.n || 0), 0));
+  // El tope diario es para lo pagado; los toques gratis solo respetan el tope por pasada.
+  const pagados = Object.keys(TOQUES).filter((t) => !TOQUES[t].gratis);
+  const hoy = await db.prepare(
+    `SELECT COUNT(*) AS n FROM toques WHERE estado = 'enviada' AND created_at >= datetime('now', '-24 hours') AND toque IN (${pagados.map(() => "?").join(",")})`
+  ).bind(...pagados).first();
+  let cupoPagado = Math.max((Number(env.TOQUES_MAX_DIA) || 40) - (hoy?.n || 0), 0);
+  let cupo = POR_PASADA;
 
   for (const id of activos) {
     if (cupo <= 0) break;
     const def = TOQUES[id];
-    const lista = await candidatos(db, id, def, cupo + 2);
+    if (!def.gratis && cupoPagado <= 0) continue;
+    const lista = await candidatos(db, id, def, Math.min(cupo, def.gratis ? cupo : cupoPagado) + 2);
     if (!lista.length) continue;
     const destinos = def.por_destino ? await destinosDeChats(db, lista.map((c) => c.id)).catch(() => ({})) : {};
     const aprobadas = {};
@@ -196,7 +245,7 @@ export async function procesarToques(env) {
     };
 
     for (const c of lista) {
-      if (cupo <= 0) break;
+      if (cupo <= 0 || (!def.gratis && cupoPagado <= 0)) break;
       if (c.id % 5 === 0) {
         // Grupo de control: no se le manda, solo se anota (el día en que le habría tocado).
         await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'control')").bind(c.id, id).run();
@@ -209,6 +258,7 @@ export async function procesarToques(env) {
       const r = await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'enviando')").bind(c.id, id).run();
       if (!r.meta?.changes) continue;
       cupo--;
+      if (!def.gratis) cupoPagado--;
       try {
         const params = aprobada.conNombre ? [primerNombre(c.nombre)] : [];
         const waMessageId = await mandarConEscribiendo(env, c.id, () => enviarTemplate(env, c.wa_id, nombre, aprobada.idioma, params));

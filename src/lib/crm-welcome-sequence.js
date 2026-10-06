@@ -6,7 +6,7 @@
  *
  * Siempre texto libre, nunca plantilla. Cuando la dispara
  * `mandarBienvenidaSiAplica` (contacto nuevo con ctwa_clid), responder acá
- * dentro del primer minuto es justo lo que abre el free entry point de 72h
+ * dentro del primer minuto es justo lo que abre el free entry point de 7 días
  * de Meta — ver docs/whatsapp-ventanas-y-costos.md.
  */
 

@@ -22,6 +22,7 @@
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
+import { estadisticasToques } from "../lib/toques.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -192,10 +193,9 @@ export async function onRequestGetAnuncios({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 7, 1), 60);
-  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
-  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
-
-  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
+  // (Desde el 04/10 hasta el 06/10 este endpoint devolvía error 1101: dos líneas
+  // copiadas de /chats usaban una variable `url` que aquí no existe.)
+  const { results } = await env.CRM_DB.prepare(
     `SELECT COALESCE(c.ad_source_id, '') AS ad_id, MAX(c.ad_headline) AS titular,
             COUNT(*) AS chats,
             SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
@@ -207,6 +207,21 @@ export async function onRequestGetAnuncios({ request, env }) {
      GROUP BY 1 ORDER BY chats DESC LIMIT 100`
   ).bind(`-${dias} days`).all();
   return json({ dias, anuncios: results, nota: "compras = chats etiquetados purchase en el CRM (puede quedarse corto si las vendedoras no marcan la venta)" });
+}
+
+/**
+ * GET /api/asesor/toques?dias=30 — cómo van los toques automáticos
+ * (src/lib/toques.js): por toque, enviados vs. grupo de control, cuántos
+ * respondieron en 24 h y cuántos compraron en 7 días. Si a los 30 días los
+ * tocados no compran más que el control, ese toque se apaga.
+ */
+export async function onRequestGetToques({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 30, 1), 120);
+  const toques = await estadisticasToques(env.CRM_DB, dias).catch((err) => (/no such table/.test(err.message) ? null : Promise.reject(err)));
+  if (!toques) return json({ dias, toques: [], nota: "La tabla toques no existe: falta aplicar migrations/0043_crm_v43.sql (los toques están apagados)." });
+  return json({ dias, toques });
 }
 
 /**

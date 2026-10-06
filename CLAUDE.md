@@ -57,6 +57,15 @@
 
 Más detalle: `docs/asesor.md`.
 
+## Si vas a hacer de director de marketing y CRO
+
+Lee `docs/cro/bitacora.md`, el último `docs/cro/informes/AAAA-MM-DD.md` y la
+última `docs/cro/revision-*.md` antes de proponer. Experimentos solo como
+`variantes` de respuestas que ya se usan (el CRM las reparte y mide); una
+respuesta rápida nueva no es un experimento. La ventana gratis de los anuncios
+es de **7 días** (`docs/whatsapp-ventanas-y-costos.md`). Cómo van los toques:
+`GET /api/asesor/toques`.
+
 ## Si vas a hacer anuncios / creativos
 
 Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en

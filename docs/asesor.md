@@ -8,7 +8,8 @@
 | Export de chats a la hoja de Google | Worker, cron `*/10` | Cloudflare (solo para humanos; el bot ya no la usa) |
 | Leer chats, clasificar pedidos, redactar mensajes, leer boletas | Routines 10:30 · 11:30 · 16:30 · 21:00 · 22:30 (+ «Reporte a pedido», se corre a mano) | Plan de Claude |
 | Director CRO (embudo, pruebas de mensajes, respuestas rápidas nuevas) | Routine 7:52 | Plan de Claude |
-| Coaching y voz del cliente (semanal) | Routine lunes 7:37 | Plan de Claude |
+| Coaching y voz del cliente (semanal) | Routine lunes 7:37 (**al 06/10 no está creada en claude.ai**; prompt abajo) | Plan de Claude |
+| Toques automáticos de los días 2/7/14/30 (`src/lib/toques.js`, `docs/plan-seguimientos.md`) | Worker, cron `*/5` (minuto % 5 === 2); apagado mientras `TOQUES` esté vacío | Cloudflare + plantillas (gratis en los 7 días del anuncio, pagadas después) |
 | Etapa del embudo de cada chat, reparto de versiones en prueba | Worker, cron `*/5` | Cloudflare (sin IA) |
 | Resumen semanal por correo | Apps Script (`resumenSemanal`) → `GET /api/asesor/resumen` | Gratis (Gmail + Worker, sin IA) |
 | Aprobar / enviar / programar / decidir pruebas | CRM → ✨ Sugerencias y ⚡ editar respuesta | — |
@@ -89,7 +90,7 @@ El plan gratis de Cloudflare corta cada ejecución en **50 consultas a D1** y
 
 | Cron | Qué hace |
 |---|---|
-| `* * * * *` | Plantilla de pedidos web a los 3 min. En los minutos múltiplos de 5, además: seguimientos vencidos: los reserva (pendiente → enviando) y manda hasta 12 por pasada, ~2 consultas cada uno. Lo reservado hace más de 15 min sin salir queda fallido (nunca se reenvía a ciegas). Carrito abandonado (apagado si no hay `CARRITO_AUTO_HORAS`), de a 8. |
+| `* * * * *` | Plantilla de pedidos web a los 3 min. En los minutos `% 5 === 2`: toques automáticos (`procesarToques`, hasta 4 por pasada; nada si `TOQUES` está vacío). En los minutos múltiplos de 5, además: seguimientos vencidos: los reserva (pendiente → enviando) y manda hasta 12 por pasada, ~2 consultas cada uno. Lo reservado hace más de 15 min sin salir queda fallido (nunca se reenvía a ciegas). Carrito abandonado (apagado si no hay `CARRITO_AUTO_HORAS`), de a 8. |
 | `*/10` | Export de chats a la hoja de Google. |
 | `*/15` | Link de envío automático, resumen semanal / pruebas listas (una vez al día; esa pasada no hace más), etapa del embudo (3 consultas) y frases (≈4). |
 

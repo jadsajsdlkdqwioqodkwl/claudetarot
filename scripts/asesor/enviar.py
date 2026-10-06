@@ -50,7 +50,7 @@ prueba. El "analisis" de cada chat se guarda para el coaching y el resumen
 semanal (no avisa a nadie). Los "envios" (link con la boleta
 ya lista) no van a Telegram ni a las vendedoras: solo al admin en ✨ Sugerencias.
 """
-import base64, glob, html, json, os, re, subprocess, sys, urllib.error, urllib.request
+import base64, datetime as dt, glob, html, json, os, re, subprocess, sys, urllib.error, urllib.request
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -326,6 +326,15 @@ def main():
             return
         r = al_worker(clave, {"informe": texto, "origen": "director CRO"})
         print(f"Informe guardado: {r.get('link') or 'ok'}")
+        # Copia en el repo (docs/cro/informes/AAAA-MM-DD.md) para que las sesiones
+        # de Claude Code puedan leer los informes del director; la Routine la commitea.
+        carpeta_inf = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "cro", "informes")
+        os.makedirs(carpeta_inf, exist_ok=True)
+        hoy = (dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d")  # hora de Lima
+        ruta_inf = os.path.join(carpeta_inf, f"{hoy}.md")
+        with open(ruta_inf, "w") as fh:
+            fh.write(f"# Informe del director CRO · {hoy}\n\n{texto}\n")
+        print(f"Copia en el repo: {ruta_inf} (haz commit y push a main)")
         return
 
     ruta = next(a for a in args if not a.startswith("--"))

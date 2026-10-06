@@ -19,7 +19,7 @@ re-engagement-sequencing, ghost-recovery-sequences y voz-tarot-store.
 | Volvieron a escribir tras ≥ 1 día de silencio | 52 chats | 38 de ellos tras un mensaje nuestro; 7 compraron después (6 tras un toque) |
 | Chats que no compraron, por etapa | 2 conversó: 124 · 3 dijo destino: 73 · 4 le pidieron cierre: 167 | **~360 personas con intención real sin tocar** |
 | Solo saludo del anuncio (etapa 1) | 544 | Frías: no se les gasta plantilla pagada |
-| Vienen de anuncio Click-to-WhatsApp | 97 % | Las primeras 72 h, las plantillas son gratis |
+| Vienen de anuncio Click-to-WhatsApp | 97 % | Los primeros **7 días** nada se cobra (Meta amplió la ventana de 72 h a 7 días el 28/09/2026) |
 
 Límite: son 10 días de historia, así que la cola de 7, 14 y 30 días todavía
 no se puede medir. Por eso el plan trae un **grupo de control** (1 de cada 5
@@ -58,15 +58,45 @@ Clientes (ya compraron), sin descuento sobre el kit:
 | Día 30 | **Referidos**: la amiga que escriba de su parte y ella reciben un collar | Cliente nuevo por el costo de 2 collares |
 | Día 60 | **Upgrade**: mazo Gold S/139 | +S/139 |
 
-### A. No compró (etapa 2 o más)
+### Qué cambió el 06/10/2026: la semana gratis
+
+Meta amplió el free entry point de los anuncios de 72 h a **7 días** (desde
+que respondimos al primer mensaje; la bienvenida lo hace al minuto). Dentro de
+esa semana **no se cobra nada**, ni las plantillas de marketing. Por eso:
+
+- toda la primera semana de toques es gratis (`gratis` en `toques.js`: solo
+  salen si el chat vino de anuncio y tiene menos de 160 h);
+- el día 7 de interesados se **adelanta a las 132 h (5,5 días) de silencio**
+  si el chat sigue en la ventana (`enFep`), para que salga gratis; si ya no
+  está en la ventana, sale pagado a los 7 días como antes;
+- se suma una **cadena fría**, aparte de la de interesados, para los que solo
+  mandaron el saludo del anuncio y nunca contestaron la bienvenida (etapa 1,
+  ~50 por día). Antes no se les escribía porque costaba plantilla; ahora es
+  gratis. Nunca se les paga una plantilla: si no contestan en la semana, se
+  acaba ahí.
+- Respuesta a "¿a todos o solo a los interesados?": **a todos mientras sea
+  gratis (la semana del anuncio), solo a los interesados cuando cuesta.**
+  El tope `TOQUES_MAX_DIA` es solo para lo pagado.
+
+### A0. Solo saludó (etapa 1) — cadena fría, siempre gratis
+
+| Toque | Cuándo | Plantilla | Mensaje | Botones |
+|---|---|---|---|---|
+| **Frío día 2** | 40–66 h de silencio, chat de < 160 h | `toque_frio2` | Hola {{1}} ☺️ vi que preguntó por el kit de tarot y no alcanzamos a conversar. Le cuento que el envío es gratis a todo el Perú y en Lima paga recién al recibir ✨ ¿Sería para Lima o para provincia? | Lima · Provincia |
+| **Frío día 6** | 132–160 h de silencio, chat de < 160 h | `toque_frio6` | Hola {{1}} ☺️ si separa su kit de tarot esta semana le regalamos un collar amuleto extra 🫶 Trae las 78 cartas con su significado impreso, manual y tapete, con envío gratis a todo el Perú ✨ ¿Le cuento cómo le llega? | Sí, cuénteme · Ahora no |
+
+Si contesta cualquier botón sube a etapa 2+ y entra a la cadena de
+interesados. "Ahora no" (exacto) corta todos los toques de ese chat.
+
+### A. No compró y conversó (etapa 2 o más)
 
 | Toque | Cuándo | Plantilla | Mensaje | Botones |
 |---|---|---|---|---|
 | Ventana (ya existe) | 4–12 h | — | Seguimientos de respuestas rápidas y sugerencias, máx. 2 sin respuesta | — |
-| **Día 2** (gratis: 72 h del anuncio) | 40–66 h de silencio, lead de < 70 h | `toque_d2` | Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo? | Sí, sepárelo · Tengo una duda |
-| **Día 7** Lima | 7 días de silencio | `toque_d7_lima` | Hola {{1}} ☺️ si agenda su kit esta semana le regalamos un collar amuleto extra, y lo paga recién cuando el motorizado se lo entrega 🫶 ¿Se lo agendo? | Sí, agéndelo · Tengo una duda |
-| **Día 7** provincia | 7 días de silencio | `toque_d7_provincia` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra 🫶 Con S/20 de adelanto se lo enviamos a su agencia y el resto lo paga al recoger. ¿Se lo separo? | Sí, sepárelo · Me da desconfianza |
-| **Día 7** sin destino | 7 días de silencio | `toque_d7` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra, con envío gratis a todo el Perú 🫶 ¿Sería para Lima o para provincia? | Lima · Provincia |
+| **Día 2** (gratis) | 40–66 h de silencio, chat de < 160 h | `toque_d2` | Hola {{1}} ☺️ le cuento que cada carta del kit trae su significado impreso, así puede hacer su primera lectura desde el primer día ✨ ¿Le separo el suyo? | Sí, sepárelo · Tengo una duda |
+| **Día 7** Lima (gratis si sale antes de las 160 h del chat; si no, pagado) | 7–9 días de silencio, o desde 5,5 días si sigue en la semana gratis | `toque_d7_lima` | Hola {{1}} ☺️ si agenda su kit esta semana le regalamos un collar amuleto extra, y lo paga recién cuando el motorizado se lo entrega 🫶 ¿Se lo agendo? | Sí, agéndelo · Tengo una duda |
+| **Día 7** provincia | igual | `toque_d7_provincia` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra 🫶 Con S/20 de adelanto se lo enviamos a su agencia y el resto lo paga al recoger. ¿Se lo separo? | Sí, sepárelo · Me da desconfianza |
+| **Día 7** sin destino | igual | `toque_d7` | Hola {{1}} ☺️ si separa su kit esta semana le regalamos un collar amuleto extra, con envío gratis a todo el Perú 🫶 ¿Sería para Lima o para provincia? | Lima · Provincia |
 | **Día 14** | 7 días tras el día 7 | `toque_d14` | Hola {{1}} ☺️ por estos 2 días le dejamos su kit en S/79, o 2 kits en S/149 si quiere regalarle uno a alguien especial ✨ ¿Cuál le separo? | 1 kit a S/79 · 2 kits a S/149 |
 | **Día 30** | 16 días tras el día 14 | `toque_d30` | Hola {{1}} ☺️ no quiero incomodarle. Si aún le interesa, puede separar su kit con solo S/10 y lo recibe cuando usted quiera ✨ ¿Se lo dejo separado? | Sí, separarlo · Cerrar consulta |
 
@@ -91,6 +121,9 @@ el CRM; la vendedora sigue con su voz de siempre:
 
 | Botón | Respuesta de la vendedora |
 |---|---|
+| Lima / Provincia (frío día 2) | Sigue la cadena Lima 1 o Provincia 1 como si recién hubiera escrito (es un cliente que no leyó la bienvenida: contarle qué trae el kit antes de pedir datos) |
+| Sí, cuénteme (frío día 6) | "Claro ☺️ ¿sería para Lima o para provincia? Así le cuento cómo le llega ✨" y recordarle el collar de regalo de esta semana |
+| Ahora no | "Gracias por avisarnos ☺️ cualquier cosa aquí estamos ✨" (no vuelve a recibir toques) |
 | Sí, sepárelo / Sí, agéndelo / Sí, separarlo | Lima: "Claro!! ☺️ Me indica su ubicación 📍 y teléfono de quién lo va a recibir por favor ✨" · Provincia: "Muchas gracias! Me indica sus datos: nombre, DNI y agencia ☺️✨" (y el Yape de S/20) |
 | Tengo una duda | "Claro ☺️ cuénteme, ¿qué le gustaría saber?" (y escuchar: no empujar) |
 | Me da desconfianza | "Le entiendo ☺️ le paso fotos de los envíos de hoy por Shalom y nuestro Instagram para que nos conozca ✨" + fotos/video. Recién después, el adelanto |
@@ -112,7 +145,10 @@ el nombre del botón, para que la vendedora las mande con un toque.
   seguimiento programado o si pidió que no le escriban ("Cerrar consulta",
   "no me interesa", "no gracias"…).
 - Solo dentro de `HORARIO_ENVIO`, con su "escribiendo…" (`mandarConEscribiendo`).
-- Tope de 40 plantillas pagadas por día (`TOQUES_MAX_DIA`).
+- Tope de 40 plantillas **pagadas** por día (`TOQUES_MAX_DIA`); las gratis de
+  la semana del anuncio no lo gastan (solo el tope de 4 por pasada del cron).
+- Los toques `gratis` exigen que el chat venga de un anuncio (`ctwa_clid`) y
+  tenga menos de 160 h: fuera de eso no salen, aunque les toque.
 - Grupo de control: chats con id múltiplo de 5. Se compara en
   `GET /api/asesor/toques`: enviados vs. control, % que respondió en 24 h y
   % que compró en 7 días. **Si a los 30 días el grupo que recibió toques no
@@ -123,27 +159,33 @@ el nombre del botón, para que la vendedora las mande con un toque.
 ### Costo
 
 Las plantillas de marketing se cobran por mensaje según el país (ver el rate
-card de Peru en WhatsApp Manager). Con el tope de 40 por día, en el peor caso
-son 1 200 al mes. El día 2 sale gratis dentro de las 72 h del anuncio, y el
+card de Peru en WhatsApp Manager). Con el tope de 40 pagadas por día, en el
+peor caso son 1 200 al mes. Toda la primera semana (frío 2, día 2, frío 6 y
+el día 7 adelantado) sale gratis dentro de los 7 días del anuncio, y el
 cliente que toca un botón abre 24 h de texto libre gratis para la vendedora.
+Riesgo de la cadena fría: no cuesta plata pero sí calidad del número si
+bloquean; vigilar en WhatsApp Manager y apagar `frio6` primero.
 
 ## Cómo está hecho (y cómo prenderlo)
 
-- `src/lib/toques.js`: el motor y los textos. Las 11 plantillas de arriba
+- `src/lib/toques.js`: el motor y los textos. Las 13 plantillas de arriba
   (Marketing, es_PE) **se crean solas en Meta** la primera vez que les toca a
   alguien; el día 7 elige la versión Lima, provincia o sin destino según el
   chat (`crm-destino.js`).
 - `migrations/0043_crm_v43.sql`: tabla `toques`.
 - `src/lib/plantillas.js`: aprobada/idioma/{{1}} de cada plantilla, compartido
   con el pedido web.
-- **Falta prenderlo** (no se conectó: es envío automático de mensajes pagados
-  y queda a decisión del dueño):
-  1. Aplicar `migrations/0043_crm_v43.sql`.
-  2. En `src/index.js`, dentro del cron de cada minuto, llamar a
-     `procesarToques(env)` en los minutos `% 5 === 2` (su propia ejecución,
-     por el tope de 50 consultas a D1).
-  3. En `wrangler.jsonc`: `"TOQUES": "d2,d7,d14,d30,post7,post14,post30,post60"` y
-     `"TOQUES_MAX_DIA": "40"`.
+- `src/index.js` ya llama a `procesarToques(env)` en los minutos `% 5 === 2`
+  (su propia ejecución por el tope de 50 consultas a D1); no hace nada
+  mientras `TOQUES` esté vacío. `GET /api/asesor/toques?dias=30` da enviados
+  vs. control por toque (el director CRO lo lee).
+- **Para prenderlo** (decisión del dueño; recomendación del 06/10: prender
+  primero solo lo gratis y medir una semana):
+  1. Aplicar `migrations/0043_crm_v43.sql` (a mano, como todas).
+  2. En `wrangler.jsonc`: `"TOQUES": "frio2,d2,frio6,d7"` (todo gratis salvo
+     el d7 de chats viejos) y desplegar. A la semana, si el grupo tocado
+     responde y compra más que el control, sumar `d14,d30,post7,post14,post30,post60`.
+  3. Guardar en el CRM (⚡) las respuestas a cada botón de la tabla de arriba.
 
 Fuentes: [AsisteClick — carritos abandonados por WhatsApp](https://asisteclick.com/en/blog/recuperar-carritos-abandonados-whatsapp/),
 [eGrow — WhatsApp abandoned cart templates](https://www.egrow.com/en/blog/whatsapp-abandoned-cart-template-2026),

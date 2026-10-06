@@ -749,7 +749,7 @@ el bucket se pueda crear.
 - **Iconos en vez de emojis** para toda la interfaz (`public/crm/icons.js`,
   SVG inline) y un selector de emojis propio en el composer, sin librerías
   externas.
-- **Ventanas de 24h/72h y costos**: ver [`docs/whatsapp-ventanas-y-costos.md`](docs/whatsapp-ventanas-y-costos.md)
+- **Ventanas de 24 h / 7 días (anuncios) y costos**: ver [`docs/whatsapp-ventanas-y-costos.md`](docs/whatsapp-ventanas-y-costos.md)
   para cuándo un mensaje cuesta, cuándo no, el truco del botón de
   quick-reply para reabrir ventana gratis, y la recomendación por
   escenario COD (Lima vs. provincia).
