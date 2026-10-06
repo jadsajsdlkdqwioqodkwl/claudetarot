@@ -83,7 +83,7 @@ def sheet_html(pages, order):
     for (x, y), num in zip(FRAMES, order):
         parts.append(frame_html(pages, num, x, y))
         if num == 1:
-            parts.append('<img class="cover" src="img/portada.png">')
+            parts.append('<img class="cover" src="img/portada_crop.png">')
     parts.append("</div>")
     return "".join(parts)
 
@@ -95,9 +95,11 @@ def build(tag, pages, outdir):
     # Portada: la imagen trae su propio borde negro (centros en px 24.3 / 599.3
     # horizontal y 34.5 / 850.5 vertical, de 624 x 890). Se escala para que ese
     # borde caiga exactamente donde iria el marco; el marco SVG no se dibuja.
+    # portada_crop.png = portada.png recortada a ese borde (px 21..603 x 31..854),
+    # asi nada de la imagen queda fuera de la rejilla de marcos.
     sx = FW / (599.3 - 24.3); sy = FH / (850.5 - 34.5)
-    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2 - 24.3 * sx, covery=Y1 - 34.5 * sy,
-                  coverw=624 * sx, coverh=890 * sy, **imgp)
+    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2 - (24.3 - 21) * sx, covery=Y1 - (34.5 - 31) * sy,
+                  coverw=(603 - 21) * sx, coverh=(854 - 31) * sy, **imgp)
     outs = []
     for name, rows in IMPOSICION.items():
         html = ('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head><body>%s</body></html>'
