@@ -102,7 +102,7 @@ export async function procesarPedidosWeb(env) {
       const contacto = await obtenerOCrearContacto(db, p.wa_id, null, null);
       if (!contacto.name && p.nombre) await db.prepare("UPDATE contacts SET name = ? WHERE id = ?").bind(p.nombre, contacto.id).run();
       const conv = await obtenerOCrearConversacion(db, contacto.id);
-      const waMessageId = await mandarConEscribiendo(env, conv.id, () => enviarTemplate(env, p.wa_id, nombre, idioma, []));
+      const waMessageId = await mandarConEscribiendo(env, conv.id, (e) => enviarTemplate(e, p.wa_id, nombre, idioma, []));
       await registrarMensajeSaliente(db, conv.id, {
         waMessageId,
         type: "template",

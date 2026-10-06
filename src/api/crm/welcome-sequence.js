@@ -14,7 +14,9 @@
  *                                  — { id, orden_media: [ids de welcome_step_media] } → orden en que
  *                                    salen sus fotos/videos
  *                                  — { id, texto_primero: bool } → el texto antes que las fotos
- * POST y la edición aceptan también `texto_primero`.
+ * POST y la edición aceptan también `texto_primero` y `producto_id` (la
+ * bienvenida de ese producto; null = la general de Tarot Store). Ver
+ * pasosDelChat en crm-welcome-sequence.js.
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -28,7 +30,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: pasos } = await env.CRM_DB.prepare(
-    `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
+    `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, s.producto_id, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
   ).all();
 
   const { results: media } = await env.CRM_DB.prepare(
@@ -57,9 +59,9 @@ async function post({ request, env }) {
 
   const max = await env.CRM_DB.prepare("SELECT COALESCE(MAX(step_order), 0) AS m FROM welcome_steps").first();
   const creado = await env.CRM_DB.prepare(
-    "INSERT INTO welcome_steps (title, body, step_order, texto_primero) VALUES (?, ?, ?, ?) RETURNING *"
+    "INSERT INTO welcome_steps (title, body, step_order, texto_primero, producto_id) VALUES (?, ?, ?, ?, ?) RETURNING *"
   )
-    .bind(title, body, (max?.m || 0) + 1, payload?.texto_primero ? 1 : 0)
+    .bind(title, body, (max?.m || 0) + 1, payload?.texto_primero ? 1 : 0, Number(payload?.producto_id) || null)
     .first();
 
   let i = 0;
@@ -182,6 +184,9 @@ async function patch({ request, env, agent }) {
   }
   await env.CRM_DB.prepare("UPDATE welcome_steps SET title = ?, body = ?, texto_primero = COALESCE(?, texto_primero) WHERE id = ?")
     .bind(title, body, payload?.texto_primero === undefined ? null : payload.texto_primero ? 1 : 0, id).run();
+  if (payload?.producto_id !== undefined) {
+    await env.CRM_DB.prepare("UPDATE welcome_steps SET producto_id = ? WHERE id = ?").bind(Number(payload.producto_id) || null, id).run();
+  }
 
   if (mediaKeys !== null) {
     const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM welcome_step_media WHERE welcome_step_id = ?").bind(id).all();

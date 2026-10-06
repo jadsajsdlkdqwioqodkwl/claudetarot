@@ -14,6 +14,21 @@ import { mandarTexto, mandarMediaGuardada, pausaEnvio, esperar, prepararMedias, 
 import { versionesEnPrueba, elegirVersion, registrarUso } from "./crm-variantes.js";
 
 /**
+ * La bienvenida de cada producto (welcome_steps.producto_id, 0045): un chat
+ * con producto recibe la suya; si ese producto no tiene pasos propios, la
+ * general solo en la línea principal (la general es la de Tarot Store). Un
+ * chat sin producto, la general (producto_id NULL).
+ */
+async function pasosDelChat(env, conversationId, todos) {
+  const conv = await env.CRM_DB.prepare("SELECT producto_id, linea_id FROM conversations WHERE id = ?")
+    .bind(conversationId).first().catch(() => null);
+  const generales = todos.filter((p) => !p.producto_id);
+  if (!conv?.producto_id) return conv?.linea_id ? [] : generales;
+  const propios = todos.filter((p) => p.producto_id === conv.producto_id);
+  return propios.length ? propios : conv.linea_id ? [] : generales;
+}
+
+/**
  * `pruebas`: solo la bienvenida real (la del webhook). Si un paso tiene
  * versiones en prueba (tabla `variantes`), sale una de ellas según el reparto
  * de crm-variantes.js y queda anotado cuál salió. Las pruebas del sandbox y
@@ -26,7 +41,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT * FROM welcome_steps ORDER BY step_order ASC"
   ).all();
-  const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : todos;
+  const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : await pasosDelChat(env, conversationId, todos);
 
   if (!pasos.length) return 0;
 

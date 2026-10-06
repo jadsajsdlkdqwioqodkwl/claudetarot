@@ -18,6 +18,7 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -25,7 +26,10 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-async function get({ env }) {
+async function get({ request, env: envBase }) {
+  // Con ?conversation_id= las plantillas de la cuenta (WABA) del número de ese chat.
+  const conversationId = Number(new URL(request.url).searchParams.get("conversation_id")) || null;
+  const env = await envDeConversacion(envBase, conversationId);
   if (!env.WHATSAPP_BUSINESS_ACCOUNT_ID) return json({ error: "Falta WHATSAPP_BUSINESS_ACCOUNT_ID." }, 503);
   try {
     const templates = await listarTemplates(env);
@@ -59,7 +63,7 @@ async function post({ request, env, agent }) {
 
   try {
     await pausaEnvio(env, conversationId);
-    const waMessageId = await mandarConEscribiendo(env, conversationId, () => enviarTemplate(env, conv.wa_id, name, language, parametros));
+    const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, name, language, parametros));
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "template",

@@ -11,6 +11,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { bloquearUsuario } from "../../lib/whatsapp.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -45,7 +46,7 @@ async function post({ request, env }) {
   let aviso = null;
   if (env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID) {
     try {
-      await bloquearUsuario(env, conv.wa_id, bloquear);
+      await bloquearUsuario(await envDeConversacion(env, conversationId), conv.wa_id, bloquear);
     } catch (err) {
       aviso = bloquear
         ? `Quedó bloqueado en el CRM, pero WhatsApp no lo bloqueó: ${err.message}`

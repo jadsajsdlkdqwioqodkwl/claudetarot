@@ -13,6 +13,7 @@ import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/
 import { nombresDeProductos, guardarProductosEnCache, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 import { mandarAlToque } from "../../lib/crm-send.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -59,8 +60,9 @@ async function get({ request, env }) {
   return json({ orders });
 }
 
-/** GET /api/crm/catalog-products — el picker de "elegir un producto". */
-async function getProductos({ env }) {
+/** GET /api/crm/catalog-products — el picker de "elegir un producto" (?conversation_id= el catálogo del número de ese chat). */
+async function getProductos({ request, env: envBase }) {
+  const env = await envDeConversacion(envBase, Number(new URL(request.url).searchParams.get("conversation_id")) || null);
   if (!env.WHATSAPP_CATALOG_ID) return json({ error: "Falta WHATSAPP_CATALOG_ID." }, 503);
   try {
     const productos = await listarProductosCatalogo(env, env.WHATSAPP_CATALOG_ID);
@@ -71,7 +73,7 @@ async function getProductos({ env }) {
   }
 }
 
-async function post({ request, env, agent }) {
+async function post({ request, env: envBase, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -81,6 +83,8 @@ async function post({ request, env, agent }) {
 
   const conversationId = Number(payload?.conversation_id);
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
+  // El catálogo es el del número de ese chat (lineas.catalog_id en otra línea).
+  const env = await envDeConversacion(envBase, conversationId);
 
   const conv = await env.CRM_DB.prepare(
     `SELECT conv.id, c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
@@ -116,7 +120,7 @@ async function post({ request, env, agent }) {
         nombre = mapa[retailerId]?.name || null;
       }
 
-      const waMessageId = await mandarAlToque(env, conversationId, () => enviarProducto(env, conv.wa_id, env.WHATSAPP_CATALOG_ID, retailerId, payload?.text));
+      const waMessageId = await mandarAlToque(env, conversationId, (e) => enviarProducto(e, conv.wa_id, e.WHATSAPP_CATALOG_ID, retailerId, payload?.text));
       await registrarMensajeSaliente(env.CRM_DB, conversationId, {
         waMessageId,
         type: "product",
@@ -137,7 +141,7 @@ async function post({ request, env, agent }) {
         portadas = [...buenos, ...productos].map((p) => p.retailer_id);
       } catch { /* si falla, se manda igual sin miniatura elegida a mano */ }
     }
-    const waMessageId = await mandarAlToque(env, conversationId, () => enviarCatalogoConPortada(env, conv.wa_id, payload?.text, portadas));
+    const waMessageId = await mandarAlToque(env, conversationId, (e) => enviarCatalogoConPortada(e, conv.wa_id, payload?.text, portadas));
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "catalog",

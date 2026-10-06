@@ -35,6 +35,11 @@ const estado = {
   filtroAgente: "",
   filtroEtiqueta: "",
   filtroOcultos: false,
+  // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
+  filtroProducto: "",
+  filtroLinea: "",
+  productos: [],
+  lineas: [],
   filtroTexto: "",
   filtroDias: 0,
   buscarEn: "",
@@ -224,6 +229,7 @@ async function mostrarApp() {
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
   cargarAsesorasFiltro();
+  cargarProductos();
   cargarQuickReplies();
   configurarNotificaciones();
   configurarInstalacion();
@@ -451,12 +457,191 @@ function activarOjito(id) {
 
 $("#btn-abrir-bienvenida").addEventListener("click", async () => {
   $("#modal-bienvenida-fondo").classList.add("abierto");
+  $("#seq-producto").innerHTML = opcionesProducto("", "General (Tarot Store)");
   await pintarSecuenciaBienvenida();
 });
 $("#bienvenida-cerrar").addEventListener("click", () => {
   $("#modal-bienvenida-fondo").classList.remove("abierto");
   cancelarEdicionPaso();
   refrescarVistasLead();
+});
+
+/* ---------- Productos y números de WhatsApp (solo admin) ---------- */
+
+$("#btn-abrir-productos").addEventListener("click", async () => {
+  $("#modal-productos-fondo").classList.add("abierto");
+  cancelarEdicionProducto();
+  cancelarEdicionLinea();
+  await pintarModalProductos();
+});
+$("#productos-cerrar").addEventListener("click", () => {
+  $("#modal-productos-fondo").classList.remove("abierto");
+  cargarProductos();
+});
+
+async function pintarModalProductos() {
+  await cargarProductos();
+  let secuencias = [];
+  try { secuencias = (await pedir("/api/crm/followup-sequences")).sequences || []; } catch { /* sin secuencias */ }
+  estado.secuenciasProducto = secuencias;
+  pintarSelectsProducto();
+
+  const nombreLinea = (id) => lineaDe(id)?.nombre || "Tarot Store (principal)";
+  $("#lista-productos").innerHTML = estado.productos.length ? estado.productos.map((p) => `
+    <div class="fila-seguimiento ${p.activo ? "" : "apagado"}">
+      <div>
+        <div class="nombre">📦 ${escapar(p.nombre)}${p.activo ? "" : " · apagado"} <span class="sub">· ${p.chats} chat${p.chats === 1 ? "" : "s"} · 📱 ${escapar(nombreLinea(p.linea_id))}</span></div>
+        <div class="sub">${[
+          p.anuncios ? `Anuncios: ${escapar(p.anuncios)}` : "",
+          p.palabras ? `Palabras: ${escapar(p.palabras)}` : "",
+          p.precio ? `Precio: ${escapar(p.precio)}` : "",
+          p.secuencia_id ? `Seguimiento: ${escapar(secuencias.find((x) => x.id === p.secuencia_id)?.title || `#${p.secuencia_id}`)}` : "Sin seguimiento de leads",
+          p.bienvenida_auto ? "" : "Sin bienvenida automática"
+        ].filter(Boolean).join(" · ")}</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="editar-producto" data-id="${p.id}" title="Editar">${icon("pencil")}</button>
+      </div>
+    </div>`).join("") : `<p class="ayuda-modal">Todavía no hay productos. Los chats sin producto siguen como siempre (Tarot Store).</p>`;
+  $("#lista-productos").querySelectorAll(".editar-producto").forEach((btn) => {
+    btn.addEventListener("click", () => editarProducto(productoDe(btn.dataset.id)));
+  });
+
+  $("#lista-lineas").innerHTML = `
+    <div class="fila-seguimiento"><div><div class="nombre">📱 Tarot Store (principal)</div><div class="sub">El de siempre (wrangler.jsonc).</div></div></div>
+    ${estado.lineas.map((l) => `
+    <div class="fila-seguimiento ${l.activa ? "" : "apagado"}">
+      <div>
+        <div class="nombre">📱 ${escapar(l.nombre)}${l.marca ? ` · ${escapar(l.marca)}` : ""}${l.activa ? "" : " · apagado"}</div>
+        <div class="sub">Phone ID ${escapar(l.phone_number_id)}${l.waba_id ? ` · WABA ${escapar(l.waba_id)}` : " · sin WABA (no lista plantillas)"}${l.catalog_id ? ` · catálogo ${escapar(l.catalog_id)}` : ""}${l.token_var ? ` · token ${escapar(l.token_var)}` : ""}</div>
+      </div>
+      <div style="display:flex;gap:4px"><button class="editar-linea" data-id="${l.id}" title="Editar">${icon("pencil")}</button></div>
+    </div>`).join("")}`;
+  $("#lista-lineas").querySelectorAll(".editar-linea").forEach((btn) => {
+    btn.addEventListener("click", () => editarLinea(lineaDe(btn.dataset.id)));
+  });
+}
+
+function pintarSelectsProducto(p = null) {
+  $("#prod-linea").innerHTML = `<option value="">📱 Número: Tarot Store (principal)</option>`
+    + estado.lineas.map((l) => `<option value="${l.id}" ${p?.linea_id === l.id ? "selected" : ""}>📱 Número: ${escapar(l.nombre)}</option>`).join("");
+  $("#prod-secuencia").innerHTML = `<option value="">Ninguno</option>`
+    + (estado.secuenciasProducto || []).map((x) => `<option value="${x.id}" ${p?.secuencia_id === x.id ? "selected" : ""}>${escapar(x.title)}</option>`).join("");
+}
+
+function editarProducto(p) {
+  if (!p) return;
+  estado.editandoProductoId = p.id;
+  $("#prod-form-titulo").textContent = `Editar ${p.nombre}`;
+  $("#prod-nombre").value = p.nombre || "";
+  $("#prod-anuncios").value = p.anuncios || "";
+  $("#prod-palabras").value = p.palabras || "";
+  $("#prod-precio").value = p.precio || "";
+  $("#prod-notas").value = p.notas || "";
+  $("#prod-bienvenida").checked = p.bienvenida_auto !== 0;
+  $("#prod-activo").checked = Boolean(p.activo);
+  pintarSelectsProducto(p);
+  $("#prod-guardar").textContent = "Guardar cambios";
+  $("#prod-cancelar-edicion").style.display = "";
+  $("#prod-nombre").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelarEdicionProducto() {
+  estado.editandoProductoId = null;
+  $("#prod-form-titulo").textContent = "Agregar producto";
+  ["#prod-nombre", "#prod-anuncios", "#prod-palabras", "#prod-precio", "#prod-notas"].forEach((id) => { $(id).value = ""; });
+  $("#prod-bienvenida").checked = true;
+  $("#prod-activo").checked = true;
+  pintarSelectsProducto();
+  $("#prod-guardar").textContent = "Agregar producto";
+  $("#prod-cancelar-edicion").style.display = "none";
+}
+$("#prod-cancelar-edicion").addEventListener("click", cancelarEdicionProducto);
+
+$("#prod-guardar").addEventListener("click", async () => {
+  const datos = {
+    nombre: $("#prod-nombre").value.trim(),
+    linea_id: Number($("#prod-linea").value) || null,
+    anuncios: $("#prod-anuncios").value,
+    palabras: $("#prod-palabras").value,
+    precio: $("#prod-precio").value,
+    notas: $("#prod-notas").value,
+    secuencia_id: Number($("#prod-secuencia").value) || null,
+    bienvenida_auto: $("#prod-bienvenida").checked,
+    activo: $("#prod-activo").checked
+  };
+  if (!datos.nombre) return alert("Ponle un nombre.");
+  if (!datos.anuncios.trim() && !datos.palabras.trim() && !datos.linea_id) {
+    if (!confirm("Sin IDs de anuncio ni palabras clave el CRM no lo va a reconocer solo (solo a mano). ¿Guardar igual?")) return;
+  }
+  const btn = $("#prod-guardar");
+  btn.disabled = true;
+  try {
+    const editando = estado.editandoProductoId;
+    await pedir("/api/crm/productos", {
+      method: editando ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editando ? { id: editando, ...datos } : datos)
+    });
+    cancelarEdicionProducto();
+    await pintarModalProductos();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function editarLinea(l) {
+  if (!l) return;
+  estado.editandoLineaId = l.id;
+  $("#linea-form-titulo").textContent = `Editar ${l.nombre}`;
+  $("#linea-nombre").value = l.nombre || "";
+  $("#linea-phone").value = l.phone_number_id || "";
+  $("#linea-waba").value = l.waba_id || "";
+  $("#linea-catalogo").value = l.catalog_id || "";
+  $("#linea-token").value = l.token_var || "";
+  $("#linea-marca").value = l.marca || "";
+  $("#linea-guardar").textContent = "Guardar cambios";
+  $("#linea-cancelar-edicion").style.display = "";
+  $("#linea-nombre").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelarEdicionLinea() {
+  estado.editandoLineaId = null;
+  $("#linea-form-titulo").textContent = "Agregar número";
+  ["#linea-nombre", "#linea-phone", "#linea-waba", "#linea-catalogo", "#linea-token", "#linea-marca"].forEach((id) => { $(id).value = ""; });
+  $("#linea-guardar").textContent = "Agregar número";
+  $("#linea-cancelar-edicion").style.display = "none";
+}
+$("#linea-cancelar-edicion").addEventListener("click", cancelarEdicionLinea);
+
+$("#linea-guardar").addEventListener("click", async () => {
+  const datos = {
+    nombre: $("#linea-nombre").value.trim(),
+    phone_number_id: $("#linea-phone").value.trim(),
+    waba_id: $("#linea-waba").value.trim(),
+    catalog_id: $("#linea-catalogo").value.trim(),
+    token_var: $("#linea-token").value.trim(),
+    marca: $("#linea-marca").value.trim()
+  };
+  if (!datos.nombre || !datos.phone_number_id) return alert("Falta el nombre o el Phone number ID.");
+  const btn = $("#linea-guardar");
+  btn.disabled = true;
+  try {
+    const editando = estado.editandoLineaId;
+    await pedir("/api/crm/lineas", {
+      method: editando ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editando ? { id: editando, ...datos } : datos)
+    });
+    cancelarEdicionLinea();
+    await pintarModalProductos();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 async function pintarSecuenciaBienvenida() {
@@ -466,7 +651,7 @@ async function pintarSecuenciaBienvenida() {
   cont.innerHTML = steps.length ? steps.map((s, i) => `
     <div class="fila-seguimiento">
       <div>
-        <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)}</div>
+        <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)} <span class="badge-producto">${s.producto_id ? `📦 ${escapar(productoDe(s.producto_id)?.nombre || `Producto ${s.producto_id}`)}` : "General"}</span></div>
         ${s.texto_por_defecto || s.body ? `<div class="sub">${escapar(s.texto_por_defecto || s.body)}</div>` : ""}
       </div>
       <div style="display:flex;gap:4px">
@@ -520,6 +705,7 @@ function editarPasoBienvenida(s) {
     ? `Ya tiene ${s.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
   $("#seq-texto-primero").checked = Boolean(s.texto_primero);
+  $("#seq-producto").innerHTML = opcionesProducto(s.producto_id || "", "General (Tarot Store)");
   pintarMediasPaso(s);
   $("#seq-agregar-btn").textContent = "Guardar cambios";
   $("#seq-cancelar-edicion").style.display = "";
@@ -539,6 +725,7 @@ function cancelarEdicionPaso() {
   $("#seq-pruebas").innerHTML = "";
   $("#seq-medias").innerHTML = "";
   $("#seq-texto-primero").checked = false;
+  $("#seq-producto").innerHTML = opcionesProducto("", "General (Tarot Store)");
 }
 
 /**
@@ -602,13 +789,13 @@ $("#seq-agregar-btn").addEventListener("click", async () => {
       await pedir("/api/crm/welcome-sequence", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, texto_primero: $("#seq-texto-primero").checked })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
       });
     } else {
       await pedir("/api/crm/welcome-sequence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], texto_primero: $("#seq-texto-primero").checked })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
       });
     }
     await pintarSecuenciaBienvenida();
@@ -1119,6 +1306,8 @@ function sincronizar() {
   else if (estado.filtroAgente) params.set("agente", estado.filtroAgente);
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroOcultos) params.set("ocultos", "1");
+  if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
+  if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
   if (estado.filtroDias) params.set("dias", estado.filtroDias);
   if (estado.filtroTexto && estado.buscarEn) params.set("en", estado.buscarEn);
@@ -1348,6 +1537,7 @@ function pintarLista() {
           <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" title="${escapar(tituloEstrella(c))}">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         </div>
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
+        ${badgesProducto(c)}
         ${badgeEtapa(c)}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
@@ -1534,7 +1724,11 @@ function resaltarBusqueda(texto) {
 }
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos);
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtro-producto").value = estado.filtroProducto;
+  $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
+  $("#filtro-linea").value = estado.filtroLinea;
+  $("#filtro-linea").classList.toggle("activo", estado.filtroLinea !== "");
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
   $("#filtro-agente").value = estado.filtroAgente;
@@ -1555,6 +1749,8 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroAgente = "";
     estado.filtroEtiqueta = "";
     estado.filtroOcultos = false;
+    estado.filtroProducto = "";
+    estado.filtroLinea = "";
   }
   pintarFiltros();
   cargarConversaciones();
@@ -1675,12 +1871,89 @@ $("#preview-bloquear").addEventListener("click", async () => {
   if (c && await cambiarEstadoChat(c, c.blocked ? "desbloquear" : "bloquear")) pintarBotonesPreview();
 });
 
+$("#filtro-producto").addEventListener("change", (e) => {
+  estado.filtroProducto = e.target.value;
+  pintarFiltros();
+  cargarConversaciones();
+});
+$("#filtro-linea").addEventListener("change", (e) => {
+  estado.filtroLinea = e.target.value;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
 $("#filtro-agente").addEventListener("change", (e) => {
   estado.filtroAgente = e.target.value;
   if (estado.filtroAgente) estado.filtroMias = false;
   pintarFiltros();
   cargarConversaciones();
 });
+
+/* ---------- Productos y números de WhatsApp (api/crm/productos.js) ---------- */
+
+/** Los productos y líneas, para filtros, insignias, el selector del chat y las respuestas rápidas. */
+async function cargarProductos() {
+  try {
+    const { productos, lineas } = await pedir("/api/crm/productos");
+    estado.productos = productos || [];
+    estado.lineas = lineas || [];
+  } catch { /* sin la migración 0045: todo sigue como un solo producto */ }
+  const activos = estado.productos.filter((p) => p.activo);
+  $("#filtro-producto").innerHTML = `<option value="">Producto…</option>`
+    + activos.map((p) => `<option value="${p.id}">📦 ${escapar(p.nombre)}</option>`).join("")
+    + `<option value="0">Sin producto</option>`;
+  $("#filtro-producto").style.display = activos.length ? "" : "none";
+  $("#filtro-linea").innerHTML = `<option value="">Número…</option><option value="0">📱 Tarot Store (principal)</option>`
+    + estado.lineas.map((l) => `<option value="${l.id}">📱 ${escapar(l.nombre)}</option>`).join("");
+  $("#filtro-linea").style.display = estado.lineas.length ? "" : "none";
+  pintarFiltros();
+  if (estado.conversaciones.length) pintarLista();
+}
+
+const productoDe = (id) => (id ? estado.productos.find((p) => p.id === Number(id)) || null : null);
+const lineaDe = (id) => (id ? estado.lineas.find((l) => l.id === Number(id)) || null : null);
+const chatActivo = () => estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId) || null;
+
+/** Insignias de la lista: el producto del chat y, si no es el principal, el número al que escribió. */
+function badgesProducto(c) {
+  const p = productoDe(c.producto_id);
+  const l = lineaDe(c.linea_id);
+  return (p ? `<span class="badge-producto" title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">📦 ${escapar(p.nombre)}</span>` : "")
+    + (l ? `<span class="badge-linea" title="Escribió a este número">📱 ${escapar(l.nombre)}</span>` : "");
+}
+
+/** <option>s de producto para un <select>: "General" (null) y los activos (más el elegido aunque esté apagado). */
+function opcionesProducto(valor, general = "General (todas / Tarot Store)") {
+  const lista = estado.productos.filter((p) => p.activo || p.id === Number(valor));
+  return `<option value="">${escapar(general)}</option>`
+    + lista.map((p) => `<option value="${p.id}" ${p.id === Number(valor) ? "selected" : ""}>📦 ${escapar(p.nombre)}${p.activo ? "" : " (apagado)"}</option>`).join("");
+}
+
+/**
+ * Las respuestas rápidas que tocan en el chat abierto: primero las de su
+ * producto, después las generales. Las de otros productos no salen (a menos
+ * que se busquen por nombre: buscando salen todas, al final).
+ */
+function rapidasDelChat(lista, buscando = false) {
+  const prod = chatActivo()?.producto_id || null;
+  const propias = prod ? lista.filter((q) => q.producto_id === prod) : [];
+  const generales = lista.filter((q) => !q.producto_id);
+  const otras = buscando ? lista.filter((q) => q.producto_id && q.producto_id !== prod) : [];
+  return [...propias, ...generales, ...otras];
+}
+
+/** El producto de un chat, a mano: manda sobre lo reconocido solo. */
+async function cambiarProductoChat(c, productoId) {
+  const id = Number(productoId) || null;
+  await pedir("/api/crm/productos", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: c.conversation_id, producto_id: id })
+  });
+  c.producto_id = id;
+  c.producto_origen = id ? "manual" : null;
+  pintarLista();
+}
 
 /** Las asesoras para el filtro por estrella — lo ven todas, no solo el admin. */
 async function cargarAsesorasFiltro() {
@@ -2545,6 +2818,7 @@ async function enviarProductoElegido(retailerId) {
 }
 
 let cacheProductosCatalogo = null;
+let cacheCatalogoLinea = null; // línea del catálogo en caché (null = principal)
 
 async function toggleCatalogoPanel() {
   const panel = $("#panel-catalogo");
@@ -2560,9 +2834,12 @@ async function toggleCatalogoPanel() {
   $("#cat-buscar").addEventListener("input", (e) => pintarListaProductos(e.target.value.trim().toLowerCase()));
 
   try {
-    if (!cacheProductosCatalogo) {
-      const { products } = await pedir("/api/crm/catalog-products");
+    // El catálogo es el del número del chat (otra línea puede tener el suyo).
+    const lineaChat = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId)?.linea_id || null;
+    if (!cacheProductosCatalogo || cacheCatalogoLinea !== lineaChat) {
+      const { products } = await pedir(`/api/crm/catalog-products?conversation_id=${estado.conversacionActivaId}`);
       cacheProductosCatalogo = products;
+      cacheCatalogoLinea = lineaChat;
     }
     pintarListaProductos("");
   } catch (err) {
@@ -2767,9 +3044,10 @@ async function marcarLead(c) {
 }
 
 async function productosDelCatalogo() {
-  if (!cacheProductosCatalogo) {
+  if (!cacheProductosCatalogo || cacheCatalogoLinea) {
     const { products } = await pedir("/api/crm/catalog-products");
     cacheProductosCatalogo = products;
+    cacheCatalogoLinea = null;
   }
   return cacheProductosCatalogo || [];
 }
@@ -4247,7 +4525,8 @@ function agregarRapidasA(el) {
   caja.innerHTML = `<input type="text" placeholder="Buscar respuesta rápida…" /><div class="rapidas-lista"></div>`;
   barra.appendChild(caja);
   const pintar = () => {
-    const lista = buscarRapidas(estado.quickReplies || [], caja.querySelector("input").value).slice(0, 30);
+    const consulta = caja.querySelector("input").value;
+    const lista = rapidasDelChat(buscarRapidas(estado.quickReplies || [], consulta), Boolean(consulta.trim())).slice(0, 30);
     caja.querySelector(".rapidas-lista").innerHTML = lista.map((q) =>
       itemRapidaHtml(q, q.catalogo ? ` <span class="sub">(+ catálogo: mándalo desde el chat)</span>`
         : q.media?.length ? ` <span class="sub">(+${q.media.length} foto/video: mándalo desde el chat)</span>` : "")).join("") || `<p class="sub">Sin resultados.</p>`;
@@ -5005,10 +5284,13 @@ function pintarQuickPanel() {
 
   const buscando = Boolean(estado.filtroRapidas.trim());
   // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
-  const lista = buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies;
+  // Las de su producto primero, después las generales (rapidasDelChat).
+  const lista = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  const prodChat = productoDe(chatActivo()?.producto_id);
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
+    ${prodChat ? `<div class="rapidas-producto sub">📦 Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las generales.</div>` : ""}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
@@ -5018,7 +5300,7 @@ function pintarQuickPanel() {
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}</div>
+          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">📦 ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}</div>
           ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -5106,8 +5388,10 @@ function activarArrastreRapidas(panel) {
         window.removeEventListener("pointerup", soltar);
         window.removeEventListener("pointercancel", soltar);
         item.classList.remove("arrastrando");
-        const ids = [...panel.querySelectorAll(".item[data-id]")].map((x) => Number(x.dataset.id));
-        if (ids.join(",") === antes) return;
+        const visibles = [...panel.querySelectorAll(".item[data-id]")].map((x) => Number(x.dataset.id));
+        if (visibles.join(",") === antes) return;
+        // Las que no se ven (de otros productos) conservan su lugar relativo, al final.
+        const ids = [...visibles, ...estado.quickReplies.map((q) => q.id).filter((id) => !visibles.includes(id))];
         const porId = new Map(estado.quickReplies.map((q) => [q.id, q]));
         estado.quickReplies = ids.map((id) => porId.get(id)).filter(Boolean);
         try {
@@ -5227,6 +5511,9 @@ function abrirModalRapidaNueva() {
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(null);
   pintarSeguimientoRapida(null);
+  // Nueva desde un chat de un producto: ya sale de ese producto.
+  $("#rapida-producto").innerHTML = opcionesProducto(chatActivo()?.producto_id || "");
+  $("#rapida-producto-fila").style.display = estado.productos.length ? "" : "none";
   $("#rapida-pruebas").innerHTML = "";
   $("#modal-rapida-fondo").classList.add("abierto");
 }
@@ -5336,6 +5623,8 @@ function abrirModalRapidaEdicion(q) {
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
   pintarSeguimientoRapida(q);
+  $("#rapida-producto").innerHTML = opcionesProducto(q.producto_id || "");
+  $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
   pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
@@ -5389,13 +5678,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, producto_id: Number($("#rapida-producto").value) || null, ...cat })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, producto_id: Number($("#rapida-producto").value) || null, ...cat })
       });
     }
     await cargarQuickReplies();
@@ -6419,7 +6708,7 @@ async function abrirModalTemplates() {
   const cont = $("#lista-templates");
   cont.innerHTML = "Cargando…";
   try {
-    const { templates } = await pedir("/api/crm/templates");
+    const { templates } = await pedir(`/api/crm/templates${estado.templateConversacionId ? `?conversation_id=${estado.templateConversacionId}` : ""}`);
     if (!templates.length) {
       cont.innerHTML = `<p class="ayuda-modal">Todavía no creaste ninguna plantilla. Créalas en WhatsApp Manager → Message Templates (Meta tarda de minutos a ~24h en aprobarlas).</p>`;
       return;
@@ -6600,6 +6889,13 @@ async function pintarDetalle(c) {
     ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
+    ${lineaDe(c.linea_id) ? `<div class="tel-contacto">📱 Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
+
+    ${estado.productos.length ? `
+    <h2>Producto</h2>
+    <select id="detalle-producto" style="width:100%">${opcionesProducto(c.producto_id || "", "Sin producto")}</select>
+    <div class="ayuda-modal" style="margin:2px 0 0">${c.producto_origen === "manual" ? "Puesto a mano." : c.producto_origen ? `Reconocido solo (${escapar(c.producto_origen)}).` : "El CRM lo reconoce por el anuncio o lo que escribió; puedes cambiarlo."} Ordena sus respuestas rápidas y elige su bienvenida y seguimiento.</div>
+    ` : ""}
 
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
@@ -6659,6 +6955,13 @@ async function pintarDetalle(c) {
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => history.back());
+  $("#detalle-producto")?.addEventListener("change", async (e) => {
+    try {
+      await cambiarProductoChat(c, e.target.value);
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 
   $("#detalle-nuevo-seguimiento").addEventListener("click", abrirModalProgramarSeguimiento);
   $("#detalle-btn-lead").addEventListener("click", () => marcarLead(c));

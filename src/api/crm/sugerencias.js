@@ -172,7 +172,7 @@ async function conPlantilla(env, s, quien) {
   if (!conv) return "No encontré el chat.";
   const nombre = (s.nombre || "").split(/\s+/)[0] || "estimad@";
   try {
-    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, () => enviarTemplate(env, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]));
+    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, (e) => enviarTemplate(e, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]));
     await registrarMensajeSaliente(env.CRM_DB, s.conversation_id, {
       waMessageId, type: "template", body: `Plantilla: ${env.PLANTILLA_ENVIO} · ${s.titulo}`, sentBy: quien
     });

@@ -217,7 +217,7 @@ async function convDe(env, wa) {
   if (wa.length < 9) return null;
   return env.CRM_DB.prepare(
     `SELECT conv.id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
-     WHERE c.wa_id LIKE ? ORDER BY conv.last_message_at DESC LIMIT 1`
+     WHERE c.wa_id LIKE ? ORDER BY (conv.linea_id IS NULL) DESC, conv.last_message_at DESC LIMIT 1`
   )
     .bind(`%${wa.slice(-9)}`)
     .first();

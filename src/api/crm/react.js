@@ -26,7 +26,7 @@ async function post({ request, env }) {
   const emoji = payload?.emoji ? String(payload.emoji).trim().slice(0, 8) : null;
 
   const mensaje = await env.CRM_DB.prepare(
-    `SELECT m.id, m.wa_message_id, c.wa_id
+    `SELECT m.id, m.wa_message_id, m.conversation_id, c.wa_id
      FROM messages m
      JOIN conversations conv ON conv.id = m.conversation_id
      JOIN contacts c ON c.id = conv.contact_id

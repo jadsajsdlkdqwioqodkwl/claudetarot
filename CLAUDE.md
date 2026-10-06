@@ -70,4 +70,8 @@ Más detalle: `docs/asesor.md`.
 - `npm run check` y `npm run check:gs` antes de subir (el chequeo "la foto de
   la variante es una banda horizontal" ya fallaba antes).
 - Las migraciones de D1 se aplican a mano (no las aplica el deploy).
+- Varios productos y números de WhatsApp: `docs/productos-y-numeros.md`. Todo
+  envío a un chat sale por el número de ese chat (`envDeConversacion`, ya
+  dentro de `crm-send.js`); los callbacks de `mandarConEscribiendo()` /
+  `mandarAlToque()` reciben ese `env` como argumento: úsalo, no el de afuera.
 - Costos de WhatsApp: `docs/whatsapp-ventanas-y-costos.md`.

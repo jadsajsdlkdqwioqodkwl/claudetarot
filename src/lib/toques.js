@@ -129,6 +129,8 @@ async function candidatos(db, id, def, limite) {
     ? ["-66 hours", "-40 hours"] // día 2: entre 40 y 66 h de silencio
     : [`-${def.dias + 2} days`, `-${def.dias} days`];
   const filtros = [
+    // Las ofertas de los toques son de Tarot Store: solo su número (línea principal).
+    "conv.linea_id IS NULL",
     `${desde} IS NOT NULL`,
     `datetime(${desde}) >= datetime('now', ?)`,
     `datetime(${desde}) < datetime('now', ?)`,
@@ -211,7 +213,7 @@ export async function procesarToques(env) {
       cupo--;
       try {
         const params = aprobada.conNombre ? [primerNombre(c.nombre)] : [];
-        const waMessageId = await mandarConEscribiendo(env, c.id, () => enviarTemplate(env, c.wa_id, nombre, aprobada.idioma, params));
+        const waMessageId = await mandarConEscribiendo(env, c.id, (e) => enviarTemplate(e, c.wa_id, nombre, aprobada.idioma, params));
         const texto = def[variante][0].text.replace("{{1}}", params[0] || "");
         await registrarMensajeSaliente(db, c.id, { waMessageId, type: "template", body: `Plantilla: ${nombre} · ${texto}`, sentBy: ORIGEN_TOQUE }, { subirEnBandeja: false });
         await db.prepare("UPDATE toques SET estado = 'enviada' WHERE conversation_id = ? AND toque = ?").bind(c.id, id).run();

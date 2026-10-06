@@ -100,6 +100,8 @@
       <button data-mine="" class="activo">Todos</button>
       <button data-mine="1" id="btn-filtro-mias">Mis chats</button>
       <select id="filtro-agente" title="Ver los chats de una asesora"><option value="">Asesora…</option></select>
+      <select id="filtro-producto" title="Ver los chats de un producto" style="display:none"><option value="">Producto…</option></select>
+      <select id="filtro-linea" title="Ver los chats de un número de WhatsApp" style="display:none"><option value="">Número…</option></select>
       <button data-etiqueta="contact" title="Conversación iniciada">Contacto</button>
       <button data-etiqueta="lead">Interés</button>
       <button data-etiqueta="purchase">Compra</button>
@@ -161,6 +163,11 @@
     <div id="rapida-pruebas" class="pruebas"></div>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
+    <div id="rapida-producto-fila" style="display:none">
+      <div class="rp-titulo">Producto</div>
+      <select id="rapida-producto"></select>
+      <div class="ayuda-modal">De un producto: sale primero en los chats de ese producto y no aparece en los de otros. General: en todos.</div>
+    </div>
     <div class="rp-titulo">Se manda con</div>
     <select id="rapida-catalogo" class="sel-catalogo"><option value="">Sus fotos/videos</option><option value="*">🛍️ Catálogo completo</option></select>
     <div class="ayuda-modal" id="rapida-catalogo-ayuda" style="display:none">Sale el catálogo o el producto elegido en vez de las fotos/videos (si tenía, se guardan por si vuelves a "Sus fotos/videos").</div>
@@ -418,6 +425,9 @@
     <div class="ayuda-modal" id="seq-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.</div>
     <div id="seq-medias" class="seq-medias"></div>
     <label class="seq-texto-primero"><input type="checkbox" id="seq-texto-primero" /> Mandar el texto antes que las fotos/videos</label>
+    <div class="rp-titulo">Bienvenida de</div>
+    <select id="seq-producto"><option value="">General (Tarot Store)</option></select>
+    <div class="ayuda-modal">Cada producto tiene su bienvenida: un chat de ese producto recibe solo sus pasos. General = la de Tarot Store (chats sin producto del número principal).</div>
     <div class="acciones">
       <button class="cancelar" id="seq-cancelar-edicion" type="button" style="display:none">Cancelar edición</button>
       <button class="crear" id="seq-agregar-btn" type="button" style="width:100%">Agregar paso</button>
@@ -432,6 +442,50 @@
 
     <div class="acciones">
       <button class="cancelar" id="bienvenida-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-productos-fondo">
+  <div class="modal modal-ancho">
+    <h2>Productos</h2>
+    <p class="ayuda-modal">El CRM pone el producto a cada chat solo: 1) por el <b>ID del anuncio</b> (Click to WhatsApp), 2) por una <b>palabra clave</b> en el anuncio o en lo que escribe el cliente, 3) si el número tiene un solo producto. Una vendedora lo puede cambiar a mano en el panel del chat.</p>
+    <div id="lista-productos">Cargando…</div>
+
+    <h2 id="prod-form-titulo">Agregar producto</h2>
+    <input type="text" id="prod-nombre" placeholder="Nombre (ej. Masajeador de cuello)" />
+    <select id="prod-linea"></select>
+    <textarea id="prod-anuncios" placeholder="IDs de los anuncios, separados por coma (Administrador de anuncios → Anuncio → ID)" style="min-height:50px"></textarea>
+    <textarea id="prod-palabras" placeholder="Palabras clave, separadas por coma (ej. masajeador, cuello, cervical)" style="min-height:50px"></textarea>
+    <input type="text" id="prod-precio" placeholder="Precio / oferta (ej. S/79, 2 x S/139) — para el equipo y el asesor" />
+    <textarea id="prod-notas" placeholder="Notas para el equipo y el asesor: qué incluye, envío, objeciones típicas…" style="min-height:60px"></textarea>
+    <div class="rp-titulo">Seguimiento de leads (si no responde)</div>
+    <select id="prod-secuencia"></select>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="prod-bienvenida" checked /> Mandar su bienvenida automática a los chats nuevos del anuncio</label>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="prod-activo" checked /> Activo (se reconoce en chats nuevos)</label>
+    <div class="acciones">
+      <button class="cancelar" id="prod-cancelar-edicion" type="button" style="display:none">Cancelar edición</button>
+      <button class="crear" id="prod-guardar" type="button" style="width:100%">Agregar producto</button>
+    </div>
+
+    <hr />
+    <h2>Números de WhatsApp</h2>
+    <p class="ayuda-modal">Todos los números van al mismo webhook (WhatsApp Manager → Configuración → Webhook, el mismo de Tarot Store). Un número nuevo aparece aquí solo con su primer mensaje; también puedes agregarlo antes. Cada chat sale por el número al que escribió el cliente. Si el número es de otro Business Manager, pon el nombre del secreto con su token (se carga con <code>npx wrangler secret put NOMBRE</code>).</p>
+    <div id="lista-lineas">Cargando…</div>
+    <h2 id="linea-form-titulo">Agregar número</h2>
+    <input type="text" id="linea-nombre" placeholder="Nombre (ej. Pruebas de productos)" />
+    <input type="text" id="linea-phone" placeholder="Phone number ID (WhatsApp Manager → API)" />
+    <input type="text" id="linea-waba" placeholder="WhatsApp Business Account ID (para sus plantillas)" />
+    <input type="text" id="linea-catalogo" placeholder="Catálogo conectado a ese número (opcional)" />
+    <input type="text" id="linea-token" placeholder="Secreto con su token (vacío = WHATSAPP_TOKEN de siempre)" />
+    <input type="text" id="linea-marca" placeholder="Marca (opcional)" />
+    <div class="acciones">
+      <button class="cancelar" id="linea-cancelar-edicion" type="button" style="display:none">Cancelar edición</button>
+      <button class="crear" id="linea-guardar" type="button" style="width:100%">Agregar número</button>
+    </div>
+
+    <div class="acciones">
+      <button class="cancelar" id="productos-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
@@ -467,6 +521,11 @@
     <h2>Bienvenida de anuncios</h2>
     <p class="ayuda-modal">Cuando alguien nuevo te escribe desde un anuncio "Click to WhatsApp", se le manda una secuencia de mensajes. Se configura una vez y no cambia seguido, por eso vive acá en vez de tener su propio ícono siempre visible.</p>
     <button class="cancelar" id="btn-abrir-bienvenida" type="button" style="width:100%">Configurar bienvenida de anuncios</button>
+
+    <hr />
+    <h2>Productos y números de WhatsApp</h2>
+    <p class="ayuda-modal">Cada producto que se prueba: el CRM reconoce de cuál es cada chat (por el anuncio o lo que escribe el cliente) y le muestra sus respuestas rápidas, su bienvenida y su seguimiento. Aquí también se ven los números de WhatsApp conectados.</p>
+    <button class="cancelar" id="btn-abrir-productos" type="button" style="width:100%">Productos y números</button>
 
     <hr />
     <h2>Seguimiento para interesados</h2>

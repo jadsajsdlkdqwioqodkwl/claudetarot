@@ -55,15 +55,21 @@ export async function onRequestGetChats({ request, env }) {
 
   const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
   const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
+  // Varios números (src/lib/lineas.js): por defecto solo Tarot Store (la
+  // línea principal), así un mismo cliente en dos números no se mezcla.
+  // &linea=<id> lee otro número.
+  const lineaId = Number(url.searchParams.get("linea")) || 0;
+  const filtroLinea = lineaId ? `conv.linea_id = ${lineaId}` : "conv.linea_id IS NULL";
 
   const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
     `SELECT m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name, c.ad_headline,
-            conv.assigned_agent, conv.meta_tags
+            conv.assigned_agent, conv.meta_tags, pr.nombre AS producto
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
+     LEFT JOIN productos pr ON pr.id = conv.producto_id
      JOIN messages m ON m.conversation_id = conv.id AND m.created_at >= ?
-     WHERE conv.last_message_at >= ?
+     WHERE conv.last_message_at >= ? AND ${filtroLinea}
      ORDER BY m.created_at ASC, m.id ASC
      LIMIT 30000`
   )
@@ -81,6 +87,7 @@ export async function onRequestGetChats({ request, env }) {
     // archivo ("WhatsApp Image 2026-…jpeg") solo mete ruido: se lee como [image].
     msg: (m.body || (m.type === "document" ? m.file_name : "") || "").slice(0, 2000),
     anuncio: m.ad_headline || "",
+    producto: m.producto || "",
     asesora: m.assigned_agent || "",
     embudo: m.meta_tags || ""
   });
@@ -91,11 +98,12 @@ export async function onRequestGetChats({ request, env }) {
   const { results: prom } = await env.CRM_DB.prepare(
     `SELECT m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name, c.ad_headline,
-            conv.assigned_agent, conv.meta_tags
+            conv.assigned_agent, conv.meta_tags, pr.nombre AS producto
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
+     LEFT JOIN productos pr ON pr.id = conv.producto_id
      JOIN messages m ON m.conversation_id = conv.id AND m.created_at >= ?
-     WHERE conv.last_message_at >= ?
+     WHERE conv.last_message_at >= ? AND ${filtroLinea}
        AND COALESCE(m.sent_by, '') NOT LIKE '%ienvenida%'
        AND (m.body LIKE '%collar%' OR m.body LIKE '%regal%' OR m.body LIKE '%obsequ%' OR m.body LIKE '%yap%'
             OR m.body LIKE '%mazo%' OR m.body LIKE '%culo%' OR m.body LIKE '%kits%' OR m.body LIKE '%gratis%'

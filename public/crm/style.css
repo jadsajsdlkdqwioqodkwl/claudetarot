@@ -960,3 +960,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #preview-mensajes .msg img, #preview-mensajes .msg video { max-height: 260px; cursor: zoom-in; }
 #preview-mensajes .vacio { color: var(--gris); font-size: 13px; text-align: center; padding: 20px 0; }
 .modal-preview .acciones { flex-wrap: wrap; }
+
+/* Varios productos / números de WhatsApp */
+.badge-producto, .badge-linea { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; margin-right: 3px; background: #fff3e0; border: 1px solid #ffd59e; color: #8a4b00; font-weight: 500; }
+.badge-linea { background: #e8f4fd; border-color: #b6dcf7; color: #0b5a8a; }
+.rapidas-producto { padding: 4px 10px 6px; font-size: 12px; }
+.fila-seguimiento.apagado { opacity: .55; }
+#detalle-producto { padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font: inherit; font-size: 13px; background: var(--panel); }

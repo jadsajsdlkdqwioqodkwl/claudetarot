@@ -156,7 +156,7 @@ export async function procesarSeguimientosVencidos(env) {
         // (típico de un envío masivo a contactos viejos que no escribieron).
         const parametros = s.template_params ? JSON.parse(s.template_params) : [];
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
-        const waMessageId = await mandarConEscribiendo(env, s.conv_id, () => enviarTemplate(env, s.wa_id, s.template_name, s.template_language || "es", parametros));
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, s.template_language || "es", parametros));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",
@@ -177,10 +177,10 @@ export async function procesarSeguimientosVencidos(env) {
           const { results: portadas } = await env.CRM_DB.prepare(
             "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
           ).bind(env.WHATSAPP_CATALOG_ID || "").all().catch(() => ({ results: [] }));
-          waMessageId = await mandarAlToque(env, s.conv_id, () => enviarCatalogoConPortada(env, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
         } else {
           if (!env.WHATSAPP_CATALOG_ID) throw new Error("Falta WHATSAPP_CATALOG_ID.");
-          waMessageId = await mandarAlToque(env, s.conv_id, () => enviarProducto(env, s.wa_id, env.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
         }
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,

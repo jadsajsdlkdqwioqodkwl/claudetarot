@@ -25,12 +25,15 @@ import {
   programarSecuenciaSeguimiento,
   registrarEventoCapi,
   agregarEtiquetaMeta,
+  guardarAnuncioDelContacto,
   ORIGEN_SEGUIMIENTO_AUTO
 } from "../lib/crm-db.js";
 import { reportarEventoMeta } from "../lib/meta-capi.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
+import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
+import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -115,10 +118,31 @@ async function resolverNombresPedido(env, order) {
   return order;
 }
 
+/**
+ * ¿Chat nuevo que vino de un anuncio? Cada número tiene su propio chat con
+ * el cliente: cuenta que ESE chat sea nuevo y que el mensaje traiga el clic
+ * del anuncio (antes: contacto nuevo con ctwa_clid, que es lo mismo con un
+ * solo número).
+ */
+const chatNuevoDeAnuncio = (contacto, conversacion, referral) =>
+  Boolean(conversacion._isNew && (referral?.ctwa_clid || (contacto._isNew && contacto.ctwa_clid)));
+
+/**
+ * El producto del chat apaga la bienvenida si el admin lo pidió
+ * (bienvenida_auto = 0). En otra línea sin producto reconocido no sale
+ * ninguna: la general es la de Tarot Store.
+ */
+async function bienvenidaPermitida(env, conversacion) {
+  const producto = await productoPorId(env.CRM_DB, conversacion.producto_id);
+  if (producto) return producto.bienvenida_auto !== 0;
+  return !conversacion.linea_id;
+}
+
 /** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
-async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId) {
-  if (!contacto._isNew || !contacto.ctwa_clid) return;
+async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId, referral) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
   try {
+    if (!(await bienvenidaPermitida(env, conversacion))) return;
     await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
@@ -134,13 +158,17 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
  * "tras no respuesta", se cancela sola en cuanto el cliente escribe o alguien le
  * manda algo a mano (ver cancelarSeguimientosPendientes).
  */
-async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion) {
-  if (!contacto._isNew || !contacto.ctwa_clid) return;
+async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
   try {
-    const [sequenceId, auto] = await Promise.all([
+    const [general, auto, producto] = await Promise.all([
       obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
-      obtenerAjuste(env.CRM_DB, "ad_followup_auto")
+      obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
+      productoPorId(env.CRM_DB, conversacion.producto_id)
     ]);
+    // El producto trae su propia secuencia; sin producto, la general (solo
+    // en la línea principal: la general es de Tarot Store).
+    const sequenceId = producto ? producto.secuencia_id : conversacion.linea_id ? null : general;
     if (!sequenceId || auto === "0") return;
     await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), ORIGEN_SEGUIMIENTO_AUTO);
   } catch (err) {
@@ -154,7 +182,8 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
  * "contact". Va dentro del mismo request del webhook, no suma requests.
  */
 async function reportarConversacionSiAplica(env, contacto, conversacion) {
-  if (!contacto._isNew) return;
+  // Solo la línea principal: el dataset de Meta es el de Tarot Store.
+  if (!conversacion._isNew || conversacion.linea_id) return;
   await agregarEtiquetaMeta(env.CRM_DB, conversacion.id, "contact").catch((err) => console.error("Etiqueta contact:", err.message));
   const base = { conversationId: conversacion.id, valor: 0, moneda: "PEN", createdBy: "Automático" };
   try {
@@ -172,8 +201,12 @@ async function reportarConversacionSiAplica(env, contacto, conversacion) {
   }
 }
 
-async function procesarCambio(env, db, value, origen) {
+async function procesarCambio(envBase, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
+  // A qué número de WhatsApp escribió (Tarot Store = principal, o una línea
+  // de productos/marca). Todo lo que se mande desde aquí sale por ese número.
+  const linea = await lineaDePhoneId(db, envBase, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
+  const env = envDeLinea(envBase, linea);
 
   for (const msg of value.messages || []) {
     // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
@@ -181,8 +214,15 @@ async function procesarCambio(env, db, value, origen) {
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
     const waId = msg.from;
-    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, msg.referral);
-    const conversacion = await obtenerOCrearConversacion(db, contacto.id);
+    // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
+    // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
+    // ahí (el producto del chat sale del referral igual).
+    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, linea ? null : msg.referral);
+    if (!linea && !contacto._isNew && !contacto.ctwa_clid && msg.referral?.ctwa_clid) {
+      // Ya nos conocía por otra línea y ahora llega por un anuncio de Tarot Store.
+      await guardarAnuncioDelContacto(db, contacto, msg.referral).catch((err) => console.error("Anuncio del contacto:", err.message));
+    }
+    const conversacion = await obtenerOCrearConversacion(db, contacto.id, linea?.id || null);
 
     // Una reacción no es un mensaje nuevo — solo marca la que ya existe. Un
     // emoji vacío ("") es al cliente sacándose su reacción anterior.
@@ -201,13 +241,17 @@ async function procesarCambio(env, db, value, origen) {
     const replyToMessageId = msg.context?.id ? await idPorWaMessageId(db, msg.context.id) : null;
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: msg.id, type, body: bodyFinal, fileName, mediaId, mediaMime, replyToMessageId, viewOnce: esVistaUnica(msg) });
     await cancelarSeguimientosPendientes(db, conversacion.id);
+    // De qué producto es el chat (anuncio, palabra clave o línea): elige
+    // bienvenida, secuencia y respuestas rápidas.
+    await asignarProductoSiAplica(db, conversacion, { referral: msg.referral, texto: type === "text" ? bodyFinal : "" })
+      .catch((err) => console.error("Producto del chat:", err.message));
     if (type === "order" && ordenResuelta) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }
     // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
     if (contacto.blocked) continue;
-    await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id);
-    await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion);
+    await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
+    await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
     await reportarConversacionSiAplica(env, contacto, conversacion);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
   }
@@ -229,11 +273,12 @@ async function procesarCambio(env, db, value, origen) {
  * comunes (`status` y `event`) para reconocer una perdida/rechazada.
  */
 async function procesarLlamadas(env, db, value, origen) {
+  const linea = await lineaDePhoneId(db, env, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
   for (const call of value.calls || []) {
     const waId = call.from;
     if (!waId) continue;
     const contacto = await obtenerOCrearContacto(db, waId, null, null);
-    const conversacion = await obtenerOCrearConversacion(db, contacto.id);
+    const conversacion = await obtenerOCrearConversacion(db, contacto.id, linea?.id || null);
 
     const estado = String(call.status || call.event || "").toLowerCase();
     const perdida = /missed|no.?answer|reject|declin|unanswered|timeout/.test(estado);

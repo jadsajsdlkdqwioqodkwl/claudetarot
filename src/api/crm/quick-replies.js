@@ -20,6 +20,10 @@
  * vuelve a "con fotos"). null = con fotos. En PATCH, sin `catalogo` en el
  * payload se conserva el que tenía.
  *
+ * POST y PATCH aceptan además `producto_id` (src/lib/productos.js): la
+ * respuesta es de ese producto y sale primero en los chats de ese producto.
+ * null = general (las de Tarot Store). En PATCH, sin `producto_id` se conserva.
+ *
  * GET trae además `variantes` en las que tienen una prueba en curso: la
  * original (id 0, texto null) y cada versión, con su `peso` — la
  * probabilidad con que el CRM la pone en el cuadro al elegir la respuesta
@@ -88,7 +92,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at FROM quick_replies ORDER BY sort_order ASC, id ASC"
+"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -130,11 +134,12 @@ async function post({ request, env }) {
 
   const seguimiento = leerSeguimiento(payload);
   const { grupo, orden } = leerGrupo(payload);
+  const productoId = Number(payload?.producto_id) || null;
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, orden)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, orden)
     .first();
 
   let i = 0;
@@ -171,7 +176,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre, producto_id FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -199,8 +204,9 @@ async function patch({ request, env, agent }) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
   }
   const { grupo, orden } = leerGrupo(payload);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, grupo, orden, id)
+  const productoId = "producto_id" in (payload || {}) ? Number(payload.producto_id) || null : existente.producto_id || null;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, grupo, orden, id)
     .run();
 
   if (mediaKeys !== null) {
@@ -223,7 +229,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, media: media.results } });
 }
 
 async function del({ request, env }) {

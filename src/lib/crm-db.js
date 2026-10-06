@@ -43,17 +43,41 @@ export async function obtenerOCrearContacto(db, waId, profileName, referral) {
   return { ...insertado, _isNew: true };
 }
 
-export async function obtenerOCrearConversacion(db, contactId) {
-  const existente = await db
-    .prepare("SELECT * FROM conversations WHERE contact_id = ?")
-    .bind(contactId)
-    .first();
+/** El clic del anuncio en un contacto que ya existía (llegó antes por otro número). */
+export async function guardarAnuncioDelContacto(db, contacto, referral) {
+  await db.prepare(
+    `UPDATE contacts SET ctwa_clid = ?, ad_source_type = ?, ad_source_id = ?, ad_source_url = ?, ad_headline = ?, ad_body = ?, ad_media_type = ?
+     WHERE id = ? AND ctwa_clid IS NULL`
+  ).bind(referral.ctwa_clid, referral.source_type || null, referral.source_id || null, referral.source_url || null,
+    referral.headline || null, referral.body || null, referral.media_type || null, contacto.id).run();
+  Object.assign(contacto, { ctwa_clid: referral.ctwa_clid, ad_source_type: referral.source_type || null });
+}
+
+/**
+ * Un chat por cliente y por número de WhatsApp (línea, src/lib/lineas.js):
+ * si el mismo cliente le escribe a Tarot Store y al número de pruebas, son
+ * dos chats aparte, cada uno sale por su número. `lineaId` null = la principal.
+ */
+export async function obtenerOCrearConversacion(db, contactId, lineaId = null) {
+  let existente;
+  try {
+    existente = await db
+      .prepare("SELECT * FROM conversations WHERE contact_id = ? AND COALESCE(linea_id, 0) = ? ORDER BY id ASC LIMIT 1")
+      .bind(contactId, lineaId || 0)
+      .first();
+  } catch {
+    // Sin la migración 0045 (linea_id): como antes, un chat por cliente.
+    existente = await db.prepare("SELECT * FROM conversations WHERE contact_id = ?").bind(contactId).first();
+    if (existente) return existente;
+    return { ...(await db.prepare("INSERT INTO conversations (contact_id) VALUES (?) RETURNING *").bind(contactId).first()), _isNew: true };
+  }
   if (existente) return existente;
 
-  return db
-    .prepare("INSERT INTO conversations (contact_id) VALUES (?) RETURNING *")
-    .bind(contactId)
+  const nueva = await db
+    .prepare("INSERT INTO conversations (contact_id, linea_id) VALUES (?, ?) RETURNING *")
+    .bind(contactId, lineaId || null)
     .first();
+  return { ...nueva, _isNew: true };
 }
 
 export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, fileName, mediaId, mediaMime, replyToMessageId, viewOnce }) {

@@ -4,6 +4,7 @@
  * Filtros opcionales: ?mine=1 (solo las asignadas a quien pregunta)
  * &agente=Nombre (las de esa asesora, dueña o compartiendo)
  * &etiqueta=contact|lead|purchase &q=texto &dias=N (0 = todo) &offset=N
+ * &producto=<id> (0 = sin producto) &linea=<id> (0 = el número principal)
  *
  * Búsqueda (&q): sin tildes ni mayúsculas, por palabras (todas tienen que
  * aparecer, cada una en cualquier lado): nombre, número (con o sin 51),
@@ -72,6 +73,16 @@ async function handler({ request, env, agent }) {
     condiciones.push("instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ?) > 0");
     params.push(` ${etiqueta} `);
   }
+  const producto = url.searchParams.get("producto");
+  if (producto !== null && producto !== "") {
+    if (Number(producto)) { condiciones.push("conv.producto_id = ?"); params.push(Number(producto)); }
+    else condiciones.push("conv.producto_id IS NULL");
+  }
+  const linea = url.searchParams.get("linea");
+  if (linea !== null && linea !== "") {
+    if (Number(linea)) { condiciones.push("conv.linea_id = ?"); params.push(Number(linea)); }
+    else condiciones.push("conv.linea_id IS NULL");
+  }
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
   // Cuántos traer: 200 por defecto; "Cargar más" en el CRM sube de a 200 (hasta 2000).
@@ -113,6 +124,9 @@ async function handler({ request, env, agent }) {
         conv.last_message_at,
         conv.last_inbound_at,
         conv.hidden,
+        conv.linea_id,
+        conv.producto_id,
+        conv.producto_origen,
         c.blocked,
         c.id AS contact_id,
         c.wa_id,

@@ -72,6 +72,7 @@ export async function agendarCarritosAbandonados(env) {
      FROM conversations conv
      JOIN contacts c ON c.id = conv.contact_id
      WHERE conv.last_inbound_at IS NOT NULL
+       AND conv.linea_id IS NULL -- el texto del carrito es de Tarot Store (Lima/provincia)
        AND datetime(conv.last_inbound_at) <= datetime('now', ?1)
        AND datetime(conv.last_inbound_at) > datetime('now', '-22 hours')
        AND instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') = 0

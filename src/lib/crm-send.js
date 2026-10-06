@@ -6,6 +6,13 @@
 
 import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
 import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste, obtenerAjuste } from "./crm-db.js";
+import { envDeConversacion } from "./lineas.js";
+
+/*
+ * Varios números (src/lib/lineas.js): cada envío sale por el número al que
+ * escribió el cliente. Aquí se resuelve solo con el id del chat
+ * (envDeConversacion), así ningún llamador tiene que acordarse.
+ */
 
 /**
  * Antes de mandarle un TEXTO al cliente: le muestra "escribiendo…" y espera 1,5 s,
@@ -110,6 +117,7 @@ export async function sinVisto(env) {
 async function escribiendoEn(env, conversationId, waMessageId) {
   if (!waMessageId) return;
   if (await sinVisto(env)) return;
+  env = await envDeConversacion(env, conversationId);
   try {
     await mostrarEscribiendo(env, waMessageId);
   } catch {
@@ -186,21 +194,21 @@ async function marcarEnviado(env, conversationId) {
  */
 export async function mandarConEscribiendo(env, conversationId, enviar) {
   await asegurarPausa(env, conversationId);
-  const waMessageId = await enviar();
+  const waMessageId = await enviar(await envDeConversacion(env, conversationId));
   await marcarEnviado(env, conversationId);
   return waMessageId;
 }
 
-/** Catálogo o producto: sale al toque, sin "escribiendo…". */
+/** Catálogo o producto: sale al toque, sin "escribiendo…". `enviar(envDeLaLinea)`. */
 export async function mandarAlToque(env, conversationId, enviar) {
-  const waMessageId = await enviar();
+  const waMessageId = await enviar(await envDeConversacion(env, conversationId));
   await marcarEnviado(env, conversationId);
   return waMessageId;
 }
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones) {
   await asegurarPausa(env, conversationId);
-  const waMessageId = await enviarTexto(env, waId, texto, replyTo?.wa_message_id);
+  const waMessageId = await enviarTexto(await envDeConversacion(env, conversationId), waId, texto, replyTo?.wa_message_id);
   await marcarEnviado(env, conversationId);
   await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id }, opciones);
   return waMessageId;
@@ -212,10 +220,12 @@ export async function mandarTexto(env, conversationId, waId, texto, sentBy, repl
  * volver a subir la misma foto en cada envío; `fresca` fuerza subirla de nuevo.
  */
 export async function subidaDe(env, mediaKey, { fresca = false } = {}) {
+  // El media id es de cada número: en otra línea se guarda con su phone id delante.
+  const claveCache = env.LINEA_ID ? `${env.WHATSAPP_PHONE_NUMBER_ID}|${mediaKey}` : mediaKey;
   if (!fresca) {
     const c = await env.CRM_DB?.prepare(
       "SELECT media_id, mime, file_name FROM wa_media_cache WHERE media_key = ? AND created_at >= datetime('now', '-25 days')"
-    ).bind(mediaKey).first().catch(() => null);
+    ).bind(claveCache).first().catch(() => null);
     if (c?.media_id) return { mediaId: c.media_id, mime: c.mime, fileName: c.file_name || undefined, deCache: true };
   }
   const obj = await env.CRM_MEDIA.get(mediaKey);
@@ -226,7 +236,7 @@ export async function subidaDe(env, mediaKey, { fresca = false } = {}) {
   await env.CRM_DB?.prepare(
     `INSERT INTO wa_media_cache (media_key, media_id, mime, file_name) VALUES (?, ?, ?, ?)
      ON CONFLICT(media_key) DO UPDATE SET media_id = excluded.media_id, mime = excluded.mime, file_name = excluded.file_name, created_at = datetime('now')`
-  ).bind(mediaKey, mediaId, mime, fileName || null).run().catch(() => {});
+  ).bind(claveCache, mediaId, mime, fileName || null).run().catch(() => {});
   return { mediaId, mime, fileName, deCache: false };
 }
 
@@ -249,19 +259,20 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
     await mandarTexto(env, conversationId, waId, caption, sentBy, null, opciones);
     return waMessageId;
   }
-  let subida = await subidaDe(env, mediaKey);
+  const envL = await envDeConversacion(env, conversationId);
+  let subida = await subidaDe(envL, mediaKey);
   // Seguimientos, secuencias, respuestas rápidas y bienvenida no traen el
   // nombre: sale del que se guardó al subir el archivo (upload-media.js),
   // así el cliente recibe el documento con su nombre original.
   // Foto, video, audio, documento: al toque, sin "escribiendo…".
   let waMessageId;
   try {
-    waMessageId = await enviarMedia(env, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+    waMessageId = await enviarMedia(envL, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
   } catch (err) {
     // El media id guardado venció en Meta: se sube de nuevo y se reintenta.
     if (!subida.deCache) throw err;
-    subida = await subidaDe(env, mediaKey, { fresca: true });
-    waMessageId = await enviarMedia(env, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+    subida = await subidaDe(envL, mediaKey, { fresca: true });
+    waMessageId = await enviarMedia(envL, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
   }
   fileName = fileName || subida.fileName;
   const mime = subida.mime;
@@ -282,6 +293,6 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
 
 /** Reacciona (o quita la reacción, con emoji null) a un mensaje ya mandado, de cualquiera de los dos lados. */
 export async function mandarReaccion(env, waId, mensajeObjetivo, emoji) {
-  await enviarReaccion(env, waId, mensajeObjetivo.wa_message_id, emoji);
+  await enviarReaccion(await envDeConversacion(env, mensajeObjetivo.conversation_id), waId, mensajeObjetivo.wa_message_id, emoji);
   await guardarReaccionPropia(env.CRM_DB, mensajeObjetivo.id, emoji);
 }
