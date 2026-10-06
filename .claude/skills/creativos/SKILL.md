@@ -12,7 +12,10 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 |---|---|---|
 | **Prompts** | el Project del dueño (o tú con "lote nuevo") | A Lote · B ID · C Calidad (flash/pro, vacío = flash) · D Ángulo · E Consciencia · F Producto · G Titular · H Copy · I Refs (`foto: rol \| foto: rol`) · J Prompt JSON · K Estado (pendiente/hecho/error) · L Nota |
 | **Creativos** | tú (`filas.mjs`) + el dueño (E, F, G) | A Lote · B ID · C Imagen · D Calidad · E Nota 1-5 · F Comentario · G ¿A Pro? · H Ángulo · I Consciencia · J Producto · K Titular · L Copy · M Refs · N Archivo · O Drive (lo llena `apps-script/CREATIVOS.gs` solo; no la toques) |
-| **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de brief + reglas_aprendidas) |
+| **Instrucciones** | tú (espejo de `creativos/instrucciones.md`) | A Sección · B Instrucción. Son las instrucciones del Project: el Project de claude.ai solo tiene un arranque (`creativos/prompt-project.md`) que le dice que lea esta pestaña |
+| **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de reglas_aprendidas + precios) |
+| **Ángulos** | tú | Memoria de todo lo renderizado: A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario del dueño · K Estado (ganador / variar: … / descartado: …). El Project la lee para no repetir y para avisar "AGOTADO" |
+| **Memoria** | el Project (una vez) | Fecha · Tipo · Idea: lo que el Project recordaba de antes. Pásalo a Reglas/Instrucciones y deja la fila |
 | **Fotos** | tú, cuando cambian las refs | A Nombre · B Imagen · C Para qué sirve (de refs.json) |
 
 Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
@@ -36,7 +39,10 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
 6. `node scripts/creativos/filas.mjs creativos/lotes/Lnnn` (y `--pro` si
    corrió) → agrega las filas debajo de la última de Creativos.
 7. En Prompts, columna K de las filas tomadas → `hecho` (o `error` + motivo
-   en L).
+   en L). Filas `pausado` no se tocan ni se renderizan.
+7b. Agrega cada imagen a **Ángulos** (formato sale de la Nota L de Prompts;
+   Nota y Estado vacíos hasta el feedback). Si alguna fila trae "AGOTADO" en
+   la Nota, díselo al dueño con la sugerencia.
 8. Responde: link de la hoja, cuántas, costo.
 
 ## "Lote nuevo" (tú escribes los prompts)
@@ -54,9 +60,16 @@ prompt. Escribe las filas en Prompts (Estado `pendiente`) y sigue con
    acumulado (todos los feedback.json): qué saca 4–5, qué saca 1–2, errores de
    render, reparto de variedad, ganadores. Reglas cortas con lote de origen.
    Separa "no vende" (concepto/copy) de "salió mal dibujado" (render).
-3. Copia lo mismo a la pestaña **Reglas** (borra y reescribe desde A2): las
-   filas Brief de `brief.md` + Haz más / Evita / Errores de render / Variedad /
+3. Copia lo mismo a la pestaña **Reglas** (borra y reescribe desde A2):
+   Precios + Formato + Haz más / Evita / Errores de render / Variedad /
    Ganadores. Es lo que lee el Project.
+3b. En **Ángulos** llena Nota, Comentario y Estado de cada fila calificada.
+3c. Si el feedback cambia cómo debe trabajar el Project (formatos, CTA,
+   textos, fotos…), edita `creativos/instrucciones.md` y reescribe la pestaña
+   **Instrucciones** (una fila por `## Sección`). Lee también **Memoria** y
+   pasa lo útil a Reglas.
+3d. Prompts pendientes escritos antes de este feedback que ya chocan con las
+   reglas nuevas → `pausado` con el motivo en L.
 4. Marcados ¿A Pro? sin versión pro: `pro.json`, `render … --pro`, revisa,
    push, `filas.mjs … --pro` → filas nuevas en Creativos.
 5. Commit + push a main. Responde en 3–5 líneas qué cambió en las reglas.

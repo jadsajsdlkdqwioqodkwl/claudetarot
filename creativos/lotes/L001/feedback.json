@@ -1,0 +1,12 @@
+{
+  "C01": {"nota": 5, "comentario": "Evitar usar el CTA \"PIDE EL TUYO POR WHATSAPP\"", "pro": false},
+  "C02": {"nota": 5, "comentario": "Winner, me gustó la libertad creativa con el CTA", "pro": false},
+  "C03": {"nota": 3, "comentario": "de nuevo el CTA medio malo, la imagen no es muy representativa, el Header tmpc me da idea de qué trate el producto, pero es buen conceptp", "pro": false},
+  "C04": {"nota": 2, "comentario": "Mal, recuerda que el creativo es el targeting, esto parece de psicología o no sé. O sea está bien, pero sería mejor que la imagen sea referente al Tarot, y que se entienda lo que se vende en la imagen, similar a lo de arriba", "pro": false},
+  "C05": {"nota": 1, "comentario": "mala paleta de colores, error en la generacion (manual superpuesto, demasiado texto que ya se repite en otros ads. El flujo debe ser capaz de ver qué anuncio ya se han generado y evitar hacer tantas iteraciones", "pro": false},
+  "C06": {"nota": null, "comentario": "Mismo error de generación de imagen, el manual se ve como superpuesto o fading. No me gusta este formato de ellos vs nosotros", "pro": false},
+  "C07": {"nota": 1, "comentario": "Imagen sin ninguna relación, si la tuviera estaría mejor", "pro": false},
+  "C08": {"nota": 1, "comentario": "Error de generación, no se quitó bien el background, y la misma imagen se sigue usando una y otra vez, debería variar. Aunque me gusta el formato retro", "pro": false},
+  "C09": {"nota": 1, "comentario": "Otra iteración, necestamos diversidad!", "pro": false},
+  "C10": {"nota": 5, "comentario": "AWESOME!  a esto me refiero con fiversidad creativa. buen CTA, buen copy", "pro": false}
+}

@@ -13,9 +13,10 @@ feedback va en `reglas_aprendidas.md` (y manda sobre esto si choca).
   no estén en negocio.md.
 - La venta se cierra por WhatsApp: el CTA lleva a escribir/comprar.
 
-## Público
-- Mujeres 18–40 en Perú que quieren aprender tarot y no saben por dónde
-  empezar. Filtro: el anuncio habla al **principiante** ("sin memorizar",
+## Público (fuente: brief en Google Docs, ver `instrucciones.md`)
+- Persona curiosa de 25 a 45+ años, 60–70 % mujeres y 30–40 % hombres, que
+  no sabe nada de tarot y quiere aprender a leerse. Neutro en género.
+  Filtro: el anuncio habla al **principiante** ("sin memorizar",
   "lees desde el primer día").
 
 ## Formato
@@ -23,15 +24,15 @@ feedback va en `reglas_aprendidas.md` (y manda sobre esto si choca).
   zona central limpia; nada importante en el 10% de los bordes.
 - Colores vivos, contraste alto. Español peruano, tú.
 - Titular estilo Halbert: concreto, una promesa o una curiosidad, máx. 8 palabras.
-- Máximo 3 bloques de texto por imagen (titular, apoyo, CTA). Cada texto va
-  entre comillas en el prompt y se pide escribirlo "exactamente así".
-- CTA de compra: "Pídelo por WhatsApp", "Pide el tuyo", "Paga al recibir"…
+- Bastante texto sin saturar (titular, apoyo, lo que incluye, prueba, CTA).
+  Cada texto va entre comillas en el prompt y se pide escribirlo
+  "exactamente así". Prosa: sin "+", sin "Usa X, no Y" ni "Hoy, no mañana".
+- CTA de compra creativo y distinto en cada anuncio; nunca "Pide el tuyo por
+  WhatsApp" ni "Ver kit".
 
-## Variedad por lote (ajustable con el feedback)
-- 40% producto protagonista (`kit_completo`, "reproduce el producto exacto").
-- 30% producto secundario (enseñando el uso: `carta_explicada`,
-  `mano_carta_y_guia`, `seis_cartas`; o producto pequeño en una esquina).
-- 30% sin producto (`refs` vacío): escena, problema, estilo prensa, nota, meme.
+## Variedad por lote
+El reparto vigente está en `reglas_aprendidas.md`. La imagen siempre muestra
+tarot; nunca imágenes genéricas.
 - Mezclar niveles de consciencia (Schwartz): inconsciente, problema, solución,
   producto, muy consciente. No repetir ángulo ni composición dentro del lote.
 

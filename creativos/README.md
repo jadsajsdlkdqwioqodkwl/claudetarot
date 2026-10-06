@@ -3,7 +3,9 @@
 Ciclo: **el Project escribe prompts en la hoja (Prompts) → Claude Code los
 renderiza en Flash (Creativos) → nota y comentario → Claude reescribe las
 reglas (Reglas) → las marcadas pasan a Pro → siguiente lote**.
-Prompt para el Project: `creativos/prompt-project.md`.
+Instrucciones del Project: viven en la pestaña **Instrucciones** (copia en
+`creativos/instrucciones.md`); en claude.ai solo va el arranque de
+`creativos/prompt-project.md`. Memoria de lo probado: pestaña **Ángulos**.
 Todo corre en Claude Code en la nube (skill `creativos`).
 
 Hoja de feedback: https://docs.google.com/spreadsheets/d/19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY
