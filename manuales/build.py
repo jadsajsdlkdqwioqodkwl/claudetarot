@@ -52,7 +52,7 @@ body{font-family:Aptos;color:#000}
 .txt.c4 .e img{width:30pt;margin-left:-3pt}
 .txt.c4 p{margin-bottom:4pt}
 .pn{position:absolute;left:0;right:0;top:254.6pt;text-align:center;font-size:11.04pt;line-height:1.2}
-.cover{position:absolute;left:%(coverx)spt;top:%(covery)spt;width:%(fw)spt;height:%(fh)spt;object-fit:cover;z-index:2}
+.cover{position:absolute;left:%(coverx)spt;top:%(covery)spt;width:%(coverw)spt;height:%(coverh)spt;z-index:2}
 .lines{z-index:3}
 .logo{position:absolute;left:45.45pt;top:73.1pt;width:105pt;height:104pt}
 .phone{position:absolute;left:0;right:0;top:189.6pt;text-align:center;font-family:BahnL;font-size:18pt;line-height:1;color:#80340d;white-space:pre}
@@ -74,7 +74,9 @@ def sheet_html(pages, order):
     svg = [f'<svg class="lines" viewBox="0 0 {PW} {PH}" width="{PW}pt" height="{PH}pt">',
            f'<line x1="0" y1="{YC}" x2="{PW}" y2="{YC}" stroke="#042433" stroke-width="0.14" stroke-dasharray="0.56 0.42"/>',
            f'<line x1="{XC}" y1="0" x2="{XC}" y2="{PH}" stroke="#042433" stroke-width="0.14" stroke-dasharray="0.56 0.42"/>']
-    for (x, y) in FRAMES:
+    for (x, y), num in zip(FRAMES, order):
+        if num == 1:
+            continue  # la portada lleva el borde dentro de la imagen
         svg.append(f'<rect x="{x:.3f}" y="{y:.3f}" width="{FW}" height="{FH}" fill="none" stroke="#000" stroke-width="0.75"/>')
     svg.append("</svg>")
     parts = ['<div class="sheet">'] + svg
@@ -90,7 +92,12 @@ def build(tag, pages, outdir):
     os.makedirs(outdir, exist_ok=True)
     # Rider-Waite: miniaturas como en el original (37 pt, pegadas al marco a 6,2 pt)
     imgp = dict(imgw=37, imggap=8.3, imgml=-6.3) if tag == "rw" else dict(imgw=38, imggap=8, imgml=0)
-    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2, covery=Y1, **imgp)
+    # Portada: la imagen trae su propio borde negro (centros en px 24.3 / 599.3
+    # horizontal y 34.5 / 850.5 vertical, de 624 x 890). Se escala para que ese
+    # borde caiga exactamente donde iria el marco; el marco SVG no se dibuja.
+    sx = FW / (599.3 - 24.3); sy = FH / (850.5 - 34.5)
+    params = dict(pw=PW, ph=PH, fw=FW, fh=FH, coverx=X2 - 24.3 * sx, covery=Y1 - 34.5 * sy,
+                  coverw=624 * sx, coverh=890 * sy, **imgp)
     outs = []
     for name, rows in IMPOSICION.items():
         html = ('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head><body>%s</body></html>'
@@ -128,11 +135,10 @@ def check(pdf, rows):
     with pdfplumber.open(pdf) as doc:
         for p, order in zip(doc.pages, rows):
             rects = [r for r in p.rects if 150 < r["width"] < 200]
-            xs = sorted(round(r["x0"], 2) for r in rects)
-            for i in range(4):
-                a, b = xs[i], xs[-1 - i]
-                if abs((a + b + FW) - PW) > 0.05:
-                    problems.append(("simetria", a, b))
+            for r in rects:  # cada marco debe tener su espejo exacto
+                if not any(abs((r["x0"] + q["x0"] + FW) - PW) < 0.05 and abs(r["top"] - q["top"]) < 0.05 for q in rects):
+                    if 1 not in order or abs((PW - r["x0"] - FW) - X2) > 0.05:
+                        problems.append(("simetria", round(r["x0"], 2), round(r["top"], 2)))
             words = p.extract_words(extra_attrs=["size"])
             for (x, y), num in zip(FRAMES, order):
                 if num in (1, 32):
