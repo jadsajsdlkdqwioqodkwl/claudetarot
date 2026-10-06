@@ -30,6 +30,9 @@ const REGLAS_RENDER = `REGLAS DE RENDER (obligatorias):
 - Cada texto se escribe una sola vez, completo, sin cortar palabras, sin letras inventadas y sin comillas. Nada de texto fuera de los que pide el prompt.
 - Todos los textos en español, tal como vienen en el prompt (nunca traducidos).
 - No escribas en la imagen los nombres de los campos del prompt (CTA, titular, apoyo, dato, incluye…): solo su contenido.
+- Toda carta de tarot se ve con su dibujo completo y a color: nunca cartas en blanco, vacías ni boca abajo salvo que el prompt lo pida.
+- Números, porcentajes y opciones (encuestas, gráficos, etiquetas) se escriben grandes y legibles. Toda flecha va de un texto a la pieza que explica.
+- Se ve a simple vista que se vende un kit de tarot: las cartas, el manual o la caja son lo primero que se ve, no la metáfora del formato.
 - Nada importante en el 10 % de los bordes. Sin barras, cajas ni franjas vacías.`;
 const PARALELO = 4;
 

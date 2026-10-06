@@ -1,0 +1,42 @@
+{
+ "C01": {
+  "nota": null,
+  "comentario": "sobrexplotado, las cartas salen vacías"
+ },
+ "C02": {
+  "nota": null,
+  "comentario": "mal CTA. LOS CTA DEBEN SER CASI SIEMPRE CON REFERENCIA A COMPRAR O ADQUIRIR EL KIT"
+ },
+ "C03": {
+  "nota": null,
+  "comentario": "mal headline"
+ },
+ "C04": {
+  "nota": null,
+  "comentario": "mal formato"
+ },
+ "C05": {
+  "nota": null,
+  "comentario": "mal formato, mal avatar"
+ },
+ "C06": {
+  "nota": null,
+  "comentario": "mal formato, mal avatar, lo msmo que con la cocina y circo, no se entiende"
+ },
+ "C07": {
+  "nota": 5,
+  "comentario": "Excelente! "
+ },
+ "C08": {
+  "nota": null,
+  "comentario": "evita las iteraciones por favor"
+ },
+ "C09": {
+  "nota": null,
+  "comentario": "perfecto, aunque parece que promociona curso y no queremos eso"
+ },
+ "C10": {
+  "nota": null,
+  "comentario": "mal contexto"
+ }
+}

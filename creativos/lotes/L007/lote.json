@@ -1,0 +1,364 @@
+{
+  "lote": "L007",
+  "lote_hoja": "P2026-10-06d",
+  "creado": "2026-10-06",
+  "aspecto": "4:5",
+  "conceptos": [
+    {
+      "id": "C01",
+      "angulo": "La última vez que te leyeron las cartas te quedaste con ganas de entenderlas",
+      "consciencia": "inconsciente",
+      "producto": "protagonista",
+      "titular": "Te leyeron las cartas una vez; ahora toca que las leas tú con tu kit de tarot",
+      "copy": "Alguna vez te leyeron las cartas y te quedaste con ganas de entenderlas. Con este kit el turno es tuyo: 78 cartas con el significado impreso y manual en español por S/89.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "ticket de turno de una sala de espera que cambia el turno de que te lean a que leas tú",
+        "formato": "ticket de turno numerado",
+        "escena": "sala de espera colorida con un dispensador de turnos ilustrado y un gran ticket de turno sin ningún número visible saliendo de él; una mano sostiene en abanico las seis cartas reales de la referencia junto al ticket; sillas de colores y una planta al fondo",
+        "composicion": "ticket grande centrado con todo el texto dentro; mano con las cartas en el tercio superior derecho; botón en la mitad desprendible del ticket al pie",
+        "estilo": "ilustración plana alegre de sala de espera con las cartas en fotografía nítida",
+        "iluminacion": "plana y brillante, con sombra suave bajo el ticket",
+        "paleta": "turquesa, coral, amarillo limón, blanco",
+        "producto": "seis_cartas: reproduce idénticas las seis cartas de la referencia, con sus dibujos y fondos de color reales, sostenidas en abanico con la misma luz y perspectiva, cada carta una sola vez, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Te leyeron las cartas una vez; ahora toca que las leas tú con tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Antes esperabas tu turno para que otra persona interpretara cada carta. Con el significado impreso y el manual en español, el turno ahora es tuyo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Tu kit trae 78 cartas, manual paso a paso y tapete floral, con un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Atención sin cola: S/89 por kit, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Pide tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo ticket de papel crema con borde punteado turquesa: titular coral oscuro grueso, apoyo e incluye en tinta oscura, dato en turquesa oscuro dentro del mismo ticket, botón blanco sobre sello coral en la mitad desprendible",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; el ticket no lleva números; sin comillas dentro de los textos; cada carta aparece una sola vez; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas El titular se escribe una sola vez, palabra por palabra, sin repetir ni cortar ninguna palabra."
+      },
+      "avatar": "A8",
+      "titular_novedoso": false,
+      "formato": "ticket de turno numerado",
+      "fila_hoja": 2
+    },
+    {
+      "id": "C02",
+      "angulo": "Le encanta el tarot y nunca sabes qué regalarle",
+      "consciencia": "problema",
+      "producto": "protagonista",
+      "titular": "Se busca: un regalo de tarot que se abra y se use el mismo día",
+      "copy": "Si a tu hija, tu pareja o tu amiga le encanta el tarot y no sabes qué regalarle, este kit se abre y se estrena con su primera lectura. S/89 con envío gratis; dos kits por S/149.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "cartel de se busca donde el kit completo es el regalo buscado",
+        "formato": "cartel de se busca",
+        "escena": "un cartel grande de papel crema clavado en una cerca de madera clara con chinchetas de colores; en el recuadro central del cartel las piezas del kit ordenadas como el buscado; alrededor huellas de colores, estrellas y una cinta de regalo rosa; cielo celeste de fondo El encabezado del cartel dice SE BUSCA en letras grandes; nada en inglés (nunca WANTED).",
+        "composicion": "recuadro con el kit en el tercio superior del cartel; texto en una sola zona debajo del recuadro; botón en un sello redondo al pie del cartel",
+        "estilo": "cartel ilustrado alegre con las piezas del kit en fotografía nítida",
+        "iluminacion": "luz de día brillante, sombras suaves de las chinchetas",
+        "paleta": "crema, turquesa, coral, rosa chicle",
+        "producto": "kit_completo: reproduce idénticas las piezas de la referencia (caja morada, cartas en abanico con El Mago, guía abierta, tapete floral, collar luna) dentro del recuadro, con la misma luz y perspectiva, sin pegar la foto entera, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Se busca: un regalo de tarot que se abra y se use el mismo día (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Para tu hija, tu pareja o tu amiga que ama el tarot: un kit que se abre en la mesa y se estrena con su primera lectura. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Caja con 78 cartas de significado impreso, manual en español, tapete floral y un collar amuleto. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Recompensa de S/89 con envío gratis a todo el Perú, o dos kits por S/149. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Regálale su kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "encabezado": "SE BUSCA (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola zona de texto en la parte baja del cartel: titular rojo cereza muy grueso en tipografía de cartel de se busca, apoyo e incluye en tinta marrón oscuro, dato en turquesa oscuro dentro de la misma zona, botón blanco sobre sello coral",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; sin comillas dentro de los textos; cada carta aparece una sola vez; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A6",
+      "titular_novedoso": false,
+      "formato": "cartel de se busca",
+      "fila_hoja": 3
+    },
+    {
+      "id": "C03",
+      "angulo": "Quieres un pasatiempo nuevo y todo te pide pantalla",
+      "consciencia": "problema",
+      "producto": "en uso",
+      "titular": "Modo avión activado: un pasatiempo de mesa con tu kit de tarot",
+      "copy": "Todo lo nuevo te pide pantalla. Este pasatiempo de mesa no: sacas una carta, miras su dibujo y lees su significado impreso. Kit por S/89 con envío gratis.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "pantalla de celular en modo avión junto a cartas reales sobre la mesa como pasatiempo sin pantallas",
+        "formato": "pantalla de celular en modo avión",
+        "escena": "un celular ilustrado grande apoyado en vertical sobre una mesa celeste, con un gran ícono de avión amarillo en la pantalla; frente al celular, sobre la mesa, las seis cartas reales de la referencia esparcidas con una taza y flores; fondo rosa chicle con nubes planas",
+        "composicion": "celular a la izquierda con el texto en la pantalla; cartas reales a la derecha en el tercio medio; botón como interruptor deslizante verde al pie de la pantalla",
+        "estilo": "mezcla de ilustración plana para el celular y fotografía nítida para las cartas",
+        "iluminacion": "plana y brillante, sombra suave bajo las cartas",
+        "paleta": "celeste, amarillo girasol, rosa chicle, verde menta",
+        "producto": "seis_cartas: reproduce idénticas las seis cartas de la referencia sobre la mesa, con sus dibujos y fondos de color reales, con la misma luz y perspectiva, cada carta una sola vez, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Modo avión activado: un pasatiempo de mesa con tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Un rato libre sin notificaciones: sacas una carta, miras su dibujo y lees su significado impreso, todo sobre la mesa. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "El kit trae 78 cartas, un manual en español y un tapete floral para tus tiradas. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Desconectarte cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Quiero mi kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola pantalla de celular blanca con esquinas redondeadas: titular azul oscuro grueso, apoyo e incluye oscuros, dato en rosa oscuro dentro de la misma pantalla, botón blanco sobre interruptor verde",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; la interfaz del celular no lleva otros textos, hora ni iconos con letras; sin comillas dentro de los textos; cada carta aparece una sola vez; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A2",
+      "titular_novedoso": false,
+      "formato": "pantalla de celular en modo avión",
+      "fila_hoja": 4
+    },
+    {
+      "id": "C04",
+      "angulo": "Escribe tu pregunta, saca tres cartas y míralas con otros ojos",
+      "consciencia": "solucion",
+      "producto": "en uso",
+      "titular": "Escribe tu pregunta, saca tres cartas de tu kit de tarot y míralas con otros ojos",
+      "copy": "Anota lo que te da vueltas, saca tres cartas y léelas con calma con el manual en español abierto. Cada carta trae su significado impreso. Kit por S/89.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "frasco de papelitos con preguntas junto a la mano con la carta y la guía para mirar una pregunta con tres cartas",
+        "formato": "frasco de preguntas con papelitos",
+        "escena": "una mesa de madera clara con un frasco de vidrio grande lleno de papelitos doblados de colores sin letras, un papelito desplegado a un lado con renglones suaves; delante del frasco, la mano con la carta y la guía abierta de la referencia; fondo amarillo canario con puntos naranjas",
+        "composicion": "frasco en el tercio superior izquierdo; mano con la guía en el centro; zona única de texto en la franja inferior; botón en un papelito grande al pie",
+        "estilo": "fotografía cálida de producto con elementos ilustrados planos",
+        "iluminacion": "luz de ventana suave y dorada, sombras tiernas",
+        "paleta": "amarillo canario, naranja, turquesa, rosa chicle",
+        "producto": "mano_carta_y_guia: reproduce idénticas la mano, la carta Templanza y la guía abierta de la referencia, con la misma luz y perspectiva, sin cambiar la carta ni la guía, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Escribe tu pregunta, saca tres cartas de tu kit de tarot y míralas con otros ojos (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Anotas lo que te da vueltas en un papelito, lo dejas junto al manual en español y lees con calma cada carta que sale. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Cada carta del kit trae su significado impreso para que leas tu pregunta sin apuro. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Tu primera pregunta sale por S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Pide tu kit y haz tu pregunta (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola franja blanca de esquinas redondeadas en la parte inferior: titular naranja oscuro grueso, apoyo e incluye oscuros, dato en turquesa oscuro dentro de la misma franja, botón blanco sobre papelito fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; los papelitos no llevan letras; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A4",
+      "titular_novedoso": false,
+      "formato": "frasco de preguntas con papelitos",
+      "fila_hoja": 5
+    },
+    {
+      "id": "C05",
+      "angulo": "Con el significado impreso en cada carta sabes qué decir en cada tirada",
+      "consciencia": "producto",
+      "producto": "protagonista",
+      "titular": "Noche de tarot en casa: invitación para leerle las cartas a tu gente",
+      "copy": "Quieres ser quien saca las cartas en la reunión. Con el significado impreso en cada una de las 78 cartas y el manual en español, sabes qué decir. Kit por S/89 con envío gratis.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "invitación de fiesta a una noche de tarot donde la carta explicada es la invitada de honor",
+        "formato": "invitación de fiesta",
+        "escena": "invitación grande de papel con borde de guirnaldas de colores sobre fondo fucsia con globos y serpentinas; en el tercio superior de la invitación la carta de la referencia grande y ligeramente inclinada como invitada de honor; velas pequeñas y confeti plano",
+        "composicion": "carta en el tercio superior; zona única de texto en la parte baja de la invitación; botón en una entrada de fiesta al pie",
+        "estilo": "papelería de fiesta ilustrada con la carta en fotografía nítida",
+        "iluminacion": "luz cálida de fiesta con destellos suaves",
+        "paleta": "fucsia, amarillo limón, turquesa, naranja",
+        "producto": "carta_explicada: reproduce idéntica la carta La Emperatriz con todos sus datos impresos, con la misma luz y perspectiva, sin cambiar sus datos ni sus dibujos, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Noche de tarot en casa: invitación para leerle las cartas a tu gente (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Con el significado impreso en cada carta de tu kit sabes qué decir en la reunión, aunque ayer no supieras nada. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Con el manual en español abierto, tu primera tirada de tres cartas sale de corrido; traen tapete floral y collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Tu lugar como quien lee las cartas cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Compra tu kit para tu reunión (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola zona de papel crema con borde de guirnalda en la parte baja de la invitación: titular fucsia oscuro grueso, apoyo e incluye en tinta oscura, dato en turquesa oscuro dentro de la misma zona, botón blanco sobre entrada naranja",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A5",
+      "titular_novedoso": false,
+      "formato": "invitación de fiesta",
+      "fila_hoja": 6
+    },
+    {
+      "id": "C06",
+      "angulo": "El manual en español explica las 78 cartas para leer a la hora que puedas",
+      "consciencia": "producto",
+      "producto": "protagonista",
+      "titular": "Programación de tu semana: tarot con manual en español a la hora que puedas",
+      "copy": "Sin horarios fijos ni matrícula: abres el manual en español cuando te queda un rato libre y lees la carta que sacaste. Kit con 78 cartas por S/89.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "guía de programación de televisión genérica donde el manual en español se lee a la hora libre",
+        "formato": "guía de programación de TV",
+        "escena": "un televisor retro ilustrado grande sobre fondo verde menta con antenas y una grilla de franjas de colores sin texto debajo; en la pantalla, como programa estelar, la mano con la carta y la guía abierta de la referencia; estrellas planas alrededor",
+        "composicion": "televisor en el tercio superior con la foto en la pantalla; grilla de programación en la parte baja que contiene todo el texto en una sola zona; botón como mando a distancia al pie",
+        "estilo": "ilustración plana retro de TV con foto nítida en la pantalla",
+        "iluminacion": "brillo de pantalla suave y luz plana",
+        "paleta": "verde menta, coral, amarillo girasol, azul cielo",
+        "producto": "mano_carta_y_guia: reproduce idénticas la mano, la carta Templanza y la guía abierta de la referencia dentro de la pantalla, con la misma luz y perspectiva, sin cambiar la carta ni la guía, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Programación de tu semana: tarot con manual en español a la hora que puedas (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Sin horarios fijos ni matrícula: abres el manual cuando te queda libre un rato y lees la carta que sacaste. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Tu cartelera trae 78 cartas con significado impreso, tapete floral y collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Entrada libre las 24 horas por S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Pide tu kit hoy (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola grilla blanca de esquinas redondeadas bajo el televisor: titular azul oscuro grueso, apoyo e incluye oscuros, dato en coral dentro de la misma grilla, botón blanco sobre mando verde oscuro",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; la grilla no lleva horas ni nombres de canales; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A7",
+      "titular_novedoso": false,
+      "formato": "guía de programación de TV",
+      "fila_hoja": 7
+    },
+    {
+      "id": "C07",
+      "angulo": "Tu primera lectura es para ti, con el kit completo a S/89",
+      "consciencia": "muy consciente",
+      "producto": "en uso",
+      "titular": "El arte de leerte, en un kit de 78 cartas de tarot",
+      "copy": "La primera lectura que hagas con tus cartas es para ti: carta, significado impreso y manual en español para entenderte con calma. Kit completo por S/89.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "carnet personal de lectura con la carta explicada como foto del carnet",
+        "formato": "carnet personal",
+        "escena": "un carnet de credencial grande color lavanda con cordón y clip, con un espacio de foto donde va la carta de la referencia y una línea en blanco para el nombre sin texto; sobre fondo amarillo limón con círculos concéntricos y destellos; una mano ilustrada sostiene el cordón",
+        "composicion": "carnet vertical centrado con la carta en el tercio superior; zona única de texto en el resto del carnet; botón en un sello redondo al pie",
+        "estilo": "ilustración plana de credencial con la carta en fotografía nítida",
+        "iluminacion": "plana y brillante con brillo suave sobre el plástico",
+        "paleta": "lavanda, amarillo limón, menta, coral",
+        "producto": "carta_explicada: reproduce idéntica la carta La Emperatriz con todos sus datos impresos en el espacio de foto, con la misma luz y perspectiva, sin cambiar sus datos ni sus dibujos, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "El arte de leerte, en un kit de 78 cartas de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "La primera lectura que hagas con tus cartas es para ti: carta, significado impreso y manual en español para entenderte con calma. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Incluye 78 cartas, tapete floral y un collar amuleto de regalo, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Válido sin fecha de vencimiento: tus cartas son tuyas para siempre. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Quiero mi kit completo (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola zona blanca de esquinas redondeadas en la parte baja del carnet: titular morado oscuro grueso, apoyo e incluye oscuros, dato en coral dentro de la misma zona, botón blanco sobre sello menta oscuro",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; el carnet no lleva nombre ni números; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "avatar": "A3",
+      "titular_novedoso": true,
+      "formato": "carnet personal",
+      "fila_hoja": 8
+    },
+    {
+      "id": "C08",
+      "angulo": "Diez videos de tarot vistos y cada uno dice algo distinto",
+      "consciencia": "inconsciente",
+      "producto": "sin kit",
+      "titular": "Diez videos de tarot después, cada uno dice algo distinto",
+      "copy": "Cada video te da un significado diferente para la misma carta. Este kit pone un solo significado impreso en cada una de sus 78 cartas y un manual en español para seguirlo a tu ritmo.",
+      "refs": [],
+      "prompt": {
+        "concepto": "lista de reproducción interminable de videos de tarot que se contradicen",
+        "formato": "lista de reproducción de video",
+        "escena": "un reproductor de video genérico ilustrado sobre fondo azul cielo, con una columna de diez miniaturas ilustradas, cada una con una carta de tarot ilustrada de forma simple y distinta, y signos de interrogación de colores flotando; una barra de progreso larga y una mano ilustrada con gesto de cansancio",
+        "composicion": "reproductor y lista en el tercio superior y medio; zona única de texto en una tarjeta bajo la lista; botón como ícono de pausa al pie",
+        "estilo": "ilustración plana de interfaz alegre",
+        "iluminacion": "plana y brillante",
+        "paleta": "azul cielo, naranja, amarillo limón, rosa chicle",
+        "producto": "sin kit: no mostrar la caja ni piezas del kit; mostrar solo cartas de tarot ilustradas de forma simple y alegre, con dibujos genéricos y sin letras ni números en ellas",
+        "textos": {
+          "titular": "Diez videos de tarot después, cada uno dice algo distinto (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Cada video te da un significado diferente para la misma carta y terminas con más dudas que al empezar. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "El kit pone un solo significado impreso en cada una de sus 78 cartas, con un manual en español para seguirlo a tu ritmo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Aprender sin pantallas cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Pide tu kit con manual en español (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola tarjeta blanca de esquinas redondeadas bajo la lista: titular azul oscuro grueso, apoyo e incluye oscuros, dato en naranja dentro de la misma tarjeta, botón blanco sobre pausa fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; las miniaturas y las cartas ilustradas no llevan letras ni números; sin comillas dentro de los textos"
+      },
+      "avatar": "A7",
+      "titular_novedoso": false,
+      "formato": "lista de reproducción de video",
+      "fila_hoja": 9
+    },
+    {
+      "id": "C09",
+      "angulo": "Lee las cartas a tu familia con la tirada de tres cartas del manual",
+      "consciencia": "solucion",
+      "producto": "sin kit",
+      "titular": "Saludos desde la sobremesa: ya le lees el tarot a tu familia",
+      "copy": "Tres cartas sobre el tapete, el manual en español abierto y tu familia atenta: así se ve tu primera lectura para otros. Kit por S/89 con envío gratis.",
+      "refs": [],
+      "prompt": {
+        "concepto": "postal de vacaciones que muestra la sobremesa familiar donde lees tres cartas",
+        "formato": "postal con sello",
+        "escena": "una postal grande de papel crema con borde de rayitas rojas y azules, un sello postal de colores sin letras y matasellos redondo sin texto; la ilustración muestra una mesa familiar vista desde arriba con manos de distintas edades, un mantel floral, una taza y tres cartas de tarot ilustradas de forma simple y alegre en fila; fondo turquesa con flores",
+        "composicion": "ilustración en la mitad superior de la postal; zona única de texto en la mitad inferior; botón como sello redondo al pie",
+        "estilo": "ilustración plana cálida de postal con textura de papel",
+        "iluminacion": "plana y cálida",
+        "paleta": "turquesa, coral, amarillo girasol, crema",
+        "producto": "sin kit: no mostrar la caja ni piezas del kit; mostrar solo cartas de tarot ilustradas de forma simple y alegre, con dibujos genéricos y sin letras ni números en ellas",
+        "textos": {
+          "titular": "Saludos desde la sobremesa: ya le lees el tarot a tu familia (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Tres cartas sobre el tapete, el manual en español abierto y tu familia atenta: así se ve tu primera lectura para otros. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Con el kit tienes 78 cartas de significado impreso, tapete floral y un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Tu primera sobremesa de tarot cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Llévate tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola zona de papel crema en la mitad inferior de la postal: titular coral oscuro en tipografía manuscrita gruesa, apoyo e incluye en tinta azul oscuro, dato en turquesa oscuro dentro de la misma zona, botón blanco sobre sello rojo",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; el sello y el matasellos no llevan letras ni números; las cartas ilustradas no llevan letras ni números; sin comillas dentro de los textos"
+      },
+      "avatar": "A5",
+      "titular_novedoso": false,
+      "formato": "postal con sello",
+      "fila_hoja": 10
+    },
+    {
+      "id": "C10",
+      "angulo": "Tu nuevo pasatiempo llega a casa por S/89, con envío gratis",
+      "consciencia": "muy consciente",
+      "producto": "en uso",
+      "titular": "El arte de la adivinación en tu bolsillo",
+      "copy": "Un letrero encendido para tus ratos libres, lejos de las pantallas: cartas, tapete y manual en español en un kit de S/89 con envío gratis.",
+      "refs": [],
+      "prompt": {
+        "concepto": "letrero de neón que anuncia el pasatiempo de mesa abierto para tus ratos libres",
+        "formato": "letrero de neón",
+        "escena": "un letrero de neón rosa y turquesa en forma de rectángulo redondeado sobre una pared de ladrillo pintada de rosa chicle claro; debajo, manos ilustradas sobre una mesa celeste sostienen y abren en abanico cartas de tarot ilustradas de forma simple y alegre, junto a una taza y una planta",
+        "composicion": "letrero en el tercio superior con todo el texto dentro como zona única; manos con cartas en el tercio inferior; botón como interruptor luminoso al pie del letrero",
+        "estilo": "ilustración plana con brillo de neón suave",
+        "iluminacion": "resplandor de neón rosa y turquesa suave sobre una pared clara",
+        "paleta": "rosa chicle, turquesa, amarillo limón, blanco",
+        "producto": "sin kit: no mostrar la caja ni piezas del kit; mostrar solo cartas de tarot ilustradas de forma simple y alegre, con dibujos genéricos y sin letras ni números en ellas",
+        "textos": {
+          "titular": "El arte de la adivinación en tu bolsillo (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Un kit de tarot para aprender desde cero en tus ratos libres: 78 cartas con su significado impreso, tapete y manual en español, lejos de las pantallas. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Trae 78 cartas con significado impreso y un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Pedido sencillo: en Lima pagas al recibir y el envío es gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "boton": "Consigue tu kit por S/89 (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola zona dentro del letrero con fondo blanco suave y borde de neón rosa: titular turquesa oscuro grueso, apoyo e incluye oscuros, dato en rosa oscuro dentro de la misma zona, botón blanco sobre interruptor fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; todo el texto en español; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; no escribas en la imagen los nombres de los campos (titular, apoyo, incluye, dato, boton) ni las palabras CTA o botón; las cartas ilustradas no llevan letras ni números; sin comillas dentro de los textos"
+      },
+      "avatar": "A2",
+      "titular_novedoso": true,
+      "formato": "letrero de neón",
+      "fila_hoja": 11
+    }
+  ]
+}

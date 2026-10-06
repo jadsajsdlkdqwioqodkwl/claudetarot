@@ -4,13 +4,13 @@
  *
  *   node scripts/creativos/desde-hoja.mjs <prompts.json> creativos/lotes/L001
  *
- * <prompts.json> es lo que devuelve get_values de Prompts!A1:L (con la fila
+ * <prompts.json> es lo que devuelve get_values de Prompts!A1:M (con la fila
  * de encabezados). Solo toma las filas con Estado vacío o "pendiente" y del
  * mismo Lote que la primera pendiente (o sin lote). Imprime los números de
  * fila tomados para marcarlas "hecho" después.
  *
  * Columnas: Lote | ID | Ángulo | Consciencia | Producto | Titular |
- *           Copy | Refs | Prompt JSON | Estado | Nota | Avatar
+ *           Copy | Refs | Prompt JSON | Estado | Nota | Avatar | Titular
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
@@ -53,7 +53,7 @@ if (!tomadas.length) {
 
 const avisos = [];
 const conceptos = tomadas.map(({ f, fila }) => {
-  const [, id, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota, avatar] = f;
+  const [, id, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota, avatar, tipoTitular] = f;
   let prompt;
   try {
     prompt = JSON.parse(promptTxt);
@@ -78,6 +78,7 @@ const conceptos = tomadas.map(({ f, fila }) => {
     id: String(id).trim(),
     angulo, consciencia, producto, titular, copy, refs, prompt,
     avatar: String(avatar || "").trim().toUpperCase(),
+    titular_novedoso: /novedoso/i.test(tipoTitular || ""),
     formato: String(nota || "").replace(/^formato:\s*/i, "").trim(),
     fila_hoja: fila,
   };
@@ -101,6 +102,14 @@ for (const c of conceptos) {
 }
 for (const [a, n] of Object.entries(porAvatar)) if (n > 3) avisos.push(`avatar ${a} se usa ${n} veces en el lote (máx. 3)`);
 if (conceptos.length >= 8 && Object.keys(porAvatar).length < 5) avisos.push(`solo ${Object.keys(porAvatar).length} avatares distintos en el lote (mín. 5)`);
+// 20 % de titulares novedosos y CTA de compra con la palabra kit (reglas_aprendidas.md).
+const novedosos = conceptos.filter((c) => c.titular_novedoso).length;
+if (conceptos.length >= 8 && novedosos < 2) avisos.push(`solo ${novedosos} titulares novedosos (mín. 2 de 10, Prompts col. M)`);
+for (const c of conceptos) {
+  const t = typeof c.prompt === "string" ? {} : c.prompt.textos || {};
+  const k = Object.keys(t).find((x) => /cta|boton|botón/i.test(x));
+  if (k && !/\bkits?\b/i.test(t[k])) avisos.push(`${c.id}: el CTA "${t[k].split(" (")[0]}" no invita a comprar el kit`);
+}
 const PROHIBIDO = [/[«»]/, /whats\s*app/i, /ver kit/i, /\s\+\s/, /\busa\b[^.]{1,40},\s*no\b/i, /\bhoy,\s*no\b/i, /\boriginal\b/i];
 for (const c of conceptos) {
   const textos = JSON.stringify(typeof c.prompt === "string" ? c.prompt : c.prompt.textos ?? c.prompt);

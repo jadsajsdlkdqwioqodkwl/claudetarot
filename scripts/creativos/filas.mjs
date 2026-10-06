@@ -8,7 +8,8 @@
  *
  * Columnas: Lote | ID | Imagen | Nota (1-5) | Comentario | Ángulo |
  *           Consciencia | Producto | Titular | Copy | Refs | Archivo | Avatar
- * (--angulos: … | Comentario | Estado | Avatar)
+ * (--angulos: … | Comentario | Estado | Avatar | Titular)
+ * Ordenadas por avatar y luego por ID (el dueño las revisa por avatar).
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
@@ -31,7 +32,8 @@ const loteNombre = lote.lote_hoja ? `${lote.lote} ${lote.lote_hoja}` : lote.lote
 if (args.includes("--angulos")) {
   const filas = lote.conceptos
     .filter((c) => render[`${c.id}.flash`] || render[`${c.id}.pro`])
-    .map((c) => [loteNombre, c.id, c.formato || "", c.angulo || "", c.consciencia || "", c.producto || "", c.titular || "", (c.refs || []).map((x) => x.foto).join(", "), "", "", "", c.avatar || ""]);
+    .map((c) => [loteNombre, c.id, c.formato || "", c.angulo || "", c.consciencia || "", c.producto || "", c.titular || "", (c.refs || []).map((x) => x.foto).join(", "), "", "", "", c.avatar || "", c.titular_novedoso ? "novedoso" : ""])
+    .sort((a, b) => a[11].localeCompare(b[11]) || a[1].localeCompare(b[1]));
   console.log(JSON.stringify(filas));
   process.exit(0);
 }
@@ -56,4 +58,4 @@ for (const c of lote.conceptos) {
     c.avatar || "",
   ]);
 }
-console.log(JSON.stringify(filas.sort((a, b) => a[1].localeCompare(b[1]))));
+console.log(JSON.stringify(filas.sort((a, b) => a[12].localeCompare(b[12]) || a[1].localeCompare(b[1]))));
