@@ -46,7 +46,7 @@ Drive y Google Sheets. Las del asesor → Google Drive.
               Claude Code (skill creativos, prompt maestro) → imágenes
               Flash 1080×1350 → Creativos + Copy Meta + Ángulos
                                           │
-              Dueño califica (Creativos y Copy Meta) → "lee el feedback"
+              Dueño califica (Creativos y Copy Meta) → "REVISA COMENTARIOS"
               → Reglas, Instrucciones, Copy reglas, creativos/brief.md
 
 ## Dónde ver cada cosa

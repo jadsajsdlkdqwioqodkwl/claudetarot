@@ -36,6 +36,7 @@ Feedback acumulado: L001 (10 filas), L002 (10), L003 (10).
 - Manual superpuesto o desvanecido al pegar la foto completa del kit (L001-C05, C06): integrar las piezas en la escena, con la misma luz, y pedir "sin piezas transparentes, desvanecidas ni superpuestas".
 - Fondo mal recortado alrededor del producto (L001-C08): pedir "sin bordes recortados ni halos".
 - No poner comillas « » ni tipográficas dentro de los textos del JSON: Gemini las dibuja (L002, L003).
+- Objetos o textos duplicados (dos manuales, dos cajas, el mismo texto dos veces) y piezas "pegadas" como collage (L002-C04, L003-C08). Desde 2026-10-06 cada prompt lleva al final las REGLAS_RENDER de `scripts/creativos/render.mjs`: escena única, piezas sólidas con sombra, sin recortes ni halos, cada objeto y texto una sola vez.
 
 ## Reparto de variedad vigente
 40 % producto protagonista (cada foto máx. 2 por lote, kit_completo máx. 1) · 40 % producto en uso (manos, tirada, carta explicada, manual abierto) · 20 % escena de tarot sin el kit (pero con cartas). Ningún formato repetido dentro del lote. Al menos 3 de 10 en formatos que nunca se han probado (meme, avatar/personaje ilustrado, etc.), y ninguno que repita un formato de Ángulos con nota 3 o menos sin una variación clara.

@@ -1,12 +1,11 @@
 /**
  * Renderiza un lote de anuncios estáticos con Nano Banana (API de Gemini).
  *
- *   npm run creativos:render -- creativos/lotes/L001            (Flash, todos)
- *   npm run creativos:render -- creativos/lotes/L001 --pro      (Pro, los marcados en pro.json o --solo)
+ *   npm run creativos:render -- creativos/lotes/L001            (todos)
  *   npm run creativos:render -- creativos/lotes/L001 --solo C03,C07
  *
  * Lee <lote>/lote.json, adjunta las fotos de creativos/refs/ que declara cada
- * concepto y guarda <lote>/img/<ID>.<flash|pro>.<ext>. Anota el resultado en
+ * concepto y guarda <lote>/img/<ID>.flash.<ext>. Anota el resultado en
  * <lote>/render.json. Además deja la versión para Meta (1080×1350 PNG) en
  * <lote>/final/ (ver final.mjs). Necesita GEMINI_API_KEY (variable del entorno).
  */
@@ -18,20 +17,28 @@ import { hacerFinal } from "./final.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const REFS_DIR = join(root, "creativos/refs");
 
-const MODELOS = {
-  flash: { id: process.env.MODELO_FLASH || "gemini-3.1-flash-image", size: "2K", usd: 0.101 },
-  pro: { id: process.env.MODELO_PRO || "gemini-3-pro-image", size: "2K", usd: 0.134 },
-};
+const MODELO = { id: process.env.MODELO_FLASH || "gemini-3.1-flash-image", size: "2K", usd: 0.101 };
+
+// Va al final de TODOS los prompts: los errores que ya vimos en L001–L003
+// (fondo mal recortado, piezas pegadas o transparentes, objetos y textos
+// duplicados, comillas dibujadas). Ver creativos/reglas_aprendidas.md.
+const REGLAS_RENDER = `REGLAS DE RENDER (obligatorias):
+- Una sola escena fotográfica o ilustrada coherente, con una sola luz y una sola perspectiva. Nada de collage ni fotos pegadas encima.
+- Si hay producto de las imágenes de referencia, recrea cada pieza dentro de la escena, sólida y opaca, con sombra propia y apoyada en una superficie. Prohibido: bordes recortados, halos blancos, restos del fondo original, piezas flotando, transparentes, desvanecidas o superpuestas.
+- No copies de las fotos de referencia sus etiquetas, flechas, textos ni su fondo: solo el aspecto de las piezas.
+- Cada objeto aparece una sola vez salvo que el prompt pida varios: una caja, un manual, un tapete, un collar. No dupliques cartas idénticas ni manos.
+- Cada texto se escribe una sola vez, completo, sin cortar palabras, sin letras inventadas y sin comillas. Nada de texto fuera de los que pide el prompt.
+- Nada importante en el 10 % de los bordes. Sin barras, cajas ni franjas vacías.`;
 const PARALELO = 4;
 
 const args = process.argv.slice(2);
 const loteDir = args.find((a) => !a.startsWith("--"));
-const calidad = args.includes("--pro") ? "pro" : "flash";
+const calidad = "flash"; // nombre fijo de los archivos y de render.json (lotes viejos)
 const soloArg = args[args.indexOf("--solo") + 1];
 const solo = args.includes("--solo") && soloArg ? new Set(soloArg.split(",").map((s) => s.trim())) : null;
 
 if (!loteDir) {
-  console.error("Uso: render.mjs creativos/lotes/L001 [--pro] [--solo C01,C02]");
+  console.error("Uso: render.mjs creativos/lotes/L001 [--solo C01,C02]");
   process.exit(1);
 }
 const key = process.env.GEMINI_API_KEY;
@@ -46,15 +53,8 @@ const renderFile = join(dir, "render.json");
 const render = existsSync(renderFile) ? JSON.parse(readFileSync(renderFile, "utf8")) : {};
 mkdirSync(join(dir, "img"), { recursive: true });
 
-// En Pro, sin --solo, se renderizan los que pro.json marca (los elige Claude
-// desde la columna "¿A Pro?" de la hoja).
 let elegidos = lote.conceptos;
 if (solo) elegidos = elegidos.filter((c) => solo.has(c.id));
-else if (calidad === "pro") {
-  const proFile = join(dir, "pro.json");
-  const ids = existsSync(proFile) ? new Set(JSON.parse(readFileSync(proFile, "utf8"))) : new Set();
-  elegidos = elegidos.filter((c) => ids.has(c.id));
-}
 if (!elegidos.length) {
   console.error("No hay conceptos para renderizar.");
   process.exit(1);
@@ -78,11 +78,12 @@ function partes(c) {
     out.push(parteFoto(r.foto));
   });
   if (!refs.length) out.push({ text: "Sin imágenes de referencia: no muestres el producto salvo que el prompt lo pida." });
+  out.push({ text: REGLAS_RENDER });
   return out;
 }
 
 async function generar(c) {
-  const m = MODELOS[calidad];
+  const m = MODELO;
   const body = {
     contents: [{ role: "user", parts: partes(c) }],
     generationConfig: {
@@ -135,5 +136,5 @@ await Promise.all(
 );
 
 writeFileSync(renderFile, JSON.stringify(render, null, 2) + "\n");
-console.log(`\n${ok}/${elegidos.length} imágenes con ${MODELOS[calidad].id} · ~US$${(ok * MODELOS[calidad].usd).toFixed(2)}`);
+console.log(`\n${ok}/${elegidos.length} imágenes con ${MODELO.id} · ~US$${(ok * MODELO.usd).toFixed(2)}`);
 if (ok < elegidos.length) process.exitCode = 2;

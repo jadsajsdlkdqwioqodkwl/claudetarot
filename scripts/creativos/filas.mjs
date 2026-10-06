@@ -3,11 +3,11 @@
  * con el conector de Google Sheets). Correr DESPUÉS de hacer push de las
  * imágenes: la fórmula =IMAGE() apunta al commit actual en GitHub.
  *
- *   node scripts/creativos/filas.mjs creativos/lotes/L001 [--pro]
+ *   node scripts/creativos/filas.mjs creativos/lotes/L001
  *   node scripts/creativos/filas.mjs creativos/lotes/L001 --angulos   (filas para la pestaña Ángulos)
  *
- * Columnas: Lote | ID | Imagen | Calidad | Nota (1-5) | Comentario | ¿A Pro? |
- *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo
+ * Columnas: Lote | ID | Imagen | Nota (1-5) | Comentario | Ángulo |
+ *           Consciencia | Producto | Titular | Copy | Refs | Archivo
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
@@ -17,7 +17,7 @@ import { execSync } from "node:child_process";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const args = process.argv.slice(2);
 const dir = resolve(root, args.find((a) => !a.startsWith("--")));
-const calidad = args.includes("--pro") ? "pro" : "flash";
+const calidad = "flash";
 
 const lote = JSON.parse(readFileSync(join(dir, "lote.json"), "utf8"));
 const render = existsSync(join(dir, "render.json")) ? JSON.parse(readFileSync(join(dir, "render.json"), "utf8")) : {};
@@ -43,10 +43,8 @@ for (const c of lote.conceptos) {
     loteNombre,
     c.id,
     r.archivo ? `=IMAGE("${base}/${r.final || r.archivo}")` : `ERROR: ${r.error}`,
-    calidad,
     "",
     "",
-    false,
     c.angulo || "",
     c.consciencia || "",
     c.producto || "",

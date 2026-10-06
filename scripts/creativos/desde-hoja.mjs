@@ -1,18 +1,18 @@
 /**
  * Convierte las filas pendientes de la pestaña "Prompts" (las escribe el
- * Project de Claude) en lote.json + pro.json listos para render.mjs.
+ * Project de Claude) en lote.json listo para render.mjs.
  *
  *   node scripts/creativos/desde-hoja.mjs <prompts.json> creativos/lotes/L001
  *
- * <prompts.json> es lo que devuelve get_values de Prompts!A1:L (con la fila
+ * <prompts.json> es lo que devuelve get_values de Prompts!A1:K (con la fila
  * de encabezados). Solo toma las filas con Estado vacío o "pendiente" y del
  * mismo Lote que la primera pendiente (o sin lote). Imprime los números de
  * fila tomados para marcarlas "hecho" después.
  *
- * Columnas: Lote | ID | Calidad | Ángulo | Consciencia | Producto | Titular |
+ * Columnas: Lote | ID | Ángulo | Consciencia | Producto | Titular |
  *           Copy | Refs | Prompt JSON | Estado | Nota
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,9 +30,20 @@ const refsValidas = Object.keys(JSON.parse(readFileSync(join(root, "creativos/re
 const dir = resolve(root, salida);
 const loteId = basename(dir);
 
+// Lotes de la hoja que ya tienen carpeta en creativos/lotes/ (aunque la hoja
+// aún no diga "hecho"): no se vuelven a crear.
+const lotesDir = join(root, "creativos/lotes");
+const yaHechos = new Set(
+  (existsSync(lotesDir) ? readdirSync(lotesDir) : [])
+    .map((l) => join(lotesDir, l, "lote.json"))
+    .filter(existsSync)
+    .map((f) => JSON.parse(readFileSync(f, "utf8")).lote_hoja)
+    .filter(Boolean),
+);
+
 const pendientes = filas
   .map((f, i) => ({ f, fila: i + 2 }))
-  .filter(({ f }) => f[1] && f[9] && (!f[10] || /pendiente/i.test(f[10])));
+  .filter(({ f }) => f[1] && f[8] && (!f[9] || /pendiente/i.test(f[9])) && !yaHechos.has(f[0] || ""));
 const loteHoja = pendientes[0]?.f[0] || "";
 const tomadas = pendientes.filter(({ f }) => (f[0] || "") === loteHoja);
 if (!tomadas.length) {
@@ -42,7 +53,7 @@ if (!tomadas.length) {
 
 const avisos = [];
 const conceptos = tomadas.map(({ f, fila }) => {
-  const [, id, calidad, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota] = f;
+  const [, id, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota] = f;
   let prompt;
   try {
     prompt = JSON.parse(promptTxt);
@@ -65,7 +76,6 @@ const conceptos = tomadas.map(({ f, fila }) => {
     });
   return {
     id: String(id).trim(),
-    calidad: /pro/i.test(calidad || "") ? "pro" : "flash",
     angulo, consciencia, producto, titular, copy, refs, prompt,
     formato: String(nota || "").replace(/^formato:\s*/i, "").trim(),
     fila_hoja: fila,
@@ -95,7 +105,5 @@ if (existsSync(join(dir, "lote.json"))) {
 mkdirSync(dir, { recursive: true });
 const lote = { lote: loteId, lote_hoja: loteHoja, creado: new Date().toISOString().slice(0, 10), aspecto: "4:5", conceptos };
 writeFileSync(join(dir, "lote.json"), JSON.stringify(lote, null, 2) + "\n");
-const pro = conceptos.filter((c) => c.calidad === "pro").map((c) => c.id);
-if (pro.length) writeFileSync(join(dir, "pro.json"), JSON.stringify(pro) + "\n");
 
-console.log(JSON.stringify({ lote: loteId, conceptos: conceptos.length, pro, filas: tomadas.map((t) => t.fila), avisos }, null, 1));
+console.log(JSON.stringify({ lote: loteId, conceptos: conceptos.length, filas: tomadas.map((t) => t.fila), avisos }, null, 1));

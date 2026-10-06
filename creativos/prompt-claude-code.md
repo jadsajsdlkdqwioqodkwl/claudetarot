@@ -7,8 +7,8 @@ gastar poco.
 
 ---
 
-TAREA: renderiza
-(otras opciones: "lee el feedback" · "renderiza y después lee el feedback" · "pasa a Pro lo marcado")
+TAREA: CREA
+(otras opciones: "REVISA COMENTARIOS" · "REVISA COMENTARIOS y después CREA")
 
 Usa la skill `creativos` del repo y sigue su procedimiento al pie de la letra. Hoja: 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY.
 
@@ -20,7 +20,7 @@ Para gastar pocos tokens:
 - Si los créditos de Gemini se acaban (error 402), para y avísame.
 - Renderiza todos los lotes pendientes de la pestaña Prompts, uno por uno (L00n siguiente libre). No toques filas "pausado".
 - Commit y push a main solo de creativos/ y scripts/creativos/. No toques src/, public/, migrations/ ni wrangler.jsonc.
-Si la tarea incluye "lee el feedback", además de lo que pide la skill:
+Si la tarea incluye "REVISA COMENTARIOS", además de lo que pide la skill:
 - Lee mis notas y comentarios de Creativos (E, F, G) y de Copy Meta (M, N). Solo las filas con nota o comentario nuevo.
 - Analiza en qué se parecen las de nota 4–5 y en qué las de 1–2: formato, nivel de consciencia, producto (protagonista, en uso, sin kit), foto usada, tipo de titular, CTA, paleta y largo del texto. Separa "no vende" (idea, ángulo, copy) de "salió mal dibujado" (render).
 - Integra lo aprendido al brief `creativos/brief.md`: corrige la sección que corresponda (público, formato, variedad) y reescribe "Lo que aprendimos de los anuncios" (insights de fondo, sin duplicar lo que ya está en reglas_aprendidas.md). Agrega una línea arriba en "Bitácora de aprendizajes" con fecha, lote y el aprendizaje con sus notas. No borres aprendizajes viejos: si quedan obsoletos, márcalos "(obsoleto desde AAAA-MM-DD: motivo)".
@@ -32,4 +32,4 @@ Si la tarea incluye "lee el feedback", además de lo que pide la skill:
   2. Costo aproximado.
   3. Problemas, una línea cada uno.
   4. Copy Meta: cuántas filas escribiste.
-  5. Si la tarea fue "lee el feedback": qué aprendiste y qué cambió en el brief, Reglas, Instrucciones y Copy reglas (3 a 6 líneas).
+  5. Si la tarea fue "REVISA COMENTARIOS": qué aprendiste y qué cambió en el brief, Reglas, Instrucciones y Copy reglas (3 a 6 líneas).

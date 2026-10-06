@@ -2,7 +2,7 @@
 
 Ciclo: **el Project escribe prompts en la hoja (Prompts) → Claude Code los
 renderiza en Flash (Creativos) → nota y comentario → Claude reescribe las
-reglas (Reglas) → las marcadas pasan a Pro → siguiente lote**.
+reglas y al brief → siguiente lote**. Dos flujos: **CREA** y **REVISA COMENTARIOS** (skill `creativos`).
 Instrucciones del Project: viven en la pestaña **Instrucciones** (copia en
 `creativos/instrucciones.md`); en claude.ai solo va el arranque de
 `creativos/prompt-project.md`. Memoria de lo probado: pestaña **Ángulos**.
@@ -23,10 +23,9 @@ creativos/
     L001/
       lote.json          conceptos: ángulo, titular, copy, refs, prompt JSON
       render.json        qué modelo hizo cada imagen (o el error)
-      img/C01.flash.jpg  original 2K de Gemini (…y C01.pro.jpg si pasó a Pro)
+      img/C01.flash.jpg  original 2K de Gemini
       final/C01.flash.png  1080×1350 PNG para Meta: va a la hoja y es la que se sube
       feedback.json      notas y comentarios bajados de la hoja
-      pro.json           IDs que se pasan a Pro
 scripts/creativos/
   render.mjs             llama a la API de Gemini y guarda las imágenes
   desde-hoja.mjs         filas pendientes de Prompts → lote.json
@@ -34,9 +33,7 @@ scripts/creativos/
   filas.mjs              arma las filas de Creativos y Ángulos (=IMAGE al commit en GitHub)
 ```
 
-Modelos: Flash `gemini-3.1-flash-image` (2K, ~US$0.10) y Pro
-`gemini-3-pro-image` (2K, ~US$0.134). Se cambian con las variables
-`MODELO_FLASH` / `MODELO_PRO`. Clave: `GEMINI_API_KEY` en el entorno.
+Modelo: `gemini-3.1-flash-image` (2K, ~US$0.10; se cambia con `MODELO_FLASH`). Clave: `GEMINI_API_KEY` en el entorno.
 
 Descarga: abre la imagen de la columna C (o el archivo de la columna N en
 GitHub); la de `final/` ya es 1080×1350 PNG.

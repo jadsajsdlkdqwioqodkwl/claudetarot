@@ -18,6 +18,10 @@ Docs). Además de lo que ese paso 3 lista, lee las transcripciones de las
 
     ASESOR_CLAVE=$CLAVE python3 scripts/asesor/preparar.py api --dias 1 --salida /tmp/voz
 
+y la "Bitácora de aprendizajes" de `creativos/brief.md` (lo que el dueño
+calificó en los anuncios, lo escribe el flujo REVISA COMENTARIOS): pasa al Doc
+las líneas que aún no estén, con fuente "anuncios (creativos)".
+
 ## 2. Pestaña Voz del cliente
 
 En la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, pestaña **Voz del
