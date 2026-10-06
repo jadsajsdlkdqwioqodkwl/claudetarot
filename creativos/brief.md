@@ -57,8 +57,19 @@ Insights de fondo sobre el cliente y lo que vende; las reglas operativas
 - Funcionan 4–5: oferta, flechas, tutorial, unboxing, pesadilla con cartas.
   Flojos (3): flat lay, humor, ficha, infografía. No gusta: UGC, ellos vs nosotros.
 
+## Lo que dice Meta (cuenta 1230044722526886, campaña "Interacciones WSP ABO 7/16")
+Resultado = conversación de WhatsApp iniciada, NO venta. Cruzar con ventas del CRM antes de decidir escalas grandes. Cada anuncio va en su propio ad set (ABO), así que se comparan limpio.
+- Referencia de costo: S/0.98–1.16 por conversación en los anuncios con 7 días de data. Los 5 "gemini" (lanzados 05–06/10) van a S/2.40 promedio hoy, con 3–6 conversaciones cada uno: muestra chica, no apagar solo por hoy.
+- Ganador claro: carta explicada con flechas ("Aprende a leer las cartas con el mejor mazo de Tarot", beige): S/1.09 en 7 días, 123 conversaciones, 43 % de los clics se vuelven chat. Segundo: la misma idea en "Lee la Emperatriz sin haber estudiado nada": S/1.48 hoy, el mejor de los gemini.
+- El video/infografía de keywords tiene el mejor costo en 7 días (S/0.98, CTR 4.4 %).
+- Tutorial de tres cartas (3.71) y oferta "Todo el tarot en una caja" (2.78) sacaron 5 del dueño pero convierten peor en Meta por ahora.
+- Público (7 días, conversaciones): más barato hombres de 35 a 65+ (S/0.81–1.04) y mujeres de 35–44 (1.15); más caro mujeres 65+ (2.02). Las mujeres son 56 % del gasto. Falta cruzar con ventas por edad/sexo antes de recortar.
+- Titulares de Meta: los 5 gemini usan el mismo ("INCLUYE TAROT, MANUAL, TAPETE Y AMULETO ✅", en mayúsculas y con emoji) y uno salió sin texto principal; así no se puede probar titulares. Cada anuncio debe llevar los suyos (copy-meta.md).
+- Errores vistos en los anuncios corriendo: comillas « » dibujadas en la imagen (L002-C02, L003-C03), texto ilegible en la carta del tutorial y en el manual de "Todo el tarot", CTA "Pide el tuyo por WhatsApp" repetido, y "Envío gratis por promoción de lanzamiento" (promoción que no está en negocio.md).
+
 ## Bitácora de aprendizajes (lo más nuevo arriba)
 Formato: AAAA-MM-DD · lote · aprendizaje (con notas o números).
+- 2026-10-06 · Meta (testeo del día) · Flechas sobre la carta ganan también en costo real (S/1.09–1.48); tutorial y oferta rinden menos que su nota; muestra chica, revisar mañana. Hombres 35+ son los más baratos.
 - 2026-10-06 · L003 · Unboxing, pesadilla con cartas y tutorial 4/5; flat lay 3; no UGC; "iteraciones ya no, conceptos nuevos sí"; collar no es héroe; pide avatares y memes. Nota de prensa: formato bien, titular mal.
 - 2026-10-06 · L002 · Flechas sobre la carta 5 (sin comillas); oferta 4 (doble franja blanca y titular sin producto); humor, ficha e infografía 3; C04/C05 no se veían (kit_etiquetado); el collar no trae tarjeta, es una carta de tarot; mostrar manual y cartas con significado, no el tapete.
 - 2026-10-06 · L001 · Ganan "producto en uso" y "enseñar a leer" (5/5); pierden imágenes genéricas sin tarot (1–2/5) y repetir la misma foto del kit (1/5).
