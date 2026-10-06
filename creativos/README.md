@@ -26,6 +26,6 @@ scripts/creativos/
   filas.mjs              arma las filas de Creativos (=IMAGE al commit en GitHub)
 ```
 
-Modelos: Flash `gemini-3.1-flash-image-preview` (1K, ~US$0.067) y Pro
-`gemini-3-pro-image-preview` (2K, ~US$0.134). Se cambian con las variables
+Modelos: Flash `gemini-3.1-flash-image` (1K, ~US$0.067) y Pro
+`gemini-3-pro-image` (2K, ~US$0.134). Se cambian con las variables
 `MODELO_FLASH` / `MODELO_PRO`. Clave: `GEMINI_API_KEY` en el entorno.
