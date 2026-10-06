@@ -1,7 +1,9 @@
 # Creativos (anuncios estáticos con Nano Banana)
 
-Ciclo: **lote nuevo → imágenes Flash → nota y comentario en la hoja →
-Claude reescribe las reglas → las marcadas pasan a Pro → siguiente lote**.
+Ciclo: **el Project escribe prompts en la hoja (Prompts) → Claude Code los
+renderiza en Flash (Creativos) → nota y comentario → Claude reescribe las
+reglas (Reglas) → las marcadas pasan a Pro → siguiente lote**.
+Prompt para el Project: `creativos/prompt-project.md`.
 Todo corre en Claude Code en la nube (skill `creativos`).
 
 Hoja de feedback: https://docs.google.com/spreadsheets/d/19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY
@@ -20,7 +22,8 @@ creativos/
       pro.json           IDs que se pasan a Pro
 scripts/creativos/
   render.mjs             llama a la API de Gemini y guarda las imágenes
-  filas.mjs              arma las filas de la hoja (=IMAGE al commit en GitHub)
+  desde-hoja.mjs         filas pendientes de Prompts → lote.json
+  filas.mjs              arma las filas de Creativos (=IMAGE al commit en GitHub)
 ```
 
 Modelos: Flash `gemini-3.1-flash-image-preview` (1K, ~US$0.067) y Pro
