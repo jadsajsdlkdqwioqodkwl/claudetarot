@@ -6,7 +6,7 @@
  *   node scripts/creativos/filas.mjs creativos/lotes/L001 [--pro]
  *
  * Columnas: Lote | ID | Imagen | Calidad | Nota (1-5) | Comentario | ¿A Pro? |
- *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo
+ *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo | (O: Drive, lo llena apps-script/CREATIVOS.gs)
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
@@ -30,7 +30,7 @@ for (const c of lote.conceptos) {
   const r = render[`${c.id}.${calidad}`];
   if (!r) continue;
   filas.push([
-    lote.lote,
+    lote.lote_hoja ? `${lote.lote} ${lote.lote_hoja}` : lote.lote,
     c.id,
     r.archivo ? `=IMAGE("${base}/${r.archivo}")` : `ERROR: ${r.error}`,
     calidad,

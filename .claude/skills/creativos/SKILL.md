@@ -11,7 +11,7 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 | Pestaña | Quién escribe | Columnas |
 |---|---|---|
 | **Prompts** | el Project del dueño (o tú con "lote nuevo") | A Lote · B ID · C Calidad (flash/pro, vacío = flash) · D Ángulo · E Consciencia · F Producto · G Titular · H Copy · I Refs (`foto: rol \| foto: rol`) · J Prompt JSON · K Estado (pendiente/hecho/error) · L Nota |
-| **Creativos** | tú (`filas.mjs`) + el dueño (E, F, G) | A Lote · B ID · C Imagen · D Calidad · E Nota 1-5 · F Comentario · G ¿A Pro? · H Ángulo · I Consciencia · J Producto · K Titular · L Copy · M Refs · N Archivo |
+| **Creativos** | tú (`filas.mjs`) + el dueño (E, F, G) | A Lote · B ID · C Imagen · D Calidad · E Nota 1-5 · F Comentario · G ¿A Pro? · H Ángulo · I Consciencia · J Producto · K Titular · L Copy · M Refs · N Archivo · O Drive (lo llena `apps-script/CREATIVOS.gs` solo; no la toques) |
 | **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de brief + reglas_aprendidas) |
 | **Fotos** | tú, cuando cambian las refs | A Nombre · B Imagen · C Para qué sirve (de refs.json) |
 
@@ -24,13 +24,15 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
    `node scripts/creativos/desde-hoja.mjs <json> creativos/lotes/Lnnn`.
    Escribe `lote.json` (y `pro.json` si alguna fila pidió pro) e imprime las
    filas tomadas y avisos.
-3. `npm run creativos:render -- creativos/lotes/Lnnn` (Flash a todo). Si
+3. `npm run creativos:render -- creativos/lotes/Lnnn` (Flash 2K a todo; un lote de la hoja por corrida, repite desde 1 para el siguiente). Si
    hay `pro.json`, también `… --pro`. Falla por política/texto → ajusta ese
    prompt en lote.json y `--solo Cxx`.
 4. Mira las imágenes (Read). Texto roto o producto deformado → corrige el
    prompt y re-renderiza antes de mostrarla.
 5. Commit + push a `main` (solo `creativos/`; nada de `src/` ni `public/`).
-   Las imágenes tienen que estar en GitHub para `=IMAGE`.
+   Las imágenes tienen que estar en `main` para `=IMAGE` y para que
+   CREATIVOS.gs las copie a Drive (Mi unidad / Creativos Tarot Store).
+   Error 402 = sin créditos en AI Studio: avisa al dueño, no reintentes.
 6. `node scripts/creativos/filas.mjs creativos/lotes/Lnnn` (y `--pro` si
    corrió) → agrega las filas debajo de la última de Creativos.
 7. En Prompts, columna K de las filas tomadas → `hecho` (o `error` + motivo

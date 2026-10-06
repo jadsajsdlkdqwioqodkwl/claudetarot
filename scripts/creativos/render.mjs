@@ -17,7 +17,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const REFS_DIR = join(root, "creativos/refs");
 
 const MODELOS = {
-  flash: { id: process.env.MODELO_FLASH || "gemini-3.1-flash-image", size: "1K", usd: 0.067 },
+  flash: { id: process.env.MODELO_FLASH || "gemini-3.1-flash-image", size: "2K", usd: 0.101 },
   pro: { id: process.env.MODELO_PRO || "gemini-3-pro-image", size: "2K", usd: 0.134 },
 };
 const PARALELO = 4;

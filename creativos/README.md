@@ -26,6 +26,10 @@ scripts/creativos/
   filas.mjs              arma las filas de Creativos (=IMAGE al commit en GitHub)
 ```
 
-Modelos: Flash `gemini-3.1-flash-image` (1K, ~US$0.067) y Pro
+Modelos: Flash `gemini-3.1-flash-image` (2K, ~US$0.10) y Pro
 `gemini-3-pro-image` (2K, ~US$0.134). Se cambian con las variables
 `MODELO_FLASH` / `MODELO_PRO`. Clave: `GEMINI_API_KEY` en el entorno.
+
+Copia a Drive en resolución completa: `apps-script/CREATIVOS.gs` (va en el
+Apps Script de la hoja de creativos, no en la del CRM). Deja cada imagen en
+Mi unidad / Creativos Tarot Store / <Lote> y el link en la columna O.
