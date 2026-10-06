@@ -1,6 +1,6 @@
 # Instrucciones — Copy y titular de Meta Ads (Tarot Store Perú)
 
-Las sigue Claude Code justo después de renderizar cada lote (skill `creativos`), mirando la imagen ya generada. Copia legible en Google Doc: https://docs.google.com/document/d/1Z5T1apJlGSbd-LbsQbH5ntUc0zhULFs--ySEF82NRns (Claude Code lo mantiene igual a este archivo). Si algo choca con la sección "Aprendizajes", manda Aprendizajes.
+Las sigue Claude Code justo después de renderizar cada lote (skill `creativos`), mirando la imagen ya generada. Espejo editable en la pestaña **Copy reglas** de la hoja (una fila por sección): si el dueño cambia algo ahí, Claude Code lo pasa a este archivo antes de escribir. Si algo choca con la sección "Aprendizajes", manda Aprendizajes.
 
 ## 1. Qué haces
 
