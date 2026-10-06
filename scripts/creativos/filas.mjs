@@ -4,6 +4,7 @@
  * imágenes: la fórmula =IMAGE() apunta al commit actual en GitHub.
  *
  *   node scripts/creativos/filas.mjs creativos/lotes/L001 [--pro]
+ *   node scripts/creativos/filas.mjs creativos/lotes/L001 --angulos   (filas para la pestaña Ángulos)
  *
  * Columnas: Lote | ID | Imagen | Calidad | Nota (1-5) | Comentario | ¿A Pro? |
  *           Ángulo | Consciencia | Producto | Titular | Copy | Refs | Archivo | (O: Drive, lo llena apps-script/CREATIVOS.gs)
@@ -25,12 +26,21 @@ const remoto = execSync("git remote get-url origin", { cwd: root }).toString().t
 const repo = remoto.match(/github\.com[/:]([^/]+\/[^/.]+)/)?.[1] || "jadsajsdlkdqwioqodkwl/claudetarot";
 const base = `https://raw.githubusercontent.com/${repo}/${sha}/${relative(root, dir)}`;
 
+const loteNombre = lote.lote_hoja ? `${lote.lote} ${lote.lote_hoja}` : lote.lote;
+if (args.includes("--angulos")) {
+  const filas = lote.conceptos
+    .filter((c) => render[`${c.id}.flash`] || render[`${c.id}.pro`])
+    .map((c) => [loteNombre, c.id, c.formato || "", c.angulo || "", c.consciencia || "", c.producto || "", c.titular || "", (c.refs || []).map((x) => x.foto).join(", "), "", "", ""]);
+  console.log(JSON.stringify(filas));
+  process.exit(0);
+}
+
 const filas = [];
 for (const c of lote.conceptos) {
   const r = render[`${c.id}.${calidad}`];
   if (!r) continue;
   filas.push([
-    lote.lote_hoja ? `${lote.lote} ${lote.lote_hoja}` : lote.lote,
+    loteNombre,
     c.id,
     r.archivo ? `=IMAGE("${base}/${r.archivo}")` : `ERROR: ${r.error}`,
     calidad,
@@ -46,4 +56,4 @@ for (const c of lote.conceptos) {
     r.archivo ? `${relative(root, dir)}/${r.archivo}` : "",
   ]);
 }
-console.log(JSON.stringify(filas, null, 1));
+console.log(JSON.stringify(filas.sort((a, b) => a[1].localeCompare(b[1]))));

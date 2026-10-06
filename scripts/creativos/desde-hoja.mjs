@@ -42,7 +42,7 @@ if (!tomadas.length) {
 
 const avisos = [];
 const conceptos = tomadas.map(({ f, fila }) => {
-  const [, id, calidad, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt] = f;
+  const [, id, calidad, angulo, consciencia, producto, titular, copy, refsTxt, promptTxt, , nota] = f;
   let prompt;
   try {
     prompt = JSON.parse(promptTxt);
@@ -67,6 +67,7 @@ const conceptos = tomadas.map(({ f, fila }) => {
     id: String(id).trim(),
     calidad: /pro/i.test(calidad || "") ? "pro" : "flash",
     angulo, consciencia, producto, titular, copy, refs, prompt,
+    formato: String(nota || "").replace(/^formato:\s*/i, "").trim(),
     fila_hoja: fila,
   };
 });

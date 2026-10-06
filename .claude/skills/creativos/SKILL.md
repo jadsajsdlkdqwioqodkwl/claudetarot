@@ -16,6 +16,7 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 | **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de reglas_aprendidas + precios) |
 | **Ángulos** | tú | Memoria de todo lo renderizado: A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario del dueño · K Estado (ganador / variar: … / descartado: …). El Project la lee para no repetir y para avisar "AGOTADO" |
 | **Memoria** | el Project (una vez) | Fecha · Tipo · Idea: lo que el Project recordaba de antes. Pásalo a Reglas/Instrucciones y deja la fila |
+| **Copy Meta** | el Project de Copy + el dueño (L Nota, M Comentario) | A Lote · B ID · C Lo que dice la imagen · D Consciencia · E Texto principal · F–H Titular 1–3 · I Descripción · J Botón · K Estado · L Nota · M Comentario. Instrucciones del Project de Copy: Google Doc `1Z5T1apJlGSbd-LbsQbH5ntUc0zhULFs--ySEF82NRns` (copia `creativos/copy-meta.md`) |
 | **Fotos** | tú, cuando cambian las refs | A Nombre · B Imagen · C Para qué sirve (de refs.json) |
 
 Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
@@ -40,7 +41,8 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
    corrió) → agrega las filas debajo de la última de Creativos.
 7. En Prompts, columna K de las filas tomadas → `hecho` (o `error` + motivo
    en L). Filas `pausado` no se tocan ni se renderizan.
-7b. Agrega cada imagen a **Ángulos** (formato sale de la Nota L de Prompts;
+7b. Agrega cada imagen a **Ángulos** con `node scripts/creativos/filas.mjs
+   creativos/lotes/Lnnn --angulos` (formato sale de la Nota L de Prompts;
    Nota y Estado vacíos hasta el feedback). Si alguna fila trae "AGOTADO" en
    la Nota, díselo al dueño con la sugerencia.
 8. Responde: link de la hoja, cuántas, costo.
@@ -70,6 +72,10 @@ prompt. Escribe las filas en Prompts (Estado `pendiente`) y sigue con
    pasa lo útil a Reglas.
 3d. Prompts pendientes escritos antes de este feedback que ya chocan con las
    reglas nuevas → `pausado` con el motivo en L.
+3e. Copy Meta con Nota o Comentario nuevos → destila en la sección
+   "10. Aprendizajes" de `creativos/copy-meta.md` (con fecha y lote) y sube
+   el archivo completo al doc con `update_file` de Google Drive
+   (text/markdown) sobre el ID de arriba.
 4. Marcados ¿A Pro? sin versión pro: `pro.json`, `render … --pro`, revisa,
    push, `filas.mjs … --pro` → filas nuevas en Creativos.
 5. Commit + push a main. Responde en 3–5 líneas qué cambió en las reglas.
