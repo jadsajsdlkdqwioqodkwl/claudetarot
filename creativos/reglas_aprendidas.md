@@ -22,6 +22,8 @@ y `brief.md` si chocan. Cada regla dice de qué lote salió.
 ## Errores de render
 - Manual superpuesto o desvanecido al pegar la foto completa del kit (L001-C05, C06): integrar las piezas en la escena, con la misma luz, y pedir "sin piezas transparentes, desvanecidas ni superpuestas".
 - Fondo mal recortado alrededor del producto (L001-C08): pedir "sin bordes recortados ni halos".
+- No usar la foto kit_etiquetado: Gemini la pega con sus etiquetas y flechas, desvanecida o tapando el texto (L002-C04, C05, L003-C08).
+- No poner comillas « » ni tipográficas dentro de los textos del JSON: Gemini las dibuja (casi todo L002 y L003).
 
 ## Reparto de variedad vigente
 40 % producto protagonista (cada foto máx. 2 por lote, kit_completo máx. 1) · 40 % producto en uso (manos, tirada, carta explicada, manual abierto) · 20 % escena de tarot sin el kit (pero con cartas). Ningún formato repetido dentro del lote.
