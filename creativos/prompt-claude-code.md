@@ -24,4 +24,5 @@ Para gastar pocos tokens:
   1. Lotes hechos y cuántas imágenes.
   2. Costo aproximado.
   3. Problemas, una línea cada uno.
-  4. Si la tarea fue "lee el feedback": qué cambió en Reglas, Instrucciones y en el doc de Copy (3 a 5 líneas).
+  4. Copy Meta: cuántas filas escribiste.
+  5. Si la tarea fue "lee el feedback": qué cambió en Reglas, Instrucciones y en el doc de Copy (3 a 5 líneas).

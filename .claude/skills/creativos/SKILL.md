@@ -16,7 +16,7 @@ Todo vive en `creativos/` (ver `creativos/README.md`). Hoja:
 | **Reglas** | tú, tras cada feedback | A Sección · B Regla (espejo de reglas_aprendidas + precios) |
 | **Ángulos** | tú | Memoria de todo lo renderizado: A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario del dueño · K Estado (ganador / variar: … / descartado: …). El Project la lee para no repetir y para avisar "AGOTADO" |
 | **Memoria** | el Project (una vez) | Fecha · Tipo · Idea: lo que el Project recordaba de antes. Pásalo a Reglas/Instrucciones y deja la fila |
-| **Copy Meta** | el Project de Copy + el dueño (L Nota, M Comentario) | A Lote · B ID · C Lo que dice la imagen · D Consciencia · E Texto principal · F–H Titular 1–3 · I Descripción · J Botón · K Estado · L Nota · M Comentario. Instrucciones del Project de Copy: Google Doc `1Z5T1apJlGSbd-LbsQbH5ntUc0zhULFs--ySEF82NRns` (copia `creativos/copy-meta.md`) |
+| **Copy Meta** | tú (después de cada render) + el dueño (L Nota, M Comentario) | A Lote · B ID · C Lo que dice la imagen · D Consciencia · E Texto principal · F–H Titular 1–3 · I Descripción · J Botón · K Estado · L Nota · M Comentario. Reglas del copy: `creativos/copy-meta.md` (espejo en Google Doc `1Z5T1apJlGSbd-LbsQbH5ntUc0zhULFs--ySEF82NRns` ) |
 | **Fotos** | tú, cuando cambian las refs | A Nombre · B Imagen · C Para qué sirve (de refs.json) |
 
 Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
@@ -28,7 +28,8 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
    `node scripts/creativos/desde-hoja.mjs <json> creativos/lotes/Lnnn`.
    Escribe `lote.json` (y `pro.json` si alguna fila pidió pro) e imprime las
    filas tomadas y avisos.
-3. `npm run creativos:render -- creativos/lotes/Lnnn` (Flash 2K a todo; un lote de la hoja por corrida, repite desde 1 para el siguiente). Si
+3. `npm run creativos:render -- creativos/lotes/Lnnn` (Flash 2K a todo; deja
+   también `final/Cxx.flash.png` 1080×1350, que es lo que va a la hoja y a Drive; un lote de la hoja por corrida, repite desde 1 para el siguiente). Si
    hay `pro.json`, también `… --pro`. Falla por política/texto → ajusta ese
    prompt en lote.json y `--solo Cxx`.
 4. Mira las imágenes (Read). Texto roto o producto deformado → corrige el
@@ -45,6 +46,9 @@ Comandos (siempre con `NODE_USE_ENV_PROXY=1` para que fetch use el proxy):
    creativos/lotes/Lnnn --angulos` (formato sale de la Nota L de Prompts;
    Nota y Estado vacíos hasta el feedback). Si alguna fila trae "AGOTADO" en
    la Nota, díselo al dueño con la sugerencia.
+7c. **Copy y titular**: lee `creativos/copy-meta.md` y escribe una fila por
+   imagen en **Copy Meta** (mirando la hoja de contacto y los "textos" del
+   prompt). El titular y la primera oración son lo más cuidado.
 8. Responde: link de la hoja, cuántas, costo.
 
 ## "Lote nuevo" (tú escribes los prompts)

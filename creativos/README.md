@@ -15,17 +15,23 @@ creativos/
   brief.md               reglas fijas (producto, público, formato, variedad)
   reglas_aprendidas.md   lo que dijo el feedback; Claude lo reescribe cada lote
   refs/                  fotos reales del kit + refs.json (qué es cada una)
+  instrucciones.md       copia de la pestaña Instrucciones (lo que sigue el Project de conceptos)
+  prompt-project.md      arranque corto para pegar en el Project de conceptos
+  copy-meta.md           reglas del copy y titular de Meta (Claude Code las sigue tras cada render)
+  prompt-claude-code.md  prompt maestro para una sesión nueva de Claude Code
   lotes/
     L001/
       lote.json          conceptos: ángulo, titular, copy, refs, prompt JSON
       render.json        qué modelo hizo cada imagen (o el error)
-      img/C01.flash.png  …y C01.pro.png si pasó a Pro
+      img/C01.flash.jpg  original 2K de Gemini (…y C01.pro.jpg si pasó a Pro)
+      final/C01.flash.png  1080×1350 PNG para Meta: va a la hoja y a Drive
       feedback.json      notas y comentarios bajados de la hoja
       pro.json           IDs que se pasan a Pro
 scripts/creativos/
   render.mjs             llama a la API de Gemini y guarda las imágenes
   desde-hoja.mjs         filas pendientes de Prompts → lote.json
-  filas.mjs              arma las filas de Creativos (=IMAGE al commit en GitHub)
+  final.mjs              versión 1080×1350 PNG para Meta (render.mjs la llama sola)
+  filas.mjs              arma las filas de Creativos y Ángulos (=IMAGE al commit en GitHub)
 ```
 
 Modelos: Flash `gemini-3.1-flash-image` (2K, ~US$0.10) y Pro

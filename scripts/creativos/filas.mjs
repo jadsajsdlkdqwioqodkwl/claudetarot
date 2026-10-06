@@ -42,7 +42,7 @@ for (const c of lote.conceptos) {
   filas.push([
     loteNombre,
     c.id,
-    r.archivo ? `=IMAGE("${base}/${r.archivo}")` : `ERROR: ${r.error}`,
+    r.archivo ? `=IMAGE("${base}/${r.final || r.archivo}")` : `ERROR: ${r.error}`,
     calidad,
     "",
     "",
@@ -53,7 +53,7 @@ for (const c of lote.conceptos) {
     c.titular || "",
     c.copy || "",
     (c.refs || []).map((x) => x.foto).join(", "),
-    r.archivo ? `${relative(root, dir)}/${r.archivo}` : "",
+    r.archivo ? `${relative(root, dir)}/${r.final || r.archivo}` : "",
   ]);
 }
 console.log(JSON.stringify(filas.sort((a, b) => a[1].localeCompare(b[1]))));

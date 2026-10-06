@@ -7,11 +7,13 @@
  *
  * Lee <lote>/lote.json, adjunta las fotos de creativos/refs/ que declara cada
  * concepto y guarda <lote>/img/<ID>.<flash|pro>.<ext>. Anota el resultado en
- * <lote>/render.json. Necesita GEMINI_API_KEY (variable del entorno).
+ * <lote>/render.json. Además deja la versión para Meta (1080×1350 PNG) en
+ * <lote>/final/ (ver final.mjs). Necesita GEMINI_API_KEY (variable del entorno).
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { hacerFinal } from "./final.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const REFS_DIR = join(root, "creativos/refs");
@@ -110,7 +112,7 @@ async function generar(c) {
     const ext = img.mimeType === "image/jpeg" ? "jpg" : img.mimeType === "image/webp" ? "webp" : "png";
     const archivo = `img/${c.id}.${calidad}.${ext}`;
     writeFileSync(join(dir, archivo), Buffer.from(img.data, "base64"));
-    return { archivo, modelo: m.id };
+    return { archivo, final: hacerFinal(dir, archivo), modelo: m.id };
   }
 }
 
