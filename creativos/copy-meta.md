@@ -19,7 +19,7 @@ Pestaña **Copy Meta** de la hoja 19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY, 
 
 ## 3. A quién le hablas
 
-Del brief (https://docs.google.com/document/d/1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0, léelo para frases reales):
+Del brief (https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/blob/main/docs/anuncios/brief-avatar-oferta.md, léelo para frases reales):
 
 - Persona curiosa de 25 a 45+ años, 60–70 % mujeres y 30–40 % hombres, en Perú. Escribe neutro en género.
 - No sabe nada de tarot y quiere aprender a leerse a sí misma. Su única duda es ella misma ("no sé nada", "¿es fácil aprender?"), no el precio ni el envío.

@@ -13,7 +13,7 @@ feedback va en `reglas_aprendidas.md` (y manda sobre esto si choca).
   no estén en negocio.md.
 - La venta se cierra por WhatsApp: el CTA lleva a escribir/comprar.
 
-## Público (fuente: brief en Google Docs, ver `instrucciones.md`)
+## Público (fuente: `docs/anuncios/brief-avatar-oferta.md` + pestaña Voz del cliente)
 - Persona curiosa de 25 a 45+ años, 60–70 % mujeres y 30–40 % hombres, que
   no sabe nada de tarot y quiere aprender a leerse. Neutro en género.
   Filtro: el anuncio habla al **principiante** ("sin memorizar",
