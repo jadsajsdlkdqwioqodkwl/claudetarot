@@ -57,6 +57,11 @@ Genera todo lo pendiente. Un JSON ya usado no se vuelve a crear: queda
    - En Prompts, col. J de sus filas → `hecho` (o `error` + motivo en K).
 5. Responde: lotes, cuántas imágenes, costo, problemas en una línea cada uno.
 
+Retoque de una imagen ya hecha (ej. el dueño pide solo cambiar el CTA): pon
+en su concepto de `lote.json` el campo `"editar": "Cambia solo …"` y corre
+`npm run creativos:render -- creativos/lotes/Lnnn --solo Cxx --editar`.
+Después actualiza la fórmula =IMAGE de esa fila en Creativos y Copy Meta.
+
 ## REVISA COMENTARIOS
 
 Lleva las notas y comentarios del dueño (Creativos D–E y Copy Meta M–N) a

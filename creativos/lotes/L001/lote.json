@@ -29,13 +29,14 @@
         "textos": {
           "titular": "Todo el tarot que necesitas, en una caja",
           "apoyo": "Trae 78 cartas con el significado impreso, un manual en español paso a paso, un tapete floral para tus tiradas y un collar amuleto de regalo. Todo por S/89, con envío gratis a todo el Perú.",
-          "cta": "Pide el tuyo por WhatsApp"
+          "cta": "Pide tu kit de tarot"
         },
         "diseno_textos": "titular en tipografía gruesa amarilla con contorno oscuro; apoyo en blanco sobre la franja turquesa; CTA en texto oscuro sobre botón amarillo",
         "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
         "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados, sin otras palabras, logos ni marcas de agua"
       },
-      "fila_hoja": 2
+      "fila_hoja": 2,
+      "editar": "Cambia solo el texto del botón amarillo de abajo, \"Pide el tuyo por WhatsApp\", por \"Pide tu kit de tarot\"."
     },
     {
       "id": "C02",

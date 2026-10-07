@@ -3,6 +3,9 @@
  *
  *   npm run creativos:render -- creativos/lotes/L001            (todos)
  *   npm run creativos:render -- creativos/lotes/L001 --solo C03,C07
+ *   npm run creativos:render -- creativos/lotes/L001 --solo C03 --editar
+ *     (retoca la imagen ya hecha según el campo "editar" del concepto, ej. cambiar
+ *     solo el CTA; el resto de la imagen queda igual)
  *
  * Lee <lote>/lote.json, adjunta las fotos de creativos/refs/ que declara cada
  * concepto y guarda <lote>/img/<ID>.flash.<ext>. Anota el resultado en
@@ -75,6 +78,15 @@ function parteFoto(nombre) {
 
 /** Texto del prompt + cada foto precedida de su rol, en ese orden. */
 function partes(c) {
+  if (args.includes("--editar")) {
+    const previa = render[`${c.id}.${calidad}`]?.archivo;
+    if (!c.editar || !previa) throw new Error("--editar necesita el campo \"editar\" en lote.json y una imagen ya hecha");
+    const data = readFileSync(join(dir, previa)).toString("base64");
+    return [
+      { text: `Edita esta imagen: ${c.editar} Todo lo demás queda idéntico (composición, colores, tipografías, cartas, personajes y demás textos). Los textos en español, sin comillas.` },
+      { inlineData: { mimeType: MIME[extname(previa).toLowerCase()] || "image/jpeg", data } },
+    ];
+  }
   const prompt = typeof c.prompt === "string" ? c.prompt : JSON.stringify(c.prompt, null, 2);
   const refs = c.refs || [];
   const out = [{ text: prompt }];

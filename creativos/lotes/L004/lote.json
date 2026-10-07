@@ -101,13 +101,14 @@
           "apoyo": "Cada carta es una escena que se lee con la mirada: ves el dibujo, lees su significado impreso y pasas al siguiente nivel. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "incluye": "Las 78 cartas, el manual en español y el tapete floral vienen en la misma caja. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "dato": "Jugadores nuevos bienvenidos. Kit por S/89 con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
-          "cta": "Pulsar start y pedir mi kit (escríbelo exactamente así, sin agregar ni cambiar letras)"
+          "cta": "Llévate tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)"
         },
         "diseno_textos": "un solo cuadro de diálogo de videojuego con borde pixelado blanco y fondo azul eléctrico: titular en tipografía pixelada amarilla, apoyo e incluye en tipografía legible blanca, dato en verde lima dentro del mismo cuadro, cta oscuro sobre botón start fucsia",
         "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; las cartas conservan su dibujo exacto; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
       },
       "formato": "retro / pixel (otra foto, sin recorte)",
-      "fila_hoja": 74
+      "fila_hoja": 74,
+      "editar": "Cambia solo dos cosas: el texto del botón de abajo, \"Pulsar start y pedir mi kit\", por \"Llévate tu kit de tarot\"; y en el texto de apoyo, la frase \"y pasas al siguiente nivel\" por \"y ya sabes qué dice\"."
     },
     {
       "id": "C04",
@@ -241,13 +242,14 @@
           "apoyo": "Esa mirada de sorpresa llega cuando abres una carta, ves la escena y su significado impreso te lo confirma. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "incluye": "Practícalo con 78 cartas, un manual en español y un tapete floral para tus tiradas. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "dato": "Kit por S/89, con collar amuleto de regalo y envío gratis. (escríbelo exactamente así, sin agregar ni cambiar letras)",
-          "cta": "Quiero esa cara de sorpresa (escríbelo exactamente así, sin agregar ni cambiar letras)"
+          "cta": "Pide tu kit y entiende tus cartas (escríbelo exactamente así, sin agregar ni cambiar letras)"
         },
         "diseno_textos": "titular en tipografía gruesa tipo meme azul oscuro con contorno blanco en la parte superior; el resto del texto en un único bloque blanco de esquinas redondeadas en la parte inferior: apoyo e incluye oscuros, dato en azul cobalto, cta oscuro sobre botón amarillo",
         "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto continua; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
       },
       "formato": "humor o meme (Nadie y Yo, gato ilustrado)",
-      "fila_hoja": 78
+      "fila_hoja": 78,
+      "editar": "Cambia solo el texto del botón de abajo, \"Quiero esa cara de sorpresa\", por \"Pide tu kit y entiende tus cartas\"."
     },
     {
       "id": "C08",
@@ -271,13 +273,14 @@
           "apoyo": "Miras el dibujo, lees la palabra clave impresa y abres el manual en español: tres movimientos y ya leíste una carta. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "incluye": "Tu kit trae 78 cartas con significado impreso, tapete floral y collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "dato": "Tu guía cuesta S/89 e incluye envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
-          "cta": "Llevarme mi kit (escríbelo exactamente así, sin agregar ni cambiar letras)"
+          "cta": "Pide tu kit con manual en español (escríbelo exactamente así, sin agregar ni cambiar letras)"
         },
         "diseno_textos": "un solo panel blanco de esquinas redondeadas en la mitad inferior: titular turquesa oscuro grueso, apoyo e incluye oscuros, dato en fucsia dentro del mismo panel, cta blanco sobre botón fucsia",
         "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las cartas y el manual ilustrados no llevan letras ni números; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos"
       },
       "formato": "avatar o personaje ilustrado (mascota lechuza)",
-      "fila_hoja": 79
+      "fila_hoja": 79,
+      "editar": "Cambia solo el texto del botón rosado de abajo, \"Llevarme mi kit\", por \"Pide tu kit con manual en español\"."
     },
     {
       "id": "C09",
@@ -301,13 +304,14 @@
           "apoyo": "Cupón de pedido para un kit con 78 cartas de significado impreso, manual en español paso a paso y tapete floral. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "incluye": "Con tu pedido llega de regalo un collar amuleto, y el envío es gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
           "dato": "Pago contra entrega en Lima. En provincia, adelanto de S/20 y envío por Shalom u Olva. (escríbelo exactamente así, sin agregar ni cambiar letras)",
-          "cta": "Enviar mi cupón (escríbelo exactamente así, sin agregar ni cambiar letras)"
+          "cta": "Pide tu kit por S/89 (escríbelo exactamente así, sin agregar ni cambiar letras)"
         },
         "diseno_textos": "un solo cupón de papel crema con borde punteado rojo: titular rojo cereza grueso, apoyo e incluye en tinta oscura, dato en turquesa oscuro dentro del mismo cupón, cta blanco sobre botón rojo",
         "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las cartas ilustradas no llevan letras ni números; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos"
       },
       "formato": "cupón recortable",
-      "fila_hoja": 80
+      "fila_hoja": 80,
+      "editar": "Cambia solo el texto del botón rojo de abajo, \"Enviar mi cupón\", por \"Pide tu kit por S/89\"."
     },
     {
       "id": "C10",

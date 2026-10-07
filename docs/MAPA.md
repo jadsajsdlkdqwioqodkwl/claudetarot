@@ -63,6 +63,9 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-07 · Creativos: `render.mjs --editar` retoca una imagen ya hecha
+  (campo "editar" en lote.json); CTA corregido en L001-C01 y L004-C03/C07/C08/C09.
+
 - 2026-10-06 · Creativos: columna M "Titular (novedoso)" al final de Prompts y
   Ángulos (20 % de titulares evocadores por lote); filas de Creativos, Copy
   Meta y Ángulos ordenadas por avatar; reglas de CTA de compra y de formatos
