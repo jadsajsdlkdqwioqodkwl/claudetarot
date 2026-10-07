@@ -31,6 +31,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Asesor — mensajes y cierre | 11:30, 16:30, 22:30 | Seguimientos para las vendedoras; a las 22:30 cierra el reporte | Telegram a cada vendedora; CRM |
 | **Voz del cliente → brief y ángulos** | 11:56 | Chats del día → brief (Google Doc) + pestañas Voz del cliente y Avatares | Doc del brief, hoja de creativos, Telegram al dueño. Pasos: `docs/anuncios/voz-del-cliente.md` (usa `docs/anuncios/rutina-brief-drive.md`) |
 | Asesor — reporte de ventas | 21:00 | Ventas del día, mensajes de seguimiento | Telegram + Drive |
+| Asesor — pedidos de HOY (una vez) | 11:20 del 2026-10-07 | Reemplaza el de 10:30 que no sonó; fecha objetivo HOY | Telegram (dueño y Danitza) + CRM → Reportes |
 | Asesor — reporte A PEDIDO | a mano | Igual que el de 10:30, cuando el dueño lo pide | Telegram |
 
 Conectores que necesitan (se agregan en claude.ai → Routines → Editar):
@@ -63,6 +64,9 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-07 · Routine de una sola vez a las 11:20 (pedidos de HOY) porque el de
+  10:30 no sonó; se corrió también el A PEDIDO con fecha objetivo MAÑANA.
 
 - 2026-10-07 · Avatares A9–A14 (futuro, calma, esoterismo, camino espiritual,
   tradición familiar, estética) y mapa de motivos en `creativos/avatares.md`;
