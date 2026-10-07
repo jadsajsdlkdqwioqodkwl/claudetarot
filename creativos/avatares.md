@@ -47,14 +47,45 @@ El tarot de principiantes en Perú está entre el nivel 3 y el 5 de Schwartz:
 5. Siempre principiante: todos los avatares son gente que no sabe leer tarot.
    Nada de tarotistas, coleccionistas ni negocio.
 
+## Mapa de motivos (para no quedarse corto)
+
+La lista no sale solo de los chats: también de los motivos por los que la
+gente compra tarot en general. Cada familia debería tener al menos un avatar
+en la pestaña; si falta, se agrega como hipótesis ("probar", cita vacía) y los
+anuncios la confirman o la descartan.
+
+| Familia de motivo | Avatares hoy |
+|---|---|
+| Curiosidad / aprender algo nuevo | A1 |
+| Hobby, pasatiempo | A2 |
+| Conocerse, ordenar lo que siente | A3 |
+| Decidir algo concreto | A4 |
+| Compartir, leer a otros | A5 |
+| Regalar | A6 |
+| Aprender sin depender (clases, videos, tarotistas) | A7, A8 |
+| Mirar el futuro, la suerte | A9 |
+| Calma, bienestar, ritual | A10 |
+| Esoterismo, magia, lo oculto | A11 |
+| Camino espiritual, intuición | A12 |
+| Tradición familiar, nostalgia | A13 |
+| Estética, redes | A14 |
+
+Guardas de Meta para A9–A12: lo que viene se "mira" o se "pregunta", nunca
+se promete ni se predice con certeza; nada de "terapia", "ansiedad",
+"sanar" ni salud mental; nada de amarres, magia negra ni resultados
+garantizados. La estética mística va en colores vivos, nunca oscura ni de
+terror. Siguen siendo principiantes: no saben leer tarot.
+
 ## Cómo crece la lista
 
 - La Routine diaria de voz del cliente etiqueta cada hallazgo con su avatar
   (pestaña Voz del cliente, col. I), suma chats y citas en Avatares (E, F) y,
-  si una razón nueva aparece en 2+ chats, agrega una fila A9, A10… con sus
+  si una razón nueva aparece en 2+ chats, agrega una fila A15, A16… con sus
   ganchos.
 - REVISA COMENTARIOS mira las notas por avatar y pone el Estado (O): "gana"
   si sus anuncios promedian 4+, "no vende" si promedian 2 o menos con 3+
   anuncios.
 - Los 60 anuncios de L001–L006 se etiquetaron a mano el 2026-10-06: 49 eran
   A1. Esa es la falta de diversidad que esta matriz corrige.
+- 2026-10-07: A9–A14 a pedido del dueño (futuro, calma, esoterismo, camino
+  espiritual, tradición familiar, estética); A2 pasa a "hobby nuevo".

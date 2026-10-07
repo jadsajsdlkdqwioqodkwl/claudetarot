@@ -41,7 +41,7 @@ Un avatar es un tipo de cliente que compra por una razón (lógica en
 (para qué lo quiere, para quién, qué probó antes).
 - Si calza en un avatar: súmale los chats en F y, si su cita es mejor que la
   de E, reemplázala (textual, sin nombres ni teléfonos).
-- Si una razón NUEVA aparece en 2+ chats: agrega una fila (A9, A10…) con
+- Si una razón NUEVA aparece en 2+ chats: agrega una fila (A15, A16…; revisa el "Mapa de motivos" de `creativos/avatares.md`) con
   deseo, avatar, razón, cita, chats, dolor, ganancia y un gancho por nivel
   (I–M: inconsciente y problema desde el dolor; solución, producto y
   decisión desde la ganancia; reglas de copy de `creativos/copy-meta.md`),

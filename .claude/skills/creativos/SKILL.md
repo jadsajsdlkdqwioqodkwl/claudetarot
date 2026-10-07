@@ -14,6 +14,7 @@ Sheets). Antes de mover o renombrar algo, `docs/MAPA.md`.
 | **Creativos** | tú (`filas.mjs`) + el dueño (D, E) | A Lote · B ID · C Imagen · D Nota 1-5 · E Comentario · F Ángulo · G Consciencia · H Producto · I Titular · J Copy · K Refs · L Archivo · M Avatar |
 | **Copy Meta** | tú + el dueño (M, N) | A Lote · B ID · C Imagen · D Lo que dice la imagen · E Consciencia · F Texto principal · G–I Titular 1–3 · J Descripción · K Botón · L Estado · M Nota · N Comentario |
 | **Ángulos** | tú | A Lote · B ID · C Formato · D Ángulo · E Consciencia · F Producto · G Titular · H Refs · I Nota · J Comentario · K Estado (ganador / variar: … / descartado: …) · L Avatar · M Titular (novedoso) |
+| **Formatos** | tú + el Project | biblioteca de formatos por familia: A Familia · B Formato (nombre exacto para Prompts K) · C Cómo se ve · D Avatares que le van · E Usos y F Nota prom. (fórmulas) · G Estado (gana / probar / variar / prohibido) |
 | **Avatares** | tú + Routine de voz del cliente | razones de compra (A1, A2…) × 5 niveles de consciencia, con Cobertura por fórmulas. Lógica en `creativos/avatares.md` |
 | **Instrucciones** · **Reglas** · **Copy reglas** | tú | espejo de `creativos/instrucciones.md`, `reglas_aprendidas.md`, `copy-meta.md` (A Sección · B Texto) |
 | **Voz del cliente** · **Fotos** · **Memoria** | Routine diaria · tú · Project | ver `docs/MAPA.md` |
@@ -78,6 +79,7 @@ las reglas y al brief. Solo filas con nota o comentario nuevo.
    - Errores de render nuevos → también a `REGLAS_RENDER` de
      `scripts/creativos/render.mjs` (para que no se repitan en ningún prompt).
    - **Ángulos**: Nota, Comentario y Estado de cada fila calificada.
+   - **Formatos** col. G: "gana" (prom. 4+), "variar: …" o pásalo a la familia "No usar" (prom. ≤2 o el dueño dice "mal formato"); copia ahí también los que el dueño rechace.
    - **Avatares** col. O: "gana" si sus anuncios promedian 4+, "no vende" si
      promedian ≤2 con 3+ anuncios, "saturado" si ya tiene muchos y los demás
      están en 0.

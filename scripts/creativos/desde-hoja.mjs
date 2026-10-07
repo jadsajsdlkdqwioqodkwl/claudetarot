@@ -110,6 +110,16 @@ for (const c of conceptos) {
   const k = Object.keys(t).find((x) => /cta|boton|botón/i.test(x));
   if (k && !/\bkits?\b/i.test(t[k])) avisos.push(`${c.id}: el CTA "${t[k].split(" (")[0]}" no invita a comprar el kit`);
 }
+// Formatos (pestaña Formatos): ninguno repetido en el lote ni de la lista "No usar".
+const NO_USAR = /receta|circo|pasaporte|tablero|mapa del tesoro|cine|museo|feria|men[uú]\b|polaroid|calendario|cuaderno|diploma|nosotros vs|ugc/i;
+const vistos = {};
+for (const c of conceptos) {
+  const f = c.formato.toLowerCase();
+  if (!f) avisos.push(`${c.id}: sin formato (Prompts K "formato: …")`);
+  else if (vistos[f]) avisos.push(`${c.id}: formato "${c.formato}" repetido con ${vistos[f]}`);
+  else vistos[f] = c.id;
+  if (NO_USAR.test(f)) avisos.push(`${c.id}: formato "${c.formato}" está en "No usar" (pestaña Formatos)`);
+}
 const PROHIBIDO = [/[«»]/, /whats\s*app/i, /ver kit/i, /\s\+\s/, /\busa\b[^.]{1,40},\s*no\b/i, /\bhoy,\s*no\b/i, /\boriginal\b/i];
 for (const c of conceptos) {
   const textos = JSON.stringify(typeof c.prompt === "string" ? c.prompt : c.prompt.textos ?? c.prompt);

@@ -13,6 +13,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Brief (copia en repo) | `docs/anuncios/brief-avatar-oferta.md` | Respaldo y fuente inicial de la Routine del brief |
 | **Bitácora CRO Tarot** | Google Doc en Drive (el Director CRO lo recrea cada día y manda el viejo a la papelera; se busca por título) | Director CRO, Routine del brief |
 | **Hoja de creativos** | Sheet `19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY` | Project de conceptos, skill `creativos`, Routine de voz del cliente. Pestañas y columnas en `.claude/skills/creativos/SKILL.md`; no reordenar columnas (las nuevas van al final) |
+| Pestaña **Formatos** | en la hoja de creativos | Project (elige formatos por familia), REVISA COMENTARIOS (Estado), `desde-hoja.mjs` (lista "No usar" copiada en el script). Sus fórmulas leen Prompts K y Ángulos C e I |
 | Pestaña **Avatares** | en la hoja de creativos | Project de conceptos (reparto de cada lote), Routine de voz del cliente (suma chats y avatares nuevos), REVISA COMENTARIOS (Estado). Las fórmulas de Cobertura leen Prompts col. D, J y L |
 | Hoja de chats del CRM (TAROT CHATS - VENTAS CRM) | la escribe el Worker cada 10 min | `apps-script/ASESOR.gs`, `preparar.py` (modo xlsx) |
 | Reglas del negocio | `docs/negocio.md` | Todo lo que escribe a clientes o anuncios (precios y regalos mandan aquí) |
@@ -62,6 +63,12 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-07 · Avatares A9–A14 (futuro, calma, esoterismo, camino espiritual,
+  tradición familiar, estética) y mapa de motivos en `creativos/avatares.md`;
+  pestaña **Formatos** (44 formatos en 9 familias + "No usar", usos y nota
+  automáticos) con reglas de reparto en Instrucciones; Cobertura de Avatares
+  movida a las filas 17–33.
 
 - 2026-10-07 · Creativos: `render.mjs --editar` retoca una imagen ya hecha
   (campo "editar" en lote.json); CTA corregido en L001-C01 y L004-C03/C07/C08/C09.
