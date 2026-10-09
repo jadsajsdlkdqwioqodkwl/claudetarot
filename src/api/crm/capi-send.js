@@ -14,6 +14,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { reportarEventoMeta, EVENTOS } from "../../lib/meta-capi.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 import { registrarEventoCapi, agregarEtiquetaMeta } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -49,7 +50,7 @@ async function post({ request, env, agent }) {
 
   if (orderId) {
     const pedido = await env.CRM_DB.prepare(
-      `SELECT o.*, conv.id AS conversation_id, c.wa_id, c.ctwa_clid, c.name, c.profile_name
+      `SELECT o.*, conv.id AS conversation_id, c.wa_id, COALESCE(conv.ctwa_clid, c.ctwa_clid) AS ctwa_clid, c.name, c.profile_name
        FROM catalog_orders o
        JOIN conversations conv ON conv.id = o.conversation_id
        JOIN contacts c ON c.id = conv.contact_id
@@ -66,7 +67,7 @@ async function post({ request, env, agent }) {
     if (!payload?.currency && pedido.currency) payload.currency = pedido.currency;
   } else if (conversationId) {
     const conv = await env.CRM_DB.prepare(
-      `SELECT c.wa_id, c.ctwa_clid, c.name, c.profile_name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
+      `SELECT c.wa_id, COALESCE(conv.ctwa_clid, c.ctwa_clid) AS ctwa_clid, c.name, c.profile_name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
     )
       .bind(conversationId)
       .first();
@@ -96,7 +97,8 @@ async function post({ request, env, agent }) {
   await agregarEtiquetaMeta(env.CRM_DB, conversationId, EVENTOS[tipo].etiqueta);
 
   try {
-    const r = await reportarEventoMeta(env, {
+    // Al dataset/píxel de la línea del chat (URO no reporta al de Tarot Store).
+    const r = await reportarEventoMeta(await envDeConversacion(env, conversationId), {
       tipo,
       waId,
       ctwaClid,

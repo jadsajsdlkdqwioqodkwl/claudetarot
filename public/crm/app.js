@@ -490,7 +490,7 @@ async function pintarModalProductos() {
   $("#lista-productos").innerHTML = estado.productos.length ? estado.productos.map((p) => `
     <div class="fila-seguimiento ${p.activo ? "" : "apagado"}">
       <div>
-        <div class="nombre">📦 ${escapar(p.nombre)}${p.activo ? "" : " · apagado"} <span class="sub">· ${p.chats} chat${p.chats === 1 ? "" : "s"} · 📱 ${escapar(nombreLinea(p.linea_id))}</span></div>
+        <div class="nombre"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color || "transparent"}"></span> 📦 ${escapar(p.nombre)}${p.activo ? "" : " · apagado"} <span class="sub">· ${p.chats} chat${p.chats === 1 ? "" : "s"} · 📱 ${escapar(nombreLinea(p.linea_id))}</span></div>
         <div class="sub">${[
           p.anuncios ? `Anuncios: ${escapar(p.anuncios)}` : "",
           p.palabras ? `Palabras: ${escapar(p.palabras)}` : "",
@@ -513,7 +513,7 @@ async function pintarModalProductos() {
     <div class="fila-seguimiento ${l.activa ? "" : "apagado"}">
       <div>
         <div class="nombre">📱 ${escapar(l.nombre)}${l.marca ? ` · ${escapar(l.marca)}` : ""}${l.activa ? "" : " · apagado"}</div>
-        <div class="sub">Phone ID ${escapar(l.phone_number_id)}${l.waba_id ? ` · WABA ${escapar(l.waba_id)}` : " · sin WABA (no lista plantillas)"}${l.catalog_id ? ` · catálogo ${escapar(l.catalog_id)}` : ""}${l.token_var ? ` · token ${escapar(l.token_var)}` : ""}</div>
+        <div class="sub">Phone ID ${escapar(l.phone_number_id)}${l.waba_id ? ` · WABA ${escapar(l.waba_id)}` : " · sin WABA (no lista plantillas)"}${l.catalog_id ? ` · catálogo ${escapar(l.catalog_id)}` : ""}${l.token_var ? ` · token ${escapar(l.token_var)}` : ""}${l.pixel_id ? ` · píxel ${escapar(l.pixel_id)}` : " · sin píxel (eventos manuales no salen)"}</div>
       </div>
       <div style="display:flex;gap:4px"><button class="editar-linea" data-id="${l.id}" title="Editar">${icon("pencil")}</button></div>
     </div>`).join("")}`;
@@ -540,6 +540,7 @@ function editarProducto(p) {
   $("#prod-notas").value = p.notas || "";
   $("#prod-bienvenida").checked = p.bienvenida_auto !== 0;
   $("#prod-activo").checked = Boolean(p.activo);
+  $("#prod-color").value = p.color || "#7c5cff";
   pintarSelectsProducto(p);
   $("#prod-guardar").textContent = "Guardar cambios";
   $("#prod-cancelar-edicion").style.display = "";
@@ -552,6 +553,7 @@ function cancelarEdicionProducto() {
   ["#prod-nombre", "#prod-anuncios", "#prod-palabras", "#prod-precio", "#prod-notas"].forEach((id) => { $(id).value = ""; });
   $("#prod-bienvenida").checked = true;
   $("#prod-activo").checked = true;
+  $("#prod-color").value = "#7c5cff";
   pintarSelectsProducto();
   $("#prod-guardar").textContent = "Agregar producto";
   $("#prod-cancelar-edicion").style.display = "none";
@@ -568,7 +570,8 @@ $("#prod-guardar").addEventListener("click", async () => {
     notas: $("#prod-notas").value,
     secuencia_id: Number($("#prod-secuencia").value) || null,
     bienvenida_auto: $("#prod-bienvenida").checked,
-    activo: $("#prod-activo").checked
+    activo: $("#prod-activo").checked,
+    color: $("#prod-color").value
   };
   if (!datos.nombre) return alert("Ponle un nombre.");
   if (!datos.anuncios.trim() && !datos.palabras.trim() && !datos.linea_id) {
@@ -602,6 +605,7 @@ function editarLinea(l) {
   $("#linea-catalogo").value = l.catalog_id || "";
   $("#linea-token").value = l.token_var || "";
   $("#linea-marca").value = l.marca || "";
+  $("#linea-pixel").value = l.pixel_id || "";
   $("#linea-guardar").textContent = "Guardar cambios";
   $("#linea-cancelar-edicion").style.display = "";
   $("#linea-nombre").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -610,7 +614,7 @@ function editarLinea(l) {
 function cancelarEdicionLinea() {
   estado.editandoLineaId = null;
   $("#linea-form-titulo").textContent = "Agregar número";
-  ["#linea-nombre", "#linea-phone", "#linea-waba", "#linea-catalogo", "#linea-token", "#linea-marca"].forEach((id) => { $(id).value = ""; });
+  ["#linea-nombre", "#linea-phone", "#linea-waba", "#linea-catalogo", "#linea-token", "#linea-marca", "#linea-pixel"].forEach((id) => { $(id).value = ""; });
   $("#linea-guardar").textContent = "Agregar número";
   $("#linea-cancelar-edicion").style.display = "none";
 }
@@ -623,7 +627,8 @@ $("#linea-guardar").addEventListener("click", async () => {
     waba_id: $("#linea-waba").value.trim(),
     catalog_id: $("#linea-catalogo").value.trim(),
     token_var: $("#linea-token").value.trim(),
-    marca: $("#linea-marca").value.trim()
+    marca: $("#linea-marca").value.trim(),
+    pixel_id: $("#linea-pixel").value.trim()
   };
   if (!datos.nombre || !datos.phone_number_id) return alert("Falta el nombre o el Phone number ID.");
   const btn = $("#linea-guardar");
@@ -1513,6 +1518,9 @@ function pintarLista() {
     const div = document.createElement("div");
     const seleccionado = estado.seleccionados.has(c.conversation_id);
     const noLeidos = sinLeer(c);
+    // El color del producto marca el chat en la bandeja.
+    const colorProd = productoDe(c.producto_id)?.color;
+    if (colorProd) div.style.boxShadow = `inset 4px 0 0 ${colorProd}`;
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
@@ -1918,7 +1926,7 @@ const chatActivo = () => estado.conversaciones.find((x) => x.conversation_id ===
 function badgesProducto(c) {
   const p = productoDe(c.producto_id);
   const l = lineaDe(c.linea_id);
-  return (p ? `<span class="badge-producto" title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">📦 ${escapar(p.nombre)}</span>` : "")
+  return (p ? `<span class="badge-producto" ${p.color ? `style="background:${p.color};border-color:${p.color};color:#fff"` : ""} title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">📦 ${escapar(p.nombre)}</span>` : "")
     + (l ? `<span class="badge-linea" title="Escribió a este número">📱 ${escapar(l.nombre)}</span>` : "");
 }
 

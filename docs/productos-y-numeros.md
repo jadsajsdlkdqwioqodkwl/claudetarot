@@ -63,3 +63,24 @@ números (nombre, Phone number ID, WABA, catálogo, secreto del token, marca).
 Otro número = otra línea (marca en el campo `marca`). Si algún día una marca
 necesita su propio equipo o datos aparte, el corte natural es filtrar por
 línea (ya existe `?linea=` en la lista y en el asesor); no hace falta otro CRM.
+
+## Segundo número (URO) — checklist
+
+1. Meta Business Manager (el mismo de Tarot): WhatsApp Manager → crear **otra
+   WABA** "URO" y agregarle el número nuevo (que NO esté en la app de
+   WhatsApp ni en WhatsApp Business; si lo está, borrar esa cuenta antes).
+   Nombre visible "URO…" (Meta lo aprueba), método de pago en la WABA.
+2. Usuario del sistema (el del `WHATSAPP_TOKEN`): darle la WABA nueva como
+   activo con control total. Así sirve el mismo token. Si no, token propio:
+   `npx wrangler secret put WHATSAPP_TOKEN_URO` y ese nombre en la línea.
+3. Suscribir la app a la WABA nueva (`POST /{WABA_URO}/subscribed_apps`) para
+   que sus mensajes lleguen al mismo webhook.
+4. Registrar el número en Cloud API (`POST /{PHONE_ID}/register` con PIN de 6 dígitos).
+5. Página de Facebook de URO conectada a ese número (para Click to WhatsApp).
+6. CRM → Productos y números: la línea con Phone number ID, **WABA**,
+   **píxel** (`1788156381816025`) y catálogo si hay; el producto URO en esa
+   línea con color, IDs de anuncio y palabras ("uro", "probiótico").
+7. Migraciones `0045` y `0046` aplicadas a mano antes del deploy.
+
+Sin WABA propia la línea no lista plantillas ni manda CAPI (nunca cae a la de
+Tarot). Sin píxel, los eventos sin clic de anuncio de esa línea no salen.

@@ -50,7 +50,8 @@ function camposProducto(p) {
     notas: texto(p.notas, 4000),
     secuencia_id: p.secuencia_id === undefined ? undefined : Number(p.secuencia_id) || null,
     bienvenida_auto: p.bienvenida_auto === undefined ? undefined : p.bienvenida_auto ? 1 : 0,
-    activo: p.activo === undefined ? undefined : p.activo ? 1 : 0
+    activo: p.activo === undefined ? undefined : p.activo ? 1 : 0,
+    color: p.color === undefined ? undefined : /^#[0-9a-f]{6}$/i.test(p.color || "") ? p.color : null
   };
   return Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined));
 }
@@ -135,6 +136,7 @@ function camposLinea(p) {
     // Solo el NOMBRE del secreto de Cloudflare (ej. WHATSAPP_TOKEN_MARCA2), nunca el token.
     token_var: p.token_var === undefined ? undefined : String(p.token_var || "").toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 60) || null,
     marca: texto(p.marca, 80),
+    pixel_id: p.pixel_id === undefined ? undefined : String(p.pixel_id || "").replace(/\D/g, "") || null,
     activa: p.activa === undefined ? undefined : p.activa ? 1 : 0
   };
   return Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined));

@@ -64,8 +64,11 @@ export function envDeLinea(env, linea) {
     ...env,
     WHATSAPP_PHONE_NUMBER_ID: linea.phone_number_id,
     WHATSAPP_TOKEN: (linea.token_var && env[linea.token_var]) || env.WHATSAPP_TOKEN,
-    WHATSAPP_BUSINESS_ACCOUNT_ID: linea.waba_id || env.WHATSAPP_BUSINESS_ACCOUNT_ID,
+    // Sin la WABA propia no se cae a la de Tarot Store (plantillas y CAPI irían a la cuenta equivocada).
+    WHATSAPP_BUSINESS_ACCOUNT_ID: linea.waba_id || "",
     WHATSAPP_CATALOG_ID: linea.catalog_id || "",
+    // Nunca el píxel de Tarot Store: sin pixel_id, los eventos manuales de esta línea no salen.
+    META_CAPI_DATASET_ID: linea.pixel_id || "",
     LINEA_ID: linea.id
   };
 }

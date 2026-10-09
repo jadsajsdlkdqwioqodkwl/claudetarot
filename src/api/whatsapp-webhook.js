@@ -181,23 +181,28 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
  * si vino de un anuncio, Contact si no) y deja el chat con la etiqueta
  * "contact". Va dentro del mismo request del webhook, no suma requests.
  */
-async function reportarConversacionSiAplica(env, contacto, conversacion) {
-  // Solo la línea principal: el dataset de Meta es el de Tarot Store.
-  if (!conversacion._isNew || conversacion.linea_id) return;
+async function reportarConversacionSiAplica(env, contacto, conversacion, referral) {
+  if (!conversacion._isNew) return;
+  // En otra línea el clic es del chat (el contacto guarda solo el de Tarot Store).
+  const ctwaClid = conversacion.linea_id ? referral?.ctwa_clid || null : contacto.ctwa_clid;
+  if (conversacion.linea_id && ctwaClid) {
+    await env.CRM_DB.prepare("UPDATE conversations SET ctwa_clid = ? WHERE id = ?").bind(ctwaClid, conversacion.id).run()
+      .catch((err) => console.error("Clic del chat:", err.message));
+  }
   await agregarEtiquetaMeta(env.CRM_DB, conversacion.id, "contact").catch((err) => console.error("Etiqueta contact:", err.message));
   const base = { conversationId: conversacion.id, valor: 0, moneda: "PEN", createdBy: "Automático" };
   try {
     const r = await reportarEventoMeta(env, {
       tipo: "conversacion",
       waId: contacto.wa_id,
-      ctwaClid: contacto.ctwa_clid,
+      ctwaClid,
       valor: 0,
       eventId: `capi-conversacion-${conversacion.id}`
     });
     await registrarEventoCapi(env.CRM_DB, { ...base, status: "enviado", eventName: r.eventName, modo: r.modo, error: r.aviso });
   } catch (err) {
     console.error("CAPI conversación:", err.message);
-    await registrarEventoCapi(env.CRM_DB, { ...base, status: "fallido", eventName: contacto.ctwa_clid ? "LeadSubmitted" : "Contact", error: err.message.slice(0, 500) }).catch(() => {});
+    await registrarEventoCapi(env.CRM_DB, { ...base, status: "fallido", eventName: ctwaClid ? "LeadSubmitted" : "Contact", error: err.message.slice(0, 500) }).catch(() => {});
   }
 }
 
@@ -252,7 +257,7 @@ async function procesarCambio(envBase, db, value, origen) {
     if (contacto.blocked) continue;
     await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
-    await reportarConversacionSiAplica(env, contacto, conversacion);
+    await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
   }
 

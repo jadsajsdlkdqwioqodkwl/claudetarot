@@ -109,8 +109,11 @@ const tokensDisponibles = (env) =>
  * Dataset vinculado a la WABA (lo crea si todavía no existe). Se guarda en
  * crm_settings para no preguntarle a Meta en cada evento.
  */
+// Cada WABA tiene su dataset: la principal con la clave de siempre, otra línea con la suya.
+const ajusteDataset = (env) => (env.LINEA_ID ? `${AJUSTE_DATASET_WABA}:${env.WHATSAPP_BUSINESS_ACCOUNT_ID}` : AJUSTE_DATASET_WABA);
+
 async function datasetDeWaba(env) {
-  const guardado = await obtenerAjuste(env.CRM_DB, AJUSTE_DATASET_WABA);
+  const guardado = await obtenerAjuste(env.CRM_DB, ajusteDataset(env));
   if (guardado) {
     try {
       return JSON.parse(guardado);
@@ -130,7 +133,7 @@ async function datasetDeWaba(env) {
       }
       if (!id) throw new Error(`Meta no devolvió el dataset: ${JSON.stringify(datos)}`);
       const resuelto = { id: String(id), token: nombreToken };
-      await guardarAjuste(env.CRM_DB, AJUSTE_DATASET_WABA, JSON.stringify(resuelto));
+      await guardarAjuste(env.CRM_DB, ajusteDataset(env), JSON.stringify(resuelto));
       return resuelto;
     } catch (err) {
       errores.push(`${nombreToken}: ${err.message}`);
@@ -159,7 +162,7 @@ export async function reportarEventoMeta(env, { tipo, waId, ctwaClid, valor, mon
     } catch (err) {
       aviso = `Vía anuncio falló (${err.message}); se mandó como manual.`;
       // Por si el dataset/token guardado dejó de servir: la próxima vez se vuelve a resolver.
-      await guardarAjuste(env.CRM_DB, AJUSTE_DATASET_WABA, "").catch(() => {});
+      await guardarAjuste(env.CRM_DB, ajusteDataset(env), "").catch(() => {});
     }
   }
 
