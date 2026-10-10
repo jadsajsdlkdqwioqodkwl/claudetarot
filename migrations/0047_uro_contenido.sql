@@ -1,3 +1,4 @@
+-- YA APLICADA en D1 el 2026-10-10 (Phone number ID 1243884548804185; WABA pendiente: cargarlo en CRM → Productos y números).
 -- Contenido inicial de URO (producto 2, número propio). Aplicar a mano DESPUÉS
 -- de 0045 y 0046, cuando el número ya esté agregado en WhatsApp Manager.
 -- ANTES de correrlo reemplaza en todo el archivo:
@@ -45,24 +46,28 @@ INSERT INTO welcome_steps (title, body, step_order, producto_id) VALUES
    (SELECT COALESCE(MAX(step_order), 0) + 1 FROM welcome_steps), (SELECT MAX(id) FROM productos WHERE nombre = 'URO'));
 
 -- Respuestas rápidas (solo salen en chats de URO).
-INSERT INTO quick_replies (title, body, producto_id, sort_order)
-SELECT r.title, r.body, (SELECT MAX(id) FROM productos WHERE nombre = 'URO'),
-       (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + r.n
-FROM (
-  SELECT 1 AS n, 'URO · Precios' AS title, 'Claro ☺️ cada frasco trae 60 cápsulas para 1 mes:
+-- (Una por INSERT: D1 corta los SELECT compuestos largos.)
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Precios', 'Claro ☺️ cada frasco trae 60 cápsulas para 1 mes:
 1 frasco S/89
 2 frascos S/139
 3 frascos S/179, que es el tratamiento recomendado
-¿Cuántos frascos desea?' AS body
-  UNION ALL SELECT 2, 'URO · Qué es', 'URO son probióticos de consumo oral, se toman como cápsulas 🌸 Ayudan a equilibrar la flora íntima y el pH desde adentro, y apoyan frente a molestias como mal olor, flujo, picazón o ardor ✨'
-  UNION ALL SELECT 3, 'URO · Por qué 3 meses', 'La flora íntima se va equilibrando de a pocos, por eso se recomienda tomarlo 3 meses seguidos 💜 Con 3 frascos sale a S/179 en vez de S/267 sueltos ☺️'
-  UNION ALL SELECT 4, 'URO · Es medicamento?', 'Es un suplemento de probióticos, no un medicamento ☺️ Si está embarazada, dando de lactar o en algún tratamiento, le recomendamos consultarlo antes con su médico.'
-  UNION ALL SELECT 5, 'URO · Pago y envío', 'El envío es gratis a todo el Perú y el pago es contra entrega, paga recién cuando lo recibe ☺️ ¿Para qué distrito o ciudad sería?'
-  UNION ALL SELECT 6, 'URO · Lima datos', 'Perfecto ☺️ Me indica su dirección o ubicación 📍 y el teléfono de quien lo va a recibir, por favor.'
-  UNION ALL SELECT 7, 'URO · Provincia datos Shalom', 'Perfecto ☺️ Para enviarlo por Shalom me indica por favor:
+¿Cuántos frascos desea?', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Qué es', 'URO son probióticos de consumo oral, se toman como cápsulas 🌸 Ayudan a equilibrar la flora íntima y el pH desde adentro, y apoyan frente a molestias como mal olor, flujo, picazón o ardor ✨', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Por qué 3 meses', 'La flora íntima se va equilibrando de a pocos, por eso se recomienda tomarlo 3 meses seguidos 💜 Con 3 frascos sale a S/179 en vez de S/267 sueltos ☺️', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Es medicamento?', 'Es un suplemento de probióticos, no un medicamento ☺️ Si está embarazada, dando de lactar o en algún tratamiento, le recomendamos consultarlo antes con su médico.', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Pago y envío', 'El envío es gratis a todo el Perú y el pago es contra entrega, paga recién cuando lo recibe ☺️ ¿Para qué distrito o ciudad sería?', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Lima datos', 'Perfecto ☺️ Me indica su dirección o ubicación 📍 y el teléfono de quien lo va a recibir, por favor.', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Provincia datos Shalom', 'Perfecto ☺️ Para enviarlo por Shalom me indica por favor:
 Nombres y apellidos
 DNI
 Celular
-Ciudad y agencia Shalom de destino'
-  UNION ALL SELECT 8, 'URO · Pedido confirmado', 'Muchas gracias por su confianza 🌸 Su pedido quedó registrado, le avisamos cuando salga ✨'
-) r;
+Ciudad y agencia Shalom de destino', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
+INSERT INTO quick_replies (title, body, producto_id, sort_order) VALUES
+('URO · Pedido confirmado', 'Muchas gracias por su confianza 🌸 Su pedido quedó registrado, le avisamos cuando salga ✨', (SELECT MAX(id) FROM productos WHERE nombre = 'URO'), (SELECT COALESCE(MAX(sort_order), 0) FROM quick_replies) + 1);
