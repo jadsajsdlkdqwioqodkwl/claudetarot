@@ -158,8 +158,9 @@ export async function guardarReaccionPropia(db, messageId, emoji) {
 export async function cancelarSeguimientosPendientes(db, conversationId) {
   await db
     // Los marcados "mandar siempre" no se cancelan: salen aunque el cliente escriba.
-    // También los planes con plantilla que esperaban aprobación: ya respondió.
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0")
+    // También los planes con plantilla que esperaban aprobación: ya respondió. El recojo en Shalom ya
+    // aprobado NO se cancela: si responde ("gracias") se vuelve a contar desde ahí (rearmarPlanShalom).
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND NOT (status = 'pendiente' AND created_by LIKE 'Plan con plantilla · Recojo en Shalom%')")
     .bind(conversationId)
     .run();
 }

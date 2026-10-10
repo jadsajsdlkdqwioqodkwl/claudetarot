@@ -5,13 +5,13 @@
  * toca "Mandar a Meta"; Meta las aprueba (suele tardar minutos) y recién ahí
  * los planes y los toques las usan.
  *
- * Orden de prioridad: recojo en Shalom, rescate de interesado, toques a quien
+ * Orden de prioridad: aviso de envío (abre la ventana para la boleta), recojo en Shalom, rescate de interesado, toques a quien
  * no compró y toques a clientes.
  */
 
 import { listarLineas, envDeLinea } from "./lineas.js";
 import { listarTemplates, crearTemplate } from "./whatsapp.js";
-import { planesDe, marcaDeLinea, IDIOMA_PLAN } from "./planes-plantilla.js";
+import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
 
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
@@ -23,6 +23,12 @@ const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/
 /** Todas las propuestas de una marca: { nombre, grupo, titulo, cuando, categoria, texto, botones, componentes }. */
 export function propuestasDe(marca) {
   const lista = [];
+  const aviso = AVISOS_ENVIO[marca];
+  lista.push({
+    nombre: aviso.nombre, grupo: "Aviso de envío (abre la ventana para mandar la boleta)", titulo: "Aviso de envío", cuando: "al despachar el pedido, la vendedora lo manda desde el chat (botón de plantillas)",
+    categoria: aviso.categoria, texto: aviso.texto, botones: aviso.botones,
+    componentes: [cuerpo(aviso.texto, ejemploDe(aviso.texto, aviso.ejemplo)), botones(aviso.botones)]
+  });
   const planes = planesDe(marca);
   for (const [clave, p] of Object.entries(planes)) {
     for (const [i, paso] of p.pasos.entries()) {
@@ -50,7 +56,7 @@ export function propuestasDe(marca) {
       });
     }
   }
-  const orden = ["Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 

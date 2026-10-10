@@ -10,6 +10,7 @@
  * llamada de red antes de responder.
  */
 
+import { activarPlanTrasAviso, rearmarPlanShalom } from "../lib/planes-plantilla.js";
 import {
   obtenerOCrearContacto,
   obtenerOCrearConversacion,
@@ -258,6 +259,9 @@ async function procesarCambio(envBase, db, value, origen) {
     }
     // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
     if (contacto.blocked) continue;
+    // Respondió al "aviso de envío": se abrió su ventana y arranca el plan de recojo (4, 7 y 21 días).
+    await rearmarPlanShalom(env, conversacion.id, bodyFinal).catch((err) => console.error("Re-armar recojo:", err.message));
+    await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
     await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
     await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
     await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);

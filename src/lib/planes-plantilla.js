@@ -82,6 +82,16 @@ export const PLANES_URO = {
   }
 };
 
+/**
+ * "Aviso de envío": la plantilla que la vendedora manda desde el chat (botón de plantillas) cuando
+ * despacha el pedido. Trae dos botones: al tocarlo el cliente abre la ventana de 24 h, ahí va la
+ * boleta de Shalom, y al responder se activa solo el plan de recojo (4, 7 y 21 días).
+ */
+export const AVISOS_ENVIO = {
+  tarot: { nombre: "aviso_envio_shalom", categoria: "UTILITY", texto: "Hola {{1}}, ya despachamos su pedido ✅ Toque uno de los botones de abajo para enviarle por este chat su boleta de Shalom y los datos para recogerlo.", botones: ["Ver mi boleta", "Tengo una consulta"], ejemplo: ["María"] },
+  uro: { nombre: "uro_aviso_envio_shalom", categoria: "UTILITY", texto: "Hola {{1}}, de URO: ya despachamos su pedido ✅ Toque uno de los botones de abajo para enviarle por este chat su boleta de Shalom y los datos para recogerlo.", botones: ["Ver mi boleta", "Tengo una consulta"], ejemplo: ["María"] }
+};
+
 export const planesDe = (marca) => (marca === "uro" ? PLANES_URO : PLANES);
 
 
@@ -192,4 +202,43 @@ export async function proponerPlanPorVentanaCerrada(env, limite = 5) {
     if (!r.error) n++;
   }
   return n;
+}
+
+/**
+ * El cliente respondió (tocó un botón o escribió) justo después del "aviso de envío": se abrió su
+ * ventana y el plan de recojo en Shalom queda programado desde ESTE mensaje (4, 7 y 21 días).
+ * Solo la primera respuesta tras el aviso, hasta 3 días después.
+ */
+export async function activarPlanTrasAviso(env, conversationId) {
+  const db = env.CRM_DB;
+  const aviso = await db.prepare(
+    `SELECT created_at FROM messages WHERE conversation_id = ? AND direction = 'out' AND type = 'template'
+       AND body LIKE '%aviso_envio_shalom%' AND created_at >= datetime('now', '-3 days') ORDER BY id DESC LIMIT 1`
+  ).bind(conversationId).first();
+  if (!aviso) return null;
+  const { n } = await db.prepare("SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND direction = 'in' AND created_at >= ?").bind(conversationId, aviso.created_at).first();
+  if (n !== 1) return null;
+  return programarPlan(env, conversationId, "shalom", { estado: "pendiente", quien: "Tras el aviso de envío" });
+}
+
+/**
+ * El cliente escribió con un recojo en Shalom ya aprobado en marcha: los 3 envíos se vuelven a contar
+ * desde este mensaje (4, 7 y 21 días). Si dice "ya lo recogí" (el botón), el plan termina.
+ */
+export async function rearmarPlanShalom(env, conversationId, texto) {
+  const db = env.CRM_DB;
+  const { results } = await db.prepare(
+    "SELECT id, template_name FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?"
+  ).bind(conversationId, `${PREFIJO_PLAN} · Recojo en Shalom%`).all();
+  if (!results.length) return;
+  if (/ya lo recog/i.test(texto || "")) {
+    await db.batch(results.map((r) => db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(r.id)));
+    return;
+  }
+  const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
+  const ahora = Date.now();
+  await db.batch(results.map((r) => {
+    const i = Math.max(0, Number(String(r.template_name).match(/_(\d)$/)?.[1] || 1) - 1);
+    return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
+  }));
 }

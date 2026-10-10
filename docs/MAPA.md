@@ -59,7 +59,7 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 
 ## Plantillas de Meta: dónde se ven y quién las manda
 
-CRM → Herramientas → **Plantillas para Meta** (solo admin): muestra, por marca (Tarot Store / URO), el texto exacto, categoría, botones y estado en Meta de cada plantilla propuesta (recojo en Shalom primero, rescate de interesado, toques). El botón «Mandar a Meta» las crea en la WABA de ese número. Los textos viven en `src/lib/planes-plantilla.js` (planes) y `src/lib/toques.js` (toques); cambiar un texto ya aprobado exige un nombre nuevo. URO usa el prefijo `uro_` / `toque_u_` y no nombra síntomas (tema íntimo; el aviso se ve en la pantalla de bloqueo).
+CRM → Herramientas → **Plantillas para Meta** (solo admin): muestra, por marca (Tarot Store / URO), el texto exacto, categoría, botones y estado en Meta de cada plantilla propuesta (recojo en Shalom primero, rescate de interesado, toques). El botón «Mandar a Meta» las crea en la WABA de ese número. **Flujo del envío por Shalom:** la vendedora manda la plantilla «Aviso de envío» (`aviso_envio_shalom` / `uro_aviso_envio_shalom`, dos botones) desde el botón de plantillas del chat → el cliente toca un botón y se abre su ventana → ella manda la boleta → al responder el cliente el CRM programa solo el recojo (4, 7 y 21 días desde ese mensaje); si vuelve a escribir se recuenta desde ahí, y con «Ya lo recogí» el plan termina. Los textos viven en `src/lib/planes-plantilla.js` (planes) y `src/lib/toques.js` (toques); cambiar un texto ya aprobado exige un nombre nuevo. URO usa el prefijo `uro_` / `toque_u_` y no nombra síntomas (tema íntimo; el aviso se ve en la pantalla de bloqueo).
 
 ## Seguimientos del CRM: qué corre y qué no (auditoría 2026-10-10)
 
@@ -87,6 +87,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · Aviso de envío por Shalom (plantilla de 2 botones que reabre la ventana para mandar la boleta) y recojo 4/7/21 que arranca solo cuando el cliente responde (`activarPlanTrasAviso`, `rearmarPlanShalom`).
 
 - 2026-10-10 · Plantillas por marca y toques prendidos: pantalla «Plantillas para Meta» (el admin ve y manda cada plantilla; ya no se crean solas), textos propios de URO, toques de Tarot y URO conectados al cron (aplicar `0043`), plan con plantilla cuando el timer de una recomendación llega a 0, el cron de seguimientos espera a que Meta apruebe la plantilla, cronómetro en una franja sobre el chat, link de envío de Shalom deprecado (UI y ruta), y se revierte «secuencia de producto = lead» (lead y compra son manuales).
 

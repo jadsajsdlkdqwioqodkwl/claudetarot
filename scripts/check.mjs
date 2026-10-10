@@ -835,7 +835,7 @@ check("las letras de columna llegan hasta la última de la hoja",
       new Set(nombres).size === nombres.length && uro.every((p) => /^(uro_|toque_u_)/.test(p.nombre)) && tarot.every((p) => !/^(uro_|toque_u_)/.test(p.nombre)));
     check("plantillas de URO: sin textos de Tarot (kit, collar, cartas) ni {{2}}",
       uro.every((p) => !/kit|collar|carta|tarot|\{\{2\}\}/i.test(p.texto)));
-    check("el recojo en Shalom va primero en cada marca", tarot[0].nombre === "recojo_shalom_1" && uro[0].nombre === "uro_recojo_shalom_1");
+    check("el aviso de envío va primero, luego el recojo en Shalom, en cada marca", tarot[0].nombre === "aviso_envio_shalom" && uro[0].nombre === "uro_aviso_envio_shalom" && tarot[1].nombre === "recojo_shalom_1");
     check("las plantillas no se mandan solas a Meta (solo el admin desde el CRM)",
       !readFileSync(new URL("../src/lib/plantillas.js", import.meta.url), "utf8").includes("crearTemplate(env")
       && readFileSync(new URL("../src/lib/plantillas-propuestas.js", import.meta.url), "utf8").includes("crearTemplate(envM"));
