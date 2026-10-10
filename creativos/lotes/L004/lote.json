@@ -1,0 +1,347 @@
+{
+  "lote": "L004",
+  "lote_hoja": "P2026-10-06a",
+  "creado": "2026-10-06",
+  "aspecto": "4:5",
+  "conceptos": [
+    {
+      "id": "C01",
+      "angulo": "Los ingredientes de tu primera lectura ya vienen en la caja",
+      "consciencia": "solucion",
+      "producto": "protagonista",
+      "titular": "Receta de tu primera lectura de tarot, ingredientes incluidos",
+      "copy": "Piensa en tu primera lectura como una receta: no hace falta ser chef cuando los ingredientes ya vienen en la caja. El kit trae 78 cartas con el significado impreso, un manual en español paso a paso, un tapete floral y un collar amuleto de regalo. Son S/89 con envío gratis a todo el Perú. Escríbenos y pide el tuyo.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "receta de cocina para la primera lectura de tarot con los ingredientes del kit sobre la mesa",
+        "formato": "tarjeta de receta",
+        "escena": "vista cenital de una mesa de cocina con mantel de cuadros celeste; al centro una hoja grande de receta color crema con cenefa roja; alrededor, como ingredientes, las piezas del kit junto a cucharas de madera, un bol y flores frescas",
+        "composicion": "hoja de receta ocupando el centro con todo el texto; piezas del kit rodeando la hoja; el cta como sello redondo en la esquina inferior de la hoja",
+        "estilo": "fotografía cenital de producto con papelería de receta ilustrada, cálida y alegre",
+        "iluminacion": "luz de ventana suave y brillante, sombras tiernas",
+        "paleta": "coral, amarillo mantequilla, verde menta, azul cielo",
+        "producto": "kit_completo: reproduce idénticas las piezas de la referencia (caja morada, cartas en abanico con El Mago, guía abierta, tapete floral, collar luna), integradas en la escena como ingredientes con la misma luz y perspectiva, sin pegar la foto entera, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Receta de tu primera lectura de tarot, ingredientes incluidos (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Ingredientes: 78 cartas con su significado impreso, un manual en español, un tapete floral y un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Preparación: barajas con calma, sacas tres cartas sobre el tapete y las lees con el manual abierto a tu lado. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Porciones: todas las tiradas que quieras. Kit completo por S/89 con envío gratis. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Quiero mis ingredientes (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola hoja de receta crema con cenefa roja: titular en tipografía manuscrita gruesa coral, ingredientes y preparación en tinta marrón oscuro, dato en una cinta amarilla dentro de la misma hoja, cta blanco sobre sello coral",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "tarjeta de receta",
+      "fila_hoja": 72
+    },
+    {
+      "id": "C02",
+      "angulo": "Se aprende sin tutor ni horarios de clase, con un manual en español",
+      "consciencia": "solucion",
+      "producto": "protagonista",
+      "titular": "Cómo leer tarot sin tutor: el kit que explica las 78 cartas en español",
+      "copy": "Aprender tarot no tiene por qué significar clases ni cursos. Con este kit abres el manual en español junto a cada carta y vas a tu ritmo, desde la primera página hasta tu primera tirada. Trae 78 cartas con el significado impreso, tapete floral y un collar amuleto de regalo. S/89 con envío gratis a todo el Perú.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "nota de prensa genérica sobre cómo aprender tarot sin tutor con un manual en español",
+        "formato": "nota de prensa o medio",
+        "escena": "página de periódico genérico de colores vivos sobre fondo coral, sin nombre de medio ni fecha; una foto grande de prensa con borde blanco de la mano con la carta y la guía abierta, y una lupa ilustrada y destellos alrededor; el texto corre en una sola columna ancha junto a la foto",
+        "composicion": "foto de prensa a la izquierda ocupando dos tercios de la altura; columna de texto a la derecha con titular grande arriba; cta en botón al pie de la columna",
+        "estilo": "parodia moderna de nota de periódico con foto nítida y gráficos planos alegres",
+        "iluminacion": "luz de estudio pareja y brillante sobre la foto, plana en el resto",
+        "paleta": "crema, azul cobalto, coral, amarillo girasol",
+        "producto": "mano_carta_y_guia: reproduce idénticas la mano, la carta Templanza y la guía abierta de la referencia, como foto principal de la nota, con la misma luz y perspectiva, sin cambiar la carta ni la guía, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Cómo leer tarot sin tutor: el kit que explica las 78 cartas en español (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Un manual abierto junto a cada carta te lleva de la primera página a tu primera tirada, a tu ritmo y sin horarios de clase. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "El kit trae 78 cartas con el significado impreso, tapete floral y un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Todo lo anterior por S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Lo quiero en casa (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola columna ancha de periódico sobre papel crema: titular en tipografía de periódico gruesa oscura, apoyo e incluye en tipografía de columna oscura, dato en negrita azul cobalto dentro de la misma columna, cta blanco sobre botón coral",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin nombre de periódico, fecha, firmas ni otras palabras; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "nota de prensa o medio (titular nuevo, otra foto)",
+      "fila_hoja": 73
+    },
+    {
+      "id": "C03",
+      "angulo": "El tarot como un juego que se aprende jugando",
+      "consciencia": "inconsciente",
+      "producto": "protagonista",
+      "titular": "Elige una carta y empieza tu primera partida de tarot",
+      "copy": "Si te gustan los juegos, el tarot se te va a hacer familiar: eliges una carta, miras su escena y su significado impreso te dice por dónde seguir. Este kit trae 78 cartas, manual en español, tapete floral y collar amuleto de regalo. S/89 con envío gratis a todo el Perú. Escríbenos y empieza tu partida.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "pantalla de videojuego retro para elegir la primera carta del tarot",
+        "formato": "retro / pixel",
+        "escena": "pantalla de arcade de 8 bits con píxeles gordos y colores vivos: un menú de selección donde las seis cartas reales aparecen como fotografías nítidas dentro de seis marcos pixelados, con un cursor de mano pixelada señalando una de ellas; estrellas y corazones de píxel flotando",
+        "composicion": "seis marcos con cartas en una cuadrícula de dos filas en el centro; cuadro de diálogo de videojuego bajo los marcos con todo el texto; cta como botón de start al pie",
+        "estilo": "arte pixelado retro con fotografías nítidas de las cartas dentro de los marcos",
+        "iluminacion": "brillo de pantalla de arcade, sin sombras duras",
+        "paleta": "verde lima, fucsia, azul eléctrico, amarillo",
+        "producto": "seis_cartas: reproduce idénticas las seis cartas de la referencia, con sus dibujos y fondos de color reales, dentro de los marcos pixelados, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Elige una carta y empieza tu primera partida de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Cada carta es una escena que se lee con la mirada: ves el dibujo, lees su significado impreso y pasas al siguiente nivel. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Las 78 cartas, el manual en español y el tapete floral vienen en la misma caja. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Jugadores nuevos bienvenidos. Kit por S/89 con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Llévate tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo cuadro de diálogo de videojuego con borde pixelado blanco y fondo azul eléctrico: titular en tipografía pixelada amarilla, apoyo e incluye en tipografía legible blanca, dato en verde lima dentro del mismo cuadro, cta oscuro sobre botón start fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; las cartas conservan su dibujo exacto; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "retro / pixel (otra foto, sin recorte)",
+      "fila_hoja": 74,
+      "editar": "Cambia solo dos cosas: el texto del botón de abajo, \"Pulsar start y pedir mi kit\", por \"Llévate tu kit de tarot\"; y en el texto de apoyo, la frase \"y pasas al siguiente nivel\" por \"y ya sabes qué dice\"."
+    },
+    {
+      "id": "C04",
+      "angulo": "El manual en español como estrella del espectáculo",
+      "consciencia": "producto",
+      "producto": "protagonista",
+      "titular": "Gran estreno: un manual en español para leer las 78 cartas de tarot",
+      "copy": "Pasen y vean cómo cada carta del kit se explica paso a paso con el manual en español abierto a su lado. La función completa trae 78 cartas con el significado impreso, tapete floral y un collar amuleto de regalo. Entrada única de S/89, con envío gratis a todo el Perú. Escríbenos y reserva tu lugar.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "protagonista"
+        }
+      ],
+      "prompt": {
+        "concepto": "afiche vintage de circo que anuncia el manual en español como gran estreno",
+        "formato": "cartel vintage de circo",
+        "escena": "afiche litográfico colorido con carpa de rayas, banderines y estrellas; en el centro, dentro de un gran círculo dorado con luces de feria, la mano con la carta y la guía abierta como estrella del espectáculo; confeti plano y cintas",
+        "composicion": "carpa arriba; foto de la mano y la guía en el círculo central; panel de texto en un gran pergamino bajo el círculo; cta en un boleto grande al pie",
+        "estilo": "afiche vintage de circo de colores vivos con la foto integrada como recorte dentro del círculo",
+        "iluminacion": "luz de feria cálida y brillante con destellos dorados",
+        "paleta": "mostaza, turquesa, coral, rosa chicle",
+        "producto": "mano_carta_y_guia: reproduce idénticas la mano, la carta Templanza y la guía abierta de la referencia dentro del círculo, con la misma luz y perspectiva, sin cambiar la carta ni la guía, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Gran estreno: un manual en español para leer las 78 cartas de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Pasen y vean cómo cada carta del kit se explica paso a paso, con el manual en español abierto a su lado. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Función completa: 78 cartas con significado impreso, tapete floral y collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Entrada única de S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Quiero mi entrada (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo pergamino crema con borde dorado: titular en tipografía de cartel vintage roja gruesa, apoyo e incluye en tinta marrón oscuro, dato en turquesa dentro del mismo pergamino, cta blanco sobre boleto coral",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "cartel vintage de circo",
+      "fila_hoja": 75
+    },
+    {
+      "id": "C05",
+      "angulo": "Una historia en tres viñetas: de la curiosidad a la primera carta",
+      "consciencia": "problema",
+      "producto": "en uso",
+      "titular": "Sin saber nada de tarot, esta persona ya lee su primera carta",
+      "copy": "¿Sientes curiosidad por el tarot pero no sabes nada? Así empieza casi todo el mundo. En este cómic de tres viñetas la carta se explica con sus datos impresos y el manual en español hace el resto. Kit completo con 78 cartas, tapete floral y collar amuleto de regalo por S/89. Envío gratis a todo el Perú.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "cómic de tres viñetas sin diálogos donde un personaje curioso pasa de no saber nada a leer una carta explicada",
+        "formato": "cómic de tres viñetas con personaje ilustrado",
+        "escena": "tres viñetas horizontales apiladas con bordes gruesos: en la primera un personaje ilustrado de pelo rizado y gorro amarillo mira con curiosidad una caja morada cerrada; en la segunda abre la caja con ojos grandes; en la tercera sostiene una carta tarot como la de la referencia con flechas que salen de sus datos impresos y sonríe",
+        "composicion": "tres viñetas ocupando el tercio superior y medio; caja de narración única con todo el texto bajo las viñetas; cta en botón al pie",
+        "estilo": "cómic pop con contornos gruesos y colores planos saturados, con la carta de la tercera viñeta en fotografía nítida",
+        "iluminacion": "plana y brillante, con halo suave en la tercera viñeta",
+        "paleta": "naranja mandarina, turquesa, amarillo limón, rosa chicle",
+        "producto": "carta_explicada: reproduce idéntica la carta La Emperatriz con todos sus datos impresos en la tercera viñeta, con la misma luz y perspectiva, sin cambiar sus datos ni sus dibujos, sin bordes recortados ni halos; las viñetas no llevan globos ni letras",
+        "textos": {
+          "titular": "Sin saber nada de tarot, esta persona ya lee su primera carta (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "En tres viñetas: llega la curiosidad, se abre el kit y la carta se explica con todos sus datos impresos. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Dentro hay 78 cartas, un manual en español y un tapete floral, con un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "La historia completa cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Empezar mi historia (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "una sola caja de narración amarilla con borde grueso oscuro bajo las viñetas: titular en tipografía de cómic gruesa oscura, apoyo e incluye en tipografía legible oscura, dato en fucsia dentro de la misma caja, cta blanco sobre botón turquesa",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, sin globos de diálogo, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "cómic de tres viñetas (personaje ilustrado)",
+      "fila_hoja": 76
+    },
+    {
+      "id": "C06",
+      "angulo": "Un tablero de juego que lleva de cero a la primera lectura",
+      "consciencia": "producto",
+      "producto": "en uso",
+      "titular": "Tablero de salida: de cero a tu primera lectura de tarot en cinco casillas",
+      "copy": "Casilla uno, abres la caja. Casilla dos, extiendes el tapete floral. Casilla tres, eliges una carta. Casilla cuatro, lees su significado impreso. Casilla cinco, abres el manual y llegas a tu primera lectura. Todo está en el kit de S/89 con envío gratis a todo el Perú. Escríbenos y tira el dado.",
+      "refs": [
+        {
+          "foto": "seis_cartas",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "tablero de juego de cinco casillas cuya meta es la primera lectura de tarot",
+        "formato": "tablero de juego",
+        "escena": "vista cenital de un tablero de juego colorido en forma de camino serpenteante de cinco casillas numeradas con los dígitos 1 al 5; sobre las casillas descansan las seis cartas reales como fichas grandes, una en cada casilla y la sexta en la meta; un dado gigante y fichas de colores alrededor",
+        "composicion": "camino serpenteante en el centro con las cartas sobre las casillas; panel único de texto bajo el tablero; cta en botón con forma de dado al pie",
+        "estilo": "juego de mesa ilustrado y alegre con las cartas en fotografía nítida",
+        "iluminacion": "luz cenital brillante y pareja, sombras suaves de las fichas",
+        "paleta": "azul cielo, naranja, verde lima, rosa chicle",
+        "producto": "seis_cartas: reproduce idénticas las seis cartas de la referencia sobre las casillas, con sus dibujos y fondos de color reales, con la misma luz y perspectiva, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Tablero de salida: de cero a tu primera lectura de tarot en cinco casillas (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Casilla uno, abres la caja. Casilla dos, extiendes el tapete floral. Casilla tres, eliges una carta. Casilla cuatro, lees su significado impreso. Casilla cinco, abres el manual y llegas a tu primera lectura. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Cada casilla está en tu kit: 78 cartas, tapete floral y manual en español. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Llegar a la meta cuesta S/89, con envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Tirar el dado y pedir mi kit (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo panel blanco de esquinas redondeadas bajo el tablero: titular azul oscuro grueso, apoyo e incluye oscuros, dato en naranja dentro del mismo panel, cta blanco sobre botón verde lima oscuro con forma de dado",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las casillas llevan únicamente los dígitos 1, 2, 3, 4 y 5; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "tablero de juego",
+      "fila_hoja": 77
+    },
+    {
+      "id": "C07",
+      "angulo": "El momento en que entiendes lo que cuenta el dibujo de una carta",
+      "consciencia": "inconsciente",
+      "producto": "en uso",
+      "titular": "Nadie: Yo, entendiendo por fin lo que cuenta el dibujo de una carta de tarot",
+      "copy": "Hay una cara que se pone cuando una carta de tarot por fin tiene sentido. Con este kit llegas ahí más rápido: el dibujo te da pistas, el significado impreso las confirma y el manual en español las ordena. 78 cartas, tapete floral y collar amuleto de regalo por S/89, con envío gratis a todo el Perú.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "en uso"
+        }
+      ],
+      "prompt": {
+        "concepto": "meme de formato Nadie y Yo con un gato ilustrado que entiende por fin una carta",
+        "formato": "humor o meme (estructura Nadie y Yo)",
+        "escena": "fondo amarillo canario liso con rayos azul cobalto; un gato ilustrado naranja de ojos enormes y expresión de revelación, con patas sosteniendo la carta de la referencia como si acabara de descubrir algo; destellos y un halo de luz detrás de su cabeza",
+        "composicion": "texto superior tipo meme con el titular; gato con la carta en el centro; apoyo, incluye, dato y cta en un único bloque inferior",
+        "estilo": "meme ilustrado pop con el gato en ilustración y la carta en fotografía nítida",
+        "iluminacion": "plana y brillante, con halo dorado detrás del gato",
+        "paleta": "amarillo canario, azul cobalto, naranja, blanco",
+        "producto": "carta_explicada: reproduce idéntica la carta La Emperatriz con todos sus datos impresos entre las patas del gato, con la misma luz y perspectiva, sin cambiar sus datos ni sus dibujos, sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas",
+        "textos": {
+          "titular": "Nadie: Yo, entendiendo por fin lo que cuenta el dibujo de una carta de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Esa mirada de sorpresa llega cuando abres una carta, ves la escena y su significado impreso te lo confirma. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Practícalo con 78 cartas, un manual en español y un tapete floral para tus tiradas. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Kit por S/89, con collar amuleto de regalo y envío gratis. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Pide tu kit y entiende tus cartas (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "titular en tipografía gruesa tipo meme azul oscuro con contorno blanco en la parte superior; el resto del texto en un único bloque blanco de esquinas redondeadas en la parte inferior: apoyo e incluye oscuros, dato en azul cobalto, cta oscuro sobre botón amarillo",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto continua; letra grande y legible en celular; solo los textos indicados, sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos; sin bordes recortados ni halos, sin piezas transparentes, desvanecidas ni superpuestas"
+      },
+      "formato": "humor o meme (Nadie y Yo, gato ilustrado)",
+      "fila_hoja": 78,
+      "editar": "Cambia solo el texto del botón de abajo, \"Quiero esa cara de sorpresa\", por \"Pide tu kit y entiende tus cartas\"."
+    },
+    {
+      "id": "C08",
+      "angulo": "Una lechuza guía que explica la primera carta a quien no sabe nada",
+      "consciencia": "problema",
+      "producto": "sin kit",
+      "titular": "Si no sabes nada de tarot, esta lechuza te enseña tu primera carta",
+      "copy": "Si el tarot te da curiosidad y no sabes nada, la lechuza del kit te lleva de la mano: miras el dibujo, lees la palabra clave impresa y abres el manual en español. Vienen 78 cartas, tapete floral y collar amuleto de regalo. Tu guía cuesta S/89 e incluye envío gratis a todo el Perú. Escríbenos y llévatela.",
+      "refs": [],
+      "prompt": {
+        "concepto": "personaje mascota, una lechuza, que enseña paso a paso la primera carta de tarot",
+        "formato": "avatar o personaje ilustrado (mascota)",
+        "escena": "una lechuza amarilla de gorro de estrellas y lentes redondos, ilustrada y simpática, sobre una mesa de madera clara con un tapete floral; con un ala sostiene una carta de tarot ilustrada de forma simple y con la otra señala un manual abierto; más cartas ilustradas en abanico al lado; fondo turquesa con círculos concéntricos amarillos",
+        "composicion": "lechuza y mesa en el centro; panel único de texto sobre la mitad inferior; cta en botón al pie",
+        "estilo": "ilustración vectorial de personaje, redondeada, colores planos y contornos gruesos",
+        "iluminacion": "plana y brillante, con brillo suave en los lentes",
+        "paleta": "turquesa, amarillo limón, fucsia, blanco",
+        "producto": "sin kit: no mostrar la caja ni piezas del kit; mostrar solo cartas de tarot ilustradas de forma simple y alegre, con dibujos genéricos y sin letras ni números en ellas, y un manual abierto sin texto legible",
+        "textos": {
+          "titular": "Si no sabes nada de tarot, esta lechuza te enseña tu primera carta (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Miras el dibujo, lees la palabra clave impresa y abres el manual en español: tres movimientos y ya leíste una carta. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Tu kit trae 78 cartas con significado impreso, tapete floral y collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Tu guía cuesta S/89 e incluye envío gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Pide tu kit con manual en español (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo panel blanco de esquinas redondeadas en la mitad inferior: titular turquesa oscuro grueso, apoyo e incluye oscuros, dato en fucsia dentro del mismo panel, cta blanco sobre botón fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las cartas y el manual ilustrados no llevan letras ni números; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos"
+      },
+      "formato": "avatar o personaje ilustrado (mascota lechuza)",
+      "fila_hoja": 79,
+      "editar": "Cambia solo el texto del botón rosado de abajo, \"Llevarme mi kit\", por \"Pide tu kit con manual en español\"."
+    },
+    {
+      "id": "C09",
+      "angulo": "Cupón de pedido recortable al estilo de los avisos clásicos",
+      "consciencia": "muy consciente",
+      "producto": "sin kit",
+      "titular": "Recorta este cupón: tu kit de tarot completo por S/89",
+      "copy": "Un aviso clásico con cupón para recortar: tu kit de tarot completo, con 78 cartas, manual en español, tapete floral y collar amuleto de regalo. Son S/89 con envío gratis a todo el Perú. En Lima pagas al recibir y en provincia el envío sale por Shalom u Olva. Escríbenos para pedirlo.",
+      "refs": [],
+      "prompt": {
+        "concepto": "cupón recortable de pedido tipo aviso clásico de venta directa",
+        "formato": "cupón recortable",
+        "escena": "fondo amarillo mostaza con sol de rayos y estrellas planas; en el centro un gran cupón de papel con línea punteada y una tijera ilustrada cortando la esquina; junto al cupón asoman cartas de tarot ilustradas de forma simple y alegre y una cinta roja",
+        "composicion": "cupón grande centrado con todo el texto dentro; cartas ilustradas asomando por detrás; tijera en la esquina superior izquierda",
+        "estilo": "aviso retro de venta directa en colores vivos, ilustración plana con textura de papel",
+        "iluminacion": "plana y cálida, con sombra suave bajo el cupón",
+        "paleta": "amarillo mostaza, rojo cereza, turquesa, crema",
+        "producto": "sin kit: no mostrar la caja ni piezas del kit; mostrar solo cartas de tarot ilustradas de forma simple y alegre, con dibujos genéricos y sin letras ni números en ellas",
+        "textos": {
+          "titular": "Recorta este cupón: tu kit de tarot completo por S/89 (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Cupón de pedido para un kit con 78 cartas de significado impreso, manual en español paso a paso y tapete floral. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Con tu pedido llega de regalo un collar amuleto, y el envío es gratis a todo el Perú. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Pago contra entrega en Lima. En provincia, adelanto de S/20 y envío por Shalom u Olva. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Pide tu kit por S/89 (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo cupón de papel crema con borde punteado rojo: titular rojo cereza grueso, apoyo e incluye en tinta oscura, dato en turquesa oscuro dentro del mismo cupón, cta blanco sobre botón rojo",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las cartas ilustradas no llevan letras ni números; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos"
+      },
+      "formato": "cupón recortable",
+      "fila_hoja": 80,
+      "editar": "Cambia solo el texto del botón rojo de abajo, \"Enviar mi cupón\", por \"Pide tu kit por S/89\"."
+    },
+    {
+      "id": "C10",
+      "angulo": "Cuatro fotos instantáneas del camino desde el pedido hasta la primera lectura",
+      "consciencia": "muy consciente",
+      "producto": "en uso",
+      "titular": "Cuatro fotos instantáneas de lo que pasa cuando pides tu kit de tarot",
+      "copy": "Foto uno, haces tu pedido. Foto dos, llega a tu puerta. Foto tres, abres la caja. Foto cuatro, haces tu primera lectura con el manual en español. Así de simple es empezar. Kit completo por S/89 con envío gratis a todo el Perú. Escríbenos y sácate la primera foto.",
+      "refs": [],
+      "prompt": {
+        "concepto": "secuencia de cuatro polaroids ilustradas que cuentan el camino del pedido a la primera lectura",
+        "formato": "secuencia de polaroids",
+        "escena": "cuatro fotos instantáneas con marco blanco, ligeramente inclinadas y pegadas con cinta de colores sobre un fondo rosa chicle con confeti: en la primera una mano toca la pantalla de un celular; en la segunda alguien recibe una caja morada en la puerta; en la tercera dos manos abren la caja sobre una mesa; en la cuarta una mano sostiene cartas de tarot ilustradas de forma simple junto a un manual abierto",
+        "composicion": "las cuatro polaroids en una cuadrícula de dos por dos en la mitad superior; panel único de texto en la mitad inferior; cta en botón al pie",
+        "estilo": "collage de polaroids ilustradas, cálido y alegre, con textura de papel",
+        "iluminacion": "plana y luminosa, con sombras suaves bajo cada foto",
+        "paleta": "rosa chicle, amarillo limón, turquesa, naranja",
+        "producto": "sin kit: no copiar un diseño exacto de caja ni de cartas; mostrar una caja morada genérica y cartas de tarot ilustradas de forma simple y alegre, sin letras ni números en ellas",
+        "textos": {
+          "titular": "Cuatro fotos instantáneas de lo que pasa cuando pides tu kit de tarot (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "apoyo": "Foto uno, haces tu pedido. Foto dos, llega a tu puerta. Foto tres, abres la caja. Foto cuatro, haces tu primera lectura con el manual en español. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "incluye": "Dentro hay 78 cartas con significado impreso, tapete floral y un collar amuleto de regalo. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "dato": "Tu primera lectura cuesta S/89, con envío gratis incluido. (escríbelo exactamente así, sin agregar ni cambiar letras)",
+          "cta": "Sacar mi primera foto (escríbelo exactamente así, sin agregar ni cambiar letras)"
+        },
+        "diseno_textos": "un solo panel blanco de esquinas redondeadas en la mitad inferior: titular turquesa oscuro grueso, apoyo e incluye oscuros, dato en naranja dentro del mismo panel, cta blanco sobre botón fucsia",
+        "reglas": "todo el texto dentro de la zona legible (entre el 12 % y el 88 % del alto, centrado); una sola zona de texto; letra grande y legible en celular; solo los textos indicados, las polaroids no llevan letras ni números; sin otras palabras, logos, marcas de agua ni letras inventadas; sin comillas dentro de los textos"
+      },
+      "formato": "secuencia de polaroids",
+      "fila_hoja": 81
+    }
+  ]
+}

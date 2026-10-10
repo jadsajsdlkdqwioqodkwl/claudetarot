@@ -1,0 +1,12 @@
+{
+  "C01": {"nota": 4, "comentario": "casi un 5, solo que doble franja de texto blanco no da ganas de leerlo, el cta podria mejorar. el headline no dice de que trata el producto", "pro": false},
+  "C02": {"nota": 5, "comentario": "perfecto! solo quitaria las comillas", "pro": false},
+  "C03": {"nota": null, "comentario": "comillas meh y no me gusta en general", "pro": false},
+  "C04": {"nota": null, "comentario": "no se ve de nuevo", "pro": false},
+  "C05": {"nota": null, "comentario": "no se ve de nuevo", "pro": false},
+  "C06": {"nota": null, "comentario": "está bien, solo faltan mas imagenes de lo que viene en el kit. no resaltar tanto el tapete floral sino el manual o las cartas con significados", "pro": false},
+  "C07": {"nota": null, "comentario": "el collar no viene con tarjeta de significado, pero es de una carta de Tarot", "pro": false},
+  "C08": {"nota": 3, "comentario": "", "pro": false},
+  "C09": {"nota": 3, "comentario": "", "pro": false},
+  "C10": {"nota": 3, "comentario": "", "pro": false}
+}

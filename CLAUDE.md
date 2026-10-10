@@ -1,5 +1,9 @@
 # Tarot Store Perú — reglas para Claude (Routines y sesiones)
 
+> Antes de mover, renombrar, borrar o recrear un archivo, documento, hoja o
+> Routine, lee `docs/MAPA.md` (qué se conecta con qué y qué no se toca).
+> Todo cambio al workflow actualiza `docs/MAPA.md` en el mismo commit.
+
 ## Si vas a proponer textos para clientes (asesor, director CRO, semanal)
 
 1. Lee `docs/negocio.md` (reglas fijas del negocio) y corre
@@ -53,6 +57,12 @@
    director queda en CRM → Reportes.
 
 Más detalle: `docs/asesor.md`.
+
+## Si vas a hacer anuncios / creativos
+
+Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en
+`creativos/lotes/`, render con `scripts/creativos/render.mjs` (Nano Banana,
+`GEMINI_API_KEY`), feedback en la hoja y `creativos/reglas_aprendidas.md`.
 
 ## Si vas a tocar el código
 

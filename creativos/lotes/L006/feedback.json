@@ -1,0 +1,42 @@
+{
+ "C01": {
+  "nota": null,
+  "comentario": "sobrexplotado"
+ },
+ "C02": {
+  "nota": null,
+  "comentario": "mal dolor"
+ },
+ "C03": {
+  "nota": null,
+  "comentario": "ma headline, mal CTA"
+ },
+ "C04": {
+  "nota": 5,
+  "comentario": "MUY BIEN"
+ },
+ "C05": {
+  "nota": null,
+  "comentario": "MAL FORMATO"
+ },
+ "C06": {
+  "nota": 5,
+  "comentario": "buen callout hook!!! mas así"
+ },
+ "C07": {
+  "nota": null,
+  "comentario": "MALASO CONFUSO"
+ },
+ "C08": {
+  "nota": null,
+  "comentario": "NO SE VEN LOS NUMEROS EN LA ENCUESTA, PERO BUEN NATIVE FORMAT"
+ },
+ "C09": {
+  "nota": null,
+  "comentario": "NO ESTÁ MAL, MAL CTA"
+ },
+ "C10": {
+  "nota": null,
+  "comentario": "MAL FORMATO"
+ }
+}

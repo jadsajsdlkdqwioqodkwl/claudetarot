@@ -17,6 +17,7 @@ Reglas del negocio: `docs/negocio.md`. Ventanas y costos de WhatsApp:
 
 | Skill | Origen | Uso aquí |
 |---|---|---|
+| `creativos` | propia | Anuncios estáticos con Nano Banana: lote → imágenes → feedback en la hoja → `creativos/reglas_aprendidas.md` |
 | `voz-tarot-store` | propia | **Siempre** que se redacte un texto para un cliente: cómo escriben las vendedoras, con ejemplos reales. `enviar.py` descarta lo que no la cumple |
 | `cro` | coreyhaines31/marketingskills | Auditar la bienvenida, la secuencia de bienvenida y las aperturas (primer mensaje humano) como si fueran una landing: propuesta de valor, CTA, confianza, fricción |
 | `ab-testing` | coreyhaines31 | Diseñar el experimento: hipótesis, métrica (llegó a etapa 4/5 del embudo), tamaño de muestra, cuándo cortar |

@@ -1,0 +1,321 @@
+{
+  "lote": "L001",
+  "lote_hoja": "P2026-10-05a",
+  "creado": "2026-10-06",
+  "aspecto": "4:5",
+  "conceptos": [
+    {
+      "id": "C01",
+      "calidad": "flash",
+      "angulo": "Oferta completa: todo lo necesario en una sola caja",
+      "consciencia": "solucion",
+      "producto": "protagonista",
+      "titular": "Todo el tarot que necesitas, en una caja",
+      "copy": "¿Siempre te dio curiosidad el tarot pero no sabes por dónde empezar? Este kit trae 78 cartas con el significado impreso, manual en español, tapete floral y un collar amuleto de regalo. Son S/89 con envío gratis a todo el Perú. Escríbenos por WhatsApp y pide el tuyo.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente este kit, mismos colores y diseño de la caja, el mazo en abanico, la guía, el tapete floral y el collar"
+        }
+      ],
+      "prompt": {
+        "concepto": "oferta completa en una sola caja",
+        "escena": "flat-lay cenital del kit de tarot completo sobre fondo fucsia intenso liso, con rayos de luz amarilla saliendo desde el centro y confeti de estrellas y flores planas",
+        "composicion": "el kit ocupa el centro; titular en el tercio superior; apoyo en una franja turquesa bajo el kit; CTA en botón redondeado debajo, todo dentro del 90% central",
+        "estilo": "publicidad de respuesta directa, fotografía de producto muy nítida con gráficos planos alegres",
+        "iluminacion": "luz de estudio brillante y pareja, sombras suaves",
+        "paleta": "fucsia intenso, amarillo limón, turquesa, blanco",
+        "referencias": "usa la imagen de referencia kit_completo y reproduce el kit idéntico, sin inventar piezas",
+        "textos": {
+          "titular": "Todo el tarot que necesitas, en una caja",
+          "apoyo": "Trae 78 cartas con el significado impreso, un manual en español paso a paso, un tapete floral para tus tiradas y un collar amuleto de regalo. Todo por S/89, con envío gratis a todo el Perú.",
+          "cta": "Pide tu kit de tarot"
+        },
+        "diseno_textos": "titular en tipografía gruesa amarilla con contorno oscuro; apoyo en blanco sobre la franja turquesa; CTA en texto oscuro sobre botón amarillo",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados, sin otras palabras, logos ni marcas de agua"
+      },
+      "fila_hoja": 2,
+      "editar": "Cambia solo el texto del botón amarillo de abajo, \"Pide el tuyo por WhatsApp\", por \"Pide tu kit de tarot\"."
+    },
+    {
+      "id": "C02",
+      "calidad": "flash",
+      "angulo": "Se lee sin saber: cada carta trae su significado impreso",
+      "consciencia": "solucion",
+      "producto": "secundario",
+      "titular": "Lee la Emperatriz sin haber estudiado nada",
+      "copy": "Mira esta carta: trae impresos sus palabras clave, su versión invertida, la numerología, el chakra, el planeta, el signo y la respuesta Sí o No. Así lees tu primera tirada desde el primer día, sin memorizar. Kit completo con 78 cartas y manual en español por S/89. Pide el tuyo por WhatsApp.",
+      "refs": [
+        {
+          "foto": "carta_explicada",
+          "rol": "reproduce exactamente esta carta, La Emperatriz con todos sus datos impresos, idéntica, grande a la izquierda"
+        }
+      ],
+      "prompt": {
+        "concepto": "demostración de que la carta se explica sola",
+        "escena": "la carta de la imagen de referencia, grande e inclinada unos grados, sobre fondo turquesa brillante liso con círculos concéntricos amarillos y rosados detrás; flechas dibujadas y puntos de colores señalan cada dato impreso de la carta sin escribir etiquetas",
+        "composicion": "carta a la izquierda ocupando dos tercios de la altura; titular arriba a la derecha; apoyo a la derecha bajo el titular; CTA en botón abajo a la derecha, todo dentro del 90% central",
+        "estilo": "infografía publicitaria vibrante, producto nítido con gráficos planos",
+        "iluminacion": "luz suave frontal con brillo limpio sobre la carta",
+        "paleta": "turquesa, amarillo limón, fucsia, blanco",
+        "referencias": "usa la imagen de referencia carta_explicada y reproduce la carta idéntica, sin cambiar sus datos ni sus dibujos",
+        "textos": {
+          "titular": "Lee la Emperatriz sin haber estudiado nada",
+          "apoyo": "Cada carta trae impresos su significado, su versión invertida, la numerología, el chakra, el planeta, el signo y la respuesta Sí o No. Solo la miras y lees.",
+          "cta": "Pide el tuyo"
+        },
+        "diseno_textos": "titular en blanco con sombra oscura, tipografía gruesa; apoyo en texto oscuro sobre tarjeta amarilla; CTA texto blanco sobre botón fucsia",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados, sin otras palabras, logos ni marcas de agua"
+      },
+      "fila_hoja": 3
+    },
+    {
+      "id": "C03",
+      "calidad": "flash",
+      "angulo": "Pesadilla: mazos bonitos que nadie te explicó",
+      "consciencia": "problema",
+      "producto": "sin",
+      "titular": "78 cartas bonitas que nadie te explicó",
+      "copy": "Seguro viste cartas de tarot hermosas, pero sin manual o con la guía en otro idioma, y terminaron guardadas en un cajón. Este kit viene todo en español y explicado paso a paso: 78 cartas con el significado impreso, tapete floral y collar amuleto de regalo. S/89 con envío gratis. Pide el tuyo por WhatsApp.",
+      "refs": [],
+      "prompt": {
+        "concepto": "escenario de pesadilla: cartas sin explicación guardadas en un cajón",
+        "escena": "ilustración vectorial plana y divertida de una persona de espaldas a una mesa frustrada, con las manos en la cabeza, junto a un cajón abierto lleno de objetos olvidados de colores y una nube de signos de interrogación y garabatos ilegibles sobre su cabeza",
+        "composicion": "personaje en el centro-izquierda; titular en el tercio superior; apoyo en el tercio medio-inferior sobre una banda; CTA en botón abajo, todo dentro del 90% central",
+        "estilo": "ilustración editorial pop, colores planos saturados, contornos gruesos, humor ligero",
+        "iluminacion": "plana y brillante, sin sombras dramáticas",
+        "paleta": "naranja mandarina, azul cobalto, amarillo limón, rosa chicle",
+        "textos": {
+          "titular": "78 cartas bonitas que nadie te explicó",
+          "apoyo": "Muchas cartas llegan sin manual o con la guía en otro idioma, y terminan guardadas en un cajón. Este kit viene todo en español y explicado paso a paso.",
+          "cta": "Pide el tuyo por WhatsApp"
+        },
+        "diseno_textos": "titular blanco muy grande con contorno azul oscuro sobre fondo naranja; apoyo en texto oscuro sobre banda amarilla; CTA blanco sobre botón azul cobalto",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; los garabatos de la nube deben ser formas abstractas, nunca letras; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 4
+    },
+    {
+      "id": "C04",
+      "calidad": "flash",
+      "angulo": "Beneficio del tarot: ordenar tus ideas y hacerte preguntas nuevas",
+      "consciencia": "inconsciente",
+      "producto": "sin",
+      "titular": "La pregunta que todos evitamos hacernos",
+      "copy": "Sacar una carta es una forma sencilla de pausar, ordenar lo que piensas y mirar tus dudas desde otro ángulo. Con este kit de tarot para principiantes empiezas desde cero: 78 cartas con el significado impreso y manual en español. S/89 con envío gratis a todo el Perú. Pide el tuyo por WhatsApp.",
+      "refs": [],
+      "prompt": {
+        "concepto": "beneficio de autoconocimiento y claridad mental",
+        "escena": "ilustración vectorial brillante de una persona sentada en un sofá amarillo con una taza, rodeada de globos de pensamiento grandes y coloridos que se van ordenando en una línea clara y luminosa; un gran signo de interrogación dorado flota arriba",
+        "composicion": "personaje en el tercio inferior-derecho; titular grande arriba en el tercio superior; apoyo en una tarjeta blanca en el medio; CTA en botón abajo, dentro del 90% central",
+        "estilo": "ilustración editorial moderna, formas planas, degradados suaves, ambiente cálido y optimista",
+        "iluminacion": "luz cálida de atardecer ficticia, plana",
+        "paleta": "naranja intenso, rosa chicle, turquesa, amarillo",
+        "textos": {
+          "titular": "La pregunta que todos evitamos hacernos",
+          "apoyo": "Sacar una carta es una forma sencilla de pausar, ordenar lo que piensas y mirar tus dudas desde otro ángulo. Con este kit de tarot para principiantes empiezas desde cero, en español.",
+          "cta": "Pide el tuyo"
+        },
+        "diseno_textos": "titular blanco grueso con contorno morado oscuro; apoyo texto oscuro sobre tarjeta blanca con esquinas redondeadas; CTA blanco sobre botón turquesa",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; los globos de pensamiento no llevan letras; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 5
+    },
+    {
+      "id": "C05",
+      "calidad": "flash",
+      "angulo": "Pregunta real de clienta: nunca he leído cartas, ¿puedo aprender?",
+      "consciencia": "problema",
+      "producto": "protagonista",
+      "titular": "Nunca he leído cartas. ¿Puedo aprender?",
+      "copy": "Es lo que más nos escriben. La respuesta: sí, porque este kit está hecho para empezar desde cero. Trae 78 cartas con el significado impreso, manual en español paso a paso, tapete floral y collar amuleto de regalo. S/89 con envío gratis a todo el Perú. Escríbenos por WhatsApp y pide el tuyo.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente este kit, mismos colores y diseño de la caja, grande en la parte baja"
+        }
+      ],
+      "prompt": {
+        "concepto": "conversación de WhatsApp con la duda real y la respuesta del kit",
+        "escena": "mockup limpio de una pantalla de chat verde y blanca; una burbuja grande de mensaje recibido con la pregunta; debajo, saliendo de la conversación, el kit de la imagen de referencia grande y brillante sobre un círculo amarillo",
+        "composicion": "burbuja con el titular en el tercio superior; kit en el centro; apoyo en una burbuja de respuesta verde bajo el kit; CTA en botón abajo, dentro del 90% central",
+        "estilo": "mockup de chat moderno mezclado con fotografía de producto nítida, gráficos planos",
+        "iluminacion": "luz de estudio brillante sobre el kit",
+        "paleta": "verde WhatsApp vivo, amarillo limón, blanco, morado de la caja",
+        "referencias": "usa la imagen de referencia kit_completo y reproduce el kit idéntico",
+        "textos": {
+          "titular": "Nunca he leído cartas. ¿Puedo aprender?",
+          "apoyo": "Sí. Este kit está hecho para empezar desde cero: 78 cartas con el significado impreso, un manual en español paso a paso y tapete floral. Lees tu primera tirada desde el primer día.",
+          "cta": "Pide el tuyo por WhatsApp"
+        },
+        "diseno_textos": "titular dentro de la burbuja blanca en tipografía gruesa oscura; apoyo dentro de la burbuja verde en blanco; CTA blanco sobre botón verde oscuro",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados, sin nombres, fotos de perfil, horas ni otros textos de interfaz; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 6
+    },
+    {
+      "id": "C06",
+      "calidad": "flash",
+      "angulo": "Nosotros contra ellos: cartas sueltas contra kit que te enseña",
+      "consciencia": "producto",
+      "producto": "protagonista",
+      "titular": "Cartas sueltas o un kit que te enseña",
+      "copy": "Las cartas sueltas traen solo cartas, a veces con la guía en inglés. Este kit trae 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto de regalo. Por S/89 y con envío gratis a todo el Perú. Pide el tuyo por WhatsApp.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente este kit, mismos colores y diseño, ocupa la mitad derecha"
+        }
+      ],
+      "prompt": {
+        "concepto": "comparación pantalla dividida entre cartas sueltas y kit completo",
+        "escena": "pantalla dividida en dos mitades; izquierda en gris azulado apagado con un montón de cartas genéricas sin dibujo y signos de interrogación; derecha en fucsia y amarillo brillantes con el kit de la imagen de referencia grande, con destellos y marcas de verificación verdes dibujadas",
+        "composicion": "titular en el tercio superior cruzando ambas mitades; kit en la mitad derecha; apoyo en una banda inferior ancha; CTA en botón abajo a la derecha, dentro del 90% central",
+        "estilo": "publicidad comparativa limpia, gráficos planos y producto fotográfico nítido",
+        "iluminacion": "mitad izquierda plana y opaca, mitad derecha luminosa y brillante",
+        "paleta": "gris azulado para el lado malo, fucsia, amarillo limón, verde brillante para las marcas",
+        "referencias": "usa la imagen de referencia kit_completo y reproduce el kit idéntico en el lado derecho",
+        "textos": {
+          "titular": "Cartas sueltas o un kit que te enseña",
+          "apoyo": "Las cartas sueltas traen solo cartas, a veces con la guía en inglés. Este kit trae 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto de regalo.",
+          "cta": "Pide el tuyo por WhatsApp"
+        },
+        "diseno_textos": "titular blanco grueso con contorno oscuro; apoyo oscuro sobre banda blanca; CTA oscuro sobre botón amarillo",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; las cartas del lado izquierdo no llevan letras; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 7
+    },
+    {
+      "id": "C07",
+      "calidad": "flash",
+      "angulo": "Gran beneficio: lees desde el primer día sin memorizar",
+      "consciencia": "inconsciente",
+      "producto": "sin",
+      "titular": "Lee tarot desde el primer día, sin memorizar",
+      "copy": "Imagina sacar una carta, mirarla y entender su mensaje sin abrir diez páginas. El kit de tarot para principiantes te guía carta por carta, en español, aunque nunca hayas tocado una carta de tarot. 78 cartas con el significado impreso y manual paso a paso por S/89. Pide el tuyo por WhatsApp.",
+      "refs": [],
+      "prompt": {
+        "concepto": "gran beneficio visual: leer sin memorizar",
+        "escena": "ilustración vectorial de una cabeza humana de perfil con una gran bombilla amarilla brillante encendida donde estaría el cerebro y un calendario al lado con la primera casilla marcada con una estrella dorada; rayos de colores y destellos alrededor",
+        "composicion": "ilustración en el centro; titular grande en el tercio superior; apoyo en banda blanca inferior; CTA en botón abajo, dentro del 90% central",
+        "estilo": "cartel pop moderno, formas planas, contornos gruesos, mucho color",
+        "iluminacion": "plana, con halo luminoso alrededor de la bombilla",
+        "paleta": "azul cobalto, amarillo limón, fucsia, naranja",
+        "textos": {
+          "titular": "Lee tarot desde el primer día, sin memorizar",
+          "apoyo": "Imagina sacar una carta, mirarla y entender su mensaje sin abrir diez páginas. El kit te guía carta por carta, en español, aunque nunca hayas tocado una carta de tarot.",
+          "cta": "Pide el tuyo"
+        },
+        "diseno_textos": "titular amarillo grueso con contorno azul oscuro; apoyo oscuro sobre banda blanca; CTA blanco sobre botón fucsia",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; el calendario no lleva letras ni números; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 8
+    },
+    {
+      "id": "C08",
+      "calidad": "flash",
+      "angulo": "Humor: nivel de tarot cero, curiosidad máxima",
+      "consciencia": "problema",
+      "producto": "secundario",
+      "titular": "Nivel de tarot: cero. Curiosidad: máxima",
+      "copy": "Si te sientes así, este kit es para ti. Trae 78 cartas con el significado impreso y un manual en español para que pases de cero a tu primera lectura. Todo por S/89, con envío gratis a todo el Perú. Escríbenos por WhatsApp y pide el tuyo.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente este kit, mismos colores y diseño de la caja, pequeño en la esquina inferior derecha como un objeto que se recoge"
+        }
+      ],
+      "prompt": {
+        "concepto": "humor estilo videojuego retro",
+        "escena": "pantalla de videojuego retro de píxeles gordos con dos barras de estado: una casi vacía y otra totalmente llena de color; abajo a la derecha el kit de la imagen de referencia pequeño flotando como un objeto de recompensa con destellos",
+        "composicion": "titular en un marco de videojuego en el tercio superior; barras en el centro; apoyo en cuadro de diálogo estilo juego; CTA como botón de empezar abajo, dentro del 90% central",
+        "estilo": "arte pixelado retro mezclado con fotografía nítida del kit",
+        "iluminacion": "brillo de pantalla de arcade",
+        "paleta": "verde lima, fucsia, azul eléctrico, amarillo",
+        "referencias": "usa la imagen de referencia kit_completo y reproduce el kit idéntico, pequeño",
+        "textos": {
+          "titular": "Nivel de tarot: cero. Curiosidad: máxima",
+          "apoyo": "Si te sientes así, este kit es para ti. Trae 78 cartas con los significados impresos y un manual en español para que pases de cero a tu primera lectura.",
+          "cta": "Pide el tuyo"
+        },
+        "diseno_textos": "titular en tipografía pixelada blanca dentro del marco; apoyo en tipografía legible oscura sobre cuadro amarillo; CTA blanco sobre botón verde lima oscuro",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; las barras de estado no llevan letras; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 9
+    },
+    {
+      "id": "C09",
+      "calidad": "flash",
+      "angulo": "Oferta pesada: kit completo por S/89",
+      "consciencia": "muy consciente",
+      "producto": "protagonista",
+      "titular": "Tu kit de tarot completo por S/89",
+      "copy": "Un solo pago por 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto de regalo. Envío gratis a todo el Perú. En Lima pagas al recibir; en provincia, adelanto de S/20 y envío por Shalom u Olva. Pide el tuyo por WhatsApp.",
+      "refs": [
+        {
+          "foto": "kit_completo",
+          "rol": "reproduce exactamente este kit, mismos colores y diseño de la caja, grande y ligeramente inclinado"
+        }
+      ],
+      "prompt": {
+        "concepto": "oferta pesada con precio protagonista",
+        "escena": "el kit de la imagen de referencia grande e inclinado sobre fondo naranja mandarina con rayos radiales rosados y amarillos y una gran estrella de precio amarilla con borde rojo a un lado; marcas de verificación verdes grandes junto a cada elemento",
+        "composicion": "titular arriba en el tercio superior; kit en el centro; estrella de precio junto al kit; apoyo en banda blanca; CTA en botón abajo, dentro del 90% central",
+        "estilo": "publicidad de oferta directa, saturada, con producto fotográfico nítido",
+        "iluminacion": "luz de estudio muy brillante",
+        "paleta": "naranja mandarina, rosa chicle, amarillo limón, blanco, verde brillante",
+        "referencias": "usa la imagen de referencia kit_completo y reproduce el kit idéntico",
+        "textos": {
+          "titular": "Tu kit de tarot completo por S/89",
+          "apoyo": "Un solo pago por 78 cartas con el significado impreso, manual en español, tapete floral y collar amuleto de regalo. Envío gratis a todo el Perú. En Lima pagas al recibir; en provincia, adelanto de S/20 y envío por Shalom u Olva.",
+          "cta": "Pide el tuyo por WhatsApp"
+        },
+        "diseno_textos": "titular blanco grueso con contorno marrón oscuro; apoyo oscuro sobre banda blanca; CTA blanco sobre botón verde",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados, sin ningún otro precio ni descuento; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 10
+    },
+    {
+      "id": "C10",
+      "calidad": "flash",
+      "angulo": "Enseñando el uso: tu primera tirada de tres cartas",
+      "consciencia": "solucion",
+      "producto": "secundario",
+      "titular": "Tu primera tirada de tres cartas, paso a paso",
+      "copy": "Barajas, sacas tres cartas y las lees con el manual abierto a tu lado. Cada carta trae su significado impreso, así que no memorizas nada. Kit de tarot para principiantes con 78 cartas, manual en español y tapete floral por S/89. Pide el tuyo por WhatsApp.",
+      "refs": [
+        {
+          "foto": "mano_carta_y_guia",
+          "rol": "reproduce exactamente esta escena, la mano con la carta y la guía abierta, grande en el centro"
+        }
+      ],
+      "prompt": {
+        "concepto": "enseñar el uso con una tirada de tres cartas",
+        "escena": "la mano con la carta y la guía abierta de la imagen de referencia, grande en el centro, sobre fondo rosa chicle intenso; tres marcos numerados dibujados en el aire indican las tres cartas de la tirada con flechas curvas amarillas",
+        "composicion": "titular arriba en el tercio superior; escena en el centro; apoyo en tarjeta blanca bajo la escena; CTA en botón abajo, dentro del 90% central",
+        "estilo": "fotografía nítida con gráficos planos de instrucción tipo tutorial",
+        "iluminacion": "luz de estudio brillante y cálida",
+        "paleta": "rosa chicle, amarillo limón, turquesa, blanco",
+        "referencias": "usa la imagen de referencia mano_carta_y_guia y reproduce la escena idéntica, sin cambiar la carta ni la guía",
+        "textos": {
+          "titular": "Tu primera tirada de tres cartas, paso a paso",
+          "apoyo": "Barajas, sacas tres cartas y las lees con el manual abierto a tu lado. Cada carta trae su significado impreso, así que no memorizas nada.",
+          "cta": "Pide el tuyo"
+        },
+        "diseno_textos": "titular blanco grueso con contorno morado oscuro; apoyo oscuro sobre tarjeta blanca; CTA blanco sobre botón turquesa",
+        "instruccion_textos": "escribe cada texto exactamente así, sin agregar ni cambiar letras",
+        "reglas": "texto grande legible en celular dentro de la zona central; nada importante en el 10% de los bordes; solo los tres textos indicados; los marcos numerados no llevan números ni letras; sin logos ni marcas de agua"
+      },
+      "fila_hoja": 11
+    }
+  ]
+}
