@@ -1,4 +1,4 @@
--- YA APLICADA en D1 el 2026-10-10 (Phone number ID 1243884548804185; WABA pendiente: cargarlo en CRM → Productos y números).
+-- YA APLICADA en D1 el 2026-10-10. El número de URO quedó después en +51 940 028 332 (Phone number ID 1293522693852278), WABA 1608866757469431.
 -- Contenido inicial de URO (producto 2, número propio). Aplicar a mano DESPUÉS
 -- de 0045 y 0046, cuando el número ya esté agregado en WhatsApp Manager.
 -- ANTES de correrlo reemplaza en todo el archivo:
