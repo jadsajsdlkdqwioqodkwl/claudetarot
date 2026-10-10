@@ -224,8 +224,8 @@ async function mostrarApp() {
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
-  $("#btn-shalom").style.display = shalom ? "" : "none";
-  if (shalom) actualizarConteoShalom();
+  // Deprecado: ya no hay link de envío de Shalom (la ventana "Links de Shalom" queda oculta).
+  $("#btn-shalom").style.display = "none";
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
   cargarAsesorasFiltro();
@@ -533,6 +533,71 @@ async function guardarAjustePlanes(cuerpo) {
 }
 $("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim() }));
 $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: e.target.checked }));
+
+/* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
+
+const ESTADO_META = {
+  SIN_ENVIAR: ["Sin enviar", "#8a6500", "#fff8e1"], PENDING: ["En revisión de Meta", "#0b57d0", "#e8f0fe"], IN_APPEAL: ["En revisión de Meta", "#0b57d0", "#e8f0fe"],
+  APPROVED: ["Aprobada ✓", "#137333", "#e6f4ea"], REJECTED: ["Rechazada", "#b3261e", "#fde8e7"], PAUSED: ["Pausada", "#b3261e", "#fde8e7"],
+  DISABLED: ["Desactivada", "#b3261e", "#fde8e7"], DESCONOCIDO: ["No pude leer su estado", "#5f6368", "#f1f3f4"], SIN_NUMERO: ["Sin número conectado", "#5f6368", "#f1f3f4"]
+};
+
+$("#btn-abrir-plantillas-meta").addEventListener("click", abrirPlantillasMeta);
+$("#plantillas-meta-cerrar").addEventListener("click", () => $("#modal-plantillas-meta-fondo").classList.remove("abierto"));
+
+async function abrirPlantillasMeta() {
+  $("#modal-plantillas-meta-fondo").classList.add("abierto");
+  const cont = $("#lista-plantillas-meta");
+  cont.innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    const { marcas } = await pedir("/api/crm/plantillas-propuestas");
+    cont.innerHTML = marcas.map((m) => {
+      const grupos = [...new Set(m.propuestas.map((p) => p.grupo))];
+      return `<div class="marca-plantillas" data-marca="${m.marca}">
+        <h2>${escapar(m.nombre)}</h2>
+        ${m.aviso ? `<p class="ayuda-modal" style="color:var(--peligro)">${escapar(m.aviso)}</p>` : ""}
+        ${grupos.map((g) => {
+          const lista = m.propuestas.filter((p) => p.grupo === g);
+          const sin = lista.filter((p) => p.estado === "SIN_ENVIAR");
+          return `<h3 style="margin:10px 0 4px;font-size:14px">${escapar(g)}</h3>
+            ${sin.length && m.conectada ? `<button type="button" class="cancelar mandar-grupo" data-nombres="${escapar(sin.map((p) => p.nombre).join(","))}" style="font-size:12px;margin-bottom:6px">Mandar a Meta las ${sin.length} sin enviar</button>` : ""}
+            ${lista.map((p) => {
+              const [etq, color, fondo] = ESTADO_META[p.estado] || ESTADO_META.DESCONOCIDO;
+              return `<div class="ad-card" style="margin-bottom:6px">
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                  <b>${escapar(p.titulo)}</b>
+                  <span style="font-size:12px;color:var(--gris)">${escapar(p.categoria)} · ${escapar(p.cuando)}</span>
+                  <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${etq}</span>
+                </div>
+                <div style="white-space:pre-wrap;margin:6px 0;font-size:13px;line-height:1.4;background:#f7f8fa;border-radius:6px;padding:8px">${escapar(p.texto)}</div>
+                <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.map((b) => `«${escapar(b)}»`).join(" · ")} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
+                ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="margin-top:6px;font-size:12px">Mandar a Meta</button>` : ""}
+              </div>`;
+            }).join("")}`;
+        }).join("")}
+      </div>`;
+    }).join("");
+    cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
+      const nombres = b.dataset.nombres.split(",");
+      const marca = b.closest(".marca-plantillas");
+      if (!confirm(`Vas a mandar ${nombres.length} plantilla(s) a revisión de Meta en la cuenta de ${marca.querySelector("h2").textContent}. ¿Ya leíste el texto?`)) return;
+      b.disabled = true;
+      try {
+        const { resultados } = await pedir("/api/crm/plantillas-propuestas", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ marca: marca.dataset.marca, nombres })
+        });
+        const fallos = resultados.filter((r) => !r.ok);
+        if (fallos.length) alert(`Se mandaron ${resultados.length - fallos.length}. No se pudo:\n${fallos.map((f) => `· ${f.nombre}: ${f.error}`).join("\n")}`);
+      } catch (err) {
+        alert(err.message);
+      }
+      abrirPlantillasMeta();
+    }));
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
 
 /* ---------- Productos y números de WhatsApp (solo admin) ---------- */
 
@@ -2651,7 +2716,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel">+${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
+          <div class="tel">+${escapar(c.wa_id)}</div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -2662,6 +2727,7 @@ function pintarChatBase(c) {
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
     </header>
+    <div id="reloj-chat" class="reloj"></div>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-respuesta" style="display:none"></div>
@@ -4726,7 +4792,7 @@ function pintarSugerencias(lista) {
         <div class="sug-pasos">${(s.pasos || []).map(pasoHtml).join("")}</div>
         ${esEnvio ? "" : `<button type="button" class="sug-agregar-paso">${icon("plus")} Paso si no responde</button>`}`;
     return `
-      <div class="tarjeta-sugerencia" data-id="${s.id}" data-conv="${s.conversation_id || ""}" data-cierra="${conChat ? cierreVentana(s.last_inbound_at) || "" : ""}">
+      <div class="tarjeta-sugerencia" data-id="${s.id}" data-tipo="${escapar(s.tipo || "")}" data-conv="${s.conversation_id || ""}" data-cierra="${conChat ? cierreVentana(s.last_inbound_at) || "" : ""}">
         <div class="sug-cabecera">${cabecera}</div>
         ${conChat ? `<div class="reloj reloj-tarjeta"></div>` : ""}
         ${conChat ? htmlSeguimientosActivos(s.seguimientos) : ""}
@@ -5034,7 +5100,7 @@ function pintarRelojChat() {
   const cierra = cierreVentana(c?.last_inbound_at);
   const queda = cierra ? cierra - Date.now() : 0;
   el.className = `reloj${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
-  el.textContent = !cierra ? "· ⏱ no escribió" : queda <= 0 ? "· ⏱ ventana cerrada" : `· ⏱ ${duracion(queda)} para escribirle`;
+  el.textContent = !cierra ? "⏱ No ha escrito: solo plantilla" : queda <= 0 ? "⏱ Ventana cerrada: solo plantilla" : `⏱ ${duracion(queda)} para escribirle gratis`;
 }
 setInterval(pintarRelojChat, 30000);
 
@@ -5059,8 +5125,11 @@ function duracion(ms) {
 function pintarRelojes() {
   const ahora = Date.now();
   const hora = (t) => new Date(t).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+  let seCerro = false;
   document.querySelectorAll("#lista-sugerencias .tarjeta-sugerencia").forEach((card) => {
     const cierra = Number(card.dataset.cierra) || 0;
+    // El cronómetro llegó a 0: la recomendación desaparece (el bot deja en su lugar una plantilla por aprobar).
+    if (cierra && cierra <= ahora && card.dataset.conv && card.dataset.tipo === "seguimiento") { card.remove(); seCerro = true; return; }
     const r = card.querySelector(".reloj-tarjeta");
     if (r) {
       const queda = cierra - ahora;
@@ -5085,6 +5154,7 @@ function pintarRelojes() {
       rd.textContent = !c || q <= 0 ? "· cerrada" : `· ${duracion(q)}`;
     });
   });
+  if (seCerro) abrirSugerencias().catch(() => {}); // el servidor las cierra y propone la plantilla
 }
 
 /** Los últimos mensajes del chat dentro de la tarjeta, para editar viendo la conversación. */
@@ -6920,55 +6990,6 @@ function pintarShalom(c, editando = false) {
   if (editando) input.focus();
 }
 
-/**
- * 🔗 Link de seguimiento, a mano: busca su venta en Ventas, arma el texto
- * (respuesta rápida "Link de envío" con su link) y la vendedora lo revisa
- * y lo manda. Nada sale solo.
- */
-async function prepararLinkEnvio(c) {
-  const cont = $("#detalle-link");
-  cont.innerHTML = `<p class="ayuda-modal">Buscando su venta…</p>`;
-  let datos;
-  try {
-    datos = await pedir(`/api/crm/link-envio?conversation_id=${c.conversation_id}`);
-  } catch (err) {
-    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p><button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Volver a buscar</button>`;
-    $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
-    return;
-  }
-  cont.innerHTML = `
-    <div class="ayuda-modal" style="margin:0 0 4px">Pedido <b>${escapar(datos.codigo)}</b> · <a href="${escapar(datos.link)}" target="_blank" rel="noopener">ver su página</a></div>
-    <textarea id="detalle-link-texto" style="width:100%;min-height:110px;padding:8px;border:1px solid var(--borde);border-radius:var(--radio-s);font-size:13px;font-family:inherit;resize:vertical">${escapar(datos.texto)}</textarea>
-    ${datos.ventana_abierta ? "" : `<p class="ayuda-modal" style="color:var(--peligro)">Pasaron más de 24 h desde su último mensaje: WhatsApp no deja mandarle texto libre.</p>`}
-    <div style="display:flex;gap:6px">
-      <button class="cancelar" id="detalle-link-cerrar" type="button" style="flex:1;font-size:12px">Cancelar</button>
-      <button class="crear" id="detalle-link-enviar" type="button" style="flex:2;font-size:12px" ${datos.ventana_abierta ? "" : "disabled"}>${icon("send")} Mandar link</button>
-    </div>`;
-  const volver = () => {
-    cont.innerHTML = `<button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Preparar el link para este cliente</button>`;
-    $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
-  };
-  $("#detalle-link-cerrar").addEventListener("click", volver);
-  $("#detalle-link-enviar").addEventListener("click", async (e) => {
-    const texto = $("#detalle-link-texto").value.trim();
-    if (!texto) return;
-    e.currentTarget.disabled = true;
-    try {
-      await pedir("/api/crm/link-envio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: c.conversation_id, codigo: datos.codigo, texto })
-      });
-      cont.innerHTML = `<p class="ayuda-modal">Link enviado ✓</p>`;
-      setTimeout(volver, 3000);
-      cargarMensajes().catch(() => {});
-    } catch (err) {
-      e.currentTarget.disabled = false;
-      alert(err.message);
-    }
-  });
-}
-
 async function pintarDetalle(c) {
   const nombre = c.profile_name || c.wa_id;
   const tieneAd = Boolean(c.ctwa_clid || c.ad_source_type);
@@ -6987,11 +7008,6 @@ async function pintarDetalle(c) {
 
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
-
-    <h2>Link de seguimiento del pedido</h2>
-    <div id="detalle-link">
-      <button class="cancelar" id="detalle-link-abrir" type="button" style="width:100%;font-size:12px">🔗 Preparar el link para este cliente</button>
-    </div>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -7080,7 +7096,6 @@ async function pintarDetalle(c) {
   }, 600));
 
   pintarShalom(c);
-  $("#detalle-link-abrir").addEventListener("click", () => prepararLinkEnvio(c));
   actualizarHistorialCapi(c.conversation_id);
 
   $("#detalle-simular-ad")?.addEventListener("click", async () => {

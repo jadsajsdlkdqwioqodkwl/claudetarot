@@ -6,7 +6,11 @@
  * 'obsoleta', con el motivo en resuelto_por) antes de listar o contar.
  * Tres UPDATE en un batch; nada de IA.
  */
-export async function limpiarSugerenciasViejas(db) {
+import { proponerPlanPorVentanaCerrada } from "./planes-plantilla.js";
+
+export async function limpiarSugerenciasViejas(db, env = null) {
+  // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
+  if (env) await proponerPlanPorVentanaCerrada(env).catch((err) => console.error("Plan por ventana cerrada:", err.message));
   await db.batch([
     db.prepare(
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'se le escribió al cliente', resuelto_at = datetime('now')

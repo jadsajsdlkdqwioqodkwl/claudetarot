@@ -57,6 +57,10 @@ Drive y Google Sheets. Las del asesor → Google Drive.
               Dueño califica (Creativos y Copy Meta) → "REVISA COMENTARIOS"
               → Reglas, Instrucciones, Copy reglas, Avatares (Estado), creativos/brief.md
 
+## Plantillas de Meta: dónde se ven y quién las manda
+
+CRM → Herramientas → **Plantillas para Meta** (solo admin): muestra, por marca (Tarot Store / URO), el texto exacto, categoría, botones y estado en Meta de cada plantilla propuesta (recojo en Shalom primero, rescate de interesado, toques). El botón «Mandar a Meta» las crea en la WABA de ese número. Los textos viven en `src/lib/planes-plantilla.js` (planes) y `src/lib/toques.js` (toques); cambiar un texto ya aprobado exige un nombre nuevo. URO usa el prefijo `uro_` / `toque_u_` y no nombra síntomas (tema íntimo; el aviso se ve en la pantalla de bloqueo).
+
 ## Seguimientos del CRM: qué corre y qué no (auditoría 2026-10-10)
 
 | Seguimiento | Estado | Notas |
@@ -66,12 +70,13 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 | Respuestas rápidas con seguimiento | ✅ funciona | Las de URO no traen seguimiento. En chats de otro número ya no salen las generales (de Tarot) salvo buscando |
 | Planes con plantilla (recojo Shalom, rescate) | ✅ manual + cadena | Siempre por aprobar del admin. Etapa 1 (solo saludo) ya no genera cadena |
 | Pedido web a los 3 min | ✅ solo Tarot | Ya solo mira el último mensaje del chat de Tarot |
-| **Toques d2/d7/d14/d30/post** (`toques.js`) | ❌ **apagados** | `procesarToques` no se llama en `index.js` ni existe `TOQUES` en `wrangler.jsonc`: el motor está "sin conectar" a propósito. `docs/plan-seguimientos.md` es un plan, no algo vivo |
+| **Toques** Tarot (`d2…post60`) y URO (`u_…`) (`toques.js`) | ✅ prendidos (2026-10-10) | Cron `minuto % 5 = 2`, `TOQUES` en `wrangler.jsonc`. Requieren `migrations/0043` aplicada a mano y la plantilla **aprobada en Meta** (se mandan desde CRM → Herramientas → Plantillas para Meta; nada sale solo a Meta). Grupo de control: chats con id múltiplo de 5 |
 | Carrito abandonado | ⏸ apagado | `CARRITO_AUTO_HORAS` vacío; al prenderlo ya excluye otras líneas |
-| Link de envío automático | ⏸ apagado | A propósito: se manda a mano |
+| Link de envío de Shalom (página TS-…, «Links de Shalom») | 🗑 deprecado | Botón del chat, ruta `/api/crm/link-envio` y botón «Links de Shalom» ya no están en la pantalla. El código de `shalom.js`/`crm-links-envio.js` sigue (lo usa el flujo de saldos); borrar cuando se confirme |
+| Recomendación con el timer en 0 | ✅ | Desaparece y el bot deja un plan con plantilla por aprobar: rescate (no compró, etapa 2+) o recojo Shalom (compró y es de provincia) |
 | Mensaje masivo | ⏸ apagado | El servidor lo rechaza; el formulario ya no se muestra |
 
-Pendiente (no tocado, ver informe): rescate con plantilla no verifica que Meta la haya aprobado (queda `fallido` sin reintento); doble bienvenida si los avisos llegan por las dos apps de Meta (sin índice único en `messages.wa_message_id`); sugerencias del asesor y `asesor-resumen` buscan el chat por teléfono sin distinguir línea; `CLAUDE.md` dice 1,5 s de "escribiendo…" pero el código usa 2 s / 1,5 s / 1 s (rápidas y bienvenida).
+Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por las dos apps de Meta (sin índice único en `messages.wa_message_id`); sugerencias del asesor y `asesor-resumen` buscan el chat por teléfono sin distinguir línea; `CLAUDE.md` dice 1,5 s de "escribiendo…" pero el código usa 2 s / 1,5 s / 1 s (rápidas y bienvenida).
 
 ## Dónde ver cada cosa
 
@@ -82,6 +87,8 @@ Pendiente (no tocado, ver informe): rescate con plantilla no verifica que Meta l
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · Plantillas por marca y toques prendidos: pantalla «Plantillas para Meta» (el admin ve y manda cada plantilla; ya no se crean solas), textos propios de URO, toques de Tarot y URO conectados al cron (aplicar `0043`), plan con plantilla cuando el timer de una recomendación llega a 0, el cron de seguimientos espera a que Meta apruebe la plantilla, cronómetro en una franja sobre el chat, link de envío de Shalom deprecado (UI y ruta), y se revierte «secuencia de producto = lead» (lead y compra son manuales).
 
 - 2026-10-10 · Auditoría del CRM (sandbox local + código). Arreglado: header del admin desbordado en escritorio (acciones secundarias siempre en «⋯»); botón de reaccionar tapaba el mensaje en móvil; filtros en una sola fila en móvil; etiqueta «Contacto» y badge de número repetido fuera de la lista; Interés/venta de un chat de URO ya no mandan «Kit Tarot S/89» a Meta (usan el producto del chat); formulario de mensaje masivo oculto (está apagado). Servidor: un error de D1 ya no manda un chat de URO por el número de Tarot (`lineas.js`); secuencia de producto aplicada a mano cuenta como lead; producto sin secuencia cae a la general en Tarot; pedido web y CAPI no mezclan líneas; catálogo del cron usa el de la línea; cadena de rescate salta etapa 1; resumen fallido ya no bloquea el embudo. Ver tabla «Seguimientos del CRM».
 

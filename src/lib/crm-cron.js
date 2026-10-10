@@ -17,6 +17,7 @@ import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./what
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
+import { plantillaAprobada } from "./plantillas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -157,8 +158,17 @@ export async function procesarSeguimientosVencidos(env) {
         // Plantilla: para escribirle a alguien fuera de la ventana de 24h
         // (típico de un envío masivo a contactos viejos que no escribieron).
         const parametros = s.template_params ? JSON.parse(s.template_params) : [];
+        // Solo sale si Meta ya la aprobó en la cuenta de ese número: si el admin todavía no la mandó
+        // a revisión (o Meta no responde), espera 30 min y reintenta, hasta 3 días.
+        const aprobada = await plantillaAprobada(await envDeConversacion(env, s.conv_id), s.template_name).catch(() => null);
+        if (!aprobada) {
+          if (Date.now() - new Date(s.send_at).getTime() > 3 * 24 * 3600 * 1000) throw new Error(`La plantilla ${s.template_name} no está aprobada en Meta.`);
+          await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
+            .bind(new Date(Date.now() + 30 * 60 * 1000).toISOString(), s.id).run();
+          continue;
+        }
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
-        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, s.template_language || "es", parametros));
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",

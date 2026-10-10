@@ -136,14 +136,18 @@ cliente que toca un botón abre 24 h de texto libre gratis para la vendedora.
 - `migrations/0043_crm_v43.sql`: tabla `toques`.
 - `src/lib/plantillas.js`: aprobada/idioma/{{1}} de cada plantilla, compartido
   con el pedido web.
-- **Falta prenderlo** (no se conectó: es envío automático de mensajes pagados
-  y queda a decisión del dueño):
-  1. Aplicar `migrations/0043_crm_v43.sql`.
-  2. En `src/index.js`, dentro del cron de cada minuto, llamar a
-     `procesarToques(env)` en los minutos `% 5 === 2` (su propia ejecución,
-     por el tope de 50 consultas a D1).
-  3. En `wrangler.jsonc`: `"TOQUES": "d2,d7,d14,d30,post7,post14,post30,post60"` y
-     `"TOQUES_MAX_DIA": "40"`.
+- **Prendido** (2026-10-10): `procesarToques(env)` corre en `src/index.js` en los
+  minutos `% 5 === 2` y `wrangler.jsonc` trae `TOQUES` y `TOQUES_MAX_DIA`.
+  Falta **aplicar a mano `migrations/0043_crm_v43.sql`** en D1 (si no, el cron solo
+  registra el error y no sale nada).
+- **Nada se manda solo a Meta**: las plantillas se revisan y se mandan desde
+  CRM → Herramientas → **Plantillas para Meta** (`src/lib/plantillas-propuestas.js`).
+  Hasta que Meta las apruebe, el toque espera (no falla).
+- **Por marca**: Tarot Store usa los ids `d2…post60` (solo el número principal);
+  URO usa `u_d2, u_d7, u_d14, u_d30, u_post7, u_post25` (solo la línea con marca URO)
+  con precios S/89 · S/139 · S/179 de `docs/uro/negocio.md`, sin collar ni
+  descuentos. Cada marca va a la WABA de su número.
+- Un chat con un plan con plantilla pendiente o por aprobar no recibe toques.
 
 Fuentes: [AsisteClick — carritos abandonados por WhatsApp](https://asisteclick.com/en/blog/recuperar-carritos-abandonados-whatsapp/),
 [eGrow — WhatsApp abandoned cart templates](https://www.egrow.com/en/blog/whatsapp-abandoned-cart-template-2026),

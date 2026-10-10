@@ -11,21 +11,23 @@
  * salen aprobados. Si el cliente escribe, lo que falta se cancela solo
  * (cancelarSeguimientosPendientes), como cualquier seguimiento.
  *
- * Las plantillas se mandan a revisión de Meta solas, en la cuenta (WABA) del
- * número del chat, la primera vez que se marca un plan (plantillaAprobada).
- * Textos neutros: sirven para Tarot Store y para URO ({{2}} = el producto).
+ * Cada marca tiene SUS textos (Tarot Store y URO no se mezclan) y SUS plantillas
+ * en la cuenta (WABA) de su número. Las plantillas NO se mandan solas a Meta: el
+ * admin las revisa y las manda desde CRM → Herramientas → Plantillas para Meta
+ * (src/lib/plantillas-propuestas.js). Mientras no estén aprobadas, el envío espera.
  */
 
-import { plantillaAprobada, primerNombre } from "./plantillas.js";
-import { envDeConversacion } from "./lineas.js";
+import { primerNombre } from "./plantillas.js";
+import { lineaPorId } from "./lineas.js";
 import { obtenerAjuste, esOrigenAutomatico } from "./crm-db.js";
 import { productoPorId } from "./productos.js";
+import { destinosDeChats } from "./crm-destino.js";
 
 export const IDIOMA_PLAN = "es_PE";
 export const PREFIJO_PLAN = "Plan con plantilla";
 
-const cuerpo = (text, ejemplo) => ({ type: "BODY", text, example: { body_text: [ejemplo] } });
-const botones = (a, b) => ({ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: a }, { type: "QUICK_REPLY", text: b }] });
+/** 'tarot' (número principal) | 'uro' (línea con marca URO) | null (otra línea: sin plantillas propuestas). */
+export const marcaDeLinea = (linea) => (!linea ? "tarot" : String(linea.marca || "").toLowerCase() === "uro" ? "uro" : null);
 
 export const PLANES = {
   shalom: {
@@ -48,26 +50,44 @@ export const PLANES = {
       { dias: 21, nombre: "rescate_lead_3", texto: "Hola {{1}}, le dejo mi contacto por si más adelante quiere {{2}} ☺️ Solo responda este mensaje y lo vemos." }
     ],
     botones: ["Quiero hacer mi pedido", "Tengo una duda"],
-    ejemplo: ["María", "el kit de tarot"]
+    ejemplo: ["María", "el kit de tarot"],
+    conProducto: true // {{2}} = el producto del chat
   }
 };
 
+// URO: su propio texto y sus propias plantillas (prefijo uro_). Sin nombrar síntomas ni el producto
+// de más: es un tema íntimo y el aviso se ve en la pantalla de bloqueo.
+export const PLANES_URO = {
+  shalom: {
+    titulo: "Recojo en Shalom",
+    categoria: "UTILITY",
+    pasos: [
+      { dias: 4, nombre: "uro_recojo_shalom_1", texto: "Hola {{1}}, le escribimos de URO: su pedido ya está en su agencia Shalom y listo para recoger. Lleve su DNI y la clave de retiro; si no la tiene, respóndanos aquí y se la enviamos." },
+      { dias: 7, nombre: "uro_recojo_shalom_2", texto: "Hola {{1}}, de URO: su pedido sigue a su nombre en su agencia Shalom. Si tiene algún problema para recogerlo, respóndanos y le ayudamos." },
+      { dias: 21, nombre: "uro_recojo_shalom_3", texto: "Hola {{1}}, de URO: su pedido todavía está en la agencia Shalom. Las agencias devuelven los envíos que no se recogen, ¿podrá recogerlo esta semana?" }
+    ],
+    botones: ["Ya lo recogí", "Necesito ayuda"],
+    ejemplo: ["María"]
+  },
+  lead: {
+    titulo: "Rescate de interesado",
+    categoria: "MARKETING",
+    pasos: [
+      { dias: 4, nombre: "uro_rescate_lead_1", texto: "Hola {{1}} 🌸 le escribimos de URO por su consulta. ¿Le quedó alguna duda? Con gusto le ayudamos por aquí." },
+      { dias: 7, nombre: "uro_rescate_lead_2", texto: "Hola {{1}} 🌸 le cuento que el envío de URO es gratis a todo el Perú. Si gusta, le tomamos su pedido por aquí." },
+      { dias: 21, nombre: "uro_rescate_lead_3", texto: "Hola {{1}} 🌸 le dejamos nuestro contacto por si más adelante quiere hacer su pedido de URO. Solo responda este mensaje y lo vemos." }
+    ],
+    botones: ["Quiero hacer mi pedido", "Tengo una duda"],
+    ejemplo: ["María"]
+  }
+};
+
+export const planesDe = (marca) => (marca === "uro" ? PLANES_URO : PLANES);
+
+
+
 /** El texto con los parámetros puestos, para mostrarlo en el CRM. */
 export const textoDePaso = (paso, params) => paso.texto.replace(/\{\{(\d)\}\}/g, (m, n) => params[Number(n) - 1] ?? m);
-
-/** Manda a revisión (si faltan) las plantillas del plan en la WABA del número de ese chat. Nunca frena. */
-export async function asegurarPlantillasDelPlan(env, conversationId, plan) {
-  const p = PLANES[plan];
-  const envL = await envDeConversacion(env, conversationId);
-  if (!envL.WHATSAPP_BUSINESS_ACCOUNT_ID) return;
-  for (const paso of p.pasos) {
-    await plantillaAprobada(envL, paso.nombre, {
-      categoria: p.categoria,
-      idioma: IDIOMA_PLAN,
-      componentes: [cuerpo(paso.texto, p.ejemplo.slice(0, (paso.texto.match(/\{\{\d\}\}/g) || []).length)), botones(...p.botones)]
-    }).catch((err) => console.error(`Plantilla ${paso.nombre}:`, err.message));
-  }
-}
 
 /** Los días de los 3 envíos (ajuste `plan_dias`, lo cambia el admin en Herramientas). */
 export const DIAS_POR_DEFECTO = [4, 7, 21];
@@ -81,10 +101,10 @@ export function leerDias(texto) {
  * Cada uno a los N días del último mensaje del cliente; si ese día ya pasó,
  * sale en 10 min (y los siguientes conservan su orden).
  */
-export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO) {
-  const p = PLANES[plan];
+export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO, marca = "tarot") {
+  const p = planesDe(marca)[plan];
   const base = lastInboundAt ? new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime() : ahora;
-  const params = plan === "lead" ? [primerNombre(nombre), producto || "su pedido"] : [primerNombre(nombre)];
+  const params = p.conProducto ? [primerNombre(nombre), producto || "el kit de tarot"] : [primerNombre(nombre)];
   let previo = 0;
   return p.pasos.map((paso, i) => {
     const cuando = Math.max(base + (dias[i] ?? paso.dias) * 86400000, ahora + 10 * 60000 + i * 60000, previo + 60000);
@@ -111,10 +131,12 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   ).bind(conversationId, `${PREFIJO_PLAN}%`).first();
   if (yaHay) return { error: "Este chat ya tiene un plan con plantilla programado. Cancélalo primero si quieres cambiarlo." };
 
+  const marca = marcaDeLinea(conv.linea_id ? await lineaPorId(db, conv.linea_id) : null);
+  if (!marca) return { error: "Este número no tiene plantillas propuestas todavía." };
   const producto = await productoPorId(db, conv.producto_id);
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
-  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre || (conv.linea_id ? "su consulta" : "el kit de tarot") }, Date.now(), dias);
-  const origen = `${PREFIJO_PLAN} · ${PLANES[plan].titulo} · ${quien || "CRM"}`;
+  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca);
+  const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
   await db.batch(pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -137,6 +159,37 @@ export async function encadenarRescate(env, conversationId, createdBy, etapa) {
     "SELECT created_by FROM scheduled_messages WHERE conversation_id = ? AND status IN ('pendiente', 'enviando') AND template_name IS NULL"
   ).bind(conversationId).all();
   if (results.some((r) => esOrigenAutomatico(r.created_by))) return; // la cadena sigue
-  const r = await programarPlan(env, conversationId, "lead", { estado: "por_aprobar", quien: "cadena automática" });
-  if (!r.error) await asegurarPlantillasDelPlan(env, conversationId, "lead");
+  await programarPlan(env, conversationId, "lead", { estado: "por_aprobar", quien: "cadena automática" });
+}
+
+/**
+ * Sugerencias de seguimiento cuyo chat cerró su ventana de 24 h (el cronómetro
+ * llegó a 0): ya no se pueden mandar como texto, así que en su lugar el bot deja
+ * un plan con plantilla POR APROBAR, según el caso:
+ *  - no compró y conversó (etapa 2+): rescate de interesado;
+ *  - ya compró y es de provincia: recojo en Shalom;
+ *  - compró en Lima, o solo saludó: nada.
+ * Se llama antes de cerrar esas sugerencias (limpiarSugerenciasViejas).
+ */
+export async function proponerPlanPorVentanaCerrada(env, limite = 5) {
+  const db = env.CRM_DB;
+  const { results } = await db.prepare(
+    `SELECT DISTINCT conv.id, conv.etapa, conv.meta_tags
+     FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
+     WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento'
+       AND conv.last_inbound_at IS NOT NULL AND conv.last_inbound_at < datetime('now', '-24 hours')
+       AND NOT EXISTS (SELECT 1 FROM scheduled_messages m WHERE m.conversation_id = conv.id AND m.template_name IS NOT NULL AND m.status IN ('pendiente', 'por_aprobar'))
+     LIMIT ?`
+  ).bind(limite).all();
+  if (!results.length) return 0;
+  const destinos = await destinosDeChats(db, results.map((c) => c.id)).catch(() => ({}));
+  let n = 0;
+  for (const c of results) {
+    const compro = (c.etapa || 0) >= 5 || /\bpurchase\b/.test(c.meta_tags || "");
+    const plan = compro ? (destinos[c.id] === "provincia" ? "shalom" : null) : (c.etapa || 0) >= 2 ? "lead" : null;
+    if (!plan) continue;
+    const r = await programarPlan(env, c.id, plan, { estado: "por_aprobar", quien: "Asesor (se cerró la ventana)" }).catch(() => ({ error: true }));
+    if (!r.error) n++;
+  }
+  return n;
 }

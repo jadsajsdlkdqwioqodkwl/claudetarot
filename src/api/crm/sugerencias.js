@@ -82,7 +82,7 @@ async function get({ request, env, agent }) {
     return json({ mensajes: mensajes.reverse() });
   }
   // Las que ya no sirven (se le escribió, compró, ventana cerrada) se cierran solas.
-  await limpiarSugerenciasViejas(env.CRM_DB).catch((err) => console.error("Limpiar sugerencias:", err.message));
+  await limpiarSugerenciasViejas(env.CRM_DB, env).catch((err) => console.error("Limpiar sugerencias:", err.message));
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.assigned_agent, conv.last_inbound_at
      FROM asesor_sugerencias s LEFT JOIN conversations conv ON conv.id = s.conversation_id

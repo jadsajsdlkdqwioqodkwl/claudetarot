@@ -1,4 +1,4 @@
--- SIN APLICAR (el plan de toques todavía no está prendido; ver docs/plan-seguimientos.md).
+-- APLICAR A MANO en D1 (los toques ya están prendidos en wrangler.jsonc: sin esta tabla el cron solo registra el error "Toques: no such table").
 -- · toques: plan de toques de los días 2/7/14/30 (src/lib/toques.js). Una
 --   fila por chat y toque: enviada, control (grupo de control, no se le
 --   mandó), enviando o fallida.

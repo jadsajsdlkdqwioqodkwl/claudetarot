@@ -385,7 +385,7 @@ export async function onRequestGetContexto({ request, env }) {
   if (!(await dentroDelLimite(env, ip))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizado(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_DB) return json({ error: "Falta la base del CRM." }, 503);
-  await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
+  await limpiarSugerenciasViejas(env.CRM_DB, env).catch(() => {});
   const [rapidas, pendientes, bienvenida, pruebas, noCierran] = await Promise.all([
     env.CRM_DB.prepare(
       `SELECT q.id, q.title, ${textoPorDefectoSql("rapida")} AS body, q.grupo, q.sort_order,

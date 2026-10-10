@@ -10,7 +10,6 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { programarSecuenciaSeguimiento, obtenerAjuste, cancelarSeguimientosDeLead, origenSeguimientoLead } from "../../lib/crm-db.js";
-import { listarProductos } from "../../lib/productos.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -49,9 +48,7 @@ async function post({ request, env, agent }) {
   // así nuestros mensajes la cancelan — y reemplaza a la que ya hubiera
   // pendiente en ese chat en vez de duplicarse.
   const secuenciaLeads = Number(await obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id")) || null;
-  // La secuencia de un producto (p. ej. URO) también es de leads: la cancela el equipo al escribir.
-  const deProducto = (await listarProductos(env.CRM_DB).catch(() => [])).some((p) => Number(p.secuencia_id) === sequenceId);
-  const esLead = sequenceId === secuenciaLeads || deProducto;
+  const esLead = sequenceId === secuenciaLeads;
   const createdBy = esLead ? origenSeguimientoLead(nombre) : nombre;
   let pasosProgramados = 0;
   for (const conv of existentes) {

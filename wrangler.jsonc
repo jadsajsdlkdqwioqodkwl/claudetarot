@@ -146,6 +146,10 @@
     // él se reprograman: a las 06:00 si la ventana de 24 h sigue abierta, si
     // no a las 23:29, y si ya no se puede se cancelan (ver src/lib/horario.js).
     "HORARIO_ENVIO": "06:00-23:30",
+    // Toques con plantilla (src/lib/toques.js): Tarot Store (d2…post60) y URO (u_…). No sale nada hasta que
+    // el admin mande las plantillas a Meta desde el CRM y Meta las apruebe. Requiere la migración 0043.
+    "TOQUES": "d2,d7,d14,d30,post7,post14,post30,post60,u_d2,u_d7,u_d14,u_d30,u_post7,u_post25",
+    "TOQUES_MAX_DIA": "40",
 
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el

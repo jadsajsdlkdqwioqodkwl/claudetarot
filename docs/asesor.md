@@ -99,7 +99,7 @@ Ya **no sale solo**. En el panel derecho del chat, "Link de seguimiento del
 pedido" → **🔗 Preparar el link**: busca su venta abierta en la pestaña
 Ventas por el celular, arma el texto con la respuesta rápida **"Link de
 envío"** (`{link}` y `{nombre}` ya puestos), la vendedora lo revisa, lo
-edita si quiere y lo manda (`/api/crm/link-envio`). También se puede mandar
+edita si quiere y lo manda (DEPRECADO: `/api/crm/link-envio` ya no existe). También se puede mandar
 desde Links de Shalom. Queda anotado en `envio_links` como enviado. El cron
 cancela cualquier link automático que hubiera quedado programado.
 

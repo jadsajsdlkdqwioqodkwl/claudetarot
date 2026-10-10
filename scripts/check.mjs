@@ -824,7 +824,24 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("sin envíos masivos", masivo.includes("onRequestPost = conAdmin(apagado)"));
   const sugs = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
   check("las sugerencias se cierran solas si se le escribió al cliente, compró o se cerró su ventana",
-    readFileSync(new URL("../src/lib/crm-sugerencias.js", import.meta.url), "utf8").includes("se le escribió al cliente") && sugs.includes("limpiarSugerenciasViejas(env.CRM_DB)"));
+    readFileSync(new URL("../src/lib/crm-sugerencias.js", import.meta.url), "utf8").includes("se le escribió al cliente") && sugs.includes("limpiarSugerenciasViejas(env.CRM_DB"));
+  {
+    // Plantillas por marca: Tarot Store y URO no se mezclan y nada se manda solo a Meta.
+    const { propuestasDe } = await import("../src/lib/plantillas-propuestas.js");
+    const tarot = propuestasDe("tarot");
+    const uro = propuestasDe("uro");
+    const nombres = [...tarot, ...uro].map((p) => p.nombre);
+    check("plantillas propuestas: nombres únicos y URO con su propio prefijo",
+      new Set(nombres).size === nombres.length && uro.every((p) => /^(uro_|toque_u_)/.test(p.nombre)) && tarot.every((p) => !/^(uro_|toque_u_)/.test(p.nombre)));
+    check("plantillas de URO: sin textos de Tarot (kit, collar, cartas) ni {{2}}",
+      uro.every((p) => !/kit|collar|carta|tarot|\{\{2\}\}/i.test(p.texto)));
+    check("el recojo en Shalom va primero en cada marca", tarot[0].nombre === "recojo_shalom_1" && uro[0].nombre === "uro_recojo_shalom_1");
+    check("las plantillas no se mandan solas a Meta (solo el admin desde el CRM)",
+      !readFileSync(new URL("../src/lib/plantillas.js", import.meta.url), "utf8").includes("crearTemplate(env")
+      && readFileSync(new URL("../src/lib/plantillas-propuestas.js", import.meta.url), "utf8").includes("crearTemplate(envM"));
+    check("los toques están conectados al cron (minuto % 5 = 2) y encendidos en wrangler",
+      readFileSync(new URL("../src/index.js", import.meta.url), "utf8").includes("procesarToques(env)") && wrangler.includes('"TOQUES": "d2'));
+  }
   check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
     sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));
   check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));

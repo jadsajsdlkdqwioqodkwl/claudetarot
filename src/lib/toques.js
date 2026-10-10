@@ -8,8 +8,11 @@
  *
  * Reglas (las de docs/negocio.md y el plan):
  *  - Se prende con TOQUES en wrangler.jsonc (lista de ids; vacío = apagado).
- *    Cada plantilla se crea sola en Meta si no existe; mientras no esté
+ *    Las plantillas NO se crean solas en Meta: el admin las revisa y las
+ *    manda desde el CRM (plantillas-propuestas.js). Mientras no esté
  *    aprobada, ese toque espera.
+ *  - Cada marca tiene sus toques y sus textos: los de Tarot Store solo salen
+ *    por el número principal; los de URO (ids u_…) solo por la línea URO.
  *  - Una vez por chat cada toque. 14 exige que haya salido 7, y 30 exige 14.
  *  - Los días se cuentan desde el último mensaje del cliente (no compró) o
  *    desde la compra (cliente). Si respondió, el reloj vuelve a 0.
@@ -27,12 +30,14 @@ import { enviarTemplate } from "./whatsapp.js";
 import { mandarConEscribiendo } from "./crm-send.js";
 import { registrarMensajeSaliente } from "./crm-db.js";
 import { plantillaAprobada, primerNombre } from "./plantillas.js";
+import { listarLineas, envDeLinea } from "./lineas.js";
+import { marcaDeLinea } from "./planes-plantilla.js";
 import { enSilencio } from "./horario.js";
 import { destinosDeChats } from "./crm-destino.js";
 
 export const ORIGEN_TOQUE = "Toque automático";
 const POR_PASADA = 4; // ~9 consultas a D1 por envío: entra en el tope de 50 por ejecución
-const IDIOMA = "es_PE";
+export const IDIOMA = "es_PE";
 
 const botones = (a, b) => ({ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: a }, { type: "QUICK_REPLY", text: b }] });
 const cuerpo = (text) => ({ type: "BODY", text, example: { body_text: [["María"]] } });
@@ -116,6 +121,58 @@ export const TOQUES = {
   }
 };
 
+/**
+ * Toques de URO (ids u_…): sin collar ni descuentos, solo lo que dice
+ * docs/uro/negocio.md (S/89 · S/139 · S/179, envío gratis). Sin síntomas en
+ * el texto: es un tema íntimo y Meta revisa más los productos de salud.
+ */
+Object.assign(TOQUES, {
+  u_d2: {
+    marca: "uro", tipo: "lead", dias: 2, etapaMin: 2, soloRecientes: true,
+    general: [
+      cuerpo("Hola {{1}} 🌸 ¿pudo ver la información de URO? Cada frasco trae 60 cápsulas y alcanza para 1 mes. ¿Le separo el suyo?"),
+      botones("Sí, sepárelo", "Tengo una duda")
+    ]
+  },
+  u_d7: {
+    marca: "uro", tipo: "lead", dias: 7, etapaMin: 2,
+    general: [
+      cuerpo("Hola {{1}} 🌸 le cuento que con 2 frascos de URO le sale S/139 y con 3 frascos S/179 (el tratamiento recomendado), con envío gratis a todo el Perú. ¿Cuál le separo?"),
+      botones("2 frascos S/139", "3 frascos S/179")
+    ]
+  },
+  u_d14: {
+    marca: "uro", tipo: "lead", dias: 14, etapaMin: 2, requiere: "u_d7",
+    general: [
+      cuerpo("Hola {{1}} 🌸 solo quería saber si le quedó alguna duda sobre URO. Si prefiere, se la resolvemos por aquí sin compromiso."),
+      botones("Tengo una duda", "Ahora no")
+    ]
+  },
+  u_d30: {
+    marca: "uro", tipo: "lead", dias: 30, etapaMin: 2, requiere: "u_d14",
+    general: [
+      cuerpo("Hola {{1}}, no quiero incomodarle 🌸 Si más adelante le interesa URO, solo responda este mensaje y lo vemos. ¿Le dejo su consulta abierta?"),
+      botones("Sí, déjela abierta", "Cerrar consulta")
+    ]
+  },
+  u_post7: {
+    marca: "uro", tipo: "cliente", dias: 7,
+    general: [
+      cuerpo("Hola {{1}} 🌸 ¿cómo va con su pedido de URO? Si tiene alguna duda, escríbanos y le ayudamos por aquí."),
+      botones("Todo bien, gracias", "Tengo una duda")
+    ]
+  },
+  u_post25: {
+    marca: "uro", tipo: "cliente", dias: 25, requiere: "u_post7",
+    general: [
+      cuerpo("Hola {{1}} 🌸 su primer frasco de URO está por terminar. Para completar los 3 meses recomendados, ¿le separamos el siguiente? Con 2 frascos le sale S/139."),
+      botones("Sí, sepárelo", "Ahora no")
+    ]
+  }
+});
+
+export const marcaDeToque = (def) => def.marca || "tarot";
+
 const nombrePlantilla = (id, variante) => (variante === "general" ? `toque_${id}` : `toque_${id}_${variante}`);
 
 // Pidió que no le escriban (incluye el botón "Cerrar consulta" del toque de 30 días).
@@ -123,23 +180,23 @@ const NO_ESCRIBIR = ["cerrar consulta", "no me interesa", "no estoy interesad", 
 const SQL_NO_ESCRIBIR = NO_ESCRIBIR.map(() => "lower(i.body) LIKE ?").join(" OR ");
 
 /** Chats a los que hoy les toca `id` (como mucho `limite`). */
-async function candidatos(db, id, def, limite) {
+async function candidatos(db, id, def, limite, lineaId = null) {
   const desde = def.tipo === "lead" ? "conv.last_inbound_at" : "compra.t";
   const ventana = def.tipo === "lead" && def.dias === 2
     ? ["-66 hours", "-40 hours"] // día 2: entre 40 y 66 h de silencio
     : [`-${def.dias + 2} days`, `-${def.dias} days`];
   const filtros = [
-    // Las ofertas de los toques son de Tarot Store: solo su número (línea principal).
-    "conv.linea_id IS NULL",
+    // Cada marca solo toca sus chats: Tarot Store = línea principal; URO = su línea.
+    lineaId ? "conv.linea_id = ?" : "conv.linea_id IS NULL",
     `${desde} IS NOT NULL`,
     `datetime(${desde}) >= datetime('now', ?)`,
     `datetime(${desde}) < datetime('now', ?)`,
     "NOT EXISTS (SELECT 1 FROM toques t WHERE t.conversation_id = conv.id AND t.toque = ?)",
     `NOT EXISTS (SELECT 1 FROM messages o WHERE o.conversation_id = conv.id AND o.direction = 'out' AND o.created_at >= datetime('now', '-20 hours'))`,
-    `NOT EXISTS (SELECT 1 FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status IN ('pendiente', 'enviando'))`,
+    `NOT EXISTS (SELECT 1 FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status IN ('pendiente', 'enviando', 'por_aprobar'))`,
     `NOT EXISTS (SELECT 1 FROM messages i WHERE i.conversation_id = conv.id AND i.direction = 'in' AND (${SQL_NO_ESCRIBIR}))`
   ];
-  const params = [...ventana, id, ...NO_ESCRIBIR.map((t) => `%${t}%`)];
+  const params = [...(lineaId ? [lineaId] : []), ...ventana, id, ...NO_ESCRIBIR.map((t) => `%${t}%`)];
   if (def.tipo === "lead") {
     filtros.push("conv.etapa >= ?", "conv.etapa < 5", "instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') = 0");
     params.push(def.etapaMin);
@@ -180,17 +237,30 @@ export async function procesarToques(env) {
   const hoy = await db.prepare("SELECT COUNT(*) AS n FROM toques WHERE estado = 'enviada' AND created_at >= datetime('now', '-24 hours')").first();
   let cupo = Math.min(POR_PASADA, Math.max((Number(env.TOQUES_MAX_DIA) || 40) - (hoy?.n || 0), 0));
 
+  // Cada marca con su número: { env, lineaId } (null si esa marca no tiene línea con WABA).
+  const contextos = {};
+  const contextoDe = async (marca) => {
+    if (!(marca in contextos)) {
+      const linea = marca === "tarot" ? null : (await listarLineas(db)).find((l) => l.activa !== 0 && marcaDeLinea(l) === marca);
+      contextos[marca] = marca === "tarot" ? { env, lineaId: null } : linea?.waba_id ? { env: envDeLinea(env, linea), lineaId: linea.id } : null;
+    }
+    return contextos[marca];
+  };
+
   for (const id of activos) {
     if (cupo <= 0) break;
     const def = TOQUES[id];
-    const lista = await candidatos(db, id, def, cupo + 2);
+    const ctx = await contextoDe(marcaDeToque(def));
+    if (!ctx) continue;
+    const envM = ctx.env;
+    const lista = await candidatos(db, id, def, cupo + 2, ctx.lineaId);
     if (!lista.length) continue;
     const destinos = def.por_destino ? await destinosDeChats(db, lista.map((c) => c.id)).catch(() => ({})) : {};
     const aprobadas = {};
     const plantillaDe = async (variante) => {
       if (!(variante in aprobadas)) {
         const nombre = nombrePlantilla(id, variante);
-        aprobadas[variante] = await plantillaAprobada(env, nombre, { categoria: "MARKETING", idioma: IDIOMA, componentes: def[variante] })
+        aprobadas[variante] = await plantillaAprobada(envM, nombre)
           .then((a) => a && { ...a, nombre })
           .catch((err) => (console.error(`Plantilla ${nombre}:`, err.message), null));
       }
@@ -213,7 +283,7 @@ export async function procesarToques(env) {
       cupo--;
       try {
         const params = aprobada.conNombre ? [primerNombre(c.nombre)] : [];
-        const waMessageId = await mandarConEscribiendo(env, c.id, (e) => enviarTemplate(e, c.wa_id, nombre, aprobada.idioma, params));
+        const waMessageId = await mandarConEscribiendo(envM, c.id, (e) => enviarTemplate(e, c.wa_id, nombre, aprobada.idioma, params));
         const texto = def[variante][0].text.replace("{{1}}", params[0] || "");
         await registrarMensajeSaliente(db, c.id, { waMessageId, type: "template", body: `Plantilla: ${nombre} · ${texto}`, sentBy: ORIGEN_TOQUE }, { subirEnBandeja: false });
         await db.prepare("UPDATE toques SET estado = 'enviada' WHERE conversation_id = ? AND toque = ?").bind(c.id, id).run();

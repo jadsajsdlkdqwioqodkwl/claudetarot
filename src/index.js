@@ -113,11 +113,12 @@ import {
   onRequestPatch as crmVariantesPatch,
   onRequestDelete as crmVariantesDelete
 } from "./api/crm/variantes.js";
+import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
 import { procesarFrases } from "./lib/crm-frases.js";
+import { procesarToques } from "./lib/toques.js";
 import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
-import { onRequestGet as crmLinkEnvioGet, onRequestPost as crmLinkEnvioPost } from "./api/crm/link-envio.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
@@ -146,7 +147,6 @@ const ROUTES = {
   "/api/asesor/ventas": { POST: asesorVentasPost },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
-  "/api/crm/link-envio": { GET: crmLinkEnvioGet, POST: crmLinkEnvioPost },
   "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },
 
   "/api/crm/login": { POST: crmLogin },
@@ -160,6 +160,7 @@ const ROUTES = {
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
+  "/api/crm/plantillas-propuestas": { GET: crmPropuestasGet, POST: crmPropuestasPost },
   "/api/crm/planes": { GET: crmPlanesGet, POST: crmPlanesPost, PATCH: crmPlanesPatch },
   "/api/crm/productos": { GET: crmProductosGet, POST: crmProductosPost, PATCH: crmProductosPatch, DELETE: crmProductosDelete },
   "/api/crm/lineas": { GET: crmLineasGet, POST: crmLineasPost, PATCH: crmLineasPatch },
@@ -290,6 +291,12 @@ export default {
     // pedidos web de hace 3 min. Lo de antes del cron de 5 min (seguimientos,
     // carrito) sigue corriendo solo en los minutos múltiplos de 5.
     await procesarPedidosWeb(env).catch((err) => console.error("Pedidos web:", err.message));
+    // Los toques (días 2/7/14/30 con plantilla) van en su propia pasada (minuto % 5 = 2) por el
+    // tope de consultas a D1; si falta la migración 0043 solo se registra el error.
+    if (new Date(event.scheduledTime).getUTCMinutes() % 5 === 2) {
+      await procesarToques(env).catch((err) => console.error("Toques:", err.message));
+      return;
+    }
     if (new Date(event.scheduledTime).getUTCMinutes() % 5 !== 0) return;
     // Esperado directo (no waitUntil, que corta a los 30 s): con la pausa de
     // "escribiendo…" de 1 s por mensaje, un lote grande de seguimientos

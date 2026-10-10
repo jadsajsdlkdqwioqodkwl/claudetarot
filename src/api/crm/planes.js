@@ -11,7 +11,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { PLANES, programarPlan, asegurarPlantillasDelPlan, leerDias } from "../../lib/planes-plantilla.js";
+import { PLANES, programarPlan, leerDias } from "../../lib/planes-plantilla.js";
 import { obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -22,7 +22,7 @@ const json = (data, status = 200) =>
 
 const esAdmin = (agent) => agent?.role === "admin";
 
-async function post({ request, env, agent, waitUntil }) {
+async function post({ request, env, agent }) {
   const payload = await request.json().catch(() => null);
   const conversationId = Number(payload?.conversation_id);
   const plan = payload?.plan;
@@ -33,9 +33,6 @@ async function post({ request, env, agent, waitUntil }) {
   if (r.error) return json({ error: r.error }, 409);
   const pasos = r.pasos;
 
-  // Las plantillas a revisión de Meta (si faltan), sin hacer esperar a la vendedora.
-  const tarea = asegurarPlantillasDelPlan(env, conversationId, plan).catch((err) => console.error("Plantillas del plan:", err.message));
-  if (waitUntil) waitUntil(tarea); else await tarea;
   return json({ ok: true, estado, pasos });
 }
 

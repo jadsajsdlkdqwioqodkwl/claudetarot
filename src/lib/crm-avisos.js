@@ -19,7 +19,7 @@ export async function notificarRecomendaciones(env) {
   const ultimo = await db.prepare("SELECT value FROM crm_settings WHERE key = 'aviso_recomendaciones_at'").first();
   if (ultimo?.value && Date.now() - Number(ultimo.value) < ESPACIO_MIN * 60 * 1000) return { enviados: 0, omitido: "reciente" };
 
-  await limpiarSugerenciasViejas(db).catch(() => {});
+  await limpiarSugerenciasViejas(db, env).catch(() => {});
   const { n } = await db.prepare("SELECT COUNT(*) AS n FROM asesor_sugerencias WHERE estado = 'pendiente' AND tipo != 'envio'").first();
   if (!n) return { enviados: 0 };
 
