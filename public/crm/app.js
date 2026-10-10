@@ -224,8 +224,8 @@ async function mostrarApp() {
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
-  // Deprecado: ya no hay link de envío de Shalom (la ventana "Links de Shalom" queda oculta).
-  $("#btn-shalom").style.display = "none";
+  $("#btn-shalom").style.display = shalom ? "" : "none";
+  if (shalom) actualizarConteoShalom();
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
   cargarAsesorasFiltro();
@@ -536,6 +536,7 @@ $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: 
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
 
+const CATEGORIA_META = { MARKETING: "Marketing", UTILITY: "Utilidad" };
 const ESTADO_META = {
   SIN_ENVIAR: ["Sin enviar", "#8a6500", "#fff8e1"], PENDING: ["En revisión de Meta", "#0b57d0", "#e8f0fe"], IN_APPEAL: ["En revisión de Meta", "#0b57d0", "#e8f0fe"],
   APPROVED: ["Aprobada ✓", "#137333", "#e6f4ea"], REJECTED: ["Rechazada", "#b3261e", "#fde8e7"], PAUSED: ["Pausada", "#b3261e", "#fde8e7"],
@@ -566,14 +567,15 @@ async function abrirPlantillasMeta() {
               return `<div class="ad-card" style="margin-bottom:6px">
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                   <b>${escapar(p.titulo)}</b>
-                  <span style="font-size:12px;color:var(--gris)">${escapar(p.categoria)} · ${escapar(p.cuando)}</span>
+                  <span style="font-size:12px;color:var(--gris)">${CATEGORIA_META[p.categoria] || escapar(p.categoria)} · ${escapar(p.cuando)}</span>
+                  ${p.categoriaMeta && p.categoriaMeta !== p.categoria ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;color:#b3261e;background:#fde8e7" title="Meta cambió la categoría que pediste">Meta la clasificó como ${CATEGORIA_META[p.categoriaMeta] || escapar(p.categoriaMeta)}</span>` : ""}
                   <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${etq}</span>
                 </div>
                 <div style="white-space:pre-wrap;margin:6px 0;font-size:13px;line-height:1.4;background:#f7f8fa;border-radius:6px;padding:8px">${escapar(p.texto)}</div>
-                <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.map((b) => `«${escapar(b)}»`).join(" · ")} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
-                ${p.editada ? `<div style="font-size:12px;color:var(--gris)">✏️ Texto editado por ti</div>` : ""}
+                <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.length ? p.botones.map((b) => `«${escapar(b)}»`).join(" · ") : "ninguno"} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
+                ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                  ${["SIN_ENVIAR", "DESCONOCIDO"].includes(p.estado) ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">✏️ Editar texto y botones</button>` : ""}
+                  ${["SIN_ENVIAR", "DESCONOCIDO"].includes(p.estado) ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
                 </div>
               </div>`;
@@ -587,13 +589,35 @@ async function abrirPlantillasMeta() {
       const botones = JSON.parse(b.dataset.botones);
       card.innerHTML = `
         <div style="font-size:12px;color:var(--gris);margin-bottom:4px">Usa <code>{{1}}</code> donde va el nombre del cliente (y deja las demás variables como están). Meta no deja empezar ni terminar con una variable.</div>
-        <textarea class="pl-texto" rows="5" maxlength="1024" style="width:100%">${escapar(b.dataset.texto)}</textarea>
-        <div style="display:flex;gap:6px;margin-top:6px">${botones.map((x, i) => `<input type="text" class="pl-boton" maxlength="25" value="${escapar(x)}" placeholder="Botón ${i + 1} (máx. 25)" style="flex:1;min-width:0" />`).join("")}</div>
-        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        <textarea class="pl-texto" rows="6" maxlength="1024" style="width:100%">${escapar(b.dataset.texto)}</textarea>
+        <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Tipo de mensaje</label>
+        <select class="pl-categoria" style="width:100%">
+          <option value="UTILITY"${b.dataset.categoria === "UTILITY" ? " selected" : ""}>Utilidad: avisa algo sobre un pedido que ya hizo (envío, boleta, recojo). Más barata</option>
+          <option value="MARKETING"${b.dataset.categoria === "MARKETING" ? " selected" : ""}>Marketing: ofrece, recuerda o intenta vender (rescate, ofertas)</option>
+        </select>
+        <div style="font-size:12px;color:var(--gris);margin-top:2px">Si pides Utilidad pero el texto suena a promoción, Meta la pasa sola a Marketing.</div>
+        <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, hasta 25 caracteres, sin emojis)</label>
+        <div class="pl-botones"></div>
+        <button type="button" class="cancelar pl-agregar-boton" style="font-size:12px;margin-top:4px">${icon("plus")} Agregar botón</button>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button type="button" class="cancelar pl-cancelar" style="font-size:12px">Cancelar</button>
           ${b.dataset.editada === "1" ? `<button type="button" class="cancelar pl-restablecer" style="font-size:12px">Volver al texto original</button>` : ""}
           <button type="button" class="crear pl-guardar" style="font-size:12px">Guardar</button>
         </div>`;
+      const caja = card.querySelector(".pl-botones");
+      const agregarBoton = (valor = "") => {
+        if (caja.children.length >= 3) return;
+        caja.insertAdjacentHTML("beforeend", `<div style="display:flex;gap:6px;margin-bottom:4px"><input type="text" class="pl-boton" maxlength="25" value="${escapar(valor)}" placeholder="Texto del botón" style="flex:1;min-width:0" /><button type="button" class="sug-icono pl-quitar-boton" title="Quitar botón">${icon("trash")}</button></div>`);
+        card.querySelector(".pl-agregar-boton").style.display = caja.children.length >= 3 ? "none" : "";
+      };
+      botones.forEach((x) => agregarBoton(x));
+      card.querySelector(".pl-agregar-boton").addEventListener("click", () => agregarBoton());
+      caja.addEventListener("click", (e) => {
+        const q = e.target.closest(".pl-quitar-boton");
+        if (!q) return;
+        q.parentElement.remove();
+        card.querySelector(".pl-agregar-boton").style.display = "";
+      });
       const guardar = async (cuerpo) => {
         try {
           await pedir("/api/crm/plantillas-propuestas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, nombre: b.dataset.nombre, ...cuerpo }) });
@@ -602,7 +626,7 @@ async function abrirPlantillasMeta() {
       };
       card.querySelector(".pl-cancelar").addEventListener("click", abrirPlantillasMeta);
       card.querySelector(".pl-restablecer")?.addEventListener("click", () => guardar({ restablecer: true }));
-      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value) }));
+      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, categoria: card.querySelector(".pl-categoria").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value) }));
     }));
     cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
       const nombres = b.dataset.nombres.split(",");
@@ -650,7 +674,7 @@ async function pintarModalProductos() {
   $("#lista-productos").innerHTML = estado.productos.length ? estado.productos.map((p) => `
     <div class="fila-seguimiento ${p.activo ? "" : "apagado"}">
       <div>
-        <div class="nombre"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color || "transparent"}"></span> 📦 ${escapar(p.nombre)}${p.activo ? "" : " · apagado"} <span class="sub">· ${p.chats} chat${p.chats === 1 ? "" : "s"} · 📱 ${escapar(nombreLinea(p.linea_id))}</span></div>
+        <div class="nombre"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color || "transparent"}"></span> ${icon("box")} ${escapar(p.nombre)}${p.activo ? "" : " · apagado"} <span class="sub">· ${p.chats} chat${p.chats === 1 ? "" : "s"} · ${icon("phone")} ${escapar(nombreLinea(p.linea_id))}</span></div>
         <div class="sub">${[
           p.anuncios ? `Anuncios: ${escapar(p.anuncios)}` : "",
           p.palabras ? `Palabras: ${escapar(p.palabras)}` : "",
@@ -668,11 +692,11 @@ async function pintarModalProductos() {
   });
 
   $("#lista-lineas").innerHTML = `
-    <div class="fila-seguimiento"><div><div class="nombre">📱 Tarot Store (principal)</div><div class="sub">El de siempre (wrangler.jsonc).</div></div></div>
+    <div class="fila-seguimiento"><div><div class="nombre">${icon("phone")} Tarot Store (principal)</div><div class="sub">El de siempre (wrangler.jsonc).</div></div></div>
     ${estado.lineas.map((l) => `
     <div class="fila-seguimiento ${l.activa ? "" : "apagado"}">
       <div>
-        <div class="nombre">📱 ${escapar(l.nombre)}${l.marca ? ` · ${escapar(l.marca)}` : ""}${l.activa ? "" : " · apagado"}</div>
+        <div class="nombre">${icon("phone")} ${escapar(l.nombre)}${l.marca ? ` · ${escapar(l.marca)}` : ""}${l.activa ? "" : " · apagado"}</div>
         <div class="sub">Phone ID ${escapar(l.phone_number_id)}${l.waba_id ? ` · WABA ${escapar(l.waba_id)}` : " · sin WABA (no lista plantillas)"}${l.catalog_id ? ` · catálogo ${escapar(l.catalog_id)}` : ""}${l.token_var ? ` · token ${escapar(l.token_var)}` : ""}${l.pixel_id ? ` · píxel ${escapar(l.pixel_id)}` : " · sin píxel (eventos manuales no salen)"}</div>
       </div>
       <div style="display:flex;gap:4px"><button class="editar-linea" data-id="${l.id}" title="Editar">${icon("pencil")}</button></div>
@@ -683,8 +707,8 @@ async function pintarModalProductos() {
 }
 
 function pintarSelectsProducto(p = null) {
-  $("#prod-linea").innerHTML = `<option value="">📱 Número: Tarot Store (principal)</option>`
-    + estado.lineas.map((l) => `<option value="${l.id}" ${p?.linea_id === l.id ? "selected" : ""}>📱 Número: ${escapar(l.nombre)}</option>`).join("");
+  $("#prod-linea").innerHTML = `<option value="">Número: Tarot Store (principal)</option>`
+    + estado.lineas.map((l) => `<option value="${l.id}" ${p?.linea_id === l.id ? "selected" : ""}>Número: ${escapar(l.nombre)}</option>`).join("");
   $("#prod-secuencia").innerHTML = `<option value="">Ninguno</option>`
     + (estado.secuenciasProducto || []).map((x) => `<option value="${x.id}" ${p?.secuencia_id === x.id ? "selected" : ""}>${escapar(x.title)}</option>`).join("");
 }
@@ -816,7 +840,7 @@ async function pintarSecuenciaBienvenida() {
   cont.innerHTML = steps.length ? steps.map((s, i) => `
     <div class="fila-seguimiento">
       <div>
-        <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)} <span class="badge-producto">${s.producto_id ? `📦 ${escapar(productoDe(s.producto_id)?.nombre || `Producto ${s.producto_id}`)}` : "General"}</span></div>
+        <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)} <span class="badge-producto">${s.producto_id ? `${icon("box")} ${escapar(productoDe(s.producto_id)?.nombre || `Producto ${s.producto_id}`)}` : "General"}</span></div>
         ${s.texto_por_defecto || s.body ? `<div class="sub">${escapar(s.texto_por_defecto || s.body)}</div>` : ""}
       </div>
       <div style="display:flex;gap:4px">
@@ -1661,7 +1685,7 @@ function avisarLocalmente() {
   for (const c of estado.conversaciones) {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
     if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
-    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : ({ image: "📷 Foto", video: "🎥 Video", audio: "🎵 Audio", document: "📄 Documento", sticker: "Sticker" }[c.last_type] || "Mensaje nuevo");
+    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : ({ image: "Foto", video: "Video", audio: "Audio", document: "Documento", sticker: "Sticker" }[c.last_type] || "Mensaje nuevo");
     navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
       body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
       tag: `chat-${c.conversation_id}`,
@@ -2071,11 +2095,11 @@ async function cargarProductos() {
   } catch { /* sin la migración 0045: todo sigue como un solo producto */ }
   const activos = estado.productos.filter((p) => p.activo);
   $("#filtro-producto").innerHTML = `<option value="">Producto…</option>`
-    + activos.map((p) => `<option value="${p.id}">📦 ${escapar(p.nombre)}</option>`).join("")
+    + activos.map((p) => `<option value="${p.id}">${escapar(p.nombre)}</option>`).join("")
     + `<option value="0">Sin producto</option>`;
   $("#filtro-producto").style.display = activos.length ? "" : "none";
-  $("#filtro-linea").innerHTML = `<option value="">Número…</option><option value="0">📱 Tarot Store (principal)</option>`
-    + estado.lineas.map((l) => `<option value="${l.id}">📱 ${escapar(l.nombre)}</option>`).join("");
+  $("#filtro-linea").innerHTML = `<option value="">Número…</option><option value="0">Tarot Store (principal)</option>`
+    + estado.lineas.map((l) => `<option value="${l.id}">${escapar(l.nombre)}</option>`).join("");
   $("#filtro-linea").style.display = estado.lineas.length ? "" : "none";
   pintarFiltros();
   if (estado.conversaciones.length) pintarLista();
@@ -2089,15 +2113,15 @@ const chatActivo = () => estado.conversaciones.find((x) => x.conversation_id ===
 function badgesProducto(c) {
   const p = productoDe(c.producto_id);
   const l = lineaDe(c.linea_id);
-  return (p ? `<span class="badge-producto" ${p.color ? `style="background:${p.color};border-color:${p.color};color:#fff"` : ""} title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">📦 ${escapar(p.nombre)}</span>` : "")
-    + (l && !(p && p.nombre.toLowerCase() === l.nombre.toLowerCase()) ? `<span class="badge-linea" title="Escribió a este número">📱 ${escapar(l.nombre)}</span>` : "");
+  return (p ? `<span class="badge-producto" ${p.color ? `style="background:${p.color};border-color:${p.color};color:#fff"` : ""} title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">${icon("box")} ${escapar(p.nombre)}</span>` : "")
+    + (l && !(p && p.nombre.toLowerCase() === l.nombre.toLowerCase()) ? `<span class="badge-linea" title="Escribió a este número">${icon("phone")} ${escapar(l.nombre)}</span>` : "");
 }
 
 /** <option>s de producto para un <select>: "General" (null) y los activos (más el elegido aunque esté apagado). */
 function opcionesProducto(valor, general = "General (todas / Tarot Store)") {
   const lista = estado.productos.filter((p) => p.activo || p.id === Number(valor));
   return `<option value="">${escapar(general)}</option>`
-    + lista.map((p) => `<option value="${p.id}" ${p.id === Number(valor) ? "selected" : ""}>📦 ${escapar(p.nombre)}${p.activo ? "" : " (apagado)"}</option>`).join("");
+    + lista.map((p) => `<option value="${p.id}" ${p.id === Number(valor) ? "selected" : ""}>${escapar(p.nombre)}${p.activo ? "" : " (apagado)"}</option>`).join("");
 }
 
 /**
@@ -2743,7 +2767,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel">+${escapar(c.wa_id)}</div>
+          <div class="tel">+${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -2754,7 +2778,6 @@ function pintarChatBase(c) {
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
     </header>
-    <div id="reloj-chat" class="reloj"></div>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-respuesta" style="display:none"></div>
@@ -3182,8 +3205,7 @@ function diaMesLima(fecha) {
 
 function badgeEtapa(c) {
   const etapa = ETAPAS.find(([e]) => tieneEtiqueta(c, e));
-  // "Contacto" es lo que tiene TODO chat: en la lista solo ocupa una fila entera; los avances (Interés, Compra) sí se ven.
-  if (!etapa || etapa[0] === "contact") return "";
+  if (!etapa) return "";
   // La compra lleva el día en que se marcó: "Compra · 28/09".
   const dia = etapa[0] === "purchase" ? diaMesLima(c.compra_at) : "";
   return `<span class="badge-etapa etapa-${etapa[0]}"${dia ? ` title="Compra marcada el ${dia}"` : ""}>${etapa[1]}${dia ? ` · ${dia}` : ""}</span>`;
@@ -3273,7 +3295,7 @@ function resumenPaso(p) {
 /** Cómo se ve en las listas un paso o seguimiento con catálogo. */
 function etiquetaCatalogo(x) {
   if (!x?.catalogo) return "";
-  return x.catalogo === "*" ? "🛍️ Catálogo completo" : `🛍️ ${x.catalogo_nombre || "Producto del catálogo"}`;
+  return x.catalogo === "*" ? "Catálogo completo" : (x.catalogo_nombre || "Producto del catálogo");
 }
 
 function cerrarPopoverMeta() {
@@ -3520,10 +3542,10 @@ function ubicacionHtml(body) {
 function extractoMensaje(tipo, body) {
   if (tipo === "location") {
     const nombre = (body || "").split("|")[2];
-    return nombre ? `📍 ${nombre}` : "📍 Ubicación";
+    return nombre || "Ubicación";
   }
   if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
-  const nombres = { image: "📷 Foto", video: "🎥 Video", sticker: "Sticker", document: "📄 Documento", audio: "🎵 Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "📞 Llamada" };
+  const nombres = { image: "Foto", video: "Video", sticker: "Sticker", document: "Documento", audio: "Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "Llamada" };
   return nombres[tipo] || "Mensaje";
 }
 
@@ -4620,7 +4642,7 @@ function itemRapidaHtml(q, nota = "") {
     <div role="button" tabindex="0" class="rapida-item" data-id="${q.id}">
       <b>${escapar(q.title)}</b>${nota}
       <span>${escapar(textoRapida(q).slice(0, 140))}</span>
-      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version${i === 0 ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? "⭐" : ""}</button>`).join("")}<span class="sub">elige la versión y toca el mensaje</span></div>` : ""}
+      ${vs ? `<div class="versiones">${vs.map((v, i) => `<button type="button" class="version${i === 0 ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? icon("star") : ""}</button>`).join("")}<span class="sub">elige la versión y toca el mensaje</span></div>` : ""}
     </div>`;
 }
 
@@ -4745,7 +4767,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* ---------- ✨ Sugerencias del asesor (proponen la Routine; aprueba una persona) ---------- */
+/* ---------- Sugerencias del asesor (proponen la Routine; aprueba una persona) ---------- */
 
 let sugerenciasTimer = null;
 
@@ -4753,7 +4775,7 @@ function iniciarSugerencias() {
   actualizarConteoSugerencias();
   clearInterval(sugerenciasTimer);
   sugerenciasTimer = setInterval(actualizarConteoSugerencias, 120000);
-  // El botón "✨ Ver sugerencias" de Telegram llega con /crm/?sugerencias=1.
+  // El botón "Ver sugerencias" de Telegram llega con /crm/?sugerencias=1.
   const params = new URLSearchParams(location.search);
   if (params.has("sugerencias")) {
     params.delete("sugerencias");
@@ -4788,7 +4810,7 @@ async function abrirSugerencias() {
 function pintarSugerencias(lista) {
   const cont = $("#lista-sugerencias");
   if (!lista.length) {
-    cont.innerHTML = `<p class="ayuda-modal">No hay sugerencias pendientes. 🎉</p>`;
+    cont.innerHTML = `<p class="ayuda-modal">No hay sugerencias pendientes.</p>`;
     return;
   }
   cont.innerHTML = lista.map((s) => {
@@ -4824,14 +4846,14 @@ function pintarSugerencias(lista) {
         ${conChat ? `<div class="reloj reloj-tarjeta"></div>` : ""}
         ${conChat ? htmlSeguimientosActivos(s.seguimientos) : ""}
         ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
-        ${s.objecion ? `<div class="sug-objecion">🧭 Lo que probablemente lo frena: <b>${escapar(s.objecion)}</b></div>` : ""}
+        ${s.objecion ? `<div class="sug-objecion">${icon("alertCircle")} Lo que probablemente lo frena: <b>${escapar(s.objecion)}</b></div>` : ""}
         ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
         ${!esRapida && (s.pasos || []).length ? `<div class="sub sug-etapa">Mensaje 1</div>` : ""}
         <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
         ${pasos}
         ${s.idea?.texto ? `
         <div class="sug-idea">
-          <div class="sug-idea-cab">💡 Otra opción para este cliente${s.idea.titulo ? `: <b>${escapar(s.idea.titulo)}</b>` : ""}</div>
+          <div class="sug-idea-cab">${icon("bulb")} Otra opción para este cliente${s.idea.titulo ? `: <b>${escapar(s.idea.titulo)}</b>` : ""}</div>
           <div class="sug-idea-texto">${escapar(s.idea.texto)}</div>
           <div class="sug-idea-botones">
             <button type="button" class="sug-idea-usar">Usar como mensaje</button>
@@ -5023,7 +5045,7 @@ const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) ||
 function tarjetaSaldo(s) {
   return `
     <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
-      <div class="sug-cabecera"><span class="sug-tipo">💸 Pagó el saldo · ${escapar(s.nombre || "Cliente")}</span><span class="sub">${escapar(s.titulo || "")} · +${escapar(s.wa_id || "")}</span></div>
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("bag")} Pagó el saldo · ${escapar(s.nombre || "Cliente")}</span><span class="sub">${escapar(s.titulo || "")} · +${escapar(s.wa_id || "")}</span></div>
       ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
       <div class="sug-chat"><p class="sub">Cargando conversación…</p></div>
       <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
@@ -5042,7 +5064,7 @@ function tarjetaPregunta(s) {
   const opciones = Array.isArray(s.idea?.opciones) ? s.idea.opciones : [];
   return `
     <div class="tarjeta-sugerencia sug-variante sug-pregunta" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
-      <div class="sug-cabecera"><span class="sug-tipo">❓ El asesor te pregunta</span>${s.nombre ? `<span class="sub">por ${escapar(s.nombre)}</span>` : ""}</div>
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("help")} El asesor te pregunta</span>${s.nombre ? `<span class="sub">por ${escapar(s.nombre)}</span>` : ""}</div>
       <div class="sug-pregunta-texto">${escapar(s.texto)}</div>
       ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
       ${opciones.length ? `<div class="sug-opciones">${opciones.map((o) => `<button type="button" class="sug-opcion">${escapar(o)}</button>`).join("")}</div>` : ""}
@@ -5062,7 +5084,7 @@ function tarjetaPregunta(s) {
 function tarjetaPruebaLista(s) {
   return `
     <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="">
-      <div class="sug-cabecera"><span class="sug-tipo">🧪 Prueba lista · ${escapar(s.ref_titulo || "")}</span></div>
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("flask")} Prueba lista · ${escapar(s.ref_titulo || "")}</span></div>
       <div class="sub sug-actual">${escapar(s.motivo || "")}</div>
       ${s.texto ? `<div class="sub">Texto ganador:</div><div class="sub sug-actual">${escapar(s.texto)}</div>` : ""}
       <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
@@ -5079,7 +5101,7 @@ function tarjetaPruebaLista(s) {
 function tarjetaVariante(s) {
   return `
     <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="">
-      <div class="sug-cabecera"><span class="sug-tipo">🧪 Probar otra versión · ${escapar(s.ref_titulo || "")}</span><span class="sug-etiqueta">Prueba</span></div>
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("flask")} Probar otra versión · ${escapar(s.ref_titulo || "")}</span><span class="sug-etiqueta">Prueba</span></div>
       ${s.motivo ? `<div class="sub">${escapar(s.motivo)}</div>` : ""}
       <div class="sub">Texto actual:</div>
       <div class="sub sug-actual">${escapar(s.ref_texto || "")}</div>
@@ -5089,7 +5111,7 @@ function tarjetaVariante(s) {
         <span class="sub sug-origen">${escapar(s.origen || "")}</span>
         <button type="button" class="sug-icono sug-copiar" title="Copiar texto">${icon("doc")}</button>
         <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
-        <div class="sug-enviar-grupo"><button type="button" class="sug-probar">🧪 Probarla</button></div>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-probar">${icon("flask")} Probarla</button></div>
       </div>
     </div>`;
 }
@@ -5112,7 +5134,7 @@ function pasoHtml(p) {
 function htmlSeguimientosActivos(lista) {
   if (!lista?.length) return `<div class="sug-segs vacio">Sin seguimientos programados.</div>`;
   const hora = (v) => new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" });
-  return `<div class="sug-segs">⚠️ Ya tiene ${lista.length} seguimiento${lista.length === 1 ? "" : "s"} programado${lista.length === 1 ? "" : "s"} (si mandas esta, los automáticos se cancelan):
+  return `<div class="sug-segs">${icon("alertCircle")} Ya tiene ${lista.length} seguimiento${lista.length === 1 ? "" : "s"} programado${lista.length === 1 ? "" : "s"} (si mandas esta, los automáticos se cancelan):
     ${lista.slice(0, 3).map((x) => `<div class="sub">· ${escapar(hora(x.send_at))} — ${escapar(x.created_by || "")}: ${escapar(x.texto || "")}</div>`).join("")}</div>`;
 }
 
@@ -5127,7 +5149,8 @@ function pintarRelojChat() {
   const cierra = cierreVentana(c?.last_inbound_at);
   const queda = cierra ? cierra - Date.now() : 0;
   el.className = `reloj${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
-  el.textContent = !cierra ? "⏱ No ha escrito: solo plantilla" : queda <= 0 ? "⏱ Ventana cerrada: solo plantilla" : `⏱ ${duracion(queda)} para escribirle gratis`;
+  el.title = !cierra ? "No ha escrito: solo plantilla" : queda <= 0 ? "Ventana cerrada: solo plantilla" : "Tiempo para escribirle gratis";
+  el.innerHTML = `${icon("clock")} ${!cierra ? "no escribió" : queda <= 0 ? "ventana cerrada" : duracion(queda)}`;
 }
 setInterval(pintarRelojChat, 30000);
 
@@ -5161,9 +5184,9 @@ function pintarRelojes() {
     if (r) {
       const queda = cierra - ahora;
       r.className = `reloj reloj-tarjeta${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
-      r.textContent = !cierra ? "⏱ Sin mensajes del cliente: fuera de ventana"
-        : queda <= 0 ? "⏱ Ventana cerrada: ya no se le puede escribir gratis"
-        : `⏱ Quedan ${duracion(queda)} para mandarlo (hasta las ${hora(cierra)})`;
+      r.textContent = !cierra ? "Sin mensajes del cliente: fuera de ventana"
+        : queda <= 0 ? "Ventana cerrada: ya no se le puede escribir gratis"
+        : `Quedan ${duracion(queda)} para mandarlo (hasta las ${hora(cierra)})`;
     }
     let base = ahora;
     card.querySelectorAll(".sug-paso").forEach((p) => {
@@ -5475,7 +5498,7 @@ function pintarQuickPanel() {
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
-    ${prodChat ? `<div class="rapidas-producto sub">📦 Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las generales.</div>` : ""}
+    ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las generales.</div>` : ""}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
@@ -5485,7 +5508,7 @@ function pintarQuickPanel() {
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">📦 ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}</div>
+          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}</div>
           ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -5660,7 +5683,7 @@ function botonesVersiones(q, activa = null) {
   const vs = versionesDe(q);
   if (!vs) return "";
   return `<div class="versiones">${vs.map((v, i) =>
-    `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? "⭐" : ""}</button>`).join("")}</div>`;
+    `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? icon("star") : ""}</button>`).join("")}</div>`;
 }
 
 /** La barrita encima del cuadro para cambiar de versión con un toque. */
@@ -5886,7 +5909,7 @@ $("#rapida-crear").addEventListener("click", async () => {
   }
 });
 
-/* ---------- 🧪 Pruebas de mensajes ---------- */
+/* ---------- Pruebas de mensajes ---------- */
 
 /**
  * Las versiones de una respuesta rápida o de un paso de la bienvenida, con
@@ -5926,33 +5949,33 @@ async function pintarPruebas(cont, tipo, refId) {
   if (tipo === "rapida") {
     // Parte de este texto; los que siguen se suman con ⚡ Respuestas rápidas.
     const q = (estado.quickReplies || []).find((x) => x.id === refId);
-    if (q && textoRapida(q)) combinado = { texto: textoRapida(q).trim(), nota: "Suma los mensajes que van después con ⚡ Respuestas rápidas y junta todo en uno." };
+    if (q && textoRapida(q)) combinado = { texto: textoRapida(q).trim(), nota: "Suma los mensajes que van después con Respuestas rápidas y junta todo en uno." };
   } else if (pasos[0]?.id === refId && pasos.length > 1) {
     combinado = { texto: pasos.map((p) => (p.body || "").trim()).filter(Boolean).join("\n\n"), nota: "Reemplaza toda la bienvenida por un solo mensaje.", media: pasos.flatMap((p) => p.media) };
   }
 
   cont.innerHTML = `
-    <div class="rp-titulo">🧪 ${enPrueba ? "Versiones en prueba" : "Versiones del mensaje"}</div>
+    <div class="rp-titulo">${icon("flask")} ${enPrueba ? "Versiones en prueba" : "Versiones del mensaje"}</div>
     <p class="ayuda-modal">${enPrueba
       ? fijo
         ? (tipo === "rapida"
-          ? "Orden fijo: al tocar el mensaje va la 1 (⭐ la predeterminada); las otras se eligen con los botones 1·2·3·4 del chat. La prueba sigue abierta."
-          : "Orden fijo: la bienvenida manda siempre la 1 (⭐ la predeterminada). La prueba sigue abierta.")
+          ? "Orden fijo: al tocar el mensaje va la 1 (la estrella es la predeterminada); las otras se eligen con los botones 1·2·3·4 del chat. La prueba sigue abierta."
+          : "Orden fijo: la bienvenida manda siempre la 1 (la estrella es la predeterminada). La prueba sigue abierta.")
         : "El CRM las alterna y manda más la que hace avanzar más chats. Con los botones 1·2·3 del chat también se puede elegir a mano. Se decide cuando cada una tenga al menos 20 usos."
       : "Agrega otra forma de decir este mensaje: el CRM las alterna y mide cuál hace avanzar más chats."}</p>
     ${ordenable ? `<p class="sub">${fijo
       ? `Cambia el número para reordenarlas. <button type="button" class="pv-sortear">Volver a que el CRM las alterne</button>`
-      : "Toca ⭐ Predeterminada en la que quieras que salga siempre, o cambia su número para ordenarlas. No se cierra la prueba ni se borra nada."}</p>` : ""}
+      : "Toca Predeterminada en la que quieras que salga siempre, o cambia su número para ordenarlas. No se cierra la prueba ni se borra nada."}</p>` : ""}
     ${vs.map((v, i) => `
       <div class="prueba-version${lider && v.id === lider.id ? " lider" : ""}" data-id="${v.id}">
         <div class="pv-cab">
-          <b>${ordenable ? `<select class="pv-orden" title="Orden (la 1 es la predeterminada)">${vs.map((_, k) => `<option value="${k}"${k === i ? " selected" : ""}>${k + 1}</option>`).join("")}</select>` : i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}${fijo && i === 0 ? " · ⭐ predeterminada" : ""}</b>
+          <b>${ordenable ? `<select class="pv-orden" title="Orden (la 1 es la predeterminada)">${vs.map((_, k) => `<option value="${k}"${k === i ? " selected" : ""}>${k + 1}</option>`).join("")}</select>` : i + 1}${v.id === 0 ? " · original" : v.unico ? " · un solo mensaje" : ""}${fijo && i === 0 ? " · predeterminada" : ""}</b>
           <span class="sub">${v.usos} usos · ${pct(v.avanzaron, v.usos)}% avanzó · ${pct(v.cerraron, v.usos)}% cerró · ${pct(v.respondieron, v.usos)}% respondió${v.editadas ? ` · ${v.editadas} editadas` : ""}${enPrueba ? ` · sale ${Math.round(v.peso * 100)}%` : ""}</span>
         </div>
         ${v.id ? `<div class="sub pv-texto">${v.media_key ? `${icon(v.media_type === "video" ? "video" : "image")} ` : ""}${escapar(v.texto)}</div>` : ""}
         ${v.motivo ? `<div class="sub"><i>${escapar(v.motivo)}</i></div>` : ""}
         <div class="pv-acciones">
-          ${ordenable && !(fijo && i === 0) ? `<button type="button" class="pv-predeterminada">⭐ Predeterminada</button>` : ""}
+          ${ordenable && !(fijo && i === 0) ? `<button type="button" class="pv-predeterminada">${icon("star")} Predeterminada</button>` : ""}
           ${v.id ? `<button type="button" class="pv-editar">Editar</button>` : ""}
           ${enPrueba && esAdmin ? `<button type="button" class="pv-ganadora">Quedarse con esta</button>` : ""}
           ${v.id && esAdmin ? `<button type="button" class="pv-quitar">Quitar</button>` : ""}
@@ -6567,7 +6590,7 @@ function pintarListaSecuencias() {
           </div>
           <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
           <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
-          <select class="sel-catalogo fs-paso-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
+          <select class="sel-catalogo fs-paso-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
           <input type="file" class="fs-paso-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
         </div>
@@ -6961,8 +6984,8 @@ $("#template-enviar").addEventListener("click", async () => {
 /** Si el link de seguimiento ya se le mandó (a mano, desde el chat o desde aquí). */
 function textoLinkAuto(l) {
   const hora = (v) => (v ? new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").toLocaleString("es-PE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "");
-  if (l?.estado === "enviado") return `🔗 Link enviado ${hora(l.cuando)} ✓`;
-  return "🔗 Link todavía no enviado: mándalo abajo o desde el chat.";
+  if (l?.estado === "enviado") return `Link enviado ${hora(l.cuando)}`;
+  return "Link todavía no enviado: mándalo abajo o desde el chat.";
 }
 
 function pintarShalom(c, editando = false) {
@@ -7025,7 +7048,7 @@ async function pintarDetalle(c) {
     ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
-    ${lineaDe(c.linea_id) ? `<div class="tel-contacto">📱 Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
+    ${lineaDe(c.linea_id) ? `<div class="tel-contacto">${icon("phone")} Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
 
     ${estado.productos.length ? `
     <h2>Producto</h2>
@@ -7050,8 +7073,8 @@ async function pintarDetalle(c) {
     <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
-    <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">📦 Recordar recojo en Shalom (4 · 7 · 21 días)</button>
-    <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">🔁 Rescatar con plantilla (4 · 7 · 21 días)</button>
+    <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Recordar recojo en Shalom (4 · 7 · 21 días)</button>
+    <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("rotate")} Rescatar con plantilla (4 · 7 · 21 días)</button>
 
     ${estado.miRol === "admin" ? `
     <h2>Seguimiento para interesados</h2>

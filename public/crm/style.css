@@ -924,10 +924,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .reloj-tarjeta { display: inline-block; background: #e7f6ee; border-radius: var(--radio-full); padding: 3px 10px; font-size: 13px; }
 .reloj-tarjeta.urgente { background: #fde8e7; }
 .reloj-tarjeta.cerrada { background: var(--fondo); }
-/* El cronómetro va en una franja fija sobre los mensajes, a todo el ancho: en el celular el encabezado no tiene sitio. */
-#reloj-chat { display: block; font-size: 12px; text-align: center; padding: 4px 12px; background: #e7f6ee; border-bottom: 1px solid var(--borde); }
-#reloj-chat.urgente { background: #fde8e7; }
-#reloj-chat.cerrada { background: var(--fondo); }
+#reloj-chat { font-size: 11px; white-space: nowrap; }
+#reloj-chat .icono-svg { width: 12px; height: 12px; vertical-align: -2px; }
+#chat header .tel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow: visible; white-space: normal; }
 .sug-segs { font-size: 12px; background: #fff6e0; color: #6d5400; border-radius: var(--radio-s); padding: 4px 8px; margin: 4px 0; }
 .sug-segs.vacio { background: transparent; color: var(--gris); padding: 0; }
 

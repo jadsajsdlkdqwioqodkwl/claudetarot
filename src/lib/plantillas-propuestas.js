@@ -19,7 +19,7 @@ import { TOQUES, marcaDeToque } from "./toques.js";
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
 
 const cuerpo = (text, ejemplo) => ({ type: "BODY", text, example: { body_text: [ejemplo] } });
-const botones = (lista) => ({ type: "BUTTONS", buttons: lista.map((text) => ({ type: "QUICK_REPLY", text })) });
+const botones = (lista) => (lista.length ? [{ type: "BUTTONS", buttons: lista.map((text) => ({ type: "QUICK_REPLY", text })) }] : []);
 const EJEMPLOS = ["María", "el kit de tarot"];
 const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/g) || []).length);
 
@@ -30,7 +30,7 @@ export function propuestasDe(marca, cambios = {}) {
   lista.push({
     nombre: aviso.nombre, grupo: "Aviso de envío (abre la ventana para mandar la boleta)", titulo: "Aviso de envío", cuando: "al despachar el pedido, la vendedora lo manda desde el chat (botón de plantillas)",
     categoria: aviso.categoria, texto: aviso.texto, botones: aviso.botones,
-    componentes: [cuerpo(aviso.texto, ejemploDe(aviso.texto, aviso.ejemplo)), botones(aviso.botones)]
+    componentes: [cuerpo(aviso.texto, ejemploDe(aviso.texto, aviso.ejemplo)), ...botones(aviso.botones)]
   });
   const planes = planesDe(marca);
   for (const [clave, p] of Object.entries(planes)) {
@@ -39,7 +39,7 @@ export function propuestasDe(marca, cambios = {}) {
         nombre: paso.nombre, grupo: clave === "shalom" ? "Recojo en Shalom (prioridad)" : "Rescate de interesado",
         titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: `${paso.dias} días después de su último mensaje`,
         categoria: p.categoria, texto: paso.texto, botones: p.botones,
-        componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), botones(p.botones)]
+        componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), ...botones(p.botones)]
       });
     }
   }
@@ -49,7 +49,7 @@ export function propuestasDe(marca, cambios = {}) {
       const comps = def[variante];
       if (!comps) continue;
       const texto = comps[0].text;
-      const btns = comps[1].buttons.map((b) => b.text);
+      const btns = (comps[1]?.buttons || []).map((b) => b.text);
       const sufijo = variante === "general" ? "" : ` (${variante})`;
       lista.push({
         nombre: variante === "general" ? `toque_${id}` : `toque_${id}_${variante}`,
@@ -66,7 +66,8 @@ export function propuestasDe(marca, cambios = {}) {
     p.editada = true;
     p.texto = c.texto;
     p.botones = c.botones;
-    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), botones(c.botones)];
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)];
+    if (c.categoria) p.categoria = c.categoria;
   }
   const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
@@ -89,7 +90,11 @@ export async function leerCambios(db) {
  * Reglas de Meta que se revisan aquí: mismas variables {{n}} que el texto original, que el cuerpo no
  * empiece ni termine con una variable, máximo 1024 caracteres y botones de hasta 25 caracteres.
  */
-export async function guardarCambio(env, marca, nombre, { texto, botones: btns, restablecer }) {
+export const CATEGORIAS = ["MARKETING", "UTILITY"];
+// Meta pide botones solo con letras, números y signos simples: nada de emojis ni saltos de línea.
+const RE_BOTON = /^[\p{L}\p{N} ¿?¡!.,:;'()%\-+/&]+$/u;
+
+export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer }) {
   const original = propuestasDe(marca).find((p) => p.nombre === nombre);
   if (!original) throw new Error("No es una propuesta de esta marca.");
   const cambios = await leerCambios(env.CRM_DB);
@@ -100,11 +105,15 @@ export async function guardarCambio(env, marca, nombre, { texto, botones: btns, 
     texto = String(texto || "").trim();
     btns = (Array.isArray(btns) ? btns : []).map((b) => String(b || "").trim());
     const vars = (t) => [...new Set(t.match(/\{\{\d\}\}/g) || [])].sort().join(",");
+    if (!CATEGORIAS.includes(categoria)) throw new Error("La categoría es Marketing o Utilidad.");
     if (!texto || texto.length > 1024) throw new Error("El texto no puede estar vacío ni pasar de 1024 caracteres.");
     if (vars(texto) !== vars(original.texto)) throw new Error(`Debe llevar las mismas variables que el original: ${vars(original.texto) || "ninguna"}. {{1}} es el primer nombre del cliente.`);
     if (/^\s*\{\{|\}\}\s*$/.test(texto)) throw new Error("Meta no acepta que el texto empiece o termine con una variable.");
-    if (btns.length !== original.botones.length || btns.some((b) => !b || b.length > 25)) throw new Error(`Pon ${original.botones.length} botones de hasta 25 caracteres.`);
-    cambios[clave] = { texto, botones: btns };
+    if (btns.length > 3) throw new Error("Máximo 3 botones.");
+    const mala = btns.find((b) => !b || b.length > 25 || !RE_BOTON.test(b));
+    if (mala !== undefined || btns.some((b) => !b)) throw new Error("Cada botón: hasta 25 caracteres, solo letras, números y signos simples (sin emojis).");
+    if (new Set(btns.map((b) => b.toLowerCase())).size !== btns.length) throw new Error("Los botones no pueden repetirse.");
+    cambios[clave] = { texto, botones: btns, categoria };
   }
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
 }
@@ -123,12 +132,13 @@ export async function estadoDePropuestas(env) {
   for (const [marca, nombre] of Object.entries(MARCAS)) {
     const envM = await envDeMarca(env, marca);
     let porNombre = {};
+    let catMeta = {};
     let aviso = envM ? null : `Falta conectar el número de ${nombre} (CRM → Productos y números, con su WABA).`;
     if (envM) {
       try {
         for (const t of await listarTemplates(envM)) {
           // Si hay varias del mismo nombre (otro idioma), gana la aprobada.
-          if (!porNombre[t.name] || t.status === "APPROVED") porNombre[t.name] = t.status;
+          if (!porNombre[t.name] || t.status === "APPROVED") { porNombre[t.name] = t.status; catMeta[t.name] = t.category; }
         }
       } catch (err) {
         aviso = `No pude leer el estado en Meta: ${err.message}`;
@@ -136,7 +146,7 @@ export async function estadoDePropuestas(env) {
     }
     marcas.push({
       marca, nombre, aviso, conectada: Boolean(envM),
-      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
+      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, categoriaMeta: catMeta[p.nombre] || null, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
     });
   }
   return marcas;

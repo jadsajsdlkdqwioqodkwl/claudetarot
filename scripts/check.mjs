@@ -842,6 +842,18 @@ check("las letras de columna llegan hasta la última de la hoja",
     check("los toques están conectados al cron (minuto % 5 = 2) y encendidos en wrangler",
       readFileSync(new URL("../src/index.js", import.meta.url), "utf8").includes("procesarToques(env)") && wrangler.includes('"TOQUES": "d2'));
   }
+  {
+    // Regla del dueño: la interfaz del CRM usa iconos (icons.js), nunca emojis. Los emojis solo valen
+    // dentro del texto que se le escribe a un cliente y en el selector de emojis.
+    const EMOJI = "[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B50}\\u{23F0}-\\u{23FF}]";
+    const enTag = new RegExp(`>[^<>\\n]*${EMOJI}`, "u");
+    const enOption = new RegExp(`<option[^>]*>[^<]*${EMOJI}`, "u");
+    const sucias = ["../public/crm/app.js", "../public/crm/index.html"].flatMap((f) =>
+      readFileSync(new URL(f, import.meta.url), "utf8").split("\n").map((l, i) => [f, i + 1, l])
+        .map(([f, n, l]) => [f, n, l.replace(/[★✓✗✕]/g, "")]) // símbolos de texto, no emojis
+        .filter(([, , l]) => !/^\s*(\/\/|\*|\/\*)/.test(l) && !/EMOJIS|Hola\$\{/.test(l) && (enTag.test(l) || enOption.test(l))));
+    check("la interfaz del CRM usa iconos, no emojis", sucias.length === 0, sucias.slice(0, 3).map(([f, n]) => `${f}:${n}`).join(", "));
+  }
   check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
     sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));
   check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));

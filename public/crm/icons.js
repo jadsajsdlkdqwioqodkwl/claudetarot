@@ -4,6 +4,12 @@
  */
 
 const ICONS = {
+  box: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2l7 3.5v9L10 18l-7-3.5v-9z"/><path d="M3 5.5l7 3.5 7-3.5M10 9v9"/></svg>`,
+  phone: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="5.5" y="2" width="9" height="16" rx="2"/><path d="M9 15.5h2" stroke-linecap="round"/></svg>`,
+  flask: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M7.5 2h5M8.5 2v5.5L3.5 16a1.5 1.5 0 001.3 2.2h10.4a1.5 1.5 0 001.3-2.2l-5-8.5V2"/><path d="M6 12.5h8"/></svg>`,
+  bulb: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M7 14.5c0-1.5-2.5-2.5-2.5-5.5a5.5 5.5 0 0111 0c0 3-2.5 4-2.5 5.5zM7.5 17h5"/></svg>`,
+  help: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M7.7 7.8a2.4 2.4 0 114 1.8c-.9.7-1.7 1.1-1.7 2.2M10 14.4v.1"/></svg>`,
+  link: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3.5 3.5 0 005 0l3-3a3.5 3.5 0 00-5-5l-1 1M11.5 8.5a3.5 3.5 0 00-5 0l-3 3a3.5 3.5 0 005 5l1-1"/></svg>`,
   star: `<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L1.3 7.8l6.1-.7z"/></svg>`,
   starOutline: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M10 1.5l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L1.3 7.8l6.1-.7z"/></svg>`,
   paperclip: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13.5 6.5l-6 6a2.5 2.5 0 003.5 3.5l6-6a4 4 0 00-5.5-5.5l-6 6a5.5 5.5 0 007.5 7.5"/></svg>`,

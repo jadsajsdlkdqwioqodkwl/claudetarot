@@ -169,7 +169,7 @@
       <div class="ayuda-modal">De un producto: sale primero en los chats de ese producto y no aparece en los de otros. General: en todos.</div>
     </div>
     <div class="rp-titulo">Se manda con</div>
-    <select id="rapida-catalogo" class="sel-catalogo"><option value="">Sus fotos/videos</option><option value="*">🛍️ Catálogo completo</option></select>
+    <select id="rapida-catalogo" class="sel-catalogo"><option value="">Sus fotos/videos</option><option value="*">Catálogo completo</option></select>
     <div class="ayuda-modal" id="rapida-catalogo-ayuda" style="display:none">Sale el catálogo o el producto elegido en vez de las fotos/videos (si tenía, se guardan por si vuelves a "Sus fotos/videos").</div>
     <div class="rp-titulo">Seguimiento si el cliente no responde (opcional)</div>
     <div id="rapida-pasos"></div>
@@ -211,7 +211,7 @@
       <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
       <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
       <div id="seg-rapida-preview" style="display:none"></div>
-      <select id="seg-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
+      <select id="seg-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
       <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
     </div>
 
@@ -523,7 +523,6 @@
 
     <h2>Mensaje masivo</h2>
     <p class="ayuda-modal" style="color:var(--peligro)"><strong>Apagado:</strong> ya no se mandan mensajes en bloque. Cada chat se abre, se lee y se le escribe aparte.</p>
-    <div style="display:none">
     <p class="ayuda-modal">Un mismo mensaje a varios números — para avisos como "cambié de WhatsApp". Si la lista es de contactos que no te escribieron en las últimas 24h (lo normal en una lista vieja), WhatsApp exige que sea una <strong>plantilla aprobada</strong> — el texto libre se va a rechazar uno por uno.</p>
 
     <textarea id="bulk-numeros" placeholder="Un número por línea, con código de país (ej. 51987654321)" style="min-height:110px"></textarea>
@@ -542,7 +541,6 @@
 
     <button class="crear" id="bulk-enviar-btn" type="button" style="width:100%">Mandar</button>
     <p class="ayuda-modal" id="bulk-resultado"></p>
-    </div>
 
     <hr />
     <h2>Envíos masivos recientes</h2>
@@ -608,7 +606,7 @@
         <span id="leads-delay-ref">después de aplicarlo</span>
       </div>
       <textarea id="leads-texto" placeholder="Texto del mensaje (opcional si adjuntas foto/video)"></textarea>
-      <select id="leads-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">🛍️ Catálogo completo</option></select>
+      <select id="leads-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
       <input type="file" id="leads-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
       <div class="acciones">
         <button class="cancelar" id="leads-cancelar-edicion" type="button" style="display:none">Cancelar edición</button>

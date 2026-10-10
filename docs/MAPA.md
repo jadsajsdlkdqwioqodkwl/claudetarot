@@ -1,5 +1,7 @@
 # Mapa: qué hay, cómo se conecta y qué NO se mueve
 
+> **Reglas de interfaz del dueño** (detalle en `CLAUDE.md`): sin emojis en la interfaz del CRM, siempre iconos (`public/crm/icons.js`); no borrar ni esconder funciones sin preguntar; el cronómetro de la ventana de 24 h va al lado del nombre y teléfono del cliente.
+
 Este es el documento del workflow. Léelo antes de mover, renombrar o borrar
 cualquier archivo, documento, hoja, pestaña, columna o Routine. **Todo cambio
 al workflow actualiza este mapa en el mismo commit** y suma una línea al
@@ -87,6 +89,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · Plantillas: de 0 a 3 botones, tipo de mensaje elegible (Marketing o Utilidad; se muestra si Meta la reclasificó). Interfaz sin emojis (iconos nuevos: caja, teléfono, matraz, bombilla, ayuda, enlace) con chequeo automático; cronómetro otra vez junto al teléfono; se restauran el botón «Links de Shalom», la etiqueta «Contacto» y el formulario de mensaje masivo, que yo había ocultado sin que me lo pidieran.
 
 - 2026-10-10 · Aviso por Telegram cuando Meta aprueba o rechaza una plantilla propuesta (`vigilarPlantillas`, cron de 15 min); probado con un Meta simulado (`META_GRAPH_URL` y `TELEGRAM_API_URL`, solo para pruebas locales).
 

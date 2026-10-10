@@ -4,6 +4,12 @@
 > Routine, lee `docs/MAPA.md` (qué se conecta con qué y qué no se toca).
 > Todo cambio al workflow actualiza `docs/MAPA.md` en el mismo commit.
 
+## Reglas de interfaz del CRM (del dueño, no se negocian)
+
+- **Sin emojis en la interfaz, siempre iconos.** Todo lo que se ve en el CRM (botones, badges, títulos, avisos, selects, cronómetros) usa los iconos SVG de `public/crm/icons.js` (`icon("nombre")`); si falta uno, se agrega ahí. Los emojis solo valen dentro del texto que se le escribe a un cliente y en el selector de emojis del chat. `npm run check` falla si aparece uno en la interfaz.
+- **No borrar ni esconder funciones por cuenta propia.** Si algo se ve de más, se pregunta. Lo que se mueve de lugar (por ejemplo el cronómetro de la ventana de 24 h, que va al lado del nombre y el teléfono del cliente, no en una franja) se deja donde el dueño lo tenía. Si el dueño dice que algo está deprecado, se quita solo eso y se avisa qué más depende de ello.
+- **Nada de opciones fijas que el dueño debería poder elegir** (por ejemplo, cuántos botones lleva una plantilla): se ofrece la elección.
+
 ## Si vas a proponer textos para clientes (asesor, director CRO, semanal)
 
 1. Lee `docs/negocio.md` (reglas fijas del negocio) y corre

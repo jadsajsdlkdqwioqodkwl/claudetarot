@@ -4,7 +4,7 @@
  *
  * GET  /api/crm/plantillas-propuestas → { marcas: [{ marca, nombre, aviso, propuestas: [{ nombre, grupo, titulo, cuando, categoria, texto, botones, estado }] }] }
  *      estado: SIN_ENVIAR | PENDING | APPROVED | REJECTED | PAUSED | DISABLED | DESCONOCIDO | SIN_NUMERO
- * PATCH /api/crm/plantillas-propuestas { marca, nombre, texto, botones: [a, b] } o { marca, nombre, restablecer: true }
+ * PATCH /api/crm/plantillas-propuestas { marca, nombre, texto, botones: [0 a 3], categoria: "MARKETING" | "UTILITY" } o { marca, nombre, restablecer: true }
  *      Cambia el texto y los botones antes de mandarla (solo si aún no está en Meta).
  * POST /api/crm/plantillas-propuestas { marca, nombres: [...] } → { resultados: [{ nombre, ok, error? }] }
  */
