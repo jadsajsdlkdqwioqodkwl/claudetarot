@@ -10,6 +10,7 @@
  */
 
 import { listarLineas, envDeLinea } from "./lineas.js";
+import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { listarTemplates, crearTemplate } from "./whatsapp.js";
 import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
@@ -18,10 +19,11 @@ export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
 
 const cuerpo = (text, ejemplo) => ({ type: "BODY", text, example: { body_text: [ejemplo] } });
 const botones = (lista) => ({ type: "BUTTONS", buttons: lista.map((text) => ({ type: "QUICK_REPLY", text })) });
+const EJEMPLOS = ["María", "el kit de tarot"];
 const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/g) || []).length);
 
 /** Todas las propuestas de una marca: { nombre, grupo, titulo, cuando, categoria, texto, botones, componentes }. */
-export function propuestasDe(marca) {
+export function propuestasDe(marca, cambios = {}) {
   const lista = [];
   const aviso = AVISOS_ENVIO[marca];
   lista.push({
@@ -56,8 +58,54 @@ export function propuestasDe(marca) {
       });
     }
   }
+  // Lo que el admin cambió en el CRM (texto y botones) manda sobre el texto del código.
+  for (const p of lista) {
+    const c = cambios[`${marca}:${p.nombre}`];
+    if (!c) continue;
+    p.editada = true;
+    p.texto = c.texto;
+    p.botones = c.botones;
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), botones(c.botones)];
+  }
   const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
+}
+
+const CLAVE_CAMBIOS = "plantillas_textos";
+
+/** { "marca:nombre": { texto, botones } } con lo que el admin editó. */
+export async function leerCambios(db) {
+  try {
+    return JSON.parse((await obtenerAjuste(db, CLAVE_CAMBIOS)) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Guarda (o con `restablecer`, borra) el texto y los botones de una propuesta. Solo mientras no se haya
+ * mandado a Meta: una plantilla ya enviada no se puede cambiar con el mismo nombre.
+ * Reglas de Meta que se revisan aquí: mismas variables {{n}} que el texto original, que el cuerpo no
+ * empiece ni termine con una variable, máximo 1024 caracteres y botones de hasta 25 caracteres.
+ */
+export async function guardarCambio(env, marca, nombre, { texto, botones: btns, restablecer }) {
+  const original = propuestasDe(marca).find((p) => p.nombre === nombre);
+  if (!original) throw new Error("No es una propuesta de esta marca.");
+  const cambios = await leerCambios(env.CRM_DB);
+  const clave = `${marca}:${nombre}`;
+  if (restablecer) {
+    delete cambios[clave];
+  } else {
+    texto = String(texto || "").trim();
+    btns = (Array.isArray(btns) ? btns : []).map((b) => String(b || "").trim());
+    const vars = (t) => [...new Set(t.match(/\{\{\d\}\}/g) || [])].sort().join(",");
+    if (!texto || texto.length > 1024) throw new Error("El texto no puede estar vacío ni pasar de 1024 caracteres.");
+    if (vars(texto) !== vars(original.texto)) throw new Error(`Debe llevar las mismas variables que el original: ${vars(original.texto) || "ninguna"}. {{1}} es el primer nombre del cliente.`);
+    if (/^\s*\{\{|\}\}\s*$/.test(texto)) throw new Error("Meta no acepta que el texto empiece o termine con una variable.");
+    if (btns.length !== original.botones.length || btns.some((b) => !b || b.length > 25)) throw new Error(`Pon ${original.botones.length} botones de hasta 25 caracteres.`);
+    cambios[clave] = { texto, botones: btns };
+  }
+  await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
 }
 
 /** El env de esa marca (su número y su WABA), o null si no hay línea con WABA. */
@@ -70,6 +118,7 @@ export async function envDeMarca(env, marca) {
 /** Para la pantalla: cada marca con sus propuestas y cómo está cada una en Meta. */
 export async function estadoDePropuestas(env) {
   const marcas = [];
+  const cambios = await leerCambios(env.CRM_DB);
   for (const [marca, nombre] of Object.entries(MARCAS)) {
     const envM = await envDeMarca(env, marca);
     let porNombre = {};
@@ -86,7 +135,7 @@ export async function estadoDePropuestas(env) {
     }
     marcas.push({
       marca, nombre, aviso, conectada: Boolean(envM),
-      propuestas: propuestasDe(marca).map((p) => ({ ...p, componentes: undefined, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
+      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
     });
   }
   return marcas;
@@ -96,7 +145,7 @@ export async function estadoDePropuestas(env) {
 export async function mandarPropuestas(env, marca, nombres) {
   const envM = await envDeMarca(env, marca);
   if (!envM) throw new Error(`Falta conectar el número de ${MARCAS[marca] || marca}.`);
-  const propuestas = propuestasDe(marca);
+  const propuestas = propuestasDe(marca, await leerCambios(env.CRM_DB));
   const existentes = new Set((await listarTemplates(envM)).map((t) => t.name));
   const resultados = [];
   for (const nombre of nombres) {

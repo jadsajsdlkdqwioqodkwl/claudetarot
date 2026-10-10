@@ -571,12 +571,39 @@ async function abrirPlantillasMeta() {
                 </div>
                 <div style="white-space:pre-wrap;margin:6px 0;font-size:13px;line-height:1.4;background:#f7f8fa;border-radius:6px;padding:8px">${escapar(p.texto)}</div>
                 <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.map((b) => `«${escapar(b)}»`).join(" · ")} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
-                ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="margin-top:6px;font-size:12px">Mandar a Meta</button>` : ""}
+                ${p.editada ? `<div style="font-size:12px;color:var(--gris)">✏️ Texto editado por ti</div>` : ""}
+                <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                  ${["SIN_ENVIAR", "DESCONOCIDO"].includes(p.estado) ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">✏️ Editar texto y botones</button>` : ""}
+                  ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
+                </div>
               </div>`;
             }).join("")}`;
         }).join("")}
       </div>`;
     }).join("");
+    cont.querySelectorAll(".editar-plantilla").forEach((b) => b.addEventListener("click", () => {
+      const card = b.closest(".ad-card");
+      const marca = b.closest(".marca-plantillas").dataset.marca;
+      const botones = JSON.parse(b.dataset.botones);
+      card.innerHTML = `
+        <div style="font-size:12px;color:var(--gris);margin-bottom:4px">Usa <code>{{1}}</code> donde va el nombre del cliente (y deja las demás variables como están). Meta no deja empezar ni terminar con una variable.</div>
+        <textarea class="pl-texto" rows="5" maxlength="1024" style="width:100%">${escapar(b.dataset.texto)}</textarea>
+        <div style="display:flex;gap:6px;margin-top:6px">${botones.map((x, i) => `<input type="text" class="pl-boton" maxlength="25" value="${escapar(x)}" placeholder="Botón ${i + 1} (máx. 25)" style="flex:1;min-width:0" />`).join("")}</div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button type="button" class="cancelar pl-cancelar" style="font-size:12px">Cancelar</button>
+          ${b.dataset.editada === "1" ? `<button type="button" class="cancelar pl-restablecer" style="font-size:12px">Volver al texto original</button>` : ""}
+          <button type="button" class="crear pl-guardar" style="font-size:12px">Guardar</button>
+        </div>`;
+      const guardar = async (cuerpo) => {
+        try {
+          await pedir("/api/crm/plantillas-propuestas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, nombre: b.dataset.nombre, ...cuerpo }) });
+          abrirPlantillasMeta();
+        } catch (err) { alert(err.message); }
+      };
+      card.querySelector(".pl-cancelar").addEventListener("click", abrirPlantillasMeta);
+      card.querySelector(".pl-restablecer")?.addEventListener("click", () => guardar({ restablecer: true }));
+      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value) }));
+    }));
     cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
       const nombres = b.dataset.nombres.split(",");
       const marca = b.closest(".marca-plantillas");

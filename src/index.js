@@ -113,7 +113,7 @@ import {
   onRequestPatch as crmVariantesPatch,
   onRequestDelete as crmVariantesDelete
 } from "./api/crm/variantes.js";
-import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost } from "./api/crm/plantillas-propuestas.js";
+import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
 import { procesarFrases } from "./lib/crm-frases.js";
@@ -160,7 +160,7 @@ const ROUTES = {
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
-  "/api/crm/plantillas-propuestas": { GET: crmPropuestasGet, POST: crmPropuestasPost },
+  "/api/crm/plantillas-propuestas": { GET: crmPropuestasGet, POST: crmPropuestasPost, PATCH: crmPropuestasPatch },
   "/api/crm/planes": { GET: crmPlanesGet, POST: crmPlanesPost, PATCH: crmPlanesPatch },
   "/api/crm/productos": { GET: crmProductosGet, POST: crmProductosPost, PATCH: crmProductosPatch, DELETE: crmProductosDelete },
   "/api/crm/lineas": { GET: crmLineasGet, POST: crmLineasPost, PATCH: crmLineasPatch },

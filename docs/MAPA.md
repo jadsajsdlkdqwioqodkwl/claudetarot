@@ -59,7 +59,7 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 
 ## Plantillas de Meta: dónde se ven y quién las manda
 
-CRM → Herramientas → **Plantillas para Meta** (solo admin): muestra, por marca (Tarot Store / URO), el texto exacto, categoría, botones y estado en Meta de cada plantilla propuesta (recojo en Shalom primero, rescate de interesado, toques). El botón «Mandar a Meta» las crea en la WABA de ese número. **Flujo del envío por Shalom:** la vendedora manda la plantilla «Aviso de envío» (`aviso_envio_shalom` / `uro_aviso_envio_shalom`, dos botones) desde el botón de plantillas del chat → el cliente toca un botón y se abre su ventana → ella manda la boleta → al responder el cliente el CRM programa solo el recojo (4, 7 y 21 días desde ese mensaje); si vuelve a escribir se recuenta desde ahí, y con «Ya lo recogí» el plan termina. Los textos viven en `src/lib/planes-plantilla.js` (planes) y `src/lib/toques.js` (toques); cambiar un texto ya aprobado exige un nombre nuevo. URO usa el prefijo `uro_` / `toque_u_` y no nombra síntomas (tema íntimo; el aviso se ve en la pantalla de bloqueo).
+CRM → Herramientas → **Plantillas para Meta** (solo admin): muestra, por marca (Tarot Store / URO), el texto exacto, categoría, botones y estado en Meta de cada plantilla propuesta (recojo en Shalom primero, rescate de interesado, toques). El botón «Mandar a Meta» las crea en la WABA de ese número. **Flujo del envío por Shalom:** la vendedora manda la plantilla «Aviso de envío» (`aviso_envio_shalom` / `uro_aviso_envio_shalom`, dos botones) desde el botón de plantillas del chat → el cliente toca un botón y se abre su ventana → ella manda la boleta → al responder el cliente el CRM programa solo el recojo (4, 7 y 21 días desde ese mensaje); si vuelve a escribir se recuenta desde ahí, y con «Ya lo recogí» el plan termina. Los textos de origen viven en `src/lib/planes-plantilla.js` (planes) y `src/lib/toques.js` (toques); el admin puede **editar el texto y los botones desde esa pantalla** (ajuste `plantillas_textos` en `crm_settings`, manda sobre el código) mientras la plantilla esté «Sin enviar». Una ya enviada a Meta no se puede cambiar con el mismo nombre: hace falta un nombre nuevo. Ojo: el texto de vista previa de los pasos ya programados sigue siendo el original; lo que le llega al cliente es el de la plantilla aprobada. URO usa el prefijo `uro_` / `toque_u_` y no nombra síntomas (tema íntimo; el aviso se ve en la pantalla de bloqueo).
 
 ## Seguimientos del CRM: qué corre y qué no (auditoría 2026-10-10)
 
@@ -87,6 +87,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · Plantillas editables desde el CRM (texto y botones, con las reglas de Meta validadas) antes de mandarlas a aprobar.
 
 - 2026-10-10 · Aviso de envío por Shalom (plantilla de 2 botones que reabre la ventana para mandar la boleta) y recojo 4/7/21 que arranca solo cuando el cliente responde (`activarPlanTrasAviso`, `rearmarPlanShalom`).
 
