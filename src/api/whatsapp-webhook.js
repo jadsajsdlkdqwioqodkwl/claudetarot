@@ -22,6 +22,7 @@ import {
   idPorWaMessageId,
   registrarReaccionCliente,
   obtenerAjuste,
+  guardarAjuste,
   programarSecuenciaSeguimiento,
   registrarEventoCapi,
   agregarEtiquetaMeta,
@@ -304,6 +305,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const cuerpoCrudo = await request.text();
 
   if (!(await firmaValida(env, cuerpoCrudo, request.headers.get("X-Hub-Signature-256")))) {
+    // Para diagnosticar una app nueva (secreto mal puesto): solo la hora y el número, nada del cliente.
+    const phoneId = cuerpoCrudo.match(/"phone_number_id"\s*:\s*"(\d+)"/)?.[1] || "?";
+    await guardarAjuste(env.CRM_DB, "webhook_ultimo_rechazo", `${new Date().toISOString()} firma inválida · phone_number_id ${phoneId}`).catch(() => {});
     return json({ error: "Firma inválida." }, 401);
   }
 
@@ -318,6 +322,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
     console.error("Webhook de WhatsApp: falta el binding CRM_DB.");
     return json({ ok: true }); // 200 igual: no queremos que Meta reintente sin parar
   }
+
+  // Último aviso por número (diagnóstico de números nuevos): llegó y con qué phone_number_id.
+  const phoneIds = [...new Set((payload.entry || []).flatMap((e) => (e.changes || []).map((c) => c.value?.metadata?.phone_number_id)).filter(Boolean))];
+  if (phoneIds.length) waitUntil(guardarAjuste(env.CRM_DB, "webhook_ultimo_ok", `${new Date().toISOString()} · ${phoneIds.join(",")}`).catch(() => {}));
 
   // Meta llama al mismo Worker que sirve /crm: con esto el aviso de
   // Telegram trae un botón que abre el chat.
