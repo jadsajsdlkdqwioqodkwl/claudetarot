@@ -47,7 +47,9 @@ export async function onRequestGet({ request, env }) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  if (modo === "subscribe" && env.WHATSAPP_VERIFY_TOKEN && token === env.WHATSAPP_VERIFY_TOKEN) {
+  // _2: el de la app de la segunda marca (URO), que apunta al mismo webhook.
+  const tokens = [env.WHATSAPP_VERIFY_TOKEN, env.WHATSAPP_VERIFY_TOKEN_2].filter(Boolean);
+  if (modo === "subscribe" && token && tokens.includes(token)) {
     return new Response(challenge || "", { status: 200 });
   }
   return json({ error: "Token de verificación inválido." }, 403);

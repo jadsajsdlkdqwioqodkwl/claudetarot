@@ -271,22 +271,31 @@ export async function urlDeMedia(env, mediaId) {
 /**
  * Verifica la firma `X-Hub-Signature-256` que manda Meta en cada webhook,
  * con HMAC-SHA256 sobre el cuerpo crudo y `WHATSAPP_APP_SECRET`. Sin esto
- * cualquiera podría mandar mensajes falsos al webhook.
+ * cualquiera podría mandar mensajes falsos al webhook. Cada app de Meta firma
+ * con su propia clave: `WHATSAPP_APP_SECRET_2` es la de la app de la segunda
+ * marca (URO, "WSP API 2DA ECOMMERCE"), que llega al mismo webhook.
  */
 export async function firmaValida(env, cuerpoCrudo, firmaHeader) {
-  if (!env.WHATSAPP_APP_SECRET) return true; // no configurado: no se bloquea, pero conviene ponerlo
+  const secretos = [env.WHATSAPP_APP_SECRET, env.WHATSAPP_APP_SECRET_2].filter(Boolean);
+  if (!secretos.length) return true; // no configurado: no se bloquea, pero conviene ponerlo
   if (!firmaHeader || !firmaHeader.startsWith("sha256=")) return false;
+  const esperado = firmaHeader.slice("sha256=".length);
+  for (const secreto of secretos) {
+    if (await firmaDe(secreto, cuerpoCrudo, esperado)) return true;
+  }
+  return false;
+}
 
+async function firmaDe(secreto, cuerpoCrudo, esperado) {
   const clave = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(env.WHATSAPP_APP_SECRET),
+    new TextEncoder().encode(secreto),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
   );
   const firma = await crypto.subtle.sign("HMAC", clave, new TextEncoder().encode(cuerpoCrudo));
   const hex = [...new Uint8Array(firma)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const esperado = firmaHeader.slice("sha256=".length);
 
   if (hex.length !== esperado.length) return false;
   let diff = 0;

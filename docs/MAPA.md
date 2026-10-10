@@ -21,7 +21,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | API del asesor | `https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/*` + clave `ASESOR_CLAVE` | Scripts del asesor |
 | Skills | `.claude/skills/*` (ver su README) | Routines y sesiones de Claude Code |
 | Pausa "escribiendo…" | `src/lib/crm-send.js` | Regla del dueño, ver `CLAUDE.md` |
-| **Números y productos del CRM** | D1: tablas `lineas` y `productos` (CRM → Herramientas → Productos y números) | Webhook (a qué número escribió y de qué producto es), envíos, CAPI. URO = Phone number ID `1243884548804185`, píxel `1788156381816025`. Ver `docs/productos-y-numeros.md` |
+| **Números y productos del CRM** | D1: tablas `lineas` y `productos` (CRM → Herramientas → Productos y números) | Webhook (a qué número escribió y de qué producto es), envíos, CAPI. URO = app de Meta "WSP API 2DA ECOMMERCE", WABA `1608866757469431`, Phone number ID `1243884548804185`, píxel `1788156381816025`, secretos `WHATSAPP_TOKEN_URO`, `WHATSAPP_APP_SECRET_2`, `WHATSAPP_VERIFY_TOKEN_2`. Ver `docs/productos-y-numeros.md` |
 | Reglas de URO | `docs/uro/negocio.md` | Vendedoras de URO, textos de URO (no aplican las de Tarot) |
 | Instrucciones de vendedoras | `docs/vendedoras.md` | Cuentas nuevas (entrar, contraseña, Telegram) |
 
@@ -66,6 +66,8 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · El webhook acepta una segunda app de Meta (URO): `WHATSAPP_APP_SECRET_2` y `WHATSAPP_VERIFY_TOKEN_2`; línea URO con su WABA y `WHATSAPP_TOKEN_URO`.
 
 - 2026-10-10 · CRM con varios números y productos (URO en su propio número,
   color, respuestas rápidas, bienvenida y secuencia por producto; CAPI por
