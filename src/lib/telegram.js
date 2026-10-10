@@ -59,7 +59,7 @@ export async function notificarTelegram(env, mensaje) {
   if (!token || !chatId) return; // Sin credenciales no se avisa; el pedido no se pierde.
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`${env.TELEGRAM_API_URL || "https://api.telegram.org"}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: mensaje, parse_mode: "Markdown" })

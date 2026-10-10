@@ -9,7 +9,8 @@
 const GRAPH_VERSION = "v23.0"; // "escribiendo…" (typing_indicator) no existe en v21: Meta lo ignora sin error
 
 function graphUrl(env, path) {
-  return `https://graph.facebook.com/${GRAPH_VERSION}/${path}`;
+  // META_GRAPH_URL solo se usa en pruebas locales (un Meta simulado); en producción no existe.
+  return `${env.META_GRAPH_URL || "https://graph.facebook.com"}/${GRAPH_VERSION}/${path}`;
 }
 
 async function llamar(env, path, body) {
@@ -80,7 +81,7 @@ export async function enviarReaccion(env, waId, targetWaMessageId, emoji) {
 /** Lista los Message Templates de la cuenta (solo sirven los `APPROVED`). */
 export async function listarTemplates(env) {
   const res = await fetch(
-    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?fields=name,status,language,category,components&limit=100`),
+    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?fields=name,status,language,category,components,rejected_reason&limit=100`),
     { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
   );
   const datos = await res.json().catch(() => ({}));

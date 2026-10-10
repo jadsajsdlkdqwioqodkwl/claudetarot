@@ -113,6 +113,7 @@ import {
   onRequestPatch as crmVariantesPatch,
   onRequestDelete as crmVariantesDelete
 } from "./api/crm/variantes.js";
+import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -278,6 +279,7 @@ export default {
       await cancelarLinksAutomaticos(env.CRM_DB).catch((err) => console.error("Links de envío:", err.message));
       // El resumen (una vez al día) gasta muchas consultas: esa pasada no
       // hace más; embudo y frases siguen en la de 15 min después.
+      await vigilarPlantillas(env).catch((err) => console.error("Vigilar plantillas:", err.message));
       const hizoResumen = await enviarResumenSiToca(env).catch((err) => {
         console.error("Resumen semanal:", err.message);
         return false; // si falla, que no bloquee el embudo ni las frases

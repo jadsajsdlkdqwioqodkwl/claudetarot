@@ -11,6 +11,7 @@
 
 import { listarLineas, envDeLinea } from "./lineas.js";
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
+import { notificarTelegram } from "./telegram.js";
 import { listarTemplates, crearTemplate } from "./whatsapp.js";
 import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
@@ -160,4 +161,47 @@ export async function mandarPropuestas(env, marca, nombres) {
     }
   }
   return resultados;
+}
+
+/**
+ * Cron de 15 min: ¿Meta aprobó o rechazó alguna plantilla propuesta? Compara con el último estado
+ * guardado (`plantillas_estados`) y avisa por Telegram al dueño solo de lo que CAMBIÓ. La primera
+ * pasada solo toma la foto, sin avisar. De paso deja el estado en el caché de plantillaAprobada, así
+ * los planes y toques la usan al instante (si no, tardaban hasta 10 min en enterarse).
+ */
+export async function vigilarPlantillas(env) {
+  const db = env.CRM_DB;
+  if (!db) return { avisos: 0 };
+  const antes = JSON.parse((await obtenerAjuste(db, "plantillas_estados").catch(() => null)) || "null");
+  const ahora = {};
+  const avisos = [];
+  for (const [marca, nombre] of Object.entries(MARCAS)) {
+    const envM = await envDeMarca(env, marca);
+    if (!envM) continue;
+    let existentes;
+    try {
+      existentes = await listarTemplates(envM);
+    } catch (err) {
+      console.error(`Vigilar plantillas (${nombre}):`, err.message);
+      if (antes) for (const k of Object.keys(antes)) if (k.startsWith(`${marca}:`)) ahora[k] = antes[k]; // no perder el último estado
+      continue;
+    }
+    for (const p of propuestasDe(marca)) {
+      const lista = existentes.filter((t) => t.name === p.nombre);
+      const t = lista.find((x) => x.status === "APPROVED") || lista[0];
+      if (!t) continue;
+      const clave = `${marca}:${p.nombre}`;
+      ahora[clave] = t.status;
+      const cuerpoTxt = (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
+      const cache = envM.LINEA_ID ? `plantilla_estado:${envM.WHATSAPP_BUSINESS_ACCOUNT_ID}:${p.nombre}` : `plantilla_estado:${p.nombre}`;
+      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}`).catch(() => {});
+      if (antes && antes[clave] !== t.status && ["APPROVED", "REJECTED", "PAUSED", "DISABLED"].includes(t.status)) {
+        const icono = t.status === "APPROVED" ? "✅ aprobó" : "❌ " + (t.status === "REJECTED" ? "rechazó" : "dejó " + t.status.toLowerCase());
+        avisos.push(`${icono}: ${nombre} · ${p.titulo} (\`${p.nombre}\`)${t.rejected_reason && t.rejected_reason !== "NONE" ? ` — motivo: \`${t.rejected_reason}\`` : ""}`);
+      }
+    }
+  }
+  await guardarAjuste(db, "plantillas_estados", JSON.stringify(ahora));
+  if (avisos.length) await notificarTelegram(env, `📋 *Meta respondió sobre tus plantillas*\n\n${avisos.join("\n")}`);
+  return { avisos: avisos.length };
 }
