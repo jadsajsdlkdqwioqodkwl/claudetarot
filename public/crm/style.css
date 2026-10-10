@@ -976,3 +976,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .rapidas-producto { padding: 4px 10px 6px; font-size: 12px; }
 .fila-seguimiento.apagado { opacity: .55; }
 #detalle-producto { padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font: inherit; font-size: 13px; background: var(--panel); }
+
+/* Plantillas: ⋮⋮ para ordenar arrastrando (igual que las respuestas rápidas). */
+.fila-template { display: flex; gap: 6px; align-items: flex-start; }
+.arrastrar-fila { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
+.fila-template.arrastrando { opacity: .6; background: var(--hover); }

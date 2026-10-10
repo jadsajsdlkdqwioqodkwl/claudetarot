@@ -6920,6 +6920,40 @@ function badgeEstadoPlantilla(status) {
   return ` <span style="font-size:11px;color:${color}">· ${escapar(texto)}</span>`;
 }
 
+/**
+ * Ordenar filas arrastrando el ⋮⋮ (mouse y dedo). Al soltar llama a `guardar()`; si falla, avisa y recarga.
+ * Igual que el arrastre de las respuestas rápidas, pero para cualquier lista (plantillas).
+ */
+function arrastrarFilas(cont, selector, guardar) {
+  cont.querySelectorAll(".arrastrar-fila").forEach((asa) => {
+    asa.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fila = asa.closest(selector);
+      const antes = [...cont.querySelectorAll(selector)].map((x) => x.dataset.i).join(",");
+      fila.classList.add("arrastrando");
+      const mover = (ev) => {
+        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(selector);
+        if (bajo && bajo !== fila && cont.contains(bajo)) {
+          const r = bajo.getBoundingClientRect();
+          bajo[ev.clientY < r.top + r.height / 2 ? "before" : "after"](fila);
+        }
+      };
+      const soltar = async () => {
+        window.removeEventListener("pointermove", mover);
+        window.removeEventListener("pointerup", soltar);
+        window.removeEventListener("pointercancel", soltar);
+        fila.classList.remove("arrastrando");
+        if ([...cont.querySelectorAll(selector)].map((x) => x.dataset.i).join(",") === antes) return;
+        try { await guardar(); } catch (err) { alert(err.message); abrirModalTemplates(); }
+      };
+      window.addEventListener("pointermove", mover);
+      window.addEventListener("pointerup", soltar);
+      window.addEventListener("pointercancel", soltar);
+    });
+  });
+}
+
 async function abrirModalTemplates() {
   estado.templateConversacionId = estado.conversacionActivaId;
   $("#modal-templates-fondo").classList.add("abierto");
@@ -6927,7 +6961,10 @@ async function abrirModalTemplates() {
   const cont = $("#lista-templates");
   cont.innerHTML = "Cargando…";
   try {
-    const { templates } = await pedir(`/api/crm/templates${estado.templateConversacionId ? `?conversation_id=${estado.templateConversacionId}` : ""}`);
+    const respuesta = await pedir(`/api/crm/templates${estado.templateConversacionId ? `?conversation_id=${estado.templateConversacionId}` : ""}`);
+    // El orden que el equipo dejó arrastrando; las nuevas van al final.
+    const lugar = (t) => { const i = (respuesta.orden || []).indexOf(t.name); return i < 0 ? 1e6 : i; };
+    const templates = [...respuesta.templates].sort((a, b) => lugar(a) - lugar(b));
     if (!templates.length) {
       cont.innerHTML = `<p class="ayuda-modal">Todavía no creaste ninguna plantilla. Créalas en WhatsApp Manager → Message Templates (Meta tarda de minutos a ~24h en aprobarlas).</p>`;
       return;
@@ -6936,7 +6973,8 @@ async function abrirModalTemplates() {
       const body = (t.components || []).find((c) => c.type === "BODY");
       return `
       <div class="fila-template" data-i="${i}" style="${t.status === "APPROVED" ? "cursor:pointer" : "opacity:.55;cursor:default"}">
-        <div>
+        <span class="arrastrar-fila" title="Arrastra para ordenar">⋮⋮</span>
+        <div style="flex:1;min-width:0">
           <div class="nombre">${escapar(t.name)}${badgeEstadoPlantilla(t.status)}</div>
           <div class="sub">${escapar(t.category)} · ${escapar(t.language)}</div>
           ${body?.text ? `<div class="sub">${escapar(body.text)}</div>` : ""}
@@ -6946,7 +6984,11 @@ async function abrirModalTemplates() {
     cont.querySelectorAll(".fila-template").forEach((el) => {
       const t = templates[Number(el.dataset.i)];
       if (t.status !== "APPROVED") return;
-      el.addEventListener("click", () => elegirTemplate(t));
+      el.addEventListener("click", (e) => { if (!e.target.closest(".arrastrar-fila")) elegirTemplate(t); });
+    });
+    arrastrarFilas(cont, ".fila-template", () => {
+      const nombres = [...cont.querySelectorAll(".fila-template")].map((el) => templates[Number(el.dataset.i)].name);
+      return pedir("/api/crm/templates", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: nombres }) });
     });
   } catch (err) {
     cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
@@ -6981,7 +7023,9 @@ $("#template-enviar").addEventListener("click", async () => {
   const parameters = [...document.querySelectorAll(".param-template")].map((i) => i.value);
   const conversationId = estado.templateConversacionId;
   $("#modal-templates-fondo").classList.remove("abierto");
-  encolarEnvio(conversationId, [{ type: "text", body: `Plantilla: ${t.name}` }], () =>
+  const cuerpoT = (t.components || []).find((c) => c.type === "BODY")?.text;
+  const textoLocal = cuerpoT ? `${cuerpoT.replace(/\{\{(\d+)\}\}/g, (m, n) => parameters[Number(n) - 1] || m)}\n\nPlantilla: ${t.name}` : `Plantilla: ${t.name}`;
+  encolarEnvio(conversationId, [{ type: "text", body: textoLocal }], () =>
     pedir("/api/crm/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -7040,7 +7084,11 @@ function pintarShalom(c, editando = false) {
       // Todas las conversaciones de ese contacto comparten el código.
       for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.shalom_code = valor || null;
       c.shalom_code = valor || null;
-      pintarShalom(c);
+      document.querySelectorAll("#detalle .otro-chat").forEach((b) => b.addEventListener("click", () => {
+    const otro = estado.conversaciones.find((x) => x.conversation_id === Number(b.dataset.conv));
+    if (otro) abrirConversacion(otro);
+  }));
+  pintarShalom(c);
     } catch (err) {
       $("#shalom-estado").textContent = `No se guardó: ${err.message}`;
       btn.disabled = false;
@@ -7060,6 +7108,8 @@ async function pintarDetalle(c) {
     <div class="nombre-contacto">${escapar(nombre)}</div>
     <div class="tel-contacto">+${escapar(c.wa_id)}</div>
     ${lineaDe(c.linea_id) ? `<div class="tel-contacto">${icon("phone")} Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
+    ${estado.conversaciones.filter((x) => x.wa_id === c.wa_id && x.conversation_id !== c.conversation_id).map((x) => `
+      <button type="button" class="cancelar otro-chat" data-conv="${x.conversation_id}" style="width:100%;font-size:12px;margin-top:4px">${icon("chat")} Su chat de ${escapar(lineaDe(x.linea_id)?.nombre || "Tarot Store")}</button>`).join("")}
 
     ${estado.productos.length ? `
     <h2>Producto</h2>

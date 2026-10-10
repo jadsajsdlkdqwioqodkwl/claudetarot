@@ -15,7 +15,7 @@ después sumar números por marca, sin abrir otro CRM ni otra sesión.
   número está en el mismo Business Manager y el usuario del sistema tiene
   acceso). Si es de otro Business Manager: secreto aparte
   (`npx wrangler secret put WHATSAPP_TOKEN_MARCA2`) y su nombre en la línea.
-- **Un chat por cliente y por número.** Si la misma persona escribe a Tarot
+- **Un chat por cliente y por número** (también el bloqueo: es por chat, no por persona). Si la misma persona escribe a Tarot
   Store y al número de pruebas, son dos chats, y cada respuesta sale por el
   número al que escribió (`envDeConversacion` en `crm-send.js`: nadie tiene que
   elegir el número a mano). Plantillas y catálogo, los de la cuenta de ese número.

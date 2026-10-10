@@ -18,6 +18,7 @@ import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_EN
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
 import { plantillaAprobada } from "./plantillas.js";
+import { textoParaChat } from "./plantillas-propuestas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -172,7 +173,7 @@ export async function procesarSeguimientosVencidos(env) {
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",
-          body: `Plantilla: ${s.template_name}`,
+          body: await textoParaChat(await envDeConversacion(env, s.conv_id), s.template_name, parametros),
           sentBy: s.created_by || "Envío masivo"
         });
       } else if (s.catalogo) {

@@ -93,8 +93,8 @@ async function handler({ request, env, agent }) {
     params.push(`-${dias} days`);
   }
   const tokens = tokensBusqueda(q);
-  if (url.searchParams.get("ocultos") === "1") condiciones.push("(conv.hidden = 1 OR c.blocked = 1)");
-  else if (!tokens.length) condiciones.push("conv.hidden = 0 AND c.blocked = 0");
+  if (url.searchParams.get("ocultos") === "1") condiciones.push("(conv.hidden = 1 OR conv.blocked = 1)");
+  else if (!tokens.length) condiciones.push("conv.hidden = 0 AND conv.blocked = 0");
   for (const t of tokens) {
     const tel = /^\d{4,}$/.test(t) ? (t.length === 11 && t.startsWith("51") ? t.slice(2) : t) : null;
     condiciones.push(`(
@@ -127,7 +127,7 @@ async function handler({ request, env, agent }) {
         conv.linea_id,
         conv.producto_id,
         conv.producto_origen,
-        c.blocked,
+        conv.blocked,
         c.id AS contact_id,
         c.wa_id,
         c.profile_name,

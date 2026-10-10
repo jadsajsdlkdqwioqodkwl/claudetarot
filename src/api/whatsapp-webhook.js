@@ -258,7 +258,7 @@ async function procesarCambio(envBase, db, value, origen) {
       await registrarPedidoCatalogo(db, conversacion.id, msg.id, ordenResuelta);
     }
     // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
-    if (contacto.blocked) continue;
+    if (conversacion.blocked) continue;
     // Respondió al "aviso de envío": se abrió su ventana y arranca el plan de recojo (4, 7 y 21 días).
     await rearmarPlanShalom(env, conversacion.id, bodyFinal).catch((err) => console.error("Re-armar recojo:", err.message));
     await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
@@ -300,7 +300,7 @@ async function procesarLlamadas(env, db, value, origen) {
 
     await registrarMensajeEntrante(db, conversacion.id, { waMessageId: call.id || null, type: "call", body });
     await cancelarSeguimientosPendientes(db, conversacion.id);
-    if (contacto.blocked) continue;
+    if (conversacion.blocked) continue;
     await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body, origen }).catch((err) => console.error("Push:", err.message));
   }
 }

@@ -90,6 +90,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-10 · Chats separados por número: el bloqueo pasó de la persona al chat (`conversations.blocked`, migración `0049` aplicada en D1; antes bloquear a alguien en Tarot le escondía su chat de URO y descartaba sus mensajes). Botón «Su chat de …» en el panel para saltar entre los dos chats del mismo cliente. Lo que sigue compartido por persona: nombre, notas y código de Shalom. Plantillas: el chat muestra el texto real con sus botones (no solo el nombre) y la lista de plantillas se reordena arrastrando (orden compartido por el equipo, ajuste `plantillas_orden`); las respuestas rápidas ya se ordenaban así.
+
 - 2026-10-10 · Producto «Tarot» en el número principal (migración `0048`, aplicada en D1) y respuestas rápidas combinadas de todos los productos por defecto (casilla «Solo las de este producto» para filtrar); el recojo en Shalom cuenta desde el despacho y se programa solo al mandar el aviso de envío o con el botón del chat.
 
 - 2026-10-10 · Plantillas: de 0 a 3 botones, tipo de mensaje elegible (Marketing o Utilidad; se muestra si Meta la reclasificó). Interfaz sin emojis (iconos nuevos: caja, teléfono, matraz, bombilla, ayuda, enlace) con chequeo automático; cronómetro otra vez junto al teléfono; se restauran el botón «Links de Shalom», la etiqueta «Contacto» y el formulario de mensaje masivo, que yo había ocultado sin que me lo pidieran.

@@ -55,7 +55,8 @@ async function post({ request, env }) {
   } else {
     aviso = "WhatsApp no está configurado: solo cambió en el CRM.";
   }
-  await env.CRM_DB.prepare("UPDATE contacts SET blocked = ?, updated_at = datetime('now') WHERE id = ?").bind(bloquear ? 1 : 0, conv.contact_id).run();
+  // Por chat (cliente + número): bloquearlo en Tarot Store no toca su chat de URO.
+  await env.CRM_DB.prepare("UPDATE conversations SET blocked = ? WHERE id = ?").bind(bloquear ? 1 : 0, conversationId).run();
   // Bloqueado: no le sale nada programado, ni los de "mandar siempre".
   if (bloquear) await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'").bind(conversationId).run();
   return json({ ok: true, blocked: bloquear ? 1 : 0, aviso });

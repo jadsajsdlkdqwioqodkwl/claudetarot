@@ -215,3 +215,28 @@ export async function vigilarPlantillas(env) {
   if (avisos.length) await notificarTelegram(env, `📋 *Meta respondió sobre tus plantillas*\n\n${avisos.join("\n")}`);
   return { avisos: avisos.length };
 }
+
+/**
+ * El texto con el que se ve una plantilla enviada en el chat: lo que dice (con las variables puestas),
+ * sus botones y el nombre al pie. Sale de las propuestas (con lo que el admin editó) o, si es otra
+ * plantilla, del texto aprobado en Meta. Nunca falla: sin texto devuelve solo el nombre.
+ */
+export async function textoParaChat(env, nombre, parametros = []) {
+  let texto = null;
+  let btns = [];
+  const cambios = await leerCambios(env.CRM_DB);
+  for (const marca of Object.keys(MARCAS)) {
+    const p = propuestasDe(marca, cambios).find((x) => x.nombre === nombre);
+    if (p) { texto = p.texto; btns = p.botones; break; }
+  }
+  if (!texto) {
+    try {
+      const t = (await listarTemplates(env)).find((x) => x.name === nombre && x.status === "APPROVED");
+      texto = (t?.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || null;
+      btns = ((t?.components || []).find((c) => String(c.type).toUpperCase() === "BUTTONS")?.buttons || []).map((b) => b.text);
+    } catch { /* sin texto: queda el nombre */ }
+  }
+  if (!texto) return `Plantilla: ${nombre}`;
+  const lleno = texto.replace(/\{\{(\d)\}\}/g, (m, n) => parametros[Number(n) - 1] ?? m);
+  return `${lleno}${btns.length ? `\n\n${btns.map((b) => `[ ${b} ]`).join("  ")}` : ""}\n\nPlantilla: ${nombre}`;
+}

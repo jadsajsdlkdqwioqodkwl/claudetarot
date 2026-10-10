@@ -15,6 +15,8 @@
  */
 
 import { programarPlan } from "../../lib/planes-plantilla.js";
+import { textoParaChat } from "../../lib/plantillas-propuestas.js";
+import { obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
@@ -34,7 +36,9 @@ async function get({ request, env: envBase }) {
   if (!env.WHATSAPP_BUSINESS_ACCOUNT_ID) return json({ error: "Falta WHATSAPP_BUSINESS_ACCOUNT_ID." }, 503);
   try {
     const templates = await listarTemplates(env);
-    return json({ templates });
+    let orden = [];
+    try { orden = JSON.parse((await obtenerAjuste(envBase.CRM_DB, "plantillas_orden")) || "[]") || []; } catch { /* sin orden guardado */ }
+    return json({ templates, orden });
   } catch (err) {
     return json({ error: err.message }, 502);
   }
@@ -68,7 +72,7 @@ async function post({ request, env, agent }) {
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {
       waMessageId,
       type: "template",
-      body: `Plantilla: ${name}`,
+      body: await textoParaChat(env, name, parametros),
       sentBy: agent?.displayName || agent?.username || null
     });
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
@@ -87,4 +91,14 @@ async function post({ request, env, agent }) {
 }
 
 export const onRequestGet = conAuth(get);
+// PATCH { orden: [nombres] } — el orden en que el equipo ve las plantillas al mandarlas (se arrastran).
+async function patch({ request, env }) {
+  const p = await request.json().catch(() => null);
+  const orden = (Array.isArray(p?.orden) ? p.orden : []).map(String).slice(0, 300);
+  if (!orden.length) return json({ error: "Falta el orden." }, 400);
+  await guardarAjuste(env.CRM_DB, "plantillas_orden", JSON.stringify(orden));
+  return json({ ok: true });
+}
+
 export const onRequestPost = conAuth(post);
+export const onRequestPatch = conAuth(patch);
