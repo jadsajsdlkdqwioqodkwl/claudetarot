@@ -308,7 +308,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
     // Para diagnosticar una app nueva (secreto mal puesto): solo la hora y el número, nada del cliente.
     const phoneId = cuerpoCrudo.match(/"phone_number_id"\s*:\s*"(\d+)"/)?.[1] || "?";
     await guardarAjuste(env.CRM_DB, "webhook_ultimo_rechazo", `${new Date().toISOString()} firma inválida · phone_number_id ${phoneId}`).catch(() => {});
-    return json({ error: "Firma inválida." }, 401);
+    // 200 igual (no se procesa nada): con un 401 Meta frena toda la cola de
+    // esa app por horas y los mensajes buenos que vienen después no llegan.
+    return json({ ok: false });
   }
 
   let payload;
