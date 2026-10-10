@@ -56,7 +56,7 @@ async function get({ request, env }) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT s.*, q.title AS quick_reply_title, ${textoPorDefectoSql("rapida")} AS quick_reply_body
      FROM scheduled_messages s LEFT JOIN quick_replies q ON q.id = s.quick_reply_id
-     WHERE s.conversation_id = ? AND s.status = 'pendiente'
+     WHERE s.conversation_id = ? AND s.status IN ('pendiente', 'por_aprobar')
      ORDER BY s.send_at ASC`
   )
     .bind(conversationId)
@@ -155,7 +155,7 @@ async function del({ request, env }) {
   }
   // { conversation_id, all: true } → cancela todos los pendientes de ese chat de una.
   if (payload?.all && Number(payload?.conversation_id)) {
-    const r = await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente'")
+    const r = await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar')")
       .bind(Number(payload.conversation_id))
       .run();
     return json({ ok: true, cancelados: r.meta?.changes ?? 0 });
@@ -164,7 +164,7 @@ async function del({ request, env }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'")
+  await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status IN ('pendiente', 'por_aprobar')")
     .bind(id)
     .run();
   return json({ ok: true });

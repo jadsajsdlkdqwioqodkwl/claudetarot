@@ -466,6 +466,59 @@ $("#bienvenida-cerrar").addEventListener("click", () => {
   refrescarVistasLead();
 });
 
+/* ---------- Planes con plantilla: recojo en Shalom y rescate (api/crm/planes.js) ---------- */
+
+/** Marca el plan en el chat. De una vendedora queda por aprobar; del admin, aprobado. */
+async function marcarPlan(c, plan) {
+  const titulo = plan === "shalom" ? "recordarle el recojo en Shalom" : "rescatarlo con plantilla";
+  const aviso = estado.miRol === "admin" ? "Salen solos (son plantillas pagadas)." : "Quedan por aprobar del dueño.";
+  if (!confirm(`¿Programar ${titulo}? 3 mensajes a los 4, 7 y 21 días de su último mensaje. ${aviso} Si el cliente escribe, lo que falta se cancela.`)) return;
+  try {
+    await pedir("/api/crm/planes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: c.conversation_id, plan })
+    });
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+/** (admin) Lo que espera aprobación, por chat, con aprobar / quitar. */
+async function pintarPlanesPorAprobar() {
+  const cont = $("#planes-por-aprobar");
+  if (!cont) return;
+  let lista = [];
+  try { lista = (await pedir("/api/crm/planes")).por_aprobar || []; } catch (err) { cont.textContent = err.message; return; }
+  const porChat = new Map();
+  for (const s of lista) (porChat.get(s.conversation_id) || porChat.set(s.conversation_id, []).get(s.conversation_id)).push(s);
+  cont.innerHTML = porChat.size ? [...porChat.values()].map((pasos) => `
+    <div class="fila-seguimiento" data-ids="${pasos.map((p) => p.id).join(",")}">
+      <div>
+        <div class="nombre">${escapar(pasos[0].nombre)} <span class="sub">· +${escapar(pasos[0].wa_id)} · ${escapar(pasos[0].created_by.replace(/^Plan con plantilla · /, ""))}</span></div>
+        ${pasos.map((p) => `<div class="sub">${escapar(fechaCorta(p.send_at))}: ${escapar(p.body || p.template_name)}</div>`).join("")}
+      </div>
+      <div style="display:flex;gap:4px;flex-direction:column">
+        <button class="crear plan-aprobar" type="button">Aprobar</button>
+        <button class="cancelar plan-rechazar" type="button">Quitar</button>
+      </div>
+    </div>`).join("") + (porChat.size > 1 ? `<button class="crear" id="planes-aprobar-todos" type="button" style="width:100%">Aprobar los ${porChat.size}</button>` : "")
+    : `<p class="ayuda-modal">Nada por aprobar.</p>`;
+  const accion = async (ids, accionPlan) => {
+    try {
+      await pedir("/api/crm/planes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, accion: accionPlan }) });
+    } catch (err) {
+      alert(err.message);
+    }
+    pintarPlanesPorAprobar();
+  };
+  const idsDe = (el) => el.closest(".fila-seguimiento").dataset.ids.split(",").map(Number);
+  cont.querySelectorAll(".plan-aprobar").forEach((b) => b.addEventListener("click", () => accion(idsDe(b), "aprobar")));
+  cont.querySelectorAll(".plan-rechazar").forEach((b) => b.addEventListener("click", () => accion(idsDe(b), "rechazar")));
+  $("#planes-aprobar-todos")?.addEventListener("click", () => accion(lista.map((s) => s.id), "aprobar"));
+}
+
 /* ---------- Productos y números de WhatsApp (solo admin) ---------- */
 
 $("#btn-abrir-productos").addEventListener("click", async () => {
@@ -842,6 +895,7 @@ let bulkTemplateElegida = null;
 
 $("#btn-admin").addEventListener("click", () => {
   $("#modal-admin-fondo").classList.add("abierto");
+  pintarPlanesPorAprobar();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";
   cargarPlantillasBulk();
@@ -1280,6 +1334,8 @@ function esSeguimientoManual(s) {
 
 /** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
 function etiquetaTipoSeguimiento(s) {
+  if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · por aprobar</span>`;
+  if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · aprobada</span>`;
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SUGERENCIA)) return `<span class="tipo-seg lead">Sugerencia aprobada · ${escapar(s.created_by.slice(PREFIJO_SUGERENCIA.length).replace(/^ · /, ""))}</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
@@ -6927,6 +6983,8 @@ async function pintarDetalle(c) {
     <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
+    <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">📦 Recordar recojo en Shalom (4 · 7 · 21 días)</button>
+    <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">🔁 Rescatar con plantilla (4 · 7 · 21 días)</button>
 
     ${estado.miRol === "admin" ? `
     <h2>Seguimiento para interesados</h2>
@@ -6972,6 +7030,7 @@ async function pintarDetalle(c) {
   });
 
   $("#detalle-nuevo-seguimiento").addEventListener("click", abrirModalProgramarSeguimiento);
+  document.querySelectorAll("#detalle .plan-plantilla").forEach((btn) => btn.addEventListener("click", () => marcarPlan(c, btn.dataset.plan)));
   $("#detalle-btn-lead").addEventListener("click", () => marcarLead(c));
   $("#detalle-btn-venta").addEventListener("click", () => {
     const cont = $("#detalle-venta-form");

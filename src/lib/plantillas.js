@@ -18,7 +18,8 @@ const CACHE_MS = 10 * 60 * 1000;
 /** { idioma, conNombre } si está aprobada; null si no (en revisión, rechazada, no existe). */
 export async function plantillaAprobada(env, nombre, definicion) {
   const db = env.CRM_DB;
-  const clave = `plantilla_estado:${nombre}`;
+  // Cada número de otra marca tiene su WABA: el estado se guarda por cuenta.
+  const clave = env.LINEA_ID ? `plantilla_estado:${env.WHATSAPP_BUSINESS_ACCOUNT_ID}:${nombre}` : `plantilla_estado:${nombre}`;
   const guardado = await obtenerAjuste(db, clave).catch(() => null);
   if (guardado) {
     const [estado, at, idioma, conNombre] = String(guardado).split("|");

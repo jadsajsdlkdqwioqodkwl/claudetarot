@@ -67,6 +67,8 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-10 · Planes con plantilla (`src/lib/planes-plantilla.js`, `/api/crm/planes`): recojo en Shalom (UTILITY) y rescate de interesado (MARKETING) a los 4, 7 y 21 días del último mensaje; la vendedora los marca en el chat y el admin los aprueba en Herramientas. Las plantillas (`recojo_shalom_1..3`, `rescate_lead_1..3`, es_PE) se mandan solas a revisión de Meta en la WABA del número del chat.
+
 - 2026-10-10 · El webhook acepta una segunda app de Meta (URO): `WHATSAPP_APP_SECRET_2` y `WHATSAPP_VERIFY_TOKEN_2`; línea URO con su WABA y `WHATSAPP_TOKEN_URO`.
 
 - 2026-10-10 · CRM con varios números y productos (URO en su propio número,

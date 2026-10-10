@@ -27,6 +27,7 @@ import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
 import { onRequestGet as crmMedia } from "./api/crm/media.js";
 import { onRequestPatch as crmAssignPatch } from "./api/crm/assign.js";
 import { onRequestPost as crmChatEstadoPost } from "./api/crm/chat-estado.js";
+import { onRequestGet as crmPlanesGet, onRequestPost as crmPlanesPost, onRequestPatch as crmPlanesPatch } from "./api/crm/planes.js";
 import {
   onRequestGet as crmProductosGet,
   onRequestPost as crmProductosPost,
@@ -154,6 +155,7 @@ const ROUTES = {
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
+  "/api/crm/planes": { GET: crmPlanesGet, POST: crmPlanesPost, PATCH: crmPlanesPatch },
   "/api/crm/productos": { GET: crmProductosGet, POST: crmProductosPost, PATCH: crmProductosPatch, DELETE: crmProductosDelete },
   "/api/crm/lineas": { POST: crmLineasPost, PATCH: crmLineasPatch },
   "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, PATCH: crmQuickRepliesPatch, DELETE: crmQuickRepliesDelete },
