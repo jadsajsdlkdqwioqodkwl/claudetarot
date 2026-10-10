@@ -69,6 +69,8 @@ export function envDeLinea(env, linea) {
     WHATSAPP_CATALOG_ID: linea.catalog_id || "",
     // Nunca el píxel de Tarot Store: sin pixel_id, los eventos manuales de esta línea no salen.
     META_CAPI_DATASET_ID: linea.pixel_id || "",
+    // El CAPI de esa marca va con su propio token (el usuario del sistema de su portafolio, con el píxel asignado).
+    META_CAPI_ACCESS_TOKEN: (linea.token_var && env[linea.token_var]) || "",
     LINEA_ID: linea.id
   };
 }

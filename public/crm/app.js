@@ -490,7 +490,11 @@ async function pintarPlanesPorAprobar() {
   const cont = $("#planes-por-aprobar");
   if (!cont) return;
   let lista = [];
-  try { lista = (await pedir("/api/crm/planes")).por_aprobar || []; } catch (err) { cont.textContent = err.message; return; }
+  let datosPlanes;
+  try { datosPlanes = await pedir("/api/crm/planes"); } catch (err) { cont.textContent = err.message; return; }
+  lista = datosPlanes.por_aprobar || [];
+  $("#planes-dias").value = (datosPlanes.dias || []).join(",");
+  $("#planes-auto").checked = Boolean(datosPlanes.auto);
   const porChat = new Map();
   for (const s of lista) (porChat.get(s.conversation_id) || porChat.set(s.conversation_id, []).get(s.conversation_id)).push(s);
   cont.innerHTML = porChat.size ? [...porChat.values()].map((pasos) => `
@@ -518,6 +522,17 @@ async function pintarPlanesPorAprobar() {
   cont.querySelectorAll(".plan-rechazar").forEach((b) => b.addEventListener("click", () => accion(idsDe(b), "rechazar")));
   $("#planes-aprobar-todos")?.addEventListener("click", () => accion(lista.map((s) => s.id), "aprobar"));
 }
+
+async function guardarAjustePlanes(cuerpo) {
+  try {
+    await pedir("/api/crm/planes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  } catch (err) {
+    alert(err.message);
+  }
+  pintarPlanesPorAprobar();
+}
+$("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim() }));
+$("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: e.target.checked }));
 
 /* ---------- Productos y números de WhatsApp (solo admin) ---------- */
 

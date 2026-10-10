@@ -12,6 +12,7 @@
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
+import { encadenarRescate } from "./planes-plantilla.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
@@ -202,6 +203,8 @@ export async function procesarSeguimientosVencidos(env) {
         marcar.push(env.CRM_DB.prepare("UPDATE envio_links SET estado = 'enviado', actualizado_at = datetime('now') WHERE scheduled_id = ?").bind(s.id));
       }
       await env.CRM_DB.batch(marcar);
+      // Terminó la cadena de 24 h sin respuesta: el rescate con plantilla queda por aprobar.
+      if (!s.template_name) await encadenarRescate(env, s.conv_id, s.created_by, s.etapa).catch((err) => console.error("Encadenar rescate:", err.message));
     } catch (err) {
       console.error("Seguimiento programado:", s.id, err.message);
       await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?")

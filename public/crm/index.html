@@ -497,6 +497,12 @@
     <h2>Planes con plantilla por aprobar</h2>
     <p class="ayuda-modal">Lo que marcaron las vendedoras (recojo en Shalom o rescate de interesado, a los 4, 7 y 21 días del último mensaje del cliente). Son plantillas pagadas: no sale nada hasta que lo apruebes.</p>
     <div id="planes-por-aprobar">Cargando…</div>
+    <div class="ayuda-modal" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
+      Días de los 3 envíos (desde el último mensaje del cliente):
+      <input type="text" id="planes-dias" placeholder="4,7,21" style="width:90px;margin:0" />
+      <button class="cancelar" id="planes-dias-guardar" type="button">Guardar</button>
+    </div>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="planes-auto" /> Cuando termina la cadena de 24 h (bienvenida o respuesta rápida) y el cliente no respondió, dejar el rescate con plantilla por aprobar solo</label>
     <hr />
 
     <h2>Mensaje masivo</h2>
