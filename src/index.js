@@ -126,6 +126,10 @@ const ROUTES = {
   "/api/seguimiento": { GET: seguimiento },
 
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
+  // El mismo webhook en otra URL, para la cuenta de WhatsApp de otra marca
+  // (override_callback_uri): un destino nuevo no hereda la cola que Meta
+  // frena tras rechazos viejos.
+  "/api/whatsapp/webhook-uro": { GET: waWebhookGet, POST: waWebhookPost },
   "/api/asesor/avisos": { POST: asesorAvisosPost },
   "/api/asesor/sugerencias": { POST: asesorSugerenciasPost },
   "/api/asesor/contexto": { GET: asesorContextoGet },
