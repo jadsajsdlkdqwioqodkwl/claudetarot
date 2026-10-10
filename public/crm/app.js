@@ -472,7 +472,10 @@ $("#bienvenida-cerrar").addEventListener("click", () => {
 async function marcarPlan(c, plan) {
   const titulo = plan === "shalom" ? "recordarle el recojo en Shalom" : "rescatarlo con plantilla";
   const aviso = estado.miRol === "admin" ? "Salen solos (son plantillas pagadas)." : "Quedan por aprobar del dueño.";
-  if (!confirm(`¿Programar ${titulo}? 3 mensajes a los 4, 7 y 21 días de su último mensaje. ${aviso} Si el cliente escribe, lo que falta se cancela.`)) return;
+  const reglas = plan === "shalom"
+    ? "3 plantillas a los 4, 7 y 21 días a partir de hoy (úsalo cuando ya le mandaste la boleta dentro de las 24 h, sin plantilla). Si el cliente escribe, se vuelve a contar desde su mensaje; si toca «Ya lo recogí», termina."
+    : "3 mensajes a los 4, 7 y 21 días de su último mensaje. Si el cliente escribe, lo que falta se cancela.";
+  if (!confirm(`¿Programar ${titulo}? ${reglas} ${aviso}`)) return;
   try {
     await pedir("/api/crm/planes", {
       method: "POST",
@@ -2125,16 +2128,18 @@ function opcionesProducto(valor, general = "General (todas / Tarot Store)") {
 }
 
 /**
- * Las respuestas rápidas que tocan en el chat abierto: primero las de su
- * producto, después las generales. Las de otros productos no salen (a menos
- * que se busquen por nombre: buscando salen todas, al final).
+ * Las respuestas rápidas que tocan en el chat abierto. Por defecto salen las de TODOS los productos
+ * combinadas: primero las de su producto, después las generales y al final las de los otros
+ * productos (cada una lleva su insignia de producto). Con "Solo este producto" (se recuerda en este
+ * navegador) salen únicamente las suyas y, en el número principal, las generales.
  */
+const rapidasSoloProducto = () => { try { return localStorage.getItem("crm_rapidas_solo") === "1"; } catch { return false; } };
 function rapidasDelChat(lista, buscando = false) {
   const prod = chatActivo()?.producto_id || null;
   const propias = prod ? lista.filter((q) => q.producto_id === prod) : [];
-  // En un chat de otro número (URO) las generales son de Tarot Store (kit, collar, S/): solo al buscar.
-  const generales = chatActivo()?.linea_id && !buscando ? [] : lista.filter((q) => !q.producto_id);
-  const otras = buscando ? lista.filter((q) => q.producto_id && q.producto_id !== prod) : [];
+  const solo = rapidasSoloProducto() && prod && !buscando;
+  const generales = solo && chatActivo()?.linea_id ? [] : lista.filter((q) => !q.producto_id);
+  const otras = solo ? [] : lista.filter((q) => q.producto_id && q.producto_id !== prod);
   return [...propias, ...generales, ...otras];
 }
 
@@ -3185,8 +3190,9 @@ const KIT_DEFAULT = { nombre: "Kit Tarot Rider-Waite de aprendizaje", precio: 89
 /** El "kit" por defecto del chat: el de Tarot Store, o el producto del chat (URO) con su precio; sin precio, se escribe el total. */
 function kitDeChat(c) {
   const p = productoDe(c?.producto_id);
+  if (!c?.linea_id) return { ...KIT_DEFAULT }; // número principal: siempre el kit de Tarot Store
   if (p) return { nombre: p.nombre, precio: parseFloat(String(p.precio ?? "").match(/[\d.]+/)?.[0] || "0") };
-  return c?.linea_id ? { nombre: "", precio: 0 } : { ...KIT_DEFAULT };
+  return { nombre: "", precio: 0 };
 }
 const precioProducto = (p) => parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
 const etiquetasLocales = new Map(); // conversation_id -> { meta_tags, t } — que un GET viejo no borre la etiqueta recién puesta
@@ -5498,7 +5504,8 @@ function pintarQuickPanel() {
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
-    ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las generales.</div>` : ""}
+    ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las demás.
+      <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="rapidas-solo" ${rapidasSoloProducto() ? "checked" : ""} /> Solo las de este producto</label></div>` : ""}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
@@ -5520,6 +5527,10 @@ function pintarQuickPanel() {
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
     </footer>`;
 
+  $("#rapidas-solo")?.addEventListener("change", (e) => {
+    try { localStorage.setItem("crm_rapidas_solo", e.target.checked ? "1" : "0"); } catch {}
+    pintarQuickPanel();
+  });
   $("#rapidas-buscar").addEventListener("input", (e) => {
     estado.filtroRapidas = e.target.value;
     pintarQuickPanel();
@@ -7073,7 +7084,7 @@ async function pintarDetalle(c) {
     <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
-    <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Recordar recojo en Shalom (4 · 7 · 21 días)</button>
+    <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Programar recojo en Shalom (4 · 7 · 21 días desde hoy)</button>
     <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("rotate")} Rescatar con plantilla (4 · 7 · 21 días)</button>
 
     ${estado.miRol === "admin" ? `

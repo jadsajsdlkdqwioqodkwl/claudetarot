@@ -37,7 +37,7 @@ export function propuestasDe(marca, cambios = {}) {
     for (const [i, paso] of p.pasos.entries()) {
       lista.push({
         nombre: paso.nombre, grupo: clave === "shalom" ? "Recojo en Shalom (prioridad)" : "Rescate de interesado",
-        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: `${paso.dias} días después de su último mensaje`,
+        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: clave === "shalom" ? `${paso.dias} días después de despachar el pedido` : `${paso.dias} días después de su último mensaje`,
         categoria: p.categoria, texto: paso.texto, botones: p.botones,
         componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), ...botones(p.botones)]
       });

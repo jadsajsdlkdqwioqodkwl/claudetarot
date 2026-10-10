@@ -5,7 +5,8 @@
  *    (plantillas de categoría UTILITY, más baratas).
  *  - "lead": vino de un anuncio, recibió la bienvenida o una respuesta rápida
  *    y no respondió (MARKETING).
- * Cada plan son 3 envíos a los 4, 7 y 21 días del último mensaje del cliente.
+ * Cada plan son 3 envíos a los 4, 7 y 21 días: el rescate cuenta desde el último mensaje del cliente;
+ * el recojo en Shalom, desde que se programa (el despacho).
  * Quedan en scheduled_messages con status 'por_aprobar' (el cron no los
  * toca) hasta que el admin los aprueba ('pendiente'); si los marca el admin,
  * salen aprobados. Si el cliente escribe, lo que falta se cancela solo
@@ -113,7 +114,8 @@ export function leerDias(texto) {
  */
 export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO, marca = "tarot") {
   const p = planesDe(marca)[plan];
-  const base = lastInboundAt ? new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime() : ahora;
+  // El recojo en Shalom cuenta desde hoy (el despacho), no desde el último mensaje del cliente: ese puede ser de hace días.
+  const base = plan === "shalom" || !lastInboundAt ? ahora : new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime();
   const params = p.conProducto ? [primerNombre(nombre), producto || "el kit de tarot"] : [primerNombre(nombre)];
   let previo = 0;
   return p.pasos.map((paso, i) => {

@@ -14,6 +14,7 @@
  * docs/whatsapp-ventanas-y-costos.md.
  */
 
+import { programarPlan } from "../../lib/planes-plantilla.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
@@ -71,7 +72,14 @@ async function post({ request, env, agent }) {
       sentBy: agent?.displayName || agent?.username || null
     });
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
-    return json({ ok: true, wa_message_id: waMessageId });
+    // El aviso de envío de Shalom ya fue: quedan programados los 3 recordatorios de recojo (4, 7 y 21 días
+    // desde hoy). Si el cliente responde se vuelven a contar desde su mensaje (rearmarPlanShalom).
+    let plan = null;
+    if (name.includes("aviso_envio_shalom")) {
+      plan = await programarPlan(env, conversationId, "shalom", { estado: "pendiente", quien: agent?.displayName || agent?.username || "Aviso de envío" })
+        .catch((err) => ({ error: err.message }));
+    }
+    return json({ ok: true, wa_message_id: waMessageId, plan_recojo: plan && !plan.error ? plan.pasos.length : 0 });
   } catch (err) {
     console.error("Enviar template:", err.message);
     return json({ error: `WhatsApp rechazó la plantilla: ${err.message}` }, 502);
