@@ -176,7 +176,26 @@ async function patchLinea({ request, env, agent }) {
   return editada ? json({ linea: editada }) : json({ error: "Número no encontrado." }, 404);
 }
 
+/**
+ * GET /api/crm/lineas?conectar=<id> (admin): suscribe la app de Tarot Store
+ * (la del WHATSAPP_TOKEN de siempre, cuyos avisos ya llegan al CRM) a la
+ * cuenta de WhatsApp de esa línea, y devuelve lo que contesta Meta. Sirve
+ * cuando la app propia de la marca no entrega los mensajes.
+ */
+async function getLinea({ request, env, agent }) {
+  if (!esAdmin(agent)) return json({ error: "Solo un administrador." }, 403);
+  const id = Number(new URL(request.url).searchParams.get("conectar"));
+  const linea = (await listarLineas(env.CRM_DB, { fresco: true })).find((l) => l.id === id);
+  if (!linea?.waba_id) return json({ error: "Esa línea no existe o no tiene WABA." }, 400);
+  const graph = `https://graph.facebook.com/v23.0/${linea.waba_id}/subscribed_apps`;
+  const auth = { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` };
+  const suscribir = await fetch(graph, { method: "POST", headers: auth }).then((r) => r.json()).catch((e) => ({ error: e.message }));
+  const apps = await fetch(graph, { headers: auth }).then((r) => r.json()).catch((e) => ({ error: e.message }));
+  return json({ linea: linea.nombre, waba: linea.waba_id, suscribir, apps });
+}
+
 export const onRequestGet = conAuth(get);
+export const onRequestGetLinea = conAuth(getLinea);
 export const onRequestPost = conAuth(post);
 export const onRequestPatch = conAuth(patch);
 export const onRequestDelete = conAuth(del);

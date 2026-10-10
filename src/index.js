@@ -34,7 +34,8 @@ import {
   onRequestPatch as crmProductosPatch,
   onRequestDelete as crmProductosDelete,
   onRequestPostLinea as crmLineasPost,
-  onRequestPatchLinea as crmLineasPatch
+  onRequestPatchLinea as crmLineasPatch,
+  onRequestGetLinea as crmLineasGet
 } from "./api/crm/productos.js";
 import {
   onRequestGet as crmQuickRepliesGet,
@@ -161,7 +162,7 @@ const ROUTES = {
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
   "/api/crm/planes": { GET: crmPlanesGet, POST: crmPlanesPost, PATCH: crmPlanesPatch },
   "/api/crm/productos": { GET: crmProductosGet, POST: crmProductosPost, PATCH: crmProductosPatch, DELETE: crmProductosDelete },
-  "/api/crm/lineas": { POST: crmLineasPost, PATCH: crmLineasPatch },
+  "/api/crm/lineas": { GET: crmLineasGet, POST: crmLineasPost, PATCH: crmLineasPatch },
   "/api/crm/quick-replies": { GET: crmQuickRepliesGet, POST: crmQuickRepliesPost, PATCH: crmQuickRepliesPatch, DELETE: crmQuickRepliesDelete },
   "/api/crm/login-verify": { POST: crmLoginVerify },
   "/api/crm/agents": { GET: crmAgentsGet, POST: crmAgentsPost, PATCH: crmAgentsPatch },
