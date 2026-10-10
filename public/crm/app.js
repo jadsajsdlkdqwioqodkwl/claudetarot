@@ -2863,7 +2863,7 @@ function pintarListaProductos(filtro) {
     ? productos.map((p) => `
       <div class="item" data-id="${escapar(p.retailer_id)}">
         ${p.image_url ? `<img class="miniatura" src="${escapar(p.image_url)}" alt="" />` : `<div class="miniatura">${icon("tag")}</div>`}
-        <div><div class="titulo">${escapar(p.name || p.retailer_id)}</div></div>
+        <div><div class="titulo">${escapar(p.name || p.retailer_id)}</div>${p.price ? `<div class="cuerpo">${escapar(p.price)}${p.availability && p.availability !== "in stock" ? " · agotado" : ""}</div>` : ""}</div>
       </div>`).join("")
     : `<div class="item"><div class="cuerpo">Sin productos.</div></div>`;
   cont.querySelectorAll(".item").forEach((el) => el.addEventListener("click", () => enviarProductoElegido(el.dataset.id)));
