@@ -37,7 +37,7 @@ después sumar números por marca, sin abrir otro CRM ni otra sesión.
 - **Seguimiento de leads**: cada producto elige su secuencia (las mismas de
   "Secuencias de seguimiento"). Sin producto, la general de siempre (solo en
   Tarot Store).
-- **Solo Tarot Store**: toques 2/7/14/30, carrito abandonado, el evento de
+- **Solo Tarot Store** (los toques 2/7/14/30 están apagados, ver MAPA): toques 2/7/14/30, carrito abandonado, el evento de
   conversación de CAPI y el asesor (`/api/asesor/chats`, salvo `&linea=<id>`)
   siguen solo en el número principal: sus textos y ofertas son de Tarot Store.
 - Lista de chats: insignias 📦 producto y 📱 número, y filtros por los dos.

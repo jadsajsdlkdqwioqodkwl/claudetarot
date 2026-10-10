@@ -1998,7 +1998,7 @@ function badgesProducto(c) {
   const p = productoDe(c.producto_id);
   const l = lineaDe(c.linea_id);
   return (p ? `<span class="badge-producto" ${p.color ? `style="background:${p.color};border-color:${p.color};color:#fff"` : ""} title="Producto${c.producto_origen === "manual" ? " (puesto a mano)" : c.producto_origen ? ` (reconocido por ${escapar(c.producto_origen)})` : ""}">📦 ${escapar(p.nombre)}</span>` : "")
-    + (l ? `<span class="badge-linea" title="Escribió a este número">📱 ${escapar(l.nombre)}</span>` : "");
+    + (l && !(p && p.nombre.toLowerCase() === l.nombre.toLowerCase()) ? `<span class="badge-linea" title="Escribió a este número">📱 ${escapar(l.nombre)}</span>` : "");
 }
 
 /** <option>s de producto para un <select>: "General" (null) y los activos (más el elegido aunque esté apagado). */
@@ -2016,7 +2016,8 @@ function opcionesProducto(valor, general = "General (todas / Tarot Store)") {
 function rapidasDelChat(lista, buscando = false) {
   const prod = chatActivo()?.producto_id || null;
   const propias = prod ? lista.filter((q) => q.producto_id === prod) : [];
-  const generales = lista.filter((q) => !q.producto_id);
+  // En un chat de otro número (URO) las generales son de Tarot Store (kit, collar, S/): solo al buscar.
+  const generales = chatActivo()?.linea_id && !buscando ? [] : lista.filter((q) => !q.producto_id);
   const otras = buscando ? lista.filter((q) => q.producto_id && q.producto_id !== prod) : [];
   return [...propias, ...generales, ...otras];
 }
@@ -2656,7 +2657,7 @@ function pintarChatBase(c) {
       <div class="acciones-chat">
         <button class="btn-meta accion-lead ${tieneEtiqueta(c, "lead") ? "enviado" : ""}" id="btn-lead" type="button" title="Cliente interesado (avisa a Meta)">Interés</button>
         <button class="btn-meta" id="btn-seg-rapido" type="button" title="Programar seguimiento">${icon("clock")}<span class="txt-seg-rapido">Seguimiento</span></button>
-        <button class="btn-meta btn-venta accion-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>89</span></button>
+        <button class="btn-meta btn-venta accion-venta ${tieneEtiqueta(c, "purchase") ? "enviado" : ""}" id="btn-venta" type="button" title="Reportar venta a Meta">${icon("bag")}<span>${kitDeChat(c).precio || "S/"}</span></button>
         <button class="btn-star ${c.assigned_agent ? "marcada" : ""}" id="star-header">${icon(c.assigned_agent ? "star" : "starOutline")}</button>
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
@@ -3065,6 +3066,12 @@ async function actualizarPedidosPanel() {
 /* ---------- Botones de Meta del header (intención de compra / venta) ---------- */
 
 const KIT_DEFAULT = { nombre: "Kit Tarot Rider-Waite de aprendizaje", precio: 89 };
+/** El "kit" por defecto del chat: el de Tarot Store, o el producto del chat (URO) con su precio; sin precio, se escribe el total. */
+function kitDeChat(c) {
+  const p = productoDe(c?.producto_id);
+  if (p) return { nombre: p.nombre, precio: parseFloat(String(p.precio ?? "").match(/[\d.]+/)?.[0] || "0") };
+  return c?.linea_id ? { nombre: "", precio: 0 } : { ...KIT_DEFAULT };
+}
 const precioProducto = (p) => parseFloat(String(p.price ?? "").match(/[\d.]+/)?.[0] || "0");
 const etiquetasLocales = new Map(); // conversation_id -> { meta_tags, t } — que un GET viejo no borre la etiqueta recién puesta
 const tieneEtiqueta = (c, etiqueta) => ` ${c.meta_tags || ""} `.includes(` ${etiqueta} `);
@@ -3082,7 +3089,8 @@ function diaMesLima(fecha) {
 
 function badgeEtapa(c) {
   const etapa = ETAPAS.find(([e]) => tieneEtiqueta(c, e));
-  if (!etapa) return "";
+  // "Contacto" es lo que tiene TODO chat: en la lista solo ocupa una fila entera; los avances (Interés, Compra) sí se ven.
+  if (!etapa || etapa[0] === "contact") return "";
   // La compra lleva el día en que se marcó: "Compra · 28/09".
   const dia = etapa[0] === "purchase" ? diaMesLima(c.compra_at) : "";
   return `<span class="badge-etapa etapa-${etapa[0]}"${dia ? ` title="Compra marcada el ${dia}"` : ""}>${etapa[1]}${dia ? ` · ${dia}` : ""}</span>`;
@@ -3110,7 +3118,7 @@ async function marcarLead(c) {
     await pedir("/api/crm/capi-send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: c.conversation_id, tipo: "lead", value: KIT_DEFAULT.precio, currency: "PEN", product_label: KIT_DEFAULT.nombre })
+      body: JSON.stringify({ conversation_id: c.conversation_id, tipo: "lead", value: kitDeChat(c).precio || undefined, currency: "PEN", product_label: kitDeChat(c).nombre || undefined })
     });
     actualizarHistorialCapi(c.conversation_id);
   } catch (err) {
@@ -3188,7 +3196,8 @@ function cerrarPopoverMetaAfuera(e) {
 function formVenta(c, alTerminar) {
   const pop = document.createElement("div");
   pop.className = "form-venta";
-  const items = [{ ...KIT_DEFAULT }];
+  const kit = kitDeChat(c);
+  const items = kit.nombre ? [kit] : [];
 
   pop.innerHTML = `
     <div class="pm-titulo">${icon("bag")} Reportar venta</div>

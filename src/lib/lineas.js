@@ -25,7 +25,9 @@ export async function listarLineas(db, { fresco = false } = {}) {
   } catch (err) {
     // Sin la migración 0045 todavía: todo es la línea principal.
     console.error("Líneas:", err.message);
-    cacheLineas = { at: Date.now(), lista: [] };
+    // Un error pasajero de D1 no pisa una lista buena (y reintenta en 5 s): si no, un chat de otra
+    // línea saldría por el número de Tarot Store.
+    cacheLineas = { at: cacheLineas.lista.length ? Date.now() : Date.now() - CACHE_MS + 5000, lista: cacheLineas.lista };
   }
   return cacheLineas.lista;
 }
@@ -88,12 +90,17 @@ export async function envDeConversacion(env, conversationId) {
     try {
       const fila = await env.CRM_DB.prepare("SELECT linea_id FROM conversations WHERE id = ?").bind(conversationId).first();
       lineaId = fila?.linea_id || null;
-    } catch {
-      lineaId = null; // sin la migración: principal
+    } catch (err) {
+      // Sin la migración (no existe la columna): todo es la principal. Cualquier otro error NO se
+      // cachea ni se manda por Tarot: mejor que falle este envío que salir por el número equivocado.
+      if (!/no such column/i.test(err.message)) throw err;
+      return env;
     }
     if (lineaDeConv.size > 5000) lineaDeConv.clear();
     lineaDeConv.set(conversationId, lineaId);
   }
   if (!lineaId) return env;
-  return envDeLinea(env, await lineaPorId(env.CRM_DB, lineaId));
+  const linea = (await lineaPorId(env.CRM_DB, lineaId)) || (await listarLineas(env.CRM_DB, { fresco: true })).find((l) => l.id === Number(lineaId));
+  if (!linea) throw new Error(`Línea ${lineaId} no encontrada: no se envía por el número de Tarot Store.`);
+  return envDeLinea(env, linea);
 }

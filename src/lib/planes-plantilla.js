@@ -101,7 +101,7 @@ export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = 
 export async function programarPlan(env, conversationId, plan, { estado, quien }) {
   const db = env.CRM_DB;
   const conv = await db.prepare(
-    `SELECT conv.id, conv.last_inbound_at, conv.producto_id, COALESCE(c.name, c.profile_name) AS nombre
+    `SELECT conv.id, conv.last_inbound_at, conv.producto_id, conv.linea_id, COALESCE(c.name, c.profile_name) AS nombre
      FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
   ).bind(conversationId).first();
   if (!conv) return { error: "Conversación no encontrada." };
@@ -113,7 +113,7 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
 
   const producto = await productoPorId(db, conv.producto_id);
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
-  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre || "el kit de tarot" }, Date.now(), dias);
+  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre || (conv.linea_id ? "su consulta" : "el kit de tarot") }, Date.now(), dias);
   const origen = `${PREFIJO_PLAN} · ${PLANES[plan].titulo} · ${quien || "CRM"}`;
   await db.batch(pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status)
@@ -130,6 +130,7 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
  */
 export async function encadenarRescate(env, conversationId, createdBy, etapa) {
   if (!esOrigenAutomatico(createdBy) || etapa >= 5) return;
+  if (etapa < 2) return; // solo saludo del anuncio: frío, no se gasta plantilla pagada (plan-seguimientos.md)
   const db = env.CRM_DB;
   if ((await obtenerAjuste(db, "plan_auto").catch(() => null)) === "0") return;
   const { results } = await db.prepare(

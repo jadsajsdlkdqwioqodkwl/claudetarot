@@ -70,7 +70,7 @@ export async function procesarPedidosWeb(env) {
     .prepare(
       `SELECT p.id, p.wa_id, p.nombre, p.created_at,
               (SELECT conv.last_inbound_at FROM contacts c JOIN conversations conv ON conv.contact_id = c.id
-               WHERE c.wa_id = p.wa_id ORDER BY conv.last_message_at DESC LIMIT 1) AS last_inbound_at
+               WHERE c.wa_id = p.wa_id AND conv.linea_id IS NULL ORDER BY conv.last_message_at DESC LIMIT 1) AS last_inbound_at
        FROM pedidos_web p
        WHERE p.plantilla_estado = 'pendiente' AND p.created_at <= datetime('now', ?)
        ORDER BY p.created_at ASC LIMIT ?`

@@ -50,7 +50,7 @@ async function post({ request, env, agent }) {
 
   if (orderId) {
     const pedido = await env.CRM_DB.prepare(
-      `SELECT o.*, conv.id AS conversation_id, c.wa_id, COALESCE(conv.ctwa_clid, c.ctwa_clid) AS ctwa_clid, c.name, c.profile_name
+      `SELECT o.*, conv.id AS conversation_id, c.wa_id, CASE WHEN conv.linea_id IS NULL THEN COALESCE(conv.ctwa_clid, c.ctwa_clid) ELSE conv.ctwa_clid END AS ctwa_clid, c.name, c.profile_name
        FROM catalog_orders o
        JOIN conversations conv ON conv.id = o.conversation_id
        JOIN contacts c ON c.id = conv.contact_id
@@ -67,7 +67,7 @@ async function post({ request, env, agent }) {
     if (!payload?.currency && pedido.currency) payload.currency = pedido.currency;
   } else if (conversationId) {
     const conv = await env.CRM_DB.prepare(
-      `SELECT c.wa_id, COALESCE(conv.ctwa_clid, c.ctwa_clid) AS ctwa_clid, c.name, c.profile_name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
+      `SELECT c.wa_id, CASE WHEN conv.linea_id IS NULL THEN COALESCE(conv.ctwa_clid, c.ctwa_clid) ELSE conv.ctwa_clid END AS ctwa_clid, c.name, c.profile_name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
     )
       .bind(conversationId)
       .first();

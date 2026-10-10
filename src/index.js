@@ -279,7 +279,7 @@ export default {
       // hace más; embudo y frases siguen en la de 15 min después.
       const hizoResumen = await enviarResumenSiToca(env).catch((err) => {
         console.error("Resumen semanal:", err.message);
-        return true;
+        return false; // si falla, que no bloquee el embudo ni las frases
       });
       if (hizoResumen) return;
       await actualizarEtapas(env).catch((err) => console.error("Embudo:", err.message));

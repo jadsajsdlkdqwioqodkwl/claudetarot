@@ -151,7 +151,9 @@ button { font-family: inherit; touch-action: manipulation; }
 #lista header h1 { font-size: 16px; margin: 0; }
 #sesion-actual { font-size: 11px; opacity: .8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #lista header .acciones { display: flex; gap: 2px; align-items: center; flex-shrink: 0; position: relative; }
-#btn-menu-lista { display: none !important; }
+/* Las acciones secundarias van siempre al menú ⋯: con rol admin son 11 íconos y no entran en la columna de 340px. */
+#lista header .accion-secundaria { display: none !important; }
+#btn-menu-lista { display: inline-flex !important; }
 #menu-lista { display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 230px; max-width: calc(100vw - 16px); background: var(--panel); color: var(--texto); border-radius: var(--radio-m); box-shadow: 0 4px 18px rgba(0,0,0,.2); z-index: 30; padding: 6px 0; }
 #menu-lista.abierto { display: block; }
 #menu-lista button { display: flex !important; width: 100% !important; height: auto !important; border-radius: 0 !important; justify-content: flex-start !important; gap: 12px; padding: 12px 16px; color: var(--texto) !important; font-size: 14px !important; text-align: left; opacity: 1 !important; }
@@ -582,7 +584,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   .msg-fila { max-width: 82%; }
   /* En mobile no hay :hover, y responder ya se hace deslizando — solo dejamos
      visible el botón de reaccionar, siempre a la vista en vez de escondido. */
-  .msg-acciones { display: flex; }
+  .msg-acciones { display: flex; top: 50%; transform: translateY(-50%); box-shadow: none; background: transparent; }
+  /* Al costado de la burbuja (en el margen libre), no encima del mensaje anterior ni del chip de la fecha. */
+  .msg-fila.in .msg-acciones { right: -34px; }
+  .msg-fila.out .msg-acciones { right: auto; left: -34px; }
   .msg-acciones .msg-responder { display: none; }
   .msg-acciones button { width: 30px; height: 30px; } /* con el dedo hace falta más área que con el mouse */
 }
@@ -591,8 +596,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
    con 7 íconos no entran en pantallas angostas ni con el zoom de pantalla
    de Android subido (que deja el ancho útil en ~320px o menos). */
 @media (max-width: 900px) {
-  #lista header .accion-secundaria { display: none !important; }
-  #btn-menu-lista { display: inline-flex !important; }
+  /* Los filtros en UNA fila que se desliza: antes ocupaban 4 filas (~130 px) de la pantalla. */
+  #filtros { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #filtros::-webkit-scrollbar { display: none; }
+  #filtros > * { flex-shrink: 0; }
   #lista header { padding: 10px 8px 10px 14px; padding-top: max(10px, env(safe-area-inset-top)); }
   #lista header button { width: 40px; height: 40px; }
   #chat header { padding: 8px 10px; padding-top: max(8px, env(safe-area-inset-top)); gap: 8px; }

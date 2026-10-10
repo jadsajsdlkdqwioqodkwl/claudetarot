@@ -171,7 +171,7 @@ async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacio
     ]);
     // El producto trae su propia secuencia; sin producto, la general (solo
     // en la línea principal: la general es de Tarot Store).
-    const sequenceId = producto ? producto.secuencia_id : conversacion.linea_id ? null : general;
+    const sequenceId = producto?.secuencia_id || (conversacion.linea_id ? null : general);
     if (!sequenceId || auto === "0") return;
     await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), ORIGEN_SEGUIMIENTO_AUTO);
   } catch (err) {

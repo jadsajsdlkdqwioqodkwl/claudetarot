@@ -16,6 +16,7 @@ import { encadenarRescate } from "./planes-plantilla.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
+import { envDeConversacion } from "./lineas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -171,16 +172,18 @@ export async function procesarSeguimientosVencidos(env) {
           await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
         }
         let waMessageId;
+        // El catálogo es el de la línea del chat (el de URO no es el de Tarot Store).
+        const catalogoId = (await envDeConversacion(env, s.conv_id)).WHATSAPP_CATALOG_ID;
         if (s.catalogo === "*") {
           // La miniatura sale del caché de productos: sin pedirle la lista a Meta.
           // Solo productos del catálogo conectado: el caché también guarda
           // filas viejas de otro catálogo, que Meta no puede usar de portada.
           const { results: portadas } = await env.CRM_DB.prepare(
             "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
-          ).bind(env.WHATSAPP_CATALOG_ID || "").all().catch(() => ({ results: [] }));
+          ).bind(catalogoId || "").all().catch(() => ({ results: [] }));
           waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
         } else {
-          if (!env.WHATSAPP_CATALOG_ID) throw new Error("Falta WHATSAPP_CATALOG_ID.");
+          if (!catalogoId) throw new Error("Falta el catálogo de esta línea.");
           waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
         }
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
@@ -209,7 +212,8 @@ export async function procesarSeguimientosVencidos(env) {
       console.error("Seguimiento programado:", s.id, err.message);
       await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?")
         .bind(s.id)
-        .run();
+        .run()
+        .catch(() => {});
     }
   }
 }

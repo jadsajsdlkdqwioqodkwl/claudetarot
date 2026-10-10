@@ -57,6 +57,22 @@ Drive y Google Sheets. Las del asesor → Google Drive.
               Dueño califica (Creativos y Copy Meta) → "REVISA COMENTARIOS"
               → Reglas, Instrucciones, Copy reglas, Avatares (Estado), creativos/brief.md
 
+## Seguimientos del CRM: qué corre y qué no (auditoría 2026-10-10)
+
+| Seguimiento | Estado | Notas |
+|---|---|---|
+| Bienvenida de anuncio (Tarot y URO) | ✅ funciona | Solo chat **nuevo** con clic de anuncio (`ctwa_clid`). Por producto/línea (`pasosDelChat`); sale por el número del chat |
+| Seguimiento automático 24 h (3 h y 20 h) | ✅ funciona | URO usa la secuencia de su producto; Tarot la general (`ad_followup_sequence_id`). Tope de 2 sin respuesta |
+| Respuestas rápidas con seguimiento | ✅ funciona | Las de URO no traen seguimiento. En chats de otro número ya no salen las generales (de Tarot) salvo buscando |
+| Planes con plantilla (recojo Shalom, rescate) | ✅ manual + cadena | Siempre por aprobar del admin. Etapa 1 (solo saludo) ya no genera cadena |
+| Pedido web a los 3 min | ✅ solo Tarot | Ya solo mira el último mensaje del chat de Tarot |
+| **Toques d2/d7/d14/d30/post** (`toques.js`) | ❌ **apagados** | `procesarToques` no se llama en `index.js` ni existe `TOQUES` en `wrangler.jsonc`: el motor está "sin conectar" a propósito. `docs/plan-seguimientos.md` es un plan, no algo vivo |
+| Carrito abandonado | ⏸ apagado | `CARRITO_AUTO_HORAS` vacío; al prenderlo ya excluye otras líneas |
+| Link de envío automático | ⏸ apagado | A propósito: se manda a mano |
+| Mensaje masivo | ⏸ apagado | El servidor lo rechaza; el formulario ya no se muestra |
+
+Pendiente (no tocado, ver informe): rescate con plantilla no verifica que Meta la haya aprobado (queda `fallido` sin reintento); doble bienvenida si los avisos llegan por las dos apps de Meta (sin índice único en `messages.wa_message_id`); sugerencias del asesor y `asesor-resumen` buscan el chat por teléfono sin distinguir línea; `CLAUDE.md` dice 1,5 s de "escribiendo…" pero el código usa 2 s / 1,5 s / 1 s (rápidas y bienvenida).
+
 ## Dónde ver cada cosa
 
 - Informe CRO del día: Telegram (te llega a ti) y CRM → Reportes.
@@ -66,6 +82,8 @@ Drive y Google Sheets. Las del asesor → Google Drive.
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-10 · Auditoría del CRM (sandbox local + código). Arreglado: header del admin desbordado en escritorio (acciones secundarias siempre en «⋯»); botón de reaccionar tapaba el mensaje en móvil; filtros en una sola fila en móvil; etiqueta «Contacto» y badge de número repetido fuera de la lista; Interés/venta de un chat de URO ya no mandan «Kit Tarot S/89» a Meta (usan el producto del chat); formulario de mensaje masivo oculto (está apagado). Servidor: un error de D1 ya no manda un chat de URO por el número de Tarot (`lineas.js`); secuencia de producto aplicada a mano cuenta como lead; producto sin secuencia cae a la general en Tarot; pedido web y CAPI no mezclan líneas; catálogo del cron usa el de la línea; cadena de rescate salta etapa 1; resumen fallido ya no bloquea el embudo. Ver tabla «Seguimientos del CRM».
 
 - 2026-10-10 · Cadena: cuando sale el último seguimiento automático de 24 h sin respuesta, el rescate con plantilla queda por aprobar solo (`encadenarRescate`, ajuste `plan_auto`). Días de los planes editables (`plan_dias`, Herramientas). CAPI de otra línea con su propio token.
 
