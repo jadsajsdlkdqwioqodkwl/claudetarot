@@ -18,7 +18,7 @@ import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_EN
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
 import { plantillaAprobada } from "./plantillas.js";
-import { textoParaChat } from "./plantillas-propuestas.js";
+import { textoParaChat, parametrosDePlantilla } from "./plantillas-propuestas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -98,7 +98,7 @@ export async function procesarSeguimientosVencidos(env) {
   // mensaje del cliente (para el "escribiendo…"), sin una consulta por envío.
   const marcas = reservados.map(() => "?").join(",");
   const { results: vencidos } = await env.CRM_DB.prepare(
-    `SELECT s.*, conv.id AS conv_id, c.wa_id, ${textoPorDefectoSql("rapida")} AS quick_body,
+    `SELECT s.*, conv.id AS conv_id, c.wa_id, COALESCE(c.name, c.profile_name) AS contact_nombre, ${textoPorDefectoSql("rapida")} AS quick_body,
        COALESCE(s.media_key, qm.media_key, q.media_key) AS media_key_real,
        COALESCE(s.media_type, qm.media_type, q.media_type) AS media_type_real,
        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'out'
@@ -158,10 +158,12 @@ export async function procesarSeguimientosVencidos(env) {
       if (s.template_name) {
         // Plantilla: para escribirle a alguien fuera de la ventana de 24h
         // (típico de un envío masivo a contactos viejos que no escribieron).
-        const parametros = s.template_params ? JSON.parse(s.template_params) : [];
+        const envChat = await envDeConversacion(env, s.conv_id);
+        // Los seguimientos de plantilla guardan solo el nombre: las variables se arman al mandar.
+        const parametros = s.template_params ? JSON.parse(s.template_params) : await parametrosDePlantilla(envChat, s.template_name, s.contact_nombre).catch(() => []);
         // Solo sale si Meta ya la aprobó en la cuenta de ese número: si el admin todavía no la mandó
         // a revisión (o Meta no responde), espera 30 min y reintenta, hasta 3 días.
-        const aprobada = await plantillaAprobada(await envDeConversacion(env, s.conv_id), s.template_name).catch(() => null);
+        const aprobada = await plantillaAprobada(envChat, s.template_name).catch(() => null);
         if (!aprobada) {
           if (Date.now() - new Date(s.send_at).getTime() > 3 * 24 * 3600 * 1000) throw new Error(`La plantilla ${s.template_name} no está aprobada en Meta.`);
           await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
@@ -173,7 +175,7 @@ export async function procesarSeguimientosVencidos(env) {
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",
-          body: await textoParaChat(await envDeConversacion(env, s.conv_id), s.template_name, parametros),
+          body: await textoParaChat(envChat, s.template_name, parametros),
           sentBy: s.created_by || "Envío masivo"
         });
       } else if (s.catalogo) {

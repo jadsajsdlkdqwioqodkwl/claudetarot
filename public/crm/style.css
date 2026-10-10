@@ -981,3 +981,24 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .fila-template { display: flex; gap: 6px; align-items: flex-start; }
 .arrastrar-fila { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
 .fila-template.arrastrando { opacity: .6; background: var(--hover); }
+
+/* Vista previa de una plantilla como la ve el cliente en WhatsApp. */
+.vista-wa { background: #e5ddd5; border-radius: 10px; padding: 10px; max-width: 340px; }
+.vista-wa-burbuja { background: #fff; border-radius: 8px; border-top-left-radius: 0; padding: 7px 9px 4px; font-size: 13.5px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,.13); overflow-wrap: anywhere; }
+.vista-wa-hora { display: block; text-align: right; font-size: 10.5px; color: #8696a0; margin-top: 2px; }
+.vista-wa-boton { background: #fff; color: #027eb5; text-align: center; border-radius: 8px; padding: 8px; margin-top: 3px; font-size: 13.5px; font-weight: 500; box-shadow: 0 1px 1px rgba(0,0,0,.13); }
+.vista-wa-vacio { color: var(--gris); font-size: 12px; }
+/* Galería de fotos del catálogo. */
+.galeria-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 8px 0; }
+.galeria-card { cursor: zoom-in; border: 1px solid var(--borde); border-radius: var(--radio-m); overflow: hidden; background: #fff; }
+.galeria-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--fondo); }
+.galeria-card .gal-nombre { padding: 6px 8px; font-size: 12.5px; }
+.galeria-card .gal-precio { padding: 0 8px 8px; font-size: 12px; color: var(--gris); }
+.visor-foto { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 200; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; cursor: zoom-out; padding: 16px; }
+.visor-foto img { max-width: 100%; max-height: 85vh; border-radius: 6px; }
+.visor-foto span { color: #fff; font-size: 14px; }
+/* Pasos de seguimiento (respuesta rápida y plantilla): que la cabecera se acomode en pantallas angostas. */
+.rp-paso .sug-paso-cab { flex-wrap: wrap; }
+.rp-num { white-space: nowrap; }
+.rp-paso .sug-paso-horas { width: 72px; flex: 0 0 auto; }
+.rp-paso .sub { white-space: nowrap; }

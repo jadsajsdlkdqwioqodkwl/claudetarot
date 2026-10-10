@@ -48,22 +48,25 @@ function leerSeguimiento(payload) {
   pasos = pasos
     .map((p) => {
       const horas = Number(p?.horas);
+      // Un paso puede ser una plantilla (sale fuera de la ventana de 24 h, hasta 60 días después).
+      const plantilla = /^[a-z0-9_]{1,100}$/.test(String(p?.plantilla || "")) ? String(p.plantilla) : null;
       const paso = {
-        horas: horas >= 0.25 && horas <= 168 ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
-        body: String(p?.body || "").trim().slice(0, 4096) || null
+        horas: horas >= 0.25 && horas <= (plantilla ? 1440 : 168) ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
+        body: plantilla ? null : String(p?.body || "").trim().slice(0, 4096) || null
       };
-      if (p?.media_key) Object.assign(paso, {
+      if (plantilla) paso.plantilla = plantilla;
+      if (!plantilla && p?.media_key) Object.assign(paso, {
         media_key: String(p.media_key).slice(0, 200),
         media_type: ["image", "video", "document", "audio", "sticker"].includes(p.media_type) ? p.media_type : "document",
         media_mime: p.media_mime ? String(p.media_mime).slice(0, 100) : null
       });
       return paso;
     })
-    .filter((p) => p.body || p.media_key)
+    .filter((p) => p.body || p.media_key || p.plantilla)
     .slice(0, 4);
   return {
     pasos: pasos.length ? JSON.stringify(pasos) : null,
-    body: pasos[0]?.body || (pasos.length ? "(archivo)" : null),
+    body: pasos[0]?.body || (pasos[0]?.plantilla ? `Plantilla: ${pasos[0].plantilla}` : pasos.length ? "(archivo)" : null),
     hours: pasos.length ? Math.max(1, Math.round(pasos[0].horas)) : null
   };
 }

@@ -139,6 +139,7 @@ function iconizar() {
   $("#btn-admin").innerHTML = icon("broadcast");
   $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
+  $("#btn-galeria").innerHTML = icon("image");
   $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -539,6 +540,13 @@ $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: 
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
 
+/** Cómo ve el cliente una plantilla en WhatsApp: la burbuja con el texto (variables de ejemplo) y sus botones debajo. */
+function vistaPreviaPlantilla(texto, botones = [], nombre = "María") {
+  const lleno = String(texto || "").replace(/\{\{1\}\}/g, nombre || "María").replace(/\{\{2\}\}/g, "el kit de tarot").replace(/\{\{(\d+)\}\}/g, "…");
+  if (!lleno.trim()) return `<div class="vista-wa"><div class="vista-wa-vacio">Escribe el texto para ver cómo queda.</div></div>`;
+  return `<div class="vista-wa"><div class="vista-wa-burbuja">${formatearTextoWA(lleno)}<span class="vista-wa-hora">9:41</span></div>${(botones || []).filter(Boolean).map((b) => `<div class="vista-wa-boton">${escapar(b)}</div>`).join("")}</div>`;
+}
+
 const CATEGORIA_META = { MARKETING: "Marketing", UTILITY: "Utilidad" };
 const ESTADO_META = {
   SIN_ENVIAR: ["Sin enviar", "#8a6500", "#fff8e1"], PENDING: ["En revisión de Meta", "#0b57d0", "#e8f0fe"], IN_APPEAL: ["En revisión de Meta", "#0b57d0", "#e8f0fe"],
@@ -574,7 +582,7 @@ async function abrirPlantillasMeta() {
                   ${p.categoriaMeta && p.categoriaMeta !== p.categoria ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;color:#b3261e;background:#fde8e7" title="Meta cambió la categoría que pediste">Meta la clasificó como ${CATEGORIA_META[p.categoriaMeta] || escapar(p.categoriaMeta)}</span>` : ""}
                   <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${etq}</span>
                 </div>
-                <div style="white-space:pre-wrap;margin:6px 0;font-size:13px;line-height:1.4;background:#f7f8fa;border-radius:6px;padding:8px">${escapar(p.texto)}</div>
+                <div style="margin:6px 0">${vistaPreviaPlantilla(p.texto, p.botones)}</div>
                 <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.length ? p.botones.map((b) => `«${escapar(b)}»`).join(" · ") : "ninguno"} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
                 ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
@@ -593,6 +601,8 @@ async function abrirPlantillasMeta() {
       card.innerHTML = `
         <div style="font-size:12px;color:var(--gris);margin-bottom:4px">Usa <code>{{1}}</code> donde va el nombre del cliente (y deja las demás variables como están). Meta no deja empezar ni terminar con una variable.</div>
         <textarea class="pl-texto" rows="6" maxlength="1024" style="width:100%">${escapar(b.dataset.texto)}</textarea>
+        <div style="font-size:12px;color:var(--gris);margin:6px 0 2px">Así lo ve el cliente</div>
+        <div class="pl-vista"></div>
         <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Tipo de mensaje</label>
         <select class="pl-categoria" style="width:100%">
           <option value="UTILITY"${b.dataset.categoria === "UTILITY" ? " selected" : ""}>Utilidad: avisa algo sobre un pedido que ya hizo (envío, boleta, recojo). Más barata</option>
@@ -613,13 +623,17 @@ async function abrirPlantillasMeta() {
         caja.insertAdjacentHTML("beforeend", `<div style="display:flex;gap:6px;margin-bottom:4px"><input type="text" class="pl-boton" maxlength="25" value="${escapar(valor)}" placeholder="Texto del botón" style="flex:1;min-width:0" /><button type="button" class="sug-icono pl-quitar-boton" title="Quitar botón">${icon("trash")}</button></div>`);
         card.querySelector(".pl-agregar-boton").style.display = caja.children.length >= 3 ? "none" : "";
       };
+      const pintarVista = () => { card.querySelector(".pl-vista").innerHTML = vistaPreviaPlantilla(card.querySelector(".pl-texto").value, [...card.querySelectorAll(".pl-boton")].map((i) => i.value)); };
+      card.addEventListener("input", pintarVista);
       botones.forEach((x) => agregarBoton(x));
-      card.querySelector(".pl-agregar-boton").addEventListener("click", () => agregarBoton());
+      pintarVista();
+      card.querySelector(".pl-agregar-boton").addEventListener("click", () => { agregarBoton(); pintarVista(); });
       caja.addEventListener("click", (e) => {
         const q = e.target.closest(".pl-quitar-boton");
         if (!q) return;
         q.parentElement.remove();
         card.querySelector(".pl-agregar-boton").style.display = "";
+        pintarVista();
       });
       const guardar = async (cuerpo) => {
         try {
@@ -2493,6 +2507,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-avisos": "Avisos por Telegram",
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
+  "btn-galeria": "Fotos del catálogo",
   "btn-equipo": "Equipo",
   "btn-salir": "Salir"
 };
@@ -3029,9 +3044,11 @@ async function toggleCatalogoPanel() {
 
   panel.innerHTML = `
     <div class="item" id="cat-completo"><div class="titulo">${icon("bag")} Mandar catálogo completo</div></div>
+    <div class="item" id="cat-fotos"><div class="titulo">${icon("image")} Ver fotos en grande (sin mandar)</div></div>
     <div style="padding:8px 10px"><input type="text" id="cat-buscar" placeholder="Buscar producto…" /></div>
     <div id="cat-lista">Cargando…</div>`;
   $("#cat-completo").addEventListener("click", enviarCatalogoCompleto);
+  $("#cat-fotos").addEventListener("click", () => { panel.classList.remove("abierto"); abrirGaleriaCatalogo(); });
   $("#cat-buscar").addEventListener("input", (e) => pintarListaProductos(e.target.value.trim().toLowerCase()));
 
   try {
@@ -5739,22 +5756,44 @@ function abrirModalRapidaNueva() {
 
 /** Un paso de la secuencia de seguimiento de la respuesta rápida (texto, horas y archivo opcional). */
 function pasoRapidaHtml(p, n) {
+  const esPlantilla = Boolean(p.plantilla);
   return `
     <div class="rp-paso" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
       <div class="sug-paso-cab">
         <b class="rp-num">Paso ${n}</b>
+        <select class="rp-tipo" title="Qué manda este paso"><option value="texto"${esPlantilla ? "" : " selected"}>Texto</option><option value="plantilla"${esPlantilla ? " selected" : ""}>Plantilla</option></select>
         <span class="sub">si no responde, a las</span>
-        <input type="number" class="sug-paso-horas rp-horas" min="0.25" max="168" step="0.5" value="${Number(p.horas) || 20}" />
-        <span class="sub">h</span>
+        <input type="number" class="sug-paso-horas rp-horas" min="0.25" max="168" step="0.5" value="${esPlantilla ? "" : Number(p.horas) || 20}" ${esPlantilla ? "hidden" : ""} />
+        <span class="sub rp-u-horas" ${esPlantilla ? "hidden" : ""}>h</span>
+        <input type="number" class="sug-paso-horas rp-dias" min="0.25" max="60" step="0.25" value="${esPlantilla ? Math.round((Number(p.horas) || 96) / 24 * 4) / 4 : ""}" ${esPlantilla ? "" : "hidden"} />
+        <span class="sub rp-u-dias" ${esPlantilla ? "" : "hidden"}>días</span>
         <button type="button" class="sug-icono rp-quitar" title="Quitar paso">${icon("trash")}</button>
       </div>
+      <div class="rp-bloque-plantilla" ${esPlantilla ? "" : "hidden"}>
+        <select class="rp-plantilla" style="width:100%" data-actual="${escapar(p.plantilla || "")}"><option value="${escapar(p.plantilla || "")}">${escapar(p.plantilla || "Elige una plantilla aprobada")}</option></select>
+        <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque ya se haya cerrado la ventana de 24 h (es una plantilla pagada). Tiene que estar aprobada en Meta.</div>
+      </div>
+      <div class="rp-bloque-texto" ${esPlantilla ? "hidden" : ""}>
       <textarea class="rp-texto" rows="3" placeholder="Texto del seguimiento (opcional si adjuntas un archivo)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
       <div class="rp-archivo">
         <label class="shalom-boton">${icon("paperclip")} Adjuntar archivo<input type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none" /></label>
         <span class="sub rp-nombre">${p.media_key ? `Con ${p.media_type === "video" ? "video" : p.media_type === "image" ? "foto" : "archivo"} adjunto` : ""}</span>
         <button type="button" class="sug-icono rp-quitar-archivo" title="Quitar archivo" ${p.media_key ? "" : "hidden"}>${icon("close")}</button>
       </div>
+      </div>
     </div>`;
+}
+
+/** Las plantillas aprobadas del número del producto elegido (o el principal), para los pasos de plantilla. */
+async function llenarPlantillasDePasos() {
+  const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
+  let nombres = [];
+  try { nombres = (await pedir(`/api/crm/templates${lineaId ? `?linea_id=${lineaId}` : ""}`)).templates.filter((t) => t.status === "APPROVED").map((t) => t.name); } catch { /* sin Meta: solo la elegida */ }
+  document.querySelectorAll("#rapida-pasos .rp-plantilla").forEach((sel) => {
+    const actual = sel.value || sel.dataset.actual;
+    const lista = [...new Set([...(actual ? [actual] : []), ...nombres])];
+    sel.innerHTML = (lista.length ? "" : `<option value="">No hay plantillas aprobadas</option>`) + lista.map((n) => `<option value="${escapar(n)}"${n === actual ? " selected" : ""}>${escapar(n)}</option>`).join("");
+  });
 }
 
 function renumerarPasosRapida() {
@@ -5768,6 +5807,15 @@ function agregarPasoRapida(p = { horas: 20 }) {
   const el = cont.lastElementChild;
   agregarRapidasA(el.querySelector(".rp-texto"));
   el.querySelector(".rp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosRapida(); });
+  el.querySelector(".rp-tipo").addEventListener("change", (e) => {
+    const pl = e.target.value === "plantilla";
+    el.querySelector(".rp-bloque-plantilla").hidden = !pl;
+    el.querySelector(".rp-bloque-texto").hidden = pl;
+    el.querySelector(".rp-horas").hidden = pl; el.querySelector(".rp-u-horas").hidden = pl;
+    el.querySelector(".rp-dias").hidden = !pl; el.querySelector(".rp-u-dias").hidden = !pl;
+    if (pl && !el.querySelector(".rp-dias").value) el.querySelector(".rp-dias").value = 4;
+    if (pl) llenarPlantillasDePasos();
+  });
   const input = el.querySelector('input[type="file"]');
   input.addEventListener("change", () => {
     const f = input.files[0];
@@ -5790,6 +5838,11 @@ function agregarPasoRapida(p = { horas: 20 }) {
 async function leerPasosRapida() {
   const pasos = [];
   for (const el of $("#rapida-pasos").children) {
+    if (el.querySelector(".rp-tipo").value === "plantilla") {
+      const nombre = el.querySelector(".rp-plantilla").value;
+      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24 });
+      continue;
+    }
     const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
     if (el._archivo) {
       const subida = await subirArchivo(el._archivo);
@@ -5809,6 +5862,7 @@ function pintarSeguimientoRapida(q) {
     : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
   pasos.forEach((p) => agregarPasoRapida(p));
   renumerarPasosRapida();
+  if (pasos.some((p) => p.plantilla)) llenarPlantillasDePasos();
   const fila = $("#rapida-seg-global-fila");
   fila.style.display = "none";
   if (estado.miRol !== "admin") return;
@@ -6920,6 +6974,108 @@ function badgeEstadoPlantilla(status) {
   return ` <span style="font-size:11px;color:${color}">· ${escapar(texto)}</span>`;
 }
 
+/* ---------- Fotos del catálogo: que todo el equipo las vea en grande (sin mandarlas) ---------- */
+
+let galeriaProductos = [];
+
+function pintarGaleria() {
+  const filtro = $("#galeria-buscar").value.trim().toLowerCase();
+  const lista = galeriaProductos.filter((p) => !filtro || (p.name || "").toLowerCase().includes(filtro));
+  $("#galeria-lista").innerHTML = lista.length ? lista.map((p, i) => `
+    <div class="galeria-card" data-i="${galeriaProductos.indexOf(p)}">
+      ${p.image_url ? `<img src="${escapar(p.image_url)}" alt="" loading="lazy" />` : `<div class="miniatura" style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center">${icon("tag")}</div>`}
+      <div class="gal-nombre">${escapar(p.name || p.retailer_id)}</div>
+      ${p.price ? `<div class="gal-precio">${escapar(p.price)}${p.availability && p.availability !== "in stock" ? " · agotado" : ""}</div>` : ""}
+    </div>`).join("") : `<p class="ayuda-modal">Sin productos.</p>`;
+}
+
+async function cargarGaleria() {
+  $("#galeria-lista").textContent = "Cargando…";
+  const linea = $("#galeria-linea").value;
+  try {
+    galeriaProductos = (await pedir(`/api/crm/catalog-products${linea ? `?linea_id=${linea}` : ""}`)).products || [];
+    pintarGaleria();
+  } catch (err) {
+    $("#galeria-lista").innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
+
+function abrirGaleriaCatalogo() {
+  // El catálogo del número principal y el de cada número que tenga el suyo.
+  const sel = $("#galeria-linea");
+  const conCatalogo = (estado.lineas || []).filter((l) => l.catalog_id && l.activa !== 0);
+  sel.innerHTML = `<option value="">Tarot Store (principal)</option>` + conCatalogo.map((l) => `<option value="${l.id}">${escapar(l.nombre)}</option>`).join("");
+  sel.style.display = conCatalogo.length ? "" : "none";
+  const lineaChat = estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId)?.linea_id;
+  if (lineaChat && conCatalogo.some((l) => l.id === lineaChat)) sel.value = String(lineaChat);
+  $("#galeria-buscar").value = "";
+  $("#modal-galeria-fondo").classList.add("abierto");
+  cargarGaleria();
+}
+$("#btn-galeria").addEventListener("click", abrirGaleriaCatalogo);
+$("#galeria-linea").addEventListener("change", cargarGaleria);
+$("#galeria-buscar").addEventListener("input", pintarGaleria);
+$("#galeria-cerrar").addEventListener("click", () => $("#modal-galeria-fondo").classList.remove("abierto"));
+$("#galeria-lista").addEventListener("click", (e) => {
+  const p = galeriaProductos[Number(e.target.closest(".galeria-card")?.dataset.i)];
+  if (!p?.image_url) return;
+  const visor = document.createElement("div");
+  visor.className = "visor-foto";
+  visor.innerHTML = `<img src="${escapar(p.image_url)}" alt="" /><span>${escapar(p.name || "")}${p.price ? ` · ${escapar(p.price)}` : ""}</span>`;
+  visor.addEventListener("click", () => visor.remove());
+  document.body.appendChild(visor);
+});
+
+/* ---------- Seguimiento de una plantilla (el lápiz del selector): programa otras plantillas tras mandarla ---------- */
+
+let segPlantillaActual = null;
+
+function pasoSegHtml(p, aprobadas) {
+  const opciones = [...new Set([...(aprobadas), ...(p.plantilla ? [p.plantilla] : [])])];
+  return `<div class="rp-paso segp-paso">
+    <div class="sug-paso-cab">
+      <select class="segp-plantilla" style="flex:1;min-width:0">${opciones.map((n) => `<option value="${escapar(n)}"${n === p.plantilla ? " selected" : ""}>${escapar(n)}</option>`).join("")}</select>
+      <span class="sub">a los</span>
+      <input type="number" class="sug-paso-horas segp-dias" min="0.25" max="60" step="0.25" value="${Number(p.dias) || 4}" />
+      <span class="sub">días</span>
+      <button type="button" class="sug-icono segp-quitar-paso" title="Quitar paso">${icon("trash")}</button>
+    </div>
+  </div>`;
+}
+
+function abrirSeguimientoDePlantilla(t, templates, seguimientos) {
+  const aprobadas = templates.filter((x) => x.status === "APPROVED" && x.name !== t.name).map((x) => x.name);
+  const cfg = seguimientos[t.name] || { pasos: [], siempre: false };
+  segPlantillaActual = { nombre: t.name, aprobadas };
+  $("#segp-titulo").textContent = `Seguimiento de ${t.name}`;
+  $("#segp-pasos").innerHTML = (cfg.pasos || []).map((p) => pasoSegHtml(p, aprobadas)).join("");
+  $("#segp-siempre").checked = Boolean(cfg.siempre);
+  $("#segp-agregar").style.display = "";
+  $("#modal-seg-plantilla-fondo").classList.add("abierto");
+}
+
+$("#segp-agregar").innerHTML = `${icon("plus")} Agregar plantilla de seguimiento`;
+$("#segp-agregar").addEventListener("click", () => {
+  const a = segPlantillaActual?.aprobadas || [];
+  if (!a.length) return alert("No hay otras plantillas aprobadas todavía.");
+  if ($("#segp-pasos").children.length >= 5) return alert("Máximo 5 pasos.");
+  $("#segp-pasos").insertAdjacentHTML("beforeend", pasoSegHtml({ plantilla: a[0], dias: 4 }, a));
+});
+$("#segp-pasos").addEventListener("click", (e) => e.target.closest(".segp-quitar-paso")?.closest(".segp-paso").remove());
+$("#segp-cerrar").addEventListener("click", () => $("#modal-seg-plantilla-fondo").classList.remove("abierto"));
+async function guardarSegPlantilla(cuerpo) {
+  try {
+    await pedir("/api/crm/templates", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre: segPlantillaActual.nombre, ...cuerpo }) });
+    $("#modal-seg-plantilla-fondo").classList.remove("abierto");
+    abrirModalTemplates();
+  } catch (err) { alert(err.message); }
+}
+$("#segp-guardar").addEventListener("click", () => guardarSegPlantilla({
+  siempre: $("#segp-siempre").checked,
+  pasos: [...document.querySelectorAll("#segp-pasos .segp-paso")].map((el) => ({ plantilla: el.querySelector(".segp-plantilla").value, dias: Number(el.querySelector(".segp-dias").value) }))
+}));
+$("#segp-quitar").addEventListener("click", () => { if (confirm("¿Quitar el seguimiento de esta plantilla? (Si es el aviso de envío, ya no programará el recojo.)")) guardarSegPlantilla({ pasos: [], siempre: false }); });
+
 /**
  * Ordenar filas arrastrando el ⋮⋮ (mouse y dedo). Al soltar llama a `guardar()`; si falla, avisa y recarga.
  * Igual que el arrastre de las respuestas rápidas, pero para cualquier lista (plantillas).
@@ -6978,14 +7134,21 @@ async function abrirModalTemplates() {
           <div class="nombre">${escapar(t.name)}${badgeEstadoPlantilla(t.status)}</div>
           <div class="sub">${escapar(t.category)} · ${escapar(t.language)}</div>
           ${body?.text ? `<div class="sub">${escapar(body.text)}</div>` : ""}
+          ${respuesta.seguimientos?.[t.name]?.pasos?.length ? `<div class="sub">${icon("clock")} Después: ${respuesta.seguimientos[t.name].pasos.map((x) => `${escapar(x.plantilla)} (${x.dias} d)`).join(" · ")}</div>` : ""}
         </div>
+        ${estado.miRol === "admin" ? `<button type="button" class="sug-icono editar-seg-plantilla" title="Programar un seguimiento con otras plantillas">${icon("pencil")}</button>` : ""}
       </div>`;
     }).join("");
     cont.querySelectorAll(".fila-template").forEach((el) => {
       const t = templates[Number(el.dataset.i)];
       if (t.status !== "APPROVED") return;
-      el.addEventListener("click", (e) => { if (!e.target.closest(".arrastrar-fila")) elegirTemplate(t); });
+      el.addEventListener("click", (e) => { if (!e.target.closest(".arrastrar-fila, .editar-seg-plantilla")) elegirTemplate(t); });
     });
+    // El lápiz va aunque la plantilla no esté aprobada todavía: el seguimiento se arma de antemano.
+    cont.querySelectorAll(".fila-template").forEach((el) => el.querySelector(".editar-seg-plantilla")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirSeguimientoDePlantilla(templates[Number(el.dataset.i)], templates, respuesta.seguimientos || {});
+    }));
     arrastrarFilas(cont, ".fila-template", () => {
       const nombres = [...cont.querySelectorAll(".fila-template")].map((el) => templates[Number(el.dataset.i)].name);
       return pedir("/api/crm/templates", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: nombres }) });
@@ -7002,9 +7165,18 @@ function elegirTemplate(t) {
 
   $("#lista-templates").style.display = "none";
   $("#form-template-params").style.display = "block";
+  const botonesT = ((t.components || []).find((c) => c.type === "BUTTONS")?.buttons || []).map((b) => b.text);
   $("#template-params").innerHTML = `
-    <p class="ayuda-modal">${body ? escapar(body.text) : t.name}</p>
+    <div class="ayuda-modal">Así lo ve el cliente</div>
+    <div id="template-vista"></div>
     ${Array.from({ length: nParams }, (_, i) => `<input type="text" class="param-template" placeholder="Variable {{${i + 1}}}" />`).join("")}`;
+  const pintarVistaT = () => {
+    const valores = [...document.querySelectorAll(".param-template")].map((i) => i.value);
+    const lleno = (body?.text || t.name).replace(/\{\{(\d+)\}\}/g, (m, n) => valores[Number(n) - 1] || m);
+    $("#template-vista").innerHTML = vistaPreviaPlantilla(lleno, botonesT);
+  };
+  $("#template-params").addEventListener("input", pintarVistaT);
+  pintarVistaT();
 }
 
 $("#template-volver").addEventListener("click", () => {

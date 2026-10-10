@@ -854,6 +854,17 @@ check("las letras de columna llegan hasta la última de la hoja",
         .filter(([, , l]) => !/^\s*(\/\/|\*|\/\*)/.test(l) && !/EMOJIS|Hola\$\{/.test(l) && (enTag.test(l) || enOption.test(l))));
     check("la interfaz del CRM usa iconos, no emojis", sucias.length === 0, sucias.slice(0, 3).map(([f, n]) => `${f}:${n}`).join(", "));
   }
+  {
+    // El aviso de envío trae de fábrica el recojo en Shalom, con plantillas que existen en cada marca.
+    const { seguimientosDePlantillas } = await import("../src/lib/plantillas-seguimiento.js");
+    const { propuestasDe } = await import("../src/lib/plantillas-propuestas.js");
+    const fake = { prepare: () => ({ first: async () => null }) };
+    const seg = await seguimientosDePlantillas(fake);
+    const nombres = new Set([...propuestasDe("tarot"), ...propuestasDe("uro")].map((p) => p.nombre));
+    check("el aviso de envío trae de fábrica los 3 recojos de Shalom de su marca",
+      seg.aviso_envio_shalom?.pasos.length === 3 && seg.uro_aviso_envio_shalom?.pasos.every((p) => p.plantilla.startsWith("uro_"))
+      && Object.values(seg).flatMap((c) => c.pasos).every((p) => nombres.has(p.plantilla)));
+  }
   check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
     sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));
   check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));

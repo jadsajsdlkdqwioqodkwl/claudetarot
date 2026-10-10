@@ -13,7 +13,7 @@ import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/
 import { nombresDeProductos, guardarProductosEnCache, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 import { mandarAlToque } from "../../lib/crm-send.js";
-import { envDeConversacion } from "../../lib/lineas.js";
+import { envDeConversacion, envDeLinea, lineaPorId } from "../../lib/lineas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -62,7 +62,10 @@ async function get({ request, env }) {
 
 /** GET /api/crm/catalog-products — el picker de "elegir un producto" (?conversation_id= el catálogo del número de ese chat). */
 async function getProductos({ request, env: envBase }) {
-  const env = await envDeConversacion(envBase, Number(new URL(request.url).searchParams.get("conversation_id")) || null);
+  const q = new URL(request.url).searchParams;
+  // ?linea_id= el catálogo de ese número (la galería de fotos); ?conversation_id= el del chat.
+  const lineaId = Number(q.get("linea_id")) || null;
+  const env = lineaId ? envDeLinea(envBase, await lineaPorId(envBase.CRM_DB, lineaId)) : await envDeConversacion(envBase, Number(q.get("conversation_id")) || null);
   if (!env.WHATSAPP_CATALOG_ID) return json({ error: "Falta WHATSAPP_CATALOG_ID." }, 503);
   try {
     const productos = await listarProductosCatalogo(env, env.WHATSAPP_CATALOG_ID);

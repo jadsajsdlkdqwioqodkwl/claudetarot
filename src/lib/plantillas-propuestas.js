@@ -12,6 +12,7 @@
 import { listarLineas, envDeLinea } from "./lineas.js";
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { notificarTelegram } from "./telegram.js";
+import { primerNombre } from "./plantillas.js";
 import { listarTemplates, crearTemplate } from "./whatsapp.js";
 import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
@@ -239,4 +240,19 @@ export async function textoParaChat(env, nombre, parametros = []) {
   if (!texto) return `Plantilla: ${nombre}`;
   const lleno = texto.replace(/\{\{(\d)\}\}/g, (m, n) => parametros[Number(n) - 1] ?? m);
   return `${lleno}${btns.length ? `\n\n${btns.map((b) => `[ ${b} ]`).join("  ")}` : ""}\n\nPlantilla: ${nombre}`;
+}
+
+/** Las variables de una plantilla programada solo con su nombre: {{1}} = primer nombre; {{2}} = el producto (solo las de Tarot). */
+export async function parametrosDePlantilla(env, nombre, nombreCliente) {
+  let texto = null;
+  const cambios = await leerCambios(env.CRM_DB);
+  for (const marca of Object.keys(MARCAS)) {
+    texto = propuestasDe(marca, cambios).find((x) => x.nombre === nombre)?.texto || texto;
+  }
+  if (!texto) {
+    const t = (await listarTemplates(env)).find((x) => x.name === nombre && x.status === "APPROVED");
+    texto = (t?.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
+  }
+  const n = Math.max(0, ...(texto.match(/\{\{(\d)\}\}/g) || []).map((v) => Number(v[2])));
+  return [primerNombre(nombreCliente), "el kit de tarot"].slice(0, n);
 }

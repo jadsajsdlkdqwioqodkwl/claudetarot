@@ -72,6 +72,7 @@
         <button id="btn-avisos" class="accion-secundaria" title="Avisos por Telegram" style="display:none"></button>
         <button id="btn-mi-password" class="accion-secundaria" title="Cambiar mi contraseña"></button>
         <button id="btn-admin" class="accion-secundaria" title="Mensaje masivo, costos y herramientas" style="display:none"></button>
+        <button id="btn-galeria" class="accion-secundaria" title="Fotos del catálogo"></button>
         <button id="btn-equipo" class="accion-secundaria" title="Equipo"></button>
         <button id="btn-salir" class="accion-secundaria" title="Salir"></button>
         <button id="btn-menu-lista" title="Más opciones"></button>
@@ -174,7 +175,7 @@
     <div class="rp-titulo">Seguimiento si el cliente no responde (opcional)</div>
     <div id="rapida-pasos"></div>
     <button type="button" class="sug-agregar-paso" id="rapida-agregar-paso"></button>
-    <div class="ayuda-modal">Hasta 4 mensajes, cada uno las horas indicadas después del anterior, con texto y/o un archivo. Nunca sale pasadas 23 h desde el último mensaje del cliente. Toda la secuencia se cancela si el cliente responde o si la quitas desde el panel derecho del chat.</div>
+    <div class="ayuda-modal">Hasta 4 pasos, cada uno las horas (o, si es una plantilla, los días) indicadas después del anterior. Un paso de texto puede llevar un archivo y nunca sale pasadas 23 h desde el último mensaje del cliente; una plantilla sí sale después, porque es de pago. Toda la secuencia se cancela si el cliente responde o si la quitas desde el panel derecho del chat.</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>
@@ -387,6 +388,33 @@
     <div class="acciones">
       <button class="cancelar" id="eq-cerrar" type="button">Cerrar</button>
       <button class="crear" id="eq-crear" type="button">Agregar vendedor</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-seg-plantilla-fondo">
+  <div class="modal">
+    <h2 id="segp-titulo">Seguimiento de la plantilla</h2>
+    <p class="ayuda-modal">Después de mandar esta plantilla a un chat, el CRM programa solas las que pongas aquí. Los días cuentan desde que se manda. Cada una tiene que estar aprobada en Meta; si todavía no lo está, espera y sale cuando lo esté.</p>
+    <div id="segp-pasos"></div>
+    <button type="button" class="sug-agregar-paso" id="segp-agregar"></button>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="segp-siempre" /> Seguir aunque el cliente responda (si no, lo que falta se cancela cuando escribe)</label>
+    <div class="acciones">
+      <button class="cancelar" id="segp-quitar" type="button">Quitar seguimiento</button>
+      <button class="cancelar" id="segp-cerrar" type="button">Cerrar</button>
+      <button class="crear" id="segp-guardar" type="button">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-galeria-fondo">
+  <div class="modal modal-ancho">
+    <h2>Fotos del catálogo</h2>
+    <select id="galeria-linea" style="display:none"></select>
+    <input type="text" id="galeria-buscar" placeholder="Buscar producto…" />
+    <div id="galeria-lista" class="galeria-grid">Cargando…</div>
+    <div class="acciones">
+      <button class="cancelar" id="galeria-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

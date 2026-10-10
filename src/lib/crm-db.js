@@ -250,10 +250,19 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   let envio = Date.now();
   for (const [i, p] of pasos.entries()) {
     envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
-    // El primero se recorta al tope (como antes); los demás, si no entran, se omiten.
-    const cuando = i === 0 ? Math.min(envio, tope) : envio;
-    if (cuando > tope || cuando <= Date.now() + 60 * 1000) break;
+    // El primero se recorta al tope (como antes); los demás, si no entran, se omiten. Una plantilla
+    // (p.plantilla) no tiene tope: sale aunque la ventana ya haya cerrado.
+    const cuando = i === 0 && !p.plantilla ? Math.min(envio, tope) : envio;
+    if (cuando <= Date.now() + 60 * 1000) break;
+    if (!p.plantilla && cuando > tope) continue;
     envio = cuando;
+    if (p.plantilla) {
+      inserts.push(
+        db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language) VALUES (?, ?, ?, ?, ?, 'es_PE')")
+          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla)
+      );
+      continue;
+    }
     inserts.push(
       db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null)

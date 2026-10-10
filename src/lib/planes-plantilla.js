@@ -214,10 +214,16 @@ export async function proponerPlanPorVentanaCerrada(env, limite = 5) {
 export async function activarPlanTrasAviso(env, conversationId) {
   const db = env.CRM_DB;
   const aviso = await db.prepare(
-    `SELECT created_at FROM messages WHERE conversation_id = ? AND direction = 'out' AND type = 'template'
+    `SELECT created_at, body FROM messages WHERE conversation_id = ? AND direction = 'out' AND type = 'template'
        AND body LIKE '%aviso_envio_shalom%' AND created_at >= datetime('now', '-3 days') ORDER BY id DESC LIMIT 1`
   ).bind(conversationId).first();
   if (!aviso) return null;
+  // Si el admin le dejó a esa plantilla otro seguimiento (o ninguno), no se arma el recojo por encima.
+  const nombreAviso = String(aviso.body).includes("uro_aviso_envio_shalom") ? "uro_aviso_envio_shalom" : "aviso_envio_shalom";
+  try {
+    const cfg = JSON.parse((await obtenerAjuste(db, "plantillas_seguimiento")) || "{}")?.[nombreAviso];
+    if (cfg && !(cfg.pasos?.length && cfg.pasos.every((p) => /recojo_shalom_\d$/.test(p.plantilla)))) return null;
+  } catch { /* sin configuración: de fábrica */ }
   const { n } = await db.prepare("SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND direction = 'in' AND created_at >= ?").bind(conversationId, aviso.created_at).first();
   if (n !== 1) return null;
   return programarPlan(env, conversationId, "shalom", { estado: "pendiente", quien: "Tras el aviso de envío" });
