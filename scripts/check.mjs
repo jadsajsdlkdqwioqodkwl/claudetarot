@@ -968,7 +968,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   check(`ninguna llamada directa a Meta (plantilla con "escribiendo…", catálogo/producto al toque)${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);
   const envio = readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8");
   check("mandarTexto y mandarConEscribiendo hacen su propia pausa si falta",
-    (envio.match(/await asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviar/g) || []).length === 2);
+    (envio.match(/await asegurarPausa\(env, conversationId\);\s*(?:const lista = [^\n]*\n\s*const envL = [^\n]*\n\s*)?const waMessageId = (?:lista\.length\s*\? )?await enviar/g) || []).length === 2);
   check("fotos, videos y archivos salen al toque (sin \"escribiendo…\")", !/asegurarPausa\(env, conversationId\);\s*const waMessageId = await enviarMedia/.test(envio));
   check("ningún envío salta el \"escribiendo…\"", !/escribiendo:\s*false/.test(envio) && !/escribiendo:\s*false/.test(readFileSync(new URL("../src/lib/crm-welcome-sequence.js", import.meta.url), "utf8")));
   check("dos envíos al mismo chat a la vez toman turno", /envio_turnos/.test(envio));
