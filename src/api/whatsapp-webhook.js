@@ -261,9 +261,12 @@ async function procesarCambio(envBase, db, value, origen) {
     if (conversacion.blocked) continue;
     // Respondió al "aviso de envío": se abrió su ventana y arranca el plan de recojo (4, 7 y 21 días).
     await rearmarPlanShalom(env, conversacion.id, bodyFinal).catch((err) => console.error("Re-armar recojo:", err.message));
-    await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
-    await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
-    await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
+    // Killswitch del chat: sin bienvenida ni seguimiento automático.
+    if (!conversacion.pausa_auto) {
+      await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
+      await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
+      await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
+    }
     await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
   }

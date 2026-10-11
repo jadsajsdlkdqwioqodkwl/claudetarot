@@ -7488,6 +7488,7 @@ async function pintarDetalle(c) {
 
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
+    <label class="olva-marca" title="Márcalo si este pedido va por Olva (desmárcalo si no)"><input type="checkbox" id="detalle-olva" ${c.olva ? "checked" : ""} /> Envío por Olva</label>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -7502,6 +7503,7 @@ async function pintarDetalle(c) {
 
     <h2>Seguimientos activos</h2>
     <div id="detalle-seguimientos">Cargando…</div>
+    <button type="button" id="detalle-kill-chat" class="kill-chat ${c.pausa_auto ? "puesto" : ""}" title="${c.pausa_auto ? "Lo automático de este chat está detenido. Toca para reanudar" : "Cancela todo lo programado de este chat y frena bienvenida, seguimientos y plantillas automáticas"}">${icon("power")} ${c.pausa_auto ? "Automático detenido en este chat: reanudar" : "Detener todo lo automático en este chat"}</button>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
     <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Programar recojo en Shalom (4 · 7 · 21 días desde hoy)</button>
     <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("rotate")} Rescatar con plantilla (4 · 7 · 21 días)</button>
@@ -7541,6 +7543,23 @@ async function pintarDetalle(c) {
   `;
 
   $("#btn-cerrar-detalle").addEventListener("click", () => history.back());
+  $("#detalle-olva").addEventListener("change", async (e) => {
+    try {
+      await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, olva: e.target.checked }) });
+      for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.olva = e.target.checked ? 1 : 0;
+      c.olva = e.target.checked ? 1 : 0;
+    } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
+  });
+  $("#detalle-kill-chat").addEventListener("click", async () => {
+    const pausar = !c.pausa_auto;
+    if (pausar && !confirm("Se cancela todo lo programado de este chat y no le sale nada automático (bienvenida, seguimientos, plantillas) hasta que reanudes. ¿Detener?")) return;
+    try {
+      await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: pausar ? "pausar_auto" : "reanudar_auto" }) });
+      for (const x of estado.conversaciones) if (x.conversation_id === c.conversation_id) x.pausa_auto = pausar ? 1 : 0;
+      c.pausa_auto = pausar ? 1 : 0;
+      pintarDetalle(c);
+    } catch (err) { alert(err.message); }
+  });
   $("#detalle-producto")?.addEventListener("change", async (e) => {
     try {
       await cambiarProductoChat(c, e.target.value);

@@ -113,7 +113,7 @@ export async function procesarSeguimientosVencidos(env) {
        (SELECT mi.wa_message_id FROM messages mi WHERE mi.conversation_id = conv.id AND mi.direction = 'in'
           AND mi.type <> 'call' AND mi.wa_message_id IS NOT NULL AND mi.created_at >= datetime('now', '-1 day')
           ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in,
-       conv.etapa AS etapa,
+       conv.etapa AS etapa, conv.pausa_auto AS pausa_auto,
        (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
        EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
           AND md.body = COALESCE(s.body, ${textoPorDefectoSql("rapida")}) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
@@ -132,6 +132,8 @@ export async function procesarSeguimientosVencidos(env) {
   for (const s of vencidos) {
     const escribiendo = { ultimoWaId: s.ultimo_wa_in || null };
     try {
+      // Killswitch de este chat: lo automático y las plantillas que venzan se cancelan (lo que programó una persona a mano sale).
+      if (s.pausa_auto && (s.template_name || esOrigenAutomatico(s.created_by))) { await cancelar(s.id); continue; }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);

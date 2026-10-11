@@ -78,6 +78,10 @@ async function patch({ request, env }) {
     campos.push("shalom_code = ?");
     valores.push(payload.shalom_code.trim().slice(0, 60) || null);
   }
+  if (payload.olva !== undefined) {
+    campos.push("olva = ?");
+    valores.push(payload.olva ? 1 : 0);
+  }
   if (typeof payload.tags === "string") {
     campos.push("tags = ?");
     valores.push(payload.tags.slice(0, 300));

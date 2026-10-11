@@ -160,6 +160,10 @@ button { font-family: inherit; touch-action: manipulation; }
 #menu-lista button:hover { background: var(--hover) !important; }
 #menu-lista button .icono-svg { width: 18px; height: 18px; color: var(--gris); flex-shrink: 0; }
 #lista header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 17px; opacity: .9; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: background-color .12s; }
+.olva-marca { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12px; color: var(--gris); cursor: pointer; }
+.kill-chat { width: 100%; margin-top: 6px; font-size: 12px; padding: 7px 10px; border-radius: var(--radio-s); cursor: pointer; border: 1px solid #d93025; color: #d93025; background: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.kill-chat .icono-svg { width: 14px; height: 14px; }
+.kill-chat.puesto { background: #d93025; color: #fff; }
 #lista header #btn-killswitch { color: #ff8a80; }
 #lista header #btn-killswitch.killswitch-puesto { background: #d93025; color: #fff; opacity: 1; animation: pulso-kill 1.6s ease-in-out infinite; }
 @keyframes pulso-kill { 50% { box-shadow: 0 0 0 5px rgba(217,48,37,.35); } }

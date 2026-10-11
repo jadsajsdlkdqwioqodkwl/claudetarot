@@ -128,6 +128,8 @@ async function handler({ request, env, agent }) {
         conv.producto_id,
         conv.producto_origen,
         conv.blocked,
+        conv.pausa_auto,
+        c.olva,
         c.id AS contact_id,
         c.wa_id,
         c.profile_name,

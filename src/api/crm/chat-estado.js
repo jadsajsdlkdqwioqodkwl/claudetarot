@@ -2,6 +2,8 @@
  * POST /api/crm/chat-estado — { conversation_id, accion }
  *   accion: "ocultar" | "mostrar"   → saca/devuelve el chat de la lista
  *           (vuelve solo cuando el cliente escribe otra vez).
+ *           "pausar_auto" | "reanudar_auto" → killswitch de este chat (cancela lo programado y
+ *           frena bienvenida, seguimientos y plantillas automáticas).
  *           "bloquear" | "desbloquear" → bloquea el contacto en WhatsApp
  *           (block_users) y en el CRM: no sale en la lista, no avisa y no
  *           le corre la bienvenida ni los seguimientos.
@@ -19,7 +21,7 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const ACCIONES = new Set(["ocultar", "mostrar", "bloquear", "desbloquear"]);
+const ACCIONES = new Set(["ocultar", "mostrar", "bloquear", "desbloquear", "pausar_auto", "reanudar_auto"]);
 
 async function post({ request, env }) {
   let payload;
@@ -40,6 +42,14 @@ async function post({ request, env }) {
   if (accion === "ocultar" || accion === "mostrar") {
     await env.CRM_DB.prepare("UPDATE conversations SET hidden = ? WHERE id = ?").bind(accion === "ocultar" ? 1 : 0, conversationId).run();
     return json({ ok: true, hidden: accion === "ocultar" ? 1 : 0 });
+  }
+
+  // Killswitch de este chat: cancela todo lo programado y no le sale nada automático (ni plantillas) hasta reanudar.
+  if (accion === "pausar_auto" || accion === "reanudar_auto") {
+    const pausar = accion === "pausar_auto";
+    await env.CRM_DB.prepare("UPDATE conversations SET pausa_auto = ? WHERE id = ?").bind(pausar ? 1 : 0, conversationId).run();
+    if (pausar) await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar')").bind(conversationId).run();
+    return json({ ok: true, pausa_auto: pausar ? 1 : 0 });
   }
 
   const bloquear = accion === "bloquear";
