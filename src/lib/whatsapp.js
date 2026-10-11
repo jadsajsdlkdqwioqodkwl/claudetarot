@@ -186,7 +186,7 @@ export async function enviarCatalogoConPortada(env, waId, texto, candidatos = []
     try {
       return await enviarCatalogo(env, waId, texto, retailerId);
     } catch (err) {
-      if (err.code !== 131053) throw err;
+      if (err.code !== 131053 && err.code !== 131009) throw err; // portada sin foto válida / que no está en el catálogo del número
       console.error("Portada de catálogo sin foto válida:", retailerId);
     }
   }

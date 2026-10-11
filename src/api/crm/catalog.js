@@ -8,7 +8,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo } from "../../lib/whatsapp.js";
+import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo, catalogosConectados } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
@@ -157,6 +157,13 @@ async function post({ request, env: envBase, agent }) {
     await programarRapida();
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
+    // (#131009) con catálogo: casi siempre es que ese catálogo no está conectado al número en WhatsApp Manager.
+    if (err.code === 131009 && env.WHATSAPP_CATALOG_ID) {
+      const conectados = await catalogosConectados(env).catch(() => null);
+      if (conectados && !conectados.some((x) => x.id === env.WHATSAPP_CATALOG_ID)) {
+        return json({ error: `El catálogo ${env.WHATSAPP_CATALOG_ID} no está conectado a este número. En WhatsApp Manager → Catálogo, conéctalo al número (los conectados hoy: ${conectados.map((x) => `${x.name} ${x.id}`).join(", ") || "ninguno"}).` }, 502);
+      }
+    }
     return json({ error: `WhatsApp rechazó el envío: ${err.message}` }, 502);
   }
 }
