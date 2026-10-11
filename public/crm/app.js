@@ -1793,8 +1793,8 @@ function pintarLista() {
     const seleccionado = estado.seleccionados.has(c.conversation_id);
     const noLeidos = sinLeer(c);
     // El color del producto marca el chat en la bandeja.
-    const colorProd = productoDe(c.producto_id)?.color;
-    if (colorProd) div.style.boxShadow = `inset 4px 0 0 ${colorProd}`;
+    const colorProd = productoDe(c.producto_id)?.color || COLOR_MARCA[marcaDeChat(c)];
+    div.style.boxShadow = `inset 4px 0 0 ${colorProd}`;
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
@@ -2197,6 +2197,15 @@ const lineaDe = (id) => (id ? estado.lineas.find((l) => l.id === Number(id)) || 
 const chatActivo = () => estado.conversaciones.find((x) => x.conversation_id === estado.conversacionActivaId) || null;
 
 /** Insignias de la lista: el producto del chat y, si no es el principal, el número al que escribió. */
+/** De qué tienda es el chat: "uro" o "tarot" (producto o número; sin nada, Tarot Store). */
+function marcaDeChat(c) {
+  const p = productoDe(c.producto_id);
+  const l = lineaDe(c.linea_id);
+  return /uro/i.test(p?.nombre || "") || String(l?.marca || l?.nombre || "").toLowerCase() === "uro" ? "uro" : "tarot";
+}
+const COLOR_MARCA = { tarot: "#7c5cff", uro: "#d6336c" };
+const NOMBRE_MARCA = { tarot: "Tarot", uro: "URO" };
+
 function badgesProducto(c) {
   const p = productoDe(c.producto_id);
   const l = lineaDe(c.linea_id);
@@ -2854,6 +2863,7 @@ function ayudaPermisoNotificaciones(permiso) {
 
 function pintarChatBase(c) {
   const nombre = c.profile_name || c.wa_id;
+  $("#chat").dataset.marca = marcaDeChat(c); // el fondo y la franja del chat cambian según la tienda
   $("#chat").innerHTML = `
     <header>
       <button id="btn-volver" title="Volver a la lista">${icon("arrowLeft")}</button>
@@ -2861,7 +2871,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel">+${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
+          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -7601,6 +7611,11 @@ async function pintarDetalle(c) {
   $("#detalle-producto")?.addEventListener("change", async (e) => {
     try {
       await cambiarProductoChat(c, e.target.value);
+      const m = marcaDeChat(c); // cambió de tienda: se repinta el color del chat
+      const ch = $("#chat");
+      if (ch) ch.dataset.marca = m;
+      const pill = $("#chat .marca-chat");
+      if (pill) pill.textContent = NOMBRE_MARCA[m];
     } catch (err) {
       alert(err.message);
     }
