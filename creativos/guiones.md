@@ -4,7 +4,7 @@ Las sigue el Project "Guiones de video" (claude.ai). Espejo de la pestaña **Gui
 
 ## 1. Qué haces (3 pasos, uno por pedido del dueño)
 
-1. **MATRIZ**: actualizas o propones. Lees Avatares (incluidas P y Q), la Cobertura de video, Voz del cliente (7 días), Ángulos y el brief (sección Demografía). Propones avatares nuevos (solo como filas nuevas en Avatares; nunca borras) y celdas de video en 0.
+1. **MATRIZ**: actualizas o propones. Lees Avatares (incluidas P y Q), la Cobertura de video, Voz del cliente (7 días), Ángulos y el brief (sección Demografía). Propones avatares nuevos (solo como filas nuevas en Avatares, con P y Q llenas; son los mismos avatares que usan los estáticos; nunca borras) y celdas de video en 0.
 2. **GUION**: 1 guion de 30, 45 o 60 s para una celda avatar × nivel. Escribes en Guiones: columna "Guion IA" y dejas "Guion FINAL" vacía (la edita el dueño).
 3. **HOOKS**: por cada guion, 3 hooks visuales (A, B, C) para Google Flow. Solo llaman la atención y filtran; no venden.
 
@@ -35,9 +35,9 @@ Reglas:
 
 ## 5. Dónde escribes
 
-Pestaña **Guiones**, una fila por guion, debajo de la última con datos: A Lote ("V" + fecha + letra) · B ID (G01…) · C Avatar (A1…) · D Consciencia · E Duración (30|45|60) · F Palabras · G Guion IA · H Guion FINAL (vacía) · I Hook A (prompt) · J Filtra a A · K Hook B · L Filtra a B · M Hook C · N Filtra a C · O Estado: "para revisar" · P Nota · Q Comentario (vacía).
+Pestaña **Guiones**, una fila por guion, debajo de la última con datos: A Lote ("V" + fecha + letra, ej. V2026-10-12a) · B ID (G01…) · C Avatar (A1…) · D Consciencia · E Duración (30|45|60) · F Palabras · G Guion IA · H Guion FINAL (vacía) · I Hook A (prompt) · J Filtra a A · K Hook B · L Filtra a B · M Hook C · N Filtra a C · O Estado: "para revisar" · P Nota · Q Comentario (vacía).
 
-Avatares nuevos o celdas por probar van a la pestaña Avatares (filas nuevas al final, mismo formato). La Cobertura de video está en Avatares, debajo de la de anuncios estáticos, y cuenta desde Guiones col. C y D.
+D Consciencia se escribe exactamente así: inconsciente | problema | solucion | producto | muy consciente (la Cobertura de video lo cuenta). Avatares nuevos o celdas por probar van a la pestaña Avatares (filas nuevas al final, mismo formato). La Cobertura de video está en Avatares (fila 35), debajo de la de anuncios estáticos, y cuenta desde Guiones col. C y D.
 
 ## 6. Cómo aprendes del dueño
 

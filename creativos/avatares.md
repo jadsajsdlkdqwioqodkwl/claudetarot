@@ -90,14 +90,17 @@ terror. Siguen siendo principiantes: no saben leer tarot.
 - 2026-10-07: A9–A14 a pedido del dueño (futuro, calma, esoterismo, camino
   espiritual, tradición familiar, estética); A2 pasa a "hobby nuevo".
 
-## Columnas para video (agregado 2026-10-11)
+## Perfil visual y escena (agregado 2026-10-11)
 
-Las columnas **P · Perfil visual** (rango de edad, género o mixto, momento de
-vida, según el brief y las citas) y **Q · Escena de scroll** (situación
-cotidiana que le haría detener el dedo) van a la derecha de la tabla, tras O.
-Las usa solo el Project de guiones de video (`creativos/guiones.md`): en video
-el creativo hace de targeting y los hooks visuales filtran por perfil. Los
-anuncios estáticos siguen igual: el avatar no es edad ni género y se escribe
-neutro. Sin dato en el brief = "sin dato", no se inventa. Debajo de la
-Cobertura de estáticos hay una **Cobertura de video** (avatar × nivel,
-contada desde Guiones col. C y D).
+Los avatares son **los mismos** para anuncios estáticos y para video: una sola
+lista, la pestaña Avatares. Las columnas **P · Perfil visual** (rango de edad,
+género o mixto, momento de vida, del brief y las citas; lo que el brief no
+respalda va marcado "Hipótesis") y **Q · Escena de scroll** (situación
+cotidiana que lo frena, sin tarot todavía) van a la derecha de O y sirven a los
+dos Projects. En video el creativo hace de targeting y los hooks visuales
+filtran por perfil (`creativos/guiones.md`); los estáticos pueden usarlas para
+elegir quién aparece y la escena. El texto de los estáticos sigue neutro en
+género. Debajo de la Cobertura de estáticos (fila 17) hay una **Cobertura de
+video** (fila 35, avatar × nivel, contada desde Guiones col. C y D con los
+mismos valores de nivel que Prompts col. D). Ojo: la hoja está en
+configuración regional es_ES, las fórmulas llevan ";" como separador.

@@ -20,7 +20,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Pestaña **Formatos** | en la hoja de creativos | Project (elige formatos por familia), REVISA COMENTARIOS (Estado), `desde-hoja.mjs` (lista "No usar" copiada en el script). Sus fórmulas leen Prompts K y Ángulos C e I |
 | Pestaña **Avatares** | en la hoja de creativos | Project de conceptos (reparto de cada lote), Routine de voz del cliente (suma chats y avatares nuevos), REVISA COMENTARIOS (Estado). Las fórmulas de Cobertura leen Prompts col. D, J y L |
 | Pestañas de **video** en la hoja de creativos: **Guiones**, **Guiones reglas**, **Hooks visuales** | en la hoja de creativos (al final; no reordenar columnas) | Project de guiones de video (claude.ai), REVISA GUIONES (compara Guion IA con Guion FINAL y escribe en Guiones reglas), `creativos/guiones.md` (copia de Guiones reglas). La Cobertura de video (en Avatares, bajo la de estáticos) lee Guiones C y D |
-| Avatares **P · Perfil visual** y **Q · Escena de scroll** | pestaña Avatares, a la derecha de O | Project de guiones (hooks que filtran por perfil), Routine de voz del cliente (las llena en avatares nuevos). Los estáticos no las usan |
+| Avatares **P · Perfil visual** y **Q · Escena de scroll** | pestaña Avatares, a la derecha de O | Project de guiones (hooks que filtran por perfil), Routine de voz del cliente (las llena en avatares nuevos). Sirven a los dos Projects: los avatares son los mismos en estáticos y video (decisión del dueño, 2026-10-11) |
 | Hoja de chats del CRM (TAROT CHATS - VENTAS CRM) | la escribe el Worker cada 10 min | `apps-script/ASESOR.gs`, `preparar.py` (modo xlsx) |
 | Reglas del negocio | `docs/negocio.md` | Todo lo que escribe a clientes o anuncios (precios y regalos mandan aquí) |
 | Scripts del asesor | `scripts/asesor/*.py` | Todas las Routines del asesor y del director (rutas fijas en sus prompts) |
@@ -96,6 +96,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Guiones para editar y hooks para Google Flow: hoja de creativos → Guiones. Qué avatares faltan en video: Avatares → Cobertura de video.
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-11 · Hecho en la hoja de creativos (conector de Google Sheets): pestañas **Guiones**, **Guiones reglas** y **Hooks visuales** (al final), Avatares P y Q llenas para A1–A14 (las que el brief no respalda dicen "Hipótesis", para que el Project antiguo las confirme o corrija) y **Cobertura de video** en Avatares fila 35 (fórmulas con ";" por la configuración es_ES). Aclaración del dueño: los avatares son los mismos en estáticos y video, sin distinción; P y Q sirven a los dos. Esta línea corrige la anterior, que decía que P y Q eran solo para video.
 
 - 2026-10-11 · Project de guiones de video (30–60 s, 1 guion + 3 hooks visuales para Google Flow, el creativo como targeting): `creativos/guiones.md`, `creativos/prompt-project-video.md`, pestañas Guiones, Guiones reglas, Hooks visuales y Cobertura de video en la hoja de creativos (a crear, al final, sin reordenar nada), columnas P y Q en Avatares (perfil visual y escena de scroll; solo para video, los estáticos siguen neutros en género), y la Routine de voz del cliente las llena en avatares nuevos (`docs/anuncios/voz-del-cliente.md`). Aprende comparando Guion IA con Guion FINAL.
 
