@@ -38,6 +38,7 @@ salida.json:
   "analisis": [{"whatsapp": "", "intencion": "alta|media|baja|ninguna", "resultado": "ganado|perdido|abierto",
                 "motivo": "", "objecion": "", "calidad": 1-5, "agente": "", "upsell": "", "nota": "coaching"}],
   "envios": [{"whatsapp": "", "nombre": "", "link": "https://…/TS-…", "motivo": "", "mensaje": ""}],
+  "rescates": [{"whatsapp": "", "motivo": "por qué tiene posibilidades de comprar"}],   # rescate de lead 1 (plantilla): SALE SOLO, sin aprobación
   "origen": "asesor 16:30"
 }
 
@@ -227,6 +228,7 @@ AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos
 SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
 PEDIDOS_WEB = AVISOS.replace("/avisos", "/pedidos-web")
 ANALISIS = AVISOS.replace("/avisos", "/analisis")
+RESCATES = AVISOS.replace("/avisos", "/rescates")
 
 
 def al_worker(clave, cuerpo, url=None):
@@ -385,9 +387,15 @@ def main():
             r = al_worker(clave, {"origen": datos.get("origen", "asesor"), "fecha": datos.get("fecha_analisis"),
                                   "chats": datos["analisis"][i:i + 100]}, ANALISIS)
             print(f"Análisis guardados: {r.get('guardados', 0)} (sin chat: {len(r.get('sin_chat', []))})", flush=True)
-    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not any(datos.get(k) for k in ("respuestas_rapidas", "envios", "variantes", "saldos", "preguntas")):
+    if not cuerpo["mensajes"] and "resumen" not in cuerpo and not any(datos.get(k) for k in ("respuestas_rapidas", "envios", "variantes", "saldos", "preguntas", "rescates")):
         print("Nada que avisar.")
         return
+    if datos.get("rescates"):
+        # El rescate de lead 1 lo decide el asesor y sale solo (autorizado por el dueño): ver docs/asesor.md.
+        for i in range(0, len(datos["rescates"]), 15):
+            r = al_worker(clave, {"rescates": datos["rescates"][i:i + 15]}, RESCATES)
+            print(f"Rescates de lead 1 programados: {len(r.get('programados', []))}; rechazados: "
+                  f"{json.dumps(r.get('rechazados', []), ensure_ascii=False)}", flush=True)
     mensajes = cuerpo.pop("mensajes")
     total = {"enviados": 0, "fallidos": [], "sugerencias": 0}
     # Primero ✨ Sugerencias del CRM (aprobar = programarlo): si Telegram

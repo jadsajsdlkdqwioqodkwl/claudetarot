@@ -65,6 +65,18 @@
    recomendaciones nuevas") y el PDF de pedidos al dueño. El informe del
    director queda en CRM → Reportes.
 
+10. **Rescate de lead 1 (la única excepción a la regla 3, autorizada por el
+   dueño):** tú decides a quién mandarle la plantilla `rescate_lead_1`
+   (fuera de la ventana de 24 h) y SALE SOLA, sin aprobación: ponlo en
+   `rescates` de `salida.json` ([{whatsapp, motivo}]). Solo a quien tenga
+   posibilidades reales de comprar: preguntó precio, dio distrito o ciudad,
+   pidió datos de envío, dijo "luego/más tarde/te aviso", o quedó una duda
+   sin resolver. NO a quien quería otra cosa, no era cliente, pidió que no lo
+   escriban, ya compró, o se perdió por una razón que el rescate no arregla.
+   Tope: 15 por envío y 30 por día; el Worker rechaza lo que no cumple. A los 7
+   días del inicio del chat el rescate 2 sale automático a TODOS los que no
+   compraron (`src/lib/rescate-lead.js`), no lo decides tú.
+
 Más detalle: `docs/asesor.md`.
 
 ## Si vas a hacer anuncios / creativos

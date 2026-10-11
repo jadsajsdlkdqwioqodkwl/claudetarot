@@ -115,6 +115,8 @@ import {
   onRequestDelete as crmVariantesDelete
 } from "./api/crm/variantes.js";
 import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
+import { rescate7Dias } from "./lib/rescate-lead.js";
+import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -142,6 +144,7 @@ const ROUTES = {
   "/api/asesor/memoria": { POST: asesorMemoriaPost },
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
+  "/api/asesor/rescates": { POST: asesorRescatesPost },
   "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
   "/api/asesor/reportes": { GET: asesorReportesGet },
@@ -282,6 +285,8 @@ export default {
       // El resumen (una vez al día) gasta muchas consultas: esa pasada no
       // hace más; embudo y frases siguen en la de 15 min después.
       await vigilarPlantillas(env).catch((err) => console.error("Vigilar plantillas:", err.message));
+      // Rescate de lead a los 7 días del inicio del chat, a todos los que no compraron (rescate-lead.js).
+      await rescate7Dias(env).catch((err) => console.error("Rescate día 7:", err.message));
       const hizoResumen = await enviarResumenSiToca(env).catch((err) => {
         console.error("Resumen semanal:", err.message);
         return false; // si falla, que no bloquee el embudo ni las frases
