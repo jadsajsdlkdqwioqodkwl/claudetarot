@@ -19,7 +19,7 @@ import { TOQUES, marcaDeToque } from "./toques.js";
 
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
 
-const cuerpo = (text, ejemplo) => ({ type: "BODY", text, example: { body_text: [ejemplo] } });
+const cuerpo = (text, ejemplo) => ({ type: "BODY", text, ...(ejemplo.length ? { example: { body_text: [ejemplo] } } : {}) });
 const botones = (lista) => (lista.length ? [{ type: "BUTTONS", buttons: lista.map((text) => ({ type: "QUICK_REPLY", text })) }] : []);
 const EJEMPLOS = ["María", "el kit de tarot"];
 const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/g) || []).length);
@@ -135,12 +135,13 @@ export async function estadoDePropuestas(env) {
     const envM = await envDeMarca(env, marca);
     let porNombre = {};
     let catMeta = {};
+    let textoEnMeta = {};
     let aviso = envM ? null : `Falta conectar el número de ${nombre} (CRM → Productos y números, con su WABA).`;
     if (envM) {
       try {
         for (const t of await listarTemplates(envM)) {
           // Si hay varias del mismo nombre (otro idioma), gana la aprobada.
-          if (!porNombre[t.name] || t.status === "APPROVED") { porNombre[t.name] = t.status; catMeta[t.name] = t.category; }
+          if (!porNombre[t.name] || t.status === "APPROVED") { porNombre[t.name] = t.status; catMeta[t.name] = t.category; textoEnMeta[t.name] = (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || null; }
         }
       } catch (err) {
         aviso = `No pude leer el estado en Meta: ${err.message}`;
@@ -148,7 +149,7 @@ export async function estadoDePropuestas(env) {
     }
     marcas.push({
       marca, nombre, aviso, conectada: Boolean(envM),
-      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, categoriaMeta: catMeta[p.nombre] || null, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
+      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, categoriaMeta: catMeta[p.nombre] || null, textoMeta: textoEnMeta[p.nombre] || null, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
     });
   }
   return marcas;

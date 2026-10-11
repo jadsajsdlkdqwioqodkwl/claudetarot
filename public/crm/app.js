@@ -600,6 +600,7 @@ async function abrirPlantillasMeta() {
                 <div style="margin:6px 0">${vistaPreviaPlantilla(p.texto, p.botones)}</div>
                 <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.length ? p.botones.map((b) => `«${escapar(b)}»`).join(" · ") : "ninguno"} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
                 ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
+                ${p.textoMeta && p.textoMeta.trim() !== p.texto.trim() ? `<div style="font-size:12px;margin:4px 0;padding:6px 8px;border-radius:8px;color:#8a6500;background:#fff8e1"><b>Meta todavía tiene otro texto</b> (el que ves arriba es el tuyo, aún sin aprobar). Lo que Meta tiene hoy:<br><i>${escapar(p.textoMeta)}</i><br>Usa «Reenviar a revisión» para cambiarlo.</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                   ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
