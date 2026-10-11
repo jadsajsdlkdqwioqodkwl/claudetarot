@@ -11,7 +11,7 @@
  * desde su mensaje (rearmarPlanShalom).
  */
 
-import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
+import { obtenerAjuste, guardarAjuste, siempreGlobal } from "./crm-db.js";
 import { PREFIJO_PLAN, IDIOMA_PLAN, leerDias } from "./planes-plantilla.js";
 
 const CLAVE = "plantillas_seguimiento";
@@ -73,6 +73,7 @@ export async function programarSeguimientoDePlantilla(env, conversationId, nombr
   if (!activos.length) return 0;
   const recojo = activos.every((p) => RE_RECOJO.test(p.plantilla));
   const origen = recojo ? `${PREFIJO_PLAN} · Recojo en Shalom · ${quien || "CRM"}` : `${PREFIJO_SEGUIMIENTO_PLANTILLA} · ${nombre} · ${quien || "CRM"}`;
+  const siempre = cfg.siempre || (await siempreGlobal(db)) ? 1 : 0; // el recojo también: «sí o sí» manda todo
   const ahora = Date.now();
   let previo = 0;
   let acumulado = 0;
@@ -83,7 +84,7 @@ export async function programarSeguimientoDePlantilla(env, conversationId, nombr
     return db.prepare(
       `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')`
-    ).bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, IDIOMA_PLAN, !recojo && cfg.siempre ? 1 : 0);
+    ).bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, IDIOMA_PLAN, siempre);
   });
   await db.batch([
     // Reemplaza lo que esa misma plantilla ya había programado (también el recojo de fábrica del aviso de envío).

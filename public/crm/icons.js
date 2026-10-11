@@ -55,6 +55,7 @@ const ICONS = {
   crop: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 1.5V15h13.5"/><path d="M1.5 5H15v13.5"/></svg>`,
   undo: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4"/><path d="M3 8h9a5 5 0 010 10H9"/></svg>`,
   sparkle: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M9 2.5l1.6 4.4 4.4 1.6-4.4 1.6L9 14.5l-1.6-4.4L3 8.5l4.4-1.6z"/><path d="M15.5 12.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>`,
+  power: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2.5v7"/><path d="M5.6 5.2a6.5 6.5 0 108.8 0"/></svg>`,
   bellOff: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/><path d="M2.5 2.5l15 15"/></svg>`
 };
 

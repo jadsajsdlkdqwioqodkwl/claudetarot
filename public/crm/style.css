@@ -160,6 +160,9 @@ button { font-family: inherit; touch-action: manipulation; }
 #menu-lista button:hover { background: var(--hover) !important; }
 #menu-lista button .icono-svg { width: 18px; height: 18px; color: var(--gris); flex-shrink: 0; }
 #lista header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 17px; opacity: .9; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: background-color .12s; }
+#lista header #btn-killswitch { color: #ff8a80; }
+#lista header #btn-killswitch.killswitch-puesto { background: #d93025; color: #fff; opacity: 1; animation: pulso-kill 1.6s ease-in-out infinite; }
+@keyframes pulso-kill { 50% { box-shadow: 0 0 0 5px rgba(217,48,37,.35); } }
 #lista header button:hover { background: rgba(255,255,255,.14); opacity: 1; }
 #btn-notificaciones.notif-activa { opacity: 1; color: #ffe27a; }
 #buscador { padding: 8px 10px; border-bottom: 1px solid var(--borde); position: relative; }

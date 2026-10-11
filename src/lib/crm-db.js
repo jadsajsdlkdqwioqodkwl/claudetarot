@@ -248,6 +248,7 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
   const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`;
   const inserts = [];
+  const siempre = await siempreGlobal(db);
   let envio = Date.now();
   for (const [i, p] of pasos.entries()) {
     envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
@@ -259,15 +260,15 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
     envio = cuando;
     if (p.plantilla) {
       inserts.push(
-        db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language) VALUES (?, ?, ?, ?, ?, 'es_PE')")
-          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla)
+        db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre) VALUES (?, ?, ?, ?, ?, 'es_PE', ?)")
+          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, siempre)
       );
       continue;
     }
     inserts.push(
-      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones, mandar_siempre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null,
-          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null)
+          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, siempre)
     );
   }
   if (!inserts.length) return;
@@ -326,13 +327,14 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
   let acumuladoMs = 0;
   // Un paso apagado no se programa y su espera tampoco cuenta.
   const activos = pasos.filter((p) => p.activo !== 0);
+  const siempre = await siempreGlobal(db);
   const inserts = activos.map((p) => {
     acumuladoMs += p.delay_minutes * 60 * 1000;
     const sendAt = new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
-      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, botones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null, p.body && !p.media_key && !p.catalogo ? p.botones || null : null);
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, botones, mandar_siempre)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null, p.body && !p.media_key && !p.catalogo ? p.botones || null : null, siempre);
   });
   if (!inserts.length) return 0;
   await db.batch(inserts);
@@ -377,6 +379,11 @@ export async function guardarProductosEnCache(db, catalogId, productos) {
       .bind(p.retailer_id, catalogId, p.name || null, p.image_url || null)
       .run();
   }
+}
+
+/** 1 si el admin prendió «mandar toda la secuencia sí o sí» (ajuste siempre_global, api/crm/pausa.js): lo que se programe no se cancela porque alguien escriba. */
+export async function siempreGlobal(db) {
+  return (await obtenerAjuste(db, "siempre_global").catch(() => null)) === "1" ? 1 : 0;
 }
 
 export async function obtenerAjuste(db, key) {

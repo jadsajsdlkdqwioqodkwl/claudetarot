@@ -91,6 +91,7 @@ import {
   onRequestPost as crmStickersPost,
   onRequestDelete as crmStickersDelete
 } from "./api/crm/stickers.js";
+import { onRequestGet as crmPausaGet, onRequestPost as crmPausaPost } from "./api/crm/pausa.js";
 import {
   onRequestGet as crmPushSubscribeGet,
   onRequestPost as crmPushSubscribePost,
@@ -182,6 +183,7 @@ const ROUTES = {
   "/api/crm/bulk-send": { GET: crmBulkSendGet, POST: crmBulkSendPost },
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
   "/api/crm/react": { POST: crmReactPost },
+  "/api/crm/pausa": { GET: crmPausaGet, POST: crmPausaPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },
   "/api/crm/notify-settings": { GET: crmNotifySettingsGet, POST: crmNotifySettingsPost },

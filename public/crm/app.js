@@ -134,6 +134,7 @@ function iconizar() {
   $("#btn-sugerencias").innerHTML = icon("sparkle");
   $("#btn-reportes").innerHTML = icon("doc");
   $("#btn-shalom").innerHTML = icon("bag");
+  $("#btn-killswitch").innerHTML = icon("power");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
@@ -226,6 +227,9 @@ async function mostrarApp() {
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
   $("#btn-shalom").style.display = shalom ? "" : "none";
+  $("#btn-killswitch").style.display = "";
+  cargarPausa();
+  if (!window.__pausaTimer) window.__pausaTimer = setInterval(cargarPausa, 60000);
   if (shalom) actualizarConteoShalom();
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
@@ -1078,8 +1082,33 @@ $("#sim-enviar").addEventListener("click", async () => {
 
 let bulkTemplateElegida = null;
 
+/* ---------- Killswitch y «mandar toda la secuencia» (api/crm/pausa.js) ---------- */
+async function cargarPausa() {
+  try {
+    const d = await pedir("/api/crm/pausa");
+    const b = $("#btn-killswitch");
+    b.classList.toggle("killswitch-puesto", d.pausa);
+    b.title = d.pausa ? "Mensajes programados DETENIDOS. Toca para reanudar" : `Detener todos los mensajes programados (${d.pendientes} pendientes)`;
+    b.dataset.pausa = d.pausa ? "1" : "";
+    b.dataset.pendientes = d.pendientes;
+    const c = $("#siempre-global");
+    if (c) c.checked = d.siempre;
+  } catch { /* sin red: queda como estaba */ }
+}
+$("#btn-killswitch").addEventListener("click", async () => {
+  const puesto = $("#btn-killswitch").dataset.pausa === "1";
+  const n = $("#btn-killswitch").dataset.pendientes || 0;
+  if (!confirm(puesto ? "¿Reanudar los mensajes programados? Lo que se canceló no vuelve; solo saldrá lo que se programe de ahora en adelante." : `KILLSWITCH: se cancelan los ${n} mensajes programados (seguimientos, planes, plantillas) y no sale ninguno hasta que reanudes. ¿Detener todo?`)) return;
+  try { await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pausa: !puesto }) }); } catch (err) { alert(err.message); }
+  cargarPausa();
+});
+$("#siempre-global").addEventListener("change", async (e) => {
+  try { await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ siempre: e.target.checked }) }); } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
+});
+
 $("#btn-admin").addEventListener("click", () => {
   $("#modal-admin-fondo").classList.add("abierto");
+  cargarPausa();
   pintarPlanesPorAprobar();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";

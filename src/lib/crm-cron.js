@@ -14,7 +14,7 @@ import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, man
 import { textoPorDefectoSql } from "./crm-variantes.js";
 import { encadenarRescate } from "./planes-plantilla.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
-import { registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
+import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
 import { plantillaAprobada } from "./plantillas.js";
@@ -72,6 +72,12 @@ export function rellenar(texto, datos) {
 export async function procesarSeguimientosVencidos(env) {
   if (!env.CRM_DB || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
   await acomodarAlHorario(env).catch((err) => console.error("Horario de envío:", err.message));
+
+  // Killswitch (api/crm/pausa.js): con la pausa puesta nada programado sale; lo que venza se cancela, no se acumula.
+  if ((await obtenerAjuste(env.CRM_DB, "pausa_total").catch(() => null)) === "1") {
+    await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE status IN ('pendiente', 'por_aprobar') AND datetime(send_at) <= datetime('now')").run();
+    return;
+  }
 
   // Se "reservan" antes de mandar (pendiente → enviando en un solo UPDATE):
   // si dos pasadas se cruzan, ninguna manda dos veces lo mismo. Lo que quedó

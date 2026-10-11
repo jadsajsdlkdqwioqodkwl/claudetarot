@@ -20,7 +20,7 @@
 
 import { primerNombre } from "./plantillas.js";
 import { lineaPorId } from "./lineas.js";
-import { obtenerAjuste, esOrigenAutomatico } from "./crm-db.js";
+import { obtenerAjuste, esOrigenAutomatico, siempreGlobal } from "./crm-db.js";
 import { productoPorId } from "./productos.js";
 import { destinosDeChats } from "./crm-destino.js";
 
@@ -159,10 +159,11 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
   const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
+  const siempre = await siempreGlobal(db);
   await db.batch(pasos.map((p) => db.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado)));
+    `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status, mandar_siempre)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, siempre)));
   return { pasos };
 }
 
@@ -246,7 +247,7 @@ export async function activarPlanTrasAviso(env, conversationId) {
 export async function rearmarPlanShalom(env, conversationId, texto) {
   const db = env.CRM_DB;
   const { results } = await db.prepare(
-    "SELECT id, template_name FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?"
+    "SELECT id, template_name, mandar_siempre FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?"
   ).bind(conversationId, `${PREFIJO_PLAN} · Recojo en Shalom%`).all();
   if (!results.length) return;
   if (/ya lo recog/i.test(texto || "")) {
@@ -257,8 +258,9 @@ export async function rearmarPlanShalom(env, conversationId, texto) {
   const ahora = Date.now();
   const marca = String(results[0].template_name).startsWith("uro_") ? "uro" : "tarot";
   const orden = pasosOrdenados(planesDe(marca).shalom.pasos, await ordenDelPlan(db, marca, "shalom")).map((p) => p.nombre);
-  await db.batch(results.map((r) => {
+  const mover = results.filter((r) => !r.mandar_siempre).map((r) => { // «sí o sí»: sale en sus días, no se vuelve a contar
     const i = Math.max(0, orden.indexOf(r.template_name));
     return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
-  }));
+  });
+  if (mover.length) await db.batch(mover);
 }
