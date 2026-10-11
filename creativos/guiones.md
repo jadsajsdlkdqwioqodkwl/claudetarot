@@ -12,13 +12,18 @@ Las sigue el Project "Guiones de video" (claude.ai). Espejo de la pestaña **Gui
 
 Cada guion sale de una celda avatar × nivel de consciencia (pestaña Avatares). Prioriza celdas con 0 videos en la Cobertura de video. Un lote no repite avatar más de 2 veces. El guion habla a la razón de compra de su avatar, no al kit en general. Sigue `docs/negocio.md` (precios, regalos) y la skill `voz-tarot-store` para todo lo que diga una persona. Español peruano, tuteo, neutro en género. Palabras: kit, cartas, tarot, manual o guía, tapete, arcanos mayores y menores. Nunca "original". Sin prometer predecir el futuro con certeza.
 
-## 3. El guion
+## 3. El guion (solo la locución, para ElevenLabs)
 
-- Duración real al ritmo de habla (~2,5 palabras por segundo): 30 s ≈ 75 palabras, 45 s ≈ 110, 60 s ≈ 150. Cuéntalas.
-- Estructura: gancho (0–3 s, lo dice el hook visual y la primera línea) → situación del avatar → giro (qué cambia con el kit, mecanismo concreto: significado impreso en cada carta, manual en español, tirada de tres cartas) → prueba o dato → CTA según el nivel.
-- Tabla por escena: Tiempo · Imagen (qué se ve) · Voz o texto en pantalla. El dueño produce el video, así que la columna Imagen es una indicación para él, no un prompt.
+- El guion es la locución y nada más: texto plano, listo para copiar y pegar en ElevenLabs. Prohibido en la celda: tiempos, escenas, las palabras IMAGEN, VOZ o TEXTO, tablas, emojis, corchetes, asteriscos, títulos y notas. Uno a tres párrafos cortos.
+- Primera persona, como quien le cuenta algo a una amiga (suena a historia de Instagram, no a anuncio). Ejemplo del dueño: "Hace unos días te conté por mis historias que me encontré un tarot que es buenísimo para principiantes y el día de hoy te voy a estar contando sobre él. Además de los arcanos, también trae esta información sobre los chakras, sobre los signos del zodiaco, los planetas, sus símbolos y su interpretación en el tarot..."
+- La voz entra después del hook visual y no menciona lo que pasa en él: tiene que servir con cualquiera de los 3 hooks. Por ahora el dueño produce con voiceover sobre videos propios o con permiso, así que no se describe imagen.
+- Largo al ritmo de habla (~2,5 palabras por segundo): 30 s ≈ 75 palabras, 45 s ≈ 110, 60 s ≈ 150. Cuéntalas.
+- Para ElevenLabs: números, precios y cantidades en palabras ("setenta y ocho cartas", "ochenta y nueve soles"); frases cortas; pausas con comas y puntos, "..." solo para una pausa larga y a lo mucho una vez.
+- Estructura: situación del avatar → giro con el mecanismo concreto (significado impreso en cada carta, manual en español, tirada de tres cartas) → prueba o dato → CTA corto según el nivel (el precio solo en producto y muy consciente).
 - Sin frases de IA ("Usa X, no Y", "Hoy, no mañana"), sin "+" como conector.
-- El primer segundo del guion tiene que continuar el hook, sea cual sea de los tres.
+- **Formato del guion** (diversidad): cada guion de un lote usa un formato distinto de la lista de abajo y se anota en la columna R.
+
+Formatos de voiceover (la lista viva está en la pestaña Guiones reglas, sección 9): 1) UGC reseña · 2) Respuesta a una pregunta · 3) Mito y realidad · 4) Lo que trae cada carta · 5) Mi primera tirada · 6) Lo que probé antes · 7) Para quién es · 8) Regalo narrado. Un formato nuevo se agrega al final de la lista.
 
 ## 4. Los 3 hooks visuales (Google Flow)
 
@@ -35,7 +40,7 @@ Reglas:
 
 ## 5. Dónde escribes
 
-Pestaña **Guiones**, una fila por guion, debajo de la última con datos: A Lote ("V" + fecha + letra, ej. V2026-10-12a) · B ID (G01…) · C Avatar (A1…) · D Consciencia · E Duración (30|45|60) · F Palabras · G Guion IA · H Guion FINAL (vacía) · I Hook A (prompt) · J Filtra a A · K Hook B · L Filtra a B · M Hook C · N Filtra a C · O Estado: "para revisar" · P Nota · Q Comentario (vacía).
+Pestaña **Guiones**, una fila por guion, debajo de la última con datos: A Lote ("V" + fecha + letra, ej. V2026-10-12a) · B ID (G01…) · C Avatar (A1…) · D Consciencia · E Duración (30|45|60) · F Palabras · G Guion IA · H Guion FINAL (vacía) · I Hook A (prompt) · J Filtra a A · K Hook B · L Filtra a B · M Hook C · N Filtra a C · O Estado: "para revisar" · P Nota · Q Comentario (vacía) · R Formato (nombre exacto de la lista de la sección 3). G Guion IA es solo la locución en texto plano.
 
 D Consciencia se escribe exactamente así: inconsciente | problema | solucion | producto | muy consciente (la Cobertura de video lo cuenta). Avatares nuevos o celdas por probar van a la pestaña Avatares (filas nuevas al final, mismo formato). La Cobertura de video está en Avatares (fila 35), debajo de la de anuncios estáticos, y cuenta desde Guiones col. C y D.
 
