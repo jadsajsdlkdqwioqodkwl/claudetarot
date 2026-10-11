@@ -140,6 +140,7 @@ function iconizar() {
   $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-galeria").innerHTML = icon("image");
+  $("#btn-colores").innerHTML = icon("paleta");
   $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
@@ -2591,6 +2592,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-avisos": "Avisos por Telegram",
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
+  "btn-colores": "Colores de las tiendas",
   "btn-galeria": "Fotos del catálogo",
   "btn-equipo": "Equipo",
   "btn-salir": "Salir"
@@ -7254,6 +7256,30 @@ function abrirGaleriaCatalogo() {
   cargarGaleria();
 }
 $("#btn-galeria").addEventListener("click", abrirGaleriaCatalogo);
+
+/* ---------- Colores de fondo por tienda (cada quien el suyo, en su navegador) ---------- */
+const COLORES_TIENDA = { tarot: "#e9e5f3", uro: "#f6e5ec" };
+const leerColorTienda = (m) => { try { return localStorage.getItem(`color_tienda_${m}`) || COLORES_TIENDA[m]; } catch { return COLORES_TIENDA[m]; } };
+function aplicarColoresTienda() {
+  for (const m of Object.keys(COLORES_TIENDA)) document.documentElement.style.setProperty(`--cfondo-${m}`, leerColorTienda(m));
+}
+aplicarColoresTienda();
+$("#btn-colores").addEventListener("click", () => {
+  for (const m of Object.keys(COLORES_TIENDA)) $(`#color-${m}`).value = leerColorTienda(m);
+  $("#modal-colores-fondo").classList.add("abierto");
+});
+for (const m of Object.keys(COLORES_TIENDA)) {
+  $(`#color-${m}`).addEventListener("input", (e) => {
+    try { localStorage.setItem(`color_tienda_${m}`, e.target.value); } catch { /* sin almacenamiento: vale hasta que recargues */ }
+    document.documentElement.style.setProperty(`--cfondo-${m}`, e.target.value);
+  });
+}
+$("#colores-restablecer").addEventListener("click", () => {
+  for (const m of Object.keys(COLORES_TIENDA)) { try { localStorage.removeItem(`color_tienda_${m}`); } catch { /* nada */ } }
+  aplicarColoresTienda();
+  for (const m of Object.keys(COLORES_TIENDA)) $(`#color-${m}`).value = COLORES_TIENDA[m];
+});
+$("#colores-cerrar").addEventListener("click", () => $("#modal-colores-fondo").classList.remove("abierto"));
 $("#galeria-linea").addEventListener("change", cargarGaleria);
 $("#galeria-buscar").addEventListener("input", pintarGaleria);
 $("#galeria-cerrar").addEventListener("click", () => $("#modal-galeria-fondo").classList.remove("abierto"));

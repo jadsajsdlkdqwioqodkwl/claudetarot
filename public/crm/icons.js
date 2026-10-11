@@ -61,6 +61,7 @@ const ICONS = {
   cursiva: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 4h6M6 16h6M11.5 4l-3 12"/></svg>`,
   tachado: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10h14M13.5 6.2C13 4.8 11.7 4 10 4 8 4 6.7 5 6.7 6.5c0 1.2.8 2 2.3 2.5M6.5 13.8C7 15.2 8.3 16 10 16c2 0 3.3-1 3.3-2.5 0-.6-.2-1.1-.6-1.5"/></svg>`,
   codigo: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6l-4 4 4 4M13 6l4 4-4 4"/></svg>`,
+  paleta: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3a7 7 0 100 14c1.2 0 1.7-.8 1.4-1.7-.3-.9.3-1.8 1.3-1.8H14a3 3 0 003-3c0-4-3-7.5-7-7.5z"/><circle cx="6.5" cy="9" r=".9" fill="currentColor"/><circle cx="9" cy="6.3" r=".9" fill="currentColor"/><circle cx="12.5" cy="6.8" r=".9" fill="currentColor"/></svg>`,
   bellOff: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/><path d="M2.5 2.5l15 15"/></svg>`
 };
 

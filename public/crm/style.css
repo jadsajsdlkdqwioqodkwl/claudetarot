@@ -193,9 +193,14 @@ button { font-family: inherit; touch-action: manipulation; }
 
 .conv-item { display: flex; gap: 10px; padding: 12px 14px 12px 17px; border-bottom: 1px solid var(--borde); cursor: pointer; position: relative; border-left: 3px solid transparent; }
 .conv-item:hover { background: #f5f6f6; }
-.conv-item[data-marca="uro"] { background: #fdeef3; }
-.conv-item[data-marca="uro"]:hover { background: #fbe3ec; }
-.conv-item[data-marca="uro"].activo { background: #f6d3e0; }
+.conv-item[data-marca="tarot"] { background: color-mix(in srgb, var(--cfondo-tarot, #e9e5f3) 30%, #fff); }
+.conv-item[data-marca="tarot"]:hover { background: color-mix(in srgb, var(--cfondo-tarot, #e9e5f3) 70%, #fff); }
+.conv-item[data-marca="tarot"].activo { background: var(--cfondo-tarot, #e9e5f3); }
+.conv-item[data-marca="uro"] { background: color-mix(in srgb, var(--cfondo-uro, #f6e5ec) 55%, #fff); }
+.conv-item[data-marca="uro"]:hover { background: color-mix(in srgb, var(--cfondo-uro, #f6e5ec) 85%, #fff); }
+.conv-item[data-marca="uro"].activo { background: var(--cfondo-uro, #f6e5ec); }
+.fila-color { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; font-size: 14px; }
+.fila-color input[type="color"] { width: 56px; height: 34px; padding: 2px; border: 1px solid var(--borde); border-radius: var(--radio-s); background: #fff; cursor: pointer; }
 .conv-item.activo { background: #e9edef; border-left-color: var(--verde-osc); }
 .conv-item .conv-check { display: none; width: 20px; height: 20px; flex-shrink: 0; align-self: center; accent-color: var(--verde); }
 body.modo-seleccion .conv-item .conv-check { display: block; }
@@ -245,8 +250,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #zona-arrastre.visible { display: flex; }
 #cargar-anteriores { display: flex; justify-content: center; padding-bottom: 8px; }
 #cargar-anteriores button { border: 1px solid var(--borde); background: #fff; border-radius: var(--radio-full); padding: 6px 14px; font-size: 12px; color: var(--gris); cursor: pointer; }
-#chat[data-marca="tarot"] { background-color: #e9e5f3; }
-#chat[data-marca="uro"] { background-color: #f6e5ec; }
+#chat[data-marca="tarot"] { background-color: var(--cfondo-tarot, #e9e5f3); }
+#chat[data-marca="uro"] { background-color: var(--cfondo-uro, #f6e5ec); }
 #chat[data-marca="tarot"] header { border-top: 3px solid #7c5cff; }
 #chat[data-marca="uro"] header { border-top: 3px solid #d6336c; }
 #chat .marca-chat { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; color: #fff; vertical-align: 1px; }
