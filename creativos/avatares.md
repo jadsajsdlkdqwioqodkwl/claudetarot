@@ -89,3 +89,15 @@ terror. Siguen siendo principiantes: no saben leer tarot.
   A1. Esa es la falta de diversidad que esta matriz corrige.
 - 2026-10-07: A9–A14 a pedido del dueño (futuro, calma, esoterismo, camino
   espiritual, tradición familiar, estética); A2 pasa a "hobby nuevo".
+
+## Columnas para video (agregado 2026-10-11)
+
+Las columnas **P · Perfil visual** (rango de edad, género o mixto, momento de
+vida, según el brief y las citas) y **Q · Escena de scroll** (situación
+cotidiana que le haría detener el dedo) van a la derecha de la tabla, tras O.
+Las usa solo el Project de guiones de video (`creativos/guiones.md`): en video
+el creativo hace de targeting y los hooks visuales filtran por perfil. Los
+anuncios estáticos siguen igual: el avatar no es edad ni género y se escribe
+neutro. Sin dato en el brief = "sin dato", no se inventa. Debajo de la
+Cobertura de estáticos hay una **Cobertura de video** (avatar × nivel,
+contada desde Guiones col. C y D).

@@ -18,6 +18,8 @@ creativos/
   instrucciones.md       copia de la pestaña Instrucciones (lo que sigue el Project de conceptos)
   prompt-project.md      arranque corto para pegar en el Project de conceptos
   copy-meta.md           reglas del copy y titular de Meta (Claude Code las sigue tras cada render)
+  guiones.md             copia de la pestaña Guiones reglas (Project de guiones de video + 3 hooks para Google Flow)
+  prompt-project-video.md arranque corto para pegar en el Project de guiones de video
   prompt-claude-code.md  prompt maestro para una sesión nueva de Claude Code
   lotes/
     L001/
