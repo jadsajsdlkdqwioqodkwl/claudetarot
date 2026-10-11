@@ -3356,7 +3356,12 @@ async function marcarLead(c) {
   }
 }
 
-async function productosDelCatalogo() {
+const cacheCatalogoPorLinea = new Map(); // productos de los catálogos de otros números (URO...), para los selectores de los editores
+async function productosDelCatalogo(lineaId = null) {
+  if (lineaId) {
+    if (!cacheCatalogoPorLinea.has(lineaId)) cacheCatalogoPorLinea.set(lineaId, (await pedir(`/api/crm/catalog-products?linea_id=${lineaId}`)).products || []);
+    return cacheCatalogoPorLinea.get(lineaId);
+  }
   if (!cacheProductosCatalogo || cacheCatalogoLinea) {
     const { products } = await pedir("/api/crm/catalog-products");
     cacheProductosCatalogo = products;
@@ -3370,8 +3375,9 @@ async function productosDelCatalogo() {
  * seguimientos y secuencias. Los productos se piden recién al abrir el
  * selector, una sola vez por sesión (cacheProductosCatalogo).
  */
-function ponerCatalogoEnSelect(sel, valor, nombre) {
+function ponerCatalogoEnSelect(sel, valor, nombre, lineaFn = () => null) {
   if (!sel) return;
+  sel._lineaFn = lineaFn; // el catálogo es el del número de la tienda elegida (URO ≠ Tarot)
   if (valor && valor !== "*" && ![...sel.options].some((o) => o.value === valor)) {
     sel.add(new Option(nombre || "Producto del catálogo", valor));
   }
@@ -3380,7 +3386,7 @@ function ponerCatalogoEnSelect(sel, valor, nombre) {
   sel.dataset.conProductos = "1";
   const cargar = async () => {
     try {
-      const productos = await productosDelCatalogo();
+      const productos = await productosDelCatalogo(sel._lineaFn?.() || null);
       const actual = sel.value;
       for (const p of productos) {
         if (![...sel.options].some((o) => o.value === p.retailer_id)) sel.add(new Option(p.name || p.retailer_id, p.retailer_id));
@@ -5969,6 +5975,17 @@ function pasoRapidaHtml(p, n) {
 }
 
 /** Las plantillas aprobadas del número del producto elegido (o el principal), para los pasos de plantilla. */
+// Al cambiar de tienda en el editor, el selector de catálogo vuelve a pedir los productos del catálogo de esa tienda.
+$("#rapida-producto").addEventListener("change", () => {
+  const sel = $("#rapida-catalogo");
+  if (sel) {
+    [...sel.options].forEach((o) => { if (o.value && o.value !== "*" && o.value !== sel.value) o.remove(); });
+    delete sel.dataset.conProductos;
+    ponerCatalogoEnSelect(sel, sel.value === "*" ? "*" : "", null, sel._lineaFn);
+  }
+  if (document.querySelector("#rapida-pasos .rp-plantilla")) llenarPlantillasDePasos();
+});
+
 async function llenarPlantillasDePasos() {
   const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
   let nombres = [];
@@ -6101,7 +6118,7 @@ function abrirModalRapidaEdicion(q) {
 
 /** "Se manda con": sus fotos/videos (vacío), el catálogo completo o un producto. */
 function pintarCatalogoRapida(q) {
-  ponerCatalogoEnSelect($("#rapida-catalogo"), q?.catalogo || "", q?.catalogo_nombre);
+  ponerCatalogoEnSelect($("#rapida-catalogo"), q?.catalogo || "", q?.catalogo_nombre, () => productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null);
   mostrarCatalogoRapida();
 }
 
