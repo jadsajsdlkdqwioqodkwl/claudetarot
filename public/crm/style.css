@@ -160,6 +160,10 @@ button { font-family: inherit; touch-action: manipulation; }
 #menu-lista button:hover { background: var(--hover) !important; }
 #menu-lista button .icono-svg { width: 18px; height: 18px; color: var(--gris); flex-shrink: 0; }
 #lista header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 17px; opacity: .9; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: background-color .12s; }
+.olva-saldo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 0; flex-wrap: wrap; }
+.olva-saldo .olva-marca { margin: 0; }
+.saldo-marca { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gris); }
+.saldo-marca input { width: 84px; padding: 3px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 12px; font-family: inherit; margin: 0; }
 .olva-marca { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12px; color: var(--gris); cursor: pointer; }
 .kill-chat { width: 100%; margin-top: 6px; font-size: 12px; padding: 7px 10px; border-radius: var(--radio-s); cursor: pointer; border: 1px solid #d93025; color: #d93025; background: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .kill-chat .icono-svg { width: 14px; height: 14px; }

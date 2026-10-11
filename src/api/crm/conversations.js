@@ -83,6 +83,7 @@ async function handler({ request, env, agent }) {
     if (Number(linea)) { condiciones.push("conv.linea_id = ?"); params.push(Number(linea)); }
     else condiciones.push("conv.linea_id IS NULL");
   }
+  if (url.searchParams.get("olva") === "1") condiciones.push("c.olva = 1"); // los chats marcados «Envío por Olva»
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
   // Cuántos traer: 200 por defecto; "Cargar más" en el CRM sube de a 200 (hasta 2000).
@@ -130,6 +131,7 @@ async function handler({ request, env, agent }) {
         conv.blocked,
         conv.pausa_auto,
         c.olva,
+        c.saldo,
         c.id AS contact_id,
         c.wa_id,
         c.profile_name,

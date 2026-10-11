@@ -35,6 +35,7 @@ const estado = {
   filtroAgente: "",
   filtroEtiqueta: "",
   filtroOcultos: false,
+  filtroOlva: false,
   // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
   filtroProducto: "",
   filtroLinea: "",
@@ -1586,6 +1587,7 @@ function sincronizar() {
   else if (estado.filtroAgente) params.set("agente", estado.filtroAgente);
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroOcultos) params.set("ocultos", "1");
+  if (estado.filtroOlva) params.set("olva", "1");
   if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
   if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
@@ -2008,12 +2010,13 @@ function resaltarBusqueda(texto) {
 }
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && estado.filtroProducto === "" && estado.filtroLinea === "");
   $("#filtro-producto").value = estado.filtroProducto;
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
   $("#filtro-linea").classList.toggle("activo", estado.filtroLinea !== "");
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
+  $("#btn-filtro-olva").classList.toggle("activo", estado.filtroOlva);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
   $("#filtro-agente").value = estado.filtroAgente;
   $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
@@ -2033,9 +2036,16 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroAgente = "";
     estado.filtroEtiqueta = "";
     estado.filtroOcultos = false;
+    estado.filtroOlva = false;
     estado.filtroProducto = "";
     estado.filtroLinea = "";
   }
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#btn-filtro-olva").addEventListener("click", () => {
+  estado.filtroOlva = !estado.filtroOlva;
   pintarFiltros();
   cargarConversaciones();
 });
@@ -7581,7 +7591,10 @@ async function pintarDetalle(c) {
 
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
-    <label class="olva-marca" title="Márcalo si este pedido va por Olva (desmárcalo si no)"><input type="checkbox" id="detalle-olva" ${c.olva ? "checked" : ""} /> Envío por Olva</label>
+    <div class="olva-saldo">
+      <label class="olva-marca" title="Márcalo si este pedido va por Olva (desmárcalo si no)"><input type="checkbox" id="detalle-olva" ${c.olva ? "checked" : ""} /> Envío por Olva</label>
+      <label class="saldo-marca" title="Cuánto le falta pagar al cliente">Saldo <input type="text" id="detalle-saldo" maxlength="20" placeholder="S/" value="${escapar(c.saldo || "")}" /></label>
+    </div>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -7642,6 +7655,14 @@ async function pintarDetalle(c) {
       for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.olva = e.target.checked ? 1 : 0;
       c.olva = e.target.checked ? 1 : 0;
     } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
+  });
+  $("#detalle-saldo").addEventListener("change", async (e) => {
+    const valor = e.target.value.trim();
+    try {
+      await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, saldo: valor }) });
+      for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.saldo = valor || null;
+      c.saldo = valor || null;
+    } catch (err) { alert(err.message); }
   });
   $("#detalle-kill-chat").addEventListener("click", async () => {
     const pausar = !c.pausa_auto;
