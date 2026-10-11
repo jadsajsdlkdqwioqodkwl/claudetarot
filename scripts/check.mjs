@@ -865,6 +865,13 @@ check("las letras de columna llegan hasta la última de la hoja",
       seg.aviso_envio_shalom?.pasos.length === 3 && seg.uro_aviso_envio_shalom?.pasos.every((p) => p.plantilla.startsWith("uro_"))
       && Object.values(seg).flatMap((c) => c.pasos).every((p) => nombres.has(p.plantilla)));
   }
+  {
+    // Botones de respuesta: hasta 3, de 20 caracteres, sin repetidos, y el texto con botones sale por mandarTexto (con su "escribiendo…").
+    const { limpiarBotones } = await import("../src/lib/whatsapp.js");
+    const l = limpiarBotones([" Sí ", "sí", "Un botón con nombre larguísimo", "", "B", "C", "D"]);
+    check("botones de respuesta: máx. 3, 20 caracteres, sin repetidos", l.length === 3 && l[0] === "Sí" && l.every((b) => b.length <= 20));
+    check("el texto con botones sale por mandarTexto (con su pausa)", /mandarTexto[\s\S]{0,400}enviarBotones/.test(readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8")));
+  }
   check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
     sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));
   check("las sugerencias para varios chats se mandan de a uno", sugs.includes('"enviar_a"') && !/for \(const d of parsear\(s\.destinatarios\)\)/.test(sugs));
@@ -955,7 +962,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     const lineas = readFileSync(ruta, "utf8").split("\n");
     lineas.forEach((l, i) => {
       if (/^\s*(import|\*|\/\/)/.test(l)) return;
-      if (/\b(enviarTexto|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(|mandarAlToque\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
+      if (/\b(enviarTexto|enviarBotones|enviarMedia|enviarTemplate|enviarCatalogo|enviarCatalogoConPortada|enviarProducto)\(/.test(l) && !/mandarConEscribiendo\(|mandarAlToque\(/.test(l)) directos.push(`${ruta.split("/src/")[1]}:${i + 1}`);
     });
   }
   check(`ninguna llamada directa a Meta (plantilla con "escribiendo…", catálogo/producto al toque)${directos.length ? ` (falta en ${directos.join(", ")})` : ""}`, !directos.length);

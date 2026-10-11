@@ -264,8 +264,9 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
       continue;
     }
     inserts.push(
-      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null)
+      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null,
+          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null)
     );
   }
   if (!inserts.length) return;

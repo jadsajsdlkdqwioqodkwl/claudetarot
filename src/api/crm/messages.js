@@ -14,6 +14,7 @@
  *              en variante_usos para medir cuál funciona (crm-variantes.js)
  */
 
+import { limpiarBotones } from "../../lib/whatsapp.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
@@ -119,6 +120,7 @@ async function post({ request, env, agent }) {
   try {
     // Fotos, videos y archivos: al toque. El texto: "escribiendo…" (en mandarTexto).
     if (mediaKey) {
+      if (limpiarBotones(payload?.botones).length) return json({ error: "Los botones no se pueden mandar junto con un archivo: manda el archivo y luego el texto con botones." }, 400);
       const type = TIPOS_MEDIA.has(payload?.media_type) ? payload.media_type : "document";
       if (!env.CRM_MEDIA) return json({ error: "Almacenamiento no configurado." }, 503);
       const caption = type !== "sticker" ? String(payload?.caption || "").slice(0, 1024) || undefined : undefined;
@@ -131,9 +133,11 @@ async function post({ request, env, agent }) {
 
     const texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
+    const botones = limpiarBotones(payload?.botones);
+    if (botones.length && texto.length > 1024) return json({ error: "Con botones el mensaje puede tener hasta 1024 caracteres." }, 413);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
     await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined);
-    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo);
+    const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo, undefined, botones);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida();
     return json({ ok: true, wa_message_id: waMessageId });

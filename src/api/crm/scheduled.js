@@ -5,6 +5,7 @@
  *      { conversation_id, send_at, body?, media_key, media_type, media_mime? } — con foto/video propio (de /api/crm/upload-media)
  *      + catalogo? ("*" = catálogo completo, o el retailer_id de un producto) y catalogo_nombre?
  *      + mandar_siempre? — true: sale aunque el cliente o nosotros escribamos antes
+ *      + botones? — hasta 3 botones de respuesta (solo con un texto, sin archivo ni catálogo)
  * PATCH  /api/crm/scheduled — { id, send_at?, body?, mandar_siempre? } → edita un pendiente de texto libre
  *      (los que llevan quick_reply_id o media_key propia no se editan acá — cancélalo y
  *      programa uno nuevo, cambiar el contenido de esos no es una edición simple)
@@ -25,6 +26,7 @@
 import { textoPorDefectoSql } from "../../lib/crm-variantes.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { limpiarBotones } from "../../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -86,6 +88,8 @@ async function post({ request, env, agent }) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
   const { catalogo, catalogoNombre } = leerCatalogo(payload);
+  const botones = limpiarBotones(payload?.botones);
+  if (botones.length && (!body || mediaKey || catalogo)) return json({ error: "Los botones van con un texto, sin archivo ni catálogo." }, 400);
   if (!body && !quickReplyId && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida o el catálogo." }, 400);
   const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
@@ -104,10 +108,10 @@ async function post({ request, env, agent }) {
   await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre, botones)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0)
+    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0, botones.length ? JSON.stringify(botones) : null)
     .first();
 
   return json({ ok: true, scheduled: creado });

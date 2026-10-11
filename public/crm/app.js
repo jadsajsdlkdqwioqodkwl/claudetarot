@@ -540,6 +540,12 @@ $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: 
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
 
+/** Cómo queda en el chat un texto con botones de respuesta (igual que lo guarda el servidor). */
+const textoConBotones = (texto, botones) => (botones?.length ? `${texto}\n\n${botones.map((b) => `[ ${b} ]`).join("  ")}` : texto);
+const leerCamposBotones = (cont, clase) => [...cont.querySelectorAll("." + clase)].map((i) => i.value.trim()).filter(Boolean).slice(0, 3);
+const ponerCamposBotones = (cont, clase, valores = []) => cont.querySelectorAll("." + clase).forEach((el, i) => { el.value = valores[i] || ""; });
+const camposBotonesHtml = (clase, valores = []) => `<div class="campos-botones">${[0, 1, 2].map((i) => `<input type="text" class="${clase}" maxlength="20" value="${escapar(valores[i] || "")}" placeholder="Botón ${i + 1}" />`).join("")}</div>`;
+
 /** Cómo ve el cliente una plantilla en WhatsApp: la burbuja con el texto (variables de ejemplo) y sus botones debajo. */
 function vistaPreviaPlantilla(texto, botones = [], nombre = "María") {
   const lleno = String(texto || "").replace(/\{\{1\}\}/g, nombre || "María").replace(/\{\{2\}\}/g, "el kit de tarot").replace(/\{\{(\d+)\}\}/g, "…");
@@ -2198,9 +2204,10 @@ function guardarBorrador() {
     rapida: estado.rapidaPendiente,
     rapidaUsadaId: estado.rapidaUsadaId,
     rapidaVariante: estado.rapidaVariante,
-    respondiendoA: estado.respondiendoA
+    respondiendoA: estado.respondiendoA,
+    botones: estado.botonesMensaje
   };
-  if (b.texto.trim() || b.adjunto || b.rapida || b.respondiendoA) borradores.set(id, b);
+  if (b.texto.trim() || b.adjunto || b.rapida || b.respondiendoA || b.botones?.length) borradores.set(id, b);
   else borradores.delete(id);
 }
 
@@ -2218,6 +2225,8 @@ function restaurarBorrador(id) {
   estado.rapidaPendiente = b.rapida;
   estado.rapidaUsadaId = b.rapidaUsadaId || null;
   estado.rapidaVariante = b.rapidaVariante || null;
+  estado.botonesMensaje = b.botones || [];
+  pintarBotonesMensaje();
   estado.respondiendoA = b.respondiendoA;
   pintarPreviewArchivo();
   pintarVersionesRapida();
@@ -2235,6 +2244,7 @@ async function abrirConversacion(c) {
   estado.rapidaPendiente = null;
   estado.rapidaUsadaId = null;
   estado.rapidaVariante = null;
+  estado.botonesMensaje = [];
   pintarVersionesRapida();
   estado.archivoAdjunto = null;
   // En móvil, el botón/gesto de "atrás" del teléfono debe volver a la lista
@@ -2802,6 +2812,7 @@ function pintarChatBase(c) {
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="preview-respuesta" style="display:none"></div>
     <div id="preview-archivo" style="display:none"></div>
+    <div id="preview-botones"></div>
     <div id="versiones-rapida" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
@@ -3093,7 +3104,9 @@ function toggleAdjuntarPanel() {
   if (!panel.classList.contains("abierto")) return;
   panel.innerHTML = `
     <div class="item" id="adj-galeria"><div class="titulo">${icon("image")} Fotos y videos</div></div>
-    <div class="item" id="adj-documento"><div class="titulo">${icon("doc")} Documento</div></div>`;
+    <div class="item" id="adj-documento"><div class="titulo">${icon("doc")} Documento</div></div>
+    <div class="item" id="adj-botones"><div class="titulo">${icon("reply")} Botones de respuesta</div></div>`;
+  $("#adj-botones").addEventListener("click", () => { panel.classList.remove("abierto"); abrirBotonesMensaje(); });
   $("#adj-galeria").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-galeria").click(); });
   $("#adj-documento").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
 }
@@ -3109,6 +3122,7 @@ function toggleMasPanel() {
     <div class="item" id="mas-catalogo"><div class="titulo">${icon("bag")} Mandar catálogo</div></div>
     <div class="item" id="mas-seguimiento"><div class="titulo">${icon("clock")} Seguimientos programados</div></div>
     <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>
+    <div class="item" id="mas-botones"><div class="titulo">${icon("reply")} Botones de respuesta</div></div>
     <div class="item" id="mas-pegar-imagen"><div class="titulo">${icon("image")} Pegar imagen copiada</div></div>
     <div class="item mas-solo-angosto" id="mas-galeria"><div class="titulo">${icon("image")} Fotos y videos (galería)</div></div>
     <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Documento o archivo</div></div>
@@ -3121,6 +3135,7 @@ function toggleMasPanel() {
   $("#mas-catalogo").addEventListener("click", () => { panel.classList.remove("abierto"); toggleCatalogoPanel(); });
   $("#mas-seguimiento").addEventListener("click", () => { panel.classList.remove("abierto"); toggleSeguimientosPanel(); });
   $("#mas-stickers").addEventListener("click", () => { panel.classList.remove("abierto"); toggleStickersPanel(); });
+  $("#mas-botones").addEventListener("click", () => { panel.classList.remove("abierto"); abrirBotonesMensaje(); });
 }
 
 async function cargarMensajes() {
@@ -3857,6 +3872,45 @@ async function pegarImagenDelPortapapeles() {
   }
 }
 
+/* ---------- Botones de respuesta del mensaje que se está escribiendo ---------- */
+
+estado.botonesMensaje = [];
+
+function pintarBotonesMensaje() {
+  const cont = $("#preview-botones");
+  if (!cont) return;
+  const b = estado.botonesMensaje;
+  if (!b.length) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  cont.style.display = "flex";
+  cont.innerHTML = `${icon("reply")} Con botones: ${b.map((x) => `<span class="chip-boton">${escapar(x)}</span>`).join("")}
+    <button type="button" id="editar-botones-msg" class="sug-icono" title="Editar los botones">${icon("pencil")}</button>
+    <button type="button" id="quitar-botones-msg" class="sug-icono" title="Quitar los botones">${icon("close")}</button>`;
+  $("#editar-botones-msg").addEventListener("click", abrirBotonesMensaje);
+  $("#quitar-botones-msg").addEventListener("click", () => { estado.botonesMensaje = []; pintarBotonesMensaje(); });
+}
+
+function abrirBotonesMensaje() {
+  if (estado.archivoAdjunto) return alert("Los botones no se pueden mandar junto con un archivo. Quita el archivo o manda primero el archivo y luego el texto con botones.");
+  ponerCamposBotones($("#msg-botones"), "msgbtn", estado.botonesMensaje);
+  pintarVistaBotonesMensaje();
+  $("#modal-botones-fondo").classList.add("abierto");
+}
+
+function pintarVistaBotonesMensaje() {
+  $("#msg-botones-vista").innerHTML = vistaPreviaPlantilla($("#texto-envio")?.value || "", leerCamposBotones($("#msg-botones"), "msgbtn"));
+}
+$("#msg-botones").addEventListener("input", pintarVistaBotonesMensaje);
+$("#msg-botones-listo").addEventListener("click", () => {
+  estado.botonesMensaje = leerCamposBotones($("#msg-botones"), "msgbtn");
+  $("#modal-botones-fondo").classList.remove("abierto");
+  pintarBotonesMensaje();
+});
+$("#msg-botones-quitar").addEventListener("click", () => {
+  estado.botonesMensaje = [];
+  $("#modal-botones-fondo").classList.remove("abierto");
+  pintarBotonesMensaje();
+});
+
 function pintarPreviewArchivo() {
   const cont = $("#preview-archivo");
   const a = estado.archivoAdjunto;
@@ -4499,6 +4553,9 @@ async function enviarMensaje(e) {
   const adjunto = estado.archivoAdjunto;
   const rapida = estado.rapidaPendiente;
   if (!texto && !adjunto && !rapida) return;
+  const botones = estado.botonesMensaje.slice();
+  if (botones.length && adjunto) return alert("Los botones no se pueden mandar junto con un archivo: quita el archivo o los botones.");
+  if (botones.length && !texto && !rapida?.media.length && !rapida?.catalogo) return alert("Los botones van con un texto: escribe el mensaje.");
   // El chat se fija acá: el envío corre en segundo plano y tiene que ir al
   // MISMO cliente aunque la asesora ya esté en otro chat.
   const conversationId = estado.conversacionActivaId;
@@ -4518,6 +4575,8 @@ async function enviarMensaje(e) {
   input.style.height = "auto";
   estado.archivoAdjunto = null; // sin revocar la vista previa: la usa la burbuja "enviando"
   estado.rapidaPendiente = null;
+  estado.botonesMensaje = [];
+  pintarBotonesMensaje();
   if ($("#input-archivo")) $("#input-archivo").value = "";
   pintarPreviewArchivo();
   cancelarRespuesta();
@@ -4526,10 +4585,10 @@ async function enviarMensaje(e) {
   const burbujas = adjunto
     ? [{ type: adjunto.tipo, previewUrl: adjunto.previewUrl, fileName: adjunto.file.name, body: texto }]
     : rapida?.catalogo
-      ? [{ type: "text", body: etiquetaCatalogo(rapida) }, ...(texto ? [{ type: "text", body: texto }] : [])]
+      ? [{ type: "text", body: etiquetaCatalogo(rapida) }, ...(texto ? [{ type: "text", body: textoConBotones(texto, botones) }] : [])]
     : rapida
-      ? [...rapida.media.map((m) => ({ type: m.media_type, mediaKey: m.media_key })), ...(texto ? [{ type: "text", body: texto }] : [])]
-      : [{ type: "text", body: texto }];
+      ? [...rapida.media.map((m) => ({ type: m.media_type, mediaKey: m.media_key })), ...(texto ? [{ type: "text", body: textoConBotones(texto, botones) }] : [])]
+      : [{ type: "text", body: textoConBotones(texto, botones) }];
 
   encolarEnvio(conversationId, burbujas, async () => {
     if (adjunto) {
@@ -4559,7 +4618,7 @@ async function enviarMensaje(e) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
+          body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
         });
       }
     } else if (rapida) {
@@ -4578,7 +4637,7 @@ async function enviarMensaje(e) {
         await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
+          body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
         });
       }
       if (fallidas.length) {
@@ -4588,13 +4647,13 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId, body: texto, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
       });
     }
   }, (err) => {
     alert(err.message);
     // Lo que no salió vuelve como borrador de SU chat para reintentar.
-    const b = { texto, adjunto, rapida, rapidaUsadaId, rapidaVariante: variante.variante_id !== undefined ? { id: variante.variante_id, texto } : null, respondiendoA };
+    const b = { texto, adjunto, rapida, botones, rapidaUsadaId, rapidaVariante: variante.variante_id !== undefined ? { id: variante.variante_id, texto } : null, respondiendoA };
     const cuadroLibre = estado.conversacionActivaId === conversationId && !$("#texto-envio")?.value && !estado.archivoAdjunto && !estado.rapidaPendiente;
     if (cuadroLibre) {
       borradores.set(conversationId, b);
@@ -5675,6 +5734,8 @@ function usarQuickReply(q, indice = null) {
   estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null }
     : q.media.length ? { media: q.media } : null;
   estado.rapidaUsadaId = q.id;
+  estado.botonesMensaje = (q.botones || []).slice(0, 3);
+  pintarBotonesMensaje();
   pintarPreviewArchivo();
   pintarVersionesRapida();
 }
@@ -5743,6 +5804,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-modal-titulo").textContent = "Nueva respuesta rápida";
   $("#rapida-titulo").value = "";
   $("#rapida-texto").value = "";
+  ponerCamposBotones($("#rapida-botones"), "rapida-boton", []);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(null);
@@ -5775,6 +5837,7 @@ function pasoRapidaHtml(p, n) {
       </div>
       <div class="rp-bloque-texto" ${esPlantilla ? "hidden" : ""}>
       <textarea class="rp-texto" rows="3" placeholder="Texto del seguimiento (opcional si adjuntas un archivo)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
+      ${camposBotonesHtml("rp-boton", p.botones || [])}
       <div class="rp-archivo">
         <label class="shalom-boton">${icon("paperclip")} Adjuntar archivo<input type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none" /></label>
         <span class="sub rp-nombre">${p.media_key ? `Con ${p.media_type === "video" ? "video" : p.media_type === "image" ? "foto" : "archivo"} adjunto` : ""}</span>
@@ -5850,6 +5913,8 @@ async function leerPasosRapida() {
     } else if (el.dataset.mediaKey) {
       Object.assign(paso, { media_key: el.dataset.mediaKey, media_type: el.dataset.mediaType, media_mime: el.dataset.mediaMime || null });
     }
+    const botones = leerCamposBotones(el, "rp-boton");
+    if (botones.length && paso.body && !paso.media_key) paso.botones = botones;
     if (paso.body || paso.media_key) pasos.push(paso);
   }
   return pasos;
@@ -5890,6 +5955,7 @@ function abrirModalRapidaEdicion(q) {
   $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
   $("#rapida-titulo").value = q.title;
   $("#rapida-texto").value = q.body || "";
+  ponerCamposBotones($("#rapida-botones"), "rapida-boton", q.botones || []);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = q.media.length
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
@@ -5951,13 +6017,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, producto_id: Number($("#rapida-producto").value) || null, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, ...cat })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, producto_id: Number($("#rapida-producto").value) || null, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, ...cat })
       });
     }
     await cargarQuickReplies();
@@ -6396,6 +6462,7 @@ function limpiarFormSeguimiento() {
   $("#seg-fecha").style.display = "none";
   $("#seg-fecha").value = "";
   $("#seg-texto").value = "";
+  ponerCamposBotones($("#seg-botones"), "seg-boton", []);
   $("#seg-archivo").value = "";
   $("#seg-rapida").value = "";
   pintarVersionesSeg(null);
@@ -6561,6 +6628,7 @@ $("#seg-crear").addEventListener("click", async () => {
         conversation_id: estado.segConversacionId,
         send_at: new Date(fecha).toISOString(),
         body: texto || undefined,
+        botones: texto && !archivo && !cat.catalogo ? leerCamposBotones($("#seg-botones"), "seg-boton") : undefined,
         quick_reply_id: quickReplyId || undefined,
         media_key, media_type, media_mime,
         ...cat,

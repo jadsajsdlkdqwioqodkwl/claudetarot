@@ -34,6 +34,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo } from "../../lib/crm-db.js";
+import { limpiarBotones } from "../../lib/whatsapp.js";
 import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
 /**
@@ -55,6 +56,7 @@ function leerSeguimiento(payload) {
         body: plantilla ? null : String(p?.body || "").trim().slice(0, 4096) || null
       };
       if (plantilla) paso.plantilla = plantilla;
+      else if (limpiarBotones(p?.botones).length && paso.body) paso.botones = limpiarBotones(p.botones);
       if (!plantilla && p?.media_key) Object.assign(paso, {
         media_key: String(p.media_key).slice(0, 200),
         media_type: ["image", "video", "document", "audio", "sticker"].includes(p.media_type) ? p.media_type : "document",
@@ -80,6 +82,11 @@ function pasosDe(r) {
   return r.followup_body ? [{ horas: r.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: r.followup_body }] : [];
 }
 
+/** Los botones guardados de la respuesta (JSON) como lista. */
+function botonesDe(texto) {
+  try { return limpiarBotones(JSON.parse(texto || "[]")); } catch { return []; }
+}
+
 /** Grupo (cadena o tipo: "Lima", "Objeciones"…) y número dentro del grupo. */
 function leerGrupo(payload) {
   const grupo = String(payload?.grupo || "").trim().replace(/\s+/g, " ").slice(0, 40) || null;
@@ -95,7 +102,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: rapidas } = await env.CRM_DB.prepare(
-"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id FROM quick_replies ORDER BY sort_order ASC, id ASC"
+"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones FROM quick_replies ORDER BY sort_order ASC, id ASC"
   ).all();
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -112,6 +119,7 @@ async function get({ env }) {
     quick_replies: rapidas.map((r) => ({
       ...r,
       followup_pasos: pasosDe(r),
+      botones: botonesDe(r.botones),
       media: porRapida[r.id] || [],
       ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })), orden_fijo: Boolean(pruebas[r.id][0]?.predeterminada) } : {})
     }))
@@ -138,11 +146,12 @@ async function post({ request, env }) {
   const seguimiento = leerSeguimiento(payload);
   const { grupo, orden } = leerGrupo(payload);
   const productoId = Number(payload?.producto_id) || null;
+  const botones = limpiarBotones(payload?.botones);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, orden)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden)
     .first();
 
   let i = 0;
@@ -158,7 +167,7 @@ async function post({ request, env }) {
     .bind(creada.id)
     .all();
 
-  return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), media: media.results } });
+  return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), botones, media: media.results } });
 }
 
 async function patch({ request, env, agent }) {
@@ -179,7 +188,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre, producto_id FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre, producto_id, botones FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -208,8 +217,10 @@ async function patch({ request, env, agent }) {
   }
   const { grupo, orden } = leerGrupo(payload);
   const productoId = "producto_id" in (payload || {}) ? Number(payload.producto_id) || null : existente.producto_id || null;
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, grupo, orden, id)
+  // Sin el campo `botones` se dejan como estaban.
+  const botones = "botones" in (payload || {}) ? limpiarBotones(payload.botones) : botonesDe(existente.botones);
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, id)
     .run();
 
   if (mediaKeys !== null) {
@@ -232,7 +243,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, botones, media: media.results } });
 }
 
 async function del({ request, env }) {

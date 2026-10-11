@@ -4,7 +4,7 @@
  * un archivo de R2 a la Cloud API y guardando el mensaje saliente igual.
  */
 
-import { enviarTexto, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
+import { enviarTexto, enviarBotones, limpiarBotones, enviarMedia, enviarReaccion, subirMedia, mostrarEscribiendo } from "./whatsapp.js";
 import { registrarMensajeSaliente, guardarReaccionPropia, guardarAjuste, obtenerAjuste } from "./crm-db.js";
 import { envDeConversacion } from "./lineas.js";
 
@@ -206,11 +206,17 @@ export async function mandarAlToque(env, conversationId, enviar) {
   return waMessageId;
 }
 
-export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones) {
+export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones, botones) {
   await asegurarPausa(env, conversationId);
-  const waMessageId = await enviarTexto(await envDeConversacion(env, conversationId), waId, texto, replyTo?.wa_message_id);
+  const lista = limpiarBotones(botones);
+  const envL = await envDeConversacion(env, conversationId);
+  const waMessageId = lista.length
+    ? await enviarBotones(envL, waId, texto, lista, replyTo?.wa_message_id)
+    : await enviarTexto(envL, waId, texto, replyTo?.wa_message_id);
   await marcarEnviado(env, conversationId);
-  await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: texto, sentBy, replyToMessageId: replyTo?.id }, opciones);
+  // En el chat se ven los botones debajo del texto, como los ve el cliente.
+  const cuerpo = lista.length ? `${texto}\n\n${lista.map((b) => `[ ${b} ]`).join("  ")}` : texto;
+  await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "text", body: cuerpo, sentBy, replyToMessageId: replyTo?.id }, opciones);
   return waMessageId;
 }
 

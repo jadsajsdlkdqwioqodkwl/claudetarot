@@ -59,5 +59,5 @@ const ICONS = {
 };
 
 function icon(nombre, claseExtra = "") {
-  return `<span class="icono-svg ${claseExtra}">${ICONS[nombre] || ""}</span>`;
+  return `<span class="icono-svg ic-${nombre} ${claseExtra}">${ICONS[nombre] || ""}</span>`;
 }

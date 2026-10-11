@@ -67,6 +67,38 @@ export async function enviarTexto(env, waId, texto, replyToWaMessageId) {
   return datos.messages?.[0]?.id || null;
 }
 
+/**
+ * Botones de respuesta de un mensaje de texto (WhatsApp deja hasta 3, de máx. 20 caracteres, y solo dentro
+ * de la ventana de 24 h): quita vacíos y repetidos y recorta.
+ */
+export function limpiarBotones(lista) {
+  const vistos = new Set();
+  const salida = [];
+  for (const b of Array.isArray(lista) ? lista : []) {
+    const t = String(b ?? "").trim().slice(0, 20);
+    if (!t || vistos.has(t.toLowerCase())) continue;
+    vistos.add(t.toLowerCase());
+    salida.push(t);
+  }
+  return salida.slice(0, 3);
+}
+
+/** Texto con botones de respuesta (mensaje interactivo). El texto: hasta 1024 caracteres. */
+export async function enviarBotones(env, waId, texto, botones, replyToWaMessageId) {
+  const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    messaging_product: "whatsapp",
+    to: waId,
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: texto },
+      action: { buttons: limpiarBotones(botones).map((title, i) => ({ type: "reply", reply: { id: `b${i + 1}`, title } })) }
+    },
+    ...(replyToWaMessageId ? { context: { message_id: replyToWaMessageId } } : {})
+  });
+  return datos.messages?.[0]?.id || null;
+}
+
 /** Reacciona con un emoji a un mensaje ya mandado (de cualquiera de los dos lados). emoji vacío/null quita la reacción. */
 export async function enviarReaccion(env, waId, targetWaMessageId, emoji) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {

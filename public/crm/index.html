@@ -161,6 +161,9 @@
     <h2 id="rapida-modal-titulo">Nueva respuesta rápida</h2>
     <input type="text" id="rapida-titulo" placeholder="Título (ej. Precio, Horario…)" />
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
+    <div class="rp-titulo">Botones de respuesta (opcional)</div>
+    <div class="campos-botones" id="rapida-botones"><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 3" /></div>
+    <div class="ayuda-modal">Hasta 3 botones debajo del texto (20 caracteres cada uno). Solo con texto, sin archivo ni catálogo, y dentro de las 24 h. Al tocar uno, el cliente responde con ese texto.</div>
     <div id="rapida-pruebas" class="pruebas"></div>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
@@ -211,6 +214,8 @@
       <div class="seg-label">¿Qué le mandas?</div>
       <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
       <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
+      <div class="seg-label">Botones de respuesta (opcional, solo con texto)</div>
+      <div class="campos-botones" id="seg-botones"><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 3" /></div>
       <div id="seg-rapida-preview" style="display:none"></div>
       <select id="seg-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
       <input type="file" id="seg-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
@@ -388,6 +393,20 @@
     <div class="acciones">
       <button class="cancelar" id="eq-cerrar" type="button">Cerrar</button>
       <button class="crear" id="eq-crear" type="button">Agregar vendedor</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-botones-fondo">
+  <div class="modal">
+    <h2>Botones de respuesta</h2>
+    <p class="ayuda-modal">Hasta 3 botones debajo de este mensaje (20 caracteres cada uno). Al tocar uno, el cliente responde con ese texto. Solo con texto, no con archivos, y dentro de las 24 h.</p>
+    <div class="campos-botones" id="msg-botones" style="flex-direction:column"><input type="text" class="msgbtn" maxlength="20" placeholder="Botón 1" /><input type="text" class="msgbtn" maxlength="20" placeholder="Botón 2" /><input type="text" class="msgbtn" maxlength="20" placeholder="Botón 3" /></div>
+    <div class="ayuda-modal">Así lo ve el cliente</div>
+    <div id="msg-botones-vista"></div>
+    <div class="acciones">
+      <button class="cancelar" id="msg-botones-quitar" type="button">Quitar botones</button>
+      <button class="crear" id="msg-botones-listo" type="button">Listo</button>
     </div>
   </div>
 </div>

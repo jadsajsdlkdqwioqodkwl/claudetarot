@@ -1002,3 +1002,33 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .rp-num { white-space: nowrap; }
 .rp-paso .sug-paso-horas { width: 72px; flex: 0 0 auto; }
 .rp-paso .sub { white-space: nowrap; }
+
+/* Botones de respuesta bajo un mensaje de texto. */
+.campos-botones { display: flex; gap: 6px; margin: 4px 0; }
+.campos-botones input { flex: 1; min-width: 0; margin: 0; }
+#preview-botones { display: none; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 12px; font-size: 12px; color: var(--gris); }
+.chip-boton { background: #fff; color: #027eb5; border: 1px solid var(--borde); border-radius: 14px; padding: 2px 10px; font-size: 12px; }
+
+/* ---------- Iconos con color según lo que significan (icon("nombre") pone la clase ic-nombre) ---------- */
+.icono-svg { color: var(--ic, inherit); }
+.ic-star, .ic-starOutline { --ic: #f5a623; }
+.ic-bolt { --ic: #f57c00; }
+.ic-bulb { --ic: #f5b301; }
+.ic-check, .ic-checkDouble { --ic: #1e9e5a; }
+.ic-trash, .ic-slash { --ic: #d93025; }
+.ic-alertCircle, .ic-megaphone { --ic: #e8710a; }
+.ic-clock, .ic-rotate, .ic-chat { --ic: #0e9f8e; }
+.ic-bag, .ic-cart { --ic: #12805c; }
+.ic-box { --ic: #a1663a; }
+.ic-phone, .ic-help, .ic-link, .ic-reply { --ic: #1a73e8; }
+.ic-flask, .ic-sparkle { --ic: #8e44ad; }
+.ic-image { --ic: #3b82f6; }
+.ic-video { --ic: #7c4dff; }
+.ic-map { --ic: #e53935; }
+/* Donde el fondo o el texto ya traen su color, el icono lo toma (blanco sobre verde, estados del cronómetro, etc.). */
+#lista header .icono-svg, .crear .icono-svg, .sug-ahora .icono-svg, button.enviar .icono-svg, #form-envio .enviar .icono-svg,
+[class*="badge-"] .icono-svg, .sug-etiqueta .icono-svg, .tipo-seg .icono-svg, .reloj .icono-svg, .msg .icono-svg, .msg-hora .icono-svg,
+.btn-meta .icono-svg, .modal-x .icono-svg, .vista-wa .icono-svg, .galeria-card .icono-svg, .chip-boton .icono-svg, .estado-chip .icono-svg,
+#menu-lista .icono-svg { color: inherit; }
+/* En el menú del encabezado y en los botones grises, el icono sí lleva su color. */
+#menu-lista button .icono-svg { color: var(--ic, var(--gris)); }

@@ -99,6 +99,7 @@ export async function procesarSeguimientosVencidos(env) {
   const marcas = reservados.map(() => "?").join(",");
   const { results: vencidos } = await env.CRM_DB.prepare(
     `SELECT s.*, conv.id AS conv_id, c.wa_id, COALESCE(c.name, c.profile_name) AS contact_nombre, ${textoPorDefectoSql("rapida")} AS quick_body,
+       q.botones AS quick_botones,
        COALESCE(s.media_key, qm.media_key, q.media_key) AS media_key_real,
        COALESCE(s.media_type, qm.media_type, q.media_type) AS media_type_real,
        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'out'
@@ -209,7 +210,7 @@ export async function procesarSeguimientosVencidos(env) {
         await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", texto, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
       } else {
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
-        await mandarTexto(env, s.conv_id, s.wa_id, texto, "Seguimiento automático", undefined, SIN_SUBIR);
+        await mandarTexto(env, s.conv_id, s.wa_id, texto, "Seguimiento automático", undefined, SIN_SUBIR, (() => { try { return JSON.parse(s.botones || s.quick_botones || "[]"); } catch { return []; } })());
       }
       enviadosAhora[s.conv_id] = (enviadosAhora[s.conv_id] || 0) + 1;
       const marcar = [
