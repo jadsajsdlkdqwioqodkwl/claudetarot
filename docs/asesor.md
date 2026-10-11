@@ -345,11 +345,13 @@ Siguiente, en orden de impacto:
 ## Rescate de lead 1 (decide el asesor, sale solo)
 
 Autorizado por el dueño (2026-10-11), es la única cosa que el asesor manda sin
-que una persona la apruebe. En `salida.json`, `rescates: [{whatsapp, motivo}]`;
-`enviar.py` lo manda a `POST /api/asesor/rescates` y el Worker programa la plantilla
-`rescate_lead_1` (`uro_rescate_lead_1` en URO) a los ~10 min. Solo a quien
-tenga posibilidades reales de comprar (preguntó precio, dio distrito/ciudad,
-pidió datos de envío, dijo "luego", duda sin resolver); NO a quien quería otra
-cosa, no era cliente, pidió que no lo escriban o ya compró. Tope 15 por envío y
-30 por día. El rescate 2 (día 7 desde el inicio del chat) sale a todos los que no
-compraron sin que el asesor decida: ver `docs/MAPA.md`.
+que una persona la apruebe. El Worker ya agenda solo el rescate 1 de todo el que
+no compró, al final de su ventana gratis de 7 días (`src/lib/rescate-lead.js`).
+El asesor revisa los chats PASADOS, fuera de esa ventana
+(`preparar.py api --dias 30`), y en `salida.json` pone
+`rescates: [{whatsapp, motivo}]`; `enviar.py` lo manda a
+`POST /api/asesor/rescates` y el Worker programa la plantilla `rescate_lead_1`
+(`uro_rescate_lead_1` en URO) a los ~10 min. Solo a quien tenga posibilidades
+reales de comprar (preguntó precio, dio distrito/ciudad, pidió datos de envío,
+dijo "luego", duda sin resolver); NO a quien quería otra cosa, no era cliente,
+pidió que no lo escriban o ya compró. Tope 15 por envío y 30 por día.

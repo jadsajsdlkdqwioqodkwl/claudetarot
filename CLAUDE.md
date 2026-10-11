@@ -66,16 +66,18 @@
    director queda en CRM → Reportes.
 
 10. **Rescate de lead 1 (la única excepción a la regla 3, autorizada por el
-   dueño):** tú decides a quién mandarle la plantilla `rescate_lead_1`
-   (fuera de la ventana de 24 h) y SALE SOLA, sin aprobación: ponlo en
-   `rescates` de `salida.json` ([{whatsapp, motivo}]). Solo a quien tenga
-   posibilidades reales de comprar: preguntó precio, dio distrito o ciudad,
-   pidió datos de envío, dijo "luego/más tarde/te aviso", o quedó una duda
-   sin resolver. NO a quien quería otra cosa, no era cliente, pidió que no lo
-   escriban, ya compró, o se perdió por una razón que el rescate no arregla.
-   Tope: 15 por envío y 30 por día; el Worker rechaza lo que no cumple. A los 7
-   días del inicio del chat el rescate 2 sale automático a TODOS los que no
-   compraron (`src/lib/rescate-lead.js`), no lo decides tú.
+   dueño):** a los contactos que no compraron se les agenda solo, por el
+   Worker, el rescate 1 (`rescate_lead_1`) al final de su ventana gratis de 7
+   días (`src/lib/rescate-lead.js`); eso no lo decides tú. TÚ revisas los chats
+   PASADOS (ya fuera de esa ventana, escribieron hace más de 24 h y no
+   compraron) y decides a quién mandarle ese mismo rescate 1: ponlo en
+   `rescates` de `salida.json` ([{whatsapp, motivo}]) y SALE SOLO, sin
+   aprobación. Solo a quien tenga posibilidades reales de comprar: preguntó
+   precio, dio distrito o ciudad, pidió datos de envío, dijo "luego/más tarde/te
+   aviso", o quedó una duda sin resolver. NO a quien quería otra cosa, no era
+   cliente, pidió que no lo escriban, ya compró, o se perdió por una razón que el
+   rescate no arregla. Tope: 15 por envío y 30 por día; el Worker rechaza lo que
+   no cumple (ya compró, bloqueado, killswitch del chat, ya recibió el rescate 1).
 
 Más detalle: `docs/asesor.md`.
 

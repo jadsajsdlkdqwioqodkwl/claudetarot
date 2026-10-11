@@ -1082,8 +1082,22 @@ let bulkTemplateElegida = null;
 
 /* ---------- Killswitch y «mandar toda la secuencia» (api/crm/pausa.js) ---------- */
 async function cargarPausa() {
-  try { $("#siempre-global").checked = (await pedir("/api/crm/pausa")).siempre; } catch { /* sin red: queda como estaba */ }
+  try {
+    const d = await pedir("/api/crm/pausa");
+    $("#siempre-global").checked = d.siempre;
+    const r = d.rescate7 || {};
+    $("#rescate7-activo").checked = Boolean(r.activo);
+    $("#rescate7-estado").textContent = r.activo
+      ? `PRENDIDO · ${r.agendados} agendado${r.agendados === 1 ? "" : "s"}${r.proximo ? `, el próximo sale el ${fechaCorta(r.proximo)}` : ""}`
+      : "APAGADO: no se agenda el rescate del día 7";
+  } catch { /* sin red: queda como estaba */ }
 }
+$("#rescate7-activo").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rescate7: e.target.checked }) });
+  } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
+  cargarPausa();
+});
 $("#siempre-global").addEventListener("change", async (e) => {
   try { await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ siempre: e.target.checked }) }); } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
 });
