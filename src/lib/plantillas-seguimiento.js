@@ -5,7 +5,8 @@
  * recordatorios de recojo (4, 7 y 21 días). El admin puede cambiarlo o quitarlo (ajuste `plantillas_seguimiento`).
  *
  * Cada paso es una plantilla ya aprobada en Meta (el cron la manda recién cuando lo esté) y sus días se
- * cuentan desde el momento en que se manda la plantilla. Sin "seguir aunque responda", si el cliente escribe
+ * cuentan desde el paso anterior (el primero, desde que se manda la plantilla), así se pueden reordenar.
+ * Un paso apagado (activo: false) se queda guardado pero no se programa. Sin "seguir aunque responda", si el cliente escribe
  * lo que falta se cancela, como cualquier seguimiento. El recojo en Shalom no se cancela: se vuelve a contar
  * desde su mensaje (rearmarPlanShalom).
  */
@@ -25,19 +26,28 @@ async function leerAjustado(db) {
   }
 }
 
-/** Lo de fábrica: cada «aviso de envío» arrastra su recojo en Shalom. */
+/** Lo de fábrica: cada «aviso de envío» arrastra su recojo en Shalom (4, 7 y 21 días desde el aviso = 4, 3 y 14 entre pasos). */
 async function deFabrica(db) {
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
-  const recojo = (prefijo) => [1, 2, 3].map((n, i) => ({ plantilla: `${prefijo}recojo_shalom_${n}`, dias: dias[i] }));
+  const recojo = (prefijo) => [1, 2, 3].map((n, i) => ({ plantilla: `${prefijo}recojo_shalom_${n}`, dias: dias[i] - (dias[i - 1] || 0), activo: true }));
   return {
-    aviso_envio_shalom: { pasos: recojo(""), siempre: false, defecto: true },
-    uro_aviso_envio_shalom: { pasos: recojo("uro_"), siempre: false, defecto: true }
+    aviso_envio_shalom: { pasos: recojo(""), siempre: false, relativo: true, defecto: true },
+    uro_aviso_envio_shalom: { pasos: recojo("uro_"), siempre: false, relativo: true, defecto: true }
   };
 }
 
-/** { [plantilla]: { pasos: [{ plantilla, dias }], siempre, defecto? } } — lo de fábrica con lo que el admin cambió encima. */
+/** Lo guardado antes de que los días fueran "desde el paso anterior" (contaban desde el envío): se convierte. */
+function comoRelativo(cfg) {
+  if (cfg.relativo) return cfg;
+  let previo = 0;
+  const pasos = [...(cfg.pasos || [])].sort((a, b) => a.dias - b.dias).map((p) => { const d = Math.max(0.25, p.dias - previo); previo = p.dias; return { ...p, dias: d, activo: true }; });
+  return { ...cfg, pasos, relativo: true };
+}
+
+/** { [plantilla]: { pasos: [{ plantilla, dias, activo }], siempre, defecto? } } — lo de fábrica con lo que el admin cambió encima. */
 export async function seguimientosDePlantillas(db) {
-  return { ...(await deFabrica(db)), ...(await leerAjustado(db)) };
+  const guardado = await leerAjustado(db);
+  return { ...(await deFabrica(db)), ...Object.fromEntries(Object.entries(guardado).map(([k, v]) => [k, comoRelativo(v)])) };
 }
 
 export async function guardarSeguimientoDePlantilla(db, nombre, { pasos, siempre, restablecer }) {
@@ -45,9 +55,9 @@ export async function guardarSeguimientoDePlantilla(db, nombre, { pasos, siempre
   if (restablecer) {
     delete todo[nombre];
   } else {
-    const limpios = (Array.isArray(pasos) ? pasos : []).slice(0, 5).map((p) => ({ plantilla: String(p?.plantilla || "").trim().slice(0, 100), dias: Number(p?.dias) }));
+    const limpios = (Array.isArray(pasos) ? pasos : []).slice(0, 5).map((p) => ({ plantilla: String(p?.plantilla || "").trim().slice(0, 100), dias: Number(p?.dias), activo: p?.activo !== false }));
     if (limpios.some((p) => !/^[a-z0-9_]+$/.test(p.plantilla) || !(p.dias >= 0.25 && p.dias <= 60))) throw new Error("Cada paso: una plantilla y de 1/4 de día a 60 días.");
-    todo[nombre] = { pasos: limpios.map((p) => ({ ...p, dias: Math.round(p.dias * 4) / 4 })), siempre: Boolean(siempre) };
+    todo[nombre] = { pasos: limpios.map((p) => ({ ...p, dias: Math.round(p.dias * 4) / 4 })), siempre: Boolean(siempre), relativo: true };
   }
   await guardarAjuste(db, CLAVE, JSON.stringify(todo));
 }
@@ -59,13 +69,16 @@ export async function guardarSeguimientoDePlantilla(db, nombre, { pasos, siempre
 export async function programarSeguimientoDePlantilla(env, conversationId, nombre, quien) {
   const db = env.CRM_DB;
   const cfg = (await seguimientosDePlantillas(db))[nombre];
-  if (!cfg?.pasos?.length) return 0;
-  const recojo = cfg.pasos.every((p) => RE_RECOJO.test(p.plantilla));
+  const activos = (cfg?.pasos || []).filter((p) => p.activo !== false);
+  if (!activos.length) return 0;
+  const recojo = activos.every((p) => RE_RECOJO.test(p.plantilla));
   const origen = recojo ? `${PREFIJO_PLAN} · Recojo en Shalom · ${quien || "CRM"}` : `${PREFIJO_SEGUIMIENTO_PLANTILLA} · ${nombre} · ${quien || "CRM"}`;
   const ahora = Date.now();
   let previo = 0;
-  const filas = cfg.pasos.map((p, i) => {
-    const cuando = Math.max(ahora + p.dias * 86400000, ahora + 10 * 60000 + i * 60000, previo + 60000);
+  let acumulado = 0;
+  const filas = activos.map((p, i) => {
+    acumulado += p.dias * 86400000;
+    const cuando = Math.max(ahora + acumulado, ahora + 10 * 60000 + i * 60000, previo + 60000);
     previo = cuando;
     return db.prepare(
       `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre, status)

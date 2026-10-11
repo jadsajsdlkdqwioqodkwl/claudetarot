@@ -414,7 +414,7 @@
 <div class="modal-fondo" id="modal-seg-plantilla-fondo">
   <div class="modal">
     <h2 id="segp-titulo">Seguimiento de la plantilla</h2>
-    <p class="ayuda-modal">Después de mandar esta plantilla a un chat, el CRM programa solas las que pongas aquí. Los días cuentan desde que se manda. Cada una tiene que estar aprobada en Meta; si todavía no lo está, espera y sale cuando lo esté.</p>
+    <p class="ayuda-modal">Después de mandar esta plantilla a un chat, el CRM programa solas las que pongas aquí, en este orden: cada una sale los días que indiques después de la anterior (la primera, después de mandar esta). Con el interruptor decides cuáles van (una apagada no se manda ni se borra) y con las flechas las reordenas. Cada una tiene que estar aprobada en Meta; si todavía no lo está, espera y sale cuando lo esté.</p>
     <div id="segp-pasos"></div>
     <button type="button" class="sug-agregar-paso" id="segp-agregar"></button>
     <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="segp-siempre" /> Seguir aunque el cliente responda (si no, lo que falta se cancela cuando escribe)</label>
@@ -467,6 +467,8 @@
     <h2 id="seq-form-titulo">Agregar un paso nuevo</h2>
     <input type="text" id="seq-titulo" placeholder="Título (solo para ti, ej. Paso 1 — saludo)" />
     <textarea id="seq-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
+    <div class="rp-titulo">Botones de respuesta (opcional, solo con texto)</div>
+    <div class="campos-botones" id="seq-botones"><input type="text" class="seq-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="seq-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="seq-boton" maxlength="20" placeholder="Botón 3" /></div>
     <div id="seq-pruebas" class="pruebas"></div>
     <input type="file" id="seq-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="seq-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.</div>
@@ -653,6 +655,8 @@
         <span id="leads-delay-ref">después de aplicarlo</span>
       </div>
       <textarea id="leads-texto" placeholder="Texto del mensaje (opcional si adjuntas foto/video)"></textarea>
+      <div class="campos-botones" id="leads-botones"><input type="text" class="leads-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="leads-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="leads-boton" maxlength="20" placeholder="Botón 3" /></div>
+      <div class="ayuda-modal" style="margin:0 0 6px">Botones de respuesta (opcional): hasta 3, solo con texto, sin foto/video ni catálogo.</div>
       <select id="leads-catalogo" class="sel-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
       <input type="file" id="leads-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
       <div class="acciones">

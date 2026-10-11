@@ -540,6 +540,15 @@ $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: 
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
 
+/** Interruptor "va / no va": un paso apagado se queda guardado pero no se manda. */
+const interruptorHtml = (activo, clase, extra = "") => `<label class="interruptor" title="${activo ? "Va. Toca para apagarlo (no se borra)" : "Apagado: no se manda. Toca para encenderlo"}"><input type="checkbox" class="${clase}" ${activo ? "checked" : ""} ${extra} /><span></span></label>`;
+/** Las flechas ▲▼ de orden reusan el icono "arrowLeft" girado. */
+const girarFlechas = (cont) => {
+  cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((x) => { x.style.transform = "rotate(90deg)"; });
+  cont.querySelectorAll(".mover-abajo .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
+};
+const botonesDeFila = (p) => { try { return JSON.parse(p?.botones || "[]") || []; } catch { return []; } };
+
 /** Cómo queda en el chat un texto con botones de respuesta (igual que lo guarda el servidor). */
 const textoConBotones = (texto, botones) => (botones?.length ? `${texto}\n\n${botones.map((b) => `[ ${b} ]`).join("  ")}` : texto);
 const leerCamposBotones = (cont, clase) => [...cont.querySelectorAll("." + clase)].map((i) => i.value.trim()).filter(Boolean).slice(0, 3);
@@ -861,12 +870,14 @@ async function pintarSecuenciaBienvenida() {
 
   const cont = $("#lista-secuencia");
   cont.innerHTML = steps.length ? steps.map((s, i) => `
-    <div class="fila-seguimiento">
+    <div class="fila-seguimiento ${s.activo === 0 ? "paso-apagado" : ""}">
       <div>
         <div class="nombre">${i + 1}. ${s.media.length ? icon(s.media.length > 1 ? "image" : (s.media[0].media_type === "video" ? "video" : "image")) + (s.media.length > 1 ? ` ×${s.media.length}` : "") + " " : ""}${escapar(s.title)} <span class="badge-producto">${s.producto_id ? `${icon("box")} ${escapar(productoDe(s.producto_id)?.nombre || `Producto ${s.producto_id}`)}` : "General"}</span></div>
         ${s.texto_por_defecto || s.body ? `<div class="sub">${escapar(s.texto_por_defecto || s.body)}</div>` : ""}
+        ${s.botones?.length ? `<div class="sub">${icon("reply")} Botones: ${s.botones.map((b) => `«${escapar(b)}»`).join(" ")}</div>` : ""}
       </div>
-      <div style="display:flex;gap:4px">
+      <div class="acciones-paso">
+        ${interruptorHtml(s.activo !== 0, "paso-activo", `data-id="${s.id}"`)}
         <button class="mover-arriba" data-id="${s.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
         <button class="mover-abajo" data-id="${s.id}" title="Bajar" ${i === steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft", "")}</button>
         <button class="editar-paso" data-id="${s.id}" title="Editar">${icon("pencil")}</button>
@@ -874,9 +885,13 @@ async function pintarSecuenciaBienvenida() {
       </div>
     </div>`).join("") : `<p class="ayuda-modal">Todavía no hay ningún paso — agrégalo abajo.</p>`;
 
-  // Rota las flechas de "arrowLeft" para que apunten arriba/abajo sin pedir dos íconos nuevos.
-  cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((s) => s.style.transform = "rotate(90deg)");
-  cont.querySelectorAll(".mover-abajo .icono-svg svg").forEach((s) => s.style.transform = "rotate(-90deg)");
+  girarFlechas(cont);
+  cont.querySelectorAll(".paso-activo").forEach((i) => i.addEventListener("change", async () => {
+    try {
+      await pedir("/api/crm/welcome-sequence", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: Number(i.dataset.id), activo: i.checked }) });
+    } catch (err) { alert(err.message); }
+    await pintarSecuenciaBienvenida();
+  }));
 
   cont.querySelectorAll(".mover-arriba, .mover-abajo").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -912,6 +927,7 @@ function editarPasoBienvenida(s) {
   $("#seq-form-titulo").textContent = "Editar paso";
   $("#seq-titulo").value = s.title;
   $("#seq-texto").value = s.body || "";
+  ponerCamposBotones($("#seq-botones"), "seq-boton", s.botones || []);
   $("#seq-archivo").value = "";
   $("#seq-archivo-ayuda").textContent = s.media.length
     ? `Ya tiene ${s.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
@@ -930,6 +946,7 @@ function cancelarEdicionPaso() {
   $("#seq-form-titulo").textContent = "Agregar un paso nuevo";
   $("#seq-titulo").value = "";
   $("#seq-texto").value = "";
+  ponerCamposBotones($("#seq-botones"), "seq-boton", []);
   $("#seq-archivo").value = "";
   $("#seq-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
   $("#seq-agregar-btn").textContent = "Agregar paso";
@@ -1001,13 +1018,13 @@ $("#seq-agregar-btn").addEventListener("click", async () => {
       await pedir("/api/crm/welcome-sequence", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, botones: leerCamposBotones($("#seq-botones"), "seq-boton"), texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
       });
     } else {
       await pedir("/api/crm/welcome-sequence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], botones: leerCamposBotones($("#seq-botones"), "seq-boton"), texto_primero: $("#seq-texto-primero").checked, producto_id: Number($("#seq-producto").value) || null })
       });
     }
     await pintarSecuenciaBienvenida();
@@ -1144,6 +1161,7 @@ function avisoLeads(texto) {
 function cancelarEdicionPasoLead() {
   leadsEditandoPasoId = null;
   $("#leads-texto").value = "";
+  ponerCamposBotones($("#leads-botones"), "leads-boton", []);
   $("#leads-archivo").value = "";
   ponerCatalogoEnSelect($("#leads-catalogo"), "");
   $("#leads-delay-valor").value = "1";
@@ -1188,12 +1206,13 @@ async function pintarModalLeads(forzar) {
   cont.innerHTML = seq.steps.length ? seq.steps.map((p, i) => {
     acum += p.delay_minutes;
     return `
-    <div class="leads-paso${leadsEditandoPasoId === p.id ? " editando" : ""}" data-id="${p.id}">
+    <div class="leads-paso${leadsEditandoPasoId === p.id ? " editando" : ""}${p.activo === 0 ? " paso-apagado" : ""}" data-id="${p.id}">
       <div class="leads-paso-info">
         <div class="leads-paso-cuando">${icon("clock")} <strong>En ${formatearMomento(acum)}</strong><span class="sub"> · ${formatearDelay(p.delay_minutes)} ${i === 0 ? "después de aplicarlo" : "después del anterior"}</span></div>
         <div class="leads-paso-cuerpo">${p.media_key ? icon(p.media_type === "video" ? "video" : "image") + " " : ""}${escapar([etiquetaCatalogo(p), p.body].filter(Boolean).join(" — ") || (p.media_key ? "Foto/video" : ""))}</div>
       </div>
-      <div class="leads-paso-acciones">
+      <div class="leads-paso-acciones acciones-paso">
+        ${interruptorHtml(p.activo !== 0, "paso-activo", `data-id="${p.id}"`)}
         <button class="mover-arriba" data-id="${p.id}" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
         <button class="mover-abajo" data-id="${p.id}" title="Bajar" ${i === seq.steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft")}</button>
         <button class="editar-paso" data-id="${p.id}" title="Editar">${icon("pencil")}</button>
@@ -1202,8 +1221,13 @@ async function pintarModalLeads(forzar) {
     </div>`;
   }).join("") : `<p class="ayuda-modal">Sin mensajes todavía — agrega el primero abajo.</p>`;
 
-  cont.querySelectorAll(".mover-arriba .icono-svg svg").forEach((s) => s.style.transform = "rotate(90deg)");
-  cont.querySelectorAll(".mover-abajo .icono-svg svg").forEach((s) => s.style.transform = "rotate(-90deg)");
+  girarFlechas(cont);
+  cont.querySelectorAll(".paso-activo").forEach((i) => i.addEventListener("change", async () => {
+    try {
+      await pedir("/api/crm/followup-sequences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ step_id: Number(i.dataset.id), activo: i.checked }) });
+      await pintarModalLeads(true);
+    } catch (err) { avisoLeads(err.message); }
+  }));
 
   cont.querySelectorAll(".mover-arriba, .mover-abajo").forEach((btn) => btn.addEventListener("click", async () => {
     try {
@@ -1235,6 +1259,7 @@ async function pintarModalLeads(forzar) {
     $("#leads-delay-valor").value = p.delay_minutes / unidad;
     $("#leads-delay-unidad").value = String(unidad);
     $("#leads-texto").value = p.body || "";
+    ponerCamposBotones($("#leads-botones"), "leads-boton", botonesDeFila(p));
     $("#leads-archivo").value = "";
     ponerCatalogoEnSelect($("#leads-catalogo"), p.catalogo, p.catalogo_nombre);
     $("#leads-agregar").textContent = "Guardar cambios";
@@ -1313,7 +1338,7 @@ $("#leads-agregar").addEventListener("click", async () => {
   const btn = $("#leads-agregar");
   btn.disabled = true;
   try {
-    const cuerpo = { body: texto || null, delay_minutes: valor * unidad, ...cat };
+    const cuerpo = { body: texto || null, delay_minutes: valor * unidad, botones: leerCamposBotones($("#leads-botones"), "leads-boton"), ...cat };
     if (archivo) {
       const subida = await subirArchivo(archivo);
       Object.assign(cuerpo, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
@@ -5820,8 +5845,11 @@ function abrirModalRapidaNueva() {
 function pasoRapidaHtml(p, n) {
   const esPlantilla = Boolean(p.plantilla);
   return `
-    <div class="rp-paso" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
+    <div class="rp-paso${p.activo === false ? " paso-apagado" : ""}" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
       <div class="sug-paso-cab">
+        ${interruptorHtml(p.activo !== false, "rp-activo")}
+        <button type="button" class="sug-icono rp-subir" title="Subir">${icon("arrowLeft")}</button>
+        <button type="button" class="sug-icono rp-bajar" title="Bajar">${icon("arrowLeft")}</button>
         <b class="rp-num">Paso ${n}</b>
         <select class="rp-tipo" title="Qué manda este paso"><option value="texto"${esPlantilla ? "" : " selected"}>Texto</option><option value="plantilla"${esPlantilla ? " selected" : ""}>Plantilla</option></select>
         <span class="sub">si no responde, a las</span>
@@ -5861,6 +5889,12 @@ async function llenarPlantillasDePasos() {
 
 function renumerarPasosRapida() {
   $("#rapida-pasos").querySelectorAll(".rp-num").forEach((b, i) => { b.textContent = `Paso ${i + 1}`; });
+  girarFlechas($("#rapida-pasos"));
+  // Los giros de las flechas se hacen sobre ".mover-arriba/abajo": aquí se marcan las de este editor.
+  $("#rapida-pasos").querySelectorAll(".rp-subir .icono-svg svg").forEach((x) => { x.style.transform = "rotate(90deg)"; });
+  $("#rapida-pasos").querySelectorAll(".rp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
+  const filas = [...$("#rapida-pasos").children];
+  filas.forEach((f, i) => { f.querySelector(".rp-subir").disabled = i === 0; f.querySelector(".rp-bajar").disabled = i === filas.length - 1; });
   $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 4 ? "none" : "";
 }
 
@@ -5870,6 +5904,9 @@ function agregarPasoRapida(p = { horas: 20 }) {
   const el = cont.lastElementChild;
   agregarRapidasA(el.querySelector(".rp-texto"));
   el.querySelector(".rp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosRapida(); });
+  el.querySelector(".rp-activo").addEventListener("change", (e) => el.classList.toggle("paso-apagado", !e.target.checked));
+  el.querySelector(".rp-subir").addEventListener("click", () => { el.previousElementSibling?.before(el); renumerarPasosRapida(); });
+  el.querySelector(".rp-bajar").addEventListener("click", () => { el.nextElementSibling?.after(el); renumerarPasosRapida(); });
   el.querySelector(".rp-tipo").addEventListener("change", (e) => {
     const pl = e.target.value === "plantilla";
     el.querySelector(".rp-bloque-plantilla").hidden = !pl;
@@ -5903,7 +5940,7 @@ async function leerPasosRapida() {
   for (const el of $("#rapida-pasos").children) {
     if (el.querySelector(".rp-tipo").value === "plantilla") {
       const nombre = el.querySelector(".rp-plantilla").value;
-      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24 });
+      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
       continue;
     }
     const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
@@ -5915,6 +5952,7 @@ async function leerPasosRapida() {
     }
     const botones = leerCamposBotones(el, "rp-boton");
     if (botones.length && paso.body && !paso.media_key) paso.botones = botones;
+    if (!el.querySelector(".rp-activo").checked) paso.activo = false;
     if (paso.body || paso.media_key) pasos.push(paso);
   }
   return pasos;
@@ -6700,13 +6738,17 @@ function pintarListaSecuencias() {
       </div>
       <div class="fs-pasos" data-id="${s.id}" style="display:none">
         ${s.steps.map((p, i) => `
-          <div class="fila-seguimiento">
+          <div class="fila-seguimiento ${p.activo === 0 ? "paso-apagado" : ""}">
             <div>
               <div class="nombre">${i + 1}. +${formatearDelay(p.delay_minutes)}${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""}</div>
               ${p.catalogo ? `<div class="sub">${escapar(etiquetaCatalogo(p))}</div>` : ""}
               ${p.body ? `<div class="sub">${escapar(p.body)}</div>` : ""}
+              ${botonesDeFila(p).length ? `<div class="sub">${icon("reply")} Botones: ${botonesDeFila(p).map((b) => `«${escapar(b)}»`).join(" ")}</div>` : ""}
             </div>
-            <div style="display:flex;gap:4px">
+            <div class="acciones-paso">
+              ${interruptorHtml(p.activo !== 0, "fs-paso-activo", `data-id="${p.id}"`)}
+              <button class="mover-arriba fs-mover" data-id="${p.id}" data-dir="up" title="Subir" ${i === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
+              <button class="mover-abajo fs-mover" data-id="${p.id}" data-dir="down" title="Bajar" ${i === s.steps.length - 1 ? "disabled" : ""}>${icon("arrowLeft")}</button>
               <button class="editar-paso fs-editar-paso" data-id="${p.id}" data-seq="${s.id}" title="Editar">${icon("pencil")}</button>
               <button class="trash fs-borrar-paso" data-id="${p.id}">${icon("trash")}</button>
             </div>
@@ -6723,6 +6765,8 @@ function pintarListaSecuencias() {
           </div>
           <p class="ayuda-modal" style="margin:0 0 8px">Se cuenta desde el paso anterior (o desde que se aplica, si es el primero).</p>
           <textarea class="fs-paso-texto" placeholder="Texto (opcional si adjuntas foto/video)"></textarea>
+          ${camposBotonesHtml("fs-paso-boton")}
+          <p class="ayuda-modal" style="margin:0 0 6px">Botones de respuesta (opcional): hasta 3, solo con texto.</p>
           <select class="sel-catalogo fs-paso-catalogo"><option value="">Sin catálogo</option><option value="*">Catálogo completo</option></select>
           <input type="file" class="fs-paso-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
           <button class="crear fs-agregar-paso-btn" data-id="${s.id}" type="button" style="width:100%;margin-top:8px">Agregar paso</button>
@@ -6730,6 +6774,23 @@ function pintarListaSecuencias() {
       </div>
     </div>`).join("") : `<p class="ayuda-modal">Todavía no armaste ninguna secuencia — créala abajo.</p>`);
 
+  girarFlechas(cont);
+  cont.querySelectorAll(".fs-paso-activo").forEach((i) => i.addEventListener("change", async () => {
+    const seqId = i.closest(".fs-pasos").dataset.id;
+    try {
+      await pedir("/api/crm/followup-sequences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ step_id: Number(i.dataset.id), activo: i.checked }) });
+      await cargarYPintarSecuencias();
+      $("#lista-secuencias-seg").querySelector(`.fs-pasos[data-id="${seqId}"]`).style.display = "block";
+    } catch (err) { alert(err.message); }
+  }));
+  cont.querySelectorAll(".fs-mover").forEach((b) => b.addEventListener("click", async () => {
+    const seqId = b.closest(".fs-pasos").dataset.id;
+    try {
+      await pedir("/api/crm/followup-sequences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ step_id: Number(b.dataset.id), direction: b.dataset.dir }) });
+      await cargarYPintarSecuencias();
+      $("#lista-secuencias-seg").querySelector(`.fs-pasos[data-id="${seqId}"]`).style.display = "block";
+    } catch (err) { alert(err.message); }
+  }));
   cont.querySelectorAll(".fs-paso-texto").forEach(agregarEmojisA);
   cont.querySelectorAll(".fs-paso-catalogo").forEach((sel) => ponerCatalogoEnSelect(sel, ""));
 
@@ -6813,6 +6874,7 @@ function pintarListaSecuencias() {
       const fila = cont.querySelector(`.fs-pasos[data-id="${s.id}"]`);
       const unidad = p.delay_minutes % 1440 === 0 ? 1440 : p.delay_minutes % 60 === 0 ? 60 : 1;
       fila.querySelector(".fs-paso-texto").value = p.body || "";
+      ponerCamposBotones(fila, "fs-paso-boton", botonesDeFila(p));
       fila.querySelector(".fs-paso-archivo").value = "";
       ponerCatalogoEnSelect(fila.querySelector(".fs-paso-catalogo"), p.catalogo, p.catalogo_nombre);
       fila.querySelector(".fs-delay-valor").value = p.delay_minutes / unidad;
@@ -6862,6 +6924,7 @@ function pintarListaSecuencias() {
           body: JSON.stringify({
             ...(editando ? { step_id: editando } : { sequence_id: Number(btn.dataset.id) }),
             body: texto || undefined,
+            botones: leerCamposBotones(fila, "fs-paso-boton"),
             media_key, media_type, media_mime,
             delay_minutes: valor * unidad,
             ...cat
@@ -7100,10 +7163,13 @@ let segPlantillaActual = null;
 
 function pasoSegHtml(p, aprobadas) {
   const opciones = [...new Set([...(aprobadas), ...(p.plantilla ? [p.plantilla] : [])])];
-  return `<div class="rp-paso segp-paso">
+  return `<div class="rp-paso segp-paso${p.activo === false ? " paso-apagado" : ""}">
     <div class="sug-paso-cab">
+      ${interruptorHtml(p.activo !== false, "segp-activo")}
+      <button type="button" class="sug-icono segp-subir" title="Subir">${icon("arrowLeft")}</button>
+      <button type="button" class="sug-icono segp-bajar" title="Bajar">${icon("arrowLeft")}</button>
       <select class="segp-plantilla" style="flex:1;min-width:0">${opciones.map((n) => `<option value="${escapar(n)}"${n === p.plantilla ? " selected" : ""}>${escapar(n)}</option>`).join("")}</select>
-      <span class="sub">a los</span>
+      <span class="sub">después:</span>
       <input type="number" class="sug-paso-horas segp-dias" min="0.25" max="60" step="0.25" value="${Number(p.dias) || 4}" />
       <span class="sub">días</span>
       <button type="button" class="sug-icono segp-quitar-paso" title="Quitar paso">${icon("trash")}</button>
@@ -7120,6 +7186,7 @@ function abrirSeguimientoDePlantilla(t, templates, seguimientos) {
   $("#segp-siempre").checked = Boolean(cfg.siempre);
   $("#segp-agregar").style.display = "";
   $("#modal-seg-plantilla-fondo").classList.add("abierto");
+  ordenarFlechasSegp();
 }
 
 $("#segp-agregar").innerHTML = `${icon("plus")} Agregar plantilla de seguimiento`;
@@ -7128,8 +7195,27 @@ $("#segp-agregar").addEventListener("click", () => {
   if (!a.length) return alert("No hay otras plantillas aprobadas todavía.");
   if ($("#segp-pasos").children.length >= 5) return alert("Máximo 5 pasos.");
   $("#segp-pasos").insertAdjacentHTML("beforeend", pasoSegHtml({ plantilla: a[0], dias: 4 }, a));
+  ordenarFlechasSegp();
 });
-$("#segp-pasos").addEventListener("click", (e) => e.target.closest(".segp-quitar-paso")?.closest(".segp-paso").remove());
+function ordenarFlechasSegp() {
+  const filas = [...document.querySelectorAll("#segp-pasos .segp-paso")];
+  filas.forEach((f, i) => {
+    f.querySelector(".segp-subir").disabled = i === 0;
+    f.querySelector(".segp-bajar").disabled = i === filas.length - 1;
+    f.querySelectorAll(".segp-subir .icono-svg svg").forEach((x) => { x.style.transform = "rotate(90deg)"; });
+    f.querySelectorAll(".segp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
+  });
+}
+$("#segp-pasos").addEventListener("click", (e) => {
+  const fila = e.target.closest(".segp-paso");
+  if (!fila) return;
+  if (e.target.closest(".segp-quitar-paso")) fila.remove();
+  else if (e.target.closest(".segp-subir")) fila.previousElementSibling?.before(fila);
+  else if (e.target.closest(".segp-bajar")) fila.nextElementSibling?.after(fila);
+  else return;
+  ordenarFlechasSegp();
+});
+$("#segp-pasos").addEventListener("change", (e) => { if (e.target.classList.contains("segp-activo")) e.target.closest(".segp-paso").classList.toggle("paso-apagado", !e.target.checked); });
 $("#segp-cerrar").addEventListener("click", () => $("#modal-seg-plantilla-fondo").classList.remove("abierto"));
 async function guardarSegPlantilla(cuerpo) {
   try {
@@ -7140,7 +7226,7 @@ async function guardarSegPlantilla(cuerpo) {
 }
 $("#segp-guardar").addEventListener("click", () => guardarSegPlantilla({
   siempre: $("#segp-siempre").checked,
-  pasos: [...document.querySelectorAll("#segp-pasos .segp-paso")].map((el) => ({ plantilla: el.querySelector(".segp-plantilla").value, dias: Number(el.querySelector(".segp-dias").value) }))
+  pasos: [...document.querySelectorAll("#segp-pasos .segp-paso")].map((el) => ({ plantilla: el.querySelector(".segp-plantilla").value, dias: Number(el.querySelector(".segp-dias").value), activo: el.querySelector(".segp-activo").checked }))
 }));
 $("#segp-quitar").addEventListener("click", () => { if (confirm("¿Quitar el seguimiento de esta plantilla? (Si es el aviso de envío, ya no programará el recojo.)")) guardarSegPlantilla({ pasos: [], siempre: false }); });
 

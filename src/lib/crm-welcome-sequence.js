@@ -19,6 +19,11 @@ import { versionesEnPrueba, elegirVersion, registrarUso } from "./crm-variantes.
  * general solo en la línea principal (la general es la de Tarot Store). Un
  * chat sin producto, la general (producto_id NULL).
  */
+/** Los botones de respuesta del paso (JSON), o ninguno. */
+function botonesDe(paso) {
+  try { return JSON.parse(paso?.botones || "[]") || []; } catch { return []; }
+}
+
 async function pasosDelChat(env, conversationId, todos) {
   const conv = await env.CRM_DB.prepare("SELECT producto_id, linea_id FROM conversations WHERE id = ?")
     .bind(conversationId).first().catch(() => null);
@@ -41,7 +46,8 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
   const { results: todos } = await env.CRM_DB.prepare(
     "SELECT * FROM welcome_steps ORDER BY step_order ASC"
   ).all();
-  const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : await pasosDelChat(env, conversationId, todos);
+  // Un paso apagado no se manda (salvo que el admin lo elija a mano para reenviarlo).
+  const pasos = stepIds ? todos.filter((p) => stepIds.includes(p.id)) : await pasosDelChat(env, conversationId, todos.filter((p) => p.activo !== 0));
 
   if (!pasos.length) return 0;
 
@@ -79,7 +85,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       await mandarMediaGuardada(env, conversationId, waId, elegidaPrimero.media_key, elegidaPrimero.media_type || "image", undefined, sentByLabel);
     }
     await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
-    await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel);
+    await mandarTexto(env, conversationId, waId, elegidaPrimero.texto, sentByLabel, undefined, undefined, botonesDe(primero));
     if (pruebas) await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: primero.id, varianteId: elegidaPrimero.id, conversationId, etapaAntes: 1, agente: sentByLabel });
     return 1;
   }
@@ -102,7 +108,7 @@ export async function mandarSecuenciaBienvenida(env, conversationId, waId, sentB
       const versiones = enPrueba[paso.id]?.filter((v) => !v.unico);
       const elegida = paso.id === primero.id ? elegidaPrimero : versiones?.length ? elegir(versiones) : null;
       await pausaEnvio(env, conversationId, PAUSA_BIENVENIDA_MS, escribiendo);
-      await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel);
+      await mandarTexto(env, conversationId, waId, elegida?.texto || paso.body, sentByLabel, undefined, undefined, botonesDe(paso));
       if (pruebas) {
         await registrarUso(env.CRM_DB, { tipo: "bienvenida", refId: paso.id, varianteId: elegida?.id || 0, conversationId, etapaAntes: 1, agente: sentByLabel });
       }

@@ -228,6 +228,7 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   let pasos = [];
   try { pasos = JSON.parse(q.followup_pasos || "[]") || []; } catch { pasos = []; }
   if (!pasos.length && q.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
+  pasos = pasos.filter((p) => p.activo !== false); // los pasos apagados no se programan
   if (!pasos.length) return;
   // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
   // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
@@ -323,16 +324,19 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
 
   const ahora = Date.now();
   let acumuladoMs = 0;
-  const inserts = pasos.map((p) => {
+  // Un paso apagado no se programa y su espera tampoco cuenta.
+  const activos = pasos.filter((p) => p.activo !== 0);
+  const inserts = activos.map((p) => {
     acumuladoMs += p.delay_minutes * 60 * 1000;
     const sendAt = new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
-      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null);
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, botones)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null, p.body && !p.media_key && !p.catalogo ? p.botones || null : null);
   });
+  if (!inserts.length) return 0;
   await db.batch(inserts);
-  return pasos.length;
+  return inserts.length;
 }
 
 /**

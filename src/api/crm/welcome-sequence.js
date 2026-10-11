@@ -14,13 +14,17 @@
  *                                  — { id, orden_media: [ids de welcome_step_media] } → orden en que
  *                                    salen sus fotos/videos
  *                                  — { id, texto_primero: bool } → el texto antes que las fotos
- * POST y la edición aceptan también `texto_primero` y `producto_id` (la
+ *                                  — { id, activo: bool } → enciende o apaga el paso (apagado no se manda)
+ * POST y la edición aceptan también `botones` (hasta 3, bajo el texto), `texto_primero` y `producto_id` (la
  * bienvenida de ese producto; null = la general de Tarot Store). Ver
  * pasosDelChat en crm-welcome-sequence.js.
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
 import { guardarAnterior, textoPorDefectoSql } from "../../lib/crm-variantes.js";
+import { limpiarBotones } from "../../lib/whatsapp.js";
+
+const botonesDe = (t) => { try { return limpiarBotones(JSON.parse(t || "[]")); } catch { return []; } };
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -30,7 +34,7 @@ const json = (data, status = 200) =>
 
 async function get({ env }) {
   const { results: pasos } = await env.CRM_DB.prepare(
-    `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, s.producto_id, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
+    `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, s.producto_id, s.activo, s.botones, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
   ).all();
 
   const { results: media } = await env.CRM_DB.prepare(
@@ -39,7 +43,7 @@ async function get({ env }) {
   const porPaso = {};
   for (const m of media) (porPaso[m.welcome_step_id] ||= []).push(m);
 
-  return json({ steps: pasos.map((p) => ({ ...p, media: porPaso[p.id] || [] })) });
+  return json({ steps: pasos.map((p) => ({ ...p, botones: botonesDe(p.botones), media: porPaso[p.id] || [] })) });
 }
 
 async function post({ request, env }) {
@@ -59,9 +63,9 @@ async function post({ request, env }) {
 
   const max = await env.CRM_DB.prepare("SELECT COALESCE(MAX(step_order), 0) AS m FROM welcome_steps").first();
   const creado = await env.CRM_DB.prepare(
-    "INSERT INTO welcome_steps (title, body, step_order, texto_primero, producto_id) VALUES (?, ?, ?, ?, ?) RETURNING *"
+    "INSERT INTO welcome_steps (title, body, step_order, texto_primero, producto_id, botones) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   )
-    .bind(title, body, (max?.m || 0) + 1, payload?.texto_primero ? 1 : 0, Number(payload?.producto_id) || null)
+    .bind(title, body, (max?.m || 0) + 1, payload?.texto_primero ? 1 : 0, Number(payload?.producto_id) || null, body && limpiarBotones(payload?.botones).length ? JSON.stringify(limpiarBotones(payload.botones)) : null)
     .first();
 
   let i = 0;
@@ -126,6 +130,12 @@ async function patch({ request, env, agent }) {
     return json({ ok: true });
   }
 
+  // Encender o apagar un paso sin borrarlo: un paso apagado no se manda.
+  if (payload?.activo !== undefined && payload?.title === undefined) {
+    await env.CRM_DB.prepare("UPDATE welcome_steps SET activo = ? WHERE id = ?").bind(payload.activo ? 1 : 0, id).run();
+    return json({ ok: true });
+  }
+
   if (payload?.texto_primero !== undefined && payload?.title === undefined) {
     await env.CRM_DB.prepare("UPDATE welcome_steps SET texto_primero = ? WHERE id = ?").bind(payload.texto_primero ? 1 : 0, id).run();
     return json({ ok: true });
@@ -186,6 +196,10 @@ async function patch({ request, env, agent }) {
     .bind(title, body, payload?.texto_primero === undefined ? null : payload.texto_primero ? 1 : 0, id).run();
   if (payload?.producto_id !== undefined) {
     await env.CRM_DB.prepare("UPDATE welcome_steps SET producto_id = ? WHERE id = ?").bind(Number(payload.producto_id) || null, id).run();
+  }
+  if (payload?.botones !== undefined) {
+    const botones = body ? limpiarBotones(payload.botones) : [];
+    await env.CRM_DB.prepare("UPDATE welcome_steps SET botones = ? WHERE id = ?").bind(botones.length ? JSON.stringify(botones) : null, id).run();
   }
 
   if (mediaKeys !== null) {

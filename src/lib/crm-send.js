@@ -207,8 +207,9 @@ export async function mandarAlToque(env, conversationId, enviar) {
 }
 
 export async function mandarTexto(env, conversationId, waId, texto, sentBy, replyTo, opciones, botones) {
+  // Con botones WhatsApp acepta hasta 1024 caracteres: si el texto es más largo sale sin botones (mejor eso que perderlo).
   await asegurarPausa(env, conversationId);
-  const lista = limpiarBotones(botones);
+  const lista = texto.length <= 1024 ? limpiarBotones(botones) : [];
   const envL = await envDeConversacion(env, conversationId);
   const waMessageId = lista.length
     ? await enviarBotones(envL, waId, texto, lista, replyTo?.wa_message_id)

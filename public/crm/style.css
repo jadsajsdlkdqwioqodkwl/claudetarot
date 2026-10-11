@@ -1032,3 +1032,15 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #menu-lista .icono-svg { color: inherit; }
 /* En el menú del encabezado y en los botones grises, el icono sí lleva su color. */
 #menu-lista button .icono-svg { color: var(--ic, var(--gris)); }
+
+/* Interruptor "va / no va" de un paso (se apaga sin borrarlo) y flechas de orden. */
+.interruptor { position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink: 0; align-self: center; }
+.interruptor input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.interruptor span { position: absolute; inset: 0; background: #c5cbd0; border-radius: 10px; transition: background .15s; }
+.interruptor span::after { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.interruptor input:checked + span { background: var(--verde); }
+.interruptor input:checked + span::after { transform: translateX(14px); }
+.paso-apagado > :not(.acciones-paso):not(.interruptor) { opacity: .5; }
+.paso-apagado .nombre, .paso-apagado .leads-paso-info { text-decoration: line-through; text-decoration-color: rgba(0,0,0,.25); }
+.acciones-paso { display: flex; gap: 4px; align-items: center; }
+.paso-apagado .rp-bloque-texto, .paso-apagado .rp-bloque-plantilla, .paso-apagado .segp-plantilla { opacity: .5; }

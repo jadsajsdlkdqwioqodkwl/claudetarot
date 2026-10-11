@@ -870,7 +870,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     const { limpiarBotones } = await import("../src/lib/whatsapp.js");
     const l = limpiarBotones([" Sí ", "sí", "Un botón con nombre larguísimo", "", "B", "C", "D"]);
     check("botones de respuesta: máx. 3, 20 caracteres, sin repetidos", l.length === 3 && l[0] === "Sí" && l.every((b) => b.length <= 20));
-    check("el texto con botones sale por mandarTexto (con su pausa)", /mandarTexto[\s\S]{0,400}enviarBotones/.test(readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8")));
+    check("el texto con botones sale por mandarTexto (con su pausa)", /mandarTexto[\s\S]{0,700}enviarBotones/.test(readFileSync(new URL("../src/lib/crm-send.js", import.meta.url), "utf8")));
   }
   check("las sugerencias muestran los seguimientos que el chat ya tiene y el cronómetro en el chat",
     sugs.includes("s.seguimientos =") && readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8").includes("htmlSeguimientosActivos"));

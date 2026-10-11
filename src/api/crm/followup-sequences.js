@@ -13,11 +13,14 @@
  *                                       { step_id } → borra un solo paso
  * PATCH  /api/crm/followup-sequences — { step_id, direction: "up"|"down" } → reordena un paso
  *                                       { step_id, body?, delay_minutes, media_key?, ... } → edita un paso (sin media_key conserva la que tenía)
+ *                                       { step_id, activo } → enciende o apaga un paso (apagado no se manda)
  *                                       { sequence_id, title } → renombra la secuencia
+ * Los pasos de solo texto aceptan `botones` (hasta 3 botones de respuesta).
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerCatalogo } from "../../lib/crm-db.js";
+import { limpiarBotones } from "../../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -61,6 +64,8 @@ async function post({ request, env }) {
     const { catalogo, catalogoNombre } = leerCatalogo(payload);
 
     if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
+    // Los botones van con un texto solo (sin foto/video ni catálogo).
+    const botones = body && !mediaKey && !catalogo ? limpiarBotones(payload?.botones) : [];
 
     const existe = await env.CRM_DB.prepare("SELECT id FROM followup_sequences WHERE id = ?").bind(sequenceId).first();
     if (!existe) return json({ error: "Esa secuencia no existe." }, 404);
@@ -69,10 +74,10 @@ async function post({ request, env }) {
       .bind(sequenceId)
       .first();
     const creado = await env.CRM_DB.prepare(
-      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes, catalogo, catalogo_nombre)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+      `INSERT INTO followup_sequence_steps (sequence_id, step_order, body, media_key, media_type, media_mime, delay_minutes, catalogo, catalogo_nombre, botones)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
     )
-      .bind(sequenceId, (max?.m || 0) + 1, body, mediaKey, mediaType, mediaMime, delayMinutes, catalogo, catalogoNombre)
+      .bind(sequenceId, (max?.m || 0) + 1, body, mediaKey, mediaType, mediaMime, delayMinutes, catalogo, catalogoNombre, botones.length ? JSON.stringify(botones) : null)
       .first();
 
     return json({ ok: true, step: creado });
@@ -142,6 +147,12 @@ async function patch({ request, env }) {
   const actual = await env.CRM_DB.prepare("SELECT * FROM followup_sequence_steps WHERE id = ?").bind(stepId).first();
   if (!actual) return json({ error: "No encontrado." }, 404);
 
+  // Encender o apagar un paso sin borrarlo.
+  if (payload?.activo !== undefined && payload?.body === undefined && !direction) {
+    await env.CRM_DB.prepare("UPDATE followup_sequence_steps SET activo = ? WHERE id = ?").bind(payload.activo ? 1 : 0, stepId).run();
+    return json({ ok: true });
+  }
+
   if (!direction) {
     const body = payload?.body ? String(payload.body).trim().slice(0, 4096) : null;
     const delayMinutes = Math.max(1, Number(payload?.delay_minutes) || actual.delay_minutes);
@@ -155,10 +166,13 @@ async function patch({ request, env }) {
       : { catalogo: actual.catalogo, catalogoNombre: actual.catalogo_nombre };
     if (!body && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video o el catálogo." }, 400);
 
+    // Sin `botones` en el payload se conservan; con una lista vacía se quitan.
+    const botonesNuevos = "botones" in (payload || {}) ? limpiarBotones(payload.botones) : limpiarBotones(JSON.parse(actual.botones || "[]"));
+    const botones = body && !mediaKey && !catalogo ? botonesNuevos : [];
     await env.CRM_DB.prepare(
-      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ?, catalogo = ?, catalogo_nombre = ? WHERE id = ?"
+      "UPDATE followup_sequence_steps SET body = ?, delay_minutes = ?, media_key = ?, media_type = ?, media_mime = ?, catalogo = ?, catalogo_nombre = ?, botones = ? WHERE id = ?"
     )
-      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, stepId)
+      .bind(body, delayMinutes, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, botones.length ? JSON.stringify(botones) : null, stepId)
       .run();
     if (nuevaMedia && actual.media_key && env.CRM_MEDIA) await env.CRM_MEDIA.delete(actual.media_key).catch(() => {});
     return json({ ok: true });

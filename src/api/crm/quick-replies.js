@@ -55,6 +55,7 @@ function leerSeguimiento(payload) {
         horas: horas >= 0.25 && horas <= (plantilla ? 1440 : 168) ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
         body: plantilla ? null : String(p?.body || "").trim().slice(0, 4096) || null
       };
+      if (p?.activo === false) paso.activo = false; // apagado: se guarda pero no se programa
       if (plantilla) paso.plantilla = plantilla;
       else if (limpiarBotones(p?.botones).length && paso.body) paso.botones = limpiarBotones(p.botones);
       if (!plantilla && p?.media_key) Object.assign(paso, {
