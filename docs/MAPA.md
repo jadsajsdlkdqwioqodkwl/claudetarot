@@ -1,6 +1,8 @@
 # Mapa: qué hay, cómo se conecta y qué NO se mueve
 
 > **Reglas de interfaz del dueño** (detalle en `CLAUDE.md`): sin emojis en la interfaz del CRM, siempre iconos (`public/crm/icons.js`); no borrar ni esconder funciones sin preguntar; el cronómetro de la ventana de 24 h va al lado del nombre y teléfono del cliente.
+>
+> **Regla del dueño sobre este MAPA: no se remueve nada.** Solo se agrega o se corrige; si algo se quita del sistema se anota que se quitó (y cuándo), conservando su historia.
 
 Este es el documento del workflow. Léelo antes de mover, renombrar o borrar
 cualquier archivo, documento, hoja, pestaña, columna o Routine. **Todo cambio
@@ -109,6 +111,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - 2026-10-10 · Plantillas por marca y toques prendidos: pantalla «Plantillas para Meta» (el admin ve y manda cada plantilla; ya no se crean solas), textos propios de URO, toques de Tarot y URO conectados al cron (aplicar `0043`), plan con plantilla cuando el timer de una recomendación llega a 0, el cron de seguimientos espera a que Meta apruebe la plantilla, cronómetro en una franja sobre el chat, link de envío de Shalom deprecado (UI y ruta), y se revierte «secuencia de producto = lead» (lead y compra son manuales).
 
 - 2026-10-10 · Auditoría del CRM (sandbox local + código). Arreglado: header del admin desbordado en escritorio (acciones secundarias siempre en «⋯»); botón de reaccionar tapaba el mensaje en móvil; filtros en una sola fila en móvil; etiqueta «Contacto» y badge de número repetido fuera de la lista; Interés/venta de un chat de URO ya no mandan «Kit Tarot S/89» a Meta (usan el producto del chat); formulario de mensaje masivo oculto (está apagado). Servidor: un error de D1 ya no manda un chat de URO por el número de Tarot (`lineas.js`); secuencia de producto aplicada a mano cuenta como lead; producto sin secuencia cae a la general en Tarot; pedido web y CAPI no mezclan líneas; catálogo del cron usa el de la línea; cadena de rescate salta etapa 1; resumen fallido ya no bloquea el embudo. Ver tabla «Seguimientos del CRM».
+
+- 2026-10-11 · Enter en el chat hace salto de línea (como al principio, decisión del dueño); solo el botón de enviar manda el mensaje. Había quedado Enter = enviar (Shift+Enter = salto) desde el 29/09 en el cuadro de texto del chat; se quitó ese atajo. Regla nueva en `CLAUDE.md` y arriba de este MAPA: en el MAPA no se remueve nada.
 
 - 2026-10-11 · El chat se distingue por tienda: fondo lavanda + franja violeta arriba + etiqueta TAROT para Tarot Store, fondo rosa + franja rosa + etiqueta URO para URO (`marcaDeChat` en app.js: por producto o por número; sin nada, Tarot). La franja izquierda de la lista usa el color del producto o, sin producto, el de la tienda. Cambiar el producto del panel repinta al instante.
 

@@ -2900,7 +2900,7 @@ function pintarChatBase(c) {
       <input type="file" id="input-galeria" accept="image/*,video/*" multiple style="display:none" />
       <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
-      <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
+      <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter hace un salto de línea; el botón de enviar lo manda" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-formato" title="Formato: negrita, cursiva, tachado (también Ctrl+B, Ctrl+I, Ctrl+Shift+X)">${icon("formato")}</button>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
@@ -2949,13 +2949,8 @@ function pintarChatBase(c) {
   $("#texto-envio").addEventListener("beforeinput", onImagenDelTeclado);
   configurarAccionesMensajes();
 
+  // Enter hace salto de línea (decisión del dueño): solo el botón de enviar manda el mensaje.
   const textoEnvio = $("#texto-envio");
-  textoEnvio.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      $("#form-envio").requestSubmit();
-    }
-  });
   textoEnvio.addEventListener("input", (e) => {
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";

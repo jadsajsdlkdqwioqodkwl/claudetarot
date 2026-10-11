@@ -3,6 +3,9 @@
 > Antes de mover, renombrar, borrar o recrear un archivo, documento, hoja o
 > Routine, lee `docs/MAPA.md` (qué se conecta con qué y qué no se toca).
 > Todo cambio al workflow actualiza `docs/MAPA.md` en el mismo commit.
+> **En el MAPA no se remueve nada** (regla del dueño): solo se AGREGA o se corrige.
+> Nunca se borra ni se acorta lo ya escrito; si algo se quitó del sistema, se anota
+> que se quitó (y cuándo), conservando su historia.
 
 ## Reglas de interfaz del CRM (del dueño, no se negocian)
 
