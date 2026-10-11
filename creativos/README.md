@@ -20,6 +20,7 @@ creativos/
   copy-meta.md           reglas del copy y titular de Meta (Claude Code las sigue tras cada render)
   guiones.md             copia de la pestaña Guiones reglas (Project de guiones de video + 3 hooks para Google Flow)
   prompt-project-video.md arranque corto para pegar en el Project de guiones de video
+  prompt-project-todo-en-uno.md  arranque de UN solo Project con 4 modos (conceptos, copy, matriz, guion); reemplaza al de copy que leía un Google Doc
   prompt-claude-code.md  prompt maestro para una sesión nueva de Claude Code
   lotes/
     L001/
