@@ -56,6 +56,11 @@ const ICONS = {
   undo: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4"/><path d="M3 8h9a5 5 0 010 10H9"/></svg>`,
   sparkle: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M9 2.5l1.6 4.4 4.4 1.6-4.4 1.6L9 14.5l-1.6-4.4L3 8.5l4.4-1.6z"/><path d="M15.5 12.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>`,
   power: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2.5v7"/><path d="M5.6 5.2a6.5 6.5 0 108.8 0"/></svg>`,
+  formato: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-10 4 10M4.4 11.5h5.2"/><path d="M13 8.5h4M15 8.5V15"/></svg>`,
+  negrita: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 4h5a3 3 0 010 6H6zM6 10h6a3 3 0 010 6H6z"/></svg>`,
+  cursiva: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 4h6M6 16h6M11.5 4l-3 12"/></svg>`,
+  tachado: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10h14M13.5 6.2C13 4.8 11.7 4 10 4 8 4 6.7 5 6.7 6.5c0 1.2.8 2 2.3 2.5M6.5 13.8C7 15.2 8.3 16 10 16c2 0 3.3-1 3.3-2.5 0-.6-.2-1.1-.6-1.5"/></svg>`,
+  codigo: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6l-4 4 4 4M13 6l4 4-4 4"/></svg>`,
   bellOff: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5a5 5 0 0110 0c0 3.5 1.2 4.5 1.2 4.5H3.8S5 12 5 8.5z"/><path d="M8 15.5a2 2 0 004 0"/><path d="M2.5 2.5l15 15"/></svg>`
 };
 

@@ -2911,12 +2911,14 @@ function pintarChatBase(c) {
       <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter manda, Shift+Enter hace un salto de línea" rows="1" autocomplete="off"></textarea>
+      <button type="button" class="icono" id="btn-formato" title="Formato: negrita, cursiva, tachado (también Ctrl+B, Ctrl+I, Ctrl+Shift+X)">${icon("formato")}</button>
       <button type="button" class="icono" id="btn-emoji" title="Emojis">${icon("smile")}</button>
       <button type="submit" class="enviar" title="Enviar">${icon("send")}</button>
       <div id="panel-mas"></div>
       <div id="panel-rapidas"></div>
       <div id="panel-seguimientos"></div>
       <div id="panel-emojis"></div>
+      <div id="panel-formato"></div>
       <div id="panel-catalogo"></div>
       <div id="panel-stickers"></div>
       <div id="panel-adjuntar"></div>
@@ -3008,6 +3010,7 @@ function pintarChatBase(c) {
   $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento("mensaje"));
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
+  $("#btn-formato").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-formato"]); toggleFormatoPanel(); });
   $("#btn-emoji").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-emojis"]); toggleEmojiPanel(); });
   $("#btn-plantillas").addEventListener("click", () => abrirModalTemplates());
   $("#btn-catalogo").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-catalogo"]); toggleCatalogoPanel(); });
@@ -3175,7 +3178,7 @@ function pintarListaProductos(filtro) {
 }
 
 function cerrarPaneles(excepto = []) {
-  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-catalogo", "#panel-mas", "#panel-stickers", "#panel-adjuntar"].forEach((sel) => {
+  ["#panel-rapidas", "#panel-seguimientos", "#panel-emojis", "#panel-formato", "#panel-catalogo", "#panel-mas", "#panel-stickers", "#panel-adjuntar"].forEach((sel) => {
     if (!excepto.includes(sel)) $(sel)?.classList.remove("abierto");
   });
 }
@@ -4763,6 +4766,45 @@ function toggleEmojiPanel() {
   }
 }
 
+/** Los estilos de WhatsApp: el símbolo que va a cada lado del texto. */
+const FORMATOS = { negrita: ["*", "Negrita"], cursiva: ["_", "Cursiva"], tachado: ["~", "Tachado"], codigo: ["```", "Monoespaciado"] };
+
+/** Envuelve lo seleccionado con el símbolo (o lo desenvuelve si ya lo tiene); sin selección deja el cursor en medio. */
+function aplicarFormato(el, marca) {
+  const ini = el.selectionStart ?? 0;
+  const fin = el.selectionEnd ?? 0;
+  const sel = el.value.slice(ini, fin);
+  const m = marca.length;
+  const yaEnvuelto = sel.length > 2 * m && sel.startsWith(marca) && sel.endsWith(marca);
+  const nuevo = yaEnvuelto ? sel.slice(m, -m) : marca + sel + marca;
+  el.value = el.value.slice(0, ini) + nuevo + el.value.slice(fin);
+  el.focus();
+  if (sel) el.setSelectionRange(ini, ini + nuevo.length);
+  else el.setSelectionRange(ini + m, ini + m);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function toggleFormatoPanel() {
+  const panel = $("#panel-formato");
+  if (!panel) return;
+  panel.classList.toggle("abierto");
+  if (!panel.classList.contains("abierto")) return;
+  panel.innerHTML = Object.entries(FORMATOS).map(([k, [, t]]) => `<button type="button" data-f="${k}" title="${t}">${icon(k)}</button>`).join("");
+  panel.addEventListener("mousedown", (e) => e.preventDefault()); // no le saca el foco al texto
+  panel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => aplicarFormato($("#texto-envio"), FORMATOS[b.dataset.f][0])));
+}
+
+// Atajos como en WhatsApp Web, en cualquier cuadro de texto del CRM.
+document.addEventListener("keydown", (e) => {
+  const el = e.target;
+  if (el?.tagName !== "TEXTAREA" || !(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  const f = k === "b" && !e.shiftKey ? "negrita" : k === "i" && !e.shiftKey ? "cursiva" : k === "x" && e.shiftKey ? "tachado" : k === "m" && e.shiftKey ? "codigo" : null;
+  if (!f) return;
+  e.preventDefault();
+  aplicarFormato(el, FORMATOS[f][0]);
+});
+
 /** Mete texto donde está el cursor (o reemplaza lo seleccionado), no al final. */
 function insertarEnCursor(el, texto) {
   const ini = el.selectionStart ?? el.value.length;
@@ -4928,7 +4970,7 @@ $("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
 $("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida());
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
+  if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-formato, #btn-formato, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
     cerrarPaneles();
   }
 });
