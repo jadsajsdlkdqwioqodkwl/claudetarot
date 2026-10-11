@@ -15,7 +15,7 @@
  */
 
 import { programarSeguimientoDePlantilla, seguimientosDePlantillas, guardarSeguimientoDePlantilla } from "../../lib/plantillas-seguimiento.js";
-import { textoParaChat } from "../../lib/plantillas-propuestas.js";
+import { textoParaChat, parametrosDePlantilla } from "../../lib/plantillas-propuestas.js";
 import { obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
@@ -58,18 +58,21 @@ async function post({ request, env, agent }) {
   const conversationId = Number(payload?.conversation_id);
   const name = String(payload?.name || "");
   const language = String(payload?.language || "es");
-  const parametros = Array.isArray(payload?.parameters) ? payload.parameters.map(String) : [];
+  let parametros = Array.isArray(payload?.parameters) ? payload.parameters.map(String) : [];
 
   if (!conversationId || !name) return json({ error: "Falta conversation_id o name." }, 400);
 
   const conv = await env.CRM_DB.prepare(
-    `SELECT conv.id, c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
+    `SELECT conv.id, c.wa_id, COALESCE(c.name, c.profile_name) AS nombre FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?`
   )
     .bind(conversationId)
     .first();
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   try {
+    // Meta rechaza (#131008) si falta una variable: las vacías se llenan con el nombre del cliente / producto.
+    const auto = await parametrosDePlantilla(env, name, conv.nombre);
+    if (auto.length) parametros = auto.map((v, i) => (parametros[i] || "").trim() || v);
     await pausaEnvio(env, conversationId);
     const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, name, language, parametros));
     await registrarMensajeSaliente(env.CRM_DB, conversationId, {

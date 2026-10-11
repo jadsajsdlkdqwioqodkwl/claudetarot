@@ -13,7 +13,7 @@ import { listarLineas, envDeLinea } from "./lineas.js";
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { notificarTelegram } from "./telegram.js";
 import { primerNombre } from "./plantillas.js";
-import { listarTemplates, crearTemplate } from "./whatsapp.js";
+import { listarTemplates, crearTemplate, editarTemplate } from "./whatsapp.js";
 import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
 
@@ -86,8 +86,8 @@ export async function leerCambios(db) {
 }
 
 /**
- * Guarda (o con `restablecer`, borra) el texto y los botones de una propuesta. Solo mientras no se haya
- * mandado a Meta: una plantilla ya enviada no se puede cambiar con el mismo nombre.
+ * Guarda (o con `restablecer`, borra) el texto y los botones de una propuesta. Si ya está en Meta, hay
+ * que reenviarla (mandarPropuestas con `reenviar`) para que Meta la edite y la vuelva a revisar.
  * Reglas de Meta que se revisan aquí: mismas variables {{n}} que el texto original, que el cuerpo no
  * empiece ni termine con una variable, máximo 1024 caracteres y botones de hasta 25 caracteres.
  */
@@ -108,7 +108,8 @@ export async function guardarCambio(env, marca, nombre, { texto, botones: btns, 
     const vars = (t) => [...new Set(t.match(/\{\{\d\}\}/g) || [])].sort().join(",");
     if (!CATEGORIAS.includes(categoria)) throw new Error("La categoría es Marketing o Utilidad.");
     if (!texto || texto.length > 1024) throw new Error("El texto no puede estar vacío ni pasar de 1024 caracteres.");
-    if (vars(texto) !== vars(original.texto)) throw new Error(`Debe llevar las mismas variables que el original: ${vars(original.texto) || "ninguna"}. {{1}} es el primer nombre del cliente.`);
+    const permitidas = new Set(original.texto.match(/\{\{\d\}\}/g) || []);
+    if ((texto.match(/\{\{\d\}\}/g) || []).some((v) => !permitidas.has(v))) throw new Error(`Solo puede llevar las variables del original: ${vars(original.texto) || "ninguna"} ({{1}} es el primer nombre del cliente); puedes quitarlas y escribir, por ejemplo, «estimad@».`);
     if (/^\s*\{\{|\}\}\s*$/.test(texto)) throw new Error("Meta no acepta que el texto empiece o termine con una variable.");
     if (btns.length > 3) throw new Error("Máximo 3 botones.");
     const mala = btns.find((b) => !b || b.length > 25 || !RE_BOTON.test(b));
@@ -154,17 +155,25 @@ export async function estadoDePropuestas(env) {
 }
 
 /** Manda a revisión de Meta las propuestas elegidas (por nombre) de una marca. Una por una: si una falla, las demás siguen. */
-export async function mandarPropuestas(env, marca, nombres) {
+export async function mandarPropuestas(env, marca, nombres, reenviar = false) {
   const envM = await envDeMarca(env, marca);
   if (!envM) throw new Error(`Falta conectar el número de ${MARCAS[marca] || marca}.`);
   const propuestas = propuestasDe(marca, await leerCambios(env.CRM_DB));
-  const existentes = new Set((await listarTemplates(envM)).map((t) => t.name));
+  const existentes = new Map();
+  for (const t of await listarTemplates(envM)) if (!existentes.has(t.name) || t.status === "APPROVED") existentes.set(t.name, t);
   const resultados = [];
   for (const nombre of nombres) {
     const p = propuestas.find((x) => x.nombre === nombre);
     if (!p) { resultados.push({ nombre, ok: false, error: "No es una propuesta de esta marca." }); continue; }
-    if (existentes.has(nombre)) { resultados.push({ nombre, ok: false, error: "Ya existe en Meta." }); continue; }
+    const ya = existentes.get(nombre);
+    if (ya && !reenviar) { resultados.push({ nombre, ok: false, error: "Ya existe en Meta." }); continue; }
     try {
+      if (ya) {
+        if (!["APPROVED", "REJECTED", "PAUSED"].includes(ya.status)) throw new Error(`Meta no deja editarla mientras está ${ya.status}.`);
+        await editarTemplate(envM, ya.id, p.componentes);
+        resultados.push({ nombre, ok: true });
+        continue;
+      }
       await crearTemplate(envM, { nombre, categoria: p.categoria, idioma: IDIOMA_PLAN, componentes: p.componentes });
       resultados.push({ nombre, ok: true });
     } catch (err) {

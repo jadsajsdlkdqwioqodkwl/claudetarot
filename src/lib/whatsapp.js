@@ -113,7 +113,7 @@ export async function enviarReaccion(env, waId, targetWaMessageId, emoji) {
 /** Lista los Message Templates de la cuenta (solo sirven los `APPROVED`). */
 export async function listarTemplates(env) {
   const res = await fetch(
-    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?fields=name,status,language,category,components,rejected_reason&limit=100`),
+    graphUrl(env, `${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?fields=id,name,status,language,category,components,rejected_reason&limit=100`),
     { headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` } }
   );
   const datos = await res.json().catch(() => ({}));
@@ -132,6 +132,11 @@ export async function crearTemplate(env, { nombre, categoria, idioma, componente
     language: idioma,
     components: componentes
   });
+}
+
+/** Cambia el texto y botones de un template que ya existe en Meta (mismo nombre) y lo vuelve a mandar a revisión. */
+export async function editarTemplate(env, id, componentes) {
+  return llamar(env, String(id), { components: componentes });
 }
 
 /** Manda un template ya aprobado — el único tipo de mensaje válido fuera de la ventana de 24h. */

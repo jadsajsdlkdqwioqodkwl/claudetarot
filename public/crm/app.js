@@ -601,8 +601,9 @@ async function abrirPlantillasMeta() {
                 <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.length ? p.botones.map((b) => `«${escapar(b)}»`).join(" · ") : "ninguno"} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
                 ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                  ${["SIN_ENVIAR", "DESCONOCIDO"].includes(p.estado) ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
+                  ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
+                  ${["APPROVED", "REJECTED", "PAUSED"].includes(p.estado) && m.conectada ? `<button type="button" class="crear mandar-una" data-reenviar="1" data-nombres="${escapar(p.nombre)}" style="font-size:12px" title="Cambia en Meta el texto de esta plantilla y la vuelve a mandar a revisión">${icon("send")} Reenviar a revisión</button>` : ""}
                 </div>
               </div>`;
             }).join("")}`;
@@ -663,12 +664,13 @@ async function abrirPlantillasMeta() {
     cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
       const nombres = b.dataset.nombres.split(",");
       const marca = b.closest(".marca-plantillas");
-      if (!confirm(`Vas a mandar ${nombres.length} plantilla(s) a revisión de Meta en la cuenta de ${marca.querySelector("h2").textContent}. ¿Ya leíste el texto?`)) return;
+      const reenviar = b.dataset.reenviar === "1";
+      if (!confirm(reenviar ? "Vas a cambiar esta plantilla en Meta con el texto que ves aquí y volverla a mandar a revisión (mientras se revisa, Meta puede dejar de dejarla mandar). ¿Ya leíste el texto?" : `Vas a mandar ${nombres.length} plantilla(s) a revisión de Meta en la cuenta de ${marca.querySelector("h2").textContent}. ¿Ya leíste el texto?`)) return;
       b.disabled = true;
       try {
         const { resultados } = await pedir("/api/crm/plantillas-propuestas", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ marca: marca.dataset.marca, nombres })
+          body: JSON.stringify({ marca: marca.dataset.marca, nombres, reenviar })
         });
         const fallos = resultados.filter((r) => !r.ok);
         if (fallos.length) alert(`Se mandaron ${resultados.length - fallos.length}. No se pudo:\n${fallos.map((f) => `· ${f.nombre}: ${f.error}`).join("\n")}`);
