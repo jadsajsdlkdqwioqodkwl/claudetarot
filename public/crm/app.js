@@ -7,7 +7,7 @@
 const $ = (sel) => document.querySelector(sel);
 
 // ☺️✨🫶🙌 fijos primero — los cuatro que se piden siempre a la vista, sin scrollear.
-const EMOJIS = "☺️ ✨ 🫶 🙌 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 💪 🎉 🔥 ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
+const EMOJIS = "☺️ ✨ 🫶 🩷 🤗 🙌 😀 😁 😂 🤣 😊 😉 😍 😘 🥰 😎 🤔 🙄 😴 😢 😭 😅 🙏 👍 👎 👏 💪 🎉 🔥 ⭐ ❤️ 💚 💙 💛 ☕ 🎁 📦 🚚 ✅ ❌ ⏰ 📍 💰 🃏".split(" ");
 const PAGINA_MENSAJES = 50;
 
 // Cuánto se espacían los polls — el plan gratis de Cloudflare tiene un tope

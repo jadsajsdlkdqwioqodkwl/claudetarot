@@ -7,6 +7,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { descargarMedia } from "../../lib/whatsapp.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 import { guardarMediaKey } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -52,7 +53,8 @@ async function handler({ request, env }) {
 
   let blob, mime;
   try {
-    ({ blob, mime } = await descargarMedia(env, msg.media_id));
+    // El token del número por el que escribió el cliente (URO no es Tarot).
+    ({ blob, mime } = await descargarMedia(await envDeConversacion(env, msg.conversation_id), msg.media_id));
   } catch (err) {
     console.error("Descargar media:", err.message);
     return json({ error: "No se pudo descargar el archivo de WhatsApp." }, 502);
