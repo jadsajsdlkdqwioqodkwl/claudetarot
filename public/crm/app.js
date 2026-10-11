@@ -596,6 +596,7 @@ async function abrirPlantillasMeta() {
                   <span style="font-size:12px;color:var(--gris)">${CATEGORIA_META[p.categoria] || escapar(p.categoria)} · ${escapar(p.cuando)}</span>
                   ${p.categoriaMeta && p.categoriaMeta !== p.categoria ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;color:#b3261e;background:#fde8e7" title="Meta cambió la categoría que pediste">Meta la clasificó como ${CATEGORIA_META[p.categoriaMeta] || escapar(p.categoriaMeta)}</span>` : ""}
                   <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${etq}</span>
+                  ${p.plan ? `<span class="acciones-paso"><button type="button" class="cancelar mover-arriba pl-mover" data-plan="${p.plan}" data-nombre="${escapar(p.nombre)}" data-dir="-1" title="Sale antes (cambia de día con el de arriba)" ${p.posicion === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button><button type="button" class="cancelar mover-abajo pl-mover" data-plan="${p.plan}" data-nombre="${escapar(p.nombre)}" data-dir="1" title="Sale después" ${p.posicion === 2 ? "disabled" : ""}>${icon("arrowLeft", "")}</button></span>` : ""}
                 </div>
                 <div style="margin:6px 0">${vistaPreviaPlantilla(p.texto, p.botones)}</div>
                 <div style="font-size:12px;color:var(--gris)">Botones: ${p.botones.length ? p.botones.map((b) => `«${escapar(b)}»`).join(" · ") : "ninguno"} · nombre en Meta: <code>${escapar(p.nombre)}</code></div>
@@ -611,6 +612,16 @@ async function abrirPlantillasMeta() {
         }).join("")}
       </div>`;
     }).join("");
+    girarFlechas(cont);
+    cont.querySelectorAll(".pl-mover").forEach((b) => b.addEventListener("click", async () => {
+      const marca = b.closest(".marca-plantillas").dataset.marca;
+      const nombres = [...b.closest(".marca-plantillas").querySelectorAll(`.pl-mover[data-plan="${b.dataset.plan}"][data-dir="-1"]`)].map((x) => x.dataset.nombre);
+      const i = nombres.indexOf(b.dataset.nombre), j = i + Number(b.dataset.dir);
+      if (j < 0 || j >= nombres.length) return;
+      [nombres[i], nombres[j]] = [nombres[j], nombres[i]];
+      try { await pedir("/api/crm/plantillas-propuestas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, nombre: b.dataset.plan, orden: nombres }) }); } catch (err) { alert(err.message); }
+      abrirPlantillasMeta();
+    }));
     cont.querySelectorAll(".editar-plantilla").forEach((b) => b.addEventListener("click", () => {
       const card = b.closest(".ad-card");
       const marca = b.closest(".marca-plantillas").dataset.marca;

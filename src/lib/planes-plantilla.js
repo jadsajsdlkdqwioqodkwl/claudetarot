@@ -97,6 +97,16 @@ export const planesDe = (marca) => (marca === "uro" ? PLANES_URO : PLANES);
 
 
 
+/** Los pasos de un plan en el orden que eligió el admin (ajuste plantillas_textos, clave `orden:marca:plan`); los días van por posición. */
+export function pasosOrdenados(pasos, orden) {
+  const lista = Array.isArray(orden) ? orden : [];
+  const pos = (p, i) => (lista.includes(p.nombre) ? lista.indexOf(p.nombre) : i);
+  return pasos.map((p, i) => ({ p, k: pos(p, i) })).sort((a, b) => a.k - b.k).map((x) => x.p);
+}
+export async function ordenDelPlan(db, marca, plan) {
+  try { return JSON.parse((await obtenerAjuste(db, "plantillas_textos")) || "{}")[`orden:${marca}:${plan}`] || []; } catch { return []; }
+}
+
 /** El texto con los parámetros puestos, para mostrarlo en el CRM. */
 export const textoDePaso = (paso, params) => paso.texto.replace(/\{\{(\d)\}\}/g, (m, n) => params[Number(n) - 1] ?? m);
 
@@ -112,13 +122,13 @@ export function leerDias(texto) {
  * Cada uno a los N días del último mensaje del cliente; si ese día ya pasó,
  * sale en 10 min (y los siguientes conservan su orden).
  */
-export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO, marca = "tarot") {
+export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO, marca = "tarot", orden = []) {
   const p = planesDe(marca)[plan];
   // El recojo en Shalom cuenta desde hoy (el despacho), no desde el último mensaje del cliente: ese puede ser de hace días.
   const base = plan === "shalom" || !lastInboundAt ? ahora : new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime();
   const params = p.conProducto ? [primerNombre(nombre), producto || "el kit de tarot"] : [primerNombre(nombre)];
   let previo = 0;
-  return p.pasos.map((paso, i) => {
+  return pasosOrdenados(p.pasos, orden).map((paso, i) => {
     const cuando = Math.max(base + (dias[i] ?? paso.dias) * 86400000, ahora + 10 * 60000 + i * 60000, previo + 60000);
     previo = cuando;
     return { send_at: new Date(cuando).toISOString(), template_name: paso.nombre, params, body: textoDePaso(paso, params) };
@@ -147,7 +157,7 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   if (!marca) return { error: "Este número no tiene plantillas propuestas todavía." };
   const producto = await productoPorId(db, conv.producto_id);
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
-  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca);
+  const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
   await db.batch(pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status)
@@ -245,8 +255,10 @@ export async function rearmarPlanShalom(env, conversationId, texto) {
   }
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
   const ahora = Date.now();
+  const marca = String(results[0].template_name).startsWith("uro_") ? "uro" : "tarot";
+  const orden = pasosOrdenados(planesDe(marca).shalom.pasos, await ordenDelPlan(db, marca, "shalom")).map((p) => p.nombre);
   await db.batch(results.map((r) => {
-    const i = Math.max(0, Number(String(r.template_name).match(/_(\d)$/)?.[1] || 1) - 1);
+    const i = Math.max(0, orden.indexOf(r.template_name));
     return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
   }));
 }

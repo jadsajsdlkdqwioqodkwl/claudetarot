@@ -6,11 +6,12 @@
  *      estado: SIN_ENVIAR | PENDING | APPROVED | REJECTED | PAUSED | DISABLED | DESCONOCIDO | SIN_NUMERO
  * PATCH /api/crm/plantillas-propuestas { marca, nombre, texto, botones: [0 a 3], categoria: "MARKETING" | "UTILITY" } o { marca, nombre, restablecer: true }
  *      Cambia el texto y los botones antes de mandarla (si ya está en Meta, se reenvía a revisión con `reenviar: true` en el POST).
+ * PATCH { marca, nombre: "shalom"|"lead", orden: [nombres] } cambia qué mensaje sale a cada día, sin mandar nada a Meta.
  * POST /api/crm/plantillas-propuestas { marca, nombres: [...] } → { resultados: [{ nombre, ok, error? }] }
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { estadoDePropuestas, mandarPropuestas, guardarCambio, MARCAS } from "../../lib/plantillas-propuestas.js";
+import { estadoDePropuestas, mandarPropuestas, guardarCambio, guardarOrden, MARCAS } from "../../lib/plantillas-propuestas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -42,6 +43,7 @@ async function patch({ request, env, agent }) {
   const p = await request.json().catch(() => null);
   if (!MARCAS[p?.marca] || !p?.nombre) return json({ error: "Falta la marca o la plantilla." }, 400);
   try {
+    if (p.orden) { await guardarOrden(env, p.marca, p.nombre, p.orden); return json({ ok: true }); } // nombre = clave del plan
     await guardarCambio(env, p.marca, p.nombre, p);
     return json({ ok: true });
   } catch (err) {

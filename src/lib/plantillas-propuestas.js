@@ -14,7 +14,7 @@ import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { notificarTelegram } from "./telegram.js";
 import { primerNombre } from "./plantillas.js";
 import { listarTemplates, crearTemplate, editarTemplate } from "./whatsapp.js";
-import { planesDe, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
+import { planesDe, pasosOrdenados, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
 import { TOQUES, marcaDeToque } from "./toques.js";
 
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
@@ -35,10 +35,12 @@ export function propuestasDe(marca, cambios = {}) {
   });
   const planes = planesDe(marca);
   for (const [clave, p] of Object.entries(planes)) {
-    for (const [i, paso] of p.pasos.entries()) {
+    const originales = p.pasos;
+    for (const [i, paso] of pasosOrdenados(p.pasos, cambios[`orden:${marca}:${clave}`]).entries()) {
       lista.push({
+        plan: clave, posicion: i,
         nombre: paso.nombre, grupo: clave === "shalom" ? "Recojo en Shalom (prioridad)" : "Rescate de interesado",
-        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: clave === "shalom" ? `${paso.dias} días después de despachar el pedido` : `${paso.dias} días después de su último mensaje`,
+        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: clave === "shalom" ? `${originales[i].dias} días después de despachar el pedido` : `${originales[i].dias} días después de su último mensaje`,
         categoria: p.categoria, texto: paso.texto, botones: p.botones,
         componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), ...botones(p.botones)]
       });
@@ -117,6 +119,17 @@ export async function guardarCambio(env, marca, nombre, { texto, botones: btns, 
     if (new Set(btns.map((b) => b.toLowerCase())).size !== btns.length) throw new Error("Los botones no pueden repetirse.");
     cambios[clave] = { texto, botones: btns, categoria };
   }
+  await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
+}
+
+/** Cambia qué mensaje del plan sale en cada día (el orden de las plantillas). No toca Meta: cada plantilla conserva su texto y su nombre. */
+export async function guardarOrden(env, marca, plan, orden) {
+  const nombres = (planesDe(marca)[plan]?.pasos || []).map((p) => p.nombre);
+  if (!nombres.length) throw new Error("No es un plan de esta marca.");
+  orden = Array.isArray(orden) ? orden.map(String) : [];
+  if (orden.length !== nombres.length || nombres.some((n) => !orden.includes(n))) throw new Error("El orden debe llevar todas las plantillas del plan.");
+  const cambios = await leerCambios(env.CRM_DB);
+  cambios[`orden:${marca}:${plan}`] = orden;
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
 }
 
