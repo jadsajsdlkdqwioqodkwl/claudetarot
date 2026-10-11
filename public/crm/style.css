@@ -164,9 +164,6 @@ button { font-family: inherit; touch-action: manipulation; }
 .kill-chat { width: 100%; margin-top: 6px; font-size: 12px; padding: 7px 10px; border-radius: var(--radio-s); cursor: pointer; border: 1px solid #d93025; color: #d93025; background: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .kill-chat .icono-svg { width: 14px; height: 14px; }
 .kill-chat.puesto { background: #d93025; color: #fff; }
-#lista header #btn-killswitch { color: #ff8a80; }
-#lista header #btn-killswitch.killswitch-puesto { background: #d93025; color: #fff; opacity: 1; animation: pulso-kill 1.6s ease-in-out infinite; }
-@keyframes pulso-kill { 50% { box-shadow: 0 0 0 5px rgba(217,48,37,.35); } }
 #lista header button:hover { background: rgba(255,255,255,.14); opacity: 1; }
 #btn-notificaciones.notif-activa { opacity: 1; color: #ffe27a; }
 #buscador { padding: 8px 10px; border-bottom: 1px solid var(--borde); position: relative; }

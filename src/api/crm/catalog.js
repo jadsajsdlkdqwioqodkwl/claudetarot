@@ -46,9 +46,11 @@ async function completarNombres(env, orders) {
   }));
 }
 
-async function get({ request, env }) {
+async function get({ request, env: envBase }) {
   const conversationId = Number(new URL(request.url).searchParams.get("conversation_id"));
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
+  // Los nombres se piden con el token y el catálogo del número de ese chat (URO ≠ Tarot).
+  const env = await envDeConversacion(envBase, conversationId);
 
   const { results } = await env.CRM_DB.prepare(
     "SELECT * FROM catalog_orders WHERE conversation_id = ? ORDER BY id DESC"
