@@ -1136,9 +1136,25 @@ async function cargarDatosLead(forzar) {
   return datosLead;
 }
 
-function secuenciaDeLeads(d) {
+function secuenciaDeLeads(d, c) {
+  if (c) { // la de la tienda del chat: la de su producto o, sin producto, la general (solo de Tarot Store)
+    const id = productoDe(c.producto_id)?.secuencia_id || (c.linea_id ? null : d.settings.ad_followup_sequence_id);
+    return d.sequences.find((s) => s.id === id) || null;
+  }
   return d.sequences.find((s) => s.id === d.settings.ad_followup_sequence_id) || null;
 }
+
+/** Los pasos de bienvenida de la tienda del chat (igual que pasosDelChat en el servidor). */
+function pasosDeTienda(d, c) {
+  const activos = d.welcomeSteps.filter((p) => p.activo !== 0);
+  const generales = activos.filter((p) => !p.producto_id);
+  if (!c.producto_id) return c.linea_id ? [] : generales;
+  const propios = activos.filter((p) => p.producto_id === c.producto_id);
+  return propios.length ? propios : c.linea_id ? [] : generales;
+}
+
+/** El nombre de la tienda de este chat: su producto, o la línea/principal. */
+const tiendaDe = (c) => productoDe(c.producto_id)?.nombre || (c.linea_id ? (estado.lineas || []).find((l) => l.id === c.linea_id)?.nombre || "Otro número" : "Tarot Store");
 
 /** Tiempo total desde que se aplica, ej. 1500 → "1 día 1 h". */
 function formatearMomento(minutos) {
@@ -7654,13 +7670,16 @@ async function pintarLeadDetalle(c) {
   if (estado.conversacionActivaId !== c.conversation_id) return;
   const esAdmin = estado.miRol === "admin";
   const nombre = c.profile_name || `+${c.wa_id}`;
+  const pasosTienda = pasosDeTienda(d, c);
+  const tienda = tiendaDe(c);
 
-  if (!d.welcomeSteps.length) {
-    contB.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no armaste la bienvenida." : "El admin todavía no armó la bienvenida."}</div>`
+  if (!pasosTienda.length) {
+    contB.innerHTML = `<div class="ayuda-modal" style="margin:0 0 4px">Tienda: <strong>${escapar(tienda)}</strong></div><div class="sin-ad">${esAdmin ? `Esta tienda todavía no tiene bienvenida.` : "El admin todavía no armó la bienvenida de esta tienda."}</div>`
       + (esAdmin ? `<button class="cancelar lead-config" id="detalle-config-bienvenida" type="button">${icon("pencil")} Armar bienvenida</button>` : "");
   } else {
     contB.innerHTML = `
-      <div class="lead-lista">${d.welcomeSteps.map((p, i) => `
+      <div class="ayuda-modal" style="margin:0 0 4px">Tienda: <strong>${escapar(tienda)}</strong> · al mandarla sale también su seguimiento de interesados.</div>
+      <div class="lead-lista">${pasosTienda.map((p, i) => `
         <label class="lead-check">
           <input type="checkbox" class="bienv-paso" value="${p.id}" checked />
           <span><strong>${i + 1}. ${escapar(p.title)}</strong>${p.media.length ? ` ${icon(p.media.length === 1 && p.media[0].media_type === "video" ? "video" : "image")}${p.media.length > 1 ? ` ×${p.media.length}` : ""}` : ""}
@@ -7676,7 +7695,7 @@ async function pintarLeadDetalle(c) {
     const actualizarBoton = () => {
       const n = checks.filter((x) => x.checked).length;
       btn.disabled = !n;
-      btn.innerHTML = `${icon("send")} ${n === checks.length ? "Mandar bienvenida completa" : `Mandar ${n} de ${checks.length} paso${checks.length === 1 ? "" : "s"}`}`;
+      btn.innerHTML = `${icon("send")} ${n === checks.length ? "Mandar bienvenida completa + seguimiento" : `Mandar ${n} de ${checks.length} paso${checks.length === 1 ? "" : "s"} + seguimiento`}`;
     };
     checks.forEach((x) => x.addEventListener("change", actualizarBoton));
     actualizarBoton();
@@ -7684,7 +7703,7 @@ async function pintarLeadDetalle(c) {
     btn.addEventListener("click", async () => {
       const elegidos = checks.filter((x) => x.checked).map((x) => Number(x.value));
       if (!elegidos.length) return;
-      if (!confirm(`¿Mandarle a ${nombre} ${elegidos.length === checks.length ? "la bienvenida completa" : `${elegidos.length} paso(s) de la bienvenida`}? Sale ahora mismo, en orden.`)) return;
+      if (!confirm(`¿Mandarle a ${nombre} ${elegidos.length === checks.length ? "la bienvenida completa" : `${elegidos.length} paso(s) de la bienvenida`}? Sale ahora mismo, en orden, y se le programa el seguimiento de interesados de ${tienda}.`)) return;
       const aviso = $("#bienvenida-estado");
       btn.disabled = true;
       aviso.textContent = "Mandando…";
@@ -7695,6 +7714,7 @@ async function pintarLeadDetalle(c) {
           body: JSON.stringify({ conversation_id: c.conversation_id, step_ids: elegidos.length === checks.length ? undefined : elegidos })
         });
         aviso.textContent = `Listo — ${pasos_mandados} paso(s) mandado(s) ✓`;
+        await actualizarSeguimientosDetalle();
         programarSync(0);
       } catch (err) {
         aviso.textContent = err.message;
@@ -7706,9 +7726,9 @@ async function pintarLeadDetalle(c) {
   $("#detalle-config-bienvenida")?.addEventListener("click", () => $("#btn-abrir-bienvenida").click());
 
   if (!contL) return; // "Seguimiento para leads" es solo admin
-  const seq = secuenciaDeLeads(d);
+  const seq = secuenciaDeLeads(d, c);
   if (!seq || !seq.steps.length) {
-    contL.innerHTML = `<div class="sin-ad">${esAdmin ? "Todavía no configuraste el seguimiento para interesados." : "El admin todavía no configuró el seguimiento para interesados."}</div>`
+    contL.innerHTML = `<div class="sin-ad">${esAdmin ? `${escapar(tienda)} todavía no tiene seguimiento para interesados (se le asigna en Productos y números).` : "El admin todavía no configuró el seguimiento para interesados de esta tienda."}</div>`
       + (esAdmin ? `<button class="cancelar lead-config" id="detalle-config-leads" type="button">${icon("pencil")} Configurar</button>` : "");
   } else {
     let acum = 0;

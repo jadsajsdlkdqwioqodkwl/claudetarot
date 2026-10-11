@@ -7,10 +7,12 @@
  * bienvenida automática (escribieron por otro lado, o antes de armarla).
  *
  * No cancela los seguimientos programados: la bienvenida es parte del
- * mismo embudo que el seguimiento para leads, no una respuesta a mano.
+ * mismo embudo que el seguimiento para leads, no una respuesta a mano. Y siempre que sale,
+ * programa también el seguimiento de interesados de la tienda del chat (crm-interesados.js).
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
+import { programarSeguimientoDeInteresados } from "../../lib/crm-interesados.js";
 import { mandarSecuenciaBienvenida } from "../../lib/crm-welcome-sequence.js";
 
 const json = (data, status = 200) =>
@@ -49,7 +51,9 @@ async function post({ request, env, agent }) {
   try {
     const cantidad = await mandarSecuenciaBienvenida(env, conv.id, conv.wa_id, agent?.displayName || agent?.username || null, stepIds);
     if (!cantidad) return json({ error: "Todavía no hay pasos de bienvenida armados." }, 400);
-    return json({ ok: true, pasos_mandados: cantidad });
+    // Siempre que sale la bienvenida sale también el seguimiento de interesados de su tienda.
+    const seguimiento = await programarSeguimientoDeInteresados(env, conv.id).catch((err) => (console.error("Seguimiento tras la bienvenida:", err.message), 0));
+    return json({ ok: true, pasos_mandados: cantidad, seguimiento_pasos: seguimiento });
   } catch (err) {
     return json({ error: `WhatsApp rechazó el envío: ${err.message}` }, 502);
   }

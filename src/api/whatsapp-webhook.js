@@ -24,7 +24,6 @@ import {
   registrarReaccionCliente,
   obtenerAjuste,
   guardarAjuste,
-  programarSecuenciaSeguimiento,
   registrarEventoCapi,
   agregarEtiquetaMeta,
   guardarAnuncioDelContacto,
@@ -32,6 +31,7 @@ import {
 } from "../lib/crm-db.js";
 import { reportarEventoMeta } from "../lib/meta-capi.js";
 import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
+import { programarSeguimientoDeInteresados } from "../lib/crm-interesados.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
@@ -147,7 +147,9 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
   if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
   try {
     if (!(await bienvenidaPermitida(env, conversacion))) return;
-    await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
+    const mandados = await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
+    // Siempre que sale la bienvenida sale también el seguimiento de interesados de su tienda (aunque el automático esté apagado).
+    if (mandados) await programarSeguimientoDeInteresados(env, conversacion.id);
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
   }
@@ -165,16 +167,9 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
 async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral) {
   if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
   try {
-    const [general, auto, producto] = await Promise.all([
-      obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
-      obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
-      productoPorId(env.CRM_DB, conversacion.producto_id)
-    ]);
-    // El producto trae su propia secuencia; sin producto, la general (solo
-    // en la línea principal: la general es de Tarot Store).
-    const sequenceId = producto?.secuencia_id || (conversacion.linea_id ? null : general);
-    if (!sequenceId || auto === "0") return;
-    await programarSecuenciaSeguimiento(env.CRM_DB, conversacion.id, Number(sequenceId), ORIGEN_SEGUIMIENTO_AUTO);
+    if ((await obtenerAjuste(env.CRM_DB, "ad_followup_auto")) === "0") return;
+    // La misma secuencia que sale tras la bienvenida; reemplaza la ya programada, no se duplica.
+    await programarSeguimientoDeInteresados(env, conversacion.id);
   } catch (err) {
     console.error("Seguimiento automático de anuncio:", err.message);
   }

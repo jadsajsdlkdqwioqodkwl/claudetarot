@@ -48,7 +48,8 @@ async function post({ request, env, agent }) {
   // así nuestros mensajes la cancelan — y reemplaza a la que ya hubiera
   // pendiente en ese chat en vez de duplicarse.
   const secuenciaLeads = Number(await obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id")) || null;
-  const esLead = sequenceId === secuenciaLeads;
+  // La general o la de algún producto/tienda: es un seguimiento de interesados (se cancela si el cliente escribe).
+  const esLead = sequenceId === secuenciaLeads || Boolean(await env.CRM_DB.prepare("SELECT 1 FROM productos WHERE secuencia_id = ? LIMIT 1").bind(sequenceId).first());
   const createdBy = esLead ? origenSeguimientoLead(nombre) : nombre;
   let pasosProgramados = 0;
   for (const conv of existentes) {
