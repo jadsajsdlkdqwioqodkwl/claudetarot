@@ -193,6 +193,9 @@ button { font-family: inherit; touch-action: manipulation; }
 
 .conv-item { display: flex; gap: 10px; padding: 12px 14px 12px 17px; border-bottom: 1px solid var(--borde); cursor: pointer; position: relative; border-left: 3px solid transparent; }
 .conv-item:hover { background: #f5f6f6; }
+.conv-item[data-marca="uro"] { background: #fdeef3; }
+.conv-item[data-marca="uro"]:hover { background: #fbe3ec; }
+.conv-item[data-marca="uro"].activo { background: #f6d3e0; }
 .conv-item.activo { background: #e9edef; border-left-color: var(--verde-osc); }
 .conv-item .conv-check { display: none; width: 20px; height: 20px; flex-shrink: 0; align-self: center; accent-color: var(--verde); }
 body.modo-seleccion .conv-item .conv-check { display: block; }
@@ -518,6 +521,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .msg-fila.pendiente .hora { font-style: italic; }
 .emoji-barra { margin: -6px 0 10px; }
 .emoji-toggle { border: 0; background: transparent; color: var(--gris); font-size: 12px; font-family: inherit; cursor: pointer; padding: 4px 6px; border-radius: var(--radio-s); display: inline-flex; align-items: center; gap: 4px; }
+.fmt-botones { display: inline-flex; gap: 2px; margin-left: 4px; }
+.fmt-botones .emoji-toggle { padding: 4px 5px; }
+.emoji-barra.abierta .fmt-botones .emoji-toggle { background: transparent; color: var(--gris); }
 .emoji-toggle:hover, .emoji-barra.abierta .emoji-toggle { background: var(--fondo); color: var(--texto); }
 .emoji-toggle .icono-svg { width: 15px; height: 15px; }
 .emoji-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 2px; margin-top: 4px; padding: 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); max-height: 140px; overflow-y: auto; }

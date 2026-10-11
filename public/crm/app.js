@@ -1795,6 +1795,7 @@ function pintarLista() {
     // El color del producto marca el chat en la bandeja.
     const colorProd = productoDe(c.producto_id)?.color || COLOR_MARCA[marcaDeChat(c)];
     div.style.boxShadow = `inset 4px 0 0 ${colorProd}`;
+    div.dataset.marca = marcaDeChat(c);
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
     const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
@@ -4810,10 +4811,16 @@ function agregarEmojisA(el) {
   el.dataset.conEmojis = "1";
   const barra = document.createElement("div");
   barra.className = "emoji-barra";
+  // Junto a Emojis, los caracteres especiales de WhatsApp: negrita, cursiva, tachado y monoespaciado.
   barra.innerHTML = `<button type="button" class="emoji-toggle">${icon("smile")} Emojis</button>
+    <span class="fmt-botones">${Object.entries(FORMATOS).map(([k, [, t]]) => `<button type="button" class="emoji-toggle" data-f="${k}" title="${t}">${icon(k)}</button>`).join("")}</span>
     <div class="emoji-grid">${EMOJIS.map((em) => `<button type="button">${em}</button>`).join("")}</div>`;
   el.after(barra);
   barra.querySelector(".emoji-toggle").addEventListener("click", () => barra.classList.toggle("abierta"));
+  barra.querySelectorAll("[data-f]").forEach((b) => {
+    b.addEventListener("mousedown", (e) => e.preventDefault()); // no le saca el foco al texto
+    b.addEventListener("click", () => aplicarFormato(el, FORMATOS[b.dataset.f][0]));
+  });
   const grid = barra.querySelector(".emoji-grid");
   // Sin esto, tocar un emoji le saca el foco al campo y en el celular se
   // cierra y vuelve a abrir el teclado con cada uno.
