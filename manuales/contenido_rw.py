@@ -176,10 +176,11 @@ PAGES[4] = dict(size=9.96, html=
     p("Antes de leer los significados en este manual, mira la imagen de la carta. Fíjate en los colores y qué te hace sentir. Tu intuición es el primer mensaje.") +
     p("Tu mazo trae ayudas impresas en cada carta: palabras clave, número, chakra, planeta, signo y Sí/No. En las páginas 28 a 30 te explicamos cómo usarlas."))
 
-PAGES[5] = dict(size=9.96, html=
+PAGES[5] = dict(size=8.52, cls="g", html=
     h("5. LOS ARCANOS MAYORES (Primeras 22 Cartas)") +
     p("Representan los grandes hitos del destino y las lecciones espirituales profundas que tu alma debe aprender en esta vida. Son la energía \"macro\" de la lectura, marcando eventos inevitables o cambios a largo plazo.") +
-    p("<b>Tip de lectura:</b> Puedes barajar y consultar usando solo estas 22 cartas. Es el método más recomendado para principiantes cuando buscan respuestas sobre su propósito, lecciones de vida o situaciones que cambian el rumbo de su destino."))
+    p("<b>Tip de lectura:</b> Puedes barajar y consultar usando solo estas 22 cartas. Es el método más recomendado para principiantes cuando buscan respuestas sobre su propósito, lecciones de vida o situaciones que cambian el rumbo de su destino.") +
+    p("<b>Lee el conjunto antes que cada carta:</b> muchos arcanos mayores = el tema es de destino, no de detalles. Muchas cartas de un mismo palo = ese es el verdadero tema. Varias figuras = hay más personas involucradas. Varias invertidas = el bloqueo está dentro de ti."))
 
 # páginas 6..27: cartas
 pg = 6; buf = []
@@ -196,14 +197,14 @@ assert pg == 28, pg
 
 PAGES[28] = dict(cls="g", size=8.52, html=
     h("QUÉ TRAE CADA CARTA DE TU MAZO") +
-    p("<b>Palabras clave (abajo):</b> el significado resumido. Léelas primero; si ninguna encaja con tu pregunta, usa esta guía.") +
-    p("<b>Palabras al revés (arriba):</b> el significado cuando la carta sale invertida. Gira la carta para leerlas.") +
+    p("<b>Palabras clave (abajo):</b> el significado resumido. Léelas primero. El significado largo está en el folleto del mazo y el \"Tip visual\" en esta guía.") +
+    p("<b>Palabras al revés (arriba):</b> el significado si la carta sale invertida. Gira la carta.") +
     p("<b>Número grande:</b> su numerología (pág. 29).") +
     p("<b>Símbolo de color:</b> el chakra que activa (pág. 30).") +
     p("<b>Símbolos negros:</b> planeta y signo zodiacal (pág. 30).") +
-    p("<b>Sí / No / Quizás:</b> la respuesta rápida de la carta (pág. 31).") +
-    p("<b>Franja lateral:</b> una afirmación. Léela en voz alta al cerrar la lectura.") +
-    p("<b>Fondo:</b> el elemento de la carta: fuego, agua, aire o tierra."))
+    p("<b>Sí / No / El Quizá:</b> la respuesta rápida de la carta (pág. 31).") +
+    p("<b>Franja lateral:</b> afirmación. Léela en voz alta al cerrar.") +
+    p("<b>Fondo:</b> el elemento: fuego, agua, aire o tierra (pág. 30)."))
 
 PAGES[29] = dict(cls="g", size=8.52, html=
     h("NUMEROLOGÍA: EL NÚMERO DE LA CARTA") +
@@ -221,9 +222,9 @@ PAGES[30] = dict(cls="g", size=8.04, html=
 
 PAGES[31] = dict(cls="g", size=8.04, html=
     h("TIRADAS SIMPLES") +
-    p("<b>Sí / No (1 carta):</b> piensa la pregunta, baraja y saca una carta. Lee la palabra impresa: Sí, No o Quizás. \"Quizás\" = depende de ti; saca otra carta para ver de qué.") +
+    p("<b>Sí / No (1 carta):</b> piensa la pregunta, baraja y saca una carta. Lee la palabra impresa: Sí, No o El Quizá. \"El Quizá\" = depende de ti; saca otra carta para ver de qué.") +
     p("<b>Carta del día (1 carta):</b> cada mañana, \"¿qué energía me acompaña hoy?\". Lee sus palabras clave y repite su afirmación.") +
     p("<b>Cruz (5 cartas):</b> 1 (centro) la situación; 2 (izquierda) lo que te frena; 3 (arriba) el consejo; 4 (abajo) la raíz, lo que no ves; 5 (derecha) el resultado probable.") +
     p("<b>Amor (5 cartas):</b> 1 tú; 2 la otra persona; 3 lo que los une; 4 lo que los separa; 5 hacia dónde va.") +
-    p("<b>Trabajo (3 cartas):</b> 1 mi situación; 2 lo que debo cambiar; 3 resultado en tres meses.") +
-    p("<b>Consejos:</b> pregunta una sola vez. Mira primero qué palo, número o chakra se repite y luego carta por carta. Las cartas \"feas\" avisan, no condenan."))
+    p("<b>Trabajo (3 cartas):</b> 1 mi situación; 2 lo que debo cambiar; 3 resultado en tres meses. Cuando domines estas, pasa a las tiradas de 7 cartas del folleto (Herradura y Pájaro Volador).") +
+    p("<b>Consejo:</b> pregunta una sola vez. Las cartas \"feas\" avisan, no condenan."))
