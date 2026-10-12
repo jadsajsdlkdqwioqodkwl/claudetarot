@@ -40,14 +40,16 @@ export async function acomodarAlHorario(env) {
     const envio = new Date(s.send_at.includes("T") ? s.send_at : s.send_at.replace(" ", "T") + "Z").getTime();
     if (Number.isNaN(envio)) continue;
     // El rescate del día 7 (gratis solo dentro de los 7 días del anuncio): si cae de madrugada se adelanta
-    // a las 23:29, nunca se corre a las 06:00 si eso lo saca de la ventana.
-    const vence = s.template_name && s.created_by?.endsWith("Automático (día 7)")
+    // a las 23:29, nunca se corre a las 06:00 si eso lo saca de la ventana; si no hay hora de día, sale de madrugada.
+    const dia7 = s.template_name && s.created_by?.endsWith("Automático (día 7)");
+    const vence = dia7
       ? new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000
       : s.template_name || !s.last_inbound_at
       ? null
       : new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;
     const nuevo = ajustarAlHorario(Math.max(envio, ahora), vence, ahora, env.HORARIO_ENVIO);
     if (nuevo === null) {
+      if (dia7) continue;
       cambios.push(env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'").bind(s.id));
     } else if (nuevo !== Math.max(envio, ahora)) {
       cambios.push(env.CRM_DB.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ? AND status = 'pendiente'").bind(new Date(nuevo).toISOString(), s.id));

@@ -4,7 +4,7 @@
  *
  * 1. rescate7Dias (cron de 15 min, y al prender el interruptor en Herramientas): a TODO contacto que no
  *    compró y aún está dentro de la ventana gratis de 7 días del anuncio, se le AGENDA el rescate para el
- *    final de esa ventana (día 6,5 desde el inicio del chat, para que salga adentro y no pase de los
+ *    final de esa ventana (día 6 + 18 h desde el inicio del chat, para que salga adentro y no pase de los
  *    7 días), sin excepción: sin importar si respondió, si le escribimos o qué más pasó. Las únicas salidas:
  *    chat bloqueado, killswitch del chat (`pausa_auto`), o que ya se haya programado antes (aunque lo hayan
  *    cancelado). Si compra antes de que salga, el cron de envío lo cancela (crm-cron.js).
@@ -20,7 +20,7 @@ import { primerNombre } from "./plantillas.js";
 import { listarProductos } from "./productos.js";
 
 export const ORIGEN_DIA7 = "Automático (día 7)";
-const HORAS_HASTA_RESCATE = 6.5 * 24; // día 6,5: 12 h de margen para que ni la madrugada lo saque de los 7 días
+const HORAS_HASTA_RESCATE = 6 * 24 + 18; // dentro de la ventana de 7 días, con 6 h de margen
 const nombrePaso = (marca, n) => `${marca === "uro" ? "uro_" : ""}rescate_lead_${n}`;
 
 function filaDePaso(db, c, marca, n, sendAt, quien, productos) {
