@@ -51,6 +51,7 @@ body{font-family:Aptos;color:#000}
 .txt .e img{float:left;width:%(imgw)spt;height:auto;margin:1pt %(imggap)spt 2pt %(imgml)spt}
 .txt.c4 .e img{width:30pt;margin-left:-3pt}
 .txt.c4 p{margin-bottom:4pt}
+.txt.g p{margin-bottom:4pt}
 .pn{position:absolute;left:0;right:0;top:254.6pt;text-align:center;font-size:11.04pt;line-height:1.2}
 .cover{position:absolute;left:%(coverx)spt;top:%(covery)spt;width:%(coverw)spt;height:%(coverh)spt;z-index:2}
 .lines{z-index:3}

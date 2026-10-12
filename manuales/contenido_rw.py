@@ -113,9 +113,41 @@ OROS = [
 ]
 
 
-def cards(lst, a, b):
-    return "".join(card(*c) for c in lst[a:b])
 
+# ---- Paginación: secuencia plana con cortes de página ("|") ----------------
+# Cartas a 4 por página (8,04 pt, miniaturas de 30 pt) para liberar las
+# páginas 26-31 para la guía del principiante.
+H = lambda t: ("h", t)
+P = lambda t: ("p", t)
+C = lambda lst, i: ("c", lst[i])
+BR = "|"
+
+SEQ = [
+    H("SIGNIFICADOS: ARCANOS MAYORES"), H("Fase 1: El Mundo Físico (0 al 7)"), C(MAYORES, 0), C(MAYORES, 1), C(MAYORES, 2), BR,
+    C(MAYORES, 3), C(MAYORES, 4), C(MAYORES, 5), C(MAYORES, 6), BR,
+    C(MAYORES, 7), H("Fase 2: El Mundo Interno (8 al 14)"), C(MAYORES, 8), C(MAYORES, 9), BR,
+    C(MAYORES, 10), C(MAYORES, 11), C(MAYORES, 12), C(MAYORES, 13), BR,
+    C(MAYORES, 14), H("Fase 3: El Mundo Espiritual (15 al 21)"), C(MAYORES, 15), C(MAYORES, 16), BR,
+    C(MAYORES, 17), C(MAYORES, 18), C(MAYORES, 19), C(MAYORES, 20), BR,
+    C(MAYORES, 21), H("ARCANOS MENORES (56 Cartas)"),
+    P("Hablan del día a día: las personas que te rodean y las situaciones que puedes cambiar con tus decisiones. Cada palo tiene 10 números y 4 figuras (Sota, Caballero, Reina y Rey)."),
+    H("BASTOS (Acción y Fuego)"), C(BASTOS, 0), BR,
+    C(BASTOS, 1), C(BASTOS, 2), C(BASTOS, 3), C(BASTOS, 4), BR,
+    C(BASTOS, 5), C(BASTOS, 6), C(BASTOS, 7), C(BASTOS, 8), BR,
+    C(BASTOS, 9), C(BASTOS, 10), C(BASTOS, 11), C(BASTOS, 12), BR,
+    C(BASTOS, 13), H("COPAS (Emociones y Agua)"), C(COPAS, 0), C(COPAS, 1), BR,
+    C(COPAS, 2), C(COPAS, 3), C(COPAS, 4), C(COPAS, 5), BR,
+    C(COPAS, 6), C(COPAS, 7), C(COPAS, 8), C(COPAS, 9), BR,
+    C(COPAS, 10), C(COPAS, 11), C(COPAS, 12), C(COPAS, 13), BR,
+    H("ESPADAS (Mente y Aire)"), C(ESPADAS, 0), C(ESPADAS, 1), C(ESPADAS, 2), BR,
+    C(ESPADAS, 3), C(ESPADAS, 4), C(ESPADAS, 5), C(ESPADAS, 6), BR,
+    C(ESPADAS, 7), C(ESPADAS, 8), C(ESPADAS, 9), C(ESPADAS, 10), BR,
+    C(ESPADAS, 11), C(ESPADAS, 12), C(ESPADAS, 13), H("OROS (Lo Material y Tierra)"), C(OROS, 0), BR,
+    C(OROS, 1), C(OROS, 2), C(OROS, 3), C(OROS, 4), BR,
+    C(OROS, 5), C(OROS, 6), C(OROS, 7), BR,
+    C(OROS, 8), C(OROS, 9), C(OROS, 10), BR,
+    C(OROS, 11), C(OROS, 12), C(OROS, 13),
+]
 
 PAGES = {}
 
@@ -135,46 +167,63 @@ PAGES[3] = dict(size=9.96, html=
     p("<b>Tirada Clásica (3 cartas):</b> Ideal para ver la evolución de cualquier tema.") +
     p("Carta 1 (Izquierda): Pasado (Origen del problema).") +
     p("Carta 2 (Centro): Presente (La energía actual).") +
-    p("Carta 3 (Derecha): Futuro (Dirección)."))
+    p("Carta 3 (Derecha): Futuro (Dirección).") +
+    p("Más tiradas en la página 31."))
 
 PAGES[4] = dict(size=9.96, html=
-    p("Si la carta sale invertida <b>(Inv)</b> puedes revisar su significado inverso en la guía.") +
+    p("Si la carta sale invertida <b>(Inv)</b> lee las palabras clave que vienen al revés en la parte de arriba de la carta, o el \"Inv\" de esta guía.") +
     h("4. Interpretación") +
     p("Antes de leer los significados en este manual, mira la imagen de la carta. Fíjate en los colores y qué te hace sentir. Tu intuición es el primer mensaje.") +
-    h("5. LOS ARCANOS MAYORES (Primeras 22 Cartas)") +
-    p("Representan los grandes hitos del destino y las lecciones espirituales profundas que tu alma debe aprender en esta vida."))
+    p("Tu mazo trae ayudas impresas en cada carta: palabras clave, número, chakra, planeta, signo y Sí/No. En las páginas 28 a 30 te explicamos cómo usarlas."))
 
 PAGES[5] = dict(size=9.96, html=
-    p("Son la energía \"macro\" de la lectura, marcando eventos inevitables o cambios a largo plazo.") +
+    h("5. LOS ARCANOS MAYORES (Primeras 22 Cartas)") +
+    p("Representan los grandes hitos del destino y las lecciones espirituales profundas que tu alma debe aprender en esta vida. Son la energía \"macro\" de la lectura, marcando eventos inevitables o cambios a largo plazo.") +
     p("<b>Tip de lectura:</b> Puedes barajar y consultar usando solo estas 22 cartas. Es el método más recomendado para principiantes cuando buscan respuestas sobre su propósito, lecciones de vida o situaciones que cambian el rumbo de su destino."))
 
-PAGES[6] = dict(size=9, html=h("SIGNIFICADOS: ARCANOS MAYORES") + h("El Inicio del Viaje:") + cards(MAYORES, 0, 1) + h("Fase 1: El Mundo Físico (1 al 7)") + cards(MAYORES, 1, 2))
-PAGES[7] = dict(size=9, html=cards(MAYORES, 2, 5))
-PAGES[8] = dict(size=9, html=cards(MAYORES, 5, 8))
-PAGES[9] = dict(size=8.52, html=h("Fase 2: El Mundo Interno (8 al 14)") + cards(MAYORES, 8, 11))
-PAGES[10] = dict(size=9, html=cards(MAYORES, 11, 14))
-PAGES[11] = dict(size=9.48, html=cards(MAYORES, 14, 15) + h("Fase 3: El Mundo Espiritual (15-21)") + cards(MAYORES, 15, 16))
-PAGES[12] = dict(size=9, html=cards(MAYORES, 16, 19))
-PAGES[13] = dict(size=9.48, html=cards(MAYORES, 19, 22))
+# páginas 6..27: cartas
+pg = 6; buf = []
+for it in SEQ + [BR]:
+    if it == BR:
+        PAGES[pg] = dict(size=8.04, cls="c4", html="".join(buf)); pg += 1; buf = []
+    elif it[0] == "h":
+        buf.append(h(it[1]))
+    elif it[0] == "p":
+        buf.append(p(it[1]))
+    else:
+        buf.append(card(*it[1]))
+assert pg == 28, pg
 
-PAGES[14] = dict(size=8.52, html=
-    h("ARCANOS MENORES (56 Cartas)") +
-    p("Las 56 cartas restantes se enfocan en los detalles del día a día, las personas que te rodean y las situaciones temporales que puedes cambiar con tus decisiones. Se les conoce como arcanos menores.") +
-    h("BASTOS (Acción y Fuego)") + cards(BASTOS, 0, 2))
-PAGES[15] = dict(size=9, html=cards(BASTOS, 2, 5))
-PAGES[16] = dict(size=9, html=cards(BASTOS, 5, 8))
-PAGES[17] = dict(size=9, html=cards(BASTOS, 8, 11))
-PAGES[18] = dict(size=9, html=cards(BASTOS, 11, 14))
-PAGES[19] = dict(size=9, html=h("COPAS (Emociones y Agua)") + cards(COPAS, 0, 3))
-PAGES[20] = dict(size=9, html=cards(COPAS, 3, 6))
-PAGES[21] = dict(size=9, html=cards(COPAS, 6, 9))
-PAGES[22] = dict(size=9, html=cards(COPAS, 9, 12))
-PAGES[23] = dict(size=9, html=cards(COPAS, 12, 14) + h("ESPADAS (Mente y Aire)") + cards(ESPADAS, 0, 1))
-PAGES[24] = dict(size=9, html=cards(ESPADAS, 1, 4))
-PAGES[25] = dict(size=9, html=cards(ESPADAS, 4, 7))
-PAGES[26] = dict(size=9, html=cards(ESPADAS, 7, 10))
-PAGES[27] = dict(size=9, html=cards(ESPADAS, 10, 13))
-PAGES[28] = dict(size=9, html=cards(ESPADAS, 13, 14) + h("OROS (Lo Material y Tierra)") + cards(OROS, 0, 2))
-PAGES[29] = dict(size=8.04, cls="c4", html=cards(OROS, 2, 6))
-PAGES[30] = dict(size=8.04, cls="c4", html=cards(OROS, 6, 10))
-PAGES[31] = dict(size=8.04, cls="c4", html=cards(OROS, 10, 14))
+PAGES[28] = dict(cls="g", size=8.52, html=
+    h("QUÉ TRAE CADA CARTA DE TU MAZO") +
+    p("<b>Palabras clave (abajo):</b> el significado resumido. Léelas primero; si ninguna encaja con tu pregunta, usa esta guía.") +
+    p("<b>Palabras al revés (arriba):</b> el significado cuando la carta sale invertida. Gira la carta para leerlas.") +
+    p("<b>Número grande:</b> su numerología (pág. 29).") +
+    p("<b>Símbolo de color:</b> el chakra que activa (pág. 30).") +
+    p("<b>Símbolos negros:</b> planeta y signo zodiacal (pág. 30).") +
+    p("<b>Sí / No / Quizás:</b> la respuesta rápida de la carta (pág. 31).") +
+    p("<b>Franja lateral:</b> una afirmación. Léela en voz alta al cerrar la lectura.") +
+    p("<b>Fondo:</b> el elemento de la carta: fuego, agua, aire o tierra."))
+
+PAGES[29] = dict(cls="g", size=8.52, html=
+    h("NUMEROLOGÍA: EL NÚMERO DE LA CARTA") +
+    p("El número dice en qué etapa está el tema; el palo o el arcano dice de qué trata.") +
+    p("<b>1 / As:</b> inicio, semilla. <b>2:</b> unión, decisión. <b>3:</b> crecimiento, creatividad. <b>4:</b> estabilidad, base. <b>5:</b> cambio, conflicto. <b>6:</b> armonía, ayuda. <b>7:</b> reflexión, prueba. <b>8:</b> poder, movimiento. <b>9:</b> culminación. <b>10:</b> cierre de ciclo y nuevo comienzo.") +
+    p("<b>Arcanos mayores (11 al 21):</b> suma los dígitos: 14 = 1 + 4 = 5 (cambio). <b>0 El Loco:</b> potencial puro.") +
+    p("<b>Figuras:</b> personas o actitudes. Sota = aprender, noticia. Caballero = actuar, movimiento. Reina = sentir, cuidar. Rey = dominar, decidir.") +
+    p("<b>Truco:</b> un número repetido en la tirada es el mensaje central."))
+
+PAGES[30] = dict(cls="g", size=8.04, html=
+    h("CHAKRAS, PLANETAS Y SIGNOS") +
+    p("<b>Chakra (símbolo de color):</b> dónde te toca la carta. Raíz (rojo): seguridad, dinero, hogar. Sacro (naranja): placer, creatividad. Plexo solar (amarillo): voluntad, confianza. Corazón (verde): amor, perdón. Garganta (azul): comunicación. Tercer ojo (índigo): intuición. Corona (violeta): espiritualidad, propósito. Chakra repetido en la tirada = ahí está el tema.") +
+    p("<b>Planeta:</b> la energía. Sol: vitalidad, éxito. Luna: emociones. Mercurio: comunicación. Venus: amor. Marte: acción, conflicto. Júpiter: expansión, suerte. Saturno: límites, disciplina. Urano: cambio brusco. Neptuno: sueños, ilusión. Plutón: transformación.") +
+    p("<b>Signo y elemento:</b> el ritmo. Fuego (Aries, Leo, Sagitario) = Bastos, rápido. Agua (Cáncer, Escorpio, Piscis) = Copas, hay que sentir. Aire (Géminis, Libra, Acuario) = Espadas, hay que hablar. Tierra (Tauro, Virgo, Capricornio) = Oros, lento pero firme."))
+
+PAGES[31] = dict(cls="g", size=8.04, html=
+    h("TIRADAS SIMPLES") +
+    p("<b>Sí / No (1 carta):</b> piensa la pregunta, baraja y saca una carta. Lee la palabra impresa: Sí, No o Quizás. \"Quizás\" = depende de ti; saca otra carta para ver de qué.") +
+    p("<b>Carta del día (1 carta):</b> cada mañana, \"¿qué energía me acompaña hoy?\". Lee sus palabras clave y repite su afirmación.") +
+    p("<b>Cruz (5 cartas):</b> 1 (centro) la situación; 2 (izquierda) lo que te frena; 3 (arriba) el consejo; 4 (abajo) la raíz, lo que no ves; 5 (derecha) el resultado probable.") +
+    p("<b>Amor (5 cartas):</b> 1 tú; 2 la otra persona; 3 lo que los une; 4 lo que los separa; 5 hacia dónde va.") +
+    p("<b>Trabajo (3 cartas):</b> 1 mi situación; 2 lo que debo cambiar; 3 resultado en tres meses.") +
+    p("<b>Consejos:</b> pregunta una sola vez. Mira primero qué palo, número o chakra se repite y luego carta por carta. Las cartas \"feas\" avisan, no condenan."))
