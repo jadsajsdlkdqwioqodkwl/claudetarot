@@ -30,7 +30,7 @@ const SIN_SUBIR = { subirEnBandeja: false };
  */
 export async function acomodarAlHorario(env) {
   const { results } = await env.CRM_DB.prepare(
-    `SELECT s.id, s.send_at, s.template_name, conv.last_inbound_at
+    `SELECT s.id, s.send_at, s.template_name, s.created_by, conv.last_inbound_at, conv.created_at AS conv_creado
      FROM scheduled_messages s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.status = 'pendiente' ORDER BY s.send_at ASC LIMIT 500`
   ).all();
@@ -39,7 +39,11 @@ export async function acomodarAlHorario(env) {
   for (const s of results) {
     const envio = new Date(s.send_at.includes("T") ? s.send_at : s.send_at.replace(" ", "T") + "Z").getTime();
     if (Number.isNaN(envio)) continue;
-    const vence = s.template_name || !s.last_inbound_at
+    // El rescate del día 7 (gratis solo dentro de los 7 días del anuncio): si cae de madrugada se adelanta
+    // a las 23:29, nunca se corre a las 06:00 si eso lo saca de la ventana.
+    const vence = s.template_name && s.created_by?.endsWith("Automático (día 7)")
+      ? new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000
+      : s.template_name || !s.last_inbound_at
       ? null
       : new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;
     const nuevo = ajustarAlHorario(Math.max(envio, ahora), vence, ahora, env.HORARIO_ENVIO);
