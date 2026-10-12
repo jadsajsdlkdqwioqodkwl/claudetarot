@@ -34,9 +34,15 @@
         <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
         <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
         <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp</div>
+        <div class="ayuda" id="ayuda-reenvio" style="display:none">
+          Recuerda mandar un mensaje a la cuenta
+          <a href="https://wa.me/51927066862?text=Hola" target="_blank" rel="noopener">927 066 862</a>
+          para que el código te llegue.
+        </div>
       </div>
 
       <button type="submit" id="btn-login">Entrar</button>
+      <button type="button" id="btn-reenviar" class="link-secundario" style="display:none">Reenviar código</button>
       <button type="button" id="link-olvide" class="link-secundario" style="display:none">¿Olvidaste tu contraseña?</button>
     </form>
 
@@ -109,6 +115,7 @@
       <button data-etiqueta="lead">Interés</button>
       <button data-etiqueta="purchase">Compra</button>
       <button id="btn-filtro-olva" type="button" title="Chats marcados como envío por Olva">Olva</button>
+      <button id="btn-filtro-sinresp" type="button" title="Chats donde el cliente escribió y nadie le respondió"></button>
       <button id="btn-filtro-ocultos" type="button" title="Chats ocultos y contactos bloqueados">Ocultos</button>
       <button id="btn-seleccionar-chats" title="Elegir varios chats para aplicarles una secuencia" style="display:none">Seleccionar</button>
     </div>

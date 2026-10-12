@@ -79,6 +79,14 @@
    rescate no arregla. Tope: 15 por envío y 30 por día; el Worker rechaza lo que
    no cumple (ya compró, bloqueado, killswitch del chat, ya recibió el rescate 1).
 
+11. **Sin responder (reflote):** los chats con "SIN RESPONDER" en `preparar.py`
+   (el último mensaje es del cliente) también salen en CRM → filtro «Sin responder».
+   De ellos, reflota SOLO los urgentes **de venta** (preguntó precio, pidió
+   datos de envío, mandó pago o captura, quiere comprar, duda por resolver);
+   ignora los que no son venta (saludos, soporte ajeno, spam). Va como
+   `mensajes` normal a ✨ Sugerencias (regla 3: una persona aprueba), con lo que
+   el cliente preguntó respondido, no un "¿sigue interesad@?".
+
 Más detalle: `docs/asesor.md`.
 
 ## Si vas a hacer anuncios / creativos

@@ -156,7 +156,8 @@ def main():
         if meta[wa]["promesas"]:
             aviso = ("📦 PROMETIDO (va en `empaque` si compra o ya compró; el que empaca no lo ve si no):\n"
                      + "\n".join(f"   📦 {p}" for p in meta[wa]["promesas"]) + "\n")
-        elegidos.append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n{aviso}" + "\n".join(lineas))
+        sin_resp = " | SIN RESPONDER" if meta[wa]["ultimo"] == "cliente" else ""
+        elegidos.append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{sin_resp}{extra}\n{aviso}" + "\n".join(lineas))
 
     os.makedirs(a.salida, exist_ok=True)
     for f in os.listdir(a.salida):

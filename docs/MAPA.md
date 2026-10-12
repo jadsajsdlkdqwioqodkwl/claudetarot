@@ -92,6 +92,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-12 · Login del CRM: botón «Reenviar código» (vuelve a pedir el código con el usuario y contraseña ya escritos, solo en memoria) y aviso con link `wa.me/51927066862` («recuerda mandar un mensaje a la cuenta 927 066 862»; el código por WhatsApp solo llega dentro de las 24 h). Filtro «Sin responder» en la lista de chats (`GET /api/crm/conversations?sinresp=1`: el último mensaje es del cliente). `preparar.py` marca esos chats con «SIN RESPONDER» y CLAUDE.md regla 11: el asesor reflota solo los urgentes de venta, como sugerencia (sin envío automático).
+
 - 2026-10-11 · Botones de respuesta (hasta 3, 20 caracteres) en mensajes de texto: al escribir un mensaje (clip → «Botones de respuesta»), en las respuestas rápidas y en sus pasos de seguimiento, y en los seguimientos programados a mano. Salen como mensaje interactivo por `mandarTexto` (misma pausa «escribiendo…»), solo con texto y dentro de las 24 h. Columnas `quick_replies.botones` y `scheduled_messages.botones` (migración `0050`; la de `scheduled_messages` ya existía en producción, la de `quick_replies` se aplicó el 2026-10-11). Iconos con color según lo que significan (estrella ámbar, reloj verde azulado, etc.; clase `ic-nombre` en `icons.js`, reglas al final de `style.css`).
 
 - 2026-10-10 · Seguimiento por plantilla (lápiz), pasos de plantilla en respuestas rápidas, vista previa estilo WhatsApp de las plantillas y galería de fotos del catálogo para todo el equipo (menú «⋯» y panel de catálogo del chat). Ojo D1: un patrón LIKE de más de 50 bytes falla (`LIKE or GLOB pattern too complex`); usar `instr(col, texto) = 1`.

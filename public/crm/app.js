@@ -36,6 +36,7 @@ const estado = {
   filtroEtiqueta: "",
   filtroOcultos: false,
   filtroOlva: false,
+  filtroSinResp: false,
   // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
   filtroProducto: "",
   filtroLinea: "",
@@ -146,6 +147,7 @@ function iconizar() {
   $("#btn-salir").innerHTML = icon("logout");
   $(".icono-buscar").innerHTML = icon("search");
   $("#btn-filtro-mias").innerHTML = icon("star") + " Mis chats";
+  $("#btn-filtro-sinresp").innerHTML = icon("clock") + " Sin responder";
   $("#vacio-icono").innerHTML = icon("chat");
 }
 iconizar();
@@ -206,6 +208,9 @@ function mostrarPasoCodigo(metodo2FA) {
     ? "Escribe el código de tu app authenticator"
     : "Te llegó un código de 6 dígitos por WhatsApp";
   $("#ayuda-2fa").style.display = "block";
+  const porWhatsapp = metodo2FA !== "totp";
+  $("#ayuda-reenvio").style.display = porWhatsapp ? "block" : "none";
+  $("#btn-reenviar").style.display = porWhatsapp ? "block" : "none";
   $("#btn-login").textContent = "Verificar código";
   $("#code").focus();
 }
@@ -260,6 +265,8 @@ $("#form-login").addEventListener("submit", async (e) => {
         body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
       });
       estado.login.challengeId = r.challenge_id;
+      // Guardadas solo en memoria, para poder reenviar el código sin volver a escribirlas.
+      estado.login.cred = { username: $("#username").value.trim(), password: $("#password").value };
       mostrarPasoCodigo(r.metodo2FA);
       return;
     }
@@ -270,6 +277,22 @@ $("#form-login").addEventListener("submit", async (e) => {
       body: JSON.stringify({ password: $("#password").value, code: $("#code").value })
     });
     mostrarApp();
+  } catch (err) {
+    $("#login-error").textContent = err.message;
+  }
+});
+
+$("#btn-reenviar").addEventListener("click", async () => {
+  $("#login-error").textContent = "";
+  try {
+    const r = await pedir("/api/crm/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(estado.login.cred)
+    });
+    estado.login.challengeId = r.challenge_id;
+    $("#code").value = "";
+    $("#login-error").textContent = "Código reenviado.";
   } catch (err) {
     $("#login-error").textContent = err.message;
   }
@@ -1602,6 +1625,7 @@ function sincronizar() {
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroOcultos) params.set("ocultos", "1");
   if (estado.filtroOlva) params.set("olva", "1");
+  if (estado.filtroSinResp) params.set("sinresp", "1");
   if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
   if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
@@ -2024,13 +2048,14 @@ function resaltarBusqueda(texto) {
 }
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroSinResp && estado.filtroProducto === "" && estado.filtroLinea === "");
   $("#filtro-producto").value = estado.filtroProducto;
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
   $("#filtro-linea").classList.toggle("activo", estado.filtroLinea !== "");
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-olva").classList.toggle("activo", estado.filtroOlva);
+  $("#btn-filtro-sinresp").classList.toggle("activo", estado.filtroSinResp);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
   $("#filtro-agente").value = estado.filtroAgente;
   $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
@@ -2051,6 +2076,7 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroEtiqueta = "";
     estado.filtroOcultos = false;
     estado.filtroOlva = false;
+    estado.filtroSinResp = false;
     estado.filtroProducto = "";
     estado.filtroLinea = "";
   }
@@ -2060,6 +2086,12 @@ $("#filtros").addEventListener("click", (e) => {
 
 $("#btn-filtro-olva").addEventListener("click", () => {
   estado.filtroOlva = !estado.filtroOlva;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#btn-filtro-sinresp").addEventListener("click", () => {
+  estado.filtroSinResp = !estado.filtroSinResp;
   pintarFiltros();
   cargarConversaciones();
 });

@@ -5,6 +5,7 @@
  * &agente=Nombre (las de esa asesora, dueña o compartiendo)
  * &etiqueta=contact|lead|purchase &q=texto &dias=N (0 = todo) &offset=N
  * &producto=<id> (0 = sin producto) &linea=<id> (0 = el número principal)
+ * &sinresp=1 (solo chats cuyo último mensaje es del cliente, sin responder)
  *
  * Búsqueda (&q): sin tildes ni mayúsculas, por palabras (todas tienen que
  * aparecer, cada una en cualquier lado): nombre, número (con o sin 51),
@@ -84,6 +85,7 @@ async function handler({ request, env, agent }) {
     else condiciones.push("conv.linea_id IS NULL");
   }
   if (url.searchParams.get("olva") === "1") condiciones.push("c.olva = 1"); // los chats marcados «Envío por Olva»
+  if (url.searchParams.get("sinresp") === "1") condiciones.push("lm.direction = 'in'"); // el último mensaje es del cliente: nadie le respondió
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
   // Cuántos traer: 200 por defecto; "Cargar más" en el CRM sube de a 200 (hasta 2000).
