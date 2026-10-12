@@ -237,12 +237,13 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
     `SELECT conv.last_inbound_at, conv.etapa,
        (SELECT COUNT(*) FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status = 'pendiente' AND s.batch_id IS NULL
           AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ?
-          AND COALESCE(s.created_by, '') <> ?) AS manuales
+          AND COALESCE(s.created_by, '') <> ? AND s.template_name IS NULL) AS manuales
      FROM conversations conv WHERE conv.id = ?`
   ).bind(`${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, ORIGEN_SEGUIMIENTO_AUTO, conversationId).first();
   if (!conv?.last_inbound_at) return;
-  // Una sola cadena por chat: si una persona ya dejó un seguimiento programado
+  // Una sola cadena de TEXTO por chat: si una persona ya dejó un seguimiento programado
   // a mano, manda el suyo y la respuesta rápida no agrega otra cadena encima.
+  // Las plantillas (rescate del día 7, planes) no cuentan: se apilan con la de texto.
   // Y a quien ya compró (etapa 5) no le sale un "si no responde".
   if (conv.manuales > 0 || conv.etapa >= 5) return;
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
@@ -453,6 +454,11 @@ export async function registrarEventoCapi(db, { conversationId, orderId = null, 
 
 /** Suma una etiqueta (contact / lead / purchase) al chat, sin repetirla. */
 export async function agregarEtiquetaMeta(db, conversationId, etiqueta) {
+  // Al marcar compra ya no se le rescata: se borra el rescate del día 7 pendiente (y el del asesor).
+  if (etiqueta === "purchase") {
+    await db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND template_name LIKE '%rescate_lead_%'")
+      .bind(conversationId).run();
+  }
   await db
     .prepare(
       `UPDATE conversations
