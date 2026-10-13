@@ -1,6 +1,7 @@
 /**
- * Rescate de lead con plantilla (planes-plantilla.js, plan "lead"). Siempre la plantilla `rescate_lead_1`
- * (`uro_rescate_lead_1` en URO):
+ * Rescate de lead con plantilla (planes-plantilla.js, plan "lead"). De fábrica la plantilla `rescate_lead_1`
+ * (`uro_rescate_lead_1` en URO); el admin elige otra para el día 7 en Herramientas (ajuste
+ * `rescate7_plantillas` = {"tarot": "nombre", "uro": "nombre"}, una por marca):
  *
  * 1. rescate7Dias (cron de 15 min, y al prender el interruptor en Herramientas): a TODO contacto que no
  *    compró y aún está dentro de la ventana gratis de 7 días del anuncio, se le AGENDA el rescate para el
@@ -23,8 +24,16 @@ export const ORIGEN_DIA7 = "Automático (día 7)";
 const HORAS_HASTA_RESCATE = 6 * 24 + 18; // dentro de la ventana de 7 días, con 6 h de margen
 const nombrePaso = (marca, n) => `${marca === "uro" ? "uro_" : ""}rescate_lead_${n}`;
 
-function filaDePaso(db, c, marca, n, sendAt, quien, productos) {
+function filaDePaso(db, c, marca, n, sendAt, quien, productos, elegida = null) {
   const plan = planesDe(marca).lead;
+  // Plantilla elegida por el admin (no la del plan): sus variables las arma el cron al mandarla
+  // (parametrosDePlantilla), porque solo Meta sabe cuántas lleva.
+  if (elegida && elegida !== nombrePaso(marca, n)) {
+    return db.prepare(
+      `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, status, mandar_siempre)
+       VALUES (?, ?, ?, ?, ?, ?, 'pendiente', 1)`
+    ).bind(c.id, `Plantilla: ${elegida}`, sendAt, `${PREFIJO_PLAN} · ${plan.titulo} · ${quien}`, elegida, IDIOMA_PLAN);
+  }
   const paso = plan.pasos.find((p) => p.nombre === nombrePaso(marca, n));
   if (!paso) return null;
   const producto = productos.find((p) => p.id === c.producto_id);
@@ -37,6 +46,33 @@ function filaDePaso(db, c, marca, n, sendAt, quien, productos) {
 
 const NO_COMPRO = "COALESCE(conv.etapa, 0) < 5 AND instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') = 0";
 const TEMPLATES_RESCATE_1 = "('rescate_lead_1', 'uro_rescate_lead_1')";
+const AJUSTE_PLANTILLAS = "rescate7_plantillas";
+
+/** La plantilla del día 7 de cada marca: { tarot, uro } (la de fábrica si el admin no eligió otra). */
+export async function plantillasDia7(db) {
+  let elegidas = {};
+  try { elegidas = JSON.parse((await obtenerAjuste(db, AJUSTE_PLANTILLAS)) || "{}") || {}; } catch { elegidas = {}; }
+  return { tarot: elegidas.tarot || nombrePaso("tarot", 1), uro: elegidas.uro || nombrePaso("uro", 1) };
+}
+
+/**
+ * Guarda la plantilla del día 7 de una marca y la cambia también en los rescates de esa marca que ya
+ * estaban agendados y aún no salen (las variables las arma el cron al mandarla). Devuelve cuántos cambió.
+ */
+export async function elegirPlantillaDia7(db, marca, nombre) {
+  if (!["tarot", "uro"].includes(marca) || !/^[a-z0-9_]{1,100}$/.test(nombre)) throw new Error("Plantilla inválida.");
+  await guardarAjuste(db, AJUSTE_PLANTILLAS, JSON.stringify({ ...(await plantillasDia7(db)), [marca]: nombre }));
+  // Misma regla que marcaDeLinea: sin línea = Tarot; línea con marca «uro» = URO.
+  const deLaMarca = marca === "uro"
+    ? "conv.linea_id IN (SELECT id FROM lineas WHERE lower(COALESCE(marca, '')) = 'uro')"
+    : "conv.linea_id IS NULL";
+  const r = await db.prepare(
+    `UPDATE scheduled_messages SET template_name = ?, body = ?, template_params = NULL
+     WHERE status = 'pendiente' AND created_by LIKE ? AND template_name <> ?
+       AND conversation_id IN (SELECT conv.id FROM conversations conv WHERE ${deLaMarca})`
+  ).bind(nombre, `Plantilla: ${nombre}`, `%${ORIGEN_DIA7}`, nombre).run();
+  return r?.meta?.changes || 0;
+}
 
 /** Agenda el rescate 1 de los chats que faltan. Devuelve cuántos agendó. */
 export async function rescate7Dias(env, limite = 100) {
@@ -47,11 +83,12 @@ export async function rescate7Dias(env, limite = 100) {
      FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
      WHERE conv.created_at >= datetime('now', '-7 days')
        AND conv.last_inbound_at IS NOT NULL AND conv.blocked = 0 AND conv.pausa_auto = 0 AND ${NO_COMPRO}
-       AND NOT EXISTS (SELECT 1 FROM scheduled_messages m WHERE m.conversation_id = conv.id AND m.template_name IN ${TEMPLATES_RESCATE_1})
+       AND NOT EXISTS (SELECT 1 FROM scheduled_messages m WHERE m.conversation_id = conv.id
+         AND (m.template_name IN ${TEMPLATES_RESCATE_1} OR m.created_by LIKE '%${ORIGEN_DIA7}'))
      LIMIT ?`
   ).bind(limite).all();
   if (!results.length) return 0;
-  const [lineas, productos] = await Promise.all([listarLineas(db), listarProductos(db)]);
+  const [lineas, productos, elegidas] = await Promise.all([listarLineas(db), listarProductos(db), plantillasDia7(db)]);
   const minimo = Date.now() + 5 * 60000;
   const filas = [];
   for (const c of results) {
@@ -59,20 +96,20 @@ export async function rescate7Dias(env, limite = 100) {
     if (!marca) continue;
     const llegada = new Date(c.created_at.replace(" ", "T") + "Z").getTime();
     const cuando = new Date(Math.max(llegada + HORAS_HASTA_RESCATE * 3600000, minimo)).toISOString();
-    const f = filaDePaso(db, c, marca, 1, cuando, ORIGEN_DIA7, productos);
+    const f = filaDePaso(db, c, marca, 1, cuando, ORIGEN_DIA7, productos, elegidas[marca]);
     if (f) filas.push(f);
   }
   if (filas.length) await db.batch(filas);
   return filas.length;
 }
 
-/** Estado para el interruptor de Herramientas: { activo, agendados, proximo }. */
+/** Estado para el interruptor de Herramientas: { activo, agendados, proximo, plantillas: { tarot, uro } }. */
 export async function estadoRescate7(db) {
   const activo = (await obtenerAjuste(db, "rescate7_auto").catch(() => null)) !== "0";
   const r = await db.prepare(
     `SELECT COUNT(*) AS n, MIN(send_at) AS proximo FROM scheduled_messages WHERE status = 'pendiente' AND created_by LIKE ?`
   ).bind(`%${ORIGEN_DIA7}`).first().catch(() => null);
-  return { activo, agendados: r?.n || 0, proximo: r?.proximo || null };
+  return { activo, agendados: r?.n || 0, proximo: r?.proximo || null, plantillas: await plantillasDia7(db) };
 }
 
 export async function ponerRescate7(db, activo) {

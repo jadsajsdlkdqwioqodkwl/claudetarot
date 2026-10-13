@@ -20,7 +20,7 @@
 
 import { primerNombre } from "./plantillas.js";
 import { lineaPorId } from "./lineas.js";
-import { obtenerAjuste, esOrigenAutomatico, siempreGlobal } from "./crm-db.js";
+import { obtenerAjuste, esOrigenAutomatico } from "./crm-db.js";
 import { productoPorId } from "./productos.js";
 import { destinosDeChats } from "./crm-destino.js";
 
@@ -159,11 +159,10 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
   const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
-  const siempre = await siempreGlobal(db);
   await db.batch(pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status, mandar_siempre)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, siempre)));
+  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, 0)));
   return { pasos };
 }
 

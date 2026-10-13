@@ -221,15 +221,39 @@ export const ORIGEN_LINK_ENVIO = "Link de envío";
 export const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 export const HORAS_SEGUIMIENTO_RAPIDA = 20;
 
-export async function programarSeguimientoDeRapida(db, conversationId, quickReplyId) {
-  if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return "El seguimiento de respuestas rápidas está apagado para todas (ajuste del admin).";
+/** Los pasos activos del seguimiento de una respuesta rápida: { titulo, pasos } (null si ya no existe). */
+export async function pasosDeSeguimientoRapida(db, quickReplyId) {
   const q = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
-  if (!q) return "Esa respuesta rápida ya no existe.";
+  if (!q) return null;
   // La secuencia (hasta 4 pasos) o, en respuestas viejas, un solo seguimiento.
   let pasos = [];
   try { pasos = JSON.parse(q.followup_pasos || "[]") || []; } catch { pasos = []; }
   if (!pasos.length && q.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
-  pasos = pasos.filter((p) => p.activo !== false); // los pasos apagados no se programan
+  return { titulo: q.title, pasos: pasos.filter((p) => p.activo !== false) }; // los pasos apagados no se programan
+}
+
+/**
+ * `editados` (opcional, el botón «Reactivar seguimiento» del chat): [{ horas, body, activo }] por posición
+ * sobre los pasos activos; cambia la espera y el texto solo para este chat (la respuesta rápida no se toca).
+ */
+export async function programarSeguimientoDeRapida(db, conversationId, quickReplyId, editados = null) {
+  if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return "El seguimiento de respuestas rápidas está apagado para todas (ajuste del admin).";
+  const q = await pasosDeSeguimientoRapida(db, quickReplyId);
+  if (!q) return "Esa respuesta rápida ya no existe.";
+  let pasos = q.pasos;
+  if (Array.isArray(editados)) {
+    pasos = pasos.map((p, i) => {
+      const e = editados[i];
+      if (!e) return p;
+      if (e.activo === false) return null;
+      const horas = Number(e.horas);
+      return {
+        ...p,
+        ...(horas > 0 && horas <= (p.plantilla ? 1440 : 168) ? { horas } : {}),
+        ...(!p.plantilla && typeof e.body === "string" && (e.body.trim() || p.media_key) ? { body: e.body.trim().slice(0, 4096) } : {})
+      };
+    }).filter(Boolean);
+  }
   if (!pasos.length) return "Esa respuesta rápida no tiene seguimiento (o sus pasos están apagados).";
   // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
   // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
@@ -249,9 +273,8 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   if (conv.etapa >= 5) return "Ya compró: no se le manda un «si no responde».";
   if (conv.manuales > 0) return "Ya hay un seguimiento programado a mano en este chat: cancélalo desde el panel derecho si quieres este.";
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
-  const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`;
+  const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.titulo}`;
   const inserts = [];
-  const siempre = await siempreGlobal(db);
   let envio = Date.now();
   for (const [i, p] of pasos.entries()) {
     envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
@@ -264,14 +287,14 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
     if (p.plantilla) {
       inserts.push(
         db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre) VALUES (?, ?, ?, ?, ?, 'es_PE', ?)")
-          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, siempre)
+          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, 0)
       );
       continue;
     }
     inserts.push(
       db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones, mandar_siempre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null,
-          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, siempre)
+          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, 0)
     );
   }
   if (!inserts.length) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle el seguimiento.";
@@ -331,14 +354,13 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
   let acumuladoMs = 0;
   // Un paso apagado no se programa y su espera tampoco cuenta.
   const activos = pasos.filter((p) => p.activo !== 0);
-  const siempre = await siempreGlobal(db);
   const inserts = activos.map((p) => {
     acumuladoMs += p.delay_minutes * 60 * 1000;
     const sendAt = new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
       `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, botones, mandar_siempre)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null, p.body && !p.media_key && !p.catalogo ? p.botones || null : null, siempre);
+    ).bind(conversationId, p.body, sendAt, createdBy, p.media_key, p.media_type, p.media_mime, p.catalogo || null, p.catalogo_nombre || null, p.body && !p.media_key && !p.catalogo ? p.botones || null : null, 0);
   });
   if (!inserts.length) return 0;
   await db.batch(inserts);
@@ -385,10 +407,6 @@ export async function guardarProductosEnCache(db, catalogId, productos) {
   }
 }
 
-/** 1 si el admin prendió «mandar toda la secuencia sí o sí» (ajuste siempre_global, api/crm/pausa.js): lo que se programe no se cancela porque alguien escriba. */
-export async function siempreGlobal(db) {
-  return (await obtenerAjuste(db, "siempre_global").catch(() => null)) === "1" ? 1 : 0;
-}
 
 export async function obtenerAjuste(db, key) {
   const fila = await db.prepare("SELECT value FROM crm_settings WHERE key = ?").bind(key).first();
@@ -459,7 +477,7 @@ export async function registrarEventoCapi(db, { conversationId, orderId = null, 
 export async function agregarEtiquetaMeta(db, conversationId, etiqueta) {
   // Al marcar compra ya no se le rescata: se borra el rescate del día 7 pendiente (y el del asesor).
   if (etiqueta === "purchase") {
-    await db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND template_name LIKE '%rescate_lead_%'")
+    await db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND (template_name LIKE '%rescate_lead_%' OR created_by LIKE '%Automático (día 7)')")
       .bind(conversationId).run();
   }
   await db

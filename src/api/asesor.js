@@ -64,10 +64,13 @@ export async function dentroDelLimiteAsesor(env, ip) {
 }
 
 async function autorizado(request, env) {
-  const esperado = String(env.ASESOR_CLAVE_SHA256 || "").toLowerCase();
+  // Puede haber varias claves válidas (SHA-256 separados por coma): así se agrega una nueva sin
+  // romper la anterior (2026-10-13: la clave vieja se perdió con las Routines borradas).
+  const esperados = String(env.ASESOR_CLAVE_SHA256 || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
   const clave = request.headers.get("x-asesor-clave") || "";
-  if (!esperado || clave.length < 24) return false;
-  return igualesSinFiltrar(await sha256Hex(clave), esperado);
+  if (!esperados.length || clave.length < 24) return false;
+  const hash = await sha256Hex(clave);
+  return esperados.some((e) => igualesSinFiltrar(hash, e));
 }
 
 async function dentroDelLimite(env, ip) {
