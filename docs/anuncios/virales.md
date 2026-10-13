@@ -18,13 +18,16 @@ Dime sin rodeos: si TikTok o IG piden login o CAPTCHA, no lo saltes; dime qué q
 
 ## 2. Producto
 
-El mazo se llama «Caldero de bruja» (el nombre no significa que traiga un caldero; es un kit de tarot). Es el kit en caja morada con 78 cartas con los significados en español, guía, bolsa, collar amuleto, tapete floral y cuarzos. Hay muchos otros modelos de mazos; solo interesa el nuestro. Del nicho solo se aprende el hook y el formato.
+El mazo se llama «Caldero de bruja» (el nombre no significa que traiga un caldero; es un kit de tarot). La caja dice «TAROT – Con palabras clave, planetas, zodíacos, significado de chakras» y abajo el logo «Caldero de Bruja» (bruja en escoba y caldero rosa) sobre una rueda zodiacal con figura en meditación. Es el kit con 78 cartas con los significados en español, guía, bolsa, collar amuleto, tapete floral y cuarzos. Hay muchos otros modelos de mazos; solo interesa el nuestro. Del nicho solo se aprende el hook y el formato.
 
 ## 3. Fotos de referencia (no hace falta subir nada)
 
 Están en el repo de GitHub, carpeta creativos/refs/: https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/tree/main/creativos/refs
 Para qué sirve cada una también está en la pestaña Fotos de la hoja de creativos.
 
+- Las que mejor identifican el mazo, en el repo, carpeta imagenes-fuente/ (https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/tree/main/imagenes-fuente):
+  - D_NQ_NP_690267-MPE91908343940_092025-O.webp: la caja frontal, morada, con la rueda zodiacal y el logo «Caldero de Bruja». Es la prueba más clara de "producto exacto".
+  - D_NQ_NP_881679-MPE85164948966_052025-O.webp: las cartas sueltas: cartas guía negras con símbolos y chakras, arcanos con el diseño Rider-Waite sobre fondos de colores con significados impresos, y el reverso rosado con círculos.
 - kit_completo.jpg: cenital del kit completo sobre lino blanco: caja morada "TAROT – Querido futuro, estoy lista!", mazo en abanico con El Mago, guía abierta, bolsa de terciopelo negra, collar luna dorado, tapete floral negro, cuarzos amatista. Es la que define "producto exacto".
 - kit_etiquetado.jpg: el kit con etiquetas: tarot para principiantes, manto floral, 78 cartas con significados, tarot en español, guía, amuleto.
 - carta_explicada.jpg: La Emperatriz con palabras clave, inverso, numerología, chakra, planeta, signo, Sí/No.

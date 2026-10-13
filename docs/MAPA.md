@@ -93,6 +93,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-13 · Virales: el dueño subió a `imagenes-fuente/` dos fotos del mazo (caja frontal «Caldero de Bruja» y cartas sueltas); `docs/anuncios/virales.md` las lista como las que mejor identifican el producto exacto.
+
 - 2026-10-13 · Virales: el dueño pondrá el contenido directo en el contexto del Project (no por link). Fuente vigente: `docs/anuncios/virales.md` (corregido: «Caldero de bruja» es el nombre del mazo, no trae caldero). El Google Doc `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` quedó con la versión anterior (aún tiene el párrafo «Ojo» de la sección 2); si el Project vuelve a leer por link, hay que igualarlo con el md.
 
 - 2026-10-13 · Virales: el Doc pasó a `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` (el anterior `1MnIbcoe-YB2GdZfu_mTiaoWbcABbjKdg0zqi3QMbT5Y` fue a la papelera, sin uso). Ahora trae las instrucciones completas, las fotos de referencia (se leen de `creativos/refs/` en GitHub, no se suben) y los enlaces de la hoja; el prompt del Project es una sola línea que apunta al Doc (`docs/anuncios/virales-prompt.md`).
