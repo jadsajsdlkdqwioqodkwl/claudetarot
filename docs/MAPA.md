@@ -14,7 +14,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Cosa | Dónde | Quién depende de ella |
 |---|---|---|
 | **Brief de anuncios (versión viva)** | Google Doc `1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0` | Projects de claude.ai (por su link), `creativos/instrucciones.md`, `creativos/copy-meta.md`, Routine de voz del cliente. Se edita siempre el mismo Doc (conector Google Docs); nunca crear otro |
-| **Brief de Virales (hooks y formatos)** | Google Doc `11DzPMl3PK521wxp9NvxiHUJqgKexyjovQ71uEtmEnwQ` (copia en repo: `docs/anuncios/virales.md`) | Project de Virales en claude.ai (por su link). Se edita siempre el mismo Doc; nunca crear otro. La pestaña **Virales** de la hoja de creativos aún no existe: se crea en la primera corrida |
+| **Brief de Virales (hooks y formatos)** | Google Doc `1MnIbcoe-YB2GdZfu_mTiaoWbcABbjKdg0zqi3QMbT5Y` (copia en repo: `docs/anuncios/virales.md`; prompt del Project: `docs/anuncios/virales-prompt.md`) | Project de Virales en claude.ai (por su link). Se edita siempre el mismo Doc; nunca crear otro. Pestaña **Virales** en la hoja de creativos (la escribe el Project; columnas nuevas al final) |
 | Brief (copia en repo) | `docs/anuncios/brief-avatar-oferta.md` | Respaldo y fuente inicial de la Routine del brief |
 | **Bitácora CRO Tarot** | Google Doc en Drive (el Director CRO lo recrea cada día y manda el viejo a la papelera; se busca por título) | Director CRO, Routine del brief |
 | **Hoja de creativos** | Sheet `19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY` | Project de conceptos, skill `creativos`, Routine de voz del cliente. Pestañas y columnas en `.claude/skills/creativos/SKILL.md`; no reordenar columnas (las nuevas van al final) |
@@ -92,6 +92,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-13 · Virales: pestaña **Virales** creada en la hoja de creativos (11 columnas, A a K). El Doc `11DzPMl3PK521wxp9NvxiHUJqgKexyjovQ71uEtmEnwQ` se mandó a la papelera (era el primero, sin uso) y lo reemplaza `1MnIbcoe-YB2GdZfu_mTiaoWbcABbjKdg0zqi3QMbT5Y`, ahora con las decisiones del dueño: solo español, producto exacto (caldero de bruja / cartas con significados) más hooks del nicho de venta de mazos, tantos videos como alcance una sesión. Prompt del Project en `docs/anuncios/virales-prompt.md`.
 
 - 2026-10-13 · Nuevo Project «Virales» (qué hooks y formatos son virales en TikTok, IG, FB y YouTube): Doc `11DzPMl3PK521wxp9NvxiHUJqgKexyjovQ71uEtmEnwQ`, copia `docs/anuncios/virales.md`. Alimenta la pestaña Ángulos de la hoja de creativos. Pendiente: crear la pestaña Virales y correr la primera búsqueda a mano.
 
