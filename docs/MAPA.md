@@ -14,7 +14,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Cosa | Dónde | Quién depende de ella |
 |---|---|---|
 | **Brief de anuncios (versión viva)** | Google Doc `1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0` | Projects de claude.ai (por su link), `creativos/instrucciones.md`, `creativos/copy-meta.md`, Routine de voz del cliente. Se edita siempre el mismo Doc (conector Google Docs); nunca crear otro |
-| **Brief de Virales (hooks y formatos)** | Google Doc `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` (copia en repo: `docs/anuncios/virales.md`; prompt del Project: `docs/anuncios/virales-prompt.md`) | Project de Virales en claude.ai (por su link). Se edita siempre el mismo Doc; nunca crear otro. Pestaña **Virales** en la hoja de creativos (la escribe el Project; columnas nuevas al final) |
+| **Brief de Virales (hooks y formatos)** | Google Doc `1wKDFkbV3JBEX7ngnJ26h8bbpvDBWSZgHN6VzQjUo6-w` (copia en repo: `docs/anuncios/virales.md`; prompt del Project: `docs/anuncios/virales-prompt.md`) | Project de Virales en claude.ai (por su link). Se edita siempre el mismo Doc; nunca crear otro. Pestaña **Virales** en la hoja de creativos (la escribe el Project; columnas nuevas al final) |
 | Brief (copia en repo) | `docs/anuncios/brief-avatar-oferta.md` | Respaldo y fuente inicial de la Routine del brief |
 | **Bitácora CRO Tarot** | Google Doc en Drive (el Director CRO lo recrea cada día y manda el viejo a la papelera; se busca por título) | Director CRO, Routine del brief |
 | **Hoja de creativos** | Sheet `19bzd_a3zPY5st_VDzrFNpzW0RNi1feuAGYYZEjfn_NY` | Project de conceptos, skill `creativos`, Routine de voz del cliente. Pestañas y columnas en `.claude/skills/creativos/SKILL.md`; no reordenar columnas (las nuevas van al final) |
@@ -92,6 +92,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - Qué avatares faltan probar: hoja de creativos → Avatares → Cobertura (rojo = 0).
 
 ## Registro de cambios (lo más nuevo arriba)
+
+- 2026-10-13 · Virales: el Doc vuelve a ser el contexto del Project (el dueño solo sube las fotos). Nuevo Doc `1wKDFkbV3JBEX7ngnJ26h8bbpvDBWSZgHN6VzQjUo6-w`, igual a `docs/anuncios/virales.md` (Caldero de bruja es el nombre del mazo; fotos de `imagenes-fuente/`); el anterior `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` fue a la papelera. Si se cambia el md, igualar el Doc (no se puede editar por API: recrear y actualizar este ID).
 
 - 2026-10-13 · Virales: el dueño subió a `imagenes-fuente/` dos fotos del mazo (caja frontal «Caldero de Bruja» y cartas sueltas); `docs/anuncios/virales.md` las lista como las que mejor identifican el producto exacto.
 

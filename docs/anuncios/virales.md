@@ -1,6 +1,6 @@
 # Virales: hooks y formatos de venta de mazos de tarot (en español)
 
-Documento vivo y único. Se edita siempre este mismo Doc; nunca crear otro. Las instrucciones del Project de claude.ai son una sola línea que apunta aquí.
+Documento vivo y único. Se edita siempre este mismo Doc; nunca crear otro. Es el contexto completo del Project de claude.ai: sus instrucciones son una línea que apunta aquí y el dueño solo sube las fotos.
 
 ## 1. Instrucciones para Claude (léelas completas al empezar cada chat)
 
@@ -20,15 +20,15 @@ Dime sin rodeos: si TikTok o IG piden login o CAPTCHA, no lo saltes; dime qué q
 
 El mazo se llama «Caldero de bruja» (el nombre no significa que traiga un caldero; es un kit de tarot). La caja dice «TAROT – Con palabras clave, planetas, zodíacos, significado de chakras» y abajo el logo «Caldero de Bruja» (bruja en escoba y caldero rosa) sobre una rueda zodiacal con figura en meditación. Es el kit con 78 cartas con los significados en español, guía, bolsa, collar amuleto, tapete floral y cuarzos. Hay muchos otros modelos de mazos; solo interesa el nuestro. Del nicho solo se aprende el hook y el formato.
 
-## 3. Fotos de referencia (no hace falta subir nada)
+## 3. Fotos de referencia
 
-Están en el repo de GitHub, carpeta creativos/refs/: https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/tree/main/creativos/refs
+El dueño las sube al Project: úsalas primero. Respaldo, por si no las ves: están en el repo de GitHub, carpeta creativos/refs/: https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/tree/main/creativos/refs
 Para qué sirve cada una también está en la pestaña Fotos de la hoja de creativos.
 
 - Las que mejor identifican el mazo, en el repo, carpeta imagenes-fuente/ (https://github.com/jadsajsdlkdqwioqodkwl/claudetarot/tree/main/imagenes-fuente):
   - D_NQ_NP_690267-MPE91908343940_092025-O.webp: la caja frontal, morada, con la rueda zodiacal y el logo «Caldero de Bruja». Es la prueba más clara de "producto exacto".
   - D_NQ_NP_881679-MPE85164948966_052025-O.webp: las cartas sueltas: cartas guía negras con símbolos y chakras, arcanos con el diseño Rider-Waite sobre fondos de colores con significados impresos, y el reverso rosado con círculos.
-- kit_completo.jpg: cenital del kit completo sobre lino blanco: caja morada "TAROT – Querido futuro, estoy lista!", mazo en abanico con El Mago, guía abierta, bolsa de terciopelo negra, collar luna dorado, tapete floral negro, cuarzos amatista. Es la que define "producto exacto".
+- kit_completo.jpg: cenital del kit completo sobre lino blanco: caja morada "TAROT – Querido futuro, estoy lista!", mazo en abanico con El Mago, guía abierta, bolsa de terciopelo negra, collar luna dorado, tapete floral negro, cuarzos amatista..
 - kit_etiquetado.jpg: el kit con etiquetas: tarot para principiantes, manto floral, 78 cartas con significados, tarot en español, guía, amuleto.
 - carta_explicada.jpg: La Emperatriz con palabras clave, inverso, numerología, chakra, planeta, signo, Sí/No.
 - mano_carta_y_guia.jpg: mano con la carta Templanza y la guía abierta.
@@ -74,4 +74,4 @@ Los mejores hooks pasan a la pestaña Ángulos, y de ahí al flujo de creativos 
 
 ## 9. Historial
 
-- 2026-10-13: Creado. El prompt del Project se reduce a una línea que apunta a este Doc; las fotos se leen del repo.
+- 2026-10-13: Creado. El prompt del Project se reduce a una línea que apunta a este Doc; el dueño sube las fotos al Project (respaldo en el repo).
