@@ -17,12 +17,21 @@ Todas: sesión nueva en cada corrida, repo `jadsajsdlkdqwioqodkwl/claudetarot`
 ## Inicio común (va al principio de cada prompt)
 
 > Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot (rama main
-> actualizada). Si no estás dentro de un clon, pide acceso con add_repo
-> (cárgala con ToolSearch) y clónalo. Lee CLAUDE.md y docs/MAPA.md y síguelos
+> actualizada). Si no estás dentro de un clon: `GIT_TERMINAL_PROMPT=0 git
+> clone https://github.com/jadsajsdlkdqwioqodkwl/claudetarot
+> /home/user/claudetarot` y trabaja ahí (no uses gh ni add_repo: en las
+> Routines no funcionan). Lee CLAUDE.md y docs/MAPA.md y síguelos
 > al pie de la letra. La clave del asesor está en la variable de entorno
 > ASESOR_CLAVE (no la imprimas); si falta, termina y responde «Falta
-> ASESOR_CLAVE en el entorno de la Routine». No hagas commits ni cambies
-> código. Gasta pocos tokens.
+> ASESOR_CLAVE en el entorno de la Routine». Si el Worker responde 401 «No
+> autorizado», termina y responde «La ASESOR_CLAVE del entorno no es la
+> correcta (¿se pegó el SHA-256 de wrangler.jsonc en vez de la clave?)». No
+> hagas commits ni cambies código. Gasta pocos tokens.
+
+(2026-10-13, tras la primera corrida de prueba: las Routines creadas desde
+Claude Code no traen el repo adjunto y `add_repo` / `gh repo clone` no
+existen o fallan ahí; `git clone` por HTTPS sí funciona. Antes este inicio
+decía «pide acceso con add_repo y clónalo».)
 
 ## Tabla
 
