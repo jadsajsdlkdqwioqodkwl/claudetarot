@@ -3752,6 +3752,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${contenidoMensaje(m)}
         <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
         ${reaccionesHtml(m)}
+        ${m.con_seguimiento ? `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="Si después de esta respuesta rápida mandaste otro mensaje, su «si no responde» se canceló: tócalo para volver a programarlo">${icon("clock")} Reactivar seguimiento</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -3774,6 +3775,20 @@ function pintarMensajes({ alFinal = false } = {}) {
   if (alFinal || abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
 }
 
+/** Chip de la burbuja: vuelve a programar el «si no responde» de esa respuesta rápida (lo cancela cualquier mensaje nuestro posterior). */
+async function reactivarSeguimientoRapida(chip) {
+  chip.disabled = true;
+  try {
+    await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: Number(chip.dataset.q) }) });
+    chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    chip.disabled = false;
+  }
+}
+
 /* ---------- Responder a un mensaje / reaccionar ---------- */
 
 const EMOJIS_REACCION = ["☺️", "✨", "🫶", "🙌", "❤️"];
@@ -3793,6 +3808,8 @@ function configurarAccionesMensajes() {
       abrirPickerReaccion(filaReaccionar);
       return;
     }
+    const chipSeg = e.target.closest(".msg-seg");
+    if (chipSeg) reactivarSeguimientoRapida(chipSeg);
   });
 
   // Deslizar a la derecha para responder, igual que WhatsApp — solo en touch.

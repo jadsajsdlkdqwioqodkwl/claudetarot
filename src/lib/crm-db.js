@@ -216,20 +216,21 @@ export const ORIGEN_LINK_ENVIO = "Link de envío";
  * al escribir o la asesora desde el panel derecho, no sus propios mensajes.
  * Reemplaza al seguimiento de respuesta rápida que ya estuviera pendiente en
  * ese chat. Se apaga para todas con el ajuste `quick_followup_auto` = "0".
+ * Devuelve null si quedó programado, o el motivo (texto) por el que no.
  */
 export const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 export const HORAS_SEGUIMIENTO_RAPIDA = 20;
 
 export async function programarSeguimientoDeRapida(db, conversationId, quickReplyId) {
-  if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return;
+  if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return "El seguimiento de respuestas rápidas está apagado para todas (ajuste del admin).";
   const q = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
-  if (!q) return;
+  if (!q) return "Esa respuesta rápida ya no existe.";
   // La secuencia (hasta 4 pasos) o, en respuestas viejas, un solo seguimiento.
   let pasos = [];
   try { pasos = JSON.parse(q.followup_pasos || "[]") || []; } catch { pasos = []; }
   if (!pasos.length && q.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
   pasos = pasos.filter((p) => p.activo !== false); // los pasos apagados no se programan
-  if (!pasos.length) return;
+  if (!pasos.length) return "Esa respuesta rápida no tiene seguimiento (o sus pasos están apagados).";
   // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
   // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
   // paso que caería más tarde no se programa (ni los que siguen).
@@ -240,12 +241,13 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
           AND COALESCE(s.created_by, '') <> ? AND s.template_name IS NULL) AS manuales
      FROM conversations conv WHERE conv.id = ?`
   ).bind(`${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, ORIGEN_SEGUIMIENTO_AUTO, conversationId).first();
-  if (!conv?.last_inbound_at) return;
+  if (!conv?.last_inbound_at) return "El cliente todavía no escribió.";
   // Una sola cadena de TEXTO por chat: si una persona ya dejó un seguimiento programado
   // a mano, manda el suyo y la respuesta rápida no agrega otra cadena encima.
   // Las plantillas (rescate del día 7, planes) no cuentan: se apilan con la de texto.
   // Y a quien ya compró (etapa 5) no le sale un "si no responde".
-  if (conv.manuales > 0 || conv.etapa >= 5) return;
+  if (conv.etapa >= 5) return "Ya compró: no se le manda un «si no responde».";
+  if (conv.manuales > 0) return "Ya hay un seguimiento programado a mano en este chat: cancélalo desde el panel derecho si quieres este.";
   const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
   const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.title}`;
   const inserts = [];
@@ -272,12 +274,13 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
           !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, siempre)
     );
   }
-  if (!inserts.length) return;
+  if (!inserts.length) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle el seguimiento.";
   await db.batch([
     db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?")
       .bind(conversationId, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`),
     ...inserts
   ]);
+  return null;
 }
 
 /**

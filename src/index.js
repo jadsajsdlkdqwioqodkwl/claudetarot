@@ -77,6 +77,7 @@ import {
   onRequestPatch as crmFollowupSeqPatch
 } from "./api/crm/followup-sequences.js";
 import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
+import { onRequestPost as crmFollowupRapidaPost } from "./api/crm/followup-rapida.js";
 import {
   onRequestGet as crmTotpGet,
   onRequestPost as crmTotpPost,
@@ -175,6 +176,7 @@ const ROUTES = {
   "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, PATCH: crmScheduledPatch, DELETE: crmScheduledDelete },
   "/api/crm/followup-sequences": { GET: crmFollowupSeqGet, POST: crmFollowupSeqPost, DELETE: crmFollowupSeqDelete, PATCH: crmFollowupSeqPatch },
   "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
+  "/api/crm/followup-rapida": { POST: crmFollowupRapidaPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost, PATCH: crmTemplatesPatch },
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },

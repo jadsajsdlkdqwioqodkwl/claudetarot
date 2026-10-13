@@ -101,8 +101,10 @@ async function post({ request, env: envBase, agent }) {
   const sentBy = agent?.displayName || agent?.username || null;
   // Después de cancelarSeguimientosDeLead: si no, se cancelaría el que se acaba de programar.
   const quickReplyId = Number(payload?.quick_reply_id) || null;
-  const programarRapida = async () => {
+  const programarRapida = async (waMessageId) => {
     if (!quickReplyId) return;
+    // Queda en la burbuja: desde ahí se reactiva el seguimiento si otro mensaje lo canceló.
+    if (waMessageId) await env.CRM_DB.prepare("UPDATE messages SET quick_reply_id = ? WHERE wa_message_id = ?").bind(quickReplyId, waMessageId).run().catch(() => {});
     await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));
     let varianteId = Number(payload?.variante_id) || 0;
     if (varianteId) {
@@ -133,7 +135,7 @@ async function post({ request, env: envBase, agent }) {
         sentBy
       });
       await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
-      await programarRapida();
+      await programarRapida(waMessageId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -154,7 +156,7 @@ async function post({ request, env: envBase, agent }) {
       sentBy
     });
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
-    await programarRapida();
+    await programarRapida(waMessageId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     // (#131009) con catálogo: casi siempre es que ese catálogo no está conectado al número en WhatsApp Manager.

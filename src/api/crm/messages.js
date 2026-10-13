@@ -50,10 +50,12 @@ async function get({ request, env }) {
 export async function leerMensajes(env, conversationId, beforeId = null, { marcarLeido = true } = {}) {
   const { results } = await env.CRM_DB.prepare(
     `SELECT m.id, m.direction, m.type, m.body, m.file_name, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
-       m.reply_to_message_id, m.client_reaction, m.agent_reaction,
-       r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by
+       m.reply_to_message_id, m.client_reaction, m.agent_reaction, m.quick_reply_id,
+       r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by,
+       (q.followup_body IS NOT NULL OR COALESCE(q.followup_pasos, '[]') <> '[]') AS con_seguimiento
      FROM messages m
      LEFT JOIN messages r ON r.id = m.reply_to_message_id
+     LEFT JOIN quick_replies q ON q.id = m.quick_reply_id
      WHERE m.conversation_id = ? ${beforeId ? "AND m.id < ?" : ""}
      ORDER BY m.id DESC LIMIT ?`
   )
@@ -96,8 +98,10 @@ async function post({ request, env, agent }) {
   const mediaKey = payload?.media_key ? String(payload.media_key) : null;
   const quickReplyId = Number(payload?.quick_reply_id) || null;
   const sentBy = agent?.displayName || agent?.username || null;
-  const programarRapida = async () => {
+  const programarRapida = async (waMessageId) => {
     if (!quickReplyId) return;
+    // Queda en la burbuja: desde ahí se reactiva el seguimiento si otro mensaje lo canceló.
+    if (waMessageId) await env.CRM_DB.prepare("UPDATE messages SET quick_reply_id = ? WHERE wa_message_id = ?").bind(quickReplyId, waMessageId).run().catch(() => {});
     await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));
     let varianteId = Number(payload?.variante_id) || 0;
     if (varianteId) {
@@ -127,7 +131,7 @@ async function post({ request, env, agent }) {
       const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
       const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName, replyTo);
       await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
-      await programarRapida();
+      await programarRapida(waMessageId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -139,7 +143,7 @@ async function post({ request, env, agent }) {
     await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined);
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo, undefined, botones);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
-    await programarRapida();
+    await programarRapida(waMessageId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {
     console.error("Enviar WhatsApp:", err.message);

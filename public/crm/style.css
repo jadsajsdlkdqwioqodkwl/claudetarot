@@ -1098,3 +1098,7 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
   .hoja .hoja-caja { width: 100%; max-width: 100vw; border-radius: 16px 16px 0 0; max-height: 88dvh; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   #selector-lista { max-height: none; }
 }
+
+/* Chip "Reactivar seguimiento" en la burbuja de una respuesta rápida con «si no responde». */
+.msg .msg-seg { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 4px 8px; border: 1px solid var(--verde-osc); border-radius: var(--radio-full); background: var(--panel); color: var(--verde-osc); font: inherit; font-size: 11px; cursor: pointer; min-height: 28px; }
+.msg .msg-seg:disabled { opacity: .6; }
