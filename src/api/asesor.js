@@ -22,6 +22,7 @@
  *     mensajes: [{ whatsapp, nombre, motivo, mensaje }] }
  */
 
+import { limpiarBotones } from "../lib/whatsapp.js";
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 import { aprendizaje } from "./asesor-datos.js";
@@ -200,15 +201,25 @@ async function guardarInformeComoPagina(env, origen, texto) {
  * Un chat tiene a lo sumo un seguimiento pendiente: si ya había uno, se
  * reemplaza el texto (la propuesta más nueva sabe más del chat).
  */
+/** Una plantilla elegida a mano en el CRM: { name, language, params } o null. */
+export function limpiarPlantilla(p) {
+  const name = String(p?.name || "").trim();
+  if (!/^[a-z0-9_]+$/.test(name)) return null;
+  const params = Array.isArray(p.params) ? p.params.map((v) => String(v).trim().slice(0, 500)) : [];
+  return { name, language: String(p.language || "es").slice(0, 10), params: params.some(Boolean) ? params : [] };
+}
+
 /** Pasos extra de una secuencia: hasta 3, cada uno 1–20 h después del anterior. JSON o null. */
 export function normalizarPasos(lista) {
   if (!Array.isArray(lista)) return null;
   const pasos = lista
     .map((p) => ({
       horas: Math.min(Math.max(Number(p?.horas) || 0, 0.25), 20),
-      texto: String(p?.texto ?? p?.mensaje ?? "").trim().slice(0, 4096)
+      texto: String(p?.texto ?? p?.mensaje ?? "").trim().slice(0, 4096),
+      ...(limpiarPlantilla(p?.plantilla) ? { plantilla: limpiarPlantilla(p.plantilla) } : {}),
+      ...(limpiarBotones(p?.botones).length ? { botones: limpiarBotones(p.botones) } : {})
     }))
-    .filter((p) => p.texto)
+    .filter((p) => p.texto || p.plantilla)
     .slice(0, 3);
   return pasos.length ? JSON.stringify(pasos) : null;
 }

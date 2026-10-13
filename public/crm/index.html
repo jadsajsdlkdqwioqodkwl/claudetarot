@@ -215,7 +215,9 @@
       <div class="seg-cuando" id="seg-cuando"></div>
 
       <div class="seg-label">¿Qué le mandas?</div>
-      <select id="seg-rapida"><option value="">— Usar una respuesta rápida (opcional) —</option></select>
+      <select id="seg-rapida" hidden><option value="">— Usar una respuesta rápida (opcional) —</option></select>
+      <button type="button" class="elegir-mensaje" id="seg-elegir"></button>
+      <div class="bloque-plantilla" id="seg-plantilla" style="display:none"></div>
       <textarea id="seg-texto" placeholder="Texto del mensaje (opcional si adjuntas una foto/video)"></textarea>
       <div class="seg-label">Botones de respuesta (opcional, solo con texto)</div>
       <div class="campos-botones" id="seg-botones"><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="seg-boton" maxlength="20" placeholder="Botón 3" /></div>
@@ -239,6 +241,20 @@
       <button class="cancelar" id="seg-cancelar" type="button">Cancelar</button>
       <button class="crear" id="seg-crear" type="button">Programar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-fondo hoja" id="modal-selector-fondo">
+  <div class="modal hoja-caja">
+    <h2 id="selector-titulo">Elegir mensaje</h2>
+    <input type="search" id="selector-buscar" placeholder="Buscar por título o texto…" autocomplete="off" enterkeyhint="search" />
+    <div class="seg-tabs" id="selector-tabs">
+      <button type="button" data-f="todo" class="activo">Todo</button>
+      <button type="button" data-f="rapida">Rápidas</button>
+      <button type="button" data-f="plantilla">Plantillas</button>
+    </div>
+    <div id="selector-lista"></div>
+    <div class="acciones"><button class="cancelar" id="selector-cerrar" type="button">Cerrar</button></div>
   </div>
 </div>
 

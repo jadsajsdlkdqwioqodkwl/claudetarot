@@ -48,7 +48,10 @@ import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
 import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
-import { normalizarPasos } from "../asesor.js";
+import { normalizarPasos, limpiarPlantilla } from "../asesor.js";
+import { limpiarBotones } from "../../lib/whatsapp.js";
+import { parametrosDePlantilla, textoParaChat } from "../../lib/plantillas-propuestas.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 import { cerrarPrueba } from "../../lib/crm-variantes.js";
 import { manejaShalom } from "../../lib/ventas.js";
 import { saldoPagado } from "./shalom.js";
@@ -135,28 +138,42 @@ async function get({ request, env, agent }) {
   return json({ pendientes: results.length, sugerencias: lista });
 }
 
-async function programar(env, conversationId, texto, quien, cuando) {
+/**
+ * `extra`: { botones?, plantilla?: { name, language, params } }. Una plantilla no tiene el
+ * límite de 24 h (sin variables, se arman solas con el nombre del cliente).
+ */
+async function programar(env, conversationId, texto, quien, cuando, extra = {}) {
   const sendAt = cuando instanceof Date ? cuando : new Date(Date.now() + 60 * 1000);
-  const error = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
+  const plantilla = limpiarPlantilla(extra.plantilla);
+  const botones = plantilla ? [] : limpiarBotones(extra.botones);
+  const error = plantilla ? null : await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (error) return error;
   if (cuando === "ahora") {
     const conv = await env.CRM_DB.prepare(
-      "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
+      "SELECT c.wa_id, COALESCE(c.name, c.profile_name) AS name FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
     ).bind(conversationId).first();
     if (!conv) return "No encontré el chat.";
     try {
+      if (plantilla) {
+        const envChat = await envDeConversacion(env, conversationId);
+        const params = plantilla.params.length ? plantilla.params : await parametrosDePlantilla(envChat, plantilla.name, conv.name).catch(() => []);
+        const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, plantilla.name, plantilla.language, params));
+        await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "template", body: await textoParaChat(envChat, plantilla.name, params), sentBy: quien });
+        return null;
+      }
       // Como todo lo que sale: "escribiendo…" 1,5 s y recién el mensaje.
       await pausaEnvio(env, conversationId);
-      await mandarTexto(env, conversationId, conv.wa_id, texto, quien);
+      await mandarTexto(env, conversationId, conv.wa_id, texto, quien, undefined, undefined, botones);
     } catch (err) {
       return `WhatsApp no lo aceptó: ${err.message}`;
     }
     return null;
   }
   await env.CRM_DB.prepare(
-    "INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by) VALUES (?, ?, ?, ?)"
+    "INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, botones, template_name, template_language, template_params) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   )
-    .bind(conversationId, texto, sendAt.toISOString(), origenSugerencia(quien))
+    .bind(conversationId, plantilla ? `Plantilla: ${plantilla.name}` : texto, sendAt.toISOString(), origenSugerencia(quien), botones.length ? JSON.stringify(botones) : null,
+      plantilla?.name || null, plantilla?.language || null, plantilla?.params.length ? JSON.stringify(plantilla.params) : null)
     .run();
   return null;
 }
@@ -271,7 +288,8 @@ async function post({ request, env, agent }) {
     if (cuando.getTime() < Date.now() - 60 * 1000) return json({ error: "Esa hora ya pasó." }, 400);
   }
   const texto = String(payload.texto ?? s.texto).trim().slice(0, 4096);
-  if (!texto) return json({ error: "El mensaje quedó vacío." }, 400);
+  const plantilla1 = s.tipo !== "respuesta_rapida" ? limpiarPlantilla(payload.plantilla) : null;
+  if (!texto && !plantilla1) return json({ error: "El mensaje quedó vacío." }, 400);
   const programados = [];
   const saltados = [];
 
@@ -294,7 +312,7 @@ async function post({ request, env, agent }) {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
     // Una sola cadena por chat: lo que se aprueba reemplaza a los automáticos pendientes.
     await cancelarSeguimientosDeLead(env.CRM_DB, s.conversation_id);
-    let error = await programar(env, s.conversation_id, texto, quien, cuando);
+    let error = await programar(env, s.conversation_id, texto, quien, cuando, { plantilla: plantilla1, botones: payload.botones });
     // Envío con la ventana cerrada: sale con la plantilla.
     if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {
       error = await conPlantilla(env, s, quien);
@@ -307,7 +325,7 @@ async function post({ request, env, agent }) {
     let base = cuando instanceof Date ? cuando.getTime() : Date.now() + (cuando === "ahora" ? 0 : 60 * 1000);
     for (const [i, paso] of pasos.entries()) {
       base += paso.horas * 3600 * 1000;
-      const err = await programar(env, s.conversation_id, paso.texto, quien, new Date(base));
+      const err = await programar(env, s.conversation_id, paso.texto, quien, new Date(base), paso);
       if (err) saltados.push({ nombre: `Paso ${i + 2}`, motivo: err });
       else programados.push(s.conversation_id);
     }

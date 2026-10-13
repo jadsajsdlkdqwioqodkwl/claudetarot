@@ -15,11 +15,10 @@
  * La fecha no puede pasar de 24 h desde el último mensaje del cliente
  * (fueraDeVentana): después WhatsApp ya no acepta texto libre.
  *
- * Siempre texto libre — no acepta template_name (eso solo lo maneja
- * bulk-send.js). Para un seguimiento que sabes que caerá fuera de la
- * ventana de 24h/72h (típico de provincia, cobro días después), no uses
- * esto: usa bulk-send en modo plantilla o mándala a mano desde el chat,
- * o este seguimiento va a fallar en silencio en vez de llegar. Ver
+ * Texto libre, o una plantilla aprobada: { conversation_id, send_at, template_name,
+ * template_params?: [..], template_language? }. La plantilla NO tiene el límite de
+ * 24 h (sirve para provincia, cobro días después); el cron arma las variables
+ * solo si no vienen. Un texto libre fuera de la ventana falla en silencio: ver
  * docs/whatsapp-ventanas-y-costos.md.
  */
 
@@ -88,10 +87,14 @@ async function post({ request, env, agent }) {
     return json({ error: "La fecha tiene que ser futura." }, 422);
   }
   const { catalogo, catalogoNombre } = leerCatalogo(payload);
+  const plantilla = String(payload?.template_name || "").trim();
+  if (plantilla && !/^[a-z0-9_]+$/.test(plantilla)) return json({ error: "Nombre de plantilla inválido." }, 400);
+  if (plantilla && (body || quickReplyId || mediaKey || catalogo)) return json({ error: "La plantilla va sola (sus botones y textos son los de Meta)." }, 400);
+  const params = plantilla && Array.isArray(payload?.template_params) ? payload.template_params.map((p) => String(p).trim().slice(0, 500)) : [];
   const botones = limpiarBotones(payload?.botones);
   if (botones.length && (!body || mediaKey || catalogo)) return json({ error: "Los botones van con un texto, sin archivo ni catálogo." }, 400);
-  if (!body && !quickReplyId && !mediaKey && !catalogo) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida o el catálogo." }, 400);
-  const errorVentana = await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
+  if (!body && !quickReplyId && !mediaKey && !catalogo && !plantilla) return json({ error: "Necesita un texto, una foto/video, una respuesta rápida, el catálogo o una plantilla." }, 400);
+  const errorVentana = plantilla ? null : await fueraDeVentana(env.CRM_DB, conversationId, sendAt);
   if (errorVentana) return json({ error: errorVentana }, 422);
 
   // El mismo texto ya programado para este chat (doble toque, o dos personas
@@ -108,10 +111,10 @@ async function post({ request, env, agent }) {
   await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
 
   const creado = await env.CRM_DB.prepare(
-    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre, botones)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre, botones, template_name, template_language, template_params)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   )
-    .bind(conversationId, body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0, botones.length ? JSON.stringify(botones) : null)
+    .bind(conversationId, plantilla ? `Plantilla: ${plantilla}` : body, quickReplyId, sendAt.toISOString(), agent?.displayName || agent?.username || null, mediaKey, mediaType, mediaMime, catalogo, catalogoNombre, payload?.mandar_siempre ? 1 : 0, botones.length ? JSON.stringify(botones) : null, plantilla || null, plantilla ? String(payload?.template_language || "es").slice(0, 10) : null, plantilla && params.some(Boolean) ? JSON.stringify(params) : null)
     .first();
 
   return json({ ok: true, scheduled: creado });

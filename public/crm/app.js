@@ -5082,6 +5082,7 @@ function pintarSugerencias(lista) {
         ${conChat ? `<div class="sug-chat"><p class="sub">Cargando conversación…</p></div>` : ""}
         ${!esRapida && (s.pasos || []).length ? `<div class="sub sug-etapa">Mensaje 1</div>` : ""}
         <textarea class="sug-texto" rows="4">${escapar(s.texto)}</textarea>
+        ${!esRapida && !esEnvio ? extrasSugHtml() : ""}
         ${pasos}
         ${s.idea?.texto ? `
         <div class="sug-idea">
@@ -5109,6 +5110,7 @@ function pintarSugerencias(lista) {
 
   cont.querySelectorAll(".tarjeta-sugerencia:not(.sug-variante) .sug-texto, .sug-paso textarea").forEach((el) => agregarRapidasA(el));
   cont.querySelectorAll(".tarjeta-sugerencia").forEach((card) => {
+    card.addEventListener("click", (e) => { const b = e.target.closest(".sug-elegir"); if (b) elegirParaSugerencia(b.closest(".sug-extras")); });
     if (card.querySelector(".sug-chat")) cargarChatSugerencia(card);
     card.querySelector(".sug-agregar-paso")?.addEventListener("click", () => {
       const lista = card.querySelector(".sug-pasos");
@@ -5135,14 +5137,20 @@ function pintarSugerencias(lista) {
     const accion = async (tipo, boton, extra = {}) => {
       const cuerpo = { id, accion: tipo, ...extra };
       if (tipo === "aprobar") {
-        cuerpo.texto = card.querySelector(".sug-texto").value;
-        const titulo = card.querySelector(".sug-titulo");
-        if (titulo) cuerpo.titulo = titulo.value;
-        if (card.querySelector(".sug-pasos")) {
-          cuerpo.pasos = [...card.querySelectorAll(".sug-paso")].map((p) => ({
-            horas: Number(p.querySelector(".sug-paso-horas").value) || 4,
-            texto: p.querySelector("textarea").value
-          })).filter((p) => p.texto.trim());
+        try {
+          cuerpo.texto = card.querySelector(".sug-texto").value;
+          const titulo = card.querySelector(".sug-titulo");
+          if (titulo) cuerpo.titulo = titulo.value;
+          Object.assign(cuerpo, leerExtrasSug(card.querySelector(":scope > .sug-extras")));
+          if (card.querySelector(".sug-pasos")) {
+            cuerpo.pasos = [...card.querySelectorAll(".sug-paso")].map((p) => ({
+              horas: Number(p.querySelector(".sug-paso-horas").value) || 4,
+              texto: p.querySelector("textarea").value,
+              ...leerExtrasSug(p.querySelector(".sug-extras"))
+            })).filter((p) => p.texto.trim() || p.plantilla);
+          }
+        } catch (err) {
+          return alert(err.message);
         }
       }
       boton.disabled = true;
@@ -5359,7 +5367,36 @@ function pasoHtml(p) {
         <button type="button" class="sug-icono sug-quitar-paso" title="Quitar paso">${icon("trash")}</button>
       </div>
       <textarea rows="3">${escapar(p.texto || "")}</textarea>
+      ${extrasSugHtml()}
     </div>`;
+}
+
+/** Debajo de cada mensaje de una sugerencia: buscar una respuesta rápida o plantilla, y hasta 3 botones. */
+function extrasSugHtml() {
+  return `<div class="sug-extras">
+    <button type="button" class="elegir-mensaje sug-elegir">${icon("search")} Buscar respuesta rápida o plantilla</button>
+    <div class="bloque-plantilla" style="display:none"></div>
+    <div class="campos-botones">${[1, 2, 3].map((n) => `<input type="text" class="sug-boton" maxlength="20" placeholder="Botón ${n}" />`).join("")}</div>
+  </div>`;
+}
+
+/** { plantilla?, botones } del mensaje de esa caja (la tarjeta = mensaje 1, o un .sug-paso). */
+function leerExtrasSug(ex) {
+  if (!ex) return {};
+  return { plantilla: leerBloquePlantilla(ex.querySelector(".bloque-plantilla")) || undefined, botones: leerCamposBotones(ex, "sug-boton") };
+}
+
+async function elegirParaSugerencia(ex) {
+  const caja = ex.closest(".sug-paso") || ex.closest(".tarjeta-sugerencia");
+  const ta = caja.classList.contains("sug-paso") ? caja.querySelector("textarea") : caja.querySelector(".sug-texto");
+  const r = await elegirMensaje({ conversationId: Number(ex.closest(".tarjeta-sugerencia").dataset.conv) || null });
+  if (!r) return;
+  if (r.tipo === "plantilla") return bloquePlantilla(ex.querySelector(".bloque-plantilla"), r.t);
+  quitarBloquePlantilla(ex.querySelector(".bloque-plantilla"));
+  const texto = textoRapida(r.q);
+  ta.value = ta.value.trim() ? ta.value.replace(/\s*$/, "") + "\n\n" + texto : texto;
+  if (r.q.botones?.length) ponerCamposBotones(ex, "sug-boton", r.q.botones);
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 /** Los seguimientos que ese chat ya tiene programados (para no mandarle otra cadena encima). */
@@ -6387,6 +6424,115 @@ async function pintarPruebas(cont, tipo, refId) {
   });
 }
 
+/* ---------- Selector con buscador (respuestas rápidas + plantillas): reemplaza al <select> nativo, cómodo en el celular ---------- */
+
+let plantillasParaElegir = null; // { conv, lista, t }
+async function cargarPlantillasAprobadas(conversationId) {
+  if (plantillasParaElegir?.conv === conversationId && Date.now() - plantillasParaElegir.t < 300000) return plantillasParaElegir.lista;
+  const r = await pedir(`/api/crm/templates${conversationId ? `?conversation_id=${conversationId}` : ""}`);
+  const lugar = (t) => { const i = (r.orden || []).indexOf(t.name); return i < 0 ? 1e6 : i; };
+  const lista = r.templates.filter((t) => t.status === "APPROVED").sort((a, b) => lugar(a) - lugar(b));
+  plantillasParaElegir = { conv: conversationId, lista, t: Date.now() };
+  return lista;
+}
+
+const cuerpoDePlantilla = (t) => (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
+let selectorActual = null;
+
+/** Abre el selector y devuelve { tipo: "rapida", q } | { tipo: "plantilla", t } | null (si cierra sin elegir). */
+async function elegirMensaje({ conversationId = null, rapidas = true, plantillas = true, filtroRapida = null, titulo = "Respuesta rápida o plantilla" } = {}) {
+  $("#selector-titulo").textContent = titulo;
+  $("#selector-buscar").value = "";
+  $("#selector-lista").innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  $("#modal-selector-fondo").classList.add("abierto");
+  let rap = [];
+  let pla = [];
+  if (rapidas) {
+    if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
+    rap = (estado.quickReplies || []).filter((q) => !filtroRapida || filtroRapida(q));
+  }
+  if (plantillas) pla = await cargarPlantillasAprobadas(conversationId).catch(() => []);
+  $("#selector-tabs").style.display = rapidas && plantillas ? "" : "none";
+  const filtro = rapidas && plantillas ? "todo" : rapidas ? "rapida" : "plantilla";
+  document.querySelectorAll("#selector-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.f === filtro));
+  return new Promise((resolver) => {
+    selectorActual = { rap, pla, filtro, vista: [], resolver };
+    pintarSelector();
+    $("#selector-buscar").focus();
+  });
+}
+
+function pintarSelector() {
+  const s = selectorActual;
+  if (!s) return;
+  const consulta = $("#selector-buscar").value;
+  const tokens = normalizarBusqueda(consulta).split(" ").filter(Boolean);
+  const rap = s.filtro === "plantilla" ? [] : buscarRapidas(s.rap, consulta);
+  const pla = s.filtro === "rapida" ? [] : s.pla.filter((t) => tokens.every((k) => normalizarBusqueda(`${t.name} ${cuerpoDePlantilla(t)}`).includes(k)));
+  s.vista = [...rap.map((q) => ({ tipo: "rapida", q })), ...pla.map((t) => ({ tipo: "plantilla", t }))];
+  $("#selector-lista").innerHTML = s.vista.map((v, i) => v.tipo === "rapida"
+    ? `<button type="button" class="selector-item" data-i="${i}"><b>${icon("bolt")} ${escapar(v.q.title)}</b><span class="sel-txt">${escapar(textoRapida(v.q).replace(/\s+/g, " ").slice(0, 160))}</span></button>`
+    : `<button type="button" class="selector-item" data-i="${i}"><b>${icon("doc")} ${escapar(v.t.name)} <span class="sel-tipo">plantilla</span></b><span class="sel-txt">${escapar(cuerpoDePlantilla(v.t).replace(/\s+/g, " ").slice(0, 160))}</span></button>`
+  ).join("") || `<p class="ayuda-modal">Sin resultados.</p>`;
+}
+
+function cerrarSelector(valor = null) {
+  $("#modal-selector-fondo").classList.remove("abierto");
+  const r = selectorActual?.resolver;
+  selectorActual = null;
+  r?.(valor);
+}
+$("#selector-buscar").addEventListener("input", pintarSelector);
+$("#selector-cerrar").addEventListener("click", () => cerrarSelector());
+$("#modal-selector-fondo").addEventListener("click", (e) => { if (e.target.id === "modal-selector-fondo") cerrarSelector(); });
+$("#selector-tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-f]");
+  if (!b || !selectorActual) return;
+  selectorActual.filtro = b.dataset.f;
+  document.querySelectorAll("#selector-tabs button").forEach((x) => x.classList.toggle("activo", x === b));
+  pintarSelector();
+});
+$("#selector-lista").addEventListener("click", (e) => {
+  const item = e.target.closest(".selector-item");
+  if (item && selectorActual) cerrarSelector(selectorActual.vista[Number(item.dataset.i)]);
+});
+
+/** La plantilla elegida dentro de un formulario: vista previa con sus botones de Meta y sus variables. */
+function bloquePlantilla(cont, t) {
+  const textoCuerpo = cuerpoDePlantilla(t);
+  const n = Math.max(0, ...(textoCuerpo.match(/\{\{(\d+)\}\}/g) || []).map((v) => Number(v.slice(2, -2))));
+  const botones = ((t.components || []).find((c) => String(c.type).toUpperCase() === "BUTTONS")?.buttons || []).map((b) => b.text);
+  cont.dataset.name = t.name;
+  cont.dataset.lang = t.language || "es";
+  cont.style.display = "";
+  cont.innerHTML = `
+    <div class="bp-cab"><b>${icon("doc")} ${escapar(t.name)}</b><button type="button" class="sug-icono bp-quitar" title="Quitar la plantilla">${icon("close")}</button></div>
+    <div class="bp-vista"></div>
+    ${n ? `<div class="sub">Variables: si las dejas vacías se llenan solas ({{1}} = nombre del cliente).</div>` : ""}
+    ${Array.from({ length: n }, (_, i) => `<input type="text" class="bp-param" placeholder="Variable {{${i + 1}}}" />`).join("")}`;
+  const pintar = () => {
+    const v = [...cont.querySelectorAll(".bp-param")].map((i) => i.value);
+    cont.querySelector(".bp-vista").innerHTML = vistaPreviaPlantilla(textoCuerpo.replace(/\{\{(\d+)\}\}/g, (m, k) => v[Number(k) - 1] || m), botones);
+  };
+  cont.oninput = pintar;
+  cont.onclick = (e) => { if (e.target.closest(".bp-quitar")) { quitarBloquePlantilla(cont); cont.dispatchEvent(new Event("plantilla-quitada")); } };
+  pintar();
+}
+
+function quitarBloquePlantilla(cont) {
+  cont.innerHTML = "";
+  cont.style.display = "none";
+  delete cont.dataset.name;
+}
+
+/** { name, language, params } de la plantilla elegida, o null si no hay. */
+function leerBloquePlantilla(cont) {
+  if (!cont?.dataset.name) return null;
+  const params = [...cont.querySelectorAll(".bp-param")].map((i) => i.value.trim());
+  if (params.some(Boolean) && !params.every(Boolean)) throw new Error("Llena todas las variables de la plantilla, o déjalas todas vacías para que se llenen solas.");
+  return { name: cont.dataset.name, language: cont.dataset.lang || "es", params: params.every(Boolean) ? params : [] };
+}
+
 /* ---------- Seguimientos programados ---------- */
 
 /** `modo`: "mensaje" (uno suelto) o "secuencia" (varios con su espera). Desde un addEventListener llega el Event, no un string. */
@@ -6397,8 +6543,8 @@ function abrirModalProgramarSeguimiento(modo) {
   $("#seg-tabs").style.display = "";
   $("#seg-archivo").style.display = "";
   $("#seg-catalogo").style.display = "";
+  $("#seg-elegir").style.display = "";
   const sel = $("#seg-rapida");
-  sel.style.display = "";
   sel.innerHTML = `<option value="">— Usar una respuesta rápida (opcional) —</option>` +
     estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${textoRapida(q) ? ` — ${escapar(recortarTexto(textoRapida(q).replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
   prepararChipsVentana();
@@ -6430,12 +6576,15 @@ function limiteVentana() {
 /** Desactiva los botones que caerían pasadas las 24 h. */
 function prepararChipsVentana() {
   const limite = limiteVentana();
+  const libre = Boolean(estado.segPlantilla); // una plantilla sale aunque pasen las 24 h
   document.querySelectorAll("#seg-chips button").forEach((b) => {
     const f = b.dataset.otra !== undefined ? null : fechaDeChip(b);
-    b.disabled = !limite || limite.getTime() <= Date.now() || (f && (f.getTime() > limite.getTime() || f.getTime() <= Date.now()));
+    b.disabled = libre
+      ? b.dataset.ventana !== undefined || Boolean(f && f.getTime() <= Date.now())
+      : !limite || limite.getTime() <= Date.now() || (f && (f.getTime() > limite.getTime() || f.getTime() <= Date.now()));
   });
   const input = $("#seg-fecha");
-  input.max = limite ? aInputLocal(limite) : "";
+  input.max = !libre && limite ? aInputLocal(limite) : "";
   input.min = aInputLocal(new Date());
 }
 
@@ -6475,7 +6624,8 @@ function pintarCuando() {
   const el = $("#seg-cuando");
   const limite = limiteVentana();
   const fmt = (d) => d.toLocaleString("es-PE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-  if (!limite || limite.getTime() <= Date.now()) {
+  const libre = Boolean(estado.segPlantilla);
+  if (!libre && (!limite || limite.getTime() <= Date.now())) {
     el.textContent = "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle un seguimiento.";
     el.classList.add("error");
     return;
@@ -6483,7 +6633,7 @@ function pintarCuando() {
   if (!v) { el.textContent = "Elige cuándo."; el.classList.remove("error"); return; }
   const d = new Date(v);
   const pasada = d.getTime() <= Date.now();
-  const tarde = d.getTime() > limite.getTime();
+  const tarde = !libre && d.getTime() > limite.getTime();
   el.classList.toggle("error", pasada || tarde);
   el.textContent = pasada
     ? "Esa hora ya pasó — elige una futura."
@@ -6576,10 +6726,42 @@ $("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuenc
 // campo para editarlo antes de programar, y su foto/video queda adjunta
 // (se puede quitar). Al programar va el texto editado + el quick_reply_id
 // solo si se dejó su archivo — el cron usa `body` antes que el de la rápida.
+/** Plantilla elegida para el seguimiento (null = texto libre): oculta lo de texto y libera el límite de 24 h. */
+function ponerPlantillaSeg(t) {
+  estado.segPlantilla = t || null;
+  if (t) bloquePlantilla($("#seg-plantilla"), t); else quitarBloquePlantilla($("#seg-plantilla"));
+  const oculto = t ? "none" : "";
+  [$("#seg-texto"), $("#seg-botones"), $("#seg-botones").previousElementSibling, $("#seg-archivo"), $("#seg-catalogo")].forEach((el) => { el.style.display = oculto; });
+  if (t) {
+    $("#seg-rapida").value = "";
+    estado.segRapidaMedia = null;
+    $("#seg-texto").value = "";
+    ponerCamposBotones($("#seg-botones"), "seg-boton", []);
+    pintarVersionesSeg(null);
+    pintarPreviewSegRapida();
+  }
+  $("#seg-elegir").innerHTML = `${icon("search")} ${t ? `Plantilla: ${escapar(t.name)}` : "Buscar respuesta rápida o plantilla"}`;
+  if (!$("#modal-seguimiento-fondo").classList.contains("abierto")) return;
+  prepararChipsVentana();
+  const activo = $("#seg-chips button.activo");
+  if (!activo || activo.disabled) elegirCuando($("#seg-chips button:not(:disabled)")); else pintarCuando();
+}
+$("#seg-plantilla").addEventListener("plantilla-quitada", () => ponerPlantillaSeg(null));
+$("#seg-elegir").innerHTML = `${icon("search")} Buscar respuesta rápida o plantilla`;
+$("#seg-elegir").addEventListener("click", async () => {
+  const r = await elegirMensaje({ conversationId: estado.segConversacionId, filtroRapida: (q) => !/\{link\}/i.test(q.body || "") });
+  if (!r) return;
+  if (r.tipo === "plantilla") return ponerPlantillaSeg(r.t);
+  if (estado.segPlantilla) ponerPlantillaSeg(null);
+  $("#seg-rapida").value = String(r.q.id);
+  $("#seg-rapida").dispatchEvent(new Event("change"));
+  $("#seg-elegir").innerHTML = `${icon("bolt")} ${escapar(r.q.title)}`;
+});
+
 $("#seg-rapida").addEventListener("change", (e) => {
   const q = estado.quickReplies.find((x) => String(x.id) === e.target.value);
   estado.segRapidaMedia = q?.media?.length ? q.media : null;
-  if (q) ponerVersionSeg(q, 0);
+  if (q) { ponerVersionSeg(q, 0); ponerCamposBotones($("#seg-botones"), "seg-boton", q.botones || []); }
   pintarVersionesSeg(q);
   pintarPreviewSegRapida();
 });
@@ -6631,6 +6813,7 @@ function pintarPreviewSegRapida() {
 
 function limpiarFormSeguimiento() {
   estado.editandoSeguimientoId = null;
+  ponerPlantillaSeg(null);
   estado.segRapidaMedia = null;
   document.querySelectorAll("#seg-chips button").forEach((b) => b.classList.remove("activo"));
   $("#seg-fecha").style.display = "none";
@@ -6655,7 +6838,7 @@ function abrirModalEditarSeguimiento(s) {
   ponerModoSeguimiento("mensaje");
   $("#seg-archivo").style.display = "none";
   $("#seg-catalogo").style.display = "none";
-  $("#seg-rapida").style.display = "none";
+  $("#seg-elegir").style.display = "none";
   prepararChipsVentana();
   $("#seg-fecha").value = aInputLocal(new Date(s.send_at));
   elegirCuando($("#seg-chips button[data-otra]"));
@@ -6758,7 +6941,7 @@ $("#seg-crear").addEventListener("click", async () => {
   const fecha = $("#seg-fecha").value;
   if (fecha && new Date(fecha).getTime() <= Date.now()) { pintarCuando(); return alert("Esa hora ya pasó — elige una futura."); }
   const limite = limiteVentana();
-  if (fecha && (!limite || new Date(fecha).getTime() > limite.getTime())) { pintarCuando(); return alert($("#seg-cuando").textContent); }
+  if (!estado.segPlantilla && fecha && (!limite || new Date(fecha).getTime() > limite.getTime())) { pintarCuando(); return alert($("#seg-cuando").textContent); }
   const texto = $("#seg-texto").value.trim();
   const archivo = $("#seg-archivo").files[0];
   const quickReplyId = !archivo && estado.segRapidaMedia ? $("#seg-rapida").value : "";
@@ -6766,7 +6949,7 @@ $("#seg-crear").addEventListener("click", async () => {
   if (!fecha) return alert("Elige cuándo se manda.");
   if (editandoId && !texto) return alert("Escribe un texto.");
   const cat = catalogoDeSelect($("#seg-catalogo"));
-  if (!texto && !quickReplyId && !archivo && !cat.catalogo) return alert("Escribe un texto, adjunta una foto/video, elige una respuesta rápida o el catálogo.");
+  if (!texto && !quickReplyId && !archivo && !cat.catalogo && !estado.segPlantilla) return alert("Escribe un texto, adjunta una foto/video, elige una respuesta rápida, una plantilla o el catálogo.");
 
   const btn = $("#seg-crear");
   btn.disabled = true;
@@ -6788,6 +6971,7 @@ $("#seg-crear").addEventListener("click", async () => {
     return;
   }
   try {
+    const plantilla = leerBloquePlantilla($("#seg-plantilla"));
     let media_key, media_type, media_mime;
     if (archivo) {
       const subida = await subirArchivo(archivo);
@@ -6805,6 +6989,7 @@ $("#seg-crear").addEventListener("click", async () => {
         botones: texto && !archivo && !cat.catalogo ? leerCamposBotones($("#seg-botones"), "seg-boton") : undefined,
         quick_reply_id: quickReplyId || undefined,
         media_key, media_type, media_mime,
+        ...(plantilla ? { template_name: plantilla.name, template_language: plantilla.language, template_params: plantilla.params } : {}),
         ...cat,
         mandar_siempre: $("#seg-siempre").checked
       })
