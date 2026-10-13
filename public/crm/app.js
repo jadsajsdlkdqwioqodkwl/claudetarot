@@ -1080,17 +1080,30 @@ $("#sim-enviar").addEventListener("click", async () => {
 
 let bulkTemplateElegida = null;
 
-/* ---------- Killswitch y «mandar toda la secuencia» (api/crm/pausa.js) ---------- */
+/* ---------- Killswitch y rescate del día 7 (api/crm/pausa.js) ---------- */
 async function cargarPausa() {
   try {
     const d = await pedir("/api/crm/pausa");
-    $("#siempre-global").checked = d.siempre;
     const r = d.rescate7 || {};
     $("#rescate7-activo").checked = Boolean(r.activo);
     $("#rescate7-estado").textContent = r.activo
       ? `PRENDIDO · ${r.agendados} agendado${r.agendados === 1 ? "" : "s"}${r.proximo ? `, el próximo sale el ${fechaCorta(r.proximo)}` : ""}`
       : "APAGADO: no se agenda el rescate del día 7";
+    llenarPlantillasDia7(r.plantillas || {});
   } catch { /* sin red: queda como estaba */ }
+}
+/** Los selects de la plantilla del día 7: las aprobadas del número de cada marca (Tarot = el principal, URO = su línea). */
+async function llenarPlantillasDia7(elegidas) {
+  const uro = (estado.lineas || []).find((l) => String(l.marca || "").toLowerCase() === "uro");
+  $("#rescate7-fila-uro").hidden = !uro;
+  for (const [marca, lineaId] of [["tarot", null], ...(uro ? [["uro", uro.id]] : [])]) {
+    const sel = $(`#rescate7-plantilla-${marca}`);
+    const actual = elegidas[marca] || "";
+    let nombres = [];
+    try { nombres = (await pedir(`/api/crm/templates${lineaId ? `?linea_id=${lineaId}` : ""}`)).templates.filter((t) => t.status === "APPROVED").map((t) => t.name); } catch { /* sin Meta: solo la elegida */ }
+    const lista = [...new Set([...(actual ? [actual] : []), ...nombres])];
+    sel.innerHTML = lista.map((n) => `<option value="${escapar(n)}"${n === actual ? " selected" : ""}>${escapar(n)}${n === actual && !nombres.includes(n) ? " (no aprobada)" : ""}</option>`).join("");
+  }
 }
 $("#rescate7-activo").addEventListener("change", async (e) => {
   try {
@@ -1098,9 +1111,13 @@ $("#rescate7-activo").addEventListener("change", async (e) => {
   } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
   cargarPausa();
 });
-$("#siempre-global").addEventListener("change", async (e) => {
-  try { await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ siempre: e.target.checked }) }); } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
-});
+document.querySelectorAll("#rescate7-plantilla-tarot, #rescate7-plantilla-uro").forEach((sel) => sel.addEventListener("change", async () => {
+  try {
+    const d = await pedir("/api/crm/pausa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rescate7_plantilla: { marca: sel.dataset.marca, nombre: sel.value } }) });
+    if (d.cambiados) alert(`Listo: también se cambió en ${d.cambiados} rescate${d.cambiados === 1 ? "" : "s"} ya agendado${d.cambiados === 1 ? "" : "s"}.`);
+  } catch (err) { alert(err.message); }
+  cargarPausa();
+}));
 
 $("#btn-admin").addEventListener("click", () => {
   $("#modal-admin-fondo").classList.add("abierto");
@@ -3737,6 +3754,9 @@ function pintarMensajes({ alFinal = false } = {}) {
   const abajo = cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 40;
 
   let diaAnterior = null;
+  // «Reactivar seguimiento» va solo debajo de la última burbuja de cada respuesta rápida que tiene seguimiento.
+  const ultimaDeRapida = new Map();
+  for (const m of mensajes) if (m.con_seguimiento && m.quick_reply_id && m.direction === "out") ultimaDeRapida.set(m.quick_reply_id, m.id);
   const filas = mensajes.map((m) => {
     const dia = etiquetaDia(m.created_at);
     const separador = dia !== diaAnterior ? `<div class="separador-fecha"><span>${dia}</span></div>` : "";
@@ -3752,7 +3772,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${contenidoMensaje(m)}
         <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
         ${reaccionesHtml(m)}
-        ${m.con_seguimiento ? `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="Si después de esta respuesta rápida mandaste otro mensaje, su «si no responde» se canceló: tócalo para volver a programarlo">${icon("clock")} Reactivar seguimiento</button>` : ""}
+        ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id ? `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="Si después de esta respuesta rápida mandaste otro mensaje, su «si no responde» se canceló: tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -3775,19 +3795,56 @@ function pintarMensajes({ alFinal = false } = {}) {
   if (alFinal || abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
 }
 
-/** Chip de la burbuja: vuelve a programar el «si no responde» de esa respuesta rápida (lo cancela cualquier mensaje nuestro posterior). */
+/**
+ * Chip de la burbuja: vuelve a programar el «si no responde» de esa respuesta rápida (lo cancela cualquier
+ * mensaje nuestro posterior). Primero muestra qué pasos saldrán y deja editarlos solo para este chat.
+ */
+let reactivando = null; // { chip, quickReplyId, pasos }
 async function reactivarSeguimientoRapida(chip) {
   chip.disabled = true;
   try {
-    await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: Number(chip.dataset.q) }) });
-    chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
-    await actualizarSeguimientosDetalle();
+    const quickReplyId = Number(chip.dataset.q);
+    const d = await pedir(`/api/crm/followup-rapida?conversation_id=${estado.conversacionActivaId}&quick_reply_id=${quickReplyId}`);
+    reactivando = { chip, quickReplyId, pasos: d.pasos || [] };
+    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»`;
+    $("#ra-pasos").innerHTML = reactivando.pasos.map((p, i) => `
+      <div class="ra-paso" data-i="${i}">
+        <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después del paso anterior</label>
+        ${p.plantilla ? "" : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
+      </div>`).join("") || `<p class="ayuda-modal">Esta respuesta rápida ya no tiene pasos de seguimiento prendidos.</p>`;
+    $("#ra-programar").disabled = !reactivando.pasos.length;
+    $("#modal-reactivar-fondo").classList.add("abierto");
   } catch (err) {
     alert(err.message);
   } finally {
     chip.disabled = false;
   }
 }
+$("#ra-cancelar").addEventListener("click", () => { $("#modal-reactivar-fondo").classList.remove("abierto"); reactivando = null; });
+$("#ra-programar").addEventListener("click", async () => {
+  if (!reactivando) return;
+  const boton = $("#ra-programar");
+  const pasos = [...document.querySelectorAll("#ra-pasos .ra-paso")].map((el) => ({
+    horas: Number(el.querySelector(".ra-horas").value) || undefined,
+    body: el.querySelector(".ra-texto")?.value,
+    activo: el.querySelector(".ra-activo").checked
+  }));
+  if (!pasos.some((p) => p.activo)) { alert("Deja al menos un paso para mandar."); return; }
+  boton.disabled = true;
+  try {
+    await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: reactivando.quickReplyId, pasos }) });
+    reactivando.chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    $("#modal-reactivar-fondo").classList.remove("abierto");
+    reactivando = null;
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    boton.disabled = false;
+  }
+});
 
 /* ---------- Responder a un mensaje / reaccionar ---------- */
 

@@ -244,6 +244,18 @@
   </div>
 </div>
 
+<div class="modal-fondo" id="modal-reactivar-fondo">
+  <div class="modal">
+    <h2 id="ra-titulo">Reactivar seguimiento</h2>
+    <p class="ayuda-modal">Esto es lo que se le programará a este cliente si no responde. Puedes cambiar el texto y la espera, o quitar un paso: el cambio vale solo para este chat (la respuesta rápida queda igual).</p>
+    <div id="ra-pasos"></div>
+    <div class="acciones">
+      <button class="cancelar" id="ra-cancelar" type="button">Cancelar</button>
+      <button class="crear" id="ra-programar" type="button">Programar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-fondo hoja" id="modal-selector-fondo">
   <div class="modal hoja-caja">
     <h2 id="selector-titulo">Elegir mensaje</h2>
@@ -634,11 +646,9 @@
       <span class="interruptor"><input type="checkbox" id="rescate7-activo" /><span></span></span>
       <span id="rescate7-estado">Cargando…</span>
     </label>
-
-    <hr />
-    <h2>Mandar secuencias completas</h2>
-    <p class="ayuda-modal">Las secuencias, planes y plantillas de seguimiento que se programen desde ahora salen completas sí o sí, aunque el cliente o nosotros escribamos antes (el botón «Ya lo recogí» del recojo en Shalom igual lo detiene).</p>
-    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="siempre-global" /> Mandar toda la secuencia sin importar si el cliente ya respondió o si nosotros respondimos</label>
+    <p class="ayuda-modal">Plantilla que sale el día 7 (solo las aprobadas en Meta). Al cambiarla, también cambia en los que ya están agendados y aún no salen.</p>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Tarot Store <select id="rescate7-plantilla-tarot" data-marca="tarot"><option>Cargando…</option></select></label>
+    <label class="ayuda-modal" id="rescate7-fila-uro" style="display:flex;align-items:center;gap:6px" hidden>URO <select id="rescate7-plantilla-uro" data-marca="uro"><option>Cargando…</option></select></label>
 
     <hr />
     <h2>Bienvenida de anuncios</h2>

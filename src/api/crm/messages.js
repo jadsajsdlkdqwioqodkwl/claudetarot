@@ -52,7 +52,10 @@ export async function leerMensajes(env, conversationId, beforeId = null, { marca
     `SELECT m.id, m.direction, m.type, m.body, m.file_name, m.media_id, m.media_key, m.media_mime, m.status, m.error_detail, m.view_once, m.sent_by, m.created_at,
        m.reply_to_message_id, m.client_reaction, m.agent_reaction, m.quick_reply_id,
        r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by,
-       (q.followup_body IS NOT NULL OR COALESCE(q.followup_pasos, '[]') <> '[]') AS con_seguimiento
+       -- Solo si tiene algún paso de seguimiento prendido (el botón «Reactivar seguimiento» de la burbuja).
+       CASE WHEN json_valid(q.followup_pasos) AND json_array_length(q.followup_pasos) > 0
+         THEN EXISTS (SELECT 1 FROM json_each(q.followup_pasos) j WHERE COALESCE(json_extract(j.value, '$.activo'), 1) <> 0)
+         ELSE NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL END AS con_seguimiento
      FROM messages m
      LEFT JOIN messages r ON r.id = m.reply_to_message_id
      LEFT JOIN quick_replies q ON q.id = m.quick_reply_id
