@@ -227,7 +227,8 @@ export async function onRequestGetAnuncios({ request, env }) {
 export async function onRequestGetPedidosWeb({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
-  const horas = Math.min(Math.max(Number(new URL(request.url).searchParams.get("horas")) || 24, 1), 72);
+  const url = new URL(request.url);
+  const horas = Math.min(Math.max(Number(url.searchParams.get("horas")) || 24, 1), 72);
   const desde = sqlFecha(new Date(Date.now() - horas * 3600000));
   const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
   const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
