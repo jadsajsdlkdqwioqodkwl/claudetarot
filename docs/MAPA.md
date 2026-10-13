@@ -39,6 +39,8 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | **Voz del cliente → brief y ángulos** | 11:56 | Chats del día → brief (Google Doc) + pestañas Voz del cliente y Avatares | Doc del brief, hoja de creativos, Telegram al dueño. Pasos: `docs/anuncios/voz-del-cliente.md` (usa `docs/anuncios/rutina-brief-drive.md`) |
 | Asesor — reporte de ventas | 21:00 | Ventas del día, mensajes de seguimiento | Telegram + Drive |
 | Asesor — reporte A PEDIDO | a mano | Igual que el de 10:30, cuando el dueño lo pide | Telegram |
+| **Reporte de pedidos de la noche** (desde 2026-10-12) | 21:30, 22:00, 22:30, 23:00 | El dueño quiere el PDF de pedidos SOLO de noche. 21:30 = «reporte de ventas del día» (antes 21:00, `trig_01Q3pp…`); 22:00 y 23:00 = disparadores `trig_01XbDw…` y `trig_014B8M…` que lanzan la misma routine de 21:30 con texto extra (sin repetir mensajes, título Drive `… 2200` / `… 2300 FINAL`); 22:30 = cierre FINAL de la routine de mensajes | Telegram (dueño y Danitza) + CRM → Reportes |
+| ~~Asesor — reporte de pedidos 10:30~~ y ~~disparador 11:25~~ | apagados 2026-10-12 | Reporte de la mañana: el dueño lo quiere de noche. Además el 10:30 fallaba: la routine no tiene permiso de Bash ni conector de Drive, así que los scripts se bloqueaban | Siguen creadas (apagadas); la «A PEDIDO» tiene el mismo defecto |
 
 Conectores que necesitan (se agregan en claude.ai → Routines → Editar):
 Director CRO → Google Drive y Meta. Voz del cliente → Google Docs, Google
