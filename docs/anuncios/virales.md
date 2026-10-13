@@ -18,9 +18,7 @@ Dime sin rodeos: si TikTok o IG piden login o CAPTCHA, no lo saltes; dime qué q
 
 ## 2. Producto
 
-Según el dueño: el kit del caldero de bruja, o en general el kit de cartas con los significados en español. Hay muchos otros modelos de mazos; solo interesa el nuestro. Del nicho solo se aprende el hook y el formato.
-
-Ojo: las fotos de referencia muestran un kit en caja morada (78 cartas con significados, guía, bolsa, collar amuleto, tapete floral, cuarzos) y no se ve ningún caldero. Si el caldero es otra versión, agregar su foto a la carpeta de la sección 3.
+El mazo se llama «Caldero de bruja» (el nombre no significa que traiga un caldero; es un kit de tarot). Es el kit en caja morada con 78 cartas con los significados en español, guía, bolsa, collar amuleto, tapete floral y cuarzos. Hay muchos otros modelos de mazos; solo interesa el nuestro. Del nicho solo se aprende el hook y el formato.
 
 ## 3. Fotos de referencia (no hace falta subir nada)
 
@@ -39,7 +37,7 @@ Si no puedes abrir las imágenes, guíate por las descripciones de arriba: caja 
 
 ## 4. Qué buscar (solo en español)
 
-- Producto: caldero de bruja tarot, kit de tarot con caldero, mazo de tarot con significados en español
+- Producto: mazo caldero de bruja, tarot caldero de bruja, mazo de tarot con significados en español
 - Compra: mazo de tarot Perú, comprar cartas de tarot, tarot para principiantes con guía en español
 - Formato: unboxing tarot, reseña mazo de tarot, tarot ASMR, mi primer mazo de tarot
 - Hashtags: #tarot #tarotenespañol #tarotperu #cartasdetarot #mazodetarot

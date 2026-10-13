@@ -93,6 +93,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-13 · Virales: el dueño pondrá el contenido directo en el contexto del Project (no por link). Fuente vigente: `docs/anuncios/virales.md` (corregido: «Caldero de bruja» es el nombre del mazo, no trae caldero). El Google Doc `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` quedó con la versión anterior (aún tiene el párrafo «Ojo» de la sección 2); si el Project vuelve a leer por link, hay que igualarlo con el md.
+
 - 2026-10-13 · Virales: el Doc pasó a `1JDuEofJb7qwbVZc41dkdHJXQot2OnCDQcCyMl9JcUUQ` (el anterior `1MnIbcoe-YB2GdZfu_mTiaoWbcABbjKdg0zqi3QMbT5Y` fue a la papelera, sin uso). Ahora trae las instrucciones completas, las fotos de referencia (se leen de `creativos/refs/` en GitHub, no se suben) y los enlaces de la hoja; el prompt del Project es una sola línea que apunta al Doc (`docs/anuncios/virales-prompt.md`).
 
 - 2026-10-13 · Virales: pestaña **Virales** creada en la hoja de creativos (11 columnas, A a K). El Doc `11DzPMl3PK521wxp9NvxiHUJqgKexyjovQ71uEtmEnwQ` se mandó a la papelera (era el primero, sin uso) y lo reemplaza `1MnIbcoe-YB2GdZfu_mTiaoWbcABbjKdg0zqi3QMbT5Y`, ahora con las decisiones del dueño: solo español, producto exacto (caldero de bruja / cartas con significados) más hooks del nicho de venta de mazos, tantos videos como alcance una sesión. Prompt del Project en `docs/anuncios/virales-prompt.md`.
