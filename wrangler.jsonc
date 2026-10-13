@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "claudetarot",
+  // Cuenta de Cloudflare: la necesita wrangler con un token de cuenta (CLOUDFLARE_API_TOKEN del entorno de Claude Code).
+  "account_id": "d0c6550b43c7a966eb8e93a69a653993",
   "main": "src/index.js",
   "compatibility_date": "2026-01-01",
 
@@ -154,6 +156,6 @@
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el
     // prompt de la Routine; aquí va el hash, que no sirve para nada sin ella.
-    "ASESOR_CLAVE_SHA256": "b22840bc68a039ffe4a74253fb8cb83f5092dc99b830bb4b931d95c249ad4c6a"
+    "ASESOR_CLAVE_SHA256": "b22840bc68a039ffe4a74253fb8cb83f5092dc99b830bb4b931d95c249ad4c6a,07fa0300e12de853dada6ab803ade565c758674bb096a141efc4a836d1c8f153"
   }
 }
