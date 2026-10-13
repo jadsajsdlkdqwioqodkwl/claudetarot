@@ -36,6 +36,21 @@ Todas: sesión nueva en cada corrida, repo `jadsajsdlkdqwioqodkwl/claudetarot`
 | Asesor — reporte de ventas | `CRON_TZ=America/Lima 0 21 * * *` | Google Drive |
 | Coaching y voz del cliente (semanal) | `CRON_TZ=America/Lima 37 7 * * 1` | Google Drive |
 | Asesor — reporte A PEDIDO | sin horario (se corre a mano) | Google Drive |
+| Asesor — reporte de ventas (22:00 · 23:00 · 00:00) | `CRON_TZ=America/Lima 0 22,23,0 * * *` | ninguno |
+
+IDs en claude.ai (2026-10-13): Director `trig_01AppxhSheDGy6TwdVuqznez` · rescate 1
+`trig_011P6q2BbNWT2Pi2KDQ5Y4DH` · pedidos `trig_01JEzZcdKvF4rPL9jYyda8x9` ·
+mensajes y cierre `trig_01TtApS72NepvZsB85hZRBHt` · voz del cliente
+`trig_01Bi2xeNnPJp7M81WXtxqmwP` · ventas 21:00 `trig_01MqeNCP2gXjMyXZaWt2sqBo` ·
+semanal `trig_015rVWTp5F7Kx7vFvSAt2xZh` · a pedido `trig_01H81ksgqKo2NLNdv1TvN296` ·
+ventas de la noche `trig_01MUZWZBq7nr1Cvq1cLRNpAN`.
+
+**Red del entorno**: permitir `kit-tarot-para-principiantes.tarotperu.store`
+(sin eso los scripts no llegan a la API del asesor) y, para anuncios,
+`generativelanguage.googleapis.com`. Ver docs/MAPA.md → Routines.
+
+**Regla**: toda Routine nueva, borrada o cambiada se anota aquí y en
+docs/MAPA.md en el mismo commit.
 
 ## Prompts (después del inicio común)
 
@@ -110,3 +125,13 @@ docs/asesor.md «Routine semanal (lunes) — prompt sugerido».
 
 **Asesor — reporte A PEDIDO (a mano)**: igual que el reporte de pedidos de
 las 10:30, con `origen: "asesor a pedido"`.
+
+**Asesor — reporte de ventas (22:00 · 23:00 · 00:00)**: mira la hora de
+Lima; el día que reporta es hoy a las 22:00 y 23:00, y el que cerró a las
+00:00. `contexto.py` y `preparar.py api --dias 1 --salida /tmp/ventas`
+(`--dias 2` a las 00:00). Ventas del día: total y por vendedora, Lima y
+provincia, kits, adelantos y saldos pendientes; a las 23:00 y 00:00, qué
+cambió desde la hora anterior. Registra con ventas.py las ventas de provincia
+nuevas. Reporte de máx. 200 palabras, texto plano, título «Ventas HH:MM —
+AAAA-MM-DD», con `enviar.py --informe /tmp/ventas/informe.txt` (CRM →
+Reportes). No propone mensajes a clientes.
