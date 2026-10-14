@@ -139,7 +139,7 @@ export async function onRequestPost({ request, env }) {
     }
     // Y a las del equipo en REPORTE_AGENTES (Danitza) que vincularon su
     // Telegram en el CRM: mismo PDF, con el link al reporte en el texto.
-    for (const chatId of await chatsReporte(env, dueno)) {
+    for (const chatId of payload.solo_dueno ? [] : await chatsReporte(env, dueno)) {
       try {
         await mandarPdf(env, chatId, payload.pdf_base64, payload.pdf_nombre, payload.resumen);
         res.enviados++;

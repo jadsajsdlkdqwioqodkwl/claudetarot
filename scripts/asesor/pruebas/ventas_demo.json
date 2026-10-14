@@ -1,0 +1,7 @@
+{"tipo_reporte":"ventas","hora":"21:00","fecha_objetivo":"2026-10-14","origen":"asesor ventas 21:00 (MUESTRA DE FORMATO)",
+ "pedidos":[
+  {"nombre":"Cliente Lima Demo","whatsapp":"51900000001","telefono":"900000001","dni":"","direccion_o_agencia":"Av. Ejemplo 123, Miraflores","courier":"Motorizado","kits":1,"empaque":"","pago":"Contraentrega","fecha_entrega":"2026-10-15","nota":"","estado":"CONFIRMADO","destino":"LIMA","vendedora":"Jennifer"},
+  {"nombre":"Cliente Lima Dos","whatsapp":"51900000002","telefono":"900000002","dni":"","direccion_o_agencia":"Jr. Prueba 45, SJL","courier":"Motorizado","kits":2,"empaque":"2 kits","pago":"Contraentrega","fecha_entrega":"2026-10-15","nota":"Saldo al recibir","estado":"CONFIRMADO","destino":"LIMA","vendedora":"Danitza"},
+  {"nombre":"Cliente Provincia Demo","whatsapp":"51900000003","telefono":"900000003","dni":"12345678","direccion_o_agencia":"Shalom Av. Demo, Cusco","courier":"Shalom","kits":1,"empaque":"","pago":"Adelanto S/20","fecha_entrega":"2026-10-15","nota":"","estado":"CONFIRMADO","destino":"PROVINCIA","vendedora":"Jennifer"},
+  {"nombre":"Dudoso Demo","whatsapp":"51900000004","kits":1,"estado":"POR_CONFIRMAR","destino":"LIMA","nota":"Dio dirección pero no quedó agendado","vendedora":"Danitza"}
+ ],"incidencias":["Cliente Demo pide cambio de carta"],"pedidos_web":[]}

@@ -23,6 +23,7 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
   antes. Los pedidos se registran hasta las 11 pm para salir al día siguiente.
 - Para agendar hace falta: ubicación (📍 o dirección) y teléfono de quien recibe.
 - Venta = dio dirección y quedó agendado.
+- **Regla del dueño (2026-10-14):** en Lima la venta ocurre cuando el cliente pasa su dirección (y teléfono de quien recibe). Que la vendedora diga "confirmado" de palabra sin eso NO es venta: es otra cosa o error de asesor.
 
 ## Provincia
 - Por Shalom u Olva (agencia que elija el cliente).
@@ -30,6 +31,7 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
   recoger. El adelanto cubre el envío y evita cancelaciones.
 - Datos para despachar: nombre completo, DNI y agencia de destino.
 - Venta = mandó el adelanto + sus datos.
+- **Regla del dueño (2026-10-14):** en provincia la venta ocurre cuando el cliente manda el adelanto (captura, o la vendedora ya confirmó que llegó el Yape) más sus datos. Una confirmación verbal sin adelanto NO es venta: es otra cosa o error de asesor (va a POR_CONFIRMAR y a `incidencias`).
 - Al día siguiente se le manda el comprobante; Shalom entrega una boleta días
   después. Clave de retiro de Shalom: 3114 (respaldo 3144 y 3143).
 - Link de seguimiento `/TS-XXXXXXX`: se le manda el mismo día de la venta
