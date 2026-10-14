@@ -2271,6 +2271,8 @@ function opcionesProducto(valor, general = "General (todas / Tarot Store)") {
  */
 const rapidasSoloProducto = () => { try { return localStorage.getItem("crm_rapidas_solo") === "1"; } catch { return false; } };
 function rapidasDelChat(lista, buscando = false) {
+  // Buscando manda el orden de la búsqueda (lo que más calza arriba), no el producto.
+  if (buscando) return lista;
   const prod = chatActivo()?.producto_id || null;
   const propias = prod ? lista.filter((q) => q.producto_id === prod) : [];
   const solo = rapidasSoloProducto() && prod && !buscando;
@@ -5813,7 +5815,11 @@ function buscarRapidas(lista, consulta) {
     const titulo = normalizarBusqueda(q.title).split(" ");
     const cuerpo = normalizarBusqueda(`${q.body || ""} ${(q.variantes || []).map((v) => v.texto || "").join(" ")}`).split(" ");
     const porToken = tokens.map((t) => Math.max(puntajeToken(t, titulo) * 2, puntajeToken(t, cuerpo)));
-    return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) };
+    // Lo que coincide con el nombre tal cual manda sobre lo demás.
+    const tituloTxt = titulo.join(" ");
+    const consultaTxt = tokens.join(" ");
+    const bono = tituloTxt === consultaTxt ? 200 : tituloTxt.startsWith(consultaTxt) ? 100 : tituloTxt.includes(consultaTxt) ? 60 : 0;
+    return { q, todas: porToken.every((p) => p > 0), puntaje: porToken.reduce((a, b) => a + b, 0) + bono };
   }).filter((x) => x.puntaje > 0);
   const conTodas = puntuadas.filter((x) => x.todas);
   return (conTodas.length ? conTodas : puntuadas).sort((a, b) => b.puntaje - a.puntaje).map((x) => x.q);
