@@ -200,10 +200,8 @@ export async function onRequestGetAnuncios({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const dias = Math.min(Math.max(Number(new URL(request.url).searchParams.get("dias")) || 7, 1), 60);
-  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
-  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
 
-  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
+  const { results } = await env.CRM_DB.prepare(
     `SELECT COALESCE(c.ad_source_id, '') AS ad_id, MAX(c.ad_headline) AS titular,
             COUNT(*) AS chats,
             SUM(EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
@@ -230,10 +228,8 @@ export async function onRequestGetPedidosWeb({ request, env }) {
   const url = new URL(request.url);
   const horas = Math.min(Math.max(Number(url.searchParams.get("horas")) || 24, 1), 72);
   const desde = sqlFecha(new Date(Date.now() - horas * 3600000));
-  const promesasDias = Math.min(Math.max(Number(url.searchParams.get("promesas_dias")) || 0, 0), 60);
-  const soloPromesas = promesasDias > 0 && url.searchParams.get("solo_promesas") === "1";
 
-  const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
+  const { results } = await env.CRM_DB.prepare(
     `SELECT p.id, p.created_at, p.nombre, p.wa_id, p.envio, p.destino, p.etiqueta, p.bump, p.total,
             conv.etapa, conv.meta_tags,
             (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in'
