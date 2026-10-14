@@ -1005,6 +1005,14 @@ check("las letras de columna llegan hasta la última de la hoja",
   };
   recorrer("src/api");
   check("todo handler de src/api tiene su ruta en index.js", !faltan.length, faltan.join(", "));
+  {
+    const msgs = readFileSync(join(root, "src/api/crm/messages.js"), "utf8");
+    const otros = [];
+    const buscar = (dir) => { for (const e of readdirSync(join(root, dir), { withFileTypes: true })) { const rel = `${dir}/${e.name}`; if (e.isDirectory()) buscar(rel); else if (e.name.endsWith(".js") && rel !== "src/api/crm/messages.js" && rel !== "src/lib/crm-send.js" && /\{\s*vivo\b/.test(readFileSync(join(root, rel), "utf8"))) otros.push(rel); } };
+    buscar("src");
+    check("«escribiendo…» en vivo: solo el texto tecleado a mano (messages.js, sin respuesta rápida) se salta la pausa",
+      !otros.length && /payload\?\.escribiendo_vivo === true && !quickReplyId && \(await escribiendoVivoPrendido\(env\)\)/.test(msgs), otros.join(", "));
+  }
   check("una plantilla no reflota el chat en la bandeja (solo cuando el cliente escribe)",
     /if \(!subirEnBandeja \|\| type === "template"\) return;/.test(readFileSync(join(root, "src/lib/crm-db.js"), "utf8")));
 }

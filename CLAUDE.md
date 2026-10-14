@@ -106,6 +106,12 @@ Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en
   audios, documentos, catálogo y producto salen al toque, sin "escribiendo…"
   (`mandarMediaGuardada()`, `mandarAlToque()`).
   Nunca llames directo a `enviarTexto/enviarMedia/enviarTemplate/enviarCatalogo*/enviarProducto`.
+  **Única excepción (dueño, 2026-10-14): «escribiendo…» EN VIVO.** Con el ajuste
+  `escribiendo_vivo` (CRM → Equipo, prendido por defecto) el cliente ve
+  «escribiendo…» mientras la vendedora teclea (`POST /api/crm/escribiendo`), y
+  ese texto TECLEADO A MANO sale sin repetir la pausa, con 1 s entre mensajes
+  (`pausaEnvio(..., { vivo: true })`, solo desde `messages.js`). Respuestas
+  rápidas, texto pegado, bienvenida, seguimientos y plantillas siguen con su pausa.
 
 - `npm run check` y `npm run check:gs` antes de subir (el chequeo "la foto de
   la variante es una banda horizontal" ya fallaba antes).

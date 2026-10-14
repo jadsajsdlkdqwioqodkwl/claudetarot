@@ -78,6 +78,7 @@ import {
 } from "./api/crm/followup-sequences.js";
 import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
 import { onRequestGet as crmFollowupRapidaGet, onRequestPost as crmFollowupRapidaPost } from "./api/crm/followup-rapida.js";
+import { onRequestPost as crmEscribiendoPost } from "./api/crm/escribiendo.js";
 import {
   onRequestGet as crmTotpGet,
   onRequestPost as crmTotpPost,
@@ -177,6 +178,7 @@ const ROUTES = {
   "/api/crm/followup-sequences": { GET: crmFollowupSeqGet, POST: crmFollowupSeqPost, DELETE: crmFollowupSeqDelete, PATCH: crmFollowupSeqPatch },
   "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
   "/api/crm/followup-rapida": { GET: crmFollowupRapidaGet, POST: crmFollowupRapidaPost },
+  "/api/crm/escribiendo": { POST: crmEscribiendoPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost, PATCH: crmTemplatesPatch },
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
   "/api/crm/catalog-products": { GET: crmCatalogProductosGet },

@@ -66,10 +66,10 @@ const ESPERA_MAXIMA_TURNO_MS = 30000;
 const ultimoEnvio = new Map(); // conversation_id -> ms del último envío (dentro de esta ejecución)
 const pausasHechas = new Map(); // conversation_id -> [ms] pausas hechas que todavía no usó ningún mensaje
 
-async function esperarEspacio(conversationId, ultimoOutDb) {
+async function esperarEspacio(conversationId, ultimoOutDb, espacio = ESPACIO_ENTRE_MENSAJES_MS) {
   const previo = Math.max(ultimoEnvio.get(conversationId) || 0, ultimoOutDb || 0);
-  const falta = previo + ESPACIO_ENTRE_MENSAJES_MS - Date.now();
-  if (previo && falta > 0) await esperar(Math.min(falta, ESPACIO_ENTRE_MENSAJES_MS));
+  const falta = previo + espacio - Date.now();
+  if (previo && falta > 0) await esperar(Math.min(falta, espacio));
 }
 
 /** Reserva el turno de este mensaje en el chat; devuelve cuántos ms esperar antes del "escribiendo…". */
@@ -113,6 +113,32 @@ export async function sinVisto(env) {
   return sinVistoCache.valor;
 }
 
+/*
+ * «Escribiendo…» EN VIVO (ajuste `escribiendo_vivo`, CRM → Equipo, prendido salvo que el admin lo
+ * apague; decisión del dueño 2026-10-14): mientras la vendedora teclea en el chat, el CRM llama a
+ * POST /api/crm/escribiendo (cada ~20 s como mucho; WhatsApp lo muestra hasta 25 s o hasta que llega
+ * nuestro mensaje). Ese texto TECLEADO A MANO ya tuvo su «escribiendo…» real, así que al mandarlo no
+ * se repite la pausa: solo se deja ESPACIO_VIVO_MS (1 s) entre mensajes seguidos (`pausaEnvio(..., { vivo: true })`).
+ * Todo lo demás (respuesta rápida, texto pegado, bienvenida, seguimientos, plantillas) sigue con su pausa.
+ * Con «sin visto» prendido no hay en vivo (Meta solo muestra «escribiendo…» marcando el visto).
+ */
+export const ESPACIO_VIVO_MS = 1000;
+export async function escribiendoVivoPrendido(env) {
+  if (!env?.CRM_DB || (await sinVisto(env))) return false;
+  return (await obtenerAjuste(env.CRM_DB, "escribiendo_vivo").catch(() => null)) !== "0";
+}
+export async function escribiendoEnVivo(env, conversationId) {
+  if (!(await escribiendoVivoPrendido(env))) return false;
+  const fila = await env.CRM_DB.prepare(
+    `SELECT wa_message_id FROM messages
+     WHERE conversation_id = ? AND direction = 'in' AND type NOT IN ('call', 'reaction', 'system') AND wa_message_id IS NOT NULL
+     ORDER BY id DESC LIMIT 1`
+  ).bind(conversationId).first();
+  if (!fila?.wa_message_id) return false;
+  await escribiendoEn(env, conversationId, fila.wa_message_id);
+  return true;
+}
+
 /** "Escribiendo…" con un reintento: nunca frena el envío. */
 async function escribiendoEn(env, conversationId, waMessageId) {
   if (!waMessageId) return;
@@ -130,7 +156,7 @@ async function escribiendoEn(env, conversationId, waMessageId) {
   }
 }
 
-export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId, rapido = false } = {}) {
+export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ultimoWaId, rapido = false, vivo = false } = {}) {
   // Nunca menos que el mínimo, pase lo que pase (bienvenida `rapido`: 1 s; respuesta rápida: 1,5 s; normal: 2 s).
   ms = rapido ? Math.max(Number(ms) || 0, PAUSA_BIENVENIDA_MS) : Math.max(Number(ms) || 0, PAUSA_RAPIDA_MS);
   // `ultimoWaId`: el id del último mensaje del cliente si quien llama ya lo
@@ -154,6 +180,14 @@ export async function pausaEnvio(env, conversationId, ms = PAUSA_ENVIO_MS, { ult
     } catch (err) {
       await avisarErrorEscribiendo(env, conversationId, err);
     }
+  }
+  if (vivo) {
+    // Texto tecleado a mano con «escribiendo…» en vivo: el cliente ya lo vio; solo 1 s entre mensajes.
+    await esperarEspacio(conversationId, ultimoOut, ESPACIO_VIVO_MS);
+    const turnoVivo = await reservarTurno(env, conversationId, 0, ESPACIO_VIVO_MS);
+    if (turnoVivo) await esperar(turnoVivo);
+    if (conversationId) (pausasHechas.get(conversationId) || pausasHechas.set(conversationId, []).get(conversationId)).push(Date.now());
+    return;
   }
   if (!rapido) await esperarEspacio(conversationId, ultimoOut);
   const turno = await reservarTurno(env, conversationId, ms, rapido ? 0 : ESPACIO_ENTRE_MENSAJES_MS);
