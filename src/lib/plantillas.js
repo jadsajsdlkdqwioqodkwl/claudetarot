@@ -22,16 +22,20 @@ export async function plantillaAprobada(env, nombre) {
   const clave = env.LINEA_ID ? `plantilla_estado:${env.WHATSAPP_BUSINESS_ACCOUNT_ID}:${nombre}` : `plantilla_estado:${nombre}`;
   const guardado = await obtenerAjuste(db, clave).catch(() => null);
   if (guardado) {
-    const [estado, at, idioma, conNombre] = String(guardado).split("|");
-    if (estado === "APPROVED") return { idioma, conNombre: conNombre === "1" };
-    if (Date.now() - Number(at) < CACHE_MS) return null;
+    const [estado, at, idioma, conNombre, variables] = String(guardado).split("|");
+    // Las guardadas antes de contar las variables se vuelven a leer de Meta una vez.
+    if (estado === "APPROVED" && variables !== undefined) return { idioma, conNombre: conNombre === "1", variables: Number(variables) || 0 };
+    if (estado !== "APPROVED" && Date.now() - Number(at) < CACHE_MS) return null;
   }
   const lista = (await listarTemplates(env)).filter((t) => t.name === nombre);
   const t = lista.find((x) => x.status === "APPROVED") || lista[0];
   const cuerpo = (t?.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
   const conNombre = cuerpo.includes("{{1}}");
-  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}|${conNombre ? 1 : 0}`);
-  return t?.status === "APPROVED" ? { idioma: t.language, conNombre } : null;
+  // Cuántas variables lleva el texto APROBADO ({{1}}, {{2}}…): si se editó la plantilla, puede no
+  // coincidir con las que se guardaron al programarla, y Meta rechaza el envío (#132000).
+  const variables = Math.max(0, ...(cuerpo.match(/\{\{(\d+)\}\}/g) || []).map((v) => Number(v.slice(2, -2))));
+  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}|${conNombre ? 1 : 0}|${variables}`);
+  return t?.status === "APPROVED" ? { idioma: t.language, conNombre, variables } : null;
 }
 
 export const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "estimad@";

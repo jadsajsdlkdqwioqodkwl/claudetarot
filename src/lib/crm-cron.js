@@ -17,7 +17,7 @@ import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./what
 import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
-import { plantillaAprobada } from "./plantillas.js";
+import { plantillaAprobada, primerNombre } from "./plantillas.js";
 import { textoParaChat, parametrosDePlantilla } from "./plantillas-propuestas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
@@ -186,6 +186,14 @@ export async function procesarSeguimientosVencidos(env) {
           await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
             .bind(new Date(Date.now() + 30 * 60 * 1000).toISOString(), s.id).run();
           continue;
+        }
+        // Tantas variables como pide el texto aprobado en Meta: si la plantilla se editó (p. ej. el
+        // rescate_lead_1 sin nombre ni producto), las guardadas al programarla sobran o faltan y Meta
+        // rechaza el envío. Las que faltan se completan con el nombre y el producto por defecto.
+        if (Number.isInteger(aprobada.variables) && parametros.length !== aprobada.variables) {
+          const porDefecto = [primerNombre(s.contact_nombre), "el kit de tarot"];
+          parametros.splice(aprobada.variables);
+          while (parametros.length < aprobada.variables) parametros.push(porDefecto[parametros.length] || "");
         }
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
         const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros));

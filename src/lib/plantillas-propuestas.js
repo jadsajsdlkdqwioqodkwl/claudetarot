@@ -228,7 +228,8 @@ export async function vigilarPlantillas(env) {
       ahora[clave] = t.status;
       const cuerpoTxt = (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
       const cache = envM.LINEA_ID ? `plantilla_estado:${envM.WHATSAPP_BUSINESS_ACCOUNT_ID}:${p.nombre}` : `plantilla_estado:${p.nombre}`;
-      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}`).catch(() => {});
+      const variables = Math.max(0, ...(cuerpoTxt.match(/\{\{(\d+)\}\}/g) || []).map((v) => Number(v.slice(2, -2))));
+      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}|${variables}`).catch(() => {});
       if (antes && antes[clave] !== t.status && ["APPROVED", "REJECTED", "PAUSED", "DISABLED"].includes(t.status)) {
         const icono = t.status === "APPROVED" ? "✅ aprobó" : "❌ " + (t.status === "REJECTED" ? "rechazó" : "dejó " + t.status.toLowerCase());
         avisos.push(`${icono}: ${nombre} · ${p.titulo} (\`${p.nombre}\`)${t.rejected_reason && t.rejected_reason !== "NONE" ? ` — motivo: \`${t.rejected_reason}\`` : ""}`);
