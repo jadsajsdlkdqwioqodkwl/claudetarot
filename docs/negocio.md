@@ -79,3 +79,4 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
   cierre.
 - "Estoy de viaje" / "a fin de mes" → separar con S/10 para esa fecha (se
   puede sumar el collar amuleto de regalo, no el descuento).
+- **Cuándo cuenta el día de una venta (2026-10-14):** el día en que se completa: provincia = adelanto + datos (si el adelanto llegó antes y los datos otro día, cuenta el día de los datos); Lima = el día que pasó su dirección.
