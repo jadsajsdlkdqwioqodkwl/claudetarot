@@ -116,3 +116,14 @@ Director CRO y Voz del cliente: Google Drive, Google Sheets, Google Docs, Meta A
 ## Project de conceptos (claude.ai → Projects)
 
 Instrucciones: `creativos/prompt-project.md`. Archivos del Project: `creativos/instrucciones.md`, `creativos/reglas_aprendidas.md`, `creativos/avatares.md`, `creativos/brief.md`, `creativos/copy-meta.md` y el link del brief vivo (Google Doc 1nYC6QcslGKQYjVBrO3arQnr6wqMWhC7v8n7OEXGwKh0).
+
+## 2026-10-14 · Ahorro de tokens (pedido del dueño)
+
+Qué se cambió en los prompts vivos de las 9 Routines (los textos de arriba son la historia; para recrearlas usa los de esta sección y `docs/prompts-para-pegar.md` con estos cambios):
+1. **Inicio común nuevo**: `git clone --depth 1`; lee SOLO `CLAUDE.md`, NO `docs/MAPA.md` (54 KB ≈ 15 000 tokens que cada corrida releía y solo sirve para cambiar código); de `docs/` solo el archivo que la tarea nombra; cada archivo una sola vez; si no hay novedad, terminar con una línea.
+2. **Cortes tempranos sin novedad**: «mensajes y cierre» de 11:30 y 16:30 termina si `preparar.py … --activos-horas 6` da `chats_a_leer` = 0; las de la noche (22·23·00) corren primero `preparar.py api --dias 1 --activos-horas 1` y, si nadie escribió en la última hora, responden «Sin novedad» y NO mandan reporte; el rescate termina si no hay candidatos.
+3. **Rescate de lead 1**: `--dias 9` en vez de 30 (releía a diario los mismos chats viejos); mira solo a quien acaba de salir de su ventana de 7 días; de `docs/asesor.md` lee solo su sección.
+4. **Voz del cliente**: de diaria a lunes, miércoles y viernes (`56 11 * * 1,3,5`); procesa hasta 2 días. El brief no cambiaba desde el 06/10.
+5. **Director CRO**: la Bitácora ya no se recrea cada día (leía y copiaba toda la historia): solo lunes o si empezó/terminó un experimento, y se agrega la entrada AL FINAL con el conector de Google Docs, sin leer el historial.
+6. **Ventas 21:00**: ya no propone mensajes de seguimiento (los propone la corrida de las 22:30; estaba duplicado).
+Sin tocar: horarios de pedidos (10:30), mensajes (11:30·16:30·22:30), ventas (21·22·23·00 pero ahora omiten cuando no hay novedad), semanal y a pedido. Idea pendiente si se quiere gastar aún menos: poner un modelo más barato en rescate y a pedido (requiere decisión del dueño).
