@@ -111,6 +111,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-14 · Clave del asesor nueva (la de la variable del entorno daba 401 y no se podía comprobar): `ASESOR_CLAVE_SHA256` en `wrangler.jsonc` suma un tercer SHA-256 (`571f8b56…`); se conservan los dos anteriores. La clave en sí la recibió el dueño en el chat; va en la variable `ASESOR_CLAVE` del entorno «Default» y en la propiedad `ASESOR_CLAVE` del Apps Script de ASESOR.gs. `CLOUDFLARE_API_TOKEN` del entorno tenía el Account ID (32 hex, `d0c6550b…`) en vez de un token API: hay que crear un token de Cloudflare (Workers + D1 edit). Las 9 Routines existen según la API de claude.ai (ver `docs/routines.md`).
+
 - 2026-10-14 · **Cuenta nueva (otra vez se perdió la de Claude/Teams) + pedidos del dueño.**
   1. **Routines recreadas desde Claude Code** (9, entorno «Default», prompts en `docs/routines.md`; los IDs viejos de ese archivo ya no existen, los nuevos están en su sección «2026-10-14 · Cuenta nueva»). Sin conectores (la herramienta no los puede adjuntar): hay que agregarlos en claude.ai → Routines → Editar. Faltan reconectar en la cuenta: Google Sheets, Google Docs y Meta Ads (Drive, Gmail y Firecrawl ya están).
   2. **Danitza = administradora**: `migrations/0056_comisiones_y_danitza.sql` (`UPDATE agents SET role='admin'`, **se aplica a mano**) y `PATCH /api/crm/agents {id, role}` para cambiar el rol de cualquiera desde la API (solo admin).
