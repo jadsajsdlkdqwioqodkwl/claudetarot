@@ -67,6 +67,7 @@
         <button id="btn-sugerencias" title="Sugerencias del asesor para aprobar" style="display:none"></button>
         <button id="btn-shalom" title="Links de Shalom" style="display:none; position:relative"></button>
         <button id="btn-reportes" title="Reportes de ventas (PDF)" style="display:none"></button>
+        <button id="btn-comisiones" title="Contador de comisiones por quincena"></button>
         <button id="btn-nuevo-contacto" title="Nuevo contacto"></button>
         <button id="btn-instalar" class="accion-secundaria" title="Instalar como app" style="display:none"></button>
         <button id="btn-notificaciones" title="Activar notificaciones"></button>
@@ -286,6 +287,16 @@
     <div class="acciones">
       <button class="cancelar" id="fs-cerrar" type="button">Cerrar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-comisiones-fondo">
+  <div class="modal" style="max-width:900px;width:96vw;max-height:92vh;overflow:auto">
+    <h2>Comisiones por quincena</h2>
+    <p class="ayuda-modal" id="com-ayuda"></p>
+    <select id="com-quincena" style="width:100%"></select>
+    <div id="com-contenido"><p class="ayuda-modal">Cargando…</p></div>
+    <div class="acciones"><button class="crear" id="com-cerrar" type="button">Cerrar</button></div>
   </div>
 </div>
 

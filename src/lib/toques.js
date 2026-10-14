@@ -28,12 +28,12 @@
 
 import { enviarTemplate } from "./whatsapp.js";
 import { mandarConEscribiendo } from "./crm-send.js";
-import { registrarMensajeSaliente } from "./crm-db.js";
 import { plantillaAprobada, primerNombre } from "./plantillas.js";
 import { listarLineas, envDeLinea } from "./lineas.js";
 import { marcaDeLinea } from "./planes-plantilla.js";
 import { enSilencio } from "./horario.js";
 import { destinosDeChats } from "./crm-destino.js";
+import { registrarMensajeSaliente, obtenerAjuste, guardarAjuste } from "./crm-db.js";
 
 export const ORIGEN_TOQUE = "Toque automático";
 const POR_PASADA = 4; // ~9 consultas a D1 por envío: entra en el tope de 50 por ejecución
@@ -226,10 +226,34 @@ async function candidatos(db, id, def, limite, lineaId = null) {
   return results;
 }
 
+/**
+ * Qué toques están prendidos en la cuenta. El admin los prende y apaga desde CRM → Plantillas para Meta
+ * (ajuste `toques_activos`, lista de ids). Sin ese ajuste manda TOQUES de wrangler.jsonc, pero SOLO los de
+ * hasta el día 7: el dueño autorizó hasta el 6.º/7.º día (2026-10-14); los de 14, 30 y 60 días quedan
+ * apagados hasta que él los prenda.
+ */
+export const DIAS_AUTORIZADOS = 7;
+export async function toquesActivos(env) {
+  let guardado = null;
+  try { guardado = JSON.parse((await obtenerAjuste(env.CRM_DB, "toques_activos")) || "null"); } catch { /* sin ajuste */ }
+  if (Array.isArray(guardado)) return guardado.map(String).filter((id) => TOQUES[id]);
+  return String(env.TOQUES || "").split(",").map((s) => s.trim()).filter((id) => TOQUES[id] && TOQUES[id].dias <= DIAS_AUTORIZADOS);
+}
+
+/** Prende o apaga un toque (solo admin, desde la API). Devuelve la lista nueva. */
+export async function guardarToqueActivo(env, id, activo) {
+  if (!TOQUES[id]) throw new Error("No es un toque.");
+  const lista = new Set(await toquesActivos(env));
+  if (activo) lista.add(id); else lista.delete(id);
+  const nueva = [...lista];
+  await guardarAjuste(env.CRM_DB, "toques_activos", JSON.stringify(nueva));
+  return nueva;
+}
+
 /** Cron (cada 5 min, su propia ejecución): manda los toques que vencieron. */
 export async function procesarToques(env) {
   const db = env.CRM_DB;
-  const activos = String(env.TOQUES || "").split(",").map((s) => s.trim()).filter((id) => TOQUES[id]);
+  const activos = db ? await toquesActivos(env) : [];
   if (!db || !activos.length || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return;
   if (enSilencio(Date.now(), env.HORARIO_ENVIO)) return;
 

@@ -7,11 +7,15 @@
  * PATCH /api/crm/plantillas-propuestas { marca, nombre, texto, botones: [0 a 3], categoria: "MARKETING" | "UTILITY" } o { marca, nombre, restablecer: true }
  *      Cambia el texto y los botones antes de mandarla (si ya está en Meta, se reenvía a revisión con `reenviar: true` en el POST).
  * PATCH { marca, nombre: "shalom"|"lead", orden: [nombres] } cambia qué mensaje sale a cada día, sin mandar nada a Meta.
+ * PATCH { marca, nombre, titulo } le pone nombre propio a una plantilla (solo en el CRM; con título vacío vuelve al original).
+ * PATCH { toque: "d7", activo: true|false } prende o apaga un toque en la cuenta (los de más de 7 días vienen apagados).
+ * POST   { marca, crear: { titulo, texto, botones, categoria } } agrega una plantilla propia (queda sin enviar).
+ * DELETE { marca, nombre } quita una plantilla propia que aún no está en Meta.
  * POST /api/crm/plantillas-propuestas { marca, nombres: [...] } → { resultados: [{ nombre, ok, error? }] }
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { estadoDePropuestas, mandarPropuestas, guardarCambio, guardarOrden, MARCAS } from "../../lib/plantillas-propuestas.js";
+import { estadoDePropuestas, mandarPropuestas, guardarCambio, guardarOrden, guardarAlias, crearPropia, borrarPropia, guardarToqueActivo, MARCAS } from "../../lib/plantillas-propuestas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -29,6 +33,10 @@ async function get({ env, agent }) {
 async function post({ request, env, agent }) {
   if (!esAdmin(agent)) return json({ error: "Solo el administrador manda plantillas a Meta." }, 403);
   const payload = await request.json().catch(() => null);
+  if (payload?.crear) {
+    if (!MARCAS[payload?.marca]) return json({ error: "Falta la marca." }, 400);
+    try { return json({ ok: true, nombre: await crearPropia(env, payload.marca, payload.crear) }); } catch (err) { return json({ error: err.message }, 400); }
+  }
   const nombres = (Array.isArray(payload?.nombres) ? payload.nombres : []).map(String).slice(0, 30);
   if (!MARCAS[payload?.marca] || !nombres.length) return json({ error: "Falta la marca o las plantillas." }, 400);
   try {
@@ -41,8 +49,12 @@ async function post({ request, env, agent }) {
 async function patch({ request, env, agent }) {
   if (!esAdmin(agent)) return json({ error: "Solo el administrador cambia las plantillas." }, 403);
   const p = await request.json().catch(() => null);
+  if (p?.toque) {
+    try { return json({ ok: true, activos: await guardarToqueActivo(env, String(p.toque), Boolean(p.activo)) }); } catch (err) { return json({ error: err.message }, 400); }
+  }
   if (!MARCAS[p?.marca] || !p?.nombre) return json({ error: "Falta la marca o la plantilla." }, 400);
   try {
+    if (p.titulo !== undefined && p.texto === undefined && !p.restablecer) { await guardarAlias(env, p.marca, p.nombre, p.titulo); return json({ ok: true }); }
     if (p.orden) { await guardarOrden(env, p.marca, p.nombre, p.orden); return json({ ok: true }); } // nombre = clave del plan
     await guardarCambio(env, p.marca, p.nombre, p);
     return json({ ok: true });
@@ -53,4 +65,12 @@ async function patch({ request, env, agent }) {
 
 export const onRequestGet = conAuth(get);
 export const onRequestPost = conAuth(post);
+async function borrar({ request, env, agent }) {
+  if (!esAdmin(agent)) return json({ error: "Solo el administrador quita plantillas." }, 403);
+  const p = await request.json().catch(() => null);
+  if (!MARCAS[p?.marca] || !p?.nombre) return json({ error: "Falta la marca o la plantilla." }, 400);
+  try { await borrarPropia(env, p.marca, p.nombre); return json({ ok: true }); } catch (err) { return json({ error: err.message }, 400); }
+}
+
 export const onRequestPatch = conAuth(patch);
+export const onRequestDelete = conAuth(borrar);

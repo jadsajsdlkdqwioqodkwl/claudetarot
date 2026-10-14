@@ -156,6 +156,6 @@
     // SHA-256 de la clave con la que la Routine del asesor llama a
     // /api/asesor/avisos (src/api/asesor.js). La clave en sí vive solo en el
     // prompt de la Routine; aquí va el hash, que no sirve para nada sin ella.
-    "ASESOR_CLAVE_SHA256": "b22840bc68a039ffe4a74253fb8cb83f5092dc99b830bb4b931d95c249ad4c6a,07fa0300e12de853dada6ab803ade565c758674bb096a141efc4a836d1c8f153"
+    "ASESOR_CLAVE_SHA256": "b22840bc68a039ffe4a74253fb8cb83f5092dc99b830bb4b931d95c249ad4c6a,07fa0300e12de853dada6ab803ade565c758674bb096a141efc4a836d1c8f153,571f8b56eb5ef944e944ecfa7a8f722560b280fe17d9653253aa0eb4e8792df2"
   }
 }

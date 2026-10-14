@@ -134,6 +134,7 @@ function iconizar() {
   $("#btn-nuevo-contacto").innerHTML = icon("plus");
   $("#btn-sugerencias").innerHTML = icon("sparkle");
   $("#btn-reportes").innerHTML = icon("doc");
+  $("#btn-comisiones").innerHTML = icon("star");
   $("#btn-shalom").innerHTML = icon("bag");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
@@ -584,6 +585,8 @@ async function abrirPlantillasMeta() {
       const grupos = [...new Set(m.propuestas.map((p) => p.grupo))];
       return `<div class="marca-plantillas" data-marca="${m.marca}">
         <h2>${escapar(m.nombre)}</h2>
+        <button type="button" class="cancelar nueva-plantilla" style="font-size:12px;margin-bottom:6px">${icon("plus")} Nueva plantilla</button>
+        <div class="form-nueva-plantilla"></div>
         ${m.aviso ? `<p class="ayuda-modal" style="color:var(--peligro)">${escapar(m.aviso)}</p>` : ""}
         ${grupos.map((g) => {
           const lista = m.propuestas.filter((p) => p.grupo === g);
@@ -594,9 +597,10 @@ async function abrirPlantillasMeta() {
               const [etq, color, fondo] = ESTADO_META[p.estado] || ESTADO_META.DESCONOCIDO;
               return `<div class="ad-card" style="margin-bottom:6px">
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                  <b>${escapar(p.titulo)}</b>
+                  <b>${escapar(p.titulo)}</b>${p.tituloOriginal ? `<span style="font-size:11px;color:var(--gris)">(antes: ${escapar(p.tituloOriginal)})</span>` : ""}
                   <span style="font-size:12px;color:var(--gris)">${CATEGORIA_META[p.categoria] || escapar(p.categoria)} · ${escapar(p.cuando)}</span>
                   ${p.categoriaMeta && p.categoriaMeta !== p.categoria ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;color:#b3261e;background:#fde8e7" title="Meta cambió la categoría que pediste">Meta la clasificó como ${CATEGORIA_META[p.categoriaMeta] || escapar(p.categoriaMeta)}</span>` : ""}
+                  ${p.toque ? `<button type="button" class="cancelar toque-activo" data-toque="${escapar(p.toque)}" data-activo="${p.activo ? 1 : 0}" style="font-size:11px;padding:2px 8px;border-radius:10px;${p.activo ? "color:#137333;background:#e6f4ea" : "color:#5f6368;background:#f1f3f4"}" title="Si está prendido, este toque sale solo a los chats que le toca (día ${p.dias}). Solo sale si Meta ya aprobó la plantilla.">Toque ${p.activo ? "prendido" : "apagado"}</button>` : ""}
                   <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${etq}</span>
                   ${p.plan ? `<span class="acciones-paso"><button type="button" class="cancelar mover-arriba pl-mover" data-plan="${p.plan}" data-nombre="${escapar(p.nombre)}" data-dir="-1" title="Sale antes (cambia de día con el de arriba)" ${p.posicion === 0 ? "disabled" : ""}>${icon("arrowLeft", "")}</button><button type="button" class="cancelar mover-abajo pl-mover" data-plan="${p.plan}" data-nombre="${escapar(p.nombre)}" data-dir="1" title="Sale después" ${p.posicion === 2 ? "disabled" : ""}>${icon("arrowLeft", "")}</button></span>` : ""}
                 </div>
@@ -606,6 +610,8 @@ async function abrirPlantillasMeta() {
                 ${p.textoMeta && p.textoMeta.trim() !== p.texto.trim() ? `<div style="font-size:12px;margin:4px 0;padding:6px 8px;border-radius:8px;color:#8a6500;background:#fff8e1"><b>Meta todavía tiene otro texto</b> (el que ves arriba es el tuyo, aún sin aprobar). Lo que Meta tiene hoy:<br><i>${escapar(p.textoMeta)}</i><br>Usa «Reenviar a revisión» para cambiarlo.</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                   ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
+                  <button type="button" class="cancelar renombrar-plantilla" data-nombre="${escapar(p.nombre)}" data-titulo="${escapar(p.titulo)}" style="font-size:12px" title="Cambia el nombre que ves en el CRM (el nombre en Meta no se puede cambiar)">${icon("pencil")} Cambiar nombre</button>
+                  ${p.propia && p.estado === "SIN_ENVIAR" ? `<button type="button" class="cancelar quitar-propia" data-nombre="${escapar(p.nombre)}" style="font-size:12px">${icon("trash")} Quitar</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
                   ${["APPROVED", "REJECTED", "PAUSED"].includes(p.estado) && m.conectada ? `<button type="button" class="crear mandar-una" data-reenviar="1" data-nombres="${escapar(p.nombre)}" style="font-size:12px" title="Cambia en Meta el texto de esta plantilla y la vuelve a mandar a revisión">${icon("send")} Reenviar a revisión</button>` : ""}
                 </div>
@@ -615,6 +621,47 @@ async function abrirPlantillasMeta() {
       </div>`;
     }).join("");
     girarFlechas(cont);
+    const patchPl = async (cuerpo) => {
+      try { await pedir("/api/crm/plantillas-propuestas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }); } catch (err) { alert(err.message); }
+      abrirPlantillasMeta();
+    };
+    cont.querySelectorAll(".toque-activo").forEach((b) => b.addEventListener("click", () => {
+      const prender = b.dataset.activo !== "1";
+      if (prender && !confirm("Vas a prender este toque: saldrá solo a los chats que le toquen, y cada plantilla enviada se paga. ¿Seguro?")) return;
+      patchPl({ toque: b.dataset.toque, activo: prender });
+    }));
+    cont.querySelectorAll(".renombrar-plantilla").forEach((b) => b.addEventListener("click", () => {
+      const t = prompt("Nombre de esta plantilla en el CRM (déjalo vacío para volver al original):", b.dataset.titulo);
+      if (t === null) return;
+      patchPl({ marca: b.closest(".marca-plantillas").dataset.marca, nombre: b.dataset.nombre, titulo: t });
+    }));
+    cont.querySelectorAll(".quitar-propia").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("¿Quitar esta plantilla? Aún no está en Meta.")) return;
+      try { await pedir("/api/crm/plantillas-propuestas", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca: b.closest(".marca-plantillas").dataset.marca, nombre: b.dataset.nombre }) }); } catch (err) { alert(err.message); }
+      abrirPlantillasMeta();
+    }));
+    cont.querySelectorAll(".nueva-plantilla").forEach((b) => b.addEventListener("click", () => {
+      const caja = b.parentElement.querySelector(".form-nueva-plantilla");
+      const marca = b.closest(".marca-plantillas").dataset.marca;
+      caja.innerHTML = `<div class="ad-card" style="margin-bottom:8px">
+        <label style="display:block;font-size:12px;color:var(--gris)">Nombre (solo para ti en el CRM)</label>
+        <input type="text" class="np-titulo" maxlength="80" style="width:100%" />
+        <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Texto (usa <code>{{1}}</code> para el nombre del cliente; no puede empezar ni terminar con una variable)</label>
+        <textarea class="np-texto" rows="5" maxlength="1024" style="width:100%"></textarea>
+        <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Tipo de mensaje</label>
+        <select class="np-categoria" style="width:100%"><option value="MARKETING">Marketing: ofrece, recuerda o intenta vender</option><option value="UTILITY">Utilidad: avisa algo de un pedido que ya hizo</option></select>
+        <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, uno por línea, hasta 25 caracteres, sin emojis)</label>
+        <textarea class="np-botones" rows="3" style="width:100%"></textarea>
+        <div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="cancelar np-cancelar" style="font-size:12px">Cancelar</button><button type="button" class="crear np-guardar" style="font-size:12px">Guardar (queda sin enviar a Meta)</button></div>
+      </div>`;
+      caja.querySelector(".np-cancelar").addEventListener("click", () => { caja.innerHTML = ""; });
+      caja.querySelector(".np-guardar").addEventListener("click", async () => {
+        try {
+          await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, crear: { titulo: caja.querySelector(".np-titulo").value, texto: caja.querySelector(".np-texto").value, categoria: caja.querySelector(".np-categoria").value, botones: caja.querySelector(".np-botones").value.split("\n").map((x) => x.trim()).filter(Boolean) } }) });
+          abrirPlantillasMeta();
+        } catch (err) { alert(err.message); }
+      });
+    }));
     cont.querySelectorAll(".pl-mover").forEach((b) => b.addEventListener("click", async () => {
       const marca = b.closest(".marca-plantillas").dataset.marca;
       const nombres = [...b.closest(".marca-plantillas").querySelectorAll(`.pl-mover[data-plan="${b.dataset.plan}"][data-dir="-1"]`)].map((x) => x.dataset.nombre);
@@ -2649,6 +2696,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-avisos": "Avisos por Telegram",
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
+  "btn-comisiones": "Comisiones por quincena",
   "btn-colores": "Colores de las tiendas",
   "btn-galeria": "Fotos del catálogo",
   "btn-equipo": "Equipo",
@@ -7612,6 +7660,47 @@ function abrirGaleriaCatalogo() {
   cargarGaleria();
 }
 $("#btn-galeria").addEventListener("click", abrirGaleriaCatalogo);
+
+/* ---------- Comisiones por quincena (admin ve todo; cada vendedora, lo suyo) ---------- */
+
+const soles = (n) => `S/ ${Number(n || 0).toFixed(2)}`;
+$("#btn-comisiones").addEventListener("click", () => { $("#modal-comisiones-fondo").classList.add("abierto"); cargarComisiones(); });
+$("#com-cerrar").addEventListener("click", () => $("#modal-comisiones-fondo").classList.remove("abierto"));
+$("#com-quincena").addEventListener("change", () => cargarComisiones($("#com-quincena").value));
+
+async function cargarComisiones(quincena = "") {
+  const cont = $("#com-contenido");
+  cont.innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    const d = await pedir(`/api/crm/comisiones${quincena ? `?quincena=${encodeURIComponent(quincena)}` : ""}`);
+    const sel = $("#com-quincena");
+    sel.innerHTML = d.quincenas.map((q) => `<option value="${q.id}"${q.id === d.quincena.id ? " selected" : ""}>${escapar(q.etiqueta)}</option>`).join("");
+    $("#com-ayuda").textContent = `${d.porcentaje} % del valor de cada venta, se haya recogido el pedido o no. Si la venta tiene la estrella compartida, se reparte 50/50; si no, es de quien cerró. Cuenta lo marcado como COMPRA en el CRM.`;
+    const filas = d.asesoras.map((a) => `<tr><td>${escapar(a.asesora)}</td><td>${a.completas}</td><td>${a.compartidas}</td><td>${soles(a.valor_ventas)}</td><td><b>${soles(a.comision)}</b></td></tr>`).join("");
+    cont.innerHTML = `
+      <p><b>${d.total_ventas}</b> ventas · ${soles(d.total_valor)} vendidos · <b>${soles(d.total_comision)}</b> en comisiones</p>
+      <table class="tabla-com" style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr><th align="left">Asesora</th><th>Ventas propias</th><th>Compartidas 50/50</th><th>Valor atribuido</th><th>Comisión</th></tr>${filas || `<tr><td colspan="5">Sin ventas en esta quincena.</td></tr>`}
+      </table>
+      <h3 style="margin:12px 0 4px;font-size:14px">Ventas</h3>
+      ${d.ventas.map((v) => `<div class="ad-card" style="margin-bottom:4px;font-size:13px">
+        <b>${escapar(v.cliente || v.whatsapp)}</b> · ${escapar(v.fecha)} · ${soles(v.valor)} · ${v.modo === "mitad" ? "50/50" : "100 %"}${v.ajustada ? " (corregida)" : ""}<br>
+        ${Object.entries(v.reparto).map(([n, m]) => `${escapar(n)}: ${soles(m)}`).join(" · ")}
+        ${d.es_admin ? `<button type="button" class="cancelar com-corregir" data-id="${v.id}" data-resp="${escapar(Object.keys(v.reparto)[0] || "")}" data-ayu="${escapar(Object.keys(v.reparto)[1] || "")}" style="font-size:11px;margin-left:6px">${icon("pencil")} Corregir</button>` : ""}
+      </div>`).join("")}`;
+    cont.querySelectorAll(".com-corregir").forEach((b) => b.addEventListener("click", async () => {
+      const resp = prompt("¿Quién cerró la venta? (nombre como sale en la estrella)", b.dataset.resp);
+      if (!resp) return;
+      const ayu = prompt("¿Quién la ayudó a cerrar o resolvió una objeción? Déjalo vacío si nadie (100 % para quien cerró). Escribe «auto» para volver al cálculo automático.", b.dataset.ayu);
+      if (ayu === null) return;
+      const cuerpo = ayu.trim().toLowerCase() === "auto" ? { evento_id: Number(b.dataset.id), modo: null } : { evento_id: Number(b.dataset.id), modo: ayu.trim() ? "mitad" : "dueno", responsable: resp, ayudante: ayu };
+      try { await pedir("/api/crm/comisiones", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }); } catch (err) { alert(err.message); }
+      cargarComisiones($("#com-quincena").value);
+    }));
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
 
 /* ---------- Colores de fondo por tienda (cada quien el suyo, en su navegador) ---------- */
 const COLORES_TIENDA = { tarot: "#e9e5f3", uro: "#f6e5ec" };

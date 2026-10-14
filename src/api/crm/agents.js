@@ -1,7 +1,7 @@
 /**
  * GET    /api/crm/agents — lista los vendedores (sin el hash de contraseña). Cualquier sesión.
  * POST   /api/crm/agents — { username, password, display_name, wa_id, role? } → crea uno. Solo admin.
- * PATCH  /api/crm/agents — { id, active?, new_password?, reset_totp? } → activa/desactiva, resetea contraseña
+ * PATCH  /api/crm/agents — { id, active?, role?, new_password?, reset_totp? } → activa/desactiva, resetea contraseña
  *        o apaga el 2FA con app (por si perdió el celular y quedó sin poder entrar). Solo admin.
  *
  * Crear o administrar vendedores es cosa de administradores: así no puede
@@ -71,6 +71,10 @@ async function patch({ request, env }) {
 
   if (typeof payload?.active === "boolean") {
     await env.CRM_DB.prepare("UPDATE agents SET active = ? WHERE id = ?").bind(payload.active ? 1 : 0, id).run();
+  }
+
+  if (ROLES.has(payload?.role)) {
+    await env.CRM_DB.prepare("UPDATE agents SET role = ? WHERE id = ?").bind(payload.role, id).run();
   }
 
   if (typeof payload?.new_password === "string" && payload.new_password) {

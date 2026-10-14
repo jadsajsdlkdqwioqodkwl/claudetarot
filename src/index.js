@@ -93,6 +93,7 @@ import {
   onRequestPost as crmStickersPost,
   onRequestDelete as crmStickersDelete
 } from "./api/crm/stickers.js";
+import { onRequestGet as crmComisionesGet, onRequestPatch as crmComisionesPatch } from "./api/crm/comisiones.js";
 import { onRequestGet as crmPausaGet, onRequestPost as crmPausaPost } from "./api/crm/pausa.js";
 import {
   onRequestGet as crmPushSubscribeGet,
@@ -119,7 +120,7 @@ import {
 import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
-import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch } from "./api/crm/plantillas-propuestas.js";
+import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
 import { procesarFrases } from "./lib/crm-frases.js";
@@ -167,7 +168,7 @@ const ROUTES = {
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
-  "/api/crm/plantillas-propuestas": { GET: crmPropuestasGet, POST: crmPropuestasPost, PATCH: crmPropuestasPatch },
+  "/api/crm/plantillas-propuestas": { GET: crmPropuestasGet, POST: crmPropuestasPost, PATCH: crmPropuestasPatch, DELETE: crmPropuestasDelete },
   "/api/crm/planes": { GET: crmPlanesGet, POST: crmPlanesPost, PATCH: crmPlanesPatch },
   "/api/crm/productos": { GET: crmProductosGet, POST: crmProductosPost, PATCH: crmProductosPatch, DELETE: crmProductosDelete },
   "/api/crm/lineas": { GET: crmLineasGet, POST: crmLineasPost, PATCH: crmLineasPatch },
@@ -190,6 +191,7 @@ const ROUTES = {
   "/api/crm/bulk-send": { GET: crmBulkSendGet, POST: crmBulkSendPost },
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
   "/api/crm/react": { POST: crmReactPost },
+  "/api/crm/comisiones": { GET: crmComisionesGet, PATCH: crmComisionesPatch },
   "/api/crm/pausa": { GET: crmPausaGet, POST: crmPausaPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },

@@ -228,6 +228,16 @@ def armar_pdf(datos, carpeta):
                 sorted(por.values(), key=lambda v: -v["total"]) + [tot],
                 [("Vendedora", "Vendedora"), ("Lima", "lima"), ("Provincia", "prov"), ("Agendadas otro día", "otro"),
                  ("Total ventas", "total"), ("Kits", "kits")]))
+        # Venta que NO está marcada como compra en el CRM: Meta no se entera. Va arriba, en rojo, con el asesor que olvidó marcarla.
+        sin = [x for x in (datos.get("sin_marcar_compra") or []) if isinstance(x, dict)]
+        if sin:
+            partes.insert(0, f"<h2 class=inc>🚨 META NO SE ENTERÓ — venta sin marcar como COMPRA ({len(sin)})</h2><div class=inc>"
+                          + tabla(sin, [("Asesor que debe marcarla", "vendedora"), ("WhatsApp", "whatsapp"), ("Por qué es venta", "motivo")])
+                          + "</div>")
+            por_asesor = {}
+            for x in sin:
+                por_asesor[x.get("vendedora") or "(sin vendedora)"] = por_asesor.get(x.get("vendedora") or "(sin vendedora)", 0) + 1
+            print("OLVIDARON MARCAR COMPRA (Meta): " + ", ".join(f"{k} ({v})" for k, v in por_asesor.items()))
     else:
         titulo = f"Reporte de ventas · despacho del {e(fecha)}"
     doc = f"""<!doctype html><meta charset=utf-8><style>
