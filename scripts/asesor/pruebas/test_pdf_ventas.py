@@ -20,6 +20,13 @@ with tempfile.TemporaryDirectory() as d:
         txt = "\n".join(p.extract_text() or "" for p in doc.pages)
     assert "Jennifer" in txt and "despachar" in txt and kits == 4, kits
     assert "Agendadas otro día" in html and "TOTAL" in html, "falta la fila TOTAL o la columna de otros días"
+    # Venta sin marcar como compra: sale arriba, en rojo, con el asesor que la olvidó.
+    con = dict(datos, sin_marcar_compra=[{"whatsapp": "51999111222", "vendedora": "Bruce", "motivo": "Mandó su dirección en Lima"}])
+    enviar.armar_pdf(con, d)
+    h2 = open(os.path.join(d, "pedidos.html")).read()
+    assert "META NO SE ENTERÓ" in h2 and "Bruce" in h2 and h2.index("META NO SE ENTERÓ") < h2.index("Ventas por vendedora")
+    enviar.armar_pdf(dict(datos), d)
+    assert "META NO SE ENTERÓ" not in open(os.path.join(d, "pedidos.html")).read()
     # Un pedido sin vendedora NO sale a medias.
     malo = json.loads(json.dumps(datos)); malo["pedidos"][0].pop("vendedora")
     try:

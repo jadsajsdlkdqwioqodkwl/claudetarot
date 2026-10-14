@@ -167,3 +167,11 @@ Agregar **Google Drive** a «Asesor — reporte de ventas (21:00)» (guarda el
 `ventas-AAAA-MM-DD.json` que usa la corrida de las 22:30).
 
 - 2026-10-14: «Asesor — reporte de ventas (21:00)»: el resumen (`--informe`) empieza con el título «Ventas 21:00 — AAAA-MM-DD» para que llegue por Telegram (todo informe que empieza con «Ventas» va a Telegram).
+
+## 2026-10-14 · Cuenta nueva: Routines recreadas otra vez
+
+La cuenta de Claude/Teams se volvió a perder y se creó un plan nuevo. Se recrearon las 9 Routines desde Claude Code (entorno «Default» `env_01XG9xGN2x7jUfxX9iMzFhCg`, sesión nueva en cada corrida, mismos horarios y prompts de arriba). Los IDs de la tabla de arriba YA NO EXISTEN; los nuevos son: Director `trig_01RYrG4MxuJUsr6EFzx2Cppg` · rescate 1 `trig_012BNuxd8Zs13YZFPNhvaXCK` · pedidos 10:30 `trig_01MZW3PRpqhkUoeDh89qkGFC` · mensajes y cierre `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` · voz del cliente `trig_01VTRaKdHZBKqTjeKpC1ByLV` · ventas 21:00 `trig_01UGtv1RT7LRR1kkuKGMHP6m` · semanal `trig_013aFLWAgwdoXZwLDBS2aUFN` · ventas 22·23·00 `trig_01XkT6T8HZstc4YDvVwZHyXP` · a pedido `trig_01QJUi3xCif1LXq3QoXShSby` (sin horario).
+
+Cambios en los prompts de ventas (21:00 y 22·23·00): salen como PDF (`tipo_reporte: "ventas"`, sin `--informe`), con la DEFINICIÓN DE VENTA y el nuevo **AVISO META**: comparar cada venta con el campo `embudo` del chat (contiene `purchase` si está marcada como compra) y poner en `sin_marcar_compra` las que no lo están, con la `vendedora` que debe marcarla; el PDF las pone arriba en rojo y la respuesta final dice qué asesor la olvidó. El de 22·23·00 ya no limita a 200 palabras (es PDF).
+
+**Pendiente del dueño (no se puede hacer desde aquí):** (1) en claude.ai → Routines → Editar, agregar conectores: Director CRO y Voz del cliente → Google Drive + Google Sheets (+ Google Docs para el brief) + Meta Ads; Mensajes y cierre → Google Drive; ventas 21:00 → Google Drive; las demás sin conectores. (2) En el entorno «Default»: variable `ASESOR_CLAVE` (y `GEMINI_API_KEY` para anuncios, `CLOUDFLARE_API_TOKEN` para desplegar) y red permitida `kit-tarot-para-principiantes.tarotperu.store` (+ `generativelanguage.googleapis.com`, `api.cloudflare.com`). (3) Reconectar Google Sheets, Google Docs y Meta Ads en claude.ai → Conectores. (4) Aplicar `migrations/0056_comisiones_y_danitza.sql` y desplegar el Worker.

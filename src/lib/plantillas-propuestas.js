@@ -15,7 +15,7 @@ import { notificarTelegram } from "./telegram.js";
 import { primerNombre } from "./plantillas.js";
 import { listarTemplates, crearTemplate, editarTemplate } from "./whatsapp.js";
 import { planesDe, pasosOrdenados, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
-import { TOQUES, marcaDeToque } from "./toques.js";
+import { TOQUES, marcaDeToque, toquesActivos, guardarToqueActivo } from "./toques.js";
 
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
 
@@ -55,12 +55,26 @@ export function propuestasDe(marca, cambios = {}) {
       const btns = (comps[1]?.buttons || []).map((b) => b.text);
       const sufijo = variante === "general" ? "" : ` (${variante})`;
       lista.push({
-        nombre: variante === "general" ? `toque_${id}` : `toque_${id}_${variante}`,
+        nombre: variante === "general" ? `toque_${id}` : `toque_${id}_${variante}`, toque: id, dias: def.dias,
         grupo: def.tipo === "lead" ? "Toques a quien no compró" : "Toques a clientes",
         titulo: `Toque día ${def.dias}${sufijo}`, cuando: def.tipo === "lead" ? `${def.dias} días de silencio` : `${def.dias} días después de la compra`,
         categoria: "MARKETING", texto, botones: btns, componentes: comps
       });
     }
+  }
+  // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
+  for (const c of cambios.propias || []) {
+    if (c.marca !== marca) continue;
+    lista.push({
+      nombre: c.nombre, propia: true, grupo: "Plantillas propias", titulo: c.titulo, cuando: "a mano, desde el botón de plantillas del chat",
+      categoria: c.categoria, texto: c.texto, botones: c.botones,
+      componentes: [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)]
+    });
+  }
+  // Nombre que el admin les puso (solo en el CRM: el nombre en Meta no se puede cambiar).
+  for (const p of lista) {
+    const a = cambios[`alias:${marca}:${p.nombre}`];
+    if (a) { p.tituloOriginal = p.titulo; p.titulo = a; }
   }
   // Lo que el admin cambió en el CRM (texto y botones) manda sobre el texto del código.
   for (const p of lista) {
@@ -72,7 +86,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 
@@ -97,27 +111,74 @@ export const CATEGORIAS = ["MARKETING", "UTILITY"];
 // Meta pide botones solo con letras, números y signos simples: nada de emojis ni saltos de línea.
 const RE_BOTON = /^[\p{L}\p{N} ¿?¡!.,:;'()%\-+/&]+$/u;
 
-export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer }) {
-  const original = propuestasDe(marca).find((p) => p.nombre === nombre);
-  if (!original) throw new Error("No es una propuesta de esta marca.");
+/** Reglas de Meta para el texto, los botones y el tipo de una plantilla. Devuelve { texto, btns }. */
+function validarPlantilla(texto, btns, categoria, textoOriginal = null) {
+  texto = String(texto || "").trim();
+  btns = (Array.isArray(btns) ? btns : []).map((b) => String(b || "").trim());
+  const vars = (t) => [...new Set(t.match(/\{\{\d\}\}/g) || [])].sort().join(",");
+  if (!CATEGORIAS.includes(categoria)) throw new Error("La categoría es Marketing o Utilidad.");
+  if (!texto || texto.length > 1024) throw new Error("El texto no puede estar vacío ni pasar de 1024 caracteres.");
+  const permitidas = new Set(textoOriginal ? textoOriginal.match(/\{\{\d\}\}/g) || [] : ["{{1}}"]);
+  if ((texto.match(/\{\{\d\}\}/g) || []).some((v) => !permitidas.has(v))) throw new Error(`Solo puede llevar las variables del original: ${textoOriginal ? vars(textoOriginal) || "ninguna" : "{{1}}"} ({{1}} es el primer nombre del cliente); puedes quitarlas y escribir, por ejemplo, «estimad@».`);
+  if (/^\s*\{\{|\}\}\s*$/.test(texto)) throw new Error("Meta no acepta que el texto empiece o termine con una variable.");
+  if (btns.length > 3) throw new Error("Máximo 3 botones.");
+  const mala = btns.find((b) => !b || b.length > 25 || !RE_BOTON.test(b));
+  if (mala !== undefined || btns.some((b) => !b)) throw new Error("Cada botón: hasta 25 caracteres, solo letras, números y signos simples (sin emojis).");
+  if (new Set(btns.map((b) => b.toLowerCase())).size !== btns.length) throw new Error("Los botones no pueden repetirse.");
+  return { texto, btns };
+}
+
+/** Le pone (o con título vacío, le quita) un nombre propio a una plantilla, solo en el CRM. */
+export async function guardarAlias(env, marca, nombre, titulo) {
+  if (!propuestasDe(marca, await leerCambios(env.CRM_DB)).some((p) => p.nombre === nombre)) throw new Error("No es una propuesta de esta marca.");
+  titulo = String(titulo || "").trim().slice(0, 80);
   const cambios = await leerCambios(env.CRM_DB);
-  const clave = `${marca}:${nombre}`;
-  if (restablecer) {
-    delete cambios[clave];
+  if (titulo) cambios[`alias:${marca}:${nombre}`] = titulo; else delete cambios[`alias:${marca}:${nombre}`];
+  await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
+}
+
+/** Agrega una plantilla nueva (queda "Sin enviar" hasta que el admin la mande a Meta). El nombre en Meta se arma solo. */
+export async function crearPropia(env, marca, { titulo, texto, botones: btns, categoria }) {
+  if (!MARCAS[marca]) throw new Error("Marca inválida.");
+  titulo = String(titulo || "").trim().slice(0, 80);
+  if (!titulo) throw new Error("Ponle un nombre a la plantilla.");
+  const v = validarPlantilla(texto, btns, categoria);
+  const cambios = await leerCambios(env.CRM_DB);
+  const base = titulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "plantilla";
+  const nombre = `${marca === "uro" ? "uro_" : ""}propia_${base}_${Date.now().toString(36).slice(-4)}`;
+  cambios.propias = [...(cambios.propias || []), { marca, nombre, titulo, texto: v.texto, botones: v.btns, categoria }];
+  await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
+  return nombre;
+}
+
+/** Quita una plantilla propia que todavía no se mandó a Meta. */
+export async function borrarPropia(env, marca, nombre) {
+  const envM = await envDeMarca(env, marca);
+  if (envM && (await listarTemplates(envM)).some((t) => t.name === nombre)) throw new Error("Ya está en Meta: no se puede quitar desde aquí.");
+  const cambios = await leerCambios(env.CRM_DB);
+  cambios.propias = (cambios.propias || []).filter((c) => !(c.marca === marca && c.nombre === nombre));
+  await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
+}
+
+export { toquesActivos, guardarToqueActivo };
+
+export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer }) {
+  const cambios = await leerCambios(env.CRM_DB);
+  const original = propuestasDe(marca).find((p) => p.nombre === nombre);
+  const propia = (cambios.propias || []).find((c) => c.marca === marca && c.nombre === nombre);
+  if (!original && !propia) throw new Error("No es una propuesta de esta marca.");
+  if (propia) {
+    if (restablecer) throw new Error("Una plantilla propia no tiene texto original: bórrala si no la quieres.");
+    const v = validarPlantilla(texto, btns, categoria);
+    Object.assign(propia, { texto: v.texto, botones: v.btns, categoria });
   } else {
-    texto = String(texto || "").trim();
-    btns = (Array.isArray(btns) ? btns : []).map((b) => String(b || "").trim());
-    const vars = (t) => [...new Set(t.match(/\{\{\d\}\}/g) || [])].sort().join(",");
-    if (!CATEGORIAS.includes(categoria)) throw new Error("La categoría es Marketing o Utilidad.");
-    if (!texto || texto.length > 1024) throw new Error("El texto no puede estar vacío ni pasar de 1024 caracteres.");
-    const permitidas = new Set(original.texto.match(/\{\{\d\}\}/g) || []);
-    if ((texto.match(/\{\{\d\}\}/g) || []).some((v) => !permitidas.has(v))) throw new Error(`Solo puede llevar las variables del original: ${vars(original.texto) || "ninguna"} ({{1}} es el primer nombre del cliente); puedes quitarlas y escribir, por ejemplo, «estimad@».`);
-    if (/^\s*\{\{|\}\}\s*$/.test(texto)) throw new Error("Meta no acepta que el texto empiece o termine con una variable.");
-    if (btns.length > 3) throw new Error("Máximo 3 botones.");
-    const mala = btns.find((b) => !b || b.length > 25 || !RE_BOTON.test(b));
-    if (mala !== undefined || btns.some((b) => !b)) throw new Error("Cada botón: hasta 25 caracteres, solo letras, números y signos simples (sin emojis).");
-    if (new Set(btns.map((b) => b.toLowerCase())).size !== btns.length) throw new Error("Los botones no pueden repetirse.");
-    cambios[clave] = { texto, botones: btns, categoria };
+    const clave = `${marca}:${nombre}`;
+    if (restablecer) {
+      delete cambios[clave];
+    } else {
+      const v = validarPlantilla(texto, btns, categoria, original.texto);
+      cambios[clave] = { texto: v.texto, botones: v.btns, categoria };
+    }
   }
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
 }
@@ -144,6 +205,7 @@ export async function envDeMarca(env, marca) {
 export async function estadoDePropuestas(env) {
   const marcas = [];
   const cambios = await leerCambios(env.CRM_DB);
+  const activos = new Set(await toquesActivos(env));
   for (const [marca, nombre] of Object.entries(MARCAS)) {
     const envM = await envDeMarca(env, marca);
     let porNombre = {};
@@ -162,7 +224,7 @@ export async function estadoDePropuestas(env) {
     }
     marcas.push({
       marca, nombre, aviso, conectada: Boolean(envM),
-      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, categoriaMeta: catMeta[p.nombre] || null, textoMeta: textoEnMeta[p.nombre] || null, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
+      propuestas: propuestasDe(marca, cambios).map((p) => ({ ...p, componentes: undefined, activo: p.toque ? activos.has(p.toque) : undefined, categoriaMeta: catMeta[p.nombre] || null, textoMeta: textoEnMeta[p.nombre] || null, estado: aviso && !envM ? "SIN_NUMERO" : porNombre[p.nombre] || (aviso ? "DESCONOCIDO" : "SIN_ENVIAR") }))
     });
   }
   return marcas;
@@ -220,7 +282,7 @@ export async function vigilarPlantillas(env) {
       if (antes) for (const k of Object.keys(antes)) if (k.startsWith(`${marca}:`)) ahora[k] = antes[k]; // no perder el último estado
       continue;
     }
-    for (const p of propuestasDe(marca)) {
+    for (const p of propuestasDe(marca, await leerCambios(db))) {
       const lista = existentes.filter((t) => t.name === p.nombre);
       const t = lista.find((x) => x.status === "APPROVED") || lista[0];
       if (!t) continue;
