@@ -144,3 +144,20 @@ cambió desde la hora anterior. Registra con ventas.py las ventas de provincia
 nuevas. Reporte de máx. 200 palabras, texto plano, título «Ventas HH:MM —
 AAAA-MM-DD», con `enviar.py --informe /tmp/ventas/informe.txt` (CRM →
 Reportes). No propone mensajes a clientes.
+
+## Estado al 2026-10-13, 19:30 (Lima), revisado por Claude Code
+
+Cambios que hizo el dueño desde claude.ai (se anotan aquí por la regla de la cabecera):
+- Conectores: Director CRO → Meta Ads, Google Drive, Google Sheets. Voz del
+  cliente → Meta Ads, Google Drive, Google Sheets. Mensajes y cierre → Meta
+  Ads, Google Sheets, Meta devtools, Google Drive. Ventas de la noche → Meta
+  Ads, Google Drive, Google Sheets, Meta devtools. Las demás, sin conectores.
+- Modelo `claude-sonnet-5-5` en Director CRO, Voz del cliente y Mensajes y
+  cierre (las demás usan el de la cuenta).
+- Ventas de la noche: el reporte pasa de 200 a 300 palabras como máximo.
+
+Pendiente: conectar **Google Docs** en la cuenta Team (claude.ai → Conectores) y
+agregarlo a «Voz del cliente» (sin él no puede reescribir el Doc del brief: el
+de Drive no reemplaza contenido; el brief no cambia desde el 06/10).
+Agregar **Google Drive** a «Asesor — reporte de ventas (21:00)» (guarda el
+`ventas-AAAA-MM-DD.json` que usa la corrida de las 22:30).
