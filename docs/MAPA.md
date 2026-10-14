@@ -218,3 +218,4 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
   `0055_rapida_catalogo_despues.sql`, **se aplica a mano**): 0 = catálogo antes
   del texto, 1 = debajo. Se elige en el editor de la respuesta rápida
   (`#rapida-catalogo-orden`). Sin la migración, la API lee y guarda sin ella.
+- 2026-10-14 · Pedido del dueño: TODOS los reportes de ventas (21:00, 22:00, 23:00, 00:00) llegan también por Telegram. `enviar.py --informe` pone origen «reporte de ventas» si el texto empieza con «Ventas», y el Worker (`src/api/asesor.js`) manda ese texto + link al dueño. Los demás informes (director CRO, semanal) siguen solo en CRM → Reportes. Requiere deploy del Worker. El resumen de las 21:00 ahora lleva título «Ventas 21:00 — AAAA-MM-DD».

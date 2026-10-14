@@ -161,3 +161,5 @@ agregarlo a «Voz del cliente» (sin él no puede reescribir el Doc del brief: e
 de Drive no reemplaza contenido; el brief no cambia desde el 06/10).
 Agregar **Google Drive** a «Asesor — reporte de ventas (21:00)» (guarda el
 `ventas-AAAA-MM-DD.json` que usa la corrida de las 22:30).
+
+- 2026-10-14: «Asesor — reporte de ventas (21:00)»: el resumen (`--informe`) empieza con el título «Ventas 21:00 — AAAA-MM-DD» para que llegue por Telegram (todo informe que empieza con «Ventas» va a Telegram).

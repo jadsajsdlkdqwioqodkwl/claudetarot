@@ -321,13 +321,15 @@ def main():
     if not clave and not prueba and "--solo-pdf" not in args:
         sys.exit("Falta ASESOR_CLAVE en el entorno (o usa --prueba).")
 
-    if informe:  # informe CRO: queda en CRM → Reportes y en el resumen semanal; no va por Telegram
+    if informe:  # informe: queda en CRM → Reportes; solo los de ventas van también por Telegram
         texto = open(informe).read().strip()
         if prueba:
             print(texto + "\n(prueba, nada se guardó)")
             return
-        r = al_worker(clave, {"informe": texto, "origen": "director CRO"})
-        print(f"Informe guardado: {r.get('link') or 'ok'}")
+        # Reporte de ventas (título «Ventas …»): además llega por Telegram al dueño.
+        origen = "reporte de ventas" if texto.lower().lstrip().startswith("ventas") else "director CRO"
+        r = al_worker(clave, {"informe": texto, "origen": origen})
+        print(f"Informe guardado: {r.get('link') or 'ok'} · Telegram: {r.get('telegram') or 'no aplica'}")
         return
 
     ruta = next(a for a in args if not a.startswith("--"))
