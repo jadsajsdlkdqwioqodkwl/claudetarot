@@ -427,6 +427,10 @@
       <input type="checkbox" id="sin-visto" />
       <span><strong>No marcar como visto lo que mandan los clientes.</strong> No les sale el doble check azul (tampoco el "escribiendo…", Meta solo lo muestra junto con el visto). Nosotros sí seguimos viendo cuándo leen lo nuestro.</span>
     </label>
+    <label class="leads-check" id="escribiendo-vivo-fila" style="display:none">
+      <input type="checkbox" id="escribiendo-vivo" />
+      <span><strong>"Escribiendo…" en vivo.</strong> Mientras la vendedora teclea, el cliente ve "escribiendo…" (se quita al llegar el mensaje o a los 25 s si deja de escribir). Lo tecleado a mano sale sin la pausa extra, con 1 s entre mensajes; respuestas rápidas, texto pegado y automáticos siguen con su pausa. Marca como visto el último mensaje del cliente; con "no marcar como visto" no funciona.</span>
+    </label>
     <input type="text" id="eq-nombre" placeholder="Nombre del vendedor" />
     <input type="text" id="eq-usuario" placeholder="Usuario (para entrar)" />
     <input type="password" id="eq-password" placeholder="Contraseña (mín. 8 caracteres)" />

@@ -2567,6 +2567,20 @@ $("#sin-visto").addEventListener("change", async (e) => {
   }
 });
 
+$("#escribiendo-vivo").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ escribiendo_vivo: e.target.checked })
+    });
+    escribiendoVivoActivo = null; // se vuelve a leer
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    alert(err.message);
+  }
+});
+
 $("#avisos-canal").addEventListener("change", async (e) => {
   const datos = await accionAvisos({ channel: e.target.value }, e.target);
   if (datos) pintarAvisos(datos);
@@ -2997,6 +3011,7 @@ function pintarChatBase(c) {
 
   // Enter hace salto de línea (decisión del dueño): solo el botón de enviar manda el mensaje.
   const textoEnvio = $("#texto-envio");
+  textoEnvio.addEventListener("input", alTeclearEscribiendo);
   textoEnvio.addEventListener("input", (e) => {
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
@@ -4720,6 +4735,41 @@ function contenidoPendiente(p) {
   return `<div>${icon("doc")} ${escapar(p.fileName || p.body || "Archivo")}</div>${pie}`;
 }
 
+/*
+ * «Escribiendo…» EN VIVO (ajuste escribiendo_vivo, CRM → Equipo): mientras la vendedora teclea, el
+ * cliente ve "escribiendo…" (POST /api/crm/escribiendo, como mucho cada 20 s: WhatsApp lo muestra
+ * hasta 25 s o hasta que llega el mensaje). El texto TECLEADO así sale con `escribiendo_vivo` y el
+ * servidor no repite la pausa (1 s entre mensajes). Pegado, respuesta rápida o archivo: pausa normal.
+ */
+let escribiendoVivoActivo = null; // null = falta leer el ajuste
+const vivo = { conv: null, at: 0, tecleado: false, pegado: false };
+function escribiendoVivoPrendido() {
+  if (escribiendoVivoActivo === null) {
+    escribiendoVivoActivo = false;
+    pedir("/api/crm/settings").then((s) => { escribiendoVivoActivo = Boolean(s.escribiendo_vivo && !s.sin_visto); }).catch(() => { escribiendoVivoActivo = null; });
+  }
+  return escribiendoVivoActivo;
+}
+function alTeclearEscribiendo(e) {
+  const conv = estado.conversacionActivaId;
+  if (vivo.conv !== conv) Object.assign(vivo, { conv, at: 0, tecleado: false, pegado: false });
+  const tipo = e.inputType || "insertText";
+  if (/^insertFrom(Paste|Drop|Yank)/.test(tipo)) { vivo.pegado = true; return; }
+  if (!/^(insert|delete)/.test(tipo)) return;
+  vivo.tecleado = true;
+  if (!escribiendoVivoPrendido() || !conv || !e.target.value.trim() || Date.now() - vivo.at < 20000) return;
+  vivo.at = Date.now();
+  pedir("/api/crm/escribiendo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: conv }) })
+    .then((r) => { if (!r?.mostrado) vivo.at = 0; })
+    .catch(() => { vivo.at = 0; });
+}
+/** ¿Este texto se tecleó con «escribiendo…» en vivo (hace menos de 25 s)? Lo deja listo para el siguiente. */
+function salioEnVivo(conv) {
+  const ok = vivo.conv === conv && vivo.tecleado && !vivo.pegado && vivo.at > 0 && Date.now() - vivo.at < 25000;
+  Object.assign(vivo, { at: 0, tecleado: false, pegado: false }); // al llegar el mensaje WhatsApp quita el aviso
+  return ok;
+}
+
 async function enviarMensaje(e) {
   e.preventDefault();
   // Los paneles (respuestas rápidas, seguimientos, catálogo, etc.) viven
@@ -4744,6 +4794,7 @@ async function enviarMensaje(e) {
   const replyToId = respondiendoA?.id || undefined;
   const rapidaUsadaId = estado.rapidaUsadaId || undefined;
   estado.rapidaUsadaId = null;
+  const enVivo = salioEnVivo(conversationId) && !adjunto && !rapida && !rapidaUsadaId;
   const variante = rapidaUsadaId && estado.rapidaVariante
     ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim(), a_mano: estado.rapidaVariante.aMano || undefined }
     : {};
@@ -4838,7 +4889,7 @@ async function enviarMensaje(e) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, escribiendo_vivo: enVivo || undefined, ...variante })
       });
     }
   }, (err) => {
@@ -7423,10 +7474,13 @@ async function pintarEquipo() {
     el.style.display = esAdmin ? "" : "none";
   });
   $("#sin-visto-fila").style.display = "none";
+  $("#escribiendo-vivo-fila").style.display = "none";
   if (esAdmin) {
     pedir("/api/crm/settings").then((s) => {
       $("#sin-visto").checked = s.sin_visto;
       $("#sin-visto-fila").style.display = "flex";
+      $("#escribiendo-vivo").checked = s.escribiendo_vivo;
+      $("#escribiendo-vivo-fila").style.display = "flex";
     }).catch(() => {});
   }
   const { agents } = await pedir("/api/crm/agents");

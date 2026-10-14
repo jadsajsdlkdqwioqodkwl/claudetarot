@@ -12,11 +12,13 @@
  *              rápida salió (0 = la original), si la vendedora la cambió y si
  *              la eligió ella con los botones 1·2·3: se anota
  *              en variante_usos para medir cuál funciona (crm-variantes.js)
+ *      escribiendo_vivo? — texto tecleado a mano que ya mostró «escribiendo…» en vivo
+ *              (POST /api/crm/escribiendo): sale sin repetir la pausa (ver crm-send.js)
  */
 
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { conAuth } from "../../lib/crm-auth.js";
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS } from "../../lib/crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 
@@ -143,7 +145,9 @@ async function post({ request, env, agent }) {
     const botones = limpiarBotones(payload?.botones);
     if (botones.length && texto.length > 1024) return json({ error: "Con botones el mensaje puede tener hasta 1024 caracteres." }, 413);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
-    await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined);
+    // Tecleado a mano con «escribiendo…» en vivo (escribiendo_vivo): sin repetir la pausa, 1 s entre mensajes.
+    const vivo = payload?.escribiendo_vivo === true && !quickReplyId && (await escribiendoVivoPrendido(env));
+    await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined, { vivo });
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo, undefined, botones);
     await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida(waMessageId);
