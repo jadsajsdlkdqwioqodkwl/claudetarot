@@ -197,6 +197,23 @@ def armar_pdf(datos, carpeta):
              ("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
+    es_ventas = datos.get("tipo_reporte") == "ventas"
+    if es_ventas:
+        titulo = f"Reporte de ventas · {e(datos.get('hora') or '')} {e(fecha)}".replace("  ", " ")
+        # Ventas por vendedora: una fila por vendedora con Lima, provincia y kits.
+        por = {}
+        for p in pedidos:
+            if p.get("estado") != "CONFIRMADO" or especial(p):
+                continue
+            v = por.setdefault(p.get("vendedora") or "(sin vendedora)", {"Vendedora": p.get("vendedora") or "(sin vendedora)", "lima": 0, "prov": 0, "kits": 0})
+            v["lima" if p.get("destino") == "LIMA" else "prov"] += 1
+            v["kits"] += num_kits(p)
+        if por:
+            partes.insert(0, "<h2>👩 Ventas por vendedora</h2>" + tabla(
+                sorted(por.values(), key=lambda v: -(v["lima"] + v["prov"])),
+                [("Vendedora", "Vendedora"), ("Lima", "lima"), ("Provincia", "prov"), ("Kits", "kits")]))
+    else:
+        titulo = f"Reporte de ventas · despacho del {e(fecha)}"
     doc = f"""<!doctype html><meta charset=utf-8><style>
 @page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111}}
 h1{{font-size:24px;margin:0}} h2{{font-size:17px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}}
@@ -213,9 +230,9 @@ h2.inc{{color:#b91c1c;border-color:#dc2626;font-size:19px}} div.inc th{{backgrou
 div.inc td{{background:#fee2e2;font-size:15px;font-weight:700}} tr.alerta td{{background:#fee2e2;font-weight:700}}
 h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{background:#ea580c}} div.esp td{{background:#ffedd5;font-size:15px;font-weight:700}}
 h2.web{{color:#1d4ed8;border-color:#2563eb}} div.web th{{background:#2563eb}}</style>
-<h1>Reporte de ventas · despacho del {e(fecha)}</h1>
+<h1>{titulo}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
-    ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, f"pedidos-{fecha}.pdf")
+    ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, (f"ventas-{fecha}-{re.sub(r'[^0-9]', '', str(datos.get('hora') or ''))}".rstrip("-") if es_ventas else f"pedidos-{fecha}") + ".pdf")
     with open(ruta_html, "w") as fh:
         fh.write(doc)
     chrome = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") or ["chromium"])[0]
@@ -359,7 +376,10 @@ def main():
     cuerpo = {"mensajes": datos.get("mensajes", [])}
     if not solo_mensajes:
         pdf, kits = armar_pdf(datos, carpeta)
-        cuerpo["resumen"] = (f"🧭 Asesor — pedidos para {datos.get('fecha_objetivo', '')}\n"
+        ventas = datos.get("tipo_reporte") == "ventas"
+        if ventas:
+            cuerpo["solo_dueno"] = True  # el reporte de ventas de la noche es solo para el dueño
+        cuerpo["resumen"] = (f"🧭 Asesor — {'ventas' if ventas else 'pedidos para'} {datos.get('fecha_objetivo', '')}\n"
                              f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
                              + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) else "")
                              + f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
@@ -372,7 +392,7 @@ def main():
         print(f"PDF: {pdf}")
         if not prueba:
             link = subir_reporte(clave, cuerpo["pdf_base64"], cuerpo["pdf_nombre"],
-                                 f"Pedidos {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
+                                 f"{'Ventas' if ventas else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             cuerpo["resumen"] += f"\n📄 Reporte: {link}"
             print(f"REPORTE PDF: {link}", flush=True)
     elif cuerpo["mensajes"]:
