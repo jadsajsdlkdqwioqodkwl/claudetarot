@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Google_Sheets__*",
+      "mcp__Google_Docs__*",
+      "mcp__Google_Drive__*",
+      "mcp__claude-code-remote__*",
+      "mcp__FIRECRAWL__*",
+      "mcp__META__*",
+      "mcp__github__*",
+      "Bash",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch"
+    ]
+  }
+}
