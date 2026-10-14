@@ -4764,7 +4764,11 @@ async function enviarMensaje(e) {
   const burbujas = adjunto
     ? [{ type: adjunto.tipo, previewUrl: adjunto.previewUrl, fileName: adjunto.file.name, body: texto }]
     : rapida?.catalogo
-      ? [{ type: "text", body: etiquetaCatalogo(rapida) }, ...(texto ? [{ type: "text", body: textoConBotones(texto, botones) }] : [])]
+      ? (() => {
+        const cat = { type: "text", body: etiquetaCatalogo(rapida) };
+        const txt = texto ? [{ type: "text", body: textoConBotones(texto, botones) }] : [];
+        return rapida.despues ? [...txt, cat] : [cat, ...txt];
+      })()
     : rapida
       ? [...rapida.media.map((m) => ({ type: m.media_type, mediaKey: m.media_key })), ...(texto ? [{ type: "text", body: textoConBotones(texto, botones) }] : [])]
       : [{ type: "text", body: textoConBotones(texto, botones) }];
@@ -4782,9 +4786,10 @@ async function enviarMensaje(e) {
       });
       if (adjunto.previewUrl) URL.revokeObjectURL(adjunto.previewUrl);
     } else if (rapida?.catalogo) {
-      // Primero el catálogo o el producto, después el texto (como las fotos).
+      // Por defecto primero el catálogo o el producto y después el texto (como
+      // las fotos); con `despues` el texto sale primero y el catálogo debajo.
       // El seguimiento se programa con un solo envío: el texto si hay, si no el catálogo.
-      await pedir("/api/crm/catalog", {
+      const mandarCatalogo = () => pedir("/api/crm/catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4793,12 +4798,17 @@ async function enviarMensaje(e) {
           ...(!texto ? { quick_reply_id: rapidaUsadaId, ...variante } : {})
         })
       });
-      if (texto) {
-        await pedir("/api/crm/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
-        });
+      const mandarTextoRapida = () => pedir("/api/crm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, ...variante })
+      });
+      if (rapida.despues && texto) {
+        await mandarTextoRapida();
+        await mandarCatalogo();
+      } else {
+        await mandarCatalogo();
+        if (texto) await mandarTextoRapida();
       }
     } else if (rapida) {
       // Todas a la vez: la API las procesa en paralelo y llegan casi juntas.
@@ -5992,7 +6002,7 @@ function usarQuickReply(q, indice = null) {
   ponerTextoRapida(version.texto);
 
   // "Con catálogo": sale el catálogo o el producto en vez de sus fotos/videos.
-  estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null }
+  estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null, despues: Boolean(q.catalogo_despues) }
     : q.media.length ? { media: q.media } : null;
   estado.rapidaUsadaId = q.id;
   estado.botonesMensaje = (q.botones || []).slice(0, 3);
@@ -6069,6 +6079,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(null);
+  $("#rapida-catalogo-orden").value = "0";
   pintarSeguimientoRapida(null);
   // Nueva desde un chat de un producto: ya sale de ese producto.
   $("#rapida-producto").innerHTML = opcionesProducto(chatActivo()?.producto_id || "");
@@ -6246,6 +6257,7 @@ function abrirModalRapidaEdicion(q) {
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
+  $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
   pintarSeguimientoRapida(q);
   $("#rapida-producto").innerHTML = opcionesProducto(q.producto_id || "");
   $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
@@ -6264,6 +6276,7 @@ function mostrarCatalogoRapida() {
   $("#rapida-archivo").style.display = conCatalogo ? "none" : "";
   $("#rapida-archivo-ayuda").style.display = conCatalogo ? "none" : "";
   $("#rapida-catalogo-ayuda").style.display = conCatalogo ? "" : "none";
+  $("#rapida-catalogo-orden").style.display = conCatalogo ? "" : "none";
 }
 $("#rapida-catalogo").addEventListener("change", mostrarCatalogoRapida);
 
@@ -6302,13 +6315,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
       });
     }
     await cargarQuickReplies();

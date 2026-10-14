@@ -208,3 +208,13 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - 2026-10-06 · Creativos: dos flujos (CREA y REVISA COMENTARIOS); sin Pro ni
   Drive; REGLAS_RENDER fijas en `render.mjs`.
 - 2026-10-06 · Brief: el Google Doc vuelve a ser la versión viva; se crea este mapa.
+
+## Respuestas rápidas: borrado y orden del catálogo (2026-10-14)
+
+- Borrar una respuesta rápida ya suelta antes `messages.quick_reply_id` y
+  `scheduled_messages.quick_reply_id` (null) y borra su fila de
+  `welcome_sequence`; sin eso la llave foránea de D1 impedía borrarla.
+- Nueva columna `quick_replies.catalogo_despues` (migración
+  `0055_rapida_catalogo_despues.sql`, **se aplica a mano**): 0 = catálogo antes
+  del texto, 1 = debajo. Se elige en el editor de la respuesta rápida
+  (`#rapida-catalogo-orden`). Sin la migración, la API lee y guarda sin ella.

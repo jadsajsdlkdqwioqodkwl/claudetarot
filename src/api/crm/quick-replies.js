@@ -101,10 +101,19 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
+/** "catalogo_despues": 1 = el catálogo sale debajo del texto. Sin la migración 0055 no hace nada. */
+async function guardarCatalogoDespues(env, id, payload) {
+  if (!payload || !("catalogo_despues" in payload)) return;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET catalogo_despues = ? WHERE id = ?")
+    .bind(payload.catalogo_despues ? 1 : 0, id).run().catch(() => {});
+}
+
 async function get({ env }) {
-  const { results: rapidas } = await env.CRM_DB.prepare(
-"SELECT id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones FROM quick_replies ORDER BY sort_order ASC, id ASC"
-  ).all();
+  const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
+  // Sin la migración 0055 aplicada todavía, se lee sin `catalogo_despues`.
+  const rapidas = await env.CRM_DB.prepare(`SELECT ${columnas}, catalogo_despues FROM quick_replies ORDER BY sort_order ASC, id ASC`).all()
+    .then((r) => r.results)
+    .catch(async () => (await env.CRM_DB.prepare(`SELECT ${columnas} FROM quick_replies ORDER BY sort_order ASC, id ASC`).all()).results);
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
   ).all();
@@ -154,6 +163,7 @@ async function post({ request, env }) {
   )
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden)
     .first();
+  await guardarCatalogoDespues(env, creada.id, payload);
 
   let i = 0;
   for (const m of mediaKeys) {
@@ -223,6 +233,7 @@ async function patch({ request, env, agent }) {
   await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, id)
     .run();
+  await guardarCatalogoDespues(env, id, payload);
 
   if (mediaKeys !== null) {
     const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();
@@ -261,8 +272,15 @@ async function del({ request, env }) {
     .bind(id)
     .all();
 
-  await env.CRM_DB.prepare("DELETE FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).run();
-  await env.CRM_DB.prepare("DELETE FROM quick_replies WHERE id = ?").bind(id).run();
+  // Los mensajes, programados y la bienvenida vieja apuntan a la respuesta
+  // (llave foránea): se sueltan antes, si no D1 no deja borrarla.
+  await env.CRM_DB.batch([
+    env.CRM_DB.prepare("UPDATE messages SET quick_reply_id = NULL WHERE quick_reply_id = ?").bind(id),
+    env.CRM_DB.prepare("UPDATE scheduled_messages SET quick_reply_id = NULL WHERE quick_reply_id = ?").bind(id),
+    env.CRM_DB.prepare("DELETE FROM welcome_sequence WHERE quick_reply_id = ?").bind(id),
+    env.CRM_DB.prepare("DELETE FROM quick_reply_media WHERE quick_reply_id = ?").bind(id),
+    env.CRM_DB.prepare("DELETE FROM quick_replies WHERE id = ?").bind(id)
+  ]);
 
   if (env.CRM_MEDIA) {
     for (const m of media) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
