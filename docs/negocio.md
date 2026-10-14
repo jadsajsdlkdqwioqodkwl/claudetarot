@@ -79,4 +79,4 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
   cierre.
 - "Estoy de viaje" / "a fin de mes" → separar con S/10 para esa fecha (se
   puede sumar el collar amuleto de regalo, no el descuento).
-- **Cuándo cuenta el día de una venta (2026-10-14):** el día en que se completa: provincia = adelanto + datos (si el adelanto llegó antes y los datos otro día, cuenta el día de los datos); Lima = el día que pasó su dirección.
+- **Cuándo cuenta el día de una venta (corregido 2026-10-14, igual que el CRM «Compra · día»):** el día del adelanto (provincia) o de la dirección (Lima). Si el adelanto llegó un día y los datos otro, cuenta el día del adelanto (Edon, Espinar: compra del 11/10 aunque pasó los datos el 13/10). La venta es de la ASESORA DEL CHAT en el CRM (campo `asesora` de meta.json), aunque otra vendedora haya hecho la confirmación final (Magali: chat de Jennifer, confirmó Danitza).
