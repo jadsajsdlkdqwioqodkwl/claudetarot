@@ -981,5 +981,33 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("pausaEnvio muestra \"escribiendo…\" y espera", /mostrarEscribiendo\(env/.test(envio) && /await esperar\(ms\)/.test(envio));
 }
 
+/* Rutas: todo handler exportado en src/api/ tiene su ruta en src/index.js (el GET de
+   /api/crm/followup-rapida estaba importado a medias y el botón «Reactivar seguimiento»
+   respondía «Método no permitido»). Y una plantilla nunca reflota el chat en la bandeja. */
+{
+  const { readdirSync } = await import("node:fs");
+  const idx = readFileSync(join(root, "src/index.js"), "utf8");
+  const alias = {};
+  for (const [, nombres, archivo] of idx.matchAll(/import\s*\{([^}]*)\}\s*from\s*"\.\/(api\/[^"]+)"/g)) {
+    for (const n of nombres.split(",")) { const [a, b] = n.trim().split(/\s+as\s+/); if (a) (alias[archivo] ??= {})[a] = b || a; }
+  }
+  const faltan = [];
+  const recorrer = (dir) => {
+    for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) { recorrer(rel); continue; }
+      if (!e.name.endsWith(".js")) continue;
+      for (const [, m] of readFileSync(join(root, rel), "utf8").matchAll(/export const (onRequest\w*)/g)) {
+        const a = alias[rel.slice(4)]?.[m];
+        if (!a || (idx.match(new RegExp(`\\b${a}\\b`, "g")) || []).length < 2) faltan.push(`${rel} ${m}`);
+      }
+    }
+  };
+  recorrer("src/api");
+  check("todo handler de src/api tiene su ruta en index.js", !faltan.length, faltan.join(", "));
+  check("una plantilla no reflota el chat en la bandeja (solo cuando el cliente escribe)",
+    /if \(!subirEnBandeja \|\| type === "template"\) return;/.test(readFileSync(join(root, "src/lib/crm-db.js"), "utf8")));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

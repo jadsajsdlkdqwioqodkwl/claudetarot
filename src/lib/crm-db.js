@@ -113,8 +113,10 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .run();
 
   // Un seguimiento automático no sube el chat en la bandeja: sube recién
-  // cuando el cliente responde (registrarMensajeEntrante).
-  if (!subirEnBandeja) return;
+  // cuando el cliente responde (registrarMensajeEntrante). Una PLANTILLA
+  // tampoco, venga de donde venga (a mano, asesor, masivo, rescate, Shalom):
+  // regla del dueño (2026-10-14), solo se reflota cuando el cliente escribe.
+  if (!subirEnBandeja || type === "template") return;
 
   await db
     // Si le respondimos (a mano, la bienvenida o un seguimiento), lo que el
@@ -280,8 +282,10 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
     envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
     // El primero se recorta al tope (como antes); los demás, si no entran, se omiten. Una plantilla
     // (p.plantilla) no tiene tope: sale aunque la ventana ya haya cerrado.
+    // Un texto que ya no entra en la ventana se salta (antes cortaba toda la secuencia con `break`
+    // y tampoco salía la plantilla de los pasos siguientes, que no tiene tope).
     const cuando = i === 0 && !p.plantilla ? Math.min(envio, tope) : envio;
-    if (cuando <= Date.now() + 60 * 1000) break;
+    if (cuando <= Date.now() + 60 * 1000) continue;
     if (!p.plantilla && cuando > tope) continue;
     envio = cuando;
     if (p.plantilla) {
