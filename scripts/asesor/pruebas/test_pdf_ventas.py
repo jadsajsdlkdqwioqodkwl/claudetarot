@@ -19,6 +19,13 @@ with tempfile.TemporaryDirectory() as d:
         assert sum(len(p.find_tables()) for p in doc.pages) >= 3, "el PDF no tiene tablas"
         txt = "\n".join(p.extract_text() or "" for p in doc.pages)
     assert "Jennifer" in txt and "despachar" in txt and kits == 4, kits
+    assert "Agendadas otro día" in html and "TOTAL" in html, "falta la fila TOTAL o la columna de otros días"
+    # Un pedido sin vendedora NO sale a medias.
+    malo = json.loads(json.dumps(datos)); malo["pedidos"][0].pop("vendedora")
+    try:
+        enviar.armar_pdf(malo, d); raise AssertionError("debió rechazar el pedido sin vendedora")
+    except SystemExit as err:
+        assert "vendedora" in str(err)
     # El formato de pedidos (10:30) sigue igual.
     p2, _ = enviar.armar_pdf({k: v for k, v in datos.items() if k not in ("tipo_reporte", "hora")}, d)
     assert p2.endswith("pedidos-2026-10-14.pdf")

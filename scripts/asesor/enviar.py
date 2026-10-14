@@ -128,7 +128,18 @@ def tabla(filas, cols):
     return f"<table><tr><th>#</th>{cab}</tr>" + cuerpo + "</table>"
 
 
+def validar_ventas(datos):
+    """Un reporte de ventas necesita vendedora, destino y estado en cada pedido: si falta, no sale a medias."""
+    malos = [f"- {p.get('nombre') or p.get('whatsapp')}: falta " + ", ".join(k for k in ("vendedora", "destino", "estado") if not p.get(k))
+             for p in datos.get("pedidos", []) if (p.get("nombre") or "").upper() != "INCIDENCIA"
+             and not all(p.get(k) for k in ("vendedora", "destino", "estado"))]
+    if malos or not datos.get("fecha_objetivo"):
+        sys.exit("Reporte de ventas incompleto (cada pedido lleva vendedora, destino y estado; y fecha_objetivo):\n" + "\n".join(malos))
+
+
 def armar_pdf(datos, carpeta):
+    if datos.get("tipo_reporte") == "ventas":
+        validar_ventas(datos)
     fecha = datos.get("fecha_objetivo", "")
     todos = datos.get("pedidos", [])
     # Las incidencias van en su propia sección, no como filas de pedidos.
@@ -200,18 +211,23 @@ def armar_pdf(datos, carpeta):
     es_ventas = datos.get("tipo_reporte") == "ventas"
     if es_ventas:
         titulo = f"Reporte de ventas · {e(datos.get('hora') or '')} {e(fecha)}".replace("  ", " ")
-        # Ventas por vendedora: una fila por vendedora con Lima, provincia y kits.
+        # Ventas por vendedora: toda venta (confirmada para el despacho o agendada para otro día).
         por = {}
         for p in pedidos:
-            if p.get("estado") != "CONFIRMADO" or especial(p):
+            if p.get("estado") not in ("CONFIRMADO", "OTRO_DIA") or p.get("tipo") in ("CAMBIO", "REPOSICION"):
                 continue
-            v = por.setdefault(p.get("vendedora") or "(sin vendedora)", {"Vendedora": p.get("vendedora") or "(sin vendedora)", "lima": 0, "prov": 0, "kits": 0})
+            nom = p.get("vendedora") or "(sin vendedora)"
+            v = por.setdefault(nom, {"Vendedora": nom, "lima": 0, "prov": 0, "otro": 0, "total": 0, "kits": 0})
             v["lima" if p.get("destino") == "LIMA" else "prov"] += 1
+            v["otro"] += 1 if p.get("estado") == "OTRO_DIA" else 0
+            v["total"] += 1
             v["kits"] += num_kits(p)
         if por:
+            tot = {"Vendedora": "TOTAL", **{k: sum(v[k] for v in por.values()) for k in ("lima", "prov", "otro", "total", "kits")}}
             partes.insert(0, "<h2>👩 Ventas por vendedora</h2>" + tabla(
-                sorted(por.values(), key=lambda v: -(v["lima"] + v["prov"])),
-                [("Vendedora", "Vendedora"), ("Lima", "lima"), ("Provincia", "prov"), ("Kits", "kits")]))
+                sorted(por.values(), key=lambda v: -v["total"]) + [tot],
+                [("Vendedora", "Vendedora"), ("Lima", "lima"), ("Provincia", "prov"), ("Agendadas otro día", "otro"),
+                 ("Total ventas", "total"), ("Kits", "kits")]))
     else:
         titulo = f"Reporte de ventas · despacho del {e(fecha)}"
     doc = f"""<!doctype html><meta charset=utf-8><style>
