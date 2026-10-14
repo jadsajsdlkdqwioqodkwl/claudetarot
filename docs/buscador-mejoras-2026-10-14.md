@@ -102,4 +102,4 @@ replaceAllText, cada uno debe dar 1 ocurrencia (si da 0, busca el texto exacto c
 
 ## Estado
 
-- [ ] 1a Z1 · [ ] 1b E30 · [ ] 1c D30 · [ ] 1d Mejoras · [ ] 2 INSTR 00 · [ ] 3 INSTR 06 · [ ] 4 verificación
+- [x] Todo aplicado el 2026-10-14 en la misma sesión de la auditoría (Z1, Recetas D30/E30, Mejoras M-001..M-012, INSTR 00 v4.11, INSTR 06 v3.14 con sección 6 MEJORA). Verificado leyendo los documentos y Log BUSCA Z1:AH.
