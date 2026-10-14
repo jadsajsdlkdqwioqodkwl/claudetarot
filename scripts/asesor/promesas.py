@@ -33,7 +33,12 @@ RE_PROMESA = re.compile(
     r"|\bgratis\b",
     re.I,
 )
-RE_ENVIO_GRATIS = re.compile(r"env[ií]os?\s+(es\s+)?gratis|gratis\s+a\s+todo", re.I)
+# "envío gratis" en cualquier forma ("envío totalmente GRATIS a domicilio", "delivery gratis",
+# "gratis el envío"): es el envío, no un producto extra.
+RE_ENVIO_GRATIS = re.compile(
+    r"(env[ií]os?|delivery|despacho)\b[^.!?\n]{0,30}?\bgratis\b|\bgratis\b[^.!?\n]{0,20}?\b(env[ií]os?|delivery|despacho|a\s+todo)",
+    re.I,
+)
 
 # Para saber si el `empaque` ya cubre la promesa.
 COSAS = ["collar", "mazo", "oráculo", "oraculo", "carta", "pulsera", "bolsita", "tapete", "cristal",
