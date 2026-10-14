@@ -23,6 +23,7 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
   antes. Los pedidos se registran hasta las 11 pm para salir al día siguiente.
 - Para agendar hace falta: ubicación (📍 o dirección) y teléfono de quien recibe.
 - Venta = dio dirección y quedó agendado.
+- **Regla del dueño (2026-10-14):** en Lima la venta ocurre cuando el cliente pasa su dirección (y teléfono de quien recibe). Que la vendedora diga "confirmado" de palabra sin eso NO es venta: es otra cosa o error de asesor.
 
 ## Provincia
 - Por Shalom u Olva (agencia que elija el cliente).
@@ -30,6 +31,7 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
   recoger. El adelanto cubre el envío y evita cancelaciones.
 - Datos para despachar: nombre completo, DNI y agencia de destino.
 - Venta = mandó el adelanto + sus datos.
+- **Regla del dueño (2026-10-14):** en provincia la venta ocurre cuando el cliente manda el adelanto (captura, o la vendedora ya confirmó que llegó el Yape) más sus datos. Una confirmación verbal sin adelanto NO es venta: es otra cosa o error de asesor (va a POR_CONFIRMAR y a `incidencias`).
 - Al día siguiente se le manda el comprobante; Shalom entrega una boleta días
   después. Clave de retiro de Shalom: 3114 (respaldo 3144 y 3143).
 - Link de seguimiento `/TS-XXXXXXX`: se le manda el mismo día de la venta
@@ -77,3 +79,16 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
   cierre.
 - "Estoy de viaje" / "a fin de mes" → separar con S/10 para esa fecha (se
   puede sumar el collar amuleto de regalo, no el descuento).
+- **Cuándo cuenta el día de una venta (corregido 2026-10-14, igual que el CRM «Compra · día»):** el día del adelanto (provincia) o de la dirección (Lima). Si el adelanto llegó un día y los datos otro, cuenta el día del adelanto (Edon, Espinar: compra del 11/10 aunque pasó los datos el 13/10). La venta es de la ASESORA DEL CHAT en el CRM (campo `asesora` de meta.json), aunque otra vendedora haya hecho la confirmación final (Magali: chat de Jennifer, confirmó Danitza).
+
+## Cómo hacer un buen reporte de ventas (aprendido el 2026-10-14, del dueño)
+1. **Lee TODOS los chats con mensajes del día, uno por uno.** Filtrar por palabras («agendado», «DNI», «confianza depositada») deja ventas fuera: el primer reporte de ese día omitió todas las de Lima de la mañana.
+2. **Cuadra la cuenta con el CRM.** Cada chat con embudo `purchase` y actividad ese día se explica: o es venta de hoy, o es compra de otro día (y se dice de cuál). Los dudosos se leen completos (adelanto de un día y datos de otro, cliente que suspende, saldos y boletas de ventas anteriores).
+3. **Día de la venta** = día del adelanto (provincia) o de la dirección (Lima), como «Compra · día» del CRM. El adelanto de otro día NO suma hoy.
+4. **Vendedora** = asesora del chat en el CRM (`asesora` en meta.json), aunque otra haya hecho la confirmación final.
+5. **Venta sin lo mínimo no cuenta** (confirmación verbal sin dirección / sin adelanto): va a POR_CONFIRMAR e `incidencias`.
+6. **Separa hoy de otros días** (`OTRO_DIA` con su fecha) y di cuántas salen para cuándo.
+7. **Marca lo que cambia el despacho** en `nota`/`empaque`: sin dirección exacta ni teléfono de quien recibe, horario pedido, vuelto, baraja o extra distinto al kit, agencia no indicada, modelo por revisar.
+8. **Verifica los números antes de enviar**: el total por vendedora, Lima/provincia y otro día debe sumar lo mismo; revisa la tabla del PDF y no repitas un número sin sumarlo.
+9. **Formato:** siempre PDF con tablas por `enviar.py salida.json` (`tipo_reporte: "ventas"`), nunca texto plano ni `--informe`. Al responder, da el total, por vendedora, Lima/provincia y el link.
+10. **Di qué no revisaste** (p. ej. si no se registraron en la pestaña Ventas o no hay saldos) en vez de callarlo.

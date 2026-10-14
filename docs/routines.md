@@ -145,6 +145,10 @@ nuevas. Reporte de máx. 200 palabras, texto plano, título «Ventas HH:MM —
 AAAA-MM-DD», con `enviar.py --informe /tmp/ventas/informe.txt` (CRM →
 Reportes). No propone mensajes a clientes.
 
+## 2026-10-14 · Reportes de ventas ahora son PDF con tablas
+
+Los reportes de ventas (21:00 y 22:00·23:00·00:00) salían como texto plano (`--informe`) y el dueño los quiere en el PDF con tablas de siempre. Cambio en los prompts de `trig_01MqeNCP2gXjMyXZaWt2sqBo` (21:00) y `trig_01MUZWZBq7nr1Cvq1cLRNpAN` (noche): escriben `/tmp/ventas/salida.json` con el formato de pedidos más `"tipo_reporte": "ventas"`, `"hora"`, `"fecha_objetivo"`, `"origen"` y `"vendedora"` por pedido, y mandan con `enviar.py /tmp/ventas/salida.json` (PDF a CRM → Reportes y a Telegram solo del dueño, `solo_dueno`). No usan `--informe`. Ambos prompts incluyen la DEFINICIÓN DE VENTA (Lima = dio dirección; provincia = mandó el adelanto; confirmación verbal sin eso = otra cosa o error de asesor). Los prompts anteriores (texto plano, 200/300 palabras, `--informe`) quedan arriba en este archivo como historia.
+
 ## Estado al 2026-10-13, 19:30 (Lima), revisado por Claude Code
 
 Cambios que hizo el dueño desde claude.ai (se anotan aquí por la regla de la cabecera):
@@ -161,3 +165,5 @@ agregarlo a «Voz del cliente» (sin él no puede reescribir el Doc del brief: e
 de Drive no reemplaza contenido; el brief no cambia desde el 06/10).
 Agregar **Google Drive** a «Asesor — reporte de ventas (21:00)» (guarda el
 `ventas-AAAA-MM-DD.json` que usa la corrida de las 22:30).
+
+- 2026-10-14: «Asesor — reporte de ventas (21:00)»: el resumen (`--informe`) empieza con el título «Ventas 21:00 — AAAA-MM-DD» para que llegue por Telegram (todo informe que empieza con «Ventas» va a Telegram).

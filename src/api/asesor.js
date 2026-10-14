@@ -108,7 +108,22 @@ export async function onRequestPost({ request, env }) {
     const origenInforme = String(payload.origen || "director CRO").slice(0, 60);
     await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)").bind(origenInforme, texto).run();
     const link = await guardarInformeComoPagina(env, origenInforme, texto).catch(() => null);
-    return json({ guardado: true, link });
+    // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13).
+    let telegram = null;
+    if (/ventas/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
+      try {
+        const msg = (texto + (link ? `\n\n${link}` : "")).slice(0, 4000);
+        const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID), text: msg })
+        });
+        telegram = r.ok ? "enviado" : `error ${r.status}`;
+      } catch (err) {
+        telegram = `error ${err.message}`;
+      }
+    }
+    return json({ guardado: true, link, telegram });
   }
   const dueno = env.TELEGRAM_CHAT_ID;
   const res = { enviados: 0, fallidos: [], a_dueno: 0 };
@@ -124,7 +139,7 @@ export async function onRequestPost({ request, env }) {
     }
     // Y a las del equipo en REPORTE_AGENTES (Danitza) que vincularon su
     // Telegram en el CRM: mismo PDF, con el link al reporte en el texto.
-    for (const chatId of await chatsReporte(env, dueno)) {
+    for (const chatId of payload.solo_dueno ? [] : await chatsReporte(env, dueno)) {
       try {
         await mandarPdf(env, chatId, payload.pdf_base64, payload.pdf_nombre, payload.resumen);
         res.enviados++;

@@ -83,6 +83,11 @@
 
 Más detalle: `docs/asesor.md`.
 
+**Qué es una venta (regla del dueño, 2026-10-14):** Lima = el cliente pasó su dirección; provincia = el cliente mandó el adelanto. Una confirmación verbal de la vendedora sin eso es otra cosa o error de asesor, no cuenta como venta en ningún reporte.
+
+**Reporte de ventas (21:00 · 22:00 · 23:00 · 00:00):** sale SIEMPRE como PDF con tablas (el formato de siempre, el mismo de pedidos) con `enviar.py salida.json` y `"tipo_reporte": "ventas"`; nunca como texto plano por `--informe`. Prueba: `python3 scripts/asesor/pruebas/test_pdf_ventas.py`.
+Antes de armarlo, lee «Cómo hacer un buen reporte de ventas» al final de `docs/negocio.md` (leer todos los chats, cuadrar con el CRM, día y vendedora de la venta).
+
 ## Si vas a hacer anuncios / creativos
 
 Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en
