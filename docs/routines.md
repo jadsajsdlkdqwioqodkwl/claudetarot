@@ -186,3 +186,7 @@ Qué se cambió en los prompts vivos de las 9 Routines (los textos de arriba son
 5. **Director CRO**: la Bitácora ya no se recrea cada día (leía y copiaba toda la historia): solo lunes o si empezó/terminó un experimento, y se agrega la entrada AL FINAL con el conector de Google Docs, sin leer el historial.
 6. **Ventas 21:00**: ya no propone mensajes de seguimiento (los propone la corrida de las 22:30; estaba duplicado).
 Sin tocar: horarios de pedidos (10:30), mensajes (11:30·16:30·22:30), ventas (21·22·23·00 pero ahora omiten cuando no hay novedad), semanal y a pedido. Idea pendiente si se quiere gastar aún menos: poner un modelo más barato en rescate y a pedido (requiere decisión del dueño).
+
+## 2026-10-14 · Modelos por Routine (regla del dueño)
+
+Reportes de pedidos y de ventas nunca llevan un modelo bajo. `claude-sonnet-5-5`: `trig_01MZW3PRpqhkUoeDh89qkGFC` (pedidos 10:30) y `trig_01QJUi3xCif1LXq3QoXShSby` (a pedido). `claude-haiku-5-5`: `trig_012BNuxd8Zs13YZFPNhvaXCK` (rescate), `trig_01RYrG4MxuJUsr6EFzx2Cppg` (Director CRO), `trig_01VTRaKdHZBKqTjeKpC1ByLV` (Voz del cliente), `trig_013aFLWAgwdoXZwLDBS2aUFN` (semanal). Sin modelo fijo: `trig_01UGtv1RT7LRR1kkuKGMHP6m` (ventas 21:00), `trig_01XkT6T8HZstc4YDvVwZHyXP` (ventas 22·23·00), `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` (mensajes y cierre, su corrida de las 22:30 cierra el día con las ventas). Los prompts no cambiaron.
