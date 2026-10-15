@@ -95,13 +95,9 @@ El plan gratis de Cloudflare corta cada ejecución en **50 consultas a D1** y
 
 ## Link de seguimiento (a mano)
 
-Ya **no sale solo**. En el panel derecho del chat, "Link de seguimiento del
-pedido" → **🔗 Preparar el link**: busca su venta abierta en la pestaña
-Ventas por el celular, arma el texto con la respuesta rápida **"Link de
-envío"** (`{link}` y `{nombre}` ya puestos), la vendedora lo revisa, lo
-edita si quiere y lo manda (DEPRECADO: `/api/crm/link-envio` ya no existe). También se puede mandar
-desde Links de Shalom. Queda anotado en `envio_links` como enviado. El cron
-cancela cualquier link automático que hubiera quedado programado.
+RETIRADO (2026-10-15, pedido del dueño): el link de seguimiento y la clave de Shalom
+ya no los maneja el asesor ni se mandan; la vendedora pone la clave a mano y el
+seguimiento va con plantillas y seguimientos del CRM.
 
 ## Saldo desde la captura
 

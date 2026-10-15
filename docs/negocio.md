@@ -32,10 +32,8 @@ rápidas vigentes (el texto exacto que usan las vendedoras) se bajan en vivo con
 - Datos para despachar: nombre completo, DNI y agencia de destino.
 - Venta = mandó el adelanto + sus datos.
 - **Regla del dueño (2026-10-14):** en provincia la venta ocurre cuando el cliente manda el adelanto (captura, o la vendedora ya confirmó que llegó el Yape) más sus datos. Una confirmación verbal sin adelanto NO es venta: es otra cosa o error de asesor (va a POR_CONFIRMAR y a `incidencias`).
-- Al día siguiente se le manda el comprobante; Shalom entrega una boleta días
-  después. Clave de retiro de Shalom: 3114 (respaldo 3144 y 3143).
-- Link de seguimiento `/TS-XXXXXXX`: se le manda el mismo día de la venta
-  (dentro de las 24 h) y ahí aparece su boleta cuando sale.
+- Al día siguiente se le manda el comprobante. La clave de retiro de Shalom la
+  pone la vendedora a mano en el chat; el asesor no la maneja ni manda links.
 
 ## Herramientas de cierre que SÍ se pueden ofrecer
 Úsalas cuando destraban una venta real, nunca de entrada a quien recién pregunta

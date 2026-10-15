@@ -96,8 +96,7 @@ qué.
 --dias 3 --salida /tmp/asesor`. Lee todo (reglas 5–8 de CLAUDE.md: provincia
 confirmada, saldos, EMPAQUE con lo 📦 PROMETIDO, reposiciones y cambios con
 🚨). Escribe /tmp/asesor/salida.json con `fecha_objetivo` = hoy, `pedidos`,
-`saldos` y `origen: "asesor 10:30"`; registra las ventas de provincia y sus
-boletas con `scripts/asesor/ventas.py`. Manda con `enviar.py
+`saldos` y `origen: "asesor 10:30"`. Manda con `enviar.py
 /tmp/asesor/salida.json` (PDF al dueño y a Danitza). Si enviar.py lista
 pedidos con «⚠️ VERIFICAR» o textos que suenan a bot, corrígelos y vuelve a
 mandar.
@@ -123,8 +122,7 @@ papelera.
 **Asesor — reporte de ventas (21:00)**: `contexto.py` y `preparar.py api
 --dias 1 --salida /tmp/ventas`. Ventas del día (por vendedora, Lima y
 provincia, kits, adelantos y saldos) y mensajes de seguimiento para los que
-quedaron a medio camino (`mensajes`, voz-tarot-store). Registra las ventas de
-provincia con ventas.py. Guarda /tmp/ventas/salida.json en Drive como
+quedaron a medio camino (`mensajes`, voz-tarot-store). Guarda /tmp/ventas/salida.json en Drive como
 «ventas-AAAA-MM-DD.json» (lo usa la corrida de las 22:30) y manda con
 `enviar.py /tmp/ventas/salida.json --solo-mensajes`; el resumen con
 `enviar.py --informe`.
@@ -140,8 +138,7 @@ Lima; el día que reporta es hoy a las 22:00 y 23:00, y el que cerró a las
 00:00. `contexto.py` y `preparar.py api --dias 1 --salida /tmp/ventas`
 (`--dias 2` a las 00:00). Ventas del día: total y por vendedora, Lima y
 provincia, kits, adelantos y saldos pendientes; a las 23:00 y 00:00, qué
-cambió desde la hora anterior. Registra con ventas.py las ventas de provincia
-nuevas. Reporte de máx. 200 palabras, texto plano, título «Ventas HH:MM —
+cambió desde la hora anterior. Reporte de máx. 200 palabras, texto plano, título «Ventas HH:MM —
 AAAA-MM-DD», con `enviar.py --informe /tmp/ventas/informe.txt` (CRM →
 Reportes). No propone mensajes a clientes.
 
@@ -206,4 +203,4 @@ Asesor — reporte de ventas de la noche (22:00 · 23:00 · 00:00). Las tres cor
 4) Lee «Cómo hacer un buen reporte de ventas» al final de docs/negocio.md y corre `contexto.py`. Corre `python3 scripts/asesor/control_ventas.py FECHA --salida /tmp/ventas` (lo que el sistema sabe: compras del CRM, pedidos web y de catálogo, chats por número de WhatsApp). Si `lineas` muestra otro número con chats activos, léelos con `preparar.py api --dias 1 --linea N --salida /tmp/ventas_lN` y pon `lineas_revisadas: [N]`.
 5) CAPTURAS: corre `python3 scripts/asesor/imagenes.py /tmp/ventas --max 20` y MIRA con Read cada imagen de /tmp/ventas/imagenes.md (en los chats aparecen como `[imagen#id]`). En una captura de Yape/Plin/banco confirma monto (adelanto S/20 o saldo), fecha y hora (que sea de FECHA), destinatario (Moises O.) y número de operación; una captura de otro día, de otro monto, de otro destinatario o editada NO confirma la venta: va a POR_CONFIRMAR con nota «🚨 revisar captura» y el motivo. Una captura de saldo (Shalom) va en `saldos` (regla 5 de CLAUDE.md). DNI, ubicación y direcciones en imagen úsalos para completar el pedido.
 6) DEFINICIÓN DE VENTA: Lima = dio su dirección; provincia = mandó el adelanto; confirmación verbal sin eso = otra cosa o error de asesor. Escribe /tmp/ventas/salida.json con el formato de pedidos más `"tipo_reporte": "ventas"`, `"hora"`, `"fecha_objetivo": FECHA`, `"origen"`: en `pedidos` pon SOLO lo nuevo o lo que cambió desde la corrida anterior (enviar.py lo suma a lo ya reportado, por WhatsApp; no repitas lo anterior) con `vendedora`, `destino`, `estado`. Pon también lo nuevo en `incidencias`, `no_cuentan` [{whatsapp, motivo}] y `sin_marcar_compra`. CUADRE OBLIGATORIO: cada candidato de control.json (compras del CRM, pedidos web, de catálogo y `compra_otro_dia`) debe quedar en `pedidos` (aunque sea OTRO_DIA o POR_CONFIRMAR) o en `no_cuentan` con motivo concreto, ya sea de esta corrida o del estado previo (/tmp/ventas/previo.json); `enviar.py` NO envía si queda uno sin explicar: léelo, corrige y vuelve a mandar.
-7) AVISO META: cada chat de preparar.py trae el campo `embudo` (las etiquetas del CRM); si es una venta según la definición y `embudo` NO contiene `purchase`, el asesor olvidó marcarla como COMPRA y Meta no se enteró: ponla en `sin_marcar_compra` [{whatsapp, vendedora, motivo}] (vendedora = la asesora del chat). A las 23:00 y 00:00 di qué cambió desde la corrida anterior. Registra con ventas.py las ventas de provincia nuevas. Manda con `python3 scripts/asesor/enviar.py /tmp/ventas/salida.json` (PDF con TODO el día; no uses --informe). En tu respuesta final di: qué asesor olvidó marcar y cuántas, qué cambió, cuántas capturas miraste y que el cuadre con el CRM dio OK. No propones mensajes a clientes.
+7) AVISO META: cada chat de preparar.py trae el campo `embudo` (las etiquetas del CRM); si es una venta según la definición y `embudo` NO contiene `purchase`, el asesor olvidó marcarla como COMPRA y Meta no se enteró: ponla en `sin_marcar_compra` [{whatsapp, vendedora, motivo}] (vendedora = la asesora del chat). A las 23:00 y 00:00 di qué cambió desde la corrida anterior. Manda con `python3 scripts/asesor/enviar.py /tmp/ventas/salida.json` (PDF con TODO el día; no uses --informe). En tu respuesta final di: qué asesor olvidó marcar y cuántas, qué cambió, cuántas capturas miraste y que el cuadre con el CRM dio OK. No propones mensajes a clientes.
