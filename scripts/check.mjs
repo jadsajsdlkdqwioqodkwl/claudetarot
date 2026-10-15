@@ -843,6 +843,23 @@ check("las letras de columna llegan hasta la última de la hoja",
       readFileSync(new URL("../src/index.js", import.meta.url), "utf8").includes("procesarToques(env)") && wrangler.includes('"TOQUES": "d2'));
   }
   {
+    // Regla del dueño: NADA en el repo llama a la API de Claude/Anthropic (se cobra aparte del plan).
+    // Todo lo que usa IA corre en Routines / sesiones de Claude Code con los créditos del plan.
+    const { readdirSync, statSync } = await import("node:fs");
+    const PROHIBIDO = /api\.anthropic\.com|@anthropic-ai\/|from anthropic|import anthropic|ANTHROPIC_API_KEY|x-api-key["']?\s*:\s*["']?sk-ant/i;
+    const hallados = [];
+    const mirar = (dir) => {
+      for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${e.name}`;
+        if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== ".git") mirar(rel); continue; }
+        if (!/\.(js|mjs|py|gs|json|jsonc|html)$/.test(e.name) || rel === "scripts/check.mjs" || statSync(join(root, rel)).size > 2e6) continue;
+        if (PROHIBIDO.test(readFileSync(join(root, rel), "utf8"))) hallados.push(rel);
+      }
+    };
+    for (const d of ["src", "scripts", "apps-script", "public", ".claude"]) if (existsSync(join(root, d))) mirar(d);
+    check("ningún archivo llama a la API de Claude (solo créditos del plan, vía Routines)", hallados.length === 0, hallados.slice(0, 3).join(", "));
+  }
+  {
     // Regla del dueño: la interfaz del CRM usa iconos (icons.js), nunca emojis. Los emojis solo valen
     // dentro del texto que se le escribe a un cliente y en el selector de emojis.
     const EMOJI = "[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B50}\\u{23F0}-\\u{23FF}]";

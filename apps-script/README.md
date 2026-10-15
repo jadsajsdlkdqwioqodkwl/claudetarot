@@ -343,7 +343,7 @@ mensaje automático al cliente es el de carrito abandonado, y lo manda el Worker
    |---|---|
    | `TELEGRAM_BOT_TOKEN` | el mismo bot del Worker (u otro) |
    | `TELEGRAM_CHAT_ID` | chat o grupo del equipo de ventas |
-   | `ANTHROPIC_API_KEY` | *(opcional)* sin ella, el reporte sale solo con números |
+   | `ANTHROPIC_API_KEY` | *(YA NO SE USA desde 2026-10-15: prohibida la API de Claude en el repo, ver CLAUDE.md; no la configure)* *(opcional)* sin ella, el reporte sale solo con números |
    | `CLAUDE_MODEL` | *(opcional)* por defecto `claude-opus-5` |
    | `CLAUDE_EFFORT` | *(opcional)* `low` por defecto; `medium` para más detalle |
    | `REPORTE_EMAIL` | *(opcional)* también manda el reporte por correo |

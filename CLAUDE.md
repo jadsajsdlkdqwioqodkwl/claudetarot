@@ -95,6 +95,14 @@ Usa la skill **creativos** (`.claude/skills/creativos/SKILL.md`): lote en
 `creativos/lotes/`, render con `scripts/creativos/render.mjs` (Nano Banana,
 `GEMINI_API_KEY`), feedback en la hoja y `creativos/reglas_aprendidas.md`.
 
+## Prohibido en todo el repo: la API de Claude (regla del dueño, 2026-10-15)
+
+Ningún script, Worker, Apps Script ni Routine llama a la API de Claude/Anthropic
+(`api.anthropic.com`, SDK, `ANTHROPIC_API_KEY`): se cobra aparte del plan. Todo lo que
+necesita IA corre en una Routine o sesión de Claude Code con los créditos del plan, y los
+scripts solo preparan datos (decidir qué es nuevo SIN gastar lectura). `npm run check` falla si
+aparece una llamada a esa API. Lista de llamadas de URO: `docs/uro/llamadas.md`.
+
 ## Si vas a tocar el código
 
 - ⚠️ **NO TOCAR (regla del dueño, importantísima):** todo TEXTO que sale a
