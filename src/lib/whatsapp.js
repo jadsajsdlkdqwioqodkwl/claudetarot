@@ -30,7 +30,10 @@ async function llamar(env, path, body) {
     datos = { raw: texto };
   }
   if (!res.ok) {
-    const msg = datos?.error?.message || texto || `HTTP ${res.status}`;
+    const e = datos?.error;
+    // "(#100) Invalid parameter" solo no dice nada: el motivo real viene en error_data.details / error_user_msg.
+    const motivo = [e?.error_user_msg, e?.error_data?.details].filter(Boolean).join(" · ");
+    const msg = e?.message ? (motivo ? `${e.message} — ${motivo}` : e.message) : texto || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.code = datos?.error?.code;
     throw err;
@@ -258,7 +261,11 @@ export async function subirMedia(env, blob, mime, nombreArchivo) {
     body: form
   });
   const datos = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(datos?.error?.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const e = datos?.error;
+    const motivo = [e?.error_user_msg, e?.error_data?.details].filter(Boolean).join(" · ");
+    throw new Error(e?.message ? (motivo ? `${e.message} — ${motivo}` : e.message) : `HTTP ${res.status}`);
+  }
   return datos.id;
 }
 
