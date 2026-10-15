@@ -31,6 +31,7 @@
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
+import { servirMensaje } from "./crm/media.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -71,7 +72,7 @@ export async function onRequestGetChats({ request, env }) {
   const filtroLinea = lineaId ? `conv.linea_id = ${lineaId}` : "conv.linea_id IS NULL";
 
   const { results } = soloPromesas ? { results: [] } : await env.CRM_DB.prepare(
-    `SELECT m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
+    `SELECT m.id AS msg_id, m.created_at, m.direction, m.type, m.body, m.file_name, m.sent_by,
             c.wa_id, c.profile_name, c.name AS contact_name, c.ad_headline,
             conv.assigned_agent, conv.meta_tags, pr.nombre AS producto
      FROM conversations conv
@@ -86,6 +87,7 @@ export async function onRequestGetChats({ request, env }) {
     .all();
 
   const aFila = (m) => ({
+    id: m.msg_id || 0,
     t: aLima(m.created_at),
     wa: m.wa_id,
     nombre: m.contact_name || m.profile_name || "",
@@ -180,6 +182,51 @@ export async function onRequestGetControlVentas({ request, env }) {
     compra_otro_dia: otroDia.results.map(lima),
     lineas: lineas.results
   });
+}
+
+/**
+ * GET /api/asesor/imagen?id=<id de mensaje>   (x-asesor-clave)
+ *      La foto de un mensaje del cliente (captura de Yape, DNI, ubicación…). La
+ *      Routine de ventas la mira para confirmar monto, fecha y nombre; mismas
+ *      reglas que /api/crm/media (la primera vez la baja de WhatsApp y la guarda).
+ */
+export async function onRequestGetImagen({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const id = Number(new URL(request.url).searchParams.get("id"));
+  if (!id || !env.CRM_MEDIA) return json({ error: "Falta id o el almacenamiento." }, 400);
+  const row = await env.CRM_DB.prepare("SELECT type, direction FROM messages WHERE id = ?").bind(id).first();
+  // Solo lo que mandó el cliente y solo imágenes: nada del equipo ni videos.
+  if (!row || row.direction !== "in" || row.type !== "image") return json({ error: "No es una imagen del cliente." }, 404);
+  return servirMensaje(env, id);
+}
+
+/**
+ * GET/PUT /api/asesor/ventas-estado?fecha=AAAA-MM-DD   (x-asesor-clave)
+ *      Lo último que se reportó de las ventas de ese día (el salida.json ya
+ *      fusionado) y hasta qué hora se leyeron los chats (`corte`). Cada corrida
+ *      de la noche lee solo lo que pasó después del corte y suma a esto: así las
+ *      de las 23:00 y 00:00 no releen el día entero. Lo escribe enviar.py al
+ *      mandar bien el reporte, nunca la Routine a mano.
+ */
+export async function onRequestVentasEstado({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  if (!env.CRM_MEDIA) return json({ error: "Falta el almacenamiento." }, 503);
+  const url = new URL(request.url);
+  const fecha = url.searchParams.get("fecha") || "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "fecha inválida." }, 400);
+  const key = `ventas-estado/${fecha}.json`;
+  if (request.method === "PUT") {
+    const cuerpo = await request.text();
+    if (cuerpo.length > 2_000_000) return json({ error: "Demasiado grande." }, 413);
+    try { JSON.parse(cuerpo); } catch { return json({ error: "JSON inválido." }, 400); }
+    await env.CRM_MEDIA.put(key, cuerpo, { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true });
+  }
+  const obj = await env.CRM_MEDIA.get(key);
+  if (!obj) return json({ existe: false });
+  return json({ existe: true, estado: JSON.parse(await obj.text()) });
 }
 
 export async function onRequestPostMemoria({ request, env }) {

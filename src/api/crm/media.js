@@ -41,6 +41,11 @@ async function handler({ request, env }) {
 
   if (!messageId) return json({ error: "Falta key o message_id." }, 400);
 
+  return servirMensaje(env, messageId);
+}
+
+/** La foto/video de un mensaje (R2 o, la primera vez, la API de WhatsApp). La usan el CRM y el asesor. */
+export async function servirMensaje(env, messageId) {
   const msg = await env.CRM_DB.prepare("SELECT * FROM messages WHERE id = ?").bind(Number(messageId)).first();
   if (!msg) return json({ error: "No encontrado." }, 404);
 
