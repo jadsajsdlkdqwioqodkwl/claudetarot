@@ -85,7 +85,7 @@ Más detalle: `docs/asesor.md`.
 
 **Qué es una venta (regla del dueño, 2026-10-14):** Lima = el cliente pasó su dirección; provincia = el cliente mandó el adelanto. Una confirmación verbal de la vendedora sin eso es otra cosa o error de asesor, no cuenta como venta en ningún reporte.
 
-**Reporte de ventas (22:00 · 23:00 · 00:00; el de las 21:00 se apagó el 2026-10-15):** sale SIEMPRE como PDF con tablas (el formato de siempre, el mismo de pedidos) con `enviar.py salida.json` y `"tipo_reporte": "ventas"`; nunca como texto plano por `--informe`. Prueba: `python3 scripts/asesor/pruebas/test_pdf_ventas.py`.
+**Reporte de ventas (22:00 y 23:30; desde el 2026-10-15 son solo dos corridas; el de las 21:00 se apagó el 2026-10-15 y las de 23:00 y 00:00 se quitaron ese día):** sale SIEMPRE como PDF con tablas (el formato de siempre, el mismo de pedidos) con `enviar.py salida.json` y `"tipo_reporte": "ventas"`; nunca como texto plano por `--informe`. Prueba: `python3 scripts/asesor/pruebas/test_pdf_ventas.py`.
 Antes de armarlo, lee «Cómo hacer un buen reporte de ventas» al final de `docs/negocio.md` (leer todos los chats, cuadrar con el CRM, día y vendedora de la venta).
 Cada corrida lee solo lo nuevo (`ventas_estado.py`) y mira las capturas (`imagenes.py`); `enviar.py` suma al estado del día. El PDF de ventas solo sale si cuadra con el sistema: `python3 scripts/asesor/control_ventas.py AAAA-MM-DD` y `enviar.py` lo exige (ver puntos 11–13 de esa sección). Prueba: `python3 scripts/asesor/pruebas/test_control_ventas.py`.
 

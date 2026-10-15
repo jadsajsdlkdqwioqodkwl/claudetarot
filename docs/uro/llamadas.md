@@ -12,13 +12,16 @@ de venta para la llamada y su teléfono, y marca el check cuando ya lo llamó.
 
 **Llamadas**: A Llamado (casilla; la marca la asesora, la fila se pinta de verde) · B Teléfono (`51 999 999 999`, texto) ·
 C Nombre · D Interés (Alto / Medio / Bajo / Ya compró) · E Última actividad del cliente (hora de Lima) ·
-F Resumen de la conversación · G Speech para la llamada · H Ojo antes de llamar · I Notas de la asesora (libre, suya).
-Tiene filtro; la Routine NUNCA escribe en A ni en I.
+F Resumen de la conversación · G ¿Fue venta? (casilla que marca la asesora). Tiene filtro; la Routine NUNCA
+escribe en A ni en G. (2026-10-15, pedido del dueño: se QUITARON las columnas «Speech para la llamada» y «Ojo antes
+de llamar», y «Notas de la asesora» pasó a ser la casilla «¿Fue venta?».)
 
 **Estado** (memoria de la Routine): A WhatsApp · B último mensaje leído (id) · C qué se hizo («En la lista» o
 «Descartado: motivo»). Es lo que permite leer SOLO lo nuevo cada hora.
 
 ## Cómo corre (cada hora, con el plan, sin API de IA)
+
+**Ahorro de créditos:** (1) `llamadas.py gate` revisa en un solo comando, sin leer la hoja, si algún chat con interés escribió en las últimas 3 h; si no, la sesión responde «Sin novedad» y termina (una llamada a herramienta). (2) Solo si hay movimiento lee la hoja y corre `preparar`, que descarta lo ya leído (pestaña Estado). (3) Ya no se escribe speech ni «Ojo»: solo un resumen corto por cliente.
 
 Routine «URO — lista de llamadas» (ver `docs/routines.md`). `scripts/uro/llamadas.py preparar` baja los
 chats de URO (`/api/asesor/chats?linea=1`, 14 días), descarta los que solo mandaron el saludo del anuncio,
@@ -37,31 +40,12 @@ sesión de la Routine con los créditos del plan (`npm run check` falla si el re
   tiene la etiqueta de compra (se avisa en `ya_compraron`; la Routine solo cambia D y H de esa fila).
 - **Resumen** (F): 2–4 frases, lo que pasó de verdad: qué pidió, qué le respondieron y quién (nombre de la
   vendedora), en qué quedó, si solo recibió mensajes automáticos (entonces «nadie le respondió»).
-- **Speech** (G): lo que la asesora dice por teléfono, de usted, corto, ~90 palabras, empieza saludando y
-  recordando por qué la llama, 3 datos del producto, el dato de envío/pago que corresponde (Lima / provincia) y
-  cierra con UNA pregunta que avance (cuántos frascos, ciudad, distrito, qué dudas le quedan). Adaptado a lo que ella
-  preguntó (originalidad, uso, precio, farmacia…). Ver «Datos» abajo.
-- **Ojo** (H): lo que la asesora debe saber antes de marcar: su freno probable (desconfianza, precio, tiempo,
-  falta de información), qué falta (dirección, ciudad), ofertas ya mandadas, y qué NO afirmar.
 - Se nombra a la clienta solo si el nombre es real; si es emoji o apodo, «(sin nombre, emoji)» y el speech
   no usa nombre.
 - Tema íntimo (`docs/uro/negocio.md`): no pedir detalles de síntomas; embarazo, lactancia, tratamiento médico o
   síntomas fuertes → «le recomendamos consultarlo con su médico»; nunca «cura», «elimina candidiasis» ni «desde la raíz».
   OJO: el texto largo de bienvenida que usa el equipo trae frases así («Combate la Candida Albicans», «Elimina mal
   olor…»); NO se copian al speech.
-
-## Datos del producto para el speech (de `docs/uro/negocio.md` y de lo que ya dicen las vendedoras en los chats)
-
-- Probióticos de consumo oral en cápsulas, 2 al día; frasco de 60 cápsulas = 1 mes. Suplemento, no medicamento.
-- Ayuda a equilibrar la flora íntima y el pH desde adentro; apoya frente a mal olor, flujo, picazón o ardor.
-- 1 frasco S/89 · 2 frascos S/139 · 3 frascos S/179 (tratamiento recomendado, 3 meses). Envío gratis.
-- Lima: entrega al día siguiente entre 12 p. m. y 5 p. m., el motorizado llama antes, paga al recibir (Yape, efectivo o
-  tarjeta); necesita distrito/dirección y teléfono de quien recibe.
-- Provincia: Shalom u Olva (Shalom 2–3 días, Olva 1–3 días), pago contra entrega con adelanto de S/20 por Yape.
-- Original: envase y cajita traen códigos; las vendedoras mandan videos.
-- Pendiente del dueño (no inventar; ponerlo en «Ojo»): si se vende en farmacias, DIGESA, si sigue vigente el precio S/80
-  que mandan los mensajes automáticos, cómo se toma exactamente.
-- Si el dueño cambia precios o condiciones, `docs/uro/negocio.md` manda; actualice aquí esta lista.
 
 ## Prompt de la Routine
 
