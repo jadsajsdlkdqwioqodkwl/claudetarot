@@ -273,7 +273,8 @@ export async function subidaDe(env, mediaKey, { fresca = false } = {}) {
   if (!obj) throw new Error("El archivo ya no está disponible.");
   const mime = obj.httpMetadata?.contentType || "application/octet-stream";
   const fileName = obj.customMetadata?.originalName || undefined;
-  const mediaId = await subirMedia(env, await obj.blob(), mime, mediaKey.split("/").pop());
+  // El tipo MIME va explícito en el blob: sin él Meta puede rechazar el video con (#100) Invalid parameter.
+  const mediaId = await subirMedia(env, new Blob([await obj.arrayBuffer()], { type: mime }), mime, mediaKey.split("/").pop());
   await env.CRM_DB?.prepare(
     `INSERT INTO wa_media_cache (media_key, media_id, mime, file_name) VALUES (?, ?, ?, ?)
      ON CONFLICT(media_key) DO UPDATE SET media_id = excluded.media_id, mime = excluded.mime, file_name = excluded.file_name, created_at = datetime('now')`

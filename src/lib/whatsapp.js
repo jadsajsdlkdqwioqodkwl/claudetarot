@@ -264,7 +264,9 @@ export async function subirMedia(env, blob, mime, nombreArchivo) {
   if (!res.ok) {
     const e = datos?.error;
     const motivo = [e?.error_user_msg, e?.error_data?.details].filter(Boolean).join(" · ");
-    throw new Error(e?.message ? (motivo ? `${e.message} — ${motivo}` : e.message) : `HTTP ${res.status}`);
+    const err = new Error(e?.message ? (motivo ? `${e.message} — ${motivo}` : e.message) : `HTTP ${res.status}`);
+    err.code = e?.code;
+    throw err;
   }
   return datos.id;
 }
