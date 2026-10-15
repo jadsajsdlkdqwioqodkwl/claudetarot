@@ -307,13 +307,27 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   // así el cliente recibe el documento con su nombre original.
   // Foto, video, audio, documento: al toque, sin "escribiendo…".
   let waMessageId;
+  const mandar = (t) => enviarMedia(envL, waId, t, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
   try {
-    waMessageId = await enviarMedia(envL, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+    waMessageId = await mandar(type);
   } catch (err) {
     // El media id guardado venció en Meta: se sube de nuevo y se reintenta.
-    if (!subida.deCache) throw err;
-    subida = await subidaDe(envL, mediaKey, { fresca: true });
-    waMessageId = await enviarMedia(envL, waId, type, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+    if (subida.deCache) {
+      subida = await subidaDe(envL, mediaKey, { fresca: true });
+      try {
+        waMessageId = await mandar(type);
+      } catch (err2) {
+        if (!(type === "video" && err2.code === 100)) throw err2;
+      }
+    } else if (!(type === "video" && err.code === 100)) {
+      throw err;
+    }
+    // Meta rechaza videos que no son MP4 con H.264 + audio AAC (típico de los HEVC del celular):
+    // el mismo archivo sale como documento MP4, que no valida el códec y el cliente reproduce al tocarlo.
+    if (!waMessageId) {
+      type = "document";
+      waMessageId = await mandar("document");
+    }
   }
   fileName = fileName || subida.fileName;
   const mime = subida.mime;
