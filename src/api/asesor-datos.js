@@ -15,6 +15,15 @@
  *      `activos_horas`, de todos los chats con mensajes en esos días; con
  *      `solo_promesas=1` no trae `filas`.
  *
+ * GET  /api/asesor/control-ventas?fecha=AAAA-MM-DD   (día de Lima; hoy por defecto)
+ *      El control que NO depende de que una Routine lea bien: todo lo que el
+ *      sistema ya sabe de ventas ese día, de TODAS las líneas de WhatsApp.
+ *      `compras` (eventos Purchase del CRM, con su asesora), `pedidos_web`,
+ *      `pedidos_catalogo`, `compra_otro_dia` (chats con etiqueta purchase y
+ *      actividad hoy, pero cuya compra es de otro día) y `lineas` (chats
+ *      activos por número). enviar.py lo cuadra contra el reporte de ventas:
+ *      no sale el PDF si queda un candidato sin explicar.
+ *
  * POST /api/asesor/memoria
  *      { fuente, agregar: [{ tema, nota }], retirar: [id] }
  *      Lo que el bot aprende y quiere recordar la próxima vez. Se lee en
@@ -114,6 +123,63 @@ export async function onRequestGetChats({ request, env }) {
     .bind(sqlFecha(promesasDesde), sqlFecha(activosHoras > 0 ? activosDesde : promesasDesde))
     .all();
   return json({ desde: aLima(sqlFecha(desde)), filas, promesas: prom.reverse().map(aFila) });
+}
+
+export async function onRequestGetControlVentas({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const hoyLima = sqlFecha(new Date(Date.now() - LIMA_MS)).slice(0, 10);
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("fecha") || "") ? url.searchParams.get("fecha") : hoyLima;
+  // Día de Lima = de las 05:00 UTC de esa fecha a las 05:00 UTC de la siguiente.
+  const ini = new Date(`${fecha}T00:00:00Z`).getTime() + LIMA_MS;
+  const desde = sqlFecha(new Date(ini));
+  const hasta = sqlFecha(new Date(ini + 86400000));
+
+  const compras = await env.CRM_DB.prepare(
+    `SELECT e.id, e.created_at, e.value, e.currency, e.status, e.mode, e.created_by, e.product_label,
+            c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre, conv.assigned_agent, conv.linea_id
+     FROM capi_events e
+     JOIN conversations conv ON conv.id = e.conversation_id
+     JOIN contacts c ON c.id = conv.contact_id
+     WHERE e.event_name = 'Purchase' AND e.created_at >= ? AND e.created_at < ?
+     ORDER BY e.created_at`
+  ).bind(desde, hasta).all();
+  const web = await env.CRM_DB.prepare(
+    `SELECT created_at, wa_id, nombre, destino, total, etiqueta FROM pedidos_web
+     WHERE created_at >= ? AND created_at < ? ORDER BY created_at`
+  ).bind(desde, hasta).all();
+  const catalogo = await env.CRM_DB.prepare(
+    `SELECT o.created_at, o.total_amount, c.wa_id, conv.assigned_agent, conv.linea_id
+     FROM catalog_orders o
+     JOIN conversations conv ON conv.id = o.conversation_id
+     JOIN contacts c ON c.id = conv.contact_id
+     WHERE o.created_at >= ? AND o.created_at < ? ORDER BY o.created_at`
+  ).bind(desde, hasta).all();
+  const otroDia = await env.CRM_DB.prepare(
+    `SELECT c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre, conv.assigned_agent, conv.linea_id,
+            (SELECT max(e.created_at) FROM capi_events e WHERE e.conversation_id = conv.id AND e.event_name = 'Purchase') AS ultima_compra
+     FROM conversations conv
+     JOIN contacts c ON c.id = conv.contact_id
+     WHERE conv.last_message_at >= ? AND conv.last_message_at < ?
+       AND instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') > 0
+       AND NOT EXISTS (SELECT 1 FROM capi_events e WHERE e.conversation_id = conv.id AND e.event_name = 'Purchase'
+                       AND e.created_at >= ? AND e.created_at < ?)`
+  ).bind(desde, hasta, desde, hasta).all();
+  const lineas = await env.CRM_DB.prepare(
+    `SELECT COALESCE(linea_id, 0) AS linea, count(*) AS chats_activos FROM conversations
+     WHERE last_message_at >= ? AND last_message_at < ? GROUP BY 1`
+  ).bind(desde, hasta).all();
+
+  const lima = (r) => ({ ...r, created_at: r.created_at ? aLima(r.created_at) : r.created_at, ultima_compra: r.ultima_compra ? aLima(r.ultima_compra) : r.ultima_compra });
+  return json({
+    fecha,
+    compras: compras.results.map(lima),
+    pedidos_web: web.results.map(lima),
+    pedidos_catalogo: catalogo.results.map(lima),
+    compra_otro_dia: otroDia.results.map(lima),
+    lineas: lineas.results
+  });
 }
 
 export async function onRequestPostMemoria({ request, env }) {

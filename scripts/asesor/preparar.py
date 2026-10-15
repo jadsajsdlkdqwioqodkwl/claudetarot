@@ -47,14 +47,14 @@ def texto_fecha(v):
     return v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, dt.datetime) else str(v or "")
 
 
-def leer_api(desde, hoy, activos_horas=0):
+def leer_api(desde, hoy, activos_horas=0, linea=0):
     """Las mismas filas, directo de D1 por el Worker."""
     clave = os.environ.get("ASESOR_CLAVE", "")
     if not clave:
         sys.exit("Falta ASESOR_CLAVE en el entorno.")
     hoy_lima = (dt.datetime.utcnow() - dt.timedelta(hours=5)).date()
     dias = (hoy_lima - desde).days + 1  # el Worker cuenta los días hacia atrás desde hoy (Lima)
-    url = f"{API_CHATS}?dias={max(dias, 1)}" + (f"&activos_horas={activos_horas}" if activos_horas else "")
+    url = f"{API_CHATS}?dias={max(dias, 1)}" + (f"&activos_horas={activos_horas}" if activos_horas else "") + (f"&linea={linea}" if linea else "")
     # Cloudflare corta (error 1010) el User-Agent por defecto de Python.
     req = urllib.request.Request(url, headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
     try:
@@ -65,10 +65,10 @@ def leer_api(desde, hoy, activos_horas=0):
     return [f for f in filas if desde <= dt.date.fromisoformat(f["t"][:10]) <= hoy]
 
 
-def leer_filas(xlsx, desde, hoy, activos_horas=0):
+def leer_filas(xlsx, desde, hoy, activos_horas=0, linea=0):
     """Filas de las pestañas diarias entre desde y hoy (inclusive), ordenadas por fecha."""
     if xlsx == "api":
-        return leer_api(desde, hoy, activos_horas)
+        return leer_api(desde, hoy, activos_horas, linea)
     try:
         import openpyxl
     except ImportError:
@@ -100,11 +100,12 @@ def main():
     ap.add_argument("--hoy", default=(dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))
     ap.add_argument("--salida", default="/tmp/asesor")
     ap.add_argument("--activos-horas", type=int, default=0)
+    ap.add_argument("--linea", type=int, default=0, help="otro número de WhatsApp (id de la línea); por defecto Tarot Store")
     a = ap.parse_args()
 
     hoy = dt.date.fromisoformat(a.hoy)
     desde = hoy - dt.timedelta(days=a.dias - 1)
-    filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas)
+    filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas, a.linea)
     # Promesas de 21 días (el collar del día 7 suele estar fuera de la ventana).
     promesas = prom.de_filas(filas)
     if a.xlsx == "api":

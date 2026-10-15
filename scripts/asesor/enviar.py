@@ -382,6 +382,16 @@ def main():
         print("NO SE GUARDARON (suenan a bot; reescríbelas como las vendedoras, skill voz-tarot-store, "
               "y vuelve a mandarlas en otro salida.json):\n" + "\n".join(fuera), flush=True)
     carpeta = os.path.dirname(os.path.abspath(ruta))
+    if datos.get("tipo_reporte") == "ventas" and not prueba and "--sin-control" not in args:
+        # Un reporte de ventas no sale mientras el sistema conozca una venta que el reporte no explica.
+        import control_ventas
+        try:
+            problemas = control_ventas.cuadrar(control_ventas.traer(clave, datos.get("fecha_objetivo", "")), datos)
+        except RuntimeError as err:
+            sys.exit(f"NO SE ENVIÓ EL REPORTE: {err}. Reintenta; solo si el Worker está caído usa --sin-control y dilo en el informe.")
+        if problemas:
+            sys.exit("NO SE ENVIÓ EL REPORTE: no cuadra con el CRM. Revisa cada chat y corrige salida.json:\n" + "\n".join(problemas))
+        print("Cuadre con el CRM: OK (todo candidato del sistema está explicado en el reporte)", flush=True)
     faltan = revisar_promesas(datos, carpeta, clave)
     if faltan:
         print("📦 PROMESAS DEL CHAT QUE NO ESTABAN EN `empaque` (se agregaron con ⚠️ al PDF; revisa cada chat y "
