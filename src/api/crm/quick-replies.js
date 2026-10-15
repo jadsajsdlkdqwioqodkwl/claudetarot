@@ -108,7 +108,7 @@ async function guardarCatalogoDespues(env, id, payload) {
     .bind(payload.catalogo_despues ? 1 : 0, id).run().catch(() => {});
 }
 
-async function get({ env }) {
+async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin la migración 0055 aplicada todavía, se lee sin `catalogo_despues`.
   const rapidas = await env.CRM_DB.prepare(`SELECT ${columnas}, catalogo_despues FROM quick_replies ORDER BY sort_order ASC, id ASC`).all()
@@ -126,7 +126,8 @@ async function get({ env }) {
   });
 
   return json({
-    quick_replies: rapidas.map((r) => ({
+    // Cuenta limitada a un producto: solo las de ese producto (las generales son de Tarot).
+    quick_replies: rapidas.filter((r) => !agent?.productoId || r.producto_id === agent.productoId).map((r) => ({
       ...r,
       followup_pasos: pasosDe(r),
       botones: botonesDe(r.botones),

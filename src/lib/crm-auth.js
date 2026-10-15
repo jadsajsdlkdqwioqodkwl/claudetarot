@@ -108,9 +108,12 @@ export async function sesionActual(request, env) {
   if (!payload.exp || payload.exp < Date.now()) return null;
 
   if (payload.agentId) {
+    // Sin la migración 0057 todavía no existe producto_id: no se deja a nadie fuera (aún no hay cuentas limitadas).
     const agente = await env.CRM_DB.prepare(
+      "SELECT id, username, display_name, role, active, password_hash, producto_id FROM agents WHERE id = ?"
+    ).bind(payload.agentId).first().catch(() => env.CRM_DB.prepare(
       "SELECT id, username, display_name, role, active, password_hash FROM agents WHERE id = ?"
-    ).bind(payload.agentId).first();
+    ).bind(payload.agentId).first());
     if (!agente || !agente.active) return null;
     // Cookies de antes de este cambio no traen `pw`: valen hasta que se renueven.
     if (payload.pw && payload.pw !== (await huellaPassword(env, agente.password_hash))) return null;
@@ -118,6 +121,8 @@ export async function sesionActual(request, env) {
     payload.role = agente.role;
     payload.displayName = agente.display_name;
     payload.username = agente.username;
+    // Cuenta limitada a un producto (ej. URO): solo ve y toca los chats de ese producto.
+    payload.productoId = agente.producto_id || null;
     agentePorSesion.set(payload, agente);
   } else if (payload.pw && payload.pw !== (await huellaPassword(env, env.CRM_PASSWORD))) {
     return null;
@@ -129,6 +134,70 @@ export async function sesionValida(request, env) {
   return (await sesionActual(request, env)) !== null;
 }
 
+
+/**
+ * Cuenta limitada a un producto: solo estas rutas (y en ellas, solo chats de
+ * su producto). Todo lo demás (ajustes, equipo, reportes, envíos masivos…) es
+ * 403 por omisión: una ruta nueva queda cerrada hasta que se agregue aquí.
+ */
+const RUTAS_DE_PRODUCTO = {
+  "/api/crm/conversations": ["GET"],
+  "/api/crm/messages": ["GET", "POST"],
+  "/api/crm/upload-media": ["POST"],
+  "/api/crm/media": ["GET"],
+  "/api/crm/escribiendo": ["POST"],
+  "/api/crm/react": ["POST"],
+  "/api/crm/stickers": ["GET"],
+  "/api/crm/chat-estado": ["POST"],
+  "/api/crm/assign": ["PATCH"],
+  "/api/crm/contacts": ["PATCH"],
+  "/api/crm/quick-replies": ["GET"],
+  "/api/crm/catalog": ["GET", "POST"],
+  "/api/crm/catalog-products": ["GET"],
+  "/api/crm/templates": ["GET", "POST"],
+  "/api/crm/settings": ["GET"],
+  "/api/crm/change-password": ["POST"],
+  "/api/crm/push-subscribe": ["GET", "POST", "DELETE"],
+  "/api/crm/notify-settings": ["GET", "POST"]
+};
+
+const prohibido = () =>
+  new Response(JSON.stringify({ error: "Tu cuenta no tiene acceso a esto." }), {
+    status: 403,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+  });
+
+/** null si la petición es de su producto; si no, la respuesta 403. */
+async function revisarProducto(request, env, productoId) {
+  const url = new URL(request.url);
+  if (!RUTAS_DE_PRODUCTO[url.pathname]?.includes(request.method)) return prohibido();
+  // Fotos de clientes (wa/…) solo por mensaje, que sí se revisa abajo.
+  if (url.pathname === "/api/crm/media" && (url.searchParams.get("key") || "").startsWith("wa/")) return prohibido();
+
+  let cuerpo = null;
+  // Los handlers leen el cuerpo con text()+JSON.parse sin mirar el Content-Type: aquí igual.
+  if (request.method !== "GET" && !(request.headers.get("Content-Type") || "").includes("multipart")) {
+    try { cuerpo = JSON.parse(await request.clone().text()); } catch { cuerpo = null; }
+  }
+  const dato = (...claves) => {
+    for (const k of claves) {
+      const v = url.searchParams.get(k) ?? cuerpo?.[k];
+      if (v !== undefined && v !== null && v !== "") return Number(v) || -1; // -1: id inválido, nunca coincide
+    }
+    return null;
+  };
+  const db = env.CRM_DB;
+  const chat = dato("conversation_id", "chat");
+  const mensaje = dato("message_id");
+  const contacto = dato("contact_id");
+  const propio = (sql, id) => db.prepare(sql).bind(id, productoId).first();
+
+  if (chat !== null && !await propio("SELECT 1 FROM conversations WHERE id = ? AND producto_id = ?", chat)) return prohibido();
+  if (mensaje !== null && !await propio("SELECT 1 FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE m.id = ? AND c.producto_id = ?", mensaje)) return prohibido();
+  if (contacto !== null && !await propio("SELECT 1 FROM conversations WHERE contact_id = ? AND producto_id = ?", contacto)) return prohibido();
+  return null;
+}
+
 /** Envuelve un handler para que responda 401 si no hay sesión válida, y le pasa `agent`. */
 export function conAuth(handler) {
   return async (context) => {
@@ -138,6 +207,10 @@ export function conAuth(handler) {
         status: 401,
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
       });
+    }
+    if (sesion.productoId) {
+      const bloqueo = await revisarProducto(context.request, context.env, sesion.productoId);
+      if (bloqueo) return bloqueo;
     }
     return conSesionRenovada(await handler({ ...context, agent: sesion }), context.env, sesion);
   };
