@@ -71,3 +71,12 @@ Al terminar una carga, lo que más pesa para decidir qué repetir es **AH (créd
 3. Entrega en tabla corta, fuentes que fallaron, recetas nuevas, link al Sheet.
 4. Cierra con «Siguiente paso: abre un chat nuevo y escribe <comando>».
 5. RANKEA y FILTRA terminan con «Tu reporte está en la pestaña Top» y los 5 primeros de Top.
+
+## 7. Dónde corre cada comando
+
+| Dónde | Comandos | Por qué |
+|---|---|---|
+| Tu computadora (Claude Code o chat con **Claude in Chrome** y tu sesión de PiPiAds/Alibaba) | BUSCA, BUSCA AÉREO, EXPLORA, ALIBABA, ALIBABA AÉREO | Necesitan el navegador con tus sesiones. Solo uno a la vez (comparten Chrome) |
+| Cualquier sesión, incluida la nube | RANKEA, FILTRA, MEJORA (y sus versiones AÉREO) | Solo usan Meta MCP, Firecrawl y Google Sheets/Drive. Pueden correr en paralelo con uno de Chrome |
+
+Si una sesión sin Chrome recibe un comando de Chrome: lo dice en una línea, **no gasta nada**, registra la sesión en `Sesiones` con su nota y deja hecho lo que sí se puede (leer Log BUSCA y dejar el plan). Ver `BUSCA-AEREO-2026-10-15.md`.
