@@ -61,8 +61,13 @@ def cuadrar(control, datos):
         wa = n9(p.get("whatsapp"))
         if p.get("estado") == "CONFIRMADO" and wa and wa not in conocidos and wa not in marcadas:
             problemas.append(f"- {wa}: lo pones CONFIRMADO pero el CRM no tiene compra ni pedido suyo ese día; si es venta real, ponlo en `sin_marcar_compra`; si no, cámbialo de estado.")
+    import datetime as dt
+    limite = (dt.date.fromisoformat(control["fecha"]) - dt.timedelta(days=3)).isoformat() if control.get("fecha") else ""
     for x in control.get("compra_otro_dia", []):
         wa = n9(x["wa_id"])
+        # Una compra de hace más de 3 días que solo escribe (posventa) es informativa; las recientes sí hay que explicarlas.
+        if (x.get("ultima_compra") or "9999")[:10] < limite:
+            continue
         if wa not in explicados:
             problemas.append(f"- {wa}: etiqueta purchase y escribió ese día, pero su compra es de {x.get('ultima_compra') or 'otro día'}; "
                              "ponlo en `pedidos` como OTRO_DIA (con esa fecha) o en `no_cuentan` con el motivo.")
