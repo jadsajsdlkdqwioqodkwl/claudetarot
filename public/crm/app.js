@@ -4460,7 +4460,7 @@ function ffmpegListo() {
   ffmpegPromesa ||= (async () => {
     await cargarScript("https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js");
     const ff = new window.FFmpegWASM.FFmpeg();
-    const core = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+    const core = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
     await ff.load({
       classWorkerURL: await urlComoBlob("https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js", "text/javascript"),
       coreURL: await urlComoBlob(`${core}/ffmpeg-core.js`, "text/javascript"),
@@ -4518,7 +4518,7 @@ async function comprimirVideo(file) {
     const kbps = Math.max(200, Math.floor((total - 96000) / 1000));
     avisoCompresion("Comprimiendo video… 0%");
     const codigo = await ff.exec(["-i", "entrada", "-vf", "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
-      "-c:v", "libx264", "-preset", "veryfast", "-b:v", `${kbps}k`, "-maxrate", `${Math.floor(kbps * 1.4)}k`, "-bufsize", `${kbps * 2}k`,
+      "-c:v", "libx264", "-preset", "ultrafast", "-b:v", `${kbps}k`, "-maxrate", `${Math.floor(kbps * 1.4)}k`, "-bufsize", `${kbps * 2}k`,
       "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", "-y", "salida.mp4"]);
     if (codigo !== 0) throw new Error(`No se pudo comprimir "${file.name}".`);
     const datos = await ff.readFile("salida.mp4");
