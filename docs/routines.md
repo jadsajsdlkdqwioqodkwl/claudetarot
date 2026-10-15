@@ -215,7 +215,7 @@ Asesor — reporte de ventas de la noche (22:00 · 23:00 · 00:00). Las tres cor
 si el dueño la quiere las 24 h, cambiar a `7 * * * *`) · sesión nueva en cada corrida, entorno «Default» (necesita
 `ASESOR_CLAVE` y la red al CRM) · **Conector: Google Sheets** (ya agregado por el dueño en claude.ai → Routines).
 Sin API de IA. Reglas y columnas: `docs/uro/llamadas.md`. **Mientras la rama `claude/sweet-mayer-0079gx` no esté
-en `main`, el prompt clona esa rama (`git clone --depth 1 -b claude/sweet-mayer-0079gx`); cuando se fusione a
+en `main`, el prompt clona esa rama (`git clone --depth 1`); cuando se fusione a
 `main`, quitar el `-b …` del prompt.**
 
 Prompt vigente (2026-10-15, versión barata: compuerta `gate` primero; sin speech ni «Ojo»; hoja de 7 columnas A:G):
@@ -223,7 +223,7 @@ Prompt vigente (2026-10-15, versión barata: compuerta `gate` primero; sin speec
 ```
 Mantén la hoja «URO - Lista de llamadas» (Google Sheets ID 1CujjC-Mt_OpEpuJ3S4n_DbKQnR3T_TEa4C9awBkIAjk) para la asesora comercial que llama por teléfono. Gasta MUY pocos tokens: no pienses en voz alta, no leas más de lo indicado. NUNCA llames a ninguna API de IA ni mandes mensajes a clientes: solo escribes en la hoja.
 
-0. Un solo comando: `(cd /home/user/claudetarot 2>/dev/null || GIT_TERMINAL_PROMPT=0 git clone -q --depth 1 -b claude/sweet-mayer-0079gx https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot) && cd /home/user/claudetarot && python3 scripts/uro/llamadas.py gate`. Si imprime SIN_NOVEDAD: responde «Sin novedad» y TERMINA (no uses ninguna otra herramienta). Si falla por ASESOR_CLAVE o 401, responde el motivo y termina (no revises la variable tú).
+0. Un solo comando: `(cd /home/user/claudetarot 2>/dev/null || GIT_TERMINAL_PROMPT=0 git clone -q --depth 1 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot) && cd /home/user/claudetarot && python3 scripts/uro/llamadas.py gate`. Si imprime SIN_NOVEDAD: responde «Sin novedad» y TERMINA (no uses ninguna otra herramienta). Si falla por ASESOR_CLAVE o 401, responde el motivo y termina (no revises la variable tú).
 1. Con el conector de Google Sheets (búscalo con ToolSearch «get_values append_values update_values» si no está cargado) lee `Estado!A2:B` y `Llamadas!B2:B` con get_values y guarda cada respuesta tal cual con Write en /tmp/uro/estado.json y /tmp/uro/filas.json.
 2. `cd /home/user/claudetarot && python3 scripts/uro/llamadas.py preparar --estado /tmp/uro/estado.json --filas /tmp/uro/filas.json --salida /tmp/uro`. Si imprime SIN_NOVEDAD: responde «Sin novedad» y TERMINA.
 3. Lee `docs/uro/llamadas.md` (reglas de interés y de las columnas), luego `/tmp/uro/chats.txt` y `/tmp/uro/plan.json`.
