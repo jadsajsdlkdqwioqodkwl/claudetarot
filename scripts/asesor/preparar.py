@@ -144,8 +144,9 @@ def main():
                 bienvenida = True
                 continue
             cuerpo = re.sub(r"\s+", " ", m["msg"]).strip() or f"[{m['tipo']}]"
-            if es_cli and m["tipo"] == "image" and m["msg"]:
-                cuerpo = "[imagen] " + cuerpo
+            if es_cli and m["tipo"] == "image":
+                # [imagen#id]: imagenes.py la baja para mirarla (capturas de pago, DNI, ubicación).
+                cuerpo = (f"[imagen#{m['id']}] " if m.get("id") else "[imagen] ") + (cuerpo if m["msg"] else "").strip()
             cuerpo = cuerpo[: MAX_CLIENTE if es_cli else MAX_EQUIPO]
             quien = "C" if es_cli else f"V(auto: {m['vend']})" if auto else f"V({m['vend'] or '?'})"
             linea = f"{m['t'][5:16]} {quien}: {cuerpo}"
