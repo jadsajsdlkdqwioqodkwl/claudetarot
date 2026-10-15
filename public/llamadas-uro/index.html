@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Llamadas URO</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Planilla de llamadas: filas con líneas finas, sin tarjetas. La columna de check va primero. */
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --fg: #1c1f1b;
+  --muted: #6d716a;
+  --line: #e3e4df;
+  --head: #f1f2ee;
+  --accent: #2c5b4e;
+  --accent-soft: #e4efeb;
+  --media: #7a5c1e;
+  --media-soft: #f5eedb;
+  --focus: #2c5b4e;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151714;
+    --surface: #1b1e1a;
+    --fg: #e8eae4;
+    --muted: #9aa097;
+    --line: #2c302a;
+    --head: #20231f;
+    --accent: #8fc7b5;
+    --accent-soft: #1f3a33;
+    --media: #e2c27a;
+    --media-soft: #35301c;
+    --focus: #8fc7b5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151714;
+  --surface: #1b1e1a;
+  --fg: #e8eae4;
+  --muted: #9aa097;
+  --line: #2c302a;
+  --head: #20231f;
+  --accent: #8fc7b5;
+  --accent-soft: #1f3a33;
+  --media: #e2c27a;
+  --media-soft: #35301c;
+  --focus: #8fc7b5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; margin-bottom: 14px; }
+.sub { color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button {
+  font: inherit; color: var(--muted); background: none; border: 0; padding: 7px 12px; cursor: pointer;
+  border-right: 1px solid var(--line); font-variant-numeric: tabular-nums;
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.seg button:focus-visible, .copy:focus-visible, input[type="checkbox"]:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+.grid-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 880px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th {
+  position: sticky; top: 0; background: var(--head); color: var(--muted); font-weight: 500;
+  font-size: 12px; letter-spacing: 0.02em; border-bottom: 1px solid var(--line);
+}
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr.hecha td { color: var(--muted); }
+tbody tr.hecha .resumen, tbody tr.hecha .nombre { opacity: 0.7; }
+.col-check { width: 44px; text-align: center; }
+.col-check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 2px 0 0; cursor: pointer; }
+.col-check input:disabled { cursor: not-allowed; }
+.nombre { font-weight: 500; }
+.tel { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.badge {
+  display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+}
+.badge.alta { color: var(--accent); background: var(--accent-soft); }
+.badge.media { color: var(--media); background: var(--media-soft); }
+.fecha { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+.resumen { max-width: 320px; }
+.copy {
+  font: inherit; font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--line);
+  border-radius: 4px; padding: 2px 8px; cursor: pointer; margin-top: 6px; white-space: nowrap;
+}
+.copy:hover { border-color: var(--accent); }
+details summary { cursor: pointer; color: var(--accent); list-style: none; }
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "Ver speech"; }
+details[open] summary::before { content: "Ocultar speech"; }
+.speech { white-space: pre-wrap; max-width: 380px; margin: 8px 0 0; font-size: 14px; line-height: 1.55; }
+.vacio { padding: 40px 16px; text-align: center; color: var(--muted); }
+.aviso { margin-top: 12px; color: var(--muted); font-size: 12px; }
+.marca { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .grid-wrap { overflow: visible; background: none; border: 0; }
+  table, thead { display: block; min-width: 0; }
+  thead { display: none; }
+  tbody { display: grid; gap: 10px; }
+  tbody tr { display: grid; grid-template-columns: 44px 1fr; gap: 4px 12px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+  tbody td { border: 0; padding: 0; }
+  .col-check { grid-row: span 3; width: auto; padding-top: 2px; }
+  .resumen, .speech { max-width: none; }
+  details summary { margin-top: 4px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Llamadas URO</h1>
+    <div class="sub" id="resumen-cifras">Cargando la lista…</div>
+  </div>
+  <div class="seg" role="group" aria-label="Filtrar">
+    <button type="button" data-filtro="pendientes" aria-pressed="true">Por llamar</button>
+    <button type="button" data-filtro="hechas" aria-pressed="false">Hechas</button>
+    <button type="button" data-filtro="todas" aria-pressed="false">Todas</button>
+  </div>
+</header>
+
+<div class="grid-wrap">
+  <table aria-describedby="resumen-cifras">
+    <thead>
+      <tr>
+        <th class="col-check" scope="col">Hecha</th>
+        <th scope="col">Cliente</th>
+        <th scope="col">Interés</th>
+        <th scope="col">Último mensaje</th>
+        <th scope="col">Resumen de la conversación</th>
+        <th scope="col">Speech para la llamada</th>
+      </tr>
+    </thead>
+    <tbody id="filas"></tbody>
+  </table>
+</div>
+<p class="aviso" id="pie">Se actualiza sola cada hora con los clientes de URO que respondieron. Marcar el check guarda la fecha y quién lo marcó; la actualización no lo cambia.</p>
+
+<script>
+(() => {
+  const API = "/api/crm/llamadas-uro";
+  const filas = document.getElementById("filas");
+  const cifras = document.getElementById("resumen-cifras");
+  const pie = document.getElementById("pie");
+  const PIE_BASE = pie.textContent;
+  let docs = [];
+  let filtro = "pendientes";
+
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fechaCorta = s => {
+    const m = /^\d{4}-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(String(s || "").replace("T", " "));
+    return m ? `${m[2]}/${m[1]} ${m[3]}` : "";
+  };
+
+  function avisoSinSesion() {
+    cifras.innerHTML = `Entra al CRM con tu cuenta y vuelve a abrir esta página. <a href="/crm/">Ir al CRM</a>`;
+    filas.innerHTML = `<tr><td colspan="6" class="vacio">Para ver la lista necesitas una sesión del CRM.</td></tr>`;
+  }
+
+  async function cargar() {
+    let r;
+    try { r = await fetch(API, { credentials: "same-origin", cache: "no-store" }); }
+    catch (e) { cifras.textContent = "Sin conexión. Se vuelve a intentar en un minuto."; return; }
+    if (r.status === 401) return avisoSinSesion();
+    if (!r.ok) { cifras.textContent = "No se pudo cargar la lista. Recarga la página."; return; }
+    const j = await r.json();
+    docs = j.filas || [];
+    pintar();
+  }
+
+  function visibles() {
+    if (filtro === "pendientes") return docs.filter(d => !d.llamada);
+    if (filtro === "hechas") return docs.filter(d => d.llamada);
+    return docs;
+  }
+
+  function pintar() {
+    const hechas = docs.filter(d => d.llamada).length;
+    const pendientes = docs.length - hechas;
+    cifras.textContent = docs.length
+      ? `${pendientes} por llamar · ${hechas} hechas · ${docs.length} en total`
+      : "Todavía no hay clientes en la lista.";
+    const lista = visibles();
+    if (!lista.length) {
+      const texto = !docs.length
+        ? "Aquí aparecen los clientes de URO que respondieron. La lista se actualiza sola cada hora."
+        : filtro === "pendientes" ? "No quedan llamadas por hacer." : "Todavía no hay llamadas marcadas.";
+      filas.innerHTML = `<tr><td colspan="6" class="vacio">${texto}</td></tr>`;
+      return;
+    }
+    filas.innerHTML = lista.map(d => {
+      const alta = d.interes === "Alta";
+      const marca = d.llamada && d.llamada_fecha
+        ? `<div class="marca">Hecha ${esc(fechaCorta(d.llamada_fecha))}${d.llamada_por ? " por " + esc(d.llamada_por) : ""}</div>` : "";
+      return `<tr class="${d.llamada ? "hecha" : ""}" data-wa="${esc(d.wa)}">
+        <td class="col-check"><input type="checkbox" aria-label="Llamada hecha a ${esc(d.nombre || d.wa)}" ${d.llamada ? "checked" : ""}></td>
+        <td>
+          <div class="nombre">${esc(d.nombre || "Sin nombre")}</div>
+          <div class="tel">${esc(d.telefono || d.wa)}</div>
+          <button type="button" class="copy" data-copiar="${esc(d.telefono || d.wa)}">Copiar número</button>
+          ${marca}
+        </td>
+        <td><span class="badge ${alta ? "alta" : "media"}">${alta ? "Alto" : "Medio"}</span>
+          ${d.pedido_mencionado ? `<div class="meta">Mencionan un pedido</div>` : ""}</td>
+        <td class="fecha">${esc(fechaCorta(d.ultimo_cliente))}<div class="meta">${d.asesora ? "Atendió " + esc(d.asesora) : ""}</div></td>
+        <td class="resumen">${esc(d.resumen || "")}</td>
+        <td>
+          <details>
+            <summary>Ver speech</summary>
+            <p class="speech">${esc(d.speech || "")}</p>
+          </details>
+          <button type="button" class="copy" data-copiar-speech="${esc(d.wa)}">Copiar speech</button>
+        </td>
+      </tr>`;
+    }).join("");
+    pie.textContent = PIE_BASE;
+  }
+
+  async function marcar(wa, on, casilla) {
+    const d = docs.find(x => x.wa === wa);
+    try {
+      const r = await fetch(API + "/check", {
+        method: "PATCH", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wa, llamada: on })
+      });
+      if (r.status === 401) return avisoSinSesion();
+      if (!r.ok) throw new Error(String(r.status));
+      if (d) { d.llamada = on; }
+      pintar();
+    } catch (e) {
+      casilla.checked = !on;
+      cifras.textContent = "No se pudo guardar el check. Inténtalo otra vez.";
+    }
+  }
+
+  filas.addEventListener("change", ev => {
+    const casilla = ev.target;
+    if (!(casilla instanceof HTMLInputElement) || casilla.type !== "checkbox") return;
+    marcar(casilla.closest("tr").dataset.wa, casilla.checked, casilla);
+  });
+
+  filas.addEventListener("click", async ev => {
+    const boton = ev.target.closest("button.copy");
+    if (!boton) return;
+    let texto = boton.dataset.copiar || "";
+    if (boton.dataset.copiarSpeech) {
+      const d = docs.find(x => x.wa === boton.dataset.copiarSpeech);
+      texto = d ? d.speech || "" : "";
+    }
+    try {
+      await navigator.clipboard.writeText(texto);
+      const previo = boton.textContent;
+      boton.textContent = "Copiado";
+      setTimeout(() => { boton.textContent = previo; }, 1400);
+    } catch (e) {
+      const r = document.createRange();
+      r.selectNodeContents(boton.closest("td"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }
+  });
+
+  document.querySelectorAll("[data-filtro]").forEach(b => b.addEventListener("click", () => {
+    filtro = b.dataset.filtro;
+    document.querySelectorAll("[data-filtro]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    pintar();
+  }));
+
+  cargar();
+  setInterval(() => { if (!document.hidden) cargar(); }, 60000);
+})();
+</script>
+</body>
+</html>

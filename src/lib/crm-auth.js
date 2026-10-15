@@ -158,7 +158,9 @@ const RUTAS_DE_PRODUCTO = {
   "/api/crm/settings": ["GET"],
   "/api/crm/change-password": ["POST"],
   "/api/crm/push-subscribe": ["GET", "POST", "DELETE"],
-  "/api/crm/notify-settings": ["GET", "POST"]
+  "/api/crm/notify-settings": ["GET", "POST"],
+  "/api/crm/llamadas-uro": ["GET"],
+  "/api/crm/llamadas-uro/check": ["PATCH"]
 };
 
 const prohibido = () =>

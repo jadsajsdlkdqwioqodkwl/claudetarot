@@ -120,6 +120,7 @@ import {
 import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestPostAsesor as llamadasUroPostAsesor, onRequestGetAsesor as llamadasUroGetAsesor, onRequestGetCrm as llamadasUroGetCrm, onRequestPatchCheck as llamadasUroPatchCheck } from "./api/llamadas-uro.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -151,6 +152,9 @@ const ROUTES = {
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/rescates": { POST: asesorRescatesPost },
+  "/api/asesor/llamadas-uro": { GET: llamadasUroGetAsesor, POST: llamadasUroPostAsesor },
+  "/api/crm/llamadas-uro": { GET: llamadasUroGetCrm },
+  "/api/crm/llamadas-uro/check": { PATCH: llamadasUroPatchCheck },
   "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
   "/api/asesor/reportes": { GET: asesorReportesGet },

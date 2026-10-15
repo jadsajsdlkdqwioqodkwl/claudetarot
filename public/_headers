@@ -13,6 +13,11 @@
   Cache-Control: no-store
   X-Robots-Tag: noindex, nofollow
 
+# La lista de llamadas de URO también es privada (la abre la asesora con su cuenta del CRM).
+/llamadas-uro/*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
+
 # Las imagenes y el video no cambian de contenido sin cambiar de nombre, asi que
 # el navegador puede guardarlos un ano y no volver a pedirlos nunca.
 /kittarotcod/*
