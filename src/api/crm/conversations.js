@@ -73,6 +73,7 @@ async function handler({ request, env, agent }) {
     condiciones.push("instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ?) > 0");
     params.push(` ${etiqueta} `);
   }
+  if (agent?.productoId) { condiciones.push("conv.producto_id = ?"); params.push(agent.productoId); } // cuenta limitada a un producto
   const producto = url.searchParams.get("producto");
   if (producto !== null && producto !== "") {
     if (Number(producto)) { condiciones.push("conv.producto_id = ?"); params.push(Number(producto)); }
