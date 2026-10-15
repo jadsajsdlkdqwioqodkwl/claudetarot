@@ -1,6 +1,6 @@
 # **INSTR 06 — BUSCA, RANKEA, FILTRA y ALIBABA**
 
-Versión 3.29 · 2026-10-15 (v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
+Versión 3.30 · 2026-10-15 (v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
 
 Cambios respecto de v3.16 (para auditoría): regla maestra "todo suma" (lo que se paga se guarda; solo se descarta lo que no sirve de ninguna forma); BUSCA AÉREO en todas las fuentes y categorías; Asia incluida con triangulación del veredicto; RANKEA sin tope de grupos por chat; créditos de Claude sin tope en ningún comando.
 
@@ -207,7 +207,7 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
       - fuera de foco: ropa, calzado, joyas, papelería, libros, decoración, textiles del hogar, velas y ventiladores.
   - **Revisa a mano lo que pasó**: ropa con título raro, marcas, pesados, líquidos. Lo que quites a mano va con su ID a la columna Q del Log, así ninguna sesión lo vuelve a escribir. En R anota también qué palabras del prefiltro tumbaron títulos (por ejemplo prefiltro: spray 3, smart 2); si una tumbó productos que servían, ponlo en Mejoras.
 
-**Log BUSCA: una fila por carga, aunque traiga 0.** Escribe 'Log BUSCA'\!A:R en la primera fila vacía con update\_values. Nunca escribas S:AH: son fórmulas.
+**Log BUSCA: una fila por carga, aunque traiga 0.** Escribe 'Log BUSCA'\!A:R en la fila que dice Config\!B103 (la primera libre, calculada como B101 para Sesiones) con update\_values: antes lee A de esa fila y confirma que está vacía. Nunca escribas en una fila fija ni sobre una que ya tenga datos: el 2026-10-15 una sesión pisó la fila 3 (M-061). Nunca escribas S:AH: son fórmulas.
 
 |  |  |
 | :-: | :-: |
