@@ -234,6 +234,63 @@ export async function pasosDeSeguimientoRapida(db, quickReplyId) {
   return { titulo: q.title, pasos: pasos.filter((p) => p.activo !== false) }; // los pasos apagados no se programan
 }
 
+/** Los pasos de seguimiento tal como están guardados en la respuesta rápida (con los apagados). */
+function pasosGuardados(q) {
+  let pasos = [];
+  try { pasos = JSON.parse(q?.followup_pasos || "[]") || []; } catch { pasos = []; }
+  if (!pasos.length && q?.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
+  return pasos;
+}
+
+/**
+ * Al guardar una respuesta rápida, sus seguimientos YA programados siguen con
+ * el texto de antes (cada paso se copió a `scheduled_messages.body` al mandarla)
+ * y el cron manda esa copia: salía el texto viejo aunque el equipo ya lo hubiera
+ * cambiado. Esto pone el texto nuevo en los pendientes. `antes` es la fila de
+ * `quick_replies` leída ANTES de guardar. Cada pendiente se reconoce por su texto
+ * (el del paso viejo): lo que una persona cambió a mano para ese chat con
+ * «Reactivar seguimiento» no coincide con ningún paso y se respeta. Un paso que
+ * se quitó o apagó cancela su pendiente; el título nuevo se refleja en el origen.
+ * Devuelve cuántos pendientes cambió.
+ */
+export async function sincronizarSeguimientosPendientes(db, quickReplyId, antes) {
+  const ahora = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
+  if (!ahora || !antes) return 0;
+  const viejos = pasosGuardados(antes);
+  const nuevos = pasosGuardados(ahora);
+  const origenAntes = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${antes.title}`;
+  const origenAhora = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${ahora.title}`;
+  const { results: filas } = await db.prepare(
+    "SELECT id, conversation_id, body, botones FROM scheduled_messages WHERE status = 'pendiente' AND template_name IS NULL AND batch_id IS NULL AND created_by = ? ORDER BY send_at, id"
+  ).bind(origenAntes).all();
+  const usados = new Map(); // por chat: qué pasos viejos ya tienen su pendiente
+  const ops = [];
+  let cambios = 0;
+  for (const f of filas) {
+    const ya = usados.get(f.conversation_id) || new Set();
+    usados.set(f.conversation_id, ya);
+    const i = viejos.findIndex((p, k) => !ya.has(k) && !p.plantilla && !p.media_key && (p.body || null) === (f.body || null));
+    if (i < 0) continue; // otro texto: lo editó una persona para este chat
+    ya.add(i);
+    const n = nuevos[i];
+    if (!n || n.activo === false) {
+      ops.push(db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'").bind(f.id));
+      cambios++;
+      continue;
+    }
+    if (n.plantilla || n.media_key) continue; // cambió de tipo: no se convierte sobre la marcha
+    const botones = n.body && Array.isArray(n.botones) && n.botones.length ? JSON.stringify(n.botones.slice(0, 3)) : null;
+    if ((n.body || null) === (f.body || null) && botones === (f.botones || null)) continue;
+    ops.push(db.prepare("UPDATE scheduled_messages SET body = ?, botones = ? WHERE id = ? AND status = 'pendiente'").bind(n.body || null, botones, f.id));
+    cambios++;
+  }
+  if (origenAntes !== origenAhora) {
+    ops.push(db.prepare("UPDATE scheduled_messages SET created_by = ? WHERE status = 'pendiente' AND created_by = ?").bind(origenAhora, origenAntes));
+  }
+  if (ops.length) await db.batch(ops);
+  return cambios;
+}
+
 /**
  * `editados` (opcional, el botón «Reactivar seguimiento» del chat): [{ horas, body, activo }] por posición
  * sobre los pasos activos; cambia la espera y el texto solo para este chat (la respuesta rápida no se toca).
