@@ -4433,7 +4433,109 @@ function autoAltoCaption() {
 }
 
 /** El archivo que se sube de verdad: el original si no se tocó, o el recorte a resolución nativa. */
+/* ---------- Compresión de videos pesados (en el navegador, antes de subir) ---------- */
+
+// WhatsApp acepta video hasta 16 MB (MP4 con H.264 + AAC). Un video más pesado se comprime acá
+// con ffmpeg.wasm (se baja una sola vez desde el CDN) a H.264 + AAC, máx. 720p y ≤ 15 MB.
+const VIDEO_MAX_BYTES = 15 * 1024 * 1024;
+let ffmpegPromesa = null;
+
+function cargarScript(src) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = ok;
+    s.onerror = () => mal(new Error("No se pudo descargar el compresor de video. Revisa tu conexión."));
+    document.head.appendChild(s);
+  });
+}
+
+async function urlComoBlob(url, mime) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("No se pudo descargar el compresor de video. Revisa tu conexión.");
+  return URL.createObjectURL(new Blob([await r.arrayBuffer()], { type: mime }));
+}
+
+function ffmpegListo() {
+  ffmpegPromesa ||= (async () => {
+    await cargarScript("https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js");
+    const ff = new window.FFmpegWASM.FFmpeg();
+    const core = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+    await ff.load({
+      classWorkerURL: await urlComoBlob("https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js", "text/javascript"),
+      coreURL: await urlComoBlob(`${core}/ffmpeg-core.js`, "text/javascript"),
+      wasmURL: await urlComoBlob(`${core}/ffmpeg-core.wasm`, "application/wasm")
+    });
+    return ff;
+  })().catch((err) => { ffmpegPromesa = null; throw err; });
+  return ffmpegPromesa;
+}
+
+function duracionDeVideo(file) {
+  return new Promise((ok) => {
+    const v = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    v.preload = "metadata";
+    v.onloadedmetadata = () => { URL.revokeObjectURL(url); ok(Number.isFinite(v.duration) ? v.duration : 0); };
+    v.onerror = () => { URL.revokeObjectURL(url); ok(0); };
+    v.src = url;
+  });
+}
+
+function avisoCompresion(texto) {
+  let el = document.getElementById("aviso-compresion");
+  if (!texto) { el?.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "aviso-compresion";
+    el.style.cssText = "position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;z-index:99999;font-size:14px;display:flex;gap:8px;align-items:center;max-width:90vw";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `${icon("video")} <span></span>`;
+  el.querySelector("span").textContent = texto;
+}
+
+async function comprimirVideo(file) {
+  let dur = await duracionDeVideo(file);
+  avisoCompresion("Preparando el compresor de video…");
+  const ff = await ffmpegListo();
+  let log = "";
+  const alLog = ({ message }) => { log += `${message}\n`; };
+  const alProgreso = ({ progress }) => avisoCompresion(`Comprimiendo video… ${Math.min(99, Math.round((progress || 0) * 100))}%`);
+  ff.on("log", alLog);
+  ff.on("progress", alProgreso);
+  try {
+    await ff.writeFile("entrada", new Uint8Array(await file.arrayBuffer()));
+    // Si el navegador no puede decodificar el video (p. ej. HEVC), la duración la dice el propio ffmpeg.
+    if (!dur) {
+      await ff.exec(["-i", "entrada"]).catch(() => {});
+      const m = log.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+      if (m) dur = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+    }
+    if (!dur) throw new Error(`No se pudo leer "${file.name}" para comprimirlo. Pesa más de 15 MB: acórtalo o conviértelo a MP4.`);
+    // Bitrate para entrar en ~14 MB, con 96 kbps de audio; piso 200 kbps.
+    const total = Math.floor((14 * 1024 * 1024 * 8) / dur);
+    const kbps = Math.max(200, Math.floor((total - 96000) / 1000));
+    avisoCompresion("Comprimiendo video… 0%");
+    const codigo = await ff.exec(["-i", "entrada", "-vf", "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      "-c:v", "libx264", "-preset", "veryfast", "-b:v", `${kbps}k`, "-maxrate", `${Math.floor(kbps * 1.4)}k`, "-bufsize", `${kbps * 2}k`,
+      "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", "-y", "salida.mp4"]);
+    if (codigo !== 0) throw new Error(`No se pudo comprimir "${file.name}".`);
+    const datos = await ff.readFile("salida.mp4");
+    if (!datos?.length) throw new Error("El compresor no devolvió el video.");
+    const base = (file.name || "video").replace(/\.[^.]+$/, "") || "video";
+    return new File([datos], `${base}.mp4`, { type: "video/mp4" });
+  } finally {
+    ff.off("log", alLog);
+    ff.off("progress", alProgreso);
+    await ff.deleteFile("entrada").catch(() => {});
+    await ff.deleteFile("salida.mp4").catch(() => {});
+    avisoCompresion(null);
+  }
+}
+
 async function archivoFinalDelEditor(it) {
+  if (it.tipo === "video" && it.file.size > VIDEO_MAX_BYTES) return comprimirVideo(it.file);
   if (it.tipo !== "image") return it.file;
   const sinCambios = it.rot === 0 && esRecorteEntero(it.crop);
   if (sinCambios && (it.file.type === "image/jpeg" || it.file.type === "image/png") && it.file.size <= FOTO_MAX_BYTES) return it.file;
