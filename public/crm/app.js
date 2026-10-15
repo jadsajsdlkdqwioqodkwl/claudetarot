@@ -221,7 +221,8 @@ async function mostrarApp() {
   // (bienvenida, mensaje masivo, etc) y de Equipo solo salen con role
   // "admin", y esto evita preguntarse por qué no aparecen si entraste
   // con otra cuenta.
-  $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : "vendedor"}`;
+  $("#sesion-actual").textContent = `${displayName || "Modo administrador"} · ${role === "admin" ? "admin" : role === "lectura" ? "solo lectura" : "vendedor"}`;
+  document.body.classList.toggle("solo-lectura", role === "lectura");
   $("#sesion-actual").title = $("#sesion-actual").textContent;
   $("#btn-mi-password").style.display = esCuentaDeVendedor ? "" : "none";
   $("#btn-avisos").style.display = esCuentaDeVendedor ? "" : "none";

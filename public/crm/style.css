@@ -1102,3 +1102,6 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 /* Chip "Reactivar seguimiento" en la burbuja de una respuesta rápida con «si no responde». */
 .msg .msg-seg { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 4px 8px; border: 1px solid var(--verde-osc); border-radius: var(--radio-full); background: var(--panel); color: var(--verde-osc); font: inherit; font-size: 11px; cursor: pointer; min-height: 28px; }
 .msg .msg-seg:disabled { opacity: .6; }
+
+/* Rol de solo lectura (Viktoria): ve los chats de Tarot, no puede escribir ni cambiar nada. */
+body.solo-lectura #form-envio { display: none; }

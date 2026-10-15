@@ -212,6 +212,12 @@ export function conAuth(handler) {
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
       });
     }
+    if (sesion.role === "lectura") {
+      // Rol de solo lectura: siempre atado a un producto y sin escribir nada (salvo cambiar su propia contraseña).
+      const url = new URL(context.request.url);
+      const cambiaSuClave = context.request.method === "POST" && url.pathname === "/api/crm/change-password";
+      if (!sesion.productoId || (context.request.method !== "GET" && !cambiaSuClave)) return prohibido();
+    }
     if (sesion.productoId) {
       const bloqueo = await revisarProducto(context.request, context.env, sesion.productoId);
       if (bloqueo) return bloqueo;

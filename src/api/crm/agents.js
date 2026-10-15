@@ -17,7 +17,11 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const ROLES = new Set(["admin", "vendedor"]);
+// "lectura": solo ve los chats del producto Tarot, no puede mandar ni cambiar nada (ver conAuth en crm-auth.js).
+const ROLES = new Set(["admin", "vendedor", "lectura"]);
+
+const productoTarot = (env) =>
+  env.CRM_DB.prepare("SELECT id FROM productos WHERE nombre = 'Tarot' ORDER BY id DESC LIMIT 1").first();
 
 async function get({ env }) {
   const { results } = await env.CRM_DB.prepare(
@@ -48,11 +52,14 @@ async function post({ request, env }) {
   const existente = await env.CRM_DB.prepare("SELECT id FROM agents WHERE username = ?").bind(username).first();
   if (existente) return json({ error: "Ese usuario ya existe." }, 409);
 
+  const tarot = role === "lectura" ? await productoTarot(env) : null;
+  if (role === "lectura" && !tarot) return json({ error: "No existe el producto Tarot." }, 422);
+
   const passwordHash = await hashPassword(password);
   const creado = await env.CRM_DB.prepare(
-    "INSERT INTO agents (username, password_hash, display_name, wa_id, role) VALUES (?, ?, ?, ?, ?) RETURNING id, username, display_name, wa_id, role, active, created_at"
+    "INSERT INTO agents (username, password_hash, display_name, wa_id, role, producto_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, username, display_name, wa_id, role, active, created_at"
   )
-    .bind(username, passwordHash, displayName, waId, role)
+    .bind(username, passwordHash, displayName, waId, role, tarot?.id ?? null)
     .first();
 
   return json({ ok: true, agent: creado });
@@ -74,7 +81,13 @@ async function patch({ request, env }) {
   }
 
   if (ROLES.has(payload?.role)) {
-    await env.CRM_DB.prepare("UPDATE agents SET role = ? WHERE id = ?").bind(payload.role, id).run();
+    if (payload.role === "lectura") {
+      const tarot = await productoTarot(env);
+      if (!tarot) return json({ error: "No existe el producto Tarot." }, 422);
+      await env.CRM_DB.prepare("UPDATE agents SET role = 'lectura', producto_id = ? WHERE id = ?").bind(tarot.id, id).run();
+    } else {
+      await env.CRM_DB.prepare("UPDATE agents SET role = ? WHERE id = ?").bind(payload.role, id).run();
+    }
   }
 
   if (typeof payload?.new_password === "string" && payload.new_password) {
