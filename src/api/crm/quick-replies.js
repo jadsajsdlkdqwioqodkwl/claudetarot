@@ -33,7 +33,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo } from "../../lib/crm-db.js";
+import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo, sincronizarSeguimientosPendientes } from "../../lib/crm-db.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
@@ -200,7 +200,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, body, catalogo, catalogo_nombre, producto_id, botones FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -234,6 +234,8 @@ async function patch({ request, env, agent }) {
   await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, id)
     .run();
+  // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
+  await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
   await guardarCatalogoDespues(env, id, payload);
 
   if (mediaKeys !== null) {
