@@ -108,9 +108,12 @@ export async function sesionActual(request, env) {
   if (!payload.exp || payload.exp < Date.now()) return null;
 
   if (payload.agentId) {
+    // Sin la migración 0057 todavía no existe producto_id: no se deja a nadie fuera (aún no hay cuentas limitadas).
     const agente = await env.CRM_DB.prepare(
       "SELECT id, username, display_name, role, active, password_hash, producto_id FROM agents WHERE id = ?"
-    ).bind(payload.agentId).first();
+    ).bind(payload.agentId).first().catch(() => env.CRM_DB.prepare(
+      "SELECT id, username, display_name, role, active, password_hash FROM agents WHERE id = ?"
+    ).bind(payload.agentId).first());
     if (!agente || !agente.active) return null;
     // Cookies de antes de este cambio no traen `pw`: valen hasta que se renueven.
     if (payload.pw && payload.pw !== (await huellaPassword(env, agente.password_hash))) return null;
