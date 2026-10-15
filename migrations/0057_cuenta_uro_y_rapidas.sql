@@ -7,7 +7,7 @@ ALTER TABLE agents ADD COLUMN producto_id INTEGER;
 
 -- Si el producto URO no existe, no inserta nada (nunca queda una cuenta sin límite).
 INSERT INTO agents (username, password_hash, display_name, wa_id, role, producto_id)
-SELECT 'veronika', '100000.44d4ea70b5fb5db0017b3c0ad59d2e39.c53d1dd80883b1aeeb4bc32fce77fbd1f0ecf9abd8b26e55a7291a24ea56980e', 'Veronika', '9350700774', 'vendedor', id
+SELECT 'veronika', '100000.44d4ea70b5fb5db0017b3c0ad59d2e39.c53d1dd80883b1aeeb4bc32fce77fbd1f0ecf9abd8b26e55a7291a24ea56980e', 'Veronika', '519350700774', 'vendedor', id
 FROM productos WHERE nombre = 'URO' ORDER BY id DESC LIMIT 1;
 
 -- Las 6 de la carga inicial (0047) que sonaban a bot, con la voz de las de Tarot.
