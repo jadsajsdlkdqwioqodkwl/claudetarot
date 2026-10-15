@@ -79,7 +79,7 @@ const estado = {
 function pedir(url, opciones = {}) {
   return fetch(url, { credentials: "same-origin", ...opciones }).then(async (res) => {
     const datos = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(datos.error || `HTTP ${res.status}`);
+    if (!res.ok) throw Object.assign(new Error(datos.error || `HTTP ${res.status}`), { datos });
     return datos;
   });
 }
@@ -171,6 +171,8 @@ async function mostrarLogin() {
     $("#username").style.display = info.modoAgentes ? "block" : "none";
     $("#code").style.display = info.modoAgentes ? "none" : (info.requiere2FA ? "block" : "none");
     $("#ayuda-2fa").style.display = "none";
+    $("#link-reenviar").style.display = "none";
+    $("#link-wame").style.display = "none";
     $("#password").style.display = "block";
     $("#password").placeholder = "Contraseña";
     $("#btn-login").textContent = "Entrar";
@@ -207,6 +209,7 @@ function mostrarPasoCodigo(metodo2FA) {
     ? "Escribe el código de tu app authenticator"
     : "Te llegó un código de 6 dígitos por WhatsApp";
   $("#ayuda-2fa").style.display = "block";
+  $("#link-reenviar").style.display = metodo2FA === "totp" ? "none" : "block";
   $("#btn-login").textContent = "Verificar código";
   $("#code").focus();
 }
@@ -273,7 +276,15 @@ $("#form-login").addEventListener("submit", async (e) => {
     mostrarApp();
   } catch (err) {
     $("#login-error").textContent = err.message;
+    if (err.datos?.wa_link) { $("#link-wame").href = err.datos.wa_link; $("#link-wame").style.display = "block"; }
   }
+});
+
+// Pide otro código: vuelve a mandar usuario y contraseña (siguen en el formulario, ocultos).
+$("#link-reenviar").addEventListener("click", () => {
+  estado.login.challengeId = null;
+  $("#code").value = "";
+  $("#form-login").requestSubmit();
 });
 
 $("#link-olvide").addEventListener("click", mostrarFormularioOlvide);

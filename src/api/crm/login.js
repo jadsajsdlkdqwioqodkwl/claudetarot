@@ -42,6 +42,19 @@ async function dentroDelLimite(env, ip) {
   }
 }
 
+/** Link para que la vendedora le escriba primero al negocio: abre la ventana de 24 h y el código ya puede llegarle. */
+async function enlaceParaEscribir(env) {
+  try {
+    const res = await fetch(`${env.META_GRAPH_URL || "https://graph.facebook.com"}/v23.0/${env.WHATSAPP_PHONE_NUMBER_ID}?fields=display_phone_number`, {
+      headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` }
+    });
+    const numero = String((await res.json()).display_phone_number || "").replace(/\D/g, "");
+    return numero ? `https://wa.me/${numero}?text=${encodeURIComponent("Hola, quiero mi código de acceso al CRM")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   if (!env.CRM_PASSWORD) {
     return json({ error: "El CRM no está configurado (falta CRM_PASSWORD)." }, 503);
@@ -104,7 +117,7 @@ export async function onRequestPost({ request, env }) {
       // un día). Antes esto se perdía en el console.error y a la vendedora
       // solo le llegaba un "no se pudo mandar" genérico, imposible de
       // diagnosticar sin acceso a los logs del Worker.
-      return json({ error: `No se pudo mandar el código por WhatsApp: ${err.message}` }, 502);
+      return json({ error: `No se pudo mandar el código por WhatsApp: ${err.message}`, wa_link: await enlaceParaEscribir(env) }, 502);
     }
 
     return json({ requiere2FA: true, challenge_id: challengeId, metodo2FA: "whatsapp" });
