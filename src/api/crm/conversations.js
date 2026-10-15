@@ -20,7 +20,7 @@
  * de Workers tiene tope de requests por día.
  */
 
-import { conAuth } from "../../lib/crm-auth.js";
+import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
 import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
 
@@ -73,7 +73,11 @@ async function handler({ request, env, agent }) {
     condiciones.push("instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ?) > 0");
     params.push(` ${etiqueta} `);
   }
-  if (agent?.productoId) { condiciones.push("conv.producto_id = ?"); params.push(agent.productoId); } // cuenta limitada a un producto
+  if (agent?.productoId) { // cuenta limitada a un producto (más, si lo tiene, el que solo puede leer)
+    const ids = [agent.productoId, agent.productoLecturaId].filter(Boolean);
+    condiciones.push(`conv.producto_id IN (${ids.map(() => "?").join(",")})`);
+    params.push(...ids);
+  }
   const producto = url.searchParams.get("producto");
   if (producto !== null && producto !== "") {
     if (Number(producto)) { condiciones.push("conv.producto_id = ?"); params.push(Number(producto)); }
@@ -113,7 +117,7 @@ async function handler({ request, env, agent }) {
   const clave = [...tokens].sort((a, b) => b.length - a.length)[0] || null;
 
   // Primero el chat (marca leído), así la lista ya sale con su unread_count en 0.
-  const chat = chatId ? await leerMensajes(env, chatId) : null;
+  const chat = chatId ? await leerMensajes(env, chatId, null, { marcarLeido: !await chatSoloLectura(env, agent, chatId) }) : null;
 
   const { results } = await env.CRM_DB.prepare(
     `SELECT
