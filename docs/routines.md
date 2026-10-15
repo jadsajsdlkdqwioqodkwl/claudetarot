@@ -232,7 +232,7 @@ Mantén la hoja «URO - Lista de llamadas» (Google Sheets ID 1CujjC-Mt_OpEpuJ3S
 6. Termina con una línea: filas nuevas, actualizadas, descartadas, y `quedan_para_la_proxima` si es > 0.
 ```
 
-Primera corrida real (18:08 UTC): falló sin gastar de más (~US$ 0,11) porque la rama aún no estaba en `main` y el conector no estaba agregado; con la compuerta una corrida vacía son 1–2 turnos.
+Primera corrida real (18:08 UTC): falló sin escribir nada porque la rama aún no estaba en `main` y el conector no estaba agregado; con la compuerta una corrida vacía son 1–2 turnos.
 
 ## 2026-10-15 · Reporte de ventas: de tres corridas a DOS (22:00 y 23:30)
 

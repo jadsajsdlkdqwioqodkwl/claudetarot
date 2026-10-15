@@ -327,7 +327,6 @@ proyecto de Apps Script aparte, con su propio `onOpen`.
 |---|---|---|
 | **Alertas al equipo por Telegram**: cliente esperando respuesta, pedido del catálogo sin atender, ventana de 24 h por cerrarse sin venta | cada 30 min, en `HORARIO` | 0 tokens |
 | **Reporte del día anterior**: chats, anuncio → pedido → venta, 1ra respuesta, por vendedora, por anuncio. Pestaña `Reportes IA` + Telegram (+ correo) | 8:00 Lima | 0 tokens |
-| **Análisis CRO** dentro del reporte: por qué se perdieron ventas, 3 cambios medibles, a quién retomar mañana y con qué mensaje | 1 llamada/día, solo si hay `ANTHROPIC_API_KEY` | ~US$ 0.05–0.15/día |
 
 El asesor **nunca le escribe al cliente**: avisa a las vendedoras. El único
 mensaje automático al cliente es el de carrito abandonado, y lo manda el Worker
@@ -343,9 +342,6 @@ mensaje automático al cliente es el de carrito abandonado, y lo manda el Worker
    |---|---|
    | `TELEGRAM_BOT_TOKEN` | el mismo bot del Worker (u otro) |
    | `TELEGRAM_CHAT_ID` | chat o grupo del equipo de ventas |
-   | `ANTHROPIC_API_KEY` | *(YA NO SE USA desde 2026-10-15: prohibida la API de Claude en el repo, ver CLAUDE.md; no la configure)* *(opcional)* sin ella, el reporte sale solo con números |
-   | `CLAUDE_MODEL` | *(opcional)* por defecto `claude-opus-5` |
-   | `CLAUDE_EFFORT` | *(opcional)* `low` por defecto; `medium` para más detalle |
    | `REPORTE_EMAIL` | *(opcional)* también manda el reporte por correo |
    | `HORARIO` | *(opcional)* `9-22` por defecto, hora de Lima |
    | `ESPERA_MIN` | *(opcional)* minutos antes de avisar que alguien espera; `15` |
@@ -406,6 +402,4 @@ cada fila pintada según su estado:
 
 No depende de que las vendedoras marquen la venta: se guía por la conversación.
 
-Propiedades opcionales: `DIAS_PEDIDOS` (7), `CLAUDE_EFFORT_PEDIDOS` (`low`),
-`CLAUDE_MODEL`. Costo aproximado con 7 días (~280 chats, 9 lotes): menos de
-US$ 1 por clic.
+Propiedad opcional: `DIAS_PEDIDOS` (7).

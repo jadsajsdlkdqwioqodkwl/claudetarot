@@ -73,10 +73,10 @@ reales de las vendedoras). `enviar.py` descarta y lista las propuestas con
 tics de bot (guion largo, MAYÚSCULAS, tuteo, más de una pregunta, más de 4
 emojis, más de 420 caracteres, el mismo texto a más de 2 clientes).
 
-**Nada llama a la API de Claude** (se cobra por uso aparte del plan). Lo que
-queda de IA corre en las Routines con el plan. El Apps Script ya no la usa
+**Nada llama a la API de Claude.** Lo que
+queda de IA corre en las Routines con los tokens del plan. El Apps Script ya no la usa
 (se quitaron el análisis diario y el botón "Sacar pedidos (Claude)"): si en
-sus Propiedades del script quedó `ANTHROPIC_API_KEY`, bórrala.
+sus Propiedades del script quedó alguna clave de IA, bórrala.
 
 Endpoints del bot (cabecera `x-asesor-clave`): `/api/asesor/chats`, `/contexto`,
 `/sugerencias`, `/avisos`, `/ventas`, `/memoria`, `/analisis`, `/resumen`.
