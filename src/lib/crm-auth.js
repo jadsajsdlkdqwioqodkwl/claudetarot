@@ -155,6 +155,10 @@ const RUTAS_DE_PRODUCTO = {
   "/api/crm/catalog": ["GET", "POST"],
   "/api/crm/catalog-products": ["GET"],
   "/api/crm/templates": ["GET", "POST"],
+  // Bienvenida manual del panel derecho: el GET sale filtrado a su producto y el POST pasa por el chequeo de conversation_id.
+  "/api/crm/welcome-send": ["POST"],
+  "/api/crm/welcome-sequence": ["GET"],
+  "/api/crm/followup-sequences": ["GET"],
   "/api/crm/settings": ["GET"],
   "/api/crm/change-password": ["POST"],
   "/api/crm/push-subscribe": ["GET", "POST", "DELETE"],

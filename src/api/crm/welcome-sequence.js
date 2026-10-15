@@ -32,10 +32,12 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-async function get({ env }) {
-  const { results: pasos } = await env.CRM_DB.prepare(
+async function get({ env, agent }) {
+  const { results: todos } = await env.CRM_DB.prepare(
     `SELECT s.id, s.title, s.body, s.step_order, s.texto_primero, s.producto_id, s.activo, s.botones, ${textoPorDefectoSql("bienvenida", "s")} AS texto_por_defecto FROM welcome_steps s ORDER BY s.step_order ASC`
   ).all();
+  // Una cuenta limitada a un producto (URO) solo ve la bienvenida de su producto.
+  const pasos = agent?.productoId ? todos.filter((p) => p.producto_id === agent.productoId) : todos;
 
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM welcome_step_media ORDER BY sort_order ASC, id ASC"

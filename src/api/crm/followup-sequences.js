@@ -30,10 +30,16 @@ const json = (data, status = 200) =>
 
 const TIPOS_MEDIA = new Set(["image", "video", "document", "sticker"]);
 
-async function get({ env }) {
-  const { results: secuencias } = await env.CRM_DB.prepare(
+async function get({ env, agent }) {
+  const { results: todas } = await env.CRM_DB.prepare(
     "SELECT id, title, created_at FROM followup_sequences ORDER BY created_at ASC"
   ).all();
+  // Una cuenta limitada a un producto (URO) solo ve la secuencia de su producto.
+  let secuencias = todas;
+  if (agent?.productoId) {
+    const prod = await env.CRM_DB.prepare("SELECT secuencia_id FROM productos WHERE id = ?").bind(agent.productoId).first();
+    secuencias = todas.filter((s) => s.id === prod?.secuencia_id);
+  }
   const { results: pasos } = await env.CRM_DB.prepare(
     "SELECT * FROM followup_sequence_steps ORDER BY sequence_id ASC, step_order ASC"
   ).all();

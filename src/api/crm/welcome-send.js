@@ -44,6 +44,14 @@ async function post({ request, env, agent }) {
     .first();
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
+  // Cuenta limitada a un producto: solo pasos de la bienvenida de su producto.
+  if (agent?.productoId && stepIds) {
+    const marcas = stepIds.map(() => "?").join(",");
+    const { results: propios } = await env.CRM_DB.prepare(`SELECT id FROM welcome_steps WHERE producto_id = ? AND id IN (${marcas})`)
+      .bind(agent.productoId, ...stepIds).all();
+    if (propios.length !== stepIds.length) return json({ error: "Tu cuenta no tiene acceso a esto." }, 403);
+  }
+
   if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) {
     return json({ error: "El envío por WhatsApp no está configurado (faltan credenciales)." }, 503);
   }
