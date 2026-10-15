@@ -135,12 +135,19 @@ def main():
         if wa in fila_de:
             item["fila"] = fila_de[wa]
             plan["actualizar"].append(item)
-            accion = f"ACTUALIZAR fila {fila_de[wa]}"
+            accion = f"ACTUALIZAR fila {fila_de[wa]} (escribe D:E y H)"
         else:
             plan["nuevos"].append(item)
             accion = "NUEVO"
         lineas, bienv = [], False
-        for m in ms[-MAX_MSGS_CHAT:]:
+        visibles = ms[-MAX_MSGS_CHAT:]
+        if wa in fila_de and wa in estado:
+            # Actualización barata: solo lo posterior a lo ya leído (+2 mensajes de contexto).
+            idx = [i for i, m in enumerate(ms) if m["id"] > estado[wa]]
+            if idx:
+                visibles = ms[max(idx[0] - 2, 0):][-MAX_MSGS_CHAT:]
+                lineas.append("(solo mensajes nuevos desde la última lectura; los 2 primeros son contexto)")
+        for m in visibles:
             es_cli = m["quien"] == "Cliente"
             auto = (not es_cli) and RE_AUTO.search(m["vend"])
             if auto and "bienvenida" in m["vend"].lower():
