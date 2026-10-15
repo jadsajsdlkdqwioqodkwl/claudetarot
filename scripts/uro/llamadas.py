@@ -1,6 +1,9 @@
 """
 Lista de llamadas de URO (Routine cada hora, con el plan de Claude, SIN API de IA).
 
+Paso 0, barato (no toca la hoja): `llamadas.py gate` imprime SIN_NOVEDAD o HAY_MOVIMIENTO N.
+Solo si hay movimiento se lee la hoja y se corre `preparar`.
+
 La hoja «URO - Lista de llamadas» (pestañas Llamadas y Estado) es la memoria:
 este script decide, sin gastar lectura del modelo, QUÉ chats tienen algo nuevo
 desde la última corrida; el modelo solo lee esos, escribe el resumen y el
@@ -62,13 +65,30 @@ def leer_api(dias):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["preparar"])
+    ap.add_argument("cmd", choices=["gate", "preparar"])
+    ap.add_argument("--gate-horas", type=int, default=3, help="gate: ventana de movimiento a mirar (solapa corridas caídas)")
     ap.add_argument("--estado", default="")
     ap.add_argument("--filas", default="")
     ap.add_argument("--salida", default="/tmp/uro")
     ap.add_argument("--dias", type=int, default=14, help="el Worker da hasta 14")
     ap.add_argument("--max", type=int, default=20, help="chats por corrida (el resto sale en la siguiente)")
     a = ap.parse_args()
+
+    if a.cmd == "gate":
+        # Compuerta barata (sin leer la hoja): ¿algún chat con interés escribió en las últimas N horas?
+        corte = (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(hours=5 + a.gate_horas)).strftime("%Y-%m-%d %H:%M:%S")
+        por_chat = {}
+        for f in leer_api(a.dias):
+            por_chat.setdefault(f["wa"], []).append(f)
+        movimiento = 0
+        for wa, ms in por_chat.items():
+            if wa in INTERNOS:
+                continue
+            cli = [m for m in ms if m["quien"] == "Cliente"]
+            if any(m["tipo"] != "text" or not RE_SALUDO.match(m["msg"].strip()) for m in cli) and any(m["t"] >= corte for m in cli):
+                movimiento += 1
+        print(f"HAY_MOVIMIENTO {movimiento}" if movimiento else "SIN_NOVEDAD")
+        return
 
     estado = {solo_digitos(r[0]): int(solo_digitos(r[1]) or 0) for r in valores(a.estado) if len(r) >= 2 and r[0] != ""}
     fila_de = {solo_digitos(r[0]): i + 2 for i, r in enumerate(valores(a.filas)) if r and r[0] != ""}
