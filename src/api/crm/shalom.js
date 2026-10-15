@@ -199,7 +199,7 @@ async function enviar(env, codigo, texto, quien) {
   let via = "texto";
   if (!(await fueraDeVentana(env.CRM_DB, chat.id, new Date()))) {
     await pausaEnvio(env, chat.id); // "escribiendo…" 1,5 s: obligatorio antes de todo mensaje (ver crm-send.js)
-    await mandarTexto(env, chat.id, chat.wa_id, texto, quien);
+    await mandarTexto(env, chat.id, chat.wa_id, texto, quien, undefined, { subirEnBandeja: false });
   } else if (env.PLANTILLA_ENVIO) {
     const nombre = (chat.nombre || "").split(/\s+/)[0] || "estimad@";
     const link = `${SITIO}/${codigo}`;

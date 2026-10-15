@@ -104,6 +104,7 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - **Solo cuando el cliente escribe** (`registrarMensajeEntrante` en `src/lib/crm-db.js` pone `last_message_at`).
 - Una **plantilla** de Meta NUNCA lo reflota, venga de donde venga: a mano desde el chat (`templates.js`), sugerencia del asesor aprobada, envío masivo / plan / rescate del día 7 / seguimiento de respuesta rápida (cron), toques, link de Shalom fuera de 24 h. Está centralizado en `registrarMensajeSaliente` (`type === "template"` no toca `last_message_at` ni `unread_count`); `npm run check` lo vigila.
 - Los seguimientos automáticos (texto, foto, catálogo del cron) tampoco lo reflotan (`SIN_SUBIR`, desde antes).
+- 2026-10-15 (reclamo del dueño: seguimientos seguían reflotando): faltaban dos envíos de texto. El seguimiento del asesor aprobado con envío inmediato (`programar()` en `src/api/crm/sugerencias.js`) y el texto del link de Shalom dentro de 24 h (`shalom.js`) subían el chat y ponían el «sin leer» en 0. Ahora van con `{ subirEnBandeja: false }`; `npm run check` lo vigila.
 - Lo que la vendedora escribe a mano (texto, foto, catálogo) sí lo deja arriba como hasta hoy (y pone en 0 el «sin leer»). Si el dueño quiere que eso tampoco suba, es cambiar `subirEnBandeja` en esos envíos.
 
 ## Dónde ver cada cosa

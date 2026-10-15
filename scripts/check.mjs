@@ -1032,6 +1032,9 @@ check("las letras de columna llegan hasta la última de la hoja",
   }
   check("una plantilla no reflota el chat en la bandeja (solo cuando el cliente escribe)",
     /if \(!subirEnBandeja \|\| type === "template"\) return;/.test(readFileSync(join(root, "src/lib/crm-db.js"), "utf8")));
+  check("seguimiento aprobado del asesor y texto de Shalom no reflotan el chat",
+    /undefined, \{ subirEnBandeja: false \}, botones\)/.test(readFileSync(join(root, "src/api/crm/sugerencias.js"), "utf8")) &&
+    /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

@@ -162,8 +162,9 @@ async function programar(env, conversationId, texto, quien, cuando, extra = {}) 
         return null;
       }
       // Como todo lo que sale: "escribiendo…" 1,5 s y recién el mensaje.
+      // Seguimiento aprobado: no reflota el chat (solo sube cuando el cliente escribe).
       await pausaEnvio(env, conversationId);
-      await mandarTexto(env, conversationId, conv.wa_id, texto, quien, undefined, undefined, botones);
+      await mandarTexto(env, conversationId, conv.wa_id, texto, quien, undefined, { subirEnBandeja: false }, botones);
     } catch (err) {
       return `WhatsApp no lo aceptó: ${err.message}`;
     }
