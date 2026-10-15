@@ -121,7 +121,11 @@ def main():
     pendientes.sort(reverse=True)  # primero lo más reciente
     lote, resto = pendientes[:a.max], len(pendientes) - len(pendientes[:a.max])
 
-    plan = {"nuevos": [], "actualizar": [], "ya_compraron": compraron, "quedan_para_la_proxima": resto}
+    # Filas libres: la validación de casillas llega hasta la fila 1000 y append_values caía en la 1001;
+    # la Routine escribe con update_values en estas filas exactas.
+    plan = {"nuevos": [], "actualizar": [], "ya_compraron": compraron, "quedan_para_la_proxima": resto,
+            "siguiente_fila_llamadas": len(valores(a.filas)) + 2,
+            "siguiente_fila_estado": len(valores(a.estado)) + 2}
     partes = []
     for t, wa, ms, ultimo_id, embudo in lote:
         nombre = next((m["nombre"] for m in reversed(ms) if m["nombre"] not in ("", ".")), "")
