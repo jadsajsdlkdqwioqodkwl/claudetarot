@@ -87,6 +87,7 @@ Más detalle: `docs/asesor.md`.
 
 **Reporte de ventas (21:00 · 22:00 · 23:00 · 00:00):** sale SIEMPRE como PDF con tablas (el formato de siempre, el mismo de pedidos) con `enviar.py salida.json` y `"tipo_reporte": "ventas"`; nunca como texto plano por `--informe`. Prueba: `python3 scripts/asesor/pruebas/test_pdf_ventas.py`.
 Antes de armarlo, lee «Cómo hacer un buen reporte de ventas» al final de `docs/negocio.md` (leer todos los chats, cuadrar con el CRM, día y vendedora de la venta).
+El PDF de ventas solo sale si cuadra con el sistema: `python3 scripts/asesor/control_ventas.py AAAA-MM-DD` y `enviar.py` lo exige (ver puntos 11–13 de esa sección). Prueba: `python3 scripts/asesor/pruebas/test_control_ventas.py`.
 
 ## Si vas a hacer anuncios / creativos
 
