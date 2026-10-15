@@ -110,8 +110,10 @@ export async function sesionActual(request, env) {
   if (payload.agentId) {
     // Sin la migración 0057 todavía no existe producto_id: no se deja a nadie fuera (aún no hay cuentas limitadas).
     const agente = await env.CRM_DB.prepare(
-      "SELECT id, username, display_name, role, active, password_hash, producto_id FROM agents WHERE id = ?"
+      "SELECT id, username, display_name, role, active, password_hash, producto_id, producto_lectura_id FROM agents WHERE id = ?"
     ).bind(payload.agentId).first().catch(() => env.CRM_DB.prepare(
+      "SELECT id, username, display_name, role, active, password_hash, producto_id FROM agents WHERE id = ?"
+    ).bind(payload.agentId).first()).catch(() => env.CRM_DB.prepare(
       "SELECT id, username, display_name, role, active, password_hash FROM agents WHERE id = ?"
     ).bind(payload.agentId).first());
     if (!agente || !agente.active) return null;
@@ -123,6 +125,8 @@ export async function sesionActual(request, env) {
     payload.username = agente.username;
     // Cuenta limitada a un producto (ej. URO): solo ve y toca los chats de ese producto.
     payload.productoId = agente.producto_id || null;
+    // Producto extra solo para LEER (ej. Veronika: escribe en URO, mira los chats de Tarot sin poder tocarlos).
+    payload.productoLecturaId = payload.productoId ? agente.producto_lectura_id || null : null;
     agentePorSesion.set(payload, agente);
   } else if (payload.pw && payload.pw !== (await huellaPassword(env, env.CRM_PASSWORD))) {
     return null;
@@ -172,7 +176,7 @@ const prohibido = () =>
   });
 
 /** null si la petición es de su producto; si no, la respuesta 403. */
-async function revisarProducto(request, env, productoId) {
+async function revisarProducto(request, env, productoId, productoLecturaId = null) {
   const url = new URL(request.url);
   if (!RUTAS_DE_PRODUCTO[url.pathname]?.includes(request.method)) return prohibido();
   // Fotos de clientes (wa/…) solo por mensaje, que sí se revisa abajo.
@@ -194,7 +198,10 @@ async function revisarProducto(request, env, productoId) {
   const chat = dato("conversation_id", "chat");
   const mensaje = dato("message_id");
   const contacto = dato("contact_id");
-  const propio = (sql, id) => db.prepare(sql).bind(id, productoId).first();
+  // Solo lectura: en GET también vale el producto de lectura; escribir solo en el propio.
+  const ids = request.method === "GET" && productoLecturaId ? [productoId, productoLecturaId] : [productoId];
+  const marcas = ids.map(() => "?").join(",");
+  const propio = (sql, id) => db.prepare(sql.replace("producto_id = ?", `producto_id IN (${marcas})`)).bind(id, ...ids).first();
 
   if (chat !== null && !await propio("SELECT 1 FROM conversations WHERE id = ? AND producto_id = ?", chat)) return prohibido();
   if (mensaje !== null && !await propio("SELECT 1 FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE m.id = ? AND c.producto_id = ?", mensaje)) return prohibido();
@@ -212,8 +219,14 @@ export function conAuth(handler) {
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
       });
     }
+    if (sesion.role === "lectura") {
+      // Rol de solo lectura: siempre atado a un producto y sin escribir nada (salvo cambiar su propia contraseña).
+      const url = new URL(context.request.url);
+      const cambiaSuClave = context.request.method === "POST" && url.pathname === "/api/crm/change-password";
+      if (!sesion.productoId || (context.request.method !== "GET" && !cambiaSuClave)) return prohibido();
+    }
     if (sesion.productoId) {
-      const bloqueo = await revisarProducto(context.request, context.env, sesion.productoId);
+      const bloqueo = await revisarProducto(context.request, context.env, sesion.productoId, sesion.productoLecturaId);
       if (bloqueo) return bloqueo;
     }
     return conSesionRenovada(await handler({ ...context, agent: sesion }), context.env, sesion);
@@ -238,4 +251,11 @@ export function conAdmin(handler) {
     }
     return conSesionRenovada(await handler({ ...context, agent: sesion }), context.env, sesion);
   };
+}
+
+/** true si el chat es del producto que la cuenta solo puede leer: leerlo no debe limpiarle los no leídos a quien lo atiende. */
+export async function chatSoloLectura(env, agent, conversationId) {
+  if (!agent?.productoLecturaId || !conversationId) return false;
+  const fila = await env.CRM_DB.prepare("SELECT producto_id FROM conversations WHERE id = ?").bind(conversationId).first();
+  return fila?.producto_id === agent.productoLecturaId;
 }

@@ -17,7 +17,7 @@
  */
 
 import { limpiarBotones } from "../../lib/whatsapp.js";
-import { conAuth } from "../../lib/crm-auth.js";
+import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
@@ -38,14 +38,14 @@ const PAGINA = 50;
  * carga cientos de mensajes de una vez ni crece sin límite en el navegador;
  * el botón "Cargar mensajes anteriores" va pidiendo de a tandas hacia arriba.
  */
-async function get({ request, env }) {
+async function get({ request, env, agent }) {
   const url = new URL(request.url);
   const conversationId = Number(url.searchParams.get("conversation_id"));
   if (!conversationId) return json({ error: "Falta conversation_id." }, 400);
 
   const beforeId = Number(url.searchParams.get("before_id")) || null;
   const preview = url.searchParams.get("preview") === "1";
-  return json(await leerMensajes(env, conversationId, beforeId, { marcarLeido: !preview }));
+  return json(await leerMensajes(env, conversationId, beforeId, { marcarLeido: !preview && !await chatSoloLectura(env, agent, conversationId) }));
 }
 
 /** También lo usa /api/crm/conversations?chat=<id>, para que el poll sea un solo request. */

@@ -12,8 +12,8 @@ de venta para la llamada y su teléfono, y marca el check cuando ya lo llamó.
 
 **Llamadas**: A Llamado (casilla; la marca la asesora, la fila se pinta de verde) · B Teléfono (`51 999 999 999`, texto) ·
 C Nombre · D Interés (Alto / Medio / Bajo / Ya compró) · E Última actividad del cliente (hora de Lima) ·
-F Resumen de la conversación · G ¿Fue venta? (casilla que marca la asesora). Tiene filtro; la Routine NUNCA
-escribe en A ni en G. (2026-10-15, pedido del dueño: se QUITARON las columnas «Speech para la llamada» y «Ojo antes
+F Resumen de la conversación · G ¿Fue venta? (casilla que marca la asesora) · H Novedad desde la última vez (la Routine la sobrescribe con 1 o 2 frases cuando el cliente ya listado vuelve a escribir o se le responde). Tiene filtro; la Routine NUNCA
+escribe en A ni en G (ni lee el resumen viejo). (2026-10-15, pedido del dueño: se QUITARON las columnas «Speech para la llamada» y «Ojo antes
 de llamar», y «Notas de la asesora» pasó a ser la casilla «¿Fue venta?».)
 
 **Estado** (memoria de la Routine): A WhatsApp · B último mensaje leído (id) · C qué se hizo («En la lista» o
@@ -21,7 +21,7 @@ de llamar», y «Notas de la asesora» pasó a ser la casilla «¿Fue venta?».)
 
 ## Cómo corre (cada hora, con el plan, sin API de IA)
 
-**Ahorro de créditos:** (1) `llamadas.py gate` revisa en un solo comando, sin leer la hoja, si algún chat con interés escribió en las últimas 3 h; si no, la sesión responde «Sin novedad» y termina (una llamada a herramienta). (2) Solo si hay movimiento lee la hoja y corre `preparar`, que descarta lo ya leído (pestaña Estado). (3) Ya no se escribe speech ni «Ojo»: solo un resumen corto por cliente.
+**Ahorro de créditos:** (1) `llamadas.py gate` revisa en un solo comando, sin leer la hoja, si algún chat con interés escribió en las últimas 3 h; si no, la sesión responde «Sin novedad» y termina (una llamada a herramienta). (2) Solo si hay movimiento lee la hoja y corre `preparar`, que descarta lo ya leído (pestaña Estado). (3) Ya no se escribe speech ni «Ojo»: solo un resumen corto por cliente. (4) Actualizar a un cliente ya listado es barato: `chats.txt` trae solo sus mensajes posteriores a la última lectura (+2 de contexto) y la Routine escribe D, E y H (Interés, Última actividad, Novedad) sin releer el resumen anterior.
 
 Routine «URO — lista de llamadas» (ver `docs/routines.md`). `scripts/uro/llamadas.py preparar` baja los
 chats de URO (`/api/asesor/chats?linea=1`, 14 días), descarta los que solo mandaron el saludo del anuncio,
