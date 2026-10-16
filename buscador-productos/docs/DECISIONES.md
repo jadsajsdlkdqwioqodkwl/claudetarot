@@ -63,3 +63,12 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Corrección propia:** el piso 1000/10 ya se había leído en US el 12 de octubre, por eso la escalera baja más.
 - **M-064 (prefiltro de voluminoso/pesado)** se retiró a «Ya cubierta»: los descartes son títulos de BR.
 - **Revertir:** volver `Config!B92:B94` a 2000, 20 y 12 y restaurar el texto anterior del paso 1 (arriba).
+
+## D-010 — Bandas, paginación y RANKEA en tandas (M-067, M-068), 2026-10-16
+
+- **Origen:** revisión de Exploración, Sesiones y Log BUSCA. Hallazgos de EXPLORA del 2026-10-14 sin llevar a las reglas, y dos RANKEA AÉREO del 2026-10-15 cerradas parciales.
+- **INSTR 06 v3.32:** (1) escalera por bandas `sales_volume_min` y `sales_volume_max` (500 a 999, luego 250 a 499); (2) «Si el total pasa de 20» pide `current_page=2, 3…` antes de partir por precio; (3) RANKEA en tandas por defecto, subagentes leen `Recetas!D39` e INSTR 03.
+- **Textos anteriores:** «léelas con ventas mínimas 500 y videos 5, y si rinden, con 250 y 3.» · «Para no pagar otra vez lo leído con 2000, prueba sales_volume_max=1999 (o 1499) en la URL; si el servidor lo respeta, solo pagas la banda nueva. Si no, parte por precio» · «la URL no tiene página 2. Parte la combinación por precio (8a20, 20a40, 40a80).» · «Modo tandas (si tienes la herramienta de subagentes): el triage (3.1) lo haces tú.» · «lee solo INSTR 03 y esta sección 3.2,».
+- **Recetas fila 39:** nueva, instrucciones compactas del subagente de RANKEA.
+- **Exploración A12:J19:** cola de 8 pruebas «Por probar».
+- **Pendiente de decisión del dueño:** M-069, subir el tope de EXPLORA de 150 a 500 créditos (INSTR 07 §3).

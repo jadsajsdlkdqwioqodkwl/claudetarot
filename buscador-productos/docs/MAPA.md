@@ -14,7 +14,7 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.31) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.32) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.1) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas: se ignoran. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
@@ -62,6 +62,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 | 36 | ALIBABA: instrucciones del subagente (D36) |
 | 37 | FILTRA: instrucciones del subagente (D37), creada 2026-10-15 |
 | 38 | BUSCA AÉREO: ranking de rendimiento por región y categoría, creada 2026-10-16 (se actualiza en MEJORA) |
+| 39 | RANKEA: instrucciones del subagente (D39), creada 2026-10-16 |
 
 ## Lo que se agregó desde esta carpeta (2026-10-15)
 

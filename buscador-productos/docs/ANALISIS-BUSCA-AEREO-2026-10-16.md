@@ -87,3 +87,17 @@ Se cruzaron las 41 filas aéreas de Productos (ID `-A-`) con su fila de Crudo po
 - `Config!B92` 2000 -> 1000, `B93` 20 -> 10, `B94` 12 -> 25 (valores anteriores en las notas C92:C94).
 - INSTR 06 v3.31: escalera hasta 500/5 y 250/3 con control del 8% y plan de cargas ordenado por rendimiento.
 - `Recetas` fila 38: ranking de regiones y categorías.
+
+## Tercera pasada: logs, Sesiones y pestaña Exploración (2026-10-16)
+
+**Lo que EXPLORA ya había confirmado el 2026-10-14 y no estaba en las reglas:**
+
+1. `sales_volume_max` filtra en el servidor (20 filas de 999 a 976 ventas). Sin el máximo, una carga con piso 500 vuelve a traer las 20 de mayor venta ya leídas: en el Log, US autorep con ventas 1500 y 1000 dio 10 de 11 y 12 de 13 repetidos. Por eso la escalera de INSTR 06 v3.32 va por **bandas** (500 a 999, luego 250 a 499).
+2. `current_page=2` pagina la lista de la interfaz (Pages:20, filas 21 a 40). INSTR 06 decía «la URL no tiene página 2» y mandaba partir por precio. Ahora pide primero la página siguiente y parte por precio solo si falla.
+3. `sort=7` ordena por videos, pero al cambiar el orden o buscar por texto se pierde `categorize`: hay que volver a ponerlo.
+
+**RANKEA sigue cerrando parcial:** las sesiones `-s` y `-w` del 2026-10-15 hicieron el pre-chequeo a mano (~20 grupos) y la cola aérea solo bajó de 128 a 124. El modo tandas de M-050 existía pero no se usaba. INSTR 06 §3.2 lo hace ahora el modo por defecto y `Recetas!D39` trae la instrucción compacta del subagente.
+
+**EXPLORA rinde poco:** una sola sesión con presupuesto (140 de 150 créditos) y 7 pruebas pendientes. El tope fijo de 150 (INSTR 07 §3) impide pruebas como Pages:100 con ~97.000 créditos disponibles. Se dejó una cola de 8 pruebas en `Exploración!A12:J19` (regiones en inglés SG/PH/MY/IE, orden por crecimiento, banda 500-999, paginación, Pages:100, árbol de categorías, productos del vendedor, búsqueda por texto) y se propone subir el tope a 500 (M-069).
+
+**Esta sesión no tiene Chrome:** no se pudo probar la plataforma a mano. EXPLORA debe correr en tu computadora, en un chat aparte, cuando termine la BUSCA AÉREO en curso (comparten Chrome).
