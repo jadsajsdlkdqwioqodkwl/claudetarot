@@ -124,3 +124,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Cambio:** `Recetas!D40` v2 (no usar X2, escribir toda carga pagada, marcar `Duplicado: ya en fila N` en Crudo!R, verificar min<=max, probar paginación comparando IDs). INSTR 06 v3.35 (X2 y current_page). INSTR 08 v1.2 (si Config B100 > 60, máximo 3 cargas y RANKEA/FILTRA primero).
 - **Para revertir:** el texto anterior de D40 está en el historial de versiones de la celda (Recetas!D40) y en el commit anterior de esta carpeta; INSTR 06 v3.34 y INSTR 08 v1.1 en el historial de Drive.
 - Anotado en Sheet: Mejoras M-077 a M-079, Experimentos E-005, Laboratorio C-002.
+
+## D-016 (2026-10-16) FILTRA en tandas de 3 y AR no da Sí con validación parcial
+
+- **Evidencia:** corrida 2026-10-15-z: 6 tandas de FILTRA (8 a 10 productos) salieron parciales; 9 filas con Recomendado «Sí» falso porque Productos!AV (escrito en el parcial) bastaba para la fórmula AR; 90 créditos de Firecrawl sin validar.
+- **Cambio:** `Productos!AR1` ahora devuelve «Pendiente validación» si AL contiene «parcial» o «corte» (antes solo «corte»). `Recetas!D37` regla v2 (un producto a la vez, máx. 3, escribir solo si terminó). INSTR 08 v1.3.
+- **Para revertir:** en AR1 quitar `+ISNUMBER(SEARCH("parcial",AL2:AL))` y el `(...)>0`; D37: quitar el párrafo «REGLA v2» del inicio.
+- Sheet: Mejoras M-080, M-081; Laboratorio C-003; Sesiones H872.
