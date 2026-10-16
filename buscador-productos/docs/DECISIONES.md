@@ -149,3 +149,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 
 - **Evidencia:** corrida 2026-10-16-b: un subagente de RANKEA con 40 grupos hizo el pre-chequeo de Meta y no puntuó ni escribió nada; el orquestador preguntó «¿sigo así?».
 - **Cambio:** INSTR 08 v1.5: nunca más de 10 grupos por subagente; tandas sucesivas sin preguntar hasta Config!B100 <= 60; un parcial se relanza. Revertir: quitar la frase añadida en la fase 2.
+
+## D-020 (2026-10-16) FILTRA ligero: terminar con Meta MCP, Firecrawl solo para candidatos a Virgen
+
+- **Evidencia:** corrida 2026-10-16-b: RANKEA completó (cola 224 -> 59, 77 productos nuevos) pero las tandas de FILTRA (tres filas) salían parciales y costaban ~150.000 tokens cada una; 0 de 5.000 créditos de Firecrawl usados porque la receta lo exigía solo para inactivos y los subagentes se quedaban sin contexto antes.
+- **Cambio:** `Recetas!D37` v3: un producto termina con Fase A + rondas 1-3 de Meta MCP + AS + AV + AI, sin Firecrawl; los candidatos a Virgen (0 o 1 anunciante) se dejan con AD:AF vacíos y nota «Candidato Virgen…» para una pasada única con Firecrawl; AV se escribe exacto «Sí»/«No». INSTR 08 v1.6: FILTRA no se pausa ni pregunta.
+- **Para revertir:** el texto anterior de D37 es la regla v2 de D-016 (quitar el párrafo «REGLA v3»).
