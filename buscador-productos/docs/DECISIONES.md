@@ -155,3 +155,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia:** corrida 2026-10-16-b: RANKEA completó (cola 224 -> 59, 77 productos nuevos) pero las tandas de FILTRA (tres filas) salían parciales y costaban ~150.000 tokens cada una; 0 de 5.000 créditos de Firecrawl usados porque la receta lo exigía solo para inactivos y los subagentes se quedaban sin contexto antes.
 - **Cambio:** `Recetas!D37` v3: un producto termina con Fase A + rondas 1-3 de Meta MCP + AS + AV + AI, sin Firecrawl; los candidatos a Virgen (0 o 1 anunciante) se dejan con AD:AF vacíos y nota «Candidato Virgen…» para una pasada única con Firecrawl; AV se escribe exacto «Sí»/«No». INSTR 08 v1.6: FILTRA no se pausa ni pregunta.
 - **Para revertir:** el texto anterior de D37 es la regla v2 de D-016 (quitar el párrafo «REGLA v3»).
+
+## D-021 (2026-10-16) FILTRA escribe celdas sueltas (no rangos que crucen AT:AU)
+
+- **Evidencia:** en 2026-10-16-b, FILTRA escribió el rango AS:AV de la fila 325 y borró AT y AU (primer anuncio visto y señal de novedad, de RANKEA). Restauradas a mano desde la nota de la fila.
+- **Cambio:** `Recetas!D37` v3.1: AS y AV en celdas sueltas; nunca un rango que cruce AT o AU.
