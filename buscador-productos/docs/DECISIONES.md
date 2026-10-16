@@ -160,3 +160,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 
 - **Evidencia:** en 2026-10-16-b, FILTRA escribió el rango AS:AV de la fila 325 y borró AT y AU (primer anuncio visto y señal de novedad, de RANKEA). Restauradas a mano desde la nota de la fila.
 - **Cambio:** `Recetas!D37` v3.1: AS y AV en celdas sueltas; nunca un rango que cruce AT o AU.
+
+## D-022 (2026-10-16) Carril de Crudo corregido y Recetas D40 v3
+
+- **Evidencia:** 48 filas del lote 2 de 2026-10-16-b (Crudo 4999-5046) tenían el ID de sesión en la columna B y no entraban a la cola; al corregirlas Config!B100 pasó de 59 a 102.
+- **Cambio:** Crudo!B4999:B5046 = «A». `Recetas!D40` v3 (B = letra A, nunca el ID de sesión; R = Pendiente en todas las filas; el dedupe lo hace Crudo!P).
+- **Pendiente:** ALIBABA (requiere Chrome conectado), exclusión de «no apto aéreo» en Config!B104, escala de la columna X. Ver Mejoras M-085, M-086.
