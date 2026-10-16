@@ -1,6 +1,6 @@
 # **INSTR 06 — BUSCA, RANKEA, FILTRA y ALIBABA**
 
-Versión 3.30 · 2026-10-15 (v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
+Versión 3.31 · 2026-10-16 (v3.31: piso 1000/10 y escalera hasta 500/5 y 250/3 con medición, cargas ordenadas por rendimiento (Recetas fila 38), 25 créditos por fila nueva; M-062, M-063; v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
 
 Cambios respecto de v3.16 (para auditoría): regla maestra "todo suma" (lo que se paga se guarda; solo se descarta lo que no sirve de ninguna forma); BUSCA AÉREO en todas las fuentes y categorías; Asia incluida con triangulación del veredicto; RANKEA sin tope de grupos por chat; créditos de Claude sin tope en ningún comando.
 
@@ -175,12 +175,12 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
 
 **Filtros en la URL** (todos en el servidor; v3.18: cada carga lleva price\_usd\_min=8 y price\_usd\_max=80 en la URL, y la ventana fija es found\_time desde 2026-04-16 hasta 2026-09-13, nunca otra; si una carga usa otra ventana o no lleva precio, anótalo en Log BUSCA R como carga no válida):
 
-  - ventas ≥ Config B92 (hoy 2000);
-  - videos ≥ Config B93 (hoy 20);
+  - ventas ≥ Config B92 (hoy 1000);
+  - videos ≥ Config B93 (hoy 10);
   - precio de US8aUS80;
   - orden por ventas (sort=3) y time=30.
 
-**Plan de cargas, en este orden:**
+**Plan de cargas, en este orden (dentro de cada paso, ordena las subcategorías y regiones por el ranking de rendimiento de Recetas fila 38: primero US y GB, aereo9, automotriz, deportes y herramientas; BR y las categorías sin productos, al final y solo si no queda nada más; M-063):**
 
 1.  **Repetir lo que rinde.** Primero las combinaciones con AH de 15 o menos créditos por producto. Después las que tienen AG mayor que 0 (aún sin RANKEA: su AE y su AH todavía no dicen nada) y 6 o menos créditos por fila nueva. Lo que importa son los productos, no las filas: muchas filas y 0 productos ya rankeados no es rendir.
       
@@ -239,13 +239,13 @@ S, T, U, V, W (pendientes de RANKEA) y el resumen Z:AH se calculan solos:
 
 **Código en Crudo D**, único por carga: A|tts|\<nombre\>-\<precio\>|\<país\>|ft..\<hasta\>. Por ejemplo, A|tts|autorep-8a80|US|ft..2026-09-12. Es el mismo de Log K; sin él, S y T no cuentan. En Crudo, B = A (carril aéreo) y L = el found\_time real de la fila.
 
-**Presupuesto:** Config B91 créditos por chat (hoy 1000), contados con la suma de Log M de la sesión. El contador de PiPiAds es el control: va con una carga de retraso.
+**Presupuesto:** Config B91 créditos por chat (hoy 3000), contados con la suma de Log M de la sesión. El contador de PiPiAds es el control: va con una carga de retraso.
 
 **Parada:** además de 2.5, si 5 cargas seguidas traen 0 filas nuevas, pasa a otro grupo de subcategorías o a otra región. Nunca cierres BUSCA AÉREO por «pool agotado», «sin ventana nueva» o «solo quedan combinaciones vacías»: eso no es un motivo de cierre, y pedir RANKEA tampoco sustituye buscar (la cola pendiente no frena la búsqueda). Cierra solo por presupuesto (Config B91), por B59 filas nuevas o porque el chat se llena. Si los pasos 1 a 3 no dejan cargas útiles, baja por la escalera de ampliación, un peldaño a la vez, hasta que se cumpla una de esas tres paradas.
 
 **Escalera de ampliación** (cada carga lleva una clave nueva en 'Log BUSCA'\!V, así que nunca repite una):
 
-1.  Más ventas hacia abajo: en las subcategorías US con mejor AH, léelas con ventas mínimas 1500 y luego 1000 (Config B64). Para no pagar otra vez lo leído con 2000, prueba sales\_volume\_max=1999 (o 1499) en la URL; si el servidor lo respeta, solo pagas la banda nueva. Si no, parte por precio (8a20, 20a40, 40a80) y los repetidos se saltan con X2. Anota en Recetas fila 34 qué funcionó.
+1.  Más ventas hacia abajo (desde 2026-10-16 el nivel base ya es 1000 ventas y 10 videos, y casi todo US se leyó también a ese nivel el 12 de octubre): en las subcategorías con mejor AH, léelas con ventas mínimas 500 y videos 5, y si rinden, con 250 y 3. En 297 filas aéreas juzgadas las ventas y los videos no predijeron el éxito; no hay datos bajo 1000, así que las dos primeras sesiones con este piso miden la tasa de Producto de cada carga: si baja de 8% (la de BR), vuelve al nivel anterior y anótalo en Mejoras (M-062). Para no pagar otra vez lo leído con 2000, prueba sales\_volume\_max=1999 (o 1499) en la URL; si el servidor lo respeta, solo pagas la banda nueva. Si no, parte por precio (8a20, 20a40, 40a80) y los repetidos se saltan con X2. Anota en Recetas fila 34 qué funcionó.
 2.  Menos videos: con ventas desde 1000, lee la banda de videos 10 a 19 (video\_count\_min=10 y video\_count\_max=19 en la URL, verificado el 2026-10-14: 1,5 créditos por fila nueva en US) para no repetir lo leído con 20 o más (Config B65).
 3.  Otro orden: si el total de una consulta pasa de 20, léela otra vez con otro orden (videos o vistas en vez de ventas) para ver otros 20. Confirma el parámetro de orden en la interfaz y anótalo en Recetas fila 34.
 4.  Subcategorías sin padre leído: prioriza las hijas de categorías padre que no se leyeron con ventas bajas. En BR las hijas de electrodomésticos y cocina repiten lo ya leído (cocinaelec: 11 de 13 ya vistos).

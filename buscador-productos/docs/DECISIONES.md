@@ -54,3 +54,12 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Causa y cambio:** INSTR 06 decía «primera fila vacía» sin forma de verla. Ahora `Config!B103` la calcula (como B101 para Sesiones) y INSTR 06 v3.30 y `Recetas!D31` paso 7 la exigen, con lectura previa de A de esa fila.
 - **Texto anterior (INSTR 06):** «Escribe 'Log BUSCA'!A:R en la primera fila vacía con update_values.»
 - **No se tocó** `Sesiones!H866` (nota de la sesión `-t`): cada sesión escribe solo en su fila.
+
+## D-009 — Piso de BUSCA AÉREO, créditos y orden de cargas (M-062, M-063), 2026-10-16
+
+- **Aprobado por el dueño** («sí 2 y 3»). Motivo: ventas y videos no predicen el éxito en 297 filas aéreas juzgadas, y el límite es el pool, no los créditos (~97.000 disponibles).
+- **Config:** `B92` 2000 -> 1000 · `B93` 20 -> 10 · `B94` 12 -> 25. Las notas C92:C94 conservan la historia.
+- **INSTR 06 v3.31:** el paso 1 de la escalera pasa de «ventas mínimas 1500 y luego 1000 (Config B64)» a «500 y videos 5, luego 250 y 3», con control: una carga que dé menos de 8% de filas juzgadas en Producto vuelve al nivel anterior. El plan de cargas se ordena por el ranking de `Recetas` fila 38. «Hoy 1000» del presupuesto pasó a «hoy 3000».
+- **Corrección propia:** el piso 1000/10 ya se había leído en US el 12 de octubre, por eso la escalera baja más.
+- **M-064 (prefiltro de voluminoso/pesado)** se retiró a «Ya cubierta»: los descartes son títulos de BR.
+- **Revertir:** volver `Config!B92:B94` a 2000, 20 y 12 y restaurar el texto anterior del paso 1 (arriba).

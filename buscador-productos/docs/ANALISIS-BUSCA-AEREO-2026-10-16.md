@@ -60,3 +60,30 @@ Los más repetidos: voluminoso 27 · funda de celular 11 · producto base común
 2. **Dónde está el rendimiento:** grupo aereo9, automotriz, deportes y herramientas en US (y GB por probar). BR rinde 8% y cuatro categorías rinden 0.
 3. **El cuello de botella aguas abajo es RANKEA**: 179 aéreas esperan puntaje (111 + 68). Más BUSCA sin vaciar la cola solo la alarga.
 4. **Hipótesis aún sin medir** (para EXPLORA): ordenar por crecimiento reciente en vez de ventas totales, ampliar a productos de 10-30 días (hoy se exigen 30 o más, Config B72), y partir de los vendedores de los productos que ya están en Top aéreo.
+
+## Segunda pasada (cruce Crudo con Productos, mismo día)
+
+Se cruzaron las 41 filas aéreas de Productos (ID `-A-`) con su fila de Crudo por el ID del anuncio (41 de 41 enlazadas).
+
+| Resultado en Productos | Cantidad |
+|---|---|
+| Recomendado **Sí** (Top) | 17 |
+| Recomendado No | 24 |
+| Estado Meta: Entrando · Quemado · Sobreexplotado | 18 · **17** · 6 |
+| Clasificación: RENTABLE · LOSER · **WINNER** | 37 · 4 · **0** |
+
+- **23 de 41 (56%) mueren por saturación en Perú** al validar (17 Quemados, 6 Sobreexplotados): cada uno gastó una lectura de RANKEA y una validación de FILTRA. Propuesta M-065.
+- **Ningún aéreo llega a WINNER**: la recompra (peso 3) vale 0 en herramientas y accesorios. Propuesta M-066.
+- **Edad del producto no separa** (muestra de 41, todos con 30 días o más por la regla B72): 41% Sí con menos de 45 días, 50% con 120 o más. No hay evidencia para o contra la «banda de 10 a 30 días»; se deja la regla del dueño como está.
+- **Ventas**: Sí en 44% con menos de 1.500 ventas, 36% de 1.500 a 3.000, 50% de 3.000 a 10.000, 29% con 10.000 o más (muestras de 7 a 14: solo orientativo).
+
+## Correcciones al análisis anterior
+
+1. **El piso 1000/10 casi no abre pool nuevo.** El 12 de octubre ya se había leído US con ventas 1000 y videos 10 (Log BUSCA, ventanas «v1000»). Por eso la escalera de INSTR 06 baja ahora a 500/5 y 250/3, con control: si la tasa de Producto de una carga baja de 8%, se vuelve atrás.
+2. **El ruido de «voluminoso/pesado» no se arregla con palabras.** Los 56 descartes de ese tipo son sobre todo títulos en portugués de BR (panelas, tampa, churrasqueira, antiaderente, ventilador). Las palabras en inglés que aparecen también están en productos buenos (led, kit, magnetic, fast). Se descartó el prefiltro (M-064 pasó a «Ya cubierta»): bajar BR al final del orden es lo que lo resuelve.
+
+## Qué se aplicó (aprobado por el dueño el 2026-10-16)
+
+- `Config!B92` 2000 -> 1000, `B93` 20 -> 10, `B94` 12 -> 25 (valores anteriores en las notas C92:C94).
+- INSTR 06 v3.31: escalera hasta 500/5 y 250/3 con control del 8% y plan de cargas ordenado por rendimiento.
+- `Recetas` fila 38: ranking de regiones y categorías.
