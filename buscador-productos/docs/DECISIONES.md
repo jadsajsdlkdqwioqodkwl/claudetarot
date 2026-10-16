@@ -137,3 +137,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia:** corrida 2026-10-16-a: FILTRA completó 11 de 14 con tandas de 3, pero Productos!AR dio «No» a todos porque exigía `AV="Sí"` exacto y los subagentes escribieron «Sí (ventas…)». Laboratorio!B4 daba #REF! por valores escritos en H36:H37. El orquestador cerró con una pregunta.
 - **Cambio:** `Productos!AR1`: `AV2:AV="Sí"` pasa a `LEFT(AV2:AV,2)="Sí"` (resultado: 9 Recomendado Sí). Laboratorio!H36:H37 vaciadas. INSTR 08 v1.4 (no pregunta; H de CORRIDAS intocable).
 - **Para revertir AR:** volver a `(AV2:AV="Sí")`. Sheet: Mejoras M-082, M-083; Laboratorio C-004.
+
+## D-018 (2026-10-16) Dedupe por ID automático en Crudo!P
+
+- **Evidencia:** corrida 2026-10-16-b: los cargadores dejaron 49 IDs repetidos sin marcar (Crudo 4900-5046) y sin `R = Pendiente` desde la fila 4908.
+- **Cambio:** `Crudo!P1` devuelve «No» si el ID (col. E) ya aparece en una fila anterior (`IFERROR(MATCH(E2:E,E2:E,0),0)<ROW(E2:E)-1`). Las filas 4699:4706 (s/d) recibieron su found_time y 4900:4907 quedaron como duplicadas. R de 4900:5046 escrita por Claude Code (49 «Duplicado», 98 «Pendiente»).
+- **Para revertir:** quitar el `IF(IFERROR(MATCH(...))<ROW(...)-1,"No", ... )` interno de la fórmula; la versión anterior es la de D-014 con B92/B93.
+- Sheet: Mejoras M-084.
