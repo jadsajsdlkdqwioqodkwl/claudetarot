@@ -117,3 +117,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Fórmula anterior de `Crudo!P1` (para revertir):**
   `=VSTACK("Pasa filtro ganador",LET(age,ARRAYFORMULA(IFERROR(TODAY()-DATEVALUE(L2:L),-1)),okmax,ARRAYFORMULA(((age<0)+(age<=Config!$B$71))>0),oktt,ARRAYFORMULA((age>=Config!$B$72)*(age<=Config!$B$71)),ARRAYFORMULA(IF(LEN(F2:F),IF(LEN(O2:O),IF((IFERROR(O2:O*1,0)>=Config!$B$64)*((LEN(T2:T)=0)+(IFERROR(T2:T*1,0)>=Config!$B$65)>0)*oktt,"Sí","No"),IF((IFERROR(I2:I*1,0)>=Config!$B$61)*(IFERROR(J2:J*1,0)>=Config!$B$62)*(IFERROR(K2:K*1,0)>=Config!$B$63)*okmax,"Sí","No")),))))`
 - **Pendiente:** las 8 filas de la primera carga (`Crudo` A4699:A4706) siguen en «No» hasta que una carga con su found_time complete L; la siguiente corrida las completa por la regla de D40.
+
+## D-015 (2026-10-16) Dedupe posterior en la hoja, cola primero
+
+- **Evidencia:** corrida 2026-10-15-y: 166 filas nuevas, pero el cargador no pudo pasar X2 (~2.400 IDs) al navegador; 23 créditos sin filas. Comprobado en la hoja: 0 IDs repetidos entre las 166 filas. Cola aérea 124 -> 190.
+- **Cambio:** `Recetas!D40` v2 (no usar X2, escribir toda carga pagada, marcar `Duplicado: ya en fila N` en Crudo!R, verificar min<=max, probar paginación comparando IDs). INSTR 06 v3.35 (X2 y current_page). INSTR 08 v1.2 (si Config B100 > 60, máximo 3 cargas y RANKEA/FILTRA primero).
+- **Para revertir:** el texto anterior de D40 está en el historial de versiones de la celda (Recetas!D40) y en el commit anterior de esta carpeta; INSTR 06 v3.34 y INSTR 08 v1.1 en el historial de Drive.
+- Anotado en Sheet: Mejoras M-077 a M-079, Experimentos E-005, Laboratorio C-002.

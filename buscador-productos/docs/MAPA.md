@@ -16,9 +16,9 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.34) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.35) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.1) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
-| INSTR 08 BUSCA AÉREO de punta a punta y Laboratorio (v1.1, 2026-10-16) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
+| INSTR 08 BUSCA AÉREO de punta a punta y Laboratorio (v1.2, 2026-10-16) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas guardadas en la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`): se ignoran. El 2026-10-16 un chat leyó INSTR 00 v4.16 e INSTR 06 v3.26 de esa carpeta por error; las vigentes son las de la tabla de arriba. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
@@ -68,7 +68,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 | 37 | FILTRA: instrucciones del subagente (D37), creada 2026-10-15 |
 | 38 | BUSCA AÉREO: ranking de rendimiento por región y categoría, creada 2026-10-16 (se actualiza en MEJORA) |
 | 39 | RANKEA: instrucciones del subagente (D39), creada 2026-10-16; v3 el mismo día tras dos pilotos |
-| 40 | BUSCA AÉREO: instrucciones del subagente cargador (D40), creada 2026-10-16 tras la primera corrida real |
+| 40 | BUSCA AÉREO: instrucciones del subagente cargador (D40), creada 2026-10-16 tras la primera corrida real | (v2 2026-10-16: dedupe posterior en la hoja, sin X2 en el navegador)
 
 ## Lo que se agregó desde esta carpeta (2026-10-15)
 
