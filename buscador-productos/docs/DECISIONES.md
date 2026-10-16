@@ -84,3 +84,11 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Corrección propia durante la sesión:** INSTR 08 §6 prometía volver a EXPERIMENTANDO con una caída bajo 70% de la meta; la fórmula de `Laboratorio!B4` no lo implementa. Se corrigió el texto para que coincida con la fórmula.
 - **Revertir:** `Config!B106` = No (la corrida se detiene tras RANKEA y espera ✅); «BUSCA AÉREO SOLO» da el comportamiento anterior; borrar INSTR 08 y restaurar el texto de INSTR 00 §3.
 - **No creado (a propósito):** una rutina programada en la nube. Escribiría en la hoja sin supervisión; se activa solo si el dueño lo pide.
+
+## D-012 — Índice vivo en Drive en vez de pegar en el prompt (M-072), 2026-10-16
+
+- **Problema:** el prompt del Project solo se edita a mano en claude.ai; los chats del Project no leen el repo; un chat abrió copias archivadas (INSTR 00 v4.16, INSTR 06 v3.26).
+- **Decisión (idea del dueño):** poner el mapa en un documento de Drive que INSTR 00 enlaza. Documento «MAPA del proyecto (índice vivo)», ID `1VR4kTJhNzMZ-dYiCWPJHKMyjbMrO2yY6RvFsFcdWh8s`. INSTR 00 v4.20 agrega, tras «Documentos vigentes», el índice vivo, la prohibición de abrir la carpeta de versiones o títulos «(v…)», y que la lista de «Datos fijos» del prompt puede ir atrasada (usar INSTR 08 sin avisar).
+- **Texto anterior de INSTR 00:** «Documentos vigentes: INSTR 00 a INSTR 08 (9 documentos).» (sin más).
+- **Mantenimiento:** cada cambio de versión de un INSTR actualiza la tabla del MAPA de Drive y `docs/MAPA.md`.
+- **Revertir:** borrar el párrafo de INSTR 00 y el documento MAPA.

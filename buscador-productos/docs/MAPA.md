@@ -1,5 +1,7 @@
 # MAPA — qué se conecta con qué
 
+> **El índice vivo está en Drive:** documento «MAPA del proyecto (índice vivo)», ID `1VR4kTJhNzMZ-dYiCWPJHKMyjbMrO2yY6RvFsFcdWh8s` (lo leen los chats del Project; el repo no). Este archivo es el espejo con más historia. Si cambia la versión de un INSTR, se actualizan los dos.
+
 Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrige.** Si algo sale del sistema, se anota que se quitó y cuándo.
 
 ## Drive
@@ -8,7 +10,7 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 |---|---|
 | Carpeta «Buscador de Productos Ganadores Perú» | `1pm8A0Zltc1CEGW4Exg3EuKDgoAUuLyR8` |
 | Sheet «Base Productos Ganadores Perú» | `1DlLjVSqA3bs26xLrXxTFXGpdSdCA8_Cwz1hY0Nzhsd0` |
-| INSTR 00 Reglas generales y arranque (v4.19) | `1jZCQy6a6w2PsZTOHxee0yNjlMrrmfaYk9WzO31F3i9A` |
+| INSTR 00 Reglas generales y arranque (v4.20) | `1jZCQy6a6w2PsZTOHxee0yNjlMrrmfaYk9WzO31F3i9A` |
 | INSTR 01 Workflow 1 desde el dolor (v3, legado W1) | `15nN2K-CbJ7I_DCT0ESlajkb8i2lk4rFpl9JbGdp86rU` |
 | INSTR 02 Workflow 2 desde el producto (v3.1, legado W2) | `1h3qx_8NI0xa4khIEt4UJoyc7zrTotanIPmQAXaHo-88` |
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
@@ -77,7 +79,6 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 |---|---|
 | `Config!B101` / `B102` | Fila e ID libres de la próxima sesión en `Sesiones` |
 | `Config!B103` | Fila libre de la próxima carga en `Log BUSCA` (A:R). Agregada 2026-10-15 (M-061) |
-
 | `Config!B104` | Lista de filas de Productos (Registro = Ninguno, Recomendado «Pendiente…») para validar sin esperar el ✅ (2026-10-16) |
 | `Config!B105` | Máximo de productos a validar con FILTRA por corrida de BUSCA AÉREO (hoy 40) |
 | `Config!B106` | Interruptor: validar y buscar proveedor sin esperar el ✅ (Sí/No) |

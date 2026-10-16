@@ -1,5 +1,9 @@
 # Cambios al prompt del Project (claude.ai)
 
+> **Actualización 2026-10-16: ya no hay nada obligatorio que pegar.** Todo lo que los chats necesitan está en Drive: el documento «MAPA del proyecto (índice vivo)» (ID `1VR4kTJhNzMZ-dYiCWPJHKMyjbMrO2yY6RvFsFcdWh8s`) y INSTR 00 v4.20, que cada chat abre primero por su ID y que lo enlaza. INSTR 00 trae la regla de no abrir la carpeta de versiones ni títulos «(v…)», de usar INSTR 08 aunque el prompt no lo liste, y de no avisar por eso. INSTR 08 sección 2 trae la autorización de subagentes y de validar sin esperar el ✅.
+>
+> Los cuatro cambios de abajo quedan como **opcionales** (refuerzan lo mismo desde el prompt). Si los pegas, el único que cambia algo visible es el 1: evita el aviso de «hay un INSTR que no está en Datos fijos» en cada arranque.
+
 El prompt del Project vive en claude.ai (Project > Instructions), no en Drive ni en este repo: hay que pegarlo a mano. Son tres cambios.
 
 ## 1. Agregar INSTR 08 a «Datos fijos»
