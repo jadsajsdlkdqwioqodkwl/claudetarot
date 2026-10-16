@@ -38,6 +38,7 @@ PiPiAds --BUSCA--> Crudo (TODO se guarda, con su motivo) --RANKEA--> Productos (
 | `docs/MAPA.md` | IDs de Drive, pestañas, columnas con fórmula, versiones vigentes |
 | `docs/AUDITORIA-2026-10-15.md` | Hallazgos de la primera auditoría y su estado |
 | `docs/BUSCA-AEREO-2026-10-15.md` | Intento de BUSCA AÉREO desde la nube, lectura del Log BUSCA y plan de cargas |
+| `docs/ANALISIS-BUSCA-AEREO-2026-10-16.md` | Qué predice que una fila aérea llegue a Productos (ventas, videos, región, categoría) |
 | `docs/DECISIONES.md` | Qué se decidió, por qué y el texto anterior (para poder revertir) |
 | `docs/espejo/INSTR-06.md` | Copia de INSTR 06 v3.30 (comandos BUSCA, RANKEA, FILTRA, ALIBABA) |
 
