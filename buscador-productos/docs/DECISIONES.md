@@ -100,3 +100,20 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Texto anterior:** documento de Drive «ARRANQUE del proyecto (v2026-10-06)» (ID `1PW8x2UjdMlcsHrOD8P6HTM905kgBrt-j-gNrIovsCe0`), renombrado para que cuente como copia archivada. Su paso 1 buscaba `parentId = '1pm8…' and title contains 'INSTR'` y su paso 2 leía INSTR 00 e INSTR 05.
 - **Arreglos menores en INSTR 00:** «hoy 1000 cada uno» pasó a «hoy 3000 cada uno» (B66 y B91) y `Config!A85:C100` a `A85:C106`.
 - **Pendiente del dueño:** pegar el texto en claude.ai > Project > Instructions (no se puede editar desde aquí).
+
+## D-014 — Primera corrida real: el principal solo orquesta; filtro de Crudo!P del carril aéreo (M-074, M-075, M-076), 2026-10-16
+
+- **Qué pasó:** la primera corrida real de BUSCA AÉREO (`2026-10-15-x`) hizo 1 carga y cerró parcial por falta de contexto, sin subagentes. El principal había leído INSTR 00, 05, MAPA, INSTR 08, INSTR 06 completo (~16 mil tokens: `read_file_content` no lee secciones), Config, Laboratorio, Experimentos, Log BUSCA, X2 y Recetas 31 a 39 porque INSTR 08 fase 0 se lo mandaba. Error de diseño mío.
+- **Dato bueno:** US autorep, ventas 500 a 999, videos 5 o más: 8 filas nuevas por 8 créditos, 0 repetidos. La banda funciona.
+- **Dato malo (más importante):** esas filas quedaron con `Crudo!P` = «No». La fórmula exigía `found_time` válido en L y ventas y videos de `Config!B64` y `B65` (1000 y 10) para todas las filas de TikTok Shop, incluido el carril aéreo; por eso lo cargado bajo 1000 ventas, o sin fecha, nunca llegaba a la Cola de RANKEA. M-062 (bajar B92 y B93) no tenía efecto aguas abajo.
+- **Cambios:**
+  1. `Crudo!P1`: en el carril A (columna B = A) el filtro lee `Config!B92` y `B93`. Neutro con B92 = B64 y B93 = B65 (la cola siguió en 3 y 124). Prueba: fila 4699 con L de prueba pasó a «Sí» y la cola subió a 125; la fecha de prueba se restauró a `s/d`. **Fórmula anterior** en `Experimentos!E15` y abajo.
+  2. `Config!B92` 1000 -> 500 y `B93` 10 -> 5 (E-002).
+  3. INSTR 08 v1.1: el principal lee solo Config, Laboratorio y Experimentos; subagente cargador por lotes (`Recetas!D40`); corrida mínima (5 cargas, una tanda de RANKEA, una de FILTRA, el Juez).
+  4. INSTR 00 v4.21: en BUSCA AÉREO el principal no abre INSTR 06 ni lee el Log.
+  5. INSTR 06 v3.34: la ventana de found_time ya no está fija (antes «2026-04-16 hasta 2026-09-13, nunca otra»): va de hoy − B71 a hoy − B72 y avanza.
+  6. `Recetas!D40`: found_time (L) obligatorio; completar L, O y T de filas existentes con `s/d`.
+- **Registro honesto:** la corrida se anotó en `Laboratorio` CORRIDAS como C-001 con «Parcial = Sí» (no cuenta para la meta).
+- **Fórmula anterior de `Crudo!P1` (para revertir):**
+  `=VSTACK("Pasa filtro ganador",LET(age,ARRAYFORMULA(IFERROR(TODAY()-DATEVALUE(L2:L),-1)),okmax,ARRAYFORMULA(((age<0)+(age<=Config!$B$71))>0),oktt,ARRAYFORMULA((age>=Config!$B$72)*(age<=Config!$B$71)),ARRAYFORMULA(IF(LEN(F2:F),IF(LEN(O2:O),IF((IFERROR(O2:O*1,0)>=Config!$B$64)*((LEN(T2:T)=0)+(IFERROR(T2:T*1,0)>=Config!$B$65)>0)*oktt,"Sí","No"),IF((IFERROR(I2:I*1,0)>=Config!$B$61)*(IFERROR(J2:J*1,0)>=Config!$B$62)*(IFERROR(K2:K*1,0)>=Config!$B$63)*okmax,"Sí","No")),))))`
+- **Pendiente:** las 8 filas de la primera carga (`Crudo` A4699:A4706) siguen en «No» hasta que una carga con su found_time complete L; la siguiente corrida las completa por la regla de D40.

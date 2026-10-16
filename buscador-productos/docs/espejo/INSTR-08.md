@@ -1,6 +1,6 @@
 # INSTR 08 — BUSCA AÉREO de punta a punta y Laboratorio
 
-Versión 1.0 · 2026-10-16
+Versión 1.1 · 2026-10-16 (v1.1: tras la primera corrida real, que cerró parcial con una sola carga: el principal ya no lee INSTR 06, Recetas ni Log BUSCA y las cargas van en un subagente cargador por lotes; Crudo!P del carril aéreo lee Config B92 y B93)
 
 (Espejo del documento de Drive `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM`. Manda el de Drive.)
 
@@ -22,15 +22,15 @@ Versión 1.0 · 2026-10-16
 
 | Fase | Quién | Dónde corre | Qué hace |
 |---|---|---|---|
-| 0. Arranque ligero | Principal | Cualquiera | Lee solo: Config!B91:B94, B96, B100:B106; Laboratorio!A4:B10 (estado y metas) y A33:N94 (corridas); Experimentos!A:K (el experimento «En curso» o, si no hay, el «Pendiente» de menor prioridad; nunca uno «Necesita OK del dueño»); Log BUSCA Z1:AH80 y X2; Recetas filas 31, 34, 36, 37, 38 y 39. Anota «cola al inicio» = Config!B100. Registra la sesión (Config!B101:B102). |
-| 1. Cargas | Principal o un subagente cargador (uno solo, nunca dos) | Chrome (tu computadora) | Plan de cargas de INSTR 06 sección 2.8, ordenado por Recetas fila 38, más el experimento activo. Una fila de Log BUSCA por carga, en la fila de Config!B103. Para por el presupuesto B91, por B59 filas nuevas, o cambia de grupo tras 5 cargas seguidas sin filas nuevas. |
+| 0. Arranque ligero | Principal | Cualquiera | El principal lee SOLO esto: Config!B91:B106 (una llamada); Laboratorio!A4:B10 y las filas usadas de A35:N94; Experimentos!A1:K20 (el experimento «En curso» o, si no hay, el «Pendiente» de menor prioridad; nunca uno «Necesita OK del dueño»). NO abre INSTR 06, 03 ni 04 y NO lee Recetas, Log BUSCA ni X2: eso lo leen los subagentes, cada uno su celda de Recetas. Abrir INSTR 06 completo cuesta ~16 mil tokens y Recetas y Log otros ~30 mil: por eso la primera corrida real (2026-10-16) llegó a la primera carga sin contexto para seguir. Anota «cola al inicio» = Config!B100. Registra la sesión (Config!B101:B102). |
+| 1. Cargas | Un subagente cargador por lote (uno solo a la vez, nunca dos), con Recetas!D40 | Chrome (tu computadora) | El principal lanza el cargador con el ID de sesión, el experimento activo, el presupuesto restante (B91 menos lo gastado) y un máximo de 10 cargas por lote. El cargador lee INSTR 06 sección 2.8 y las recetas, arma el plan (ordenado por Recetas fila 38), hace las cargas, escribe Crudo y Log BUSCA (fila de Config!B103) y devuelve una línea por carga. El principal lanza otro lote hasta agotar el presupuesto B91, llegar a B59 filas nuevas o tener 5 lotes seguidos con 0 filas nuevas. Cada fila de Crudo lleva su found_time en la columna L: sin L la fila no pasa Crudo!P y RANKEA nunca la ve. |
 | 2. RANKEA AÉREO | El principal hace el triage; hasta 3 subagentes pre-chequean y puntúan tandas de grupos (Recetas!D39) | Cualquiera | Arranca en cuanto hay 24 filas Preseleccionadas y sigue en paralelo con la fase 1; al terminar la fase 1 vacía el resto de la cola. El principal asigna los IDs y escribe Productos, Excluidos y Crudo R:S en lote. |
 | 3. FILTRA AÉREO | Hasta 3 subagentes en tandas de 4 productos (Recetas!D37) | Cualquiera | Con Config!B106 = Sí, valida la lista de Config!B104 (mayor puntaje primero) hasta el tope B105, sin tocar la casilla de Revisión. Se dispara después de cada tanda de RANKEA que dejó productos nuevos. |
 | 4. ALIBABA AÉREO | Subagentes en tandas de 4, uno tras otro (Recetas!D36) | Chrome | Cuando terminó la fase 1: los Top aéreos sin proveedor (Config!B96), empezando por los Top nuevos de la corrida. |
 | 5. Juez | Un subagente | Cualquiera | Mide la corrida, da el veredicto del experimento y elige el siguiente (sección 4). |
 | 6. Cierre | Principal | Cualquiera | Sesiones!H (qué hizo, cuánto gastó, qué quedó pendiente); una fila en Laboratorio CORRIDAS (primera libre de A35:A94); Mejoras para lo que necesite al dueño; entrega (sección 8). |
 
-**Sin Chrome** (por ejemplo una sesión en la nube): se saltan las fases 1 y 4 y se corren la 2, la 3 y la 5, que vacían la cola. Esa corrida se registra con «Parcial = Sí» y no cuenta para la meta.
+**Sin Chrome** (por ejemplo una sesión en la nube): se saltan las fases 1 y 4 y se corren la 2, la 3 y la 5, que vacían la cola. Esa corrida se registra con «Parcial = Sí» y no cuenta para la meta. Corrida mínima: ninguna corrida se cierra con menos de 5 cargas (o el presupuesto B91 agotado), una tanda de RANKEA, una de FILTRA (si la lista de B104 tiene productos) y el Juez. Cerrar «parcial» por contexto solo vale si las respuestas ya salen cortadas; el principal gasta poco contexto (fase 0) y delega el resto, así que una sola carga nunca es una corrida.
 
 ## 4. Bucle de prueba y error (el Juez)
 
@@ -38,7 +38,7 @@ Versión 1.0 · 2026-10-16
 2. **Medición.** El Juez calcula: créditos (suma de Log BUSCA M de la sesión), filas nuevas, productos nuevos (Productos con el ID de la corrida), **Top nuevos** (Recomendado «Sí» de esos productos después de FILTRA), tasa de Producto de las cargas (productos / filas juzgadas), cola al inicio y al final. Escribe la fila en CORRIDAS.
 3. **Veredicto.** *Mantener* si los Top por 100 créditos o los Top nuevos suben, la tasa de Producto no baja de 8% y la cola no crece más de Laboratorio!B8. *Revertir* si la tasa de Producto baja de 8% o los Top por 100 créditos caen más de 30% frente a la mediana de las 3 corridas anteriores (o la línea base). *Seguir midiendo* (máximo 2 corridas más) si no se distingue. Escribe Resultado, Corrida y Notas en Experimentos.
 4. **Revertir** es devolver la perilla a su «Valor anterior» y anotarlo en Mejoras.
-5. **Perillas que el Juez mueve sin pedir permiso:** Config!B92 (250 a 3000), B93 (3 a 30), B94 (8 a 40), B105 (10 a 80); el orden de regiones y categorías de Recetas fila 38; el tamaño de las tandas (4 a 8; para RANKEA 8 a 10) y los subagentes en paralelo (1 a 3). Todo lo demás (texto de los INSTR, Config!B72 y B91, el puntaje, los estados) queda en Mejoras como «Necesita OK del dueño», con la evidencia.
+5. **Perillas que el Juez mueve sin pedir permiso:** Config!B92 (250 a 3000) y B93 (3 a 30), que son el piso de las cargas y también el filtro de Crudo!P del carril aéreo (lo que se carga bajo ese piso no llega a RANKEA), B94 (8 a 40), B105 (10 a 80); el orden de regiones y categorías de Recetas fila 38; el tamaño de las tandas (4 a 8; para RANKEA 8 a 10) y los subagentes en paralelo (1 a 3). Todo lo demás (texto de los INSTR, Config!B72 y B91, el puntaje, los estados) queda en Mejoras como «Necesita OK del dueño», con la evidencia.
 6. **Siguiente experimento:** el de menor prioridad numérica en «Pendiente». Si no queda ninguno, el Juez propone 3 nuevos a partir de lo que falló en la corrida, con su evidencia, y los agrega como «Pendiente».
 7. Cada 5 corridas recalcula Recetas fila 38 con las filas juzgadas nuevas (experimento E-013).
 8. **Anti-trampa:** la métrica es «Top nuevos» después de FILTRA, nunca filas ni productos. Un Top no cuenta si luego queda Quemado o Sobreexplotado: el estado lo fija FILTRA.

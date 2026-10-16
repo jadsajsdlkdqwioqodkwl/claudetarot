@@ -1,6 +1,6 @@
 # **INSTR 06 — BUSCA, RANKEA, FILTRA y ALIBABA**
 
-Versión 3.33 · 2026-10-16 (v3.33: el flujo de BUSCA AÉREO de punta a punta lo manda INSTR 08; esta sección 2.8 sigue mandando en cómo se hace cada carga y «BUSCA AÉREO SOLO» hace solo las cargas; v3.32: bandas de ventas con sales_volume_max y paginación con current_page, confirmadas por EXPLORA el 2026-10-14; RANKEA en tandas por defecto con Recetas\!D39; M-067, M-068; v3.31: piso 1000/10 y escalera hasta 500/5 y 250/3 con medición, cargas ordenadas por rendimiento (Recetas fila 38), 25 créditos por fila nueva; M-062, M-063; v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
+Versión 3.34 · 2026-10-16 (v3.34: la ventana de found_time avanza (hoy − B71 a hoy − B72) en vez de estar fija; v3.33: el flujo de BUSCA AÉREO de punta a punta lo manda INSTR 08; esta sección 2.8 sigue mandando en cómo se hace cada carga y «BUSCA AÉREO SOLO» hace solo las cargas; v3.32: bandas de ventas con sales_volume_max y paginación con current_page, confirmadas por EXPLORA el 2026-10-14; RANKEA en tandas por defecto con Recetas\!D39; M-067, M-068; v3.31: piso 1000/10 y escalera hasta 500/5 y 250/3 con medición, cargas ordenadas por rendimiento (Recetas fila 38), 25 créditos por fila nueva; M-062, M-063; v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
 
 Cambios respecto de v3.16 (para auditoría): regla maestra "todo suma" (lo que se paga se guarda; solo se descarta lo que no sirve de ninguna forma); BUSCA AÉREO en todas las fuentes y categorías; Asia incluida con triangulación del veredicto; RANKEA sin tope de grupos por chat; créditos de Claude sin tope en ningún comando.
 
@@ -173,7 +173,7 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
 
 **Una subcategoría por carga.** Las subcategorías y sus IDs están en Recetas fila 31 F. Las categorías padre juntas traían sobre todo moda, papelería y cargadores (18,6 créditos por fila nueva, contra 1,3 a 2 por categoría sola). **Regiones: todas las del selector, incluida Asia** (ver triangulación en 2.4), empezando por US, BR, GB, MX y ES.
 
-**Filtros en la URL** (todos en el servidor; v3.18: cada carga lleva price\_usd\_min=8 y price\_usd\_max=80 en la URL, y la ventana fija es found\_time desde 2026-04-16 hasta 2026-09-13, nunca otra; si una carga usa otra ventana o no lleva precio, anótalo en Log BUSCA R como carga no válida):
+**Filtros en la URL** (todos en el servidor; v3.18: cada carga lleva price\_usd\_min=8 y price\_usd\_max=80 en la URL, y la ventana de found\_time va desde hoy − Config B71 días hasta hoy − Config B72 días (hoy 180 y 30) y avanza un día por día: una ventana ya leída de una combinación (columna AF del resumen) no se vuelve a pagar, se lee solo el tramo nuevo desde el día siguiente a su último «hasta»; si una carga no lleva precio, anótalo en Log BUSCA R como carga no válida):
 
   - ventas ≥ Config B92 (hoy 1000);
   - videos ≥ Config B93 (hoy 10);
