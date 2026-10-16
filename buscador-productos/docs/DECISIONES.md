@@ -92,3 +92,11 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Texto anterior de INSTR 00:** «Documentos vigentes: INSTR 00 a INSTR 08 (9 documentos).» (sin más).
 - **Mantenimiento:** cada cambio de versión de un INSTR actualiza la tabla del MAPA de Drive y `docs/MAPA.md`.
 - **Revertir:** borrar el párrafo de INSTR 00 y el documento MAPA.
+
+## D-013 — Prompt único y corto del Project (M-073), 2026-10-16
+
+- **Problema:** el prompt mandaba buscar los INSTR por título y llevaba una lista de IDs que se atrasa; un chat abrió copias archivadas, otro no abrió INSTR 00 ni supo el ID de la hoja.
+- **Decisión:** prompt que abre por ID INSTR 00, INSTR 05 y el MAPA (índice vivo), prohíbe copias archivadas y trae la autorización de subagentes y la línea de BUSCA AÉREO. Texto en `docs/PROMPT-PROYECTO.md` y en el documento de Drive «ARRANQUE del proyecto (pegar en el proyecto de Claude)» (ID `1SCso_Af8OvRbUX1UL2YpmyOPT_ZWVgAeBvi1xFqApws`).
+- **Texto anterior:** documento de Drive «ARRANQUE del proyecto (v2026-10-06)» (ID `1PW8x2UjdMlcsHrOD8P6HTM905kgBrt-j-gNrIovsCe0`), renombrado para que cuente como copia archivada. Su paso 1 buscaba `parentId = '1pm8…' and title contains 'INSTR'` y su paso 2 leía INSTR 00 e INSTR 05.
+- **Arreglos menores en INSTR 00:** «hoy 1000 cada uno» pasó a «hoy 3000 cada uno» (B66 y B91) y `Config!A85:C100` a `A85:C106`.
+- **Pendiente del dueño:** pegar el texto en claude.ai > Project > Instructions (no se puede editar desde aquí).
