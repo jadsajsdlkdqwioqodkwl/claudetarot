@@ -131,3 +131,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Cambio:** `Productos!AR1` ahora devuelve «Pendiente validación» si AL contiene «parcial» o «corte» (antes solo «corte»). `Recetas!D37` regla v2 (un producto a la vez, máx. 3, escribir solo si terminó). INSTR 08 v1.3.
 - **Para revertir:** en AR1 quitar `+ISNUMBER(SEARCH("parcial",AL2:AL))` y el `(...)>0`; D37: quitar el párrafo «REGLA v2» del inicio.
 - Sheet: Mejoras M-080, M-081; Laboratorio C-003; Sesiones H872.
+
+## D-017 (2026-10-16) AR lee AV con LEFT; orquestador no pregunta; Laboratorio!H intocable
+
+- **Evidencia:** corrida 2026-10-16-a: FILTRA completó 11 de 14 con tandas de 3, pero Productos!AR dio «No» a todos porque exigía `AV="Sí"` exacto y los subagentes escribieron «Sí (ventas…)». Laboratorio!B4 daba #REF! por valores escritos en H36:H37. El orquestador cerró con una pregunta.
+- **Cambio:** `Productos!AR1`: `AV2:AV="Sí"` pasa a `LEFT(AV2:AV,2)="Sí"` (resultado: 9 Recomendado Sí). Laboratorio!H36:H37 vaciadas. INSTR 08 v1.4 (no pregunta; H de CORRIDAS intocable).
+- **Para revertir AR:** volver a `(AV2:AV="Sí")`. Sheet: Mejoras M-082, M-083; Laboratorio C-004.
