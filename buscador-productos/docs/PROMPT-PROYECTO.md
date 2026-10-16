@@ -30,6 +30,14 @@ Agrega, debajo de «Arranque»:
 BUSCA AÉREO corre todo el flujo aéreo en una sola orden (INSTR 08). BUSCA AÉREO SOLO hace únicamente las cargas.
 ```
 
+## 4. Que no abra copias archivadas de los INSTR (agregado 2026-10-16)
+
+El 2026-10-16 un chat de BUSCA AÉREO dijo usar «INSTR 00 v4.16 e INSTR 06 v3.26»: eran copias archivadas de la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`), no los documentos vigentes (INSTR 00 v4.19, INSTR 06 v3.33). Con las copias viejas no existen `Config!B103` (fila libre del Log BUSCA), las bandas de ventas, la paginación ni RANKEA en tandas por defecto. Agrega al paso 3 del arranque:
+
+```
+Los INSTR vigentes están solo en la carpeta principal (ID 1pm8A0Zltc1CEGW4Exg3EuKDgoAUuLyR8) y se abren por su ID de «Datos fijos». Nunca abras un documento de la carpeta de versiones (ID 1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM) ni uno cuyo título termine en «(v…)»: son copias archivadas. Si dudas, la versión vigente figura en la primera línea del documento y en docs/MAPA.md.
+```
+
 ## Qué no hace falta cambiar
 
 - Los pasos 1, 2, 4 y 5 del arranque.

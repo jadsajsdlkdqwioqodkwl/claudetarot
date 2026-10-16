@@ -18,7 +18,7 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 07 EXPLORA (v1.1) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
 | INSTR 08 BUSCA AÉREO de punta a punta y Laboratorio (v1.0, 2026-10-16) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
-Los Drive de INSTR con título terminado en «(v…)» son copias viejas: se ignoran. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
+Los Drive de INSTR con título terminado en «(v…)» son copias viejas guardadas en la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`): se ignoran. El 2026-10-16 un chat leyó INSTR 00 v4.16 e INSTR 06 v3.26 de esa carpeta por error; las vigentes son las de la tabla de arriba. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
 ## Pestañas del Sheet
 
