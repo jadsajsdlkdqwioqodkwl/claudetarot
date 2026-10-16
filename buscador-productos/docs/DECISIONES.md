@@ -144,3 +144,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Cambio:** `Crudo!P1` devuelve «No» si el ID (col. E) ya aparece en una fila anterior (`IFERROR(MATCH(E2:E,E2:E,0),0)<ROW(E2:E)-1`). Las filas 4699:4706 (s/d) recibieron su found_time y 4900:4907 quedaron como duplicadas. R de 4900:5046 escrita por Claude Code (49 «Duplicado», 98 «Pendiente»).
 - **Para revertir:** quitar el `IF(IFERROR(MATCH(...))<ROW(...)-1,"No", ... )` interno de la fórmula; la versión anterior es la de D-014 con B92/B93.
 - Sheet: Mejoras M-084.
+
+## D-019 (2026-10-16) RANKEA: máximo 10 grupos por subagente, tandas sucesivas
+
+- **Evidencia:** corrida 2026-10-16-b: un subagente de RANKEA con 40 grupos hizo el pre-chequeo de Meta y no puntuó ni escribió nada; el orquestador preguntó «¿sigo así?».
+- **Cambio:** INSTR 08 v1.5: nunca más de 10 grupos por subagente; tandas sucesivas sin preguntar hasta Config!B100 <= 60; un parcial se relanza. Revertir: quitar la frase añadida en la fase 2.
