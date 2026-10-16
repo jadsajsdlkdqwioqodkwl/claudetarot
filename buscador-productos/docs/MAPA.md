@@ -8,14 +8,15 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 |---|---|
 | Carpeta «Buscador de Productos Ganadores Perú» | `1pm8A0Zltc1CEGW4Exg3EuKDgoAUuLyR8` |
 | Sheet «Base Productos Ganadores Perú» | `1DlLjVSqA3bs26xLrXxTFXGpdSdCA8_Cwz1hY0Nzhsd0` |
-| INSTR 00 Reglas generales y arranque (v4.18) | `1jZCQy6a6w2PsZTOHxee0yNjlMrrmfaYk9WzO31F3i9A` |
+| INSTR 00 Reglas generales y arranque (v4.19) | `1jZCQy6a6w2PsZTOHxee0yNjlMrrmfaYk9WzO31F3i9A` |
 | INSTR 01 Workflow 1 desde el dolor (v3, legado W1) | `15nN2K-CbJ7I_DCT0ESlajkb8i2lk4rFpl9JbGdp86rU` |
 | INSTR 02 Workflow 2 desde el producto (v3.1, legado W2) | `1h3qx_8NI0xa4khIEt4UJoyc7zrTotanIPmQAXaHo-88` |
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.32) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.33) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.1) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
+| INSTR 08 BUSCA AÉREO de punta a punta y Laboratorio (v1.0, 2026-10-16) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas: se ignoran. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
@@ -38,6 +39,8 @@ Los Drive de INSTR con título terminado en «(v…)» son copias viejas: se ign
 | Sub-nichos, Fuentes, Rankings | Oculta | Legado de W1/W2 | — |
 | Log BUSCA | Oculta | Memoria de BUSCA AÉREO | BUSCA AÉREO (S:AH son fórmulas) |
 | Exploración | Oculta | Pruebas de EXPLORA | EXPLORA |
+| Laboratorio | Oculta (al final) | Estado, metas, KPI, línea base y corridas de BUSCA AÉREO (INSTR 08). Creada 2026-10-16 | Orquestador de BUSCA AÉREO (CORRIDAS A35:N94); metas B6:B9 el dueño |
+| Experimentos | Oculta (al final) | Hipótesis, perilla, valor anterior y veredicto del bucle (INSTR 08). Creada 2026-10-16 | Orquestador y Juez |
 
 Nunca cambies el orden de las pestañas ni las muestres u ocultes.
 
@@ -62,7 +65,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 | 36 | ALIBABA: instrucciones del subagente (D36) |
 | 37 | FILTRA: instrucciones del subagente (D37), creada 2026-10-15 |
 | 38 | BUSCA AÉREO: ranking de rendimiento por región y categoría, creada 2026-10-16 (se actualiza en MEJORA) |
-| 39 | RANKEA: instrucciones del subagente (D39), creada 2026-10-16 |
+| 39 | RANKEA: instrucciones del subagente (D39), creada 2026-10-16; v3 el mismo día tras dos pilotos |
 
 ## Lo que se agregó desde esta carpeta (2026-10-15)
 
@@ -74,3 +77,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 |---|---|
 | `Config!B101` / `B102` | Fila e ID libres de la próxima sesión en `Sesiones` |
 | `Config!B103` | Fila libre de la próxima carga en `Log BUSCA` (A:R). Agregada 2026-10-15 (M-061) |
+
+| `Config!B104` | Lista de filas de Productos (Registro = Ninguno, Recomendado «Pendiente…») para validar sin esperar el ✅ (2026-10-16) |
+| `Config!B105` | Máximo de productos a validar con FILTRA por corrida de BUSCA AÉREO (hoy 40) |
+| `Config!B106` | Interruptor: validar y buscar proveedor sin esperar el ✅ (Sí/No) |

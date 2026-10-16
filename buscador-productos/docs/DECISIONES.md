@@ -72,3 +72,15 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Recetas fila 39:** nueva, instrucciones compactas del subagente de RANKEA.
 - **Exploración A12:J19:** cola de 8 pruebas «Por probar».
 - **Pendiente de decisión del dueño:** M-069, subir el tope de EXPLORA de 150 a 500 créditos (INSTR 07 §3).
+
+## D-011 — BUSCA AÉREO de punta a punta y Laboratorio (M-070, M-071), 2026-10-16
+
+- **Pedido del dueño:** poder correr un solo «BUSCA AÉREO» que haga todo el flujo de la manera más eficiente encontrada, con un bucle de prueba y error con subagentes que solo se detenga cuando la búsqueda haya mejorado significativamente, y que escale.
+- **Hecho:** INSTR 08 nuevo (Drive); pestañas `Laboratorio` y `Experimentos` (ocultas, al final); `Config!B104:B106`; INSTR 00 v4.19 y INSTR 06 v3.33 enlazan a INSTR 08; `Recetas!D39` v2/v3.
+- **Autorización registrada:** el dueño autoriza (chat 2026-10-16) que BUSCA AÉREO valide con FILTRA AÉREO y busque proveedor sin esperar su ✅. Interruptor en `Config!B106`. Nunca se escribe la casilla de Revisión.
+- **Meta** (editable en `Laboratorio!B6:B9`): 10 Top por corrida, 3,2 Top por 100 créditos, cola que no crece más de 10, 3 corridas sin intervención en 3 días distintos. Se fijó con la línea base (día 1: 17 Top, 1,6 Top por 100 créditos; días 13 a 15: 0 productos).
+- **Pilotos:** dos subagentes de solo lectura con grupos reales. Costo medido ~45 mil tokens fijos + ~11 mil por grupo. v1 de D39 devolvió 4 de 6 grupos sin puntuar; v2 resolvió 4 de 4.
+- **Texto anterior de D39 (v1):** mandaba leer INSTR 03 y devolver «SIN CHEQUEAR» ante búsquedas sin resultados útiles.
+- **Corrección propia durante la sesión:** INSTR 08 §6 prometía volver a EXPERIMENTANDO con una caída bajo 70% de la meta; la fórmula de `Laboratorio!B4` no lo implementa. Se corrigió el texto para que coincida con la fórmula.
+- **Revertir:** `Config!B106` = No (la corrida se detiene tras RANKEA y espera ✅); «BUSCA AÉREO SOLO» da el comportamiento anterior; borrar INSTR 08 y restaurar el texto de INSTR 00 §3.
+- **No creado (a propósito):** una rutina programada en la nube. Escribiría en la hoja sin supervisión; se activa solo si el dueño lo pide.
