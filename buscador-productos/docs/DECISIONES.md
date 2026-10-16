@@ -166,3 +166,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia:** 48 filas del lote 2 de 2026-10-16-b (Crudo 4999-5046) tenían el ID de sesión en la columna B y no entraban a la cola; al corregirlas Config!B100 pasó de 59 a 102.
 - **Cambio:** Crudo!B4999:B5046 = «A». `Recetas!D40` v3 (B = letra A, nunca el ID de sesión; R = Pendiente en todas las filas; el dedupe lo hace Crudo!P).
 - **Pendiente:** ALIBABA (requiere Chrome conectado), exclusión de «no apto aéreo» en Config!B104, escala de la columna X. Ver Mejoras M-085, M-086.
+
+## D-023 (2026-10-16) Las 24 filas «Producto» de 2026-10-16-c eran correctas; D40 v4
+
+- **Verificado:** las 24 filas de Crudo R:S con «RANKEA AÉREO 2026-10-16-c: pasa a Productos» (4468…4913) tienen su ID de anuncio en un link de Productos!K: no hubo escritura por error, no se restaura nada.
+- **Cambio:** `Recetas!D40` v4: no pagar bandas cuyo piso sea menor que Config!B92 (250-499 con B92=500 nunca pasa Crudo!P); no repetir combinaciones con más de la mitad de repetidos; el cargador nunca toca P ni Q.
