@@ -41,7 +41,14 @@ async function handler({ request, env }) {
 
   if (!messageId) return json({ error: "Falta key o message_id." }, 400);
 
-  return servirMensaje(env, messageId);
+  const res = await servirMensaje(env, messageId);
+  if (url.searchParams.get("descargar") !== "1" || !res.ok) return res;
+  // Descarga: el navegador lo guarda en vez de reproducirlo.
+  const tipo = res.headers.get("Content-Type") || "";
+  const ext = /ogg|opus/.test(tipo) ? "ogg" : /mpeg|mp3/.test(tipo) ? "mp3" : /mp4|aac|m4a/.test(tipo) ? "m4a" : /amr/.test(tipo) ? "amr" : "bin";
+  const headers = new Headers(res.headers);
+  headers.set("Content-Disposition", `attachment; filename="audio-${Number(messageId)}.${ext}"`);
+  return new Response(res.body, { headers });
 }
 
 /** La foto/video de un mensaje (R2 o, la primera vez, la API de WhatsApp). La usan el CRM y el asesor. */

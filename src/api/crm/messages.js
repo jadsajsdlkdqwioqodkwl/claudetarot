@@ -19,7 +19,7 @@
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
-import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
+import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
@@ -57,14 +57,17 @@ export async function leerMensajes(env, conversationId, beforeId = null, { marca
        -- Solo si tiene algún paso de seguimiento prendido (el botón «Reactivar seguimiento» de la burbuja).
        CASE WHEN json_valid(q.followup_pasos) AND json_array_length(q.followup_pasos) > 0
          THEN EXISTS (SELECT 1 FROM json_each(q.followup_pasos) j WHERE COALESCE(json_extract(j.value, '$.activo'), 1) <> 0)
-         ELSE NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL END AS con_seguimiento
+         ELSE NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL END AS con_seguimiento,
+       -- ¿Ese seguimiento sigue programado en este chat? Si sí, la burbuja dice «Seguimiento activo»; si se rompió, «Reactivar».
+       EXISTS (SELECT 1 FROM scheduled_messages sm WHERE sm.conversation_id = m.conversation_id AND sm.status = 'pendiente'
+         AND sm.created_by = ? || ' · ' || q.title) AS seg_activo
      FROM messages m
      LEFT JOIN messages r ON r.id = m.reply_to_message_id
      LEFT JOIN quick_replies q ON q.id = m.quick_reply_id
      WHERE m.conversation_id = ? ${beforeId ? "AND m.id < ?" : ""}
      ORDER BY m.id DESC LIMIT ?`
   )
-    .bind(...(beforeId ? [conversationId, beforeId, PAGINA] : [conversationId, PAGINA]))
+    .bind(...(beforeId ? [PREFIJO_SEGUIMIENTO_RAPIDA, conversationId, beforeId, PAGINA] : [PREFIJO_SEGUIMIENTO_RAPIDA, conversationId, PAGINA]))
     .all();
 
   results.reverse();

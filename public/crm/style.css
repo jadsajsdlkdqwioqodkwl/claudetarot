@@ -1105,3 +1105,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 
 /* Rol de solo lectura (Viktoria): ve los chats de Tarot, no puede escribir ni cambiar nada. */
 body.solo-lectura #form-envio { display: none; }
+
+.msg .audio-acciones { display: flex; gap: 6px; margin-top: 4px; }
+.msg .audio-acciones a, .msg .audio-acciones button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--borde); border-radius: var(--radio-full); background: var(--panel); color: inherit; font: inherit; font-size: 11px; cursor: pointer; text-decoration: none; min-height: 28px; }
+.msg .audio-texto { margin-top: 4px; padding: 6px 8px; border-radius: var(--radio-s); background: rgba(0,0,0,.05); font-size: 13px; white-space: pre-wrap; }
+.msg .msg-seg-activo { background: var(--verde-osc); color: #fff; }
+.ra-paso .ra-editar { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }

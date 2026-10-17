@@ -13,6 +13,9 @@
     "binding": "ASSETS"
   },
 
+  // Workers AI: solo para transcribir audios del CRM (Whisper). No es la API de Claude.
+  "ai": { "binding": "AI" },
+
   "observability": {
     "enabled": true
   },

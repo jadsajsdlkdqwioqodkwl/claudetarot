@@ -3731,7 +3731,10 @@ function contenidoMensaje(m) {
     return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "audio" && (m.media_key || m.media_id)) {
-    return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
+    return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>
+      <div class="audio-acciones"><a class="audio-descargar" href="/api/crm/media?message_id=${m.id}&descargar=1" download title="Descargar el audio">${icon("install")} Descargar</a>
+      <button type="button" class="audio-transcribir" data-id="${m.id}" title="Pasar el audio a texto">${icon("doc")} ${transcripciones.has(m.id) ? "Ocultar texto" : "Transcribir"}</button></div>
+      ${transcripciones.get(m.id) ? `<div class="audio-texto">${escapar(transcripciones.get(m.id))}</div>` : ""}${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "document" && (m.media_key || m.media_id)) {
     // Los viejos guardaban el nombre en body; los nuevos, el nombre en
@@ -3813,6 +3816,24 @@ function estadoMensaje(m) {
   return `<span class="estado-msg" title="Enviado">${icon("check")}</span>`;
 }
 
+/** Transcripciones de audios ya pedidas (id de mensaje → texto); "" = oculta. */
+const transcripciones = new Map();
+async function transcribirAudio(btn) {
+  const id = Number(btn.dataset.id);
+  if (transcripciones.get(id)) { transcripciones.set(id, ""); return pintarMensajes(); }
+  btn.disabled = true;
+  btn.innerHTML = `${icon("spinner")} Transcribiendo…`;
+  try {
+    const d = await pedir(`/api/crm/transcribir?message_id=${id}`);
+    transcripciones.set(id, d.texto || "(no se entendió nada)");
+    pintarMensajes();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+    btn.innerHTML = `${icon("doc")} Transcribir`;
+  }
+}
+
 function pintarMensajes({ alFinal = false } = {}) {
   const cont = $("#mensajes");
   if (!cont) return;
@@ -3838,7 +3859,11 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${contenidoMensaje(m)}
         <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
         ${reaccionesHtml(m)}
-        ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id ? `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="Si después de esta respuesta rápida mandaste otro mensaje, su «si no responde» se canceló: tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>` : ""}
+        ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
+          ? (m.seg_activo
+            ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
+            : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
+          : ""}
       </div>
     </div>`;
   }).join("");
@@ -3867,6 +3892,7 @@ function pintarMensajes({ alFinal = false } = {}) {
  */
 let reactivando = null; // { chip, quickReplyId, pasos }
 async function reactivarSeguimientoRapida(chip) {
+  if (chip.dataset.activo) return verSeguimientoActivo(chip);
   chip.disabled = true;
   try {
     const quickReplyId = Number(chip.dataset.q);
@@ -3881,6 +3907,37 @@ async function reactivarSeguimientoRapida(chip) {
         <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
       </div>`).join("") || `<p class="ayuda-modal">Esta respuesta rápida ya no tiene pasos de seguimiento prendidos.</p>`;
     $("#ra-programar").disabled = !reactivando.pasos.length;
+    $("#ra-programar").style.display = "";
+    $("#modal-reactivar-fondo").classList.add("abierto");
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    chip.disabled = false;
+  }
+}
+/** Seguimiento que sigue vivo: muestra los pasos ya programados de este chat y deja editar los de texto. */
+async function verSeguimientoActivo(chip) {
+  chip.disabled = true;
+  try {
+    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
+    const q = estado.quickReplies.find((x) => x.id === Number(chip.dataset.q));
+    const origen = q ? `Seguimiento de respuesta rápida · ${q.title}` : null;
+    const pasos = scheduled.filter((s) => s.status === "pendiente" && s.created_by === origen);
+    reactivando = null;
+    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento activo de «${escapar(q?.title || "respuesta rápida")}»`;
+    $("#ra-pasos").innerHTML = pasos.map((s, i) => `
+      <div class="ra-paso" data-id="${s.id}">
+        <div class="seg-label">Paso ${i + 1} · sale ${fechaCorta(s.send_at)}</div>
+        <div>${escapar(textoSeguimiento(s))}</div>
+        ${seguimientoEditable(s) ? `<button type="button" class="ra-editar" data-id="${s.id}">${icon("pencil")} Editar</button>` : ""}
+      </div>`).join("") || `<p class="ayuda-modal">Ya no quedan pasos pendientes de este seguimiento.</p>`;
+    $("#ra-pasos").querySelectorAll(".ra-editar").forEach((btn) => btn.addEventListener("click", () => {
+      const s = pasos.find((x) => x.id === Number(btn.dataset.id));
+      if (!s) return;
+      $("#modal-reactivar-fondo").classList.remove("abierto");
+      abrirModalEditarSeguimiento(s);
+    }));
+    $("#ra-programar").style.display = "none";
     $("#modal-reactivar-fondo").classList.add("abierto");
   } catch (err) {
     alert(err.message);
@@ -3933,6 +3990,8 @@ function configurarAccionesMensajes() {
     }
     const chipSeg = e.target.closest(".msg-seg");
     if (chipSeg) reactivarSeguimientoRapida(chipSeg);
+    const btnTrans = e.target.closest(".audio-transcribir");
+    if (btnTrans) transcribirAudio(btnTrans);
   });
 
   // Deslizar a la derecha para responder, igual que WhatsApp — solo en touch.
@@ -6080,6 +6139,7 @@ function pintarQuickPanel() {
     }).join("") || `<div class="item"><div class="cuerpo">Sin resultados.</div></div>`}
     <footer>
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
+      <button id="ordenar-rapidas" type="button">${icon("tag")} Ordenar por número</button>
     </footer>`;
 
   $("#rapidas-solo")?.addEventListener("change", (e) => {
@@ -6131,7 +6191,44 @@ function pintarQuickPanel() {
     panel.classList.remove("abierto");
     abrirModalRapidaNueva();
   });
+  $("#ordenar-rapidas")?.addEventListener("click", () => {
+    panel.classList.remove("abierto");
+    abrirOrdenarRapidas();
+  });
 }
+
+/** Panel para darles su número a todas las respuestas rápidas de una vez (PATCH { ordenar }). */
+function abrirOrdenarRapidas() {
+  const lista = [...estado.quickReplies];
+  $("#or-lista").innerHTML = lista.map((q, i) => `
+    <div class="or-fila" data-id="${q.id}" data-pos="${i}" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--borde)">
+      <input type="number" class="or-num" min="1" max="${lista.length}" step="1" value="${i + 1}" style="width:64px" />
+      <span style="flex:1">${escapar(q.title)}</span>
+    </div>`).join("") || `<p class="ayuda-modal">No hay respuestas rápidas.</p>`;
+  $("#or-guardar").disabled = !lista.length;
+  $("#modal-ordenar-rapidas-fondo").classList.add("abierto");
+}
+$("#or-cancelar").addEventListener("click", () => $("#modal-ordenar-rapidas-fondo").classList.remove("abierto"));
+$("#or-guardar").addEventListener("click", async () => {
+  const boton = $("#or-guardar");
+  const filas = [...document.querySelectorAll("#or-lista .or-fila")].map((el) => ({
+    id: Number(el.dataset.id),
+    pos: Number(el.dataset.pos),
+    num: Number(el.querySelector(".or-num").value) || Number(el.dataset.pos) + 1
+  }));
+  filas.sort((a, b) => a.num - b.num || a.pos - b.pos);
+  boton.disabled = true;
+  try {
+    await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ordenar: filas.map((f) => f.id) }) });
+    $("#modal-ordenar-rapidas-fondo").classList.remove("abierto");
+    await cargarQuickReplies();
+    if ($("#panel-rapidas").classList.contains("abierto")) pintarQuickPanel();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    boton.disabled = false;
+  }
+});
 
 /**
  * Ordenar arrastrando del ⋮⋮ (mouse y dedo). Al soltar se guarda el orden de

@@ -77,6 +77,7 @@ import {
   onRequestPatch as crmFollowupSeqPatch
 } from "./api/crm/followup-sequences.js";
 import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
+import { onRequestGet as crmTranscribirGet } from "./api/crm/transcribir.js";
 import { onRequestGet as crmFollowupRapidaGet, onRequestPost as crmFollowupRapidaPost } from "./api/crm/followup-rapida.js";
 import { onRequestPost as crmEscribiendoPost } from "./api/crm/escribiendo.js";
 import {
@@ -181,6 +182,7 @@ const ROUTES = {
   "/api/crm/scheduled": { GET: crmScheduledGet, POST: crmScheduledPost, PATCH: crmScheduledPatch, DELETE: crmScheduledDelete },
   "/api/crm/followup-sequences": { GET: crmFollowupSeqGet, POST: crmFollowupSeqPost, DELETE: crmFollowupSeqDelete, PATCH: crmFollowupSeqPatch },
   "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
+  "/api/crm/transcribir": { GET: crmTranscribirGet },
   "/api/crm/followup-rapida": { GET: crmFollowupRapidaGet, POST: crmFollowupRapidaPost },
   "/api/crm/escribiendo": { POST: crmEscribiendoPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost, PATCH: crmTemplatesPatch },
