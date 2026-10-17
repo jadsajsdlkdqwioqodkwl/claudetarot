@@ -213,3 +213,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Hallazgo:** Log BUSCA (2026-10-16-c) muestra total 543 / 947 / 732 con solo 20 filas leídas por combinación (página 1). El cargador solo pagaba la primera página y llamaba «pool agotado» a eso. Quedan unas 2.000 filas por leer en el piso actual (500) a ≈1 crédito por fila.
 - **Cambio:** `Recetas!D40` v6 «Cobertura completa» (paginar con recarga o partir por precio y por found_time hasta cubrir el total; el plan ampliado va después). INSTR 08 v1.11. Mejoras M-091.
 - **EXPLORA** (regiones SG/PH/MY/IE, orden por crecimiento, categorías sin leer) sigue pendiente: necesita el Chrome del dueño en un chat aparte, ahora con tope de 500 créditos.
+
+## D-031 (2026-10-17) Cobertura por ventanas de fecha, RANKEA siempre se escribe, el piso lo manda B92
+
+- **Evidencia (sesión 2026-10-17-c):** 236 créditos, 59 filas nuevas: `current_page` no pagina (2 cargas perdidas, 40 créditos); partir solo por precio dentro de la misma ventana trajo 88 repetidas de 147. El orquestador no escribió el triage de RANKEA «por ser estimado» y cerró parcial. Tres dudas de reglas.
+- **Cambios:** `Recetas!D40` v7 (no paginar; partir `found_time` en trozos de 14, 7 y 3 días y solo después por precio; se escriben todas las filas, también las que están fuera de ventana, que Crudo!P deja en espera). INSTR 08 v1.12: el principal siempre escribe RANKEA (precio y peso son estimados por diseño), el piso lo manda `Config!B92` (E-002 = banda 500-999; 250-499 solo cuando el Juez baje B92), lo que se deduplicó de más no se recupera.
+- **Revertir:** quitar los párrafos añadidos; D40 anterior = v6 (D-030).
