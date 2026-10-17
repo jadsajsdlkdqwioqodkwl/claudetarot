@@ -206,3 +206,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 
 - **Evidencia:** sesión 2026-10-17-b: PiPiAds pedía iniciar sesión en el Chrome conectado; el orquestador se detuvo y preguntó si correr RANKEA/FILTRA mientras tanto.
 - **Cambio:** INSTR 08 v1.10: sin sesión en PiPiAds el principal no pregunta; sigue con RANKEA, FILTRA y ALIBABA (corrida parcial) y pide el login al final; `sigue` retoma las cargas.
+
+## D-030 (2026-10-17) El pool no se agotaba: faltaba leer todas las páginas (Recetas D40 v6)
+
+- **Pregunta del dueño:** por qué se acaba el pool si EXPLORA lo iba a ampliar.
+- **Hallazgo:** Log BUSCA (2026-10-16-c) muestra total 543 / 947 / 732 con solo 20 filas leídas por combinación (página 1). El cargador solo pagaba la primera página y llamaba «pool agotado» a eso. Quedan unas 2.000 filas por leer en el piso actual (500) a ≈1 crédito por fila.
+- **Cambio:** `Recetas!D40` v6 «Cobertura completa» (paginar con recarga o partir por precio y por found_time hasta cubrir el total; el plan ampliado va después). INSTR 08 v1.11. Mejoras M-091.
+- **EXPLORA** (regiones SG/PH/MY/IE, orden por crecimiento, categorías sin leer) sigue pendiente: necesita el Chrome del dueño en un chat aparte, ahora con tope de 500 créditos.
