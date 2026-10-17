@@ -214,8 +214,9 @@ export const ORIGEN_LINK_ENVIO = "Link de envío";
  * Seguimiento de una respuesta rápida: al mandar una que tiene secuencia
  * (`followup_pasos`, hasta 4 pasos con texto y/o archivo, o el viejo
  * `followup_body`), se programa cada paso `horas` después del anterior, sin
- * pasar de 23 h desde el último mensaje del cliente. Es "manual" para las reglas de cancelación: lo cancela el cliente
- * al escribir o la asesora desde el panel derecho, no sus propios mensajes.
+ * pasar de 23 h desde el último mensaje del cliente. Se programa SOLO al mandar la
+ * rápida (no hace falta tocar nada); lo cancela el cliente al escribir o cualquier mensaje nuestro
+ * (`cancelarSeguimientosDeLead`), y entonces la burbuja ofrece «Reactivar seguimiento».
  * Reemplaza al seguimiento de respuesta rápida que ya estuviera pendiente en
  * ese chat. Se apaga para todas con el ajuste `quick_followup_auto` = "0".
  * Devuelve null si quedó programado, o el motivo (texto) por el que no.
