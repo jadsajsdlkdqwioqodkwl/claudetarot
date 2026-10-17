@@ -138,7 +138,7 @@ function pintar(){
   const l=$("#lista");l.innerHTML="";
   for(const it of items){
     const d=document.createElement("div");d.className="it";
-    const est={cola:["reloj","","En cola"],subiendo:["rueda pr","pr","Subiendo..."],procesando:["rueda pr","pr","Traduciendo..."],listo:["ok","ok","Listo"],fallo:["x","er","Falló"]}[it.estado];
+    const est={cola:["reloj","","En cola"],espera:["reloj","","En espera (máximo 3 a la vez)"],subiendo:["rueda pr","pr","Subiendo..."],procesando:["rueda pr","pr","Traduciendo..."],listo:["ok","ok","Listo"],fallo:["x","er","Falló"]}[it.estado]||["reloj","",it.estado];
     d.innerHTML=`<h3>${it.file.name}</h3>`;
     if(it.blob){const v=document.createElement(it.blob.type.startsWith("audio")?"audio":"video");v.controls=true;v.src=URL.createObjectURL(it.blob);d.append(v)}
     const e=document.createElement("div");e.className="est "+est[1].split(" ")[0];
@@ -148,11 +148,13 @@ function pintar(){
     const a=document.createElement("div");a.className="acc";
     if(it.blob)a.innerHTML=`<button data-d="${it.id}">${ic("baja")}Descargar</button>`;
     if(it.blob&&it.modelo==="v1"&&it.estudio==="1")a.innerHTML+=`<button data-e="${it.id}">${ic("papel")}Revisar texto</button>`;
+    if(it.estado==="fallo")a.innerHTML+=`<button data-r="${it.id}">${ic("rueda")}Reintentar</button>`;
     if(it.estado==="cola"||it.estado==="fallo")a.innerHTML+=`<button data-q="${it.id}">${ic("x")}Quitar</button>`;
     d.append(a);l.append(d);
   }
   l.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>bajar(items.find(i=>i.id===b.dataset.d)));
   l.querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>editor(items.find(i=>i.id===b.dataset.e)));
+  l.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{const i=items.find(x=>x.id===b.dataset.r);i.estado="espera";i.error="";pintar();cola()});
   l.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{items=items.filter(i=>i.id!==b.dataset.q);pintar()});
   resumen();
 }
