@@ -1,0 +1,28 @@
+{
+  "nota": "Palabras que NO deben aparecer en el doblaje (español neutro latino). Si salen, el script las lista en el reporte para corregirlas.",
+  "prohibidas": {
+    "cel": "teléfono",
+    "celular": "teléfono",
+    "móvil": "teléfono",
+    "ordenador": "computadora",
+    "ostias": "(quitar)",
+    "ostia": "(quitar)",
+    "tío": "(quitar)",
+    "tia": "(quitar)",
+    "vale": "bien / de acuerdo",
+    "che": "(quitar)",
+    "boludo": "(quitar)",
+    "guay": "genial",
+    "mola": "me gusta",
+    "chaval": "(quitar)",
+    "coger": "tomar",
+    "vosotros": "ustedes",
+    "os": "(revisar: vosotros)",
+    "pibe": "(quitar)",
+    "wey": "(quitar)",
+    "güey": "(quitar)",
+    "pana": "(quitar)",
+    "parce": "(quitar)",
+    "carajo": "(quitar)"
+  }
+}
