@@ -60,7 +60,13 @@ async function handler({ request, env }) {
   if (!file || typeof file === "string") return json({ error: "Falta el archivo." }, 400);
   if (file.size > MAX_BYTES) return json({ error: "El archivo pesa más de 100 MB." }, 413);
 
-  const mime = file.type || "application/octet-stream";
+  // Celulares que mandan el tipo vacío o "image/jpg": se corrige por la extensión.
+  const extNombre = String(file.name || "").split(".").pop().toLowerCase();
+  let mime = file.type || "application/octet-stream";
+  if (mime === "image/jpg" || mime === "image/pjpeg") mime = "image/jpeg";
+  if (mime === "application/octet-stream") {
+    mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", mp4: "video/mp4", pdf: "application/pdf" }[extNombre] || mime;
+  }
 
   if (mime === "image/webp") {
     if (file.size > STICKER_MAX_BYTES) return json({ error: "El sticker pesa demasiado — Meta pide hasta 100KB si es estático o 500KB si es animado." }, 413);

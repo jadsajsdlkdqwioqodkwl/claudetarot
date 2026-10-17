@@ -4164,12 +4164,93 @@ function onArchivoElegido(e) {
   if (files.length) elegirArchivos(files);
 }
 
+const MIME_POR_EXTENSION = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", jpe: "image/jpeg", jfif: "image/jpeg", png: "image/png", webp: "image/webp",
+  heic: "image/heic", heif: "image/heif", avif: "image/avif", gif: "image/gif", bmp: "image/bmp", tif: "image/tiff", tiff: "image/tiff",
+  mp4: "video/mp4", "3gp": "video/3gpp", mov: "video/quicktime", pdf: "application/pdf"
+};
+
+/**
+ * Los celulares entregan fotos con tipo vacío, "image/jpg" o en HEIC/AVIF
+ * (iPhone, Samsung, Google Fotos). WhatsApp solo acepta JPG o PNG: aquí se
+ * corrige el tipo por la extensión y lo que no sea JPG/PNG/WebP se convierte
+ * a JPG antes de llegar al editor, para que nunca se quede sin salir.
+ */
+async function prepararFotos(files) {
+  const listos = [];
+  for (let file of files) {
+    const ext = (file.name || "").split(".").pop().toLowerCase();
+    let tipo = file.type === "image/jpg" || file.type === "image/pjpeg" ? "image/jpeg" : file.type;
+    if (!tipo || tipo === "application/octet-stream") tipo = MIME_POR_EXTENSION[ext] || tipo;
+    if (tipo !== file.type) file = new File([file], file.name, { type: tipo, lastModified: file.lastModified });
+    if (tipo.startsWith("image/") && !["image/jpeg", "image/png", "image/webp"].includes(tipo)) {
+      try {
+        file = await convertirAJpeg(file);
+      } catch (err) {
+        alert(err.message);
+        continue;
+      }
+    }
+    listos.push(file);
+  }
+  return listos;
+}
+
+async function decodificarImagen(file) {
+  try {
+    return await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch { /* Safari viejo no acepta opciones: se prueba sin ellas */ }
+  try {
+    return await createImageBitmap(file);
+  } catch { /* y si tampoco, con un <img> */ }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function convertirAJpeg(file) {
+  let img;
+  try {
+    img = await decodificarImagen(file);
+  } catch {
+    throw new Error(`No se pudo leer "${file.name}" en este celular o navegador. Mándala como documento o conviértela a JPG.`);
+  }
+  const ancho = img.width || img.naturalWidth;
+  const alto = img.height || img.naturalHeight;
+  let escala = Math.min(1, LADO_MAX_EXPORT / Math.max(ancho, alto), Math.sqrt(PIXELES_MAX_EXPORT / (ancho * alto)));
+  let blob = null;
+  for (let intento = 0; intento < 5; intento++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(ancho * escala));
+    canvas.height = Math.max(1, Math.round(alto * escala));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", [0.95, 0.9, 0.85, 0.85, 0.85][intento]));
+    if (blob && blob.size <= FOTO_MAX_BYTES) break;
+    if (intento >= 1) escala *= 0.85;
+  }
+  img.close?.();
+  if (!blob) throw new Error(`No se pudo convertir "${file.name}" a JPG.`);
+  const base = (file.name || "foto").replace(/\.[^.]+$/, "") || "foto";
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+}
+
 /**
  * Fotos y videos (uno o varios) van al editor, como en WhatsApp. Un solo
  * documento, o un webp (sticker del teclado), sigue con la barra de vista
  * previa de siempre.
  */
-function elegirArchivos(files) {
+async function elegirArchivos(files) {
+  files = await prepararFotos(files);
+  if (!files.length) return;
   if (files.length === 1 && (tipoLocal(files[0]) === "document" || files[0].type === "image/webp")) {
     elegirArchivo(files[0]);
     return;
@@ -4662,13 +4743,15 @@ async function archivoFinalDelEditor(it) {
 
   let bmp;
   try {
-    bmp = await createImageBitmap(it.file, { imageOrientation: "from-image" });
+    bmp = await decodificarImagen(it.file);
   } catch {
     throw new Error(`No se pudo leer "${it.file.name}" en este navegador. Conviértela a JPG.`);
   }
+  const bw = bmp.width || bmp.naturalWidth;
+  const bh = bmp.height || bmp.naturalHeight;
   const girada = it.rot % 180 !== 0;
-  const rw = girada ? bmp.height : bmp.width;
-  const rh = girada ? bmp.width : bmp.height;
+  const rw = girada ? bh : bw;
+  const rh = girada ? bw : bh;
   // El recorte, en píxeles de la foto ya girada.
   const x0 = it.crop.x * rw;
   const y0 = it.crop.y * rh;
@@ -4689,7 +4772,7 @@ async function archivoFinalDelEditor(it) {
     ctx.translate(-x0, -y0);
     ctx.translate(rw / 2, rh / 2);
     ctx.rotate((it.rot * Math.PI) / 180);
-    ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+    ctx.drawImage(bmp, -bw / 2, -bh / 2);
     const calidad = [0.95, 0.92, 0.88, 0.85][intento] ?? 0.85;
     blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", calidad));
     if (!blob) throw new Error("No se pudo preparar la foto.");
