@@ -219,3 +219,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia (sesión 2026-10-17-c):** 236 créditos, 59 filas nuevas: `current_page` no pagina (2 cargas perdidas, 40 créditos); partir solo por precio dentro de la misma ventana trajo 88 repetidas de 147. El orquestador no escribió el triage de RANKEA «por ser estimado» y cerró parcial. Tres dudas de reglas.
 - **Cambios:** `Recetas!D40` v7 (no paginar; partir `found_time` en trozos de 14, 7 y 3 días y solo después por precio; se escriben todas las filas, también las que están fuera de ventana, que Crudo!P deja en espera). INSTR 08 v1.12: el principal siempre escribe RANKEA (precio y peso son estimados por diseño), el piso lo manda `Config!B92` (E-002 = banda 500-999; 250-499 solo cuando el Juez baje B92), lo que se deduplicó de más no se recupera.
 - **Revertir:** quitar los párrafos añadidos; D40 anterior = v6 (D-030).
+
+## D-032 (2026-10-17) Reestructura: el subagente de RANKEA escribe, el principal solo reserva bloques
+
+- **Evidencia (sesión 2026-10-17-d):** ~760 créditos cargados, RANKEA devolvió su primera tanda y el orquestador no la escribió en Productos y preguntó «¿sigo o cortas aquí?». Segunda vez que el paso de «copiar lo que devuelve el subagente» se pierde en el principal.
+- **Cambio:** `Recetas!D39` v4: el subagente recibe `FILA_INICIAL` e `ID_INICIAL` (bloque de 10 propio), escribe él sus filas de Productos (solo columnas no-fórmula, nunca AD:AF) y marca Crudo R:S de todas sus filas; devuelve una línea por grupo. INSTR 08 v1.13: el principal reserva bloques, cuenta `Config!B100`, copia SOBREEXPLOTADO a Excluidos y sigue; prohibido preguntar «¿sigo o corto?» o cerrar por «datos estimados».
+- **Revertir:** `Recetas!D39` v3 (el subagente devuelve, el principal escribe) + quitar el párrafo v1.13 de INSTR 08.
