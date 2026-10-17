@@ -171,3 +171,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 
 - **Verificado:** las 24 filas de Crudo R:S con «RANKEA AÉREO 2026-10-16-c: pasa a Productos» (4468…4913) tienen su ID de anuncio en un link de Productos!K: no hubo escritura por error, no se restaura nada.
 - **Cambio:** `Recetas!D40` v4: no pagar bandas cuyo piso sea menor que Config!B92 (250-499 con B92=500 nunca pasa Crudo!P); no repetir combinaciones con más de la mitad de repetidos; el cargador nunca toca P ni Q.
+
+## D-024 (2026-10-17) Recetas D37 v3.2: celdas numéricas y escala de X
+
+- **Evidencia:** sesión 2026-10-16-c: FILTRA escribió texto en AE («10 por muestra», «25+»), no escribió Y en cortes y la columna X (P7B) nunca se llenó por falta de escala; el principal tuvo que escribir Chequeo Meta y Excluidos porque los subagentes no tienen permiso.
+- **Cambio:** AD/AE/AF enteros o vacíos; corte escribe Y = 0; X con escala 0/1/2 (alternativa en retail peruano); Chequeo Meta/Excluidos los escribe el principal. Revertir: quitar el párrafo «REGLA v3.2» y la escala de X.
