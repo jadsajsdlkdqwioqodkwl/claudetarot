@@ -45,9 +45,13 @@ async function handler({ request, env }) {
   if (url.searchParams.get("descargar") !== "1" || !res.ok) return res;
   // Descarga: el navegador lo guarda en vez de reproducirlo.
   const tipo = res.headers.get("Content-Type") || "";
-  const ext = /ogg|opus/.test(tipo) ? "ogg" : /mpeg|mp3/.test(tipo) ? "mp3" : /mp4|aac|m4a/.test(tipo) ? "m4a" : /amr/.test(tipo) ? "amr" : "bin";
+  const msg = await env.CRM_DB.prepare("SELECT type, file_name FROM messages WHERE id = ?").bind(Number(messageId)).first();
+  const ext = /ogg|opus/.test(tipo) ? "ogg" : /audio\/mpeg|mp3/.test(tipo) ? "mp3" : /audio\/(mp4|aac)|m4a/.test(tipo) ? "m4a" : /amr/.test(tipo) ? "amr"
+    : /jpeg|jpg/.test(tipo) ? "jpg" : /png/.test(tipo) ? "png" : /webp/.test(tipo) ? "webp" : /video\/mp4/.test(tipo) ? "mp4" : /3gpp/.test(tipo) ? "3gp"
+    : /pdf/.test(tipo) ? "pdf" : "bin";
+  const nombre = (msg?.file_name && /^[\w .()-]{1,100}$/.test(msg.file_name) ? msg.file_name : `${msg?.type || "archivo"}-${Number(messageId)}.${ext}`);
   const headers = new Headers(res.headers);
-  headers.set("Content-Disposition", `attachment; filename="audio-${Number(messageId)}.${ext}"`);
+  headers.set("Content-Disposition", `attachment; filename="${nombre}"`);
   return new Response(res.body, { headers });
 }
 

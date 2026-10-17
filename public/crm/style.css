@@ -1111,3 +1111,7 @@ body.solo-lectura #form-envio { display: none; }
 .msg .audio-texto { margin-top: 4px; padding: 6px 8px; border-radius: var(--radio-s); background: rgba(0,0,0,.05); font-size: 13px; white-space: pre-wrap; }
 .msg .msg-seg-activo { background: var(--verde-osc); color: #fff; }
 .ra-paso .ra-editar { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
+
+.msg img.foto-chat { cursor: zoom-in; }
+.visor-chat > span { display: flex; gap: 8px; justify-content: center; }
+.visor-chat .audio-descargar, .visor-chat .visor-cerrar { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: var(--radio-full); background: var(--panel); color: inherit; font: inherit; font-size: 13px; border: 0; text-decoration: none; cursor: pointer; }

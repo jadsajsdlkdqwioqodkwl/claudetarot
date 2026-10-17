@@ -3725,10 +3725,10 @@ function contenidoMensaje(m) {
     return `<img class="sticker" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="sticker" />`;
   }
   if (m.type === "image" && (m.media_key || m.media_id)) {
-    return `${vistaUnicaHtml(m)}<img src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" />${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<img class="foto-chat" data-id="${m.id}" src="/api/crm/media?message_id=${m.id}" loading="lazy" alt="foto" title="Tocar para abrir y descargar" />${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "video" && (m.media_key || m.media_id)) {
-    return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
+    return `${vistaUnicaHtml(m)}<video src="/api/crm/media?message_id=${m.id}" controls></video><div class="audio-acciones"><a class="audio-descargar" href="/api/crm/media?message_id=${m.id}&descargar=1" download title="Descargar el video">${icon("install")} Descargar</a></div>${m.body ? `<div class="caption">${formatearTextoWA(m.body)}</div>` : ""}`;
   }
   if (m.type === "audio" && (m.media_key || m.media_id)) {
     return `<audio src="/api/crm/media?message_id=${m.id}" controls preload="none"></audio>
@@ -3741,7 +3741,7 @@ function contenidoMensaje(m) {
     // file_name y en body el texto que va junto al archivo.
     const nombre = m.file_name || m.body || "Documento";
     const texto = m.file_name && m.body && m.body !== m.file_name ? m.body : "";
-    return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a>${texto ? `<div class="caption">${formatearTextoWA(texto)}</div>` : ""}`;
+    return `<a class="tarjeta-especial tarjeta-documento" href="/api/crm/media?message_id=${m.id}" target="_blank" rel="noopener">${icon("doc")} ${escapar(nombre)}</a><div class="audio-acciones"><a class="audio-descargar" href="/api/crm/media?message_id=${m.id}&descargar=1" download title="Descargar el archivo">${icon("install")} Descargar</a></div>${texto ? `<div class="caption">${formatearTextoWA(texto)}</div>` : ""}`;
   }
   if (!m.type || m.type === "text") return formatearTextoWA(m.body || "");
   if (m.type === "call") return `<div class="tarjeta-especial tarjeta-llamada">${icon("alertCircle")} ${escapar(m.body || "Llamada")}</div>`;
@@ -3814,6 +3814,17 @@ function estadoMensaje(m) {
   if (m.status === "read") return `<span class="estado-msg leido" title="Leído">${icon("checkDouble")}</span>`;
   if (m.status === "delivered") return `<span class="estado-msg" title="Entregado">${icon("checkDouble")}</span>`;
   return `<span class="estado-msg" title="Enviado">${icon("check")}</span>`;
+}
+
+/** Visor de fotos del chat (las del cliente y las nuestras): abre en grande y deja descargar. */
+function abrirVisorFoto(messageId) {
+  const visor = document.createElement("div");
+  visor.className = "visor-foto visor-chat";
+  visor.innerHTML = `<img src="/api/crm/media?message_id=${messageId}" alt="" />
+    <span><a class="audio-descargar" href="/api/crm/media?message_id=${messageId}&descargar=1" download>${icon("install")} Descargar</a>
+    <button type="button" class="visor-cerrar">${icon("close")} Cerrar</button></span>`;
+  visor.addEventListener("click", (e) => { if (!e.target.closest("a")) visor.remove(); });
+  document.body.appendChild(visor);
 }
 
 /** Transcripciones de audios ya pedidas (id de mensaje → texto); "" = oculta. */
@@ -3990,6 +4001,8 @@ function configurarAccionesMensajes() {
     }
     const chipSeg = e.target.closest(".msg-seg");
     if (chipSeg) reactivarSeguimientoRapida(chipSeg);
+    const fotoChat = e.target.closest("img.foto-chat");
+    if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
     const btnTrans = e.target.closest(".audio-transcribir");
     if (btnTrans) transcribirAudio(btnTrans);
   });
