@@ -55,14 +55,12 @@ svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-l
   <label>Modelo
    <select id="modelo">
     <option value="v2">Dubbing v2 - 2,20 USD/min (solo audio, similitud, es-MX)</option>
-    <option value="v1">Dubbing v1 - 0,33 USD/min (video doblado, texto editable)</option>
+    <option value="v1">Dubbing v1 - 0,33 USD/min (video doblado)</option>
    </select></label>
   <label id="lmarca">Marca de agua (v1)
    <select id="marca"><option value="1">Con marca - 0,33 USD/min</option><option value="0">Sin marca - 0,50 USD/min</option></select></label>
   <label id="lsim" hidden>Similitud de voz: <b id="vsim">7</b>
    <input type="range" id="sim" min="0" max="10" value="7"></label>
-  <label id="lestudio" hidden>Revisar el texto
-   <select id="estudio"><option value="1">Sí, poder editar el guion (v1)</option><option value="0">No</option></select></label>
   <label>Idioma original
    <select id="origen"><option value="auto">Detectar</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="fr">Francés</option><option value="it">Italiano</option><option value="de">Alemán</option></select></label>
  </div>
@@ -101,9 +99,9 @@ fetch("/glosario.json").then(r=>r.json()).then(j=>glosario=j.prohibidas||{});
 function modelo(){return $("#modelo").value}
 function precio(){return modelo()==="v2"?2.2:($("#marca").value==="1"?0.33:0.5)}
 function ajustes(){
-  const v2=modelo()==="v2";$("#lsim").hidden=!v2;$("#lmarca").hidden=v2;$("#lestudio").hidden=v2;
+  const v2=modelo()==="v2";$("#lsim").hidden=!v2;$("#lmarca").hidden=v2;
   $("#notamodelo").innerHTML=v2
-   ?"v2 deja elegir la similitud de voz (0 a 10), usa español de México y entrega solo el audio doblado en WAV (hay que ponerlo sobre el video). En tu plan, v2 no permite revisar ni editar el texto (solo Enterprise); para eso usa v1.":
+   ?"v2 deja elegir la similitud de voz (0 a 10), usa español de México y entrega solo el audio doblado en WAV (hay que ponerlo sobre el video). Para editar el texto, abre el proyecto en elevenlabs.io/app/dubbing (la edición por API no está disponible en tu plan).":
     "v1 entrega el video ya doblado, pero no tiene control de similitud de voz (clona la voz original automáticamente). <span class='aviso'>Con marca de agua el video sale marcado.</span>";
   resumen();
 }
@@ -170,7 +168,7 @@ $("#zip").onclick=async()=>{
 };
 $("#limpiar").onclick=()=>{items=items.filter(i=>i.estado!=="listo");pintar()};
 $("#traducir").onclick=()=>{
-  items.filter(i=>i.estado==="cola").forEach(i=>{i.modelo=modelo();i.marca=$("#marca").value;i.estudio=$("#estudio").value;i.sim=$("#sim").value;i.origen=$("#origen").value;i.estado="espera"});
+  items.filter(i=>i.estado==="cola").forEach(i=>{i.modelo=modelo();i.marca=$("#marca").value;i.estudio="0";i.sim=$("#sim").value;i.origen=$("#origen").value;i.estado="espera"});
   cola();
 };
 function cola(){
@@ -182,9 +180,13 @@ function cola(){
 const dormir=ms=>new Promise(r=>setTimeout(r,ms));
 async function correr(it){
   try{
-    it.estado="subiendo";pintar();
-    const fd=new FormData();fd.set("file",it.file);fd.set("nombre",it.file.name);fd.set("origen",it.origen);fd.set("modelo",it.modelo);fd.set("conMarca",it.marca);fd.set("estudio",it.estudio);
-    let {id}=await jsonApi("iniciar",{method:"POST",body:fd});
+    let id=it.dubId;
+    if(!id){
+      it.estado="subiendo";pintar();
+      const fd=new FormData();fd.set("file",it.file);fd.set("nombre",it.file.name);fd.set("origen",it.origen);fd.set("modelo",it.modelo);fd.set("conMarca",it.marca);fd.set("estudio",it.estudio);
+      ({id}=await jsonApi("iniciar",{method:"POST",body:fd}));
+      it.dubId=id;
+    }
     it.estado="procesando";pintar();
     const v=it.modelo;
     for(;;){
@@ -193,17 +195,17 @@ async function correr(it){
       if(s.estado==="fallo")throw new Error(s.error||"ElevenLabs no pudo doblarlo");
       if(s.estado==="preparado"){
         ({id}=await jsonApi("v2/idioma",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,similitud:it.sim,dialecto:"es-MX"})}));
-        continue;
+        it.dubId=id;continue;
       }
       if(s.estado==="listo")break;
     }
     const r=await api(`${v}/archivo?id=${encodeURIComponent(id)}`);
-    if(!r.ok)throw new Error("No se pudo bajar el resultado");
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error("No se pudo bajar el resultado: "+(j.error||r.status))}
     it.blob=await r.blob();
     if(v==="v1"){
       try{const g=await jsonApi(`v1/guion?id=${encodeURIComponent(id)}`);it.aviso=revisar(g.texto)}catch{}
     }
-    it.dubId=id;it.estado="listo";
+    it.estado="listo";
   }catch(e){it.estado="fallo";it.error=e.message}
   pintar();
 }
