@@ -182,3 +182,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia:** sesión 2026-10-16-c: la búsqueda por foto funciona y encuentra proveedores, pero el script F de Recetas!E30 devolvió la lista de precios vacía (Alibaba cambió el HTML); el orquestador no escribió nada y preguntó si lanzar tandas o parar.
 - **Cambio:** `Recetas!D36`: nunca dejar una fila sin escribir (foto, links y nota aunque BA = s/d); paso 4b con el script F2 de respaldo (JSON del HTML + precios visibles + tramos) y get_page_text; precios solo en S/ se anotan en BE. INSTR 08 v1.7: ALIBABA en tandas de 3, un subagente a la vez, sin preguntar. El script F2 NO está probado: la primera corrida lo valida.
 - **Revertir:** quitar el paso 4b y la regla de oro de D36; el texto anterior es el de M-052.
+
+## D-026 (2026-10-17) Reversión del Juez deshecha: B92 = 500 y B93 = 5
+
+- **Evidencia:** C-006 (2026-10-16-c) revirtió E-002 con una tasa de Producto de 3/84 que cuenta como «sin producto» las 84 filas que RANKEA no había juzgado; los 14 Top de C-005 salieron de la banda 500-999. Log BUSCA S daba 0 en esas cargas.
+- **Cambio:** Config!B92 = 500, B93 = 5 y Experimentos E-002 = «En curso» (restaurados por Claude Code). Mejoras M-087. Regla pendiente para el Juez: no revertir con filas nuevas sin juzgar.
