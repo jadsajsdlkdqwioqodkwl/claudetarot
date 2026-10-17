@@ -194,3 +194,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Cambios en el Sheet:** pestaña nueva visible `Aéreo por lotes` (QUERY sobre Productos con Workflow = Aéreo, agrupado por Productos!B, orden por ID descendente; selector de lote y de «solo Sí»). `Log BUSCA` S/T/W aceptan el código con o sin «A|» (daba 0 porque Crudo!D no lleva el prefijo). `Cola RANKEA`: orden Estado (Preseleccionado primero) y luego fila de Crudo descendente. `Config!B104`: excluye notas con «no apto». Config B92 = 500 / B93 = 5 restaurados (D-026). Experimentos E-001 = «Reemplazado por E-002».
 - **Cambios en Drive:** INSTR 08 v1.8 (corrida larga por ciclos con punto de control en Sesiones!H; el Juez no revierte con filas sin juzgar y mide por lote). MAPA actualizado.
 - **Revertir:** Cola RANKEA A2: volver a `SORT(...,2,FALSE,11,FALSE,10,FALSE,7,FALSE)`; B104: quitar `ISERROR(SEARCH("no apto",...))`; Log S/T/W: quitar el segundo COUNTIFS con MID; pestaña: borrar «Aéreo por lotes».
+
+## D-028 (2026-10-17) Decisiones tras el test: pool agotado, B72 = 21, EXPLORA 500, AV automático
+
+- **Evidencia (sesión 2026-10-17-a):** 33 créditos dieron 22 filas nuevas; el lote 2 (GB/ES/MX) dio 0 porque esas regiones están casi vacías; solo 1 Top. El cuello ya no es el flujo, es el pool de PiPiAds. Resultados de corridas anteriores: ni Quemados ni WINNER hacen falta para tener Top.
+- **Aprobado por Claude Code (autorizado por el dueño tras el test):** E-012 → `Config!B72` 30 → 21 (revertir: 30); M-069 → INSTR 07 tope 150 → 500 créditos; AV automático «Sí» en el carril aéreo (`Recetas!D37` v3.3); `Recetas!D40` v5 con PLAN AMPLIADO y parada a las 8 cargas vacías; INSTR 08 v1.9.
+- **Rechazado:** E-010 (contar inactivos en el pre-chequeo) y E-011 (sacar recompra del puntaje): sin evidencia de que hagan falta.
+- Sheet: Mejoras M-088 a M-090, Experimentos E-010..E-012.
