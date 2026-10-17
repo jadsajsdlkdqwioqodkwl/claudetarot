@@ -1,6 +1,6 @@
 # **INSTR 06 — BUSCA, RANKEA, FILTRA y ALIBABA**
 
-Versión 3.29 · 2026-10-15 (v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
+Versión 3.34 · 2026-10-16 (v3.34: la ventana de found_time avanza (hoy − B71 a hoy − B72) en vez de estar fija; v3.33: el flujo de BUSCA AÉREO de punta a punta lo manda INSTR 08; esta sección 2.8 sigue mandando en cómo se hace cada carga y «BUSCA AÉREO SOLO» hace solo las cargas; v3.32: bandas de ventas con sales_volume_max y paginación con current_page, confirmadas por EXPLORA el 2026-10-14; RANKEA en tandas por defecto con Recetas\!D39; M-067, M-068; v3.31: piso 1000/10 y escalera hasta 500/5 y 250/3 con medición, cargas ordenadas por rendimiento (Recetas fila 38), 25 créditos por fila nueva; M-062, M-063; v3.30: fila libre del Log BUSCA en Config\!B103, M-061; v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
 
 Cambios respecto de v3.16 (para auditoría): regla maestra "todo suma" (lo que se paga se guarda; solo se descarta lo que no sirve de ninguna forma); BUSCA AÉREO en todas las fuentes y categorías; Asia incluida con triangulación del veredicto; RANKEA sin tope de grupos por chat; créditos de Claude sin tope en ningún comando.
 
@@ -173,14 +173,14 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
 
 **Una subcategoría por carga.** Las subcategorías y sus IDs están en Recetas fila 31 F. Las categorías padre juntas traían sobre todo moda, papelería y cargadores (18,6 créditos por fila nueva, contra 1,3 a 2 por categoría sola). **Regiones: todas las del selector, incluida Asia** (ver triangulación en 2.4), empezando por US, BR, GB, MX y ES.
 
-**Filtros en la URL** (todos en el servidor; v3.18: cada carga lleva price\_usd\_min=8 y price\_usd\_max=80 en la URL, y la ventana fija es found\_time desde 2026-04-16 hasta 2026-09-13, nunca otra; si una carga usa otra ventana o no lleva precio, anótalo en Log BUSCA R como carga no válida):
+**Filtros en la URL** (todos en el servidor; v3.18: cada carga lleva price\_usd\_min=8 y price\_usd\_max=80 en la URL, y la ventana de found\_time va desde hoy − Config B71 días hasta hoy − Config B72 días (hoy 180 y 30) y avanza un día por día: una ventana ya leída de una combinación (columna AF del resumen) no se vuelve a pagar, se lee solo el tramo nuevo desde el día siguiente a su último «hasta»; si una carga no lleva precio, anótalo en Log BUSCA R como carga no válida):
 
-  - ventas ≥ Config B92 (hoy 2000);
-  - videos ≥ Config B93 (hoy 20);
+  - ventas ≥ Config B92 (hoy 1000);
+  - videos ≥ Config B93 (hoy 10);
   - precio de US8aUS80;
   - orden por ventas (sort=3) y time=30.
 
-**Plan de cargas, en este orden:**
+**Plan de cargas, en este orden (dentro de cada paso, ordena las subcategorías y regiones por el ranking de rendimiento de Recetas fila 38: primero US y GB, aereo9, automotriz, deportes y herramientas; BR y las categorías sin productos, al final y solo si no queda nada más; M-063):**
 
 1.  **Repetir lo que rinde.** Primero las combinaciones con AH de 15 o menos créditos por producto. Después las que tienen AG mayor que 0 (aún sin RANKEA: su AE y su AH todavía no dicen nada) y 6 o menos créditos por fila nueva. Lo que importa son los productos, no las filas: muchas filas y 0 productos ya rankeados no es rendir.
       
@@ -193,7 +193,7 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
       - Con 1 carga sobre B94, vuelve solo si la ventana nueva tiene 30 días o más. Tampoco vuelvas a una combinación ya rankeada (AG = 0) con 20 o más créditos y 0 productos.
       - Nunca repitas una carga: la misma combinación con una ventana que ya figure en el resumen (columna AF) o una clave que ya esté en 'Log BUSCA'\!V.
 
-**Si el total pasa de 20:** la URL no tiene página 2. Parte la combinación por precio (8a20, 20a40, 40a80). Si una banda sigue pasando de 20, pártela en 2 ventanas de found\_time. Cada parte es otra carga y otra fila del Log.
+**Si el total pasa de 20:** pide la página siguiente con current\_page=2, 3… en la misma URL (Exploración 2026-10-14: con el listado Pages:20 la página 2 trae las filas 21 a 40; cuesta 20 créditos más por página). Si la página devuelve las mismas filas o el extractor no la lee, parte la combinación por precio (8a20, 20a40, 40a80). Si una banda sigue pasando de 20, pártela en 2 ventanas de found\_time. Cada parte es otra carga y otra fila del Log.
 
 **En la página, antes de escribir:**
 
@@ -207,7 +207,7 @@ Es el flujo que pidió el mentor: productos que se pueden traer por aéreo sin r
       - fuera de foco: ropa, calzado, joyas, papelería, libros, decoración, textiles del hogar, velas y ventiladores.
   - **Revisa a mano lo que pasó**: ropa con título raro, marcas, pesados, líquidos. Lo que quites a mano va con su ID a la columna Q del Log, así ninguna sesión lo vuelve a escribir. En R anota también qué palabras del prefiltro tumbaron títulos (por ejemplo prefiltro: spray 3, smart 2); si una tumbó productos que servían, ponlo en Mejoras.
 
-**Log BUSCA: una fila por carga, aunque traiga 0.** Escribe 'Log BUSCA'\!A:R en la primera fila vacía con update\_values. Nunca escribas S:AH: son fórmulas.
+**Log BUSCA: una fila por carga, aunque traiga 0.** Escribe 'Log BUSCA'\!A:R en la fila que dice Config\!B103 (la primera libre, calculada como B101 para Sesiones) con update\_values: antes lee A de esa fila y confirma que está vacía. Nunca escribas en una fila fija ni sobre una que ya tenga datos: el 2026-10-15 una sesión pisó la fila 3 (M-061). Nunca escribas S:AH: son fórmulas.
 
 |  |  |
 | :-: | :-: |
@@ -239,13 +239,13 @@ S, T, U, V, W (pendientes de RANKEA) y el resumen Z:AH se calculan solos:
 
 **Código en Crudo D**, único por carga: A|tts|\<nombre\>-\<precio\>|\<país\>|ft..\<hasta\>. Por ejemplo, A|tts|autorep-8a80|US|ft..2026-09-12. Es el mismo de Log K; sin él, S y T no cuentan. En Crudo, B = A (carril aéreo) y L = el found\_time real de la fila.
 
-**Presupuesto:** Config B91 créditos por chat (hoy 1000), contados con la suma de Log M de la sesión. El contador de PiPiAds es el control: va con una carga de retraso.
+**Presupuesto:** Config B91 créditos por chat (hoy 3000), contados con la suma de Log M de la sesión. El contador de PiPiAds es el control: va con una carga de retraso.
 
 **Parada:** además de 2.5, si 5 cargas seguidas traen 0 filas nuevas, pasa a otro grupo de subcategorías o a otra región. Nunca cierres BUSCA AÉREO por «pool agotado», «sin ventana nueva» o «solo quedan combinaciones vacías»: eso no es un motivo de cierre, y pedir RANKEA tampoco sustituye buscar (la cola pendiente no frena la búsqueda). Cierra solo por presupuesto (Config B91), por B59 filas nuevas o porque el chat se llena. Si los pasos 1 a 3 no dejan cargas útiles, baja por la escalera de ampliación, un peldaño a la vez, hasta que se cumpla una de esas tres paradas.
 
 **Escalera de ampliación** (cada carga lleva una clave nueva en 'Log BUSCA'\!V, así que nunca repite una):
 
-1.  Más ventas hacia abajo: en las subcategorías US con mejor AH, léelas con ventas mínimas 1500 y luego 1000 (Config B64). Para no pagar otra vez lo leído con 2000, prueba sales\_volume\_max=1999 (o 1499) en la URL; si el servidor lo respeta, solo pagas la banda nueva. Si no, parte por precio (8a20, 20a40, 40a80) y los repetidos se saltan con X2. Anota en Recetas fila 34 qué funcionó.
+1.  Más ventas hacia abajo (desde 2026-10-16 el nivel base ya es 1000 ventas y 10 videos, y casi todo US se leyó también a ese nivel el 12 de octubre): en las subcategorías con mejor AH, léelas por BANDAS: sales\_volume\_min=500 y sales\_volume\_max=999 con videos 5 o más, y si rinden, 250 a 499 con videos 3 o más. sales\_volume\_max funciona en el servidor (Exploración 2026-10-14: 20 filas de 999 a 976), así que solo pagas la banda nueva; sin el máximo, la carga vuelve a traer las 20 de mayor venta que ya leíste y pagas por repetidos. En 297 filas aéreas juzgadas las ventas y los videos no predijeron el éxito; no hay datos bajo 1000, así que las dos primeras sesiones con este piso miden la tasa de Producto de cada carga: si baja de 8% (la de BR), vuelve al nivel anterior y anótalo en Mejoras (M-062). Si una banda no se deja leer sola, parte por precio (8a20, 20a40, 40a80) y los repetidos se saltan con X2. Anota en Recetas fila 34 qué funcionó.
 2.  Menos videos: con ventas desde 1000, lee la banda de videos 10 a 19 (video\_count\_min=10 y video\_count\_max=19 en la URL, verificado el 2026-10-14: 1,5 créditos por fila nueva en US) para no repetir lo leído con 20 o más (Config B65).
 3.  Otro orden: si el total de una consulta pasa de 20, léela otra vez con otro orden (videos o vistas en vez de ventas) para ver otros 20. Confirma el parámetro de orden en la interfaz y anótalo en Recetas fila 34.
 4.  Subcategorías sin padre leído: prioriza las hijas de categorías padre que no se leyeron con ventas bajas. En BR las hijas de electrodomésticos y cocina repiten lo ya leído (cocinaelec: 11 de 13 ya vistos).
@@ -293,7 +293,7 @@ Toma los grupos Preseleccionado en el orden de la cola (suplementos, regulados y
       - **Menos**: sigue al puntaje y anota en AL Pre-chequeo: N anunciantes (nombres).
 2.  **Puntaje**: lee de la Cola las columnas L:P del grupo (no vuelvas a Crudo). Con el título y el ángulo del anuncio escribe el dolor en una línea (dolor + quién lo sufre + cuándo), sin inventar. Puntúa con INSTR 03, señal de novedad (AU: primer visto dentro de Config B37 días) y AT.
 3.  Agrega al final de Productos: C = Dolor si vino del carril W1, Producto si vino del W2; K = link directo; L con el formato de INSTR 05, sección 0; BD = la foto (Cola P) de la fila del grupo con más ventas, solo si es de TikTok Shop (products/images); las portadas de anuncios no, porque casi siempre muestran a una persona (BD vacío: la llena ALIBABA). **O siempre con peso y tamaño, los dos, aunque sean aproximados**: ≈\<peso\> g · ≈\<largo\>×\<ancho\>×\<alto\> cm, y si ayuda el formato (frasco, sachet, no frágil). **Nunca escribas en AD:AF** (el estado lo da la validación), **ni en AW, AX ni AY** (fórmulas), **ni en la pestaña Revisión** (ahí marca el usuario).
-4.  Marca las filas del grupo en Crudo: Producto y el ID, o Descartado y el motivo (en lote, receta de la fila 12). Modo tandas (si tienes la herramienta de subagentes): el triage (3.1) lo haces tú. Para el pre-chequeo y el puntaje, reparte los grupos Preseleccionado en tandas de 8 grupos y lanza hasta 3 subagentes a la vez (Meta MCP es gratis y no usa Chrome, así que el paralelo no hace daño). Cada subagente recibe sus grupos con sus filas de la Cola (A:P), lee solo INSTR 03 y esta sección 3.2, y NO escribe en la hoja: devuelve, por grupo, una línea «Sobreexplotado | N anunciantes | nombres» o la fila lista para Productos (columnas D:AC, AI:AL, AS:AV y BD, separadas por |). Tú asignas los IDs y escribes Productos, Excluidos y Crudo en lote (pasos 3 y 4). Sin subagentes, haz tú los grupos uno por uno.
+4.  Marca las filas del grupo en Crudo: Producto y el ID, o Descartado y el motivo (en lote, receta de la fila 12). Modo tandas (por defecto desde el 2026-10-15; el usuario lo autorizó por escrito para RANKEA y RANKEA AÉREO: úsalo sin esperar a que lo repita; las sesiones -s y -w del 2026-10-15 hicieron el pre-chequeo a mano y cerraron parciales tras ~20 grupos): si tienes la herramienta de subagentes (Agent o Task), el pre-chequeo NO lo haces tú. El triage (3.1) lo haces tú. Para el pre-chequeo y el puntaje, reparte los grupos Preseleccionado en tandas de 8 a 10 grupos (medido el 2026-10-16: cada subagente gasta ~45 mil tokens fijos y ~11 mil por grupo, así que tandas más chicas salen caras) y lanza hasta 3 subagentes a la vez (Meta MCP es gratis y no usa Chrome, así que el paralelo no hace daño). Cada subagente recibe sus grupos con sus filas de la Cola (A:P), lee solo Recetas\!D39 (sus instrucciones compactas, con la tabla de pilares: no necesita INSTR 03), y NO escribe en la hoja: devuelve, por grupo, una línea «Sobreexplotado | N anunciantes | nombres» o la fila lista para Productos (columnas D:AC, AI:AL, AS:AV y BD, separadas por |). Tú asignas los IDs y escribes Productos, Excluidos y Crudo en lote (pasos 3 y 4). Sin subagentes, haz tú los grupos uno por uno.
 
 ### **3.3 Entrega de RANKEA**
 
