@@ -176,3 +176,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 
 - **Evidencia:** sesión 2026-10-16-c: FILTRA escribió texto en AE («10 por muestra», «25+»), no escribió Y en cortes y la columna X (P7B) nunca se llenó por falta de escala; el principal tuvo que escribir Chequeo Meta y Excluidos porque los subagentes no tienen permiso.
 - **Cambio:** AD/AE/AF enteros o vacíos; corte escribe Y = 0; X con escala 0/1/2 (alternativa en retail peruano); Chequeo Meta/Excluidos los escribe el principal. Revertir: quitar el párrafo «REGLA v3.2» y la escala de X.
+
+## D-025 (2026-10-17) ALIBABA: regla de oro y paso 4b para precios
+
+- **Evidencia:** sesión 2026-10-16-c: la búsqueda por foto funciona y encuentra proveedores, pero el script F de Recetas!E30 devolvió la lista de precios vacía (Alibaba cambió el HTML); el orquestador no escribió nada y preguntó si lanzar tandas o parar.
+- **Cambio:** `Recetas!D36`: nunca dejar una fila sin escribir (foto, links y nota aunque BA = s/d); paso 4b con el script F2 de respaldo (JSON del HTML + precios visibles + tramos) y get_page_text; precios solo en S/ se anotan en BE. INSTR 08 v1.7: ALIBABA en tandas de 3, un subagente a la vez, sin preguntar. El script F2 NO está probado: la primera corrida lo valida.
+- **Revertir:** quitar el paso 4b y la regla de oro de D36; el texto anterior es el de M-052.

@@ -42,7 +42,7 @@ PiPiAds --BUSCA--> Crudo (TODO se guarda, con su motivo) --RANKEA--> Productos (
 | `docs/LABORATORIO.md` | Guía rápida del bucle de prueba y error y de BUSCA AÉREO de punta a punta |
 | `docs/PROMPT-PROYECTO.md` | El prompt del Project (texto para pegar una sola vez en claude.ai) |
 | `docs/DECISIONES.md` | Qué se decidió, por qué y el texto anterior (para poder revertir) |
-| `docs/espejo/INSTR-06.md` y `INSTR-08.md` | Copias de INSTR 06 v3.35 e INSTR 08 v1.6 (comandos BUSCA, RANKEA, FILTRA, ALIBABA) |
+| `docs/espejo/INSTR-06.md` y `INSTR-08.md` | Copias de INSTR 06 v3.35 e INSTR 08 v1.7 (comandos BUSCA, RANKEA, FILTRA, ALIBABA) |
 
 ## Cómo empezar una sesión
 
