@@ -1,0 +1,9 @@
+{
+  "name": "doblaje-tarot",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-01-01",
+  "account_id": "d0c6550b43c7a966eb8e93a69a653993",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "./public" }
+}

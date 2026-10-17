@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doblaje Tarot</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--tx:#1d1b18;--mut:#6b675f;--bd:#e3e0d8;--ac:#4b3fae;--ac2:#efecff;--ok:#1a7f4b;--er:#b3261e;--wa:#9a5b00}
+@media (prefers-color-scheme:dark){:root{--bg:#161512;--card:#201f1b;--tx:#f0ede6;--mut:#a39f95;--bd:#34322c;--ac:#9d93ff;--ac2:#2a2745;--ok:#5fd596;--er:#ff8a80;--wa:#f0b35a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 18px}
+.panel{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.fila{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+select,input[type=password],input[type=range]{font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+input[type=range]{padding:0;accent-color:var(--ac)}
+button{font:inherit;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:8px;cursor:pointer}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff}button:disabled{opacity:.45;cursor:default}
+svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#drop{border:2px dashed var(--bd);border-radius:12px;padding:34px 16px;text-align:center;color:var(--mut);cursor:pointer}
+#drop.sobre{border-color:var(--ac);background:var(--ac2);color:var(--tx)}#drop svg{width:28px;height:28px;margin-bottom:6px}
+.nota{font-size:13px;color:var(--mut)}.aviso{color:var(--wa)}
+#lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.it{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.it h3{font-size:14px;margin:0;word-break:break-all}.it video,.it audio{width:100%;border-radius:8px;background:#000;max-height:260px}
+.est{font-size:13px;display:flex;align-items:center;gap:6px}.est.ok{color:var(--ok)}.est.er{color:var(--er)}.est.pr{color:var(--ac)}
+.rev{font-size:13px;background:var(--ac2);border-radius:8px;padding:8px;color:var(--wa)}
+.acc{display:flex;gap:8px;flex-wrap:wrap}.acc button{padding:6px 10px;font-size:13px}
+.giro{animation:g 1s linear infinite}@keyframes g{to{transform:rotate(360deg)}}
+#bloq{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
+#bloq form{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;width:min(340px,92vw)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-sube" viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></symbol>
+<symbol id="i-baja" viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
+<symbol id="i-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-rueda" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6-8.5"/></symbol>
+<symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-papel" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"/></symbol>
+</defs></svg>
+<div id="bloq"><form id="fclave"><b>Doblaje Tarot</b><label>Clave del panel<input type="password" id="clave" autofocus></label><button class="pri" type="submit">Entrar</button><span class="nota" id="eclave"></span></form></div>
+<main>
+<h1>Doblaje a español</h1>
+<p class="sub">Arrastra tus creativos, elige el modelo y traduce. Previsualiza y descarga uno por uno o todos juntos.</p>
+<div class="panel">
+ <div class="fila">
+  <label>Modelo
+   <select id="modelo">
+    <option value="v1">Dubbing v1 - 0,33 USD/min (video doblado)</option>
+    <option value="v2">Dubbing v2 - 2,20 USD/min (solo audio, con similitud)</option>
+   </select></label>
+  <label id="lmarca">Marca de agua (v1)
+   <select id="marca"><option value="1">Con marca - 0,33 USD/min</option><option value="0">Sin marca - 0,50 USD/min</option></select></label>
+  <label id="lsim" hidden>Similitud de voz: <b id="vsim">8</b>
+   <input type="range" id="sim" min="0" max="10" value="8"></label>
+  <label>Idioma original
+   <select id="origen"><option value="auto">Detectar</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="fr">Francés</option><option value="it">Italiano</option><option value="de">Alemán</option></select></label>
+ </div>
+ <p class="nota" id="notamodelo"></p>
+</div>
+<div id="drop"><svg><use href="#i-sube"/></svg><div><b>Arrastra videos o audios aquí</b> o haz clic para elegirlos</div><input id="inp" type="file" multiple accept="video/*,audio/*,.mp4,.mov,.mp3,.wav" hidden></div>
+<div class="fila" style="margin:14px 0">
+ <button class="pri" id="traducir" disabled><svg><use href="#i-play"/></svg>Traducir todo</button>
+ <button id="zip" disabled><svg><use href="#i-baja"/></svg>Descargar todo (zip)</button>
+ <button id="limpiar" disabled><svg><use href="#i-x"/></svg>Quitar terminados</button>
+ <span class="nota" id="total"></span>
+</div>
+<div id="lista"></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $=s=>document.querySelector(s), ic=n=>`<svg><use href="#i-${n}"/></svg>`;
+let clave=sessionStorage.getItem("clave")||"", glosario={}, items=[], enCurso=0;
+const MAX=3; // ElevenLabs permite 3 doblajes a la vez por modelo
+
+async function api(ruta,init={}){
+  init.headers={...(init.headers||{}),"x-clave":clave};
+  const r=await fetch("/api/"+ruta,init);
+  if(r.status===401){sessionStorage.removeItem("clave");location.reload();throw new Error("clave")}
+  return r;
+}
+async function jsonApi(ruta,init){const r=await api(ruta,init);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("Error "+r.status));return j}
+
+$("#fclave").onsubmit=async e=>{e.preventDefault();clave=$("#clave").value;
+  const r=await api("ping").catch(()=>null);
+  if(r&&r.ok){sessionStorage.setItem("clave",clave);$("#bloq").remove()}else $("#eclave").textContent="Clave incorrecta"};
+if(clave)api("ping").then(r=>r.ok&&$("#bloq").remove()).catch(()=>{});
+fetch("/glosario.json").then(r=>r.json()).then(j=>glosario=j.prohibidas||{});
+
+function modelo(){return $("#modelo").value}
+function precio(){return modelo()==="v2"?2.2:($("#marca").value==="1"?0.33:0.5)}
+function ajustes(){
+  const v2=modelo()==="v2";$("#lsim").hidden=!v2;$("#lmarca").hidden=v2;
+  $("#notamodelo").innerHTML=v2
+   ?"v2 deja elegir la similitud de voz (0 a 10) y entrega solo el audio doblado en WAV (hay que ponerlo sobre el video). Con el dialecto es-MX.":
+    "v1 entrega el video ya doblado, pero no tiene control de similitud de voz (clona la voz original automáticamente). <span class='aviso'>Con marca de agua el video sale marcado.</span>";
+  resumen();
+}
+$("#modelo").onchange=ajustes;$("#marca").onchange=resumen;$("#sim").oninput=()=>$("#vsim").textContent=$("#sim").value;
+
+const drop=$("#drop");
+drop.onclick=()=>$("#inp").click();
+["dragover","dragenter"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("sobre")}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("sobre")}));
+drop.addEventListener("drop",e=>agregar(e.dataTransfer.files));
+$("#inp").onchange=e=>{agregar(e.target.files);e.target.value=""};
+
+function agregar(fs){
+  for(const file of fs){
+    if(!/^(video|audio)\//.test(file.type)&&!/\.(mp4|mov|mp3|wav)$/i.test(file.name))continue;
+    const it={id:crypto.randomUUID(),file,estado:"cola",min:0,blob:null,aviso:"",modelo:null};
+    const m=document.createElement(file.type.startsWith("audio")?"audio":"video");
+    m.preload="metadata";m.src=URL.createObjectURL(file);
+    m.onloadedmetadata=()=>{it.min=m.duration/60;URL.revokeObjectURL(m.src);resumen()};
+    items.push(it);
+  }
+  pintar();
+}
+function resumen(){
+  const pend=items.filter(i=>i.estado==="cola"),min=pend.reduce((a,i)=>a+i.min,0);
+  $("#traducir").disabled=!pend.length;
+  $("#zip").disabled=!items.some(i=>i.blob);
+  $("#limpiar").disabled=!items.some(i=>i.estado==="listo");
+  $("#total").textContent=pend.length?`${pend.length} por traducir, ${min.toFixed(1)} min, aprox. ${(min*precio()).toFixed(2)} USD`:"";
+}
+function pintar(){
+  const l=$("#lista");l.innerHTML="";
+  for(const it of items){
+    const d=document.createElement("div");d.className="it";
+    const est={cola:["reloj","","En cola"],subiendo:["rueda pr","pr","Subiendo..."],procesando:["rueda pr","pr","Traduciendo..."],listo:["ok","ok","Listo"],fallo:["x","er","Falló"]}[it.estado];
+    d.innerHTML=`<h3>${it.file.name}</h3>`;
+    if(it.blob){const v=document.createElement(it.blob.type.startsWith("audio")?"audio":"video");v.controls=true;v.src=URL.createObjectURL(it.blob);d.append(v)}
+    const e=document.createElement("div");e.className="est "+est[1].split(" ")[0];
+    e.innerHTML=`<span class="${est[0].includes("rueda")?"giro":""}">${ic(est[0].split(" ")[0])}</span>${it.error||est[2]} ${it.min?`<span class="nota">(${it.min.toFixed(1)} min)</span>`:""}`;
+    d.append(e);
+    if(it.aviso){const r=document.createElement("div");r.className="rev";r.textContent=it.aviso;d.append(r)}
+    const a=document.createElement("div");a.className="acc";
+    if(it.blob)a.innerHTML=`<button data-d="${it.id}">${ic("baja")}Descargar</button>`;
+    if(it.estado==="cola"||it.estado==="fallo")a.innerHTML+=`<button data-q="${it.id}">${ic("x")}Quitar</button>`;
+    d.append(a);l.append(d);
+  }
+  l.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>bajar(items.find(i=>i.id===b.dataset.d)));
+  l.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{items=items.filter(i=>i.id!==b.dataset.q);pintar()});
+  resumen();
+}
+function nombreSalida(it){
+  const ext=it.blob.type.startsWith("audio")?(it.blob.type.includes("wav")?".wav":".mp3"):".mp4";
+  return it.file.name.replace(/\.[^.]+$/,"")+".es"+ext;
+}
+function bajar(it){const a=document.createElement("a");a.href=URL.createObjectURL(it.blob);a.download=nombreSalida(it);a.click()}
+$("#zip").onclick=async()=>{
+  const z=new JSZip();items.filter(i=>i.blob).forEach(i=>z.file(nombreSalida(i),i.blob));
+  const b=await z.generateAsync({type:"blob",compression:"STORE"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="doblados-es.zip";a.click();
+};
+$("#limpiar").onclick=()=>{items=items.filter(i=>i.estado!=="listo");pintar()};
+$("#traducir").onclick=()=>{
+  items.filter(i=>i.estado==="cola").forEach(i=>{i.modelo=modelo();i.marca=$("#marca").value;i.sim=$("#sim").value;i.origen=$("#origen").value;i.estado="espera"});
+  cola();
+};
+function cola(){
+  for(const it of items){
+    if(enCurso>=MAX)break;
+    if(it.estado==="espera"){enCurso++;correr(it).finally(()=>{enCurso--;cola()})}
+  }
+}
+const dormir=ms=>new Promise(r=>setTimeout(r,ms));
+async function correr(it){
+  try{
+    it.estado="subiendo";pintar();
+    const fd=new FormData();fd.set("file",it.file);fd.set("nombre",it.file.name);fd.set("origen",it.origen);fd.set("modelo",it.modelo);fd.set("conMarca",it.marca);
+    let {id}=await jsonApi("iniciar",{method:"POST",body:fd});
+    it.estado="procesando";pintar();
+    const v=it.modelo;
+    for(;;){
+      await dormir(8000);
+      const s=await jsonApi(`${v}/estado?id=${encodeURIComponent(id)}`);
+      if(s.estado==="fallo")throw new Error(s.error||"ElevenLabs no pudo doblarlo");
+      if(s.estado==="preparado"){
+        ({id}=await jsonApi("v2/idioma",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,similitud:it.sim,dialecto:"es-MX"})}));
+        continue;
+      }
+      if(s.estado==="listo")break;
+    }
+    const r=await api(`${v}/archivo?id=${encodeURIComponent(id)}`);
+    if(!r.ok)throw new Error("No se pudo bajar el resultado");
+    it.blob=await r.blob();
+    if(v==="v1"){
+      try{const g=await jsonApi(`v1/guion?id=${encodeURIComponent(id)}`);it.aviso=revisar(g.texto)}catch{}
+    }
+    it.estado="listo";
+  }catch(e){it.estado="fallo";it.error=e.message}
+  pintar();
+}
+function revisar(texto){
+  const hall=[];
+  for(const [m,b] of Object.entries(glosario)){
+    const n=(texto.match(new RegExp(`(^|[^\\p{L}])${m}(?![\\p{L}])`,"giu"))||[]).length;
+    if(n)hall.push(`${m} (x${n}) -> ${b}`);
+  }
+  return hall.length?"Revisar palabras en el guion: "+hall.join(", "):"";
+}
+ajustes();
+</script>
+</body>
+</html>

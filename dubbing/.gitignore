@@ -1,6 +1,5 @@
 node_modules/
 .env
-entrada/*
-salida/*
-!entrada/.gitkeep
-!salida/.gitkeep
+.dev.vars
+.wrangler/
+package-lock.json

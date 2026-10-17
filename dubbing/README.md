@@ -1,21 +1,18 @@
-# Doblaje de creativos a español neutro (ElevenLabs Dubbing)
+# Doblaje Tarot (panel con ElevenLabs)
 
-1. `cd dubbing && npm install`
-2. Copia `.env.example` a `.env` y pega tu clave (`ELEVENLABS_API_KEY`). `.env` no se sube al repo.
-3. Pon tus creativos (mp4, mov, mp3, wav...) en `entrada/` (con subcarpetas si quieres).
-4. `npm run doblar` — deja en `salida/` el archivo `.es.mp4`, el `.srt` y un `.reporte.json`.
+Página para arrastrar creativos (mp4, mov, mp3, wav), traducirlos a español, previsualizar y descargar
+(uno por uno o todo en un zip). Corre en Cloudflare Workers; la clave de ElevenLabs vive como secreto
+del Worker, nunca en el repo ni en el navegador.
 
-Opciones: `--idioma-origen en` (por defecto detecta), `--hablantes 2` (por defecto detecta), `--sin-fondo` (quita música/fondo).
-Lo ya doblado se salta; borra el archivo de `salida/` para rehacerlo.
+- **Dubbing v1** (0,33 USD/min con marca de agua, 0,50 sin marca): entrega el video doblado. No tiene control de similitud ni dialectos.
+- **Dubbing v2** (2,20 USD/min): control de similitud de voz 0 a 10 (cloning strength) y dialecto es-MX; entrega solo el audio WAV.
+- `public/glosario.json`: palabras que no deben salir (cel, celular, ostias, tío, che...). En v1 el panel lee el guion traducido y avisa si aparece alguna.
 
-## Español neutro
-Se pide el idioma `es` con acento "neutral Latin American Spanish" (opción experimental de ElevenLabs; cambia con `ACENTO_DESTINO`).
-`glosario.json` lista palabras prohibidas (cel, celular, ostias, tío, che, vale...): el script revisa el guion traducido
-y las lista en `.reporte.json` y en consola. Si aparece alguna, se corrige el texto y se vuelve a generar.
-
-## Similitud de voz
-Siempre se clona la voz original de cada hablante (`disableVoiceCloning: false`). La API de Dubbing no tiene un
-control de similitud 1 a 10: la clonación es automática. Si una voz no sale parecida, sube un audio más limpio.
-
-## Costo
-Se cobra por minuto de video según tu plan de ElevenLabs. Prueba primero con un creativo corto.
+## Poner en línea / actualizar
+```
+cd dubbing && npm install
+export CLOUDFLARE_API_TOKEN=...
+npx wrangler secret put ELEVENLABS_API_KEY
+npx wrangler secret put APP_PASSWORD     # la clave que pide el panel
+npx wrangler deploy
+```

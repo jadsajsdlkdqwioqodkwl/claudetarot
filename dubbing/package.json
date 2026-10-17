@@ -1,14 +1,15 @@
 {
   "name": "doblaje-tarot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Doblaje de creativos (video/audio) a español neutro con ElevenLabs Dubbing",
+  "description": "Panel para doblar creativos a español con ElevenLabs (arrastrar, traducir, previsualizar, descargar)",
   "scripts": {
-    "doblar": "node src/doblar.mjs",
-    "check": "node --check src/doblar.mjs"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node --check src/worker.js"
   },
-  "dependencies": {
-    "@elevenlabs/elevenlabs-js": "^2.0.0"
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   }
 }
