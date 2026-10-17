@@ -120,6 +120,7 @@ import {
 } from "./api/crm/variantes.js";
 import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
+import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
@@ -284,6 +285,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") {
       ctx.waitUntil(exportarChatsASheets(env));
+      ctx.waitUntil(reflotarSugerencia(env).catch((err) => console.error("Reflotar sugerencia:", err.message)));
       return;
     }
     // Lo analítico y lo que lee la hoja Ventas va en su propia ejecución, con

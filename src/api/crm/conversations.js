@@ -151,6 +151,8 @@ async function handler({ request, env, agent }) {
         lm.body AS last_body,
         lm.type AS last_type,
         lm.direction AS last_direction,
+        EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
+                AND sg.tipo = 'seguimiento' AND sg.reflotada_at IS NOT NULL) AS con_recomendacion,
         seg.pendientes AS seg_pendientes,
         seg.proximo AS seg_proximo,
         seg.auto_proximo AS seg_auto_proximo

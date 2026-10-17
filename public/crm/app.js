@@ -1906,6 +1906,7 @@ function pintarLista() {
         ${badgeEtapa(c)}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
+        ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat">${icon("sparkle")} Recomendación</span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
       </div>`;
@@ -2993,6 +2994,7 @@ function pintarChatBase(c) {
     </header>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
+    <div id="banner-recomendacion" style="display:none"></div>
     <div id="preview-respuesta" style="display:none"></div>
     <div id="preview-archivo" style="display:none"></div>
     <div id="preview-botones"></div>
@@ -3360,7 +3362,52 @@ function aplicarMensajes(conversationId, { messages, hay_mas }) {
     estado.panelesCargadosPara = conversationId;
     actualizarPedidosPanel();
     actualizarSeguimientosDetalle();
+    actualizarRecomendacionChat();
   }
+}
+
+/**
+ * Recomendación del asesor para este chat (la que sube a la bandeja de a una cada 10 min): el mensaje
+ * recomendado queda visible sobre el cuadro de envío, se puede editar y enviar, o descartar.
+ */
+async function actualizarRecomendacionChat() {
+  const conversationId = estado.conversacionActivaId;
+  const caja = $("#banner-recomendacion");
+  if (!caja || !conversationId) return;
+  try {
+    const { sugerencia } = await pedir(`/api/crm/sugerencias?de_chat=${conversationId}`);
+    if (estado.conversacionActivaId !== conversationId) return;
+    if (!sugerencia) { caja.style.display = "none"; caja.innerHTML = ""; delete caja.dataset.id; return; }
+    if (caja.dataset.id === String(sugerencia.id)) return; // ya está: no pisar lo que la vendedora está editando
+    caja.dataset.id = String(sugerencia.id);
+    caja.style.display = "";
+    caja.innerHTML = `
+      <div class="reco-cab">${icon("sparkle")} <b>Recomendación del asesor</b>${sugerencia.motivo ? ` · <span class="sub">${escapar(sugerencia.motivo)}</span>` : ""}</div>
+      ${sugerencia.objecion ? `<div class="sug-objecion">${icon("alertCircle")} Lo que probablemente lo frena: <b>${escapar(sugerencia.objecion)}</b></div>` : ""}
+      <textarea class="reco-texto" rows="3">${escapar(sugerencia.texto)}</textarea>
+      <div class="reco-acciones">
+        <button type="button" class="reco-descartar">${icon("trash")} Descartar</button>
+        <button type="button" class="reco-enviar">${icon("send")} Enviar</button>
+      </div>`;
+    const resolver = async (boton, cuerpo) => {
+      boton.disabled = true;
+      try {
+        await pedir("/api/crm/sugerencias", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sugerencia.id, ...cuerpo }) });
+        caja.style.display = "none"; caja.innerHTML = ""; delete caja.dataset.id;
+        actualizarConteoSugerencias();
+        cargarMensajes();
+      } catch (err) {
+        alert(err.message);
+        boton.disabled = false;
+      }
+    };
+    caja.querySelector(".reco-enviar").addEventListener("click", (e) => {
+      const texto = caja.querySelector(".reco-texto").value.trim();
+      if (!texto) { alert("El mensaje está vacío."); return; }
+      resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto });
+    });
+    caja.querySelector(".reco-descartar").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar" }));
+  } catch { /* silencioso */ }
 }
 
 async function cargarMensajesAnteriores() {

@@ -76,6 +76,16 @@ const esAdmin = (agent) => !agent || agent.role === "admin";
 async function get({ request, env, agent }) {
   // ?chat=<conversation_id>: los últimos mensajes de ese chat, para editar la
   // sugerencia viendo la conversación. No lo marca como leído.
+  // ?de_chat=<conversation_id>: la recomendación pendiente de ese chat (el banner del chat), o null.
+  const deChat = Number(new URL(request.url).searchParams.get("de_chat"));
+  if (deChat) {
+    await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
+    const s = await env.CRM_DB.prepare(
+      `SELECT id, texto, motivo, objecion, origen, pasos, idea FROM asesor_sugerencias
+       WHERE estado = 'pendiente' AND tipo = 'seguimiento' AND conversation_id = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(deChat).first();
+    return json({ sugerencia: s ? { ...s, pasos: parsear(s.pasos), idea: s.idea ? parsear(s.idea) : null } : null });
+  }
   const chat = Number(new URL(request.url).searchParams.get("chat"));
   if (chat) {
     const { results: mensajes } = await env.CRM_DB.prepare(

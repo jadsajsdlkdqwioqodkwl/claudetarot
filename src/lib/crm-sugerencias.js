@@ -7,6 +7,7 @@
  * Tres UPDATE en un batch; nada de IA.
  */
 import { proponerPlanPorVentanaCerrada } from "./planes-plantilla.js";
+import { enSilencio } from "./horario.js";
 
 export async function limpiarSugerenciasViejas(db, env = null) {
   // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
@@ -29,4 +30,27 @@ export async function limpiarSugerenciasViejas(db, env = null) {
          AND conversation_id IN (SELECT id FROM conversations WHERE last_inbound_at IS NULL OR last_inbound_at < datetime('now', '-24 hours'))`
     )
   ]);
+}
+
+/**
+ * Cada 10 min (cron) sube a la bandeja UN chat con recomendación pendiente del asesor (la más antigua que
+ * aún no subió), para que las vendedoras las vean de a una y no de golpe. Dentro del chat se ve el mensaje
+ * recomendado, editable, con «Enviar» y «Descartar». No sube de madrugada (horario de envío). Devuelve el
+ * id del chat reflotado o null.
+ */
+export async function reflotarSugerencia(env) {
+  const db = env.CRM_DB;
+  if (!db || enSilencio(Date.now(), env.HORARIO_ENVIO)) return null;
+  await limpiarSugerenciasViejas(db).catch((err) => console.error("Limpiar sugerencias:", err.message));
+  const s = await db.prepare(
+    `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
+     WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.reflotada_at IS NULL AND conv.blocked = 0
+     ORDER BY s.created_at ASC, s.id ASC LIMIT 1`
+  ).first();
+  if (!s) return null;
+  await db.batch([
+    db.prepare("UPDATE asesor_sugerencias SET reflotada_at = datetime('now') WHERE id = ?").bind(s.id),
+    db.prepare("UPDATE conversations SET last_message_at = datetime('now') WHERE id = ?").bind(s.conversation_id)
+  ]);
+  return s.conversation_id;
 }

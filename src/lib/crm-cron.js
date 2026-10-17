@@ -43,7 +43,7 @@ export async function acomodarAlHorario(env) {
     // a las 23:29, nunca se corre a las 06:00 si eso lo saca de la ventana; si no hay hora de día, sale de madrugada.
     const dia7 = s.template_name && s.created_by?.endsWith("Automático (día 7)");
     const vence = dia7
-      ? new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000
+      ? new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000 - MARGEN_DIA7_MS
       : s.template_name || !s.last_inbound_at
       ? null
       : new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000;
@@ -66,6 +66,13 @@ export async function acomodarAlHorario(env) {
  * grande simplemente tarda más, en vez de cortarse a la mitad sin registrar.
  */
 const POR_PASADA = 12;
+
+/**
+ * El rescate del día 7 NUNCA debe salir pasados los 7 días del click del anuncio (regla del dueño). Como salen
+ * 12 por pasada, una ola (p. ej. 76 juntos a las 06:00) tarda ~35 min: al acomodar el horario se deja este
+ * margen antes del vencimiento, y si aun así llega tarde se cancela en vez de mandarlo fuera de los 7 días.
+ */
+const MARGEN_DIA7_MS = 45 * 60 * 1000;
 
 /** Rellena {nombre} y {link} de los mensajes automáticos que los llevan (Link de envío). */
 export function rellenar(texto, datos) {
@@ -119,7 +126,7 @@ export async function procesarSeguimientosVencidos(env) {
        (SELECT mi.wa_message_id FROM messages mi WHERE mi.conversation_id = conv.id AND mi.direction = 'in'
           AND mi.type <> 'call' AND mi.wa_message_id IS NOT NULL AND mi.created_at >= datetime('now', '-1 day')
           ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in,
-       conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags,
+       conv.created_at AS conv_creado, conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags,
        (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
        EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
           AND md.body = COALESCE(s.body, ${textoPorDefectoSql("rapida")}) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
@@ -140,6 +147,8 @@ export async function procesarSeguimientosVencidos(env) {
     try {
       // Rescate del día 7 (rescate-lead.js): si compró mientras esperaba, ya no sale.
       if (s.created_by?.endsWith("Automático (día 7)") && (s.etapa >= 5 || /\bpurchase\b/.test(s.meta_tags || ""))) { await cancelar(s.id); continue; }
+      // Pasaron los 7 días del click del anuncio: ya no sale (nunca fuera de la ventana).
+      if (s.created_by?.endsWith("Automático (día 7)") && s.conv_creado && Date.now() > new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000) { await cancelar(s.id); continue; }
       // Killswitch de este chat: lo automático y las plantillas que venzan se cancelan (lo que programó una persona a mano sale).
       if (s.pausa_auto && (s.template_name || esOrigenAutomatico(s.created_by))) { await cancelar(s.id); continue; }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
