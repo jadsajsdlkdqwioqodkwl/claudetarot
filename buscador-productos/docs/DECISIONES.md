@@ -201,3 +201,8 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Aprobado por Claude Code (autorizado por el dueño tras el test):** E-012 → `Config!B72` 30 → 21 (revertir: 30); M-069 → INSTR 07 tope 150 → 500 créditos; AV automático «Sí» en el carril aéreo (`Recetas!D37` v3.3); `Recetas!D40` v5 con PLAN AMPLIADO y parada a las 8 cargas vacías; INSTR 08 v1.9.
 - **Rechazado:** E-010 (contar inactivos en el pre-chequeo) y E-011 (sacar recompra del puntaje): sin evidencia de que hagan falta.
 - Sheet: Mejoras M-088 a M-090, Experimentos E-010..E-012.
+
+## D-029 (2026-10-17) Login de PiPiAds no frena la corrida
+
+- **Evidencia:** sesión 2026-10-17-b: PiPiAds pedía iniciar sesión en el Chrome conectado; el orquestador se detuvo y preguntó si correr RANKEA/FILTRA mientras tanto.
+- **Cambio:** INSTR 08 v1.10: sin sesión en PiPiAds el principal no pregunta; sigue con RANKEA, FILTRA y ALIBABA (corrida parcial) y pide el login al final; `sigue` retoma las cargas.
