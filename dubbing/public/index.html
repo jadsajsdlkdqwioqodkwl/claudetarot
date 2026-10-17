@@ -28,6 +28,9 @@ svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .rev{font-size:13px;background:var(--ac2);border-radius:8px;padding:8px;color:var(--wa)}
 .acc{display:flex;gap:8px;flex-wrap:wrap}.acc button{padding:6px 10px;font-size:13px}
 .giro{animation:g 1s linear infinite}@keyframes g{to{transform:rotate(360deg)}}
+#ed{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8;overflow:auto;padding:16px}#ed .caja{background:var(--card);max-width:880px;margin:0 auto;border-radius:12px;padding:16px;border:1px solid var(--bd)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;padding-bottom:10px;border-bottom:1px solid var(--bd)}@media(max-width:640px){.seg{grid-template-columns:1fr}}
+.seg textarea{width:100%;min-height:64px;font:inherit;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px}.seg textarea.mala{border-color:var(--er)}.seg .or{color:var(--mut);font-size:13px}
 #bloq{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
 #bloq form{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;width:min(340px,92vw)}
 </style>
@@ -51,13 +54,15 @@ svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-l
  <div class="fila">
   <label>Modelo
    <select id="modelo">
-    <option value="v1">Dubbing v1 - 0,33 USD/min (video doblado)</option>
-    <option value="v2">Dubbing v2 - 2,20 USD/min (solo audio, con similitud)</option>
+    <option value="v2">Dubbing v2 - 2,20 USD/min (solo audio, similitud, es-MX)</option>
+    <option value="v1">Dubbing v1 - 0,33 USD/min (video doblado, texto editable)</option>
    </select></label>
   <label id="lmarca">Marca de agua (v1)
    <select id="marca"><option value="1">Con marca - 0,33 USD/min</option><option value="0">Sin marca - 0,50 USD/min</option></select></label>
-  <label id="lsim" hidden>Similitud de voz: <b id="vsim">8</b>
-   <input type="range" id="sim" min="0" max="10" value="8"></label>
+  <label id="lsim" hidden>Similitud de voz: <b id="vsim">7</b>
+   <input type="range" id="sim" min="0" max="10" value="7"></label>
+  <label id="lestudio" hidden>Revisar el texto
+   <select id="estudio"><option value="1">Sí, poder editar el guion (v1)</option><option value="0">No</option></select></label>
   <label>Idioma original
    <select id="origen"><option value="auto">Detectar</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="fr">Francés</option><option value="it">Italiano</option><option value="de">Alemán</option></select></label>
  </div>
@@ -71,6 +76,7 @@ svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-l
  <span class="nota" id="total"></span>
 </div>
 <div id="lista"></div>
+<div id="ed" hidden></div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
@@ -95,9 +101,9 @@ fetch("/glosario.json").then(r=>r.json()).then(j=>glosario=j.prohibidas||{});
 function modelo(){return $("#modelo").value}
 function precio(){return modelo()==="v2"?2.2:($("#marca").value==="1"?0.33:0.5)}
 function ajustes(){
-  const v2=modelo()==="v2";$("#lsim").hidden=!v2;$("#lmarca").hidden=v2;
+  const v2=modelo()==="v2";$("#lsim").hidden=!v2;$("#lmarca").hidden=v2;$("#lestudio").hidden=v2;
   $("#notamodelo").innerHTML=v2
-   ?"v2 deja elegir la similitud de voz (0 a 10) y entrega solo el audio doblado en WAV (hay que ponerlo sobre el video). Con el dialecto es-MX.":
+   ?"v2 deja elegir la similitud de voz (0 a 10), usa español de México y entrega solo el audio doblado en WAV (hay que ponerlo sobre el video). En tu plan, v2 no permite revisar ni editar el texto (solo Enterprise); para eso usa v1.":
     "v1 entrega el video ya doblado, pero no tiene control de similitud de voz (clona la voz original automáticamente). <span class='aviso'>Con marca de agua el video sale marcado.</span>";
   resumen();
 }
@@ -141,10 +147,12 @@ function pintar(){
     if(it.aviso){const r=document.createElement("div");r.className="rev";r.textContent=it.aviso;d.append(r)}
     const a=document.createElement("div");a.className="acc";
     if(it.blob)a.innerHTML=`<button data-d="${it.id}">${ic("baja")}Descargar</button>`;
+    if(it.blob&&it.modelo==="v1"&&it.estudio==="1")a.innerHTML+=`<button data-e="${it.id}">${ic("papel")}Revisar texto</button>`;
     if(it.estado==="cola"||it.estado==="fallo")a.innerHTML+=`<button data-q="${it.id}">${ic("x")}Quitar</button>`;
     d.append(a);l.append(d);
   }
   l.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>bajar(items.find(i=>i.id===b.dataset.d)));
+  l.querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>editor(items.find(i=>i.id===b.dataset.e)));
   l.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{items=items.filter(i=>i.id!==b.dataset.q);pintar()});
   resumen();
 }
@@ -160,7 +168,7 @@ $("#zip").onclick=async()=>{
 };
 $("#limpiar").onclick=()=>{items=items.filter(i=>i.estado!=="listo");pintar()};
 $("#traducir").onclick=()=>{
-  items.filter(i=>i.estado==="cola").forEach(i=>{i.modelo=modelo();i.marca=$("#marca").value;i.sim=$("#sim").value;i.origen=$("#origen").value;i.estado="espera"});
+  items.filter(i=>i.estado==="cola").forEach(i=>{i.modelo=modelo();i.marca=$("#marca").value;i.estudio=$("#estudio").value;i.sim=$("#sim").value;i.origen=$("#origen").value;i.estado="espera"});
   cola();
 };
 function cola(){
@@ -173,7 +181,7 @@ const dormir=ms=>new Promise(r=>setTimeout(r,ms));
 async function correr(it){
   try{
     it.estado="subiendo";pintar();
-    const fd=new FormData();fd.set("file",it.file);fd.set("nombre",it.file.name);fd.set("origen",it.origen);fd.set("modelo",it.modelo);fd.set("conMarca",it.marca);
+    const fd=new FormData();fd.set("file",it.file);fd.set("nombre",it.file.name);fd.set("origen",it.origen);fd.set("modelo",it.modelo);fd.set("conMarca",it.marca);fd.set("estudio",it.estudio);
     let {id}=await jsonApi("iniciar",{method:"POST",body:fd});
     it.estado="procesando";pintar();
     const v=it.modelo;
@@ -193,7 +201,7 @@ async function correr(it){
     if(v==="v1"){
       try{const g=await jsonApi(`v1/guion?id=${encodeURIComponent(id)}`);it.aviso=revisar(g.texto)}catch{}
     }
-    it.estado="listo";
+    it.dubId=id;it.estado="listo";
   }catch(e){it.estado="fallo";it.error=e.message}
   pintar();
 }
@@ -204,6 +212,48 @@ function revisar(texto){
     if(n)hall.push(`${m} (x${n}) -> ${b}`);
   }
   return hall.length?"Revisar palabras en el guion: "+hall.join(", "):"";
+}
+async function editor(it){
+  const ed=$("#ed");ed.hidden=false;ed.innerHTML='<div class="caja">Cargando guion...</div>';
+  let segs;
+  try{segs=(await jsonApi(`v1/segmentos?id=${encodeURIComponent(it.dubId)}`)).segmentos}catch(e){ed.innerHTML=`<div class="caja">${e.message} <button id="cx">Cerrar</button></div>`;$("#cx").onclick=()=>ed.hidden=true;return}
+  const caja=document.createElement("div");caja.className="caja";
+  caja.innerHTML=`<div class="fila" style="justify-content:space-between"><b>${it.file.name}</b><span><button id="gl">Aplicar glosario</button> <button id="cx">Cerrar</button></span></div>
+   <p class="nota">Corrige la traducción de cada frase. Solo se vuelven a generar las frases que cambies. Las palabras prohibidas del glosario se marcan en rojo.</p><div id="segs"></div>
+   <div class="fila"><button class="pri" id="gr">${ic("ok")}Guardar y regenerar</button><span class="nota" id="msg"></span></div>`;
+  ed.innerHTML="";ed.append(caja);
+  const cont=caja.querySelector("#segs");
+  const tiene=t=>Object.keys(glosario).some(m=>new RegExp(`(^|[^\\p{L}])${m}(?![\\p{L}])`,"iu").test(t));
+  segs.forEach(s=>{
+    const d=document.createElement("div");d.className="seg";
+    d.innerHTML=`<div class="or">${s.ini.toFixed(1)}s - ${s.fin.toFixed(1)}s<br></div><textarea data-id="${s.id}"></textarea>`;
+    d.querySelector(".or").append(document.createTextNode(s.origen));
+    const ta=d.querySelector("textarea");ta.value=s.es;ta.dataset.orig=s.es;
+    const marca=()=>ta.classList.toggle("mala",tiene(ta.value));marca();ta.oninput=marca;
+    cont.append(d);
+  });
+  caja.querySelector("#cx").onclick=()=>ed.hidden=true;
+  caja.querySelector("#gl").onclick=()=>cont.querySelectorAll("textarea").forEach(ta=>{
+    for(const [m,b] of Object.entries(glosario)){if(b.startsWith("("))continue;ta.value=ta.value.replace(new RegExp(`(^|[^\\p{L}])(${m})(?![\\p{L}])`,"giu"),(x,p)=>p+b.split(" / ")[0])}
+    ta.dispatchEvent(new Event("input"));
+  });
+  caja.querySelector("#gr").onclick=async()=>{
+    const cambios=[...cont.querySelectorAll("textarea")].filter(t=>t.value!==t.dataset.orig).map(t=>({id:t.dataset.id,texto:t.value}));
+    const msg=caja.querySelector("#msg");
+    if(!cambios.length){msg.textContent="No hay cambios.";return}
+    caja.querySelector("#gr").disabled=true;
+    try{
+      msg.textContent="Guardando y regenerando el audio...";
+      await jsonApi("v1/guardar",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:it.dubId,cambios})});
+      for(;;){await dormir(6000);if((await jsonApi(`v1/audio-listo?id=${encodeURIComponent(it.dubId)}`)).listo)break}
+      msg.textContent="Armando el video...";
+      const {render}=await jsonApi("v1/renderizar",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:it.dubId})});
+      for(;;){await dormir(6000);const s=await jsonApi(`v1/render?id=${encodeURIComponent(it.dubId)}&render=${encodeURIComponent(render)}`);if(s.estado==="fallo")throw new Error("Falló el render");if(s.estado==="listo")break}
+      const r=await api(`v1/archivo-render?id=${encodeURIComponent(it.dubId)}&render=${encodeURIComponent(render)}`);
+      if(!r.ok)throw new Error("No se pudo bajar el video nuevo");
+      it.blob=await r.blob();it.aviso="";ed.hidden=true;pintar();
+    }catch(e){msg.textContent=e.message;caja.querySelector("#gr").disabled=false}
+  };
 }
 ajustes();
 </script>

@@ -61,6 +61,7 @@ export default {
       fd.set("num_speakers", "0");
       fd.set("watermark", f.get("conMarca") === "1" ? "true" : "false");
       fd.set("disable_voice_cloning", "false");
+      if (f.get("estudio") === "1") fd.set("dubbing_studio", "true"); // permite revisar y editar el texto después
       const res = await el(env, "/dubbing", { method: "POST", body: fd });
       if (!res.ok) return errorDe(res);
       const j = await res.json();
@@ -86,6 +87,71 @@ export default {
       let srt = t;
       try { const j = JSON.parse(t); srt = typeof j === "string" ? j : j.srt || t; } catch {}
       return json({ texto: srt });
+    }
+
+    // ---- v1 (proyecto de estudio): revisar y corregir el texto, regenerar, renderizar ----
+    if (ruta === "v1/segmentos") {
+      const res = await el(env, `/dubbing/resource/${encodeURIComponent(url.searchParams.get("id"))}`);
+      if (!res.ok) return errorDe(res);
+      const j = await res.json();
+      const segs = Object.values(j.speaker_segments || {})
+        .sort((a, b) => a.start_time - b.start_time)
+        .map((g) => ({ id: g.id, ini: g.start_time, fin: g.end_time, origen: g.text, es: g.dubs?.es?.text ?? "", obsoleto: !!g.dubs?.es?.audio_stale }));
+      return json({ segmentos: segs });
+    }
+    if (ruta === "v1/guardar" && request.method === "POST") {
+      const { id, cambios } = await request.json();
+      for (const c of cambios) {
+        const res = await el(env, `/dubbing/resource/${encodeURIComponent(id)}/segment/${encodeURIComponent(c.id)}/es`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text: c.texto }),
+        });
+        if (!res.ok) return errorDe(res);
+      }
+      const res = await el(env, `/dubbing/resource/${encodeURIComponent(id)}/dub`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ segments: cambios.map((c) => c.id), languages: ["es"] }),
+      });
+      if (!res.ok) return errorDe(res);
+      return json({ ok: true });
+    }
+    if (ruta === "v1/audio-listo") {
+      const res = await el(env, `/dubbing/resource/${encodeURIComponent(url.searchParams.get("id"))}`);
+      if (!res.ok) return errorDe(res);
+      const j = await res.json();
+      const pendiente = Object.values(j.speaker_segments || {}).some((g) => g.dubs?.es?.audio_stale);
+      return json({ listo: !pendiente });
+    }
+    if (ruta === "v1/renderizar" && request.method === "POST") {
+      const { id } = await request.json();
+      const res = await el(env, `/dubbing/resource/${encodeURIComponent(id)}/render/es`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ render_type: "mp4" }),
+      });
+      if (!res.ok) return errorDe(res);
+      const j = await res.json();
+      return json({ render: j.render_id });
+    }
+    if (ruta === "v1/render") {
+      const res = await el(env, `/dubbing/resource/${encodeURIComponent(url.searchParams.get("id"))}`);
+      if (!res.ok) return errorDe(res);
+      const j = await res.json();
+      const r = (j.renders || {})[url.searchParams.get("render")];
+      return json({ estado: !r ? "procesando" : r.status === "complete" ? "listo" : r.status === "failed" ? "fallo" : "procesando" });
+    }
+    if (ruta === "v1/archivo-render") {
+      const info = await el(env, `/dubbing/resource/${encodeURIComponent(url.searchParams.get("id"))}`);
+      if (!info.ok) return errorDe(info);
+      const j = await info.json();
+      const src = (j.renders || {})[url.searchParams.get("render")]?.media_ref?.url;
+      if (!src) return json({ error: "El video aún no está listo" }, 409);
+      let res = await fetch(src);
+      if (!res.ok) res = await fetch(src, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!res.ok) return json({ error: "No se pudo bajar el video renderizado" }, 502);
+      return new Response(res.body, { headers: { "content-type": res.headers.get("content-type") || "video/mp4" } });
     }
 
     // ---- v2: proyecto, idioma con similitud, audio ----
