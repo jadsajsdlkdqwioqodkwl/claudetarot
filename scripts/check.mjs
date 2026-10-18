@@ -1037,5 +1037,50 @@ check("las letras de columna llegan hasta la última de la hoja",
     /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));
 }
 
+/* Landing de la masilla selladora (/sellador): precios, fila y fotos */
+console.log("\nMasilla selladora (/sellador)");
+{
+  const { existsSync } = await import("node:fs");
+  const sel = await import(join(root, "src/lib/sellador.js"));
+  const selApi = await import(join(root, "src/api/order-sellador.js"));
+  const selHtml = readFileSync(join(root, "public/sellador/index.html"), "utf8");
+  const selGracias = readFileSync(join(root, "public/sellador/gracias.html"), "utf8");
+
+  for (const [id, v] of Object.entries(sel.VARIANTES)) {
+    check(`sellador: el precio de ${id} coincide entre la página y el servidor`,
+      new RegExp(`'${id}':\\s*${v.precio}\\b`).test(selHtml.match(/variantes:\s*\{[^}]*\}/)?.[0] || ""),
+      `servidor S/ ${v.precio}`);
+    check(`sellador: ${id} tiene su tarjeta en el modal`, selHtml.includes(`data-var="${id}"`));
+  }
+  check("sellador: la variante por defecto existe y es la marcada", !!sel.VARIANTES[sel.VARIANTE_POR_DEFECTO] &&
+    new RegExp(`vcard sel" data-var="${sel.VARIANTE_POR_DEFECTO}"`).test(selHtml));
+
+  const base = { nombre: "María Pérez", telefono: "987654321", envio: "casa", direccion: "Av. Los Olivos 123, Surco", variante: "10pack" };
+  const r = selApi.validate(base);
+  check("sellador: pedido válido pasa y el precio sale del servidor",
+    r.errors.length === 0 && selApi.validate({ ...base, precio: 1 }).order.total === sel.VARIANTES["10pack"].precio);
+  check("sellador: variante desconocida cae a la de por defecto",
+    selApi.validate({ ...base, variante: "x" }).order.variante === sel.VARIANTE_POR_DEFECTO);
+  check("sellador: Lima sin dirección se rechaza", selApi.validate({ ...base, direccion: "" }).errors.includes("direccion"));
+  check("sellador: provincia sin agencia se rechaza",
+    selApi.validate({ ...base, envio: "agencia", agencia: "" }).errors.includes("agencia"));
+  r.order.eventId = "MS-ABC234"; r.order.fecha = "2026-10-18 10:00:00";
+  const fila = selApi.filaDeSellador(r.order, new Headers({ "CF-Connecting-IP": "190.0.0.1" }));
+  check("sellador: la fila encaja con los encabezados", fila.length === sel.COLUMNAS.length,
+    `fila ${fila.length} vs ${sel.COLUMNAS.length}`);
+  check("sellador: el estado entra en Pendiente y la IP es la del cliente",
+    fila[sel.COLUMNAS.indexOf("Estado")] === "Pendiente" && fila[sel.COLUMNAS.indexOf("IP")] === "190.0.0.1");
+  check("sellador: la hoja es otra pestaña, no la de Pedidos de Tarot", sel.PESTANA !== "Pedidos");
+  check("sellador: no pasa por pedidos_web (no dispara WhatsApp de Tarot)",
+    !readFileSync(join(root, "src/api/order-sellador.js"), "utf8").includes("registrarPedidoWeb"));
+  const fotos = [...selHtml.matchAll(/(?:src|data-src)="(\/sellador\/img\/[^"]+)"/g)].map((m) => m[1]);
+  check("sellador: todas las fotos de la página existen",
+    fotos.length > 0 && fotos.every((f) => existsSync(join(root, "public", f))),
+    fotos.filter((f) => !existsSync(join(root, "public", f))).join(", "));
+  check("sellador: los datos del cliente no viajan por la URL a /gracias",
+    !/gracias\.html\?[^'"]*(nombre|telefono|tel=)/.test(selHtml) && selGracias.includes("sessionStorage"));
+  check("sellador: el formulario manda al endpoint propio", selHtml.includes("'/api/order-sellador'"));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

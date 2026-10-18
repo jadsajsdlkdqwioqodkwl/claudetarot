@@ -18,6 +18,17 @@
 /kittarotcod/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Landing de la masilla selladora (advertorial /sellador)
+/sellador/img/*
+  Cache-Control: public, max-age=31536000, immutable
+/sellador/
+  Cache-Control: public, max-age=0, must-revalidate
+/sellador/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/sellador/gracias.html
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow
+
 # El HTML si cambia con cada despliegue: se revalida siempre para que nadie se
 # quede con una version vieja de la pagina o de los precios.
 /

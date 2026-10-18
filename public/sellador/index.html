@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/sellador/img/favicon.png" type="image/png">
+<link rel="preconnect" href="https://connect.facebook.net" crossorigin>
+<link rel="preconnect" href="https://www.facebook.com" crossorigin>
+<title>Masilla selladora moldeable para huecos, tuberías y paredes — Lima</title>
+<meta name="description" content="Sella huecos de tuberías, cables y paredes en 5 minutos, sin pistola ni herramientas. Pagas al recibir en Lima.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg:#ffffff; --card:#ffffff; --ink:#15181d; --muted:#5b6470; --muted-txt:#4a4f57;
+    --line:#e3e6ea; --green:#1f9d55; --blue:#0b63d6; --blue-dark:#1e3a8a; --soft:#f1f6ff;
+    --cta1:#ff2a00; --cta2:#ff6a00; --old:#e53935; --body-bg:#eef0f3; --warn:#fff6e5;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--body-bg); color:var(--ink); line-height:1.55; overflow-x:hidden; }
+  img { max-width:100%; display:block; height:auto; }
+  .ico { width:1em; height:1em; display:inline-block; vertical-align:-.125em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .wrap { max-width:560px; margin:0 auto; background:var(--bg); min-height:100vh; box-shadow:0 0 20px rgba(0,0,0,.06); padding-bottom:104px; }
+  .pad { padding:0 20px; }
+
+  .aviso { background:#f4f5f7; color:var(--muted); font-size:11px; letter-spacing:.6px; text-transform:uppercase; text-align:center; padding:7px 12px; border-bottom:1px solid var(--line); font-weight:600; }
+  .seccion-tag { padding:18px 20px 0; color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+  h1 { padding:8px 20px 6px; font-size:27px; line-height:1.18; font-weight:900; letter-spacing:-.5px; }
+  .bajada { padding:6px 20px 16px; font-size:17px; color:var(--muted-txt); line-height:1.5; }
+  .hero { width:100%; }
+  .hero img { width:100%; }
+  .pie-foto { font-size:12px; color:var(--muted); padding:6px 20px 0; font-style:italic; }
+
+  p.t { padding:0 20px; margin-top:16px; font-size:16.5px; color:#262a31; }
+  p.t b { color:var(--ink); }
+
+  .razon { margin-top:34px; }
+  .razon h2 { padding:0 20px; font-size:21px; line-height:1.25; font-weight:900; letter-spacing:-.3px; }
+  .razon h2 .n { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--ink); color:#fff; font-size:15px; margin-right:8px; vertical-align:2px; }
+  .razon .foto { margin:14px 0 0; width:100%; background:#f1f3f5; }
+  .razon .foto img { width:100%; aspect-ratio:1/1; object-fit:cover; }
+  .razon .foto.ancho img { aspect-ratio:auto; }
+  .dato { margin:16px 20px 0; padding:12px 14px; background:var(--soft); border-left:4px solid var(--blue); border-radius:8px; font-size:14.5px; color:#1f2a44; }
+  .dato b { display:block; color:var(--blue-dark); font-size:12px; letter-spacing:.6px; text-transform:uppercase; margin-bottom:2px; }
+
+  .pasos { margin:16px 20px 0; display:grid; gap:10px; }
+  .paso { display:flex; gap:12px; align-items:flex-start; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .paso .num { flex:0 0 34px; height:34px; border-radius:50%; background:var(--blue); color:#fff; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .paso b { display:block; font-size:15.5px; }
+  .paso span { font-size:14px; color:var(--muted-txt); }
+
+  .comp { margin:16px 20px 0; border:1.5px solid var(--line); border-radius:12px; overflow:hidden; font-size:13px; }
+  .comp table { width:100%; border-collapse:collapse; }
+  .comp th, .comp td { padding:9px 6px; text-align:center; border-bottom:1px solid var(--line); }
+  .comp th { background:#f6f7f9; font-size:12px; }
+  .comp th.yo { background:var(--blue); color:#fff; }
+  .comp td:first-child, .comp th:first-child { text-align:left; padding-left:10px; font-weight:600; }
+  .comp tr:last-child td { border-bottom:none; }
+  .comp .si { color:var(--green); } .comp .no { color:var(--old); }
+  .comp td.yo { background:var(--soft); }
+
+  .cta { display:block; width:calc(100% - 40px); margin:22px 20px 0; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:16px 12px; text-align:center; box-shadow:0 6px 18px rgba(255,42,0,.3); font-family:inherit; }
+  .cta:active { transform:scale(.98); }
+  .buzz { animation:buzz 2s ease-in-out infinite; transform-origin:center; }
+  @keyframes buzz { 0%,82%,100%{transform:translateX(0) rotate(0)} 84%{transform:translateX(-3px) rotate(-.8deg)} 86%{transform:translateX(3px) rotate(.8deg)} 88%{transform:translateX(-3px) rotate(-.8deg)} 90%{transform:translateX(3px) rotate(.8deg)} 92%{transform:translateX(-2px)} 94%{transform:translateX(2px)} 96%{transform:translateX(-1px)} 98%{transform:translateX(1px)} }
+  .cta .l1, .btn-pedido .l1 { font-size:18px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .cta .l2, .btn-pedido .l2 { font-size:13px; font-weight:600; margin-top:4px; opacity:.92; }
+
+  /* Oferta */
+  .oferta { margin:38px 0 0; background:linear-gradient(180deg,#f1f6ff,#fff); padding:26px 0 8px; border-top:1px solid var(--line); }
+  .oferta h2 { padding:0 20px; font-size:23px; line-height:1.2; font-weight:900; text-align:center; letter-spacing:-.4px; }
+  .oferta .sub { padding:8px 24px 0; text-align:center; color:var(--muted-txt); font-size:15px; }
+  .oferta .packimg { width:210px; margin:16px auto 0; }
+  .precios { margin:16px 20px 0; display:grid; gap:10px; }
+  .pcard { display:flex; align-items:center; gap:12px; border:2px solid var(--line); border-radius:14px; padding:14px; background:#fff; position:relative; }
+  .pcard.top { border-color:var(--blue); background:var(--soft); }
+  .pcard .t1 { font-weight:800; font-size:15.5px; }
+  .pcard .t2 { font-size:12.5px; color:var(--muted-txt); }
+  .pcard .pr { margin-left:auto; text-align:right; }
+  .pcard .pr b { font-size:21px; font-weight:900; }
+  .pcard .pr s { display:block; color:var(--old); font-size:12.5px; }
+  .pcard .tag { position:absolute; top:-10px; left:14px; background:var(--old); color:#fff; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.3px; }
+  .garantias { margin:16px 20px 0; display:grid; gap:8px; }
+  .garantias div { display:flex; gap:10px; align-items:center; font-size:14.5px; font-weight:600; }
+  .garantias .ico { color:var(--green); width:20px; height:20px; flex:0 0 20px; }
+
+  /* FAQ */
+  .faq { margin:34px 20px 0; }
+  .faq h2 { font-size:21px; font-weight:900; margin-bottom:10px; }
+  .faq details { border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:8px; background:#fff; }
+  .faq summary { font-weight:700; font-size:15px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:10px; }
+  .faq summary::-webkit-details-marker { display:none; }
+  .faq summary::after { content:'+'; font-size:20px; line-height:1; color:var(--blue); }
+  .faq details[open] summary::after { content:'–'; }
+  .faq details p { margin-top:8px; font-size:14.5px; color:var(--muted-txt); }
+
+  /* Reseñas reales: se muestran solo si hay alguna en RESENAS */
+  .resenas { margin:34px 20px 0; display:none; }
+  .resenas h2 { font-size:21px; font-weight:900; margin-bottom:10px; }
+  .resena { border:1.5px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .resena .q { font-size:14.5px; color:#262a31; } .resena .q + .who { margin-top:8px; font-weight:700; font-size:13.5px; }
+  .resena .who span { color:var(--green); font-weight:600; margin-left:6px; font-size:12px; }
+
+  .legal { margin:34px 20px 0; padding-top:16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); line-height:1.55; text-align:center; }
+  .legal a { color:var(--muted); }
+
+  .sticky-cta-wrap { position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(0); width:100%; max-width:560px; background:#fff; padding:12px 20px; box-shadow:0 -4px 12px rgba(0,0,0,.08); z-index:45; transition:transform .3s ease-in-out, opacity .3s; }
+  .sticky-cta-wrap.hidden { transform:translateX(-50%) translateY(120%); opacity:0; pointer-events:none; }
+  .sticky-cta-wrap .cta { margin:0; width:100%; }
+
+  /* Modal COD (mismo formulario que Tarot Store) */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:none; overflow-y:auto; padding:14px 0; }
+  .overlay.on { display:block; }
+  .modal { background:#fff; width:calc(100% - 24px); max-width:456px; margin:0 auto; border-radius:16px; position:relative; padding:22px 20px 26px; box-shadow:0 20px 40px rgba(0,0,0,.2); }
+  .mclose { position:absolute; top:16px; right:16px; color:var(--muted); cursor:pointer; line-height:1; padding:4px; z-index:10; }
+  .vendedor { display:flex; align-items:center; justify-content:center; gap:6px; margin:6px auto 10px; background:#eaf3ff; color:#0b63d6; border:1px solid #cfe3ff; border-radius:999px; padding:5px 14px; font-size:13px; font-weight:800; width:fit-content; }
+  .vendedor svg { width:15px; height:15px; }
+  .m-titulo { text-align:center; font-size:20px; font-weight:900; line-height:1.2; margin:10px 0 4px; }
+  .m-sub { text-align:center; font-size:13.5px; color:var(--muted-txt); margin-bottom:16px; }
+
+  .variants { display:grid; gap:10px; margin-bottom:18px; }
+  .vcard { border:2px solid var(--line); border-radius:12px; padding:12px; cursor:pointer; position:relative; background:#fff; display:flex; align-items:center; gap:12px; transition:.2s; }
+  .vcard.sel { border-color:var(--blue); background:var(--soft); }
+  .vcard .radio { width:22px; height:22px; border:2px solid var(--line); border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 22px; }
+  .vcard.sel .radio { border-color:var(--blue); }
+  .vcard.sel .radio::after { content:''; width:12px; height:12px; border-radius:50%; background:var(--blue); }
+  .vcard .foto { width:58px; height:58px; border-radius:8px; overflow:hidden; background:#f4f4f6; flex:0 0 58px; }
+  .vcard .foto img { width:100%; height:100%; object-fit:cover; }
+  .vcard .vname { font-size:14px; font-weight:800; line-height:1.2; }
+  .vcard .vdet { font-size:12px; color:var(--muted-txt); margin-top:2px; }
+  .vcard .vprice { margin-left:auto; text-align:right; font-size:18px; font-weight:900; }
+  .vcard .vold { display:block; font-size:12px; color:var(--old); text-decoration:line-through; font-weight:500; }
+  .vbadge { position:absolute; top:-10px; right:12px; background:var(--old); color:#fff; font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; }
+
+  .sect-title { font-size:16px; font-weight:800; margin:12px 0 10px; }
+  .ship-opts { border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:18px; background:#fff; }
+  .ship-opt { display:flex; align-items:center; gap:12px; padding:14px; cursor:pointer; border-bottom:1px solid var(--line); }
+  .ship-opt:last-child { border-bottom:none; }
+  .ship-opt.sel { background:var(--soft); }
+  .ship-opt .radio { width:22px; height:22px; border:2px solid var(--line); border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .ship-opt.sel .radio { border-color:var(--ink); }
+  .ship-opt.sel .radio::after { content:''; width:12px; height:12px; border-radius:50%; background:var(--ink); }
+  .ship-opt .txt { flex:1; }
+  .ship-opt .txt b { font-size:14px; display:flex; align-items:center; gap:6px; }
+  .ship-opt .txt small { display:block; color:var(--muted-txt); font-size:12px; margin-top:2px; }
+  .ship-opt .txt .loc-line { display:block; color:var(--blue-dark); font-weight:800; font-size:13px; margin-top:3px; }
+  .ship-opt .free { font-weight:800; font-size:14px; }
+
+  .form-head { text-align:center; color:#2d9cdb; font-size:18px; font-weight:800; margin:16px 0; }
+  .fg { margin-bottom:16px; }
+  .fg label { display:block; font-weight:700; font-size:13px; margin-bottom:6px; }
+  .fg label .req { color:var(--old); }
+  .fg .hint { display:block; font-size:12px; color:var(--muted-txt); margin-top:6px; line-height:1.3; font-style:italic; }
+  .fg .input-icon { display:flex; align-items:stretch; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
+  .fg .input-icon:focus-within { border-color:var(--blue); }
+  .fg .input-icon .ic { background:#f0f0f0; padding:0 14px; display:flex; align-items:center; color:var(--muted-txt); font-size:18px; border-right:1px solid var(--line); }
+  .fg .input-icon input { border:none; outline:none; flex:1; padding:14px; font-size:16px; color:var(--ink); min-width:0; font-family:inherit; }
+  .sel-input { width:100%; border:1px solid var(--line); border-radius:10px; padding:14px; font-size:16px; background:#fff; outline:none; color:var(--ink); font-family:inherit; }
+  .sel-input:focus { border-color:var(--blue); }
+  .fg input::placeholder, .sel-input::placeholder { color:var(--muted-txt); opacity:1; }
+  .entrega-note { text-align:center; color:var(--blue-dark); font-size:15px; font-weight:800; margin:18px 0 14px; line-height:1.4; }
+  .btn-pedido { width:100%; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:18px; margin-top:6px; box-shadow:0 6px 16px rgba(255,42,0,.3); font-family:inherit; }
+  .btn-pedido:disabled { opacity:.7; }
+  .wa-note { text-align:center; color:var(--green); font-size:14px; font-weight:700; margin:16px 0 4px; display:flex; justify-content:center; align-items:center; gap:6px; }
+</style>
+
+<!-- Meta Pixel: pega el ID del píxel de este producto en PIXEL_ID (vacío = no se carga) -->
+<script>
+  var PIXEL_ID = '';
+  if (PIXEL_ID) {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M4 4h5l2 5-3 2a12 12 0 006 6l2-3 5 2v5a2 2 0 01-2 2A17 17 0 014 6a2 2 0 010-2z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 100-4 2 2 0 000 4zM18 18a2 2 0 100-4 2 2 0 000 4z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l12-3v3M16 13.5h2"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="aviso">Contenido publicitario</div>
+
+  <div class="seccion-tag">Hogar y bricolaje · Lima</div>
+  <h1>7 razones por las que en Lima cada vez más gente deja la silicona y la espuma para sellar huecos con esta masilla moldeable</h1>
+  <p class="bajada">Cucarachas que entran por el hueco del desagüe, olor a cloaca, corrientes de aire… y el parche que se vuelve a abrir a los pocos meses. Hay una forma de arreglarlo en 5 minutos, solo con las manos.</p>
+
+  <div class="hero"><img src="/sellador/img/hero.webp" alt="Persona sellando el hueco de una tubería con masilla moldeable" width="1000" height="500" fetchpriority="high" decoding="async"></div>
+  <div class="pie-foto">Se amasa, se presiona en el hueco y listo: sin pistola, sin mezclar, sin ensuciar.</div>
+
+  <p class="t">Si alguna vez rellenaste el hueco de una tubería con <b>silicona</b>, la viste agrietarse a los pocos meses y volviste a hacerlo… o probaste la <b>espuma expansiva</b> y terminó como una masa amarilla y porosa que costó una hora limpiar, ya conoces el problema.</p>
+  <p class="t">Los huecos alrededor de tuberías de desagüe, cables, el termo o el aire acondicionado son la puerta de entrada de <b>cucarachas, hormigas, olores y aire frío</b>. Y en Lima, con la humedad, los parches mal hechos duran poco. Esto es lo que la gente está usando ahora.</p>
+
+  <!-- 1 -->
+  <section class="razon">
+    <h2><span class="n">1</span>La silicona se encoge y el hueco vuelve a abrirse</h2>
+    <div class="foto"><img src="/sellador/img/hueco.webp" alt="Masilla rellenando un hueco en la pared" width="500" height="500" loading="lazy"></div>
+    <p class="t">Muchos sellantes líquidos pierden volumen al secar: se encogen, se agrietan y se despegan de la pared. La masilla selladora se aplica <b>en estado sólido, moldeada con la mano</b>, así que queda del tamaño exacto con que la presionaste y no se despega por encogimiento.</p>
+    <div class="dato"><b>Ideal para</b>Huecos alrededor de tubos de desagüe, salida del termo, cables de TV e internet.</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="razon">
+    <h2><span class="n">2</span>La espuma expansiva crece, ensucia y queda porosa</h2>
+    <div class="foto"><img src="/sellador/img/espuma.webp" alt="Espuma expansiva desbordada alrededor de una tubería" width="500" height="500" loading="lazy"></div>
+    <p class="t">La espuma se pasa del hueco, se pega a todo y al secar queda amarillenta y con poros. La masilla se modela con los dedos justo donde la necesitas: <b>bordes limpios, sin pistola, sin boquilla y sin salpicaduras</b>.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="razon">
+    <h2><span class="n">3</span>Cierra los huecos por donde entran cucarachas, hormigas y ratones</h2>
+    <div class="foto"><img src="/sellador/img/plagas.webp" alt="Hormigas entrando por una grieta junto a una tubería sellada" width="500" height="500" loading="lazy"></div>
+    <p class="t">Una rendija mínima alrededor de un tubo basta para que entren insectos. Al secar, la masilla forma un <b>bloque denso y firme</b> que cierra esas rutas de acceso. Es la parte que más rápido se nota: se corta el camino en lugar de pelear con la plaga cada semana.</p>
+    <div class="dato"><b>Ideal para</b>Debajo del lavadero, detrás del inodoro, alrededor de tuberías que atraviesan la pared.</div>
+  </section>
+
+  <!-- 4 -->
+  <section class="razon">
+    <h2><span class="n">4</span>Corta el olor a desagüe y las corrientes de aire</h2>
+    <div class="foto"><img src="/sellador/img/antes-despues.webp" alt="Antes y después: hueco abierto junto a una tubería y el mismo hueco sellado" width="500" height="322" loading="lazy"></div>
+    <p class="t">Ese olor a cloaca cerca del piso del baño o ese aire frío que entra por detrás del mueble muchas veces vienen de un <b>hueco mal sellado</b>. Cerrarlo bien corta el paso del aire y de los olores desde el origen.</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="razon">
+    <h2><span class="n">5</span>Cero herramientas: la usas aunque nunca hayas arreglado nada</h2>
+    <div class="foto"><img src="/sellador/img/aplicar-anim.webp" alt="Aplicando la masilla con la mano sobre una tubería" width="500" height="500" loading="lazy"></div>
+    <p class="t">Sin pistola de silicona, sin mezclar, sin lijar antes, sin varias manos. <b>Abres el sachet, amasas y presionas.</b> Si de siempre dijiste “mañana lo arreglo”, esta vez te toma unos minutos.</p>
+  </section>
+
+  <!-- 6 -->
+  <section class="razon">
+    <h2><span class="n">6</span>Sirve para toda la casa y se puede lijar y pintar</h2>
+    <div class="foto"><img src="/sellador/img/tuberia.webp" alt="Masilla alrededor de una tubería blanca" width="500" height="650" loading="lazy"></div>
+    <p class="t">Tuberías, cables, aire acondicionado, grietas y huecos en paredes. Cuando termina de secar se puede <b>lijar y pintar del color de tu pared</b>, y el arreglo casi no se nota.</p>
+    <div class="comp">
+      <table>
+        <tr><th></th><th class="yo">Masilla</th><th>Silicona</th><th>Espuma</th></tr>
+        <tr><td>Sin pistola ni herramientas</td><td class="yo si"><svg class="ico"><use href="#i-check"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td></tr>
+        <tr><td>No ensucia al aplicar</td><td class="yo si"><svg class="ico"><use href="#i-check"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td></tr>
+        <tr><td>Se aplica sólida (sin encogerse)</td><td class="yo si"><svg class="ico"><use href="#i-check"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td></tr>
+        <tr><td>Se puede lijar y pintar</td><td class="yo si"><svg class="ico"><use href="#i-check"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td><td class="si"><svg class="ico"><use href="#i-check"/></svg></td></tr>
+        <tr><td>Controlas cuánto usas</td><td class="yo si"><svg class="ico"><use href="#i-check"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td><td class="no"><svg class="ico"><use href="#i-x"/></svg></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="razon">
+    <h2><span class="n">7</span>Cómo se usa: 3 pasos</h2>
+    <div class="pasos">
+      <div class="paso"><div class="num">1</div><div><b>Limpia y seca</b><span>Pasa un trapo por la zona y asegúrate de que esté seca.</span></div></div>
+      <div class="paso"><div class="num">2</div><div><b>Amasa y presiona</b><span>Abre un sachet de 30 g, amasa la masilla a la forma del hueco y presiónala firme.</span></div></div>
+      <div class="paso"><div class="num">3</div><div><b>Deja secar</b><span>Déjala 3 a 5 días sin tocar. Después puedes lijar y pintar para que combine con tu pared.</span></div></div>
+    </div>
+    <button class="cta buzz" onclick="openCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> QUIERO SELLAR MIS HUECOS</div>
+      <div class="l2">Envío gratis y pagas al recibir</div>
+    </button>
+  </section>
+
+  <!-- Reseñas reales (opcional): agrega objetos a RESENAS al final de la página -->
+  <section class="resenas" id="resenas"><h2>Lo que dicen quienes ya la usaron</h2><div id="resenasLista"></div></section>
+
+  <!-- Oferta -->
+  <section class="oferta" id="oferta">
+    <h2>Sella huecos en 5 minutos y deja de repetir el mismo arreglo</h2>
+    <p class="sub">Elige tu pack. Pagas cuando lo recibes en tu casa.</p>
+    <img class="packimg" src="/sellador/img/pack.webp" alt="Sachets de masilla selladora" width="400" height="400" loading="lazy">
+
+    <div class="precios">
+      <div class="pcard"><div><div class="t1">Pack x2 sachets</div><div class="t2">Para 1 o 2 huecos pequeños</div></div><div class="pr"><b>S/ 39</b><s>S/ 69</s></div></div>
+      <div class="pcard top"><span class="tag">MÁS PEDIDO</span><div><div class="t1">Pack x5 sachets</div><div class="t2">Para varias zonas de la casa</div></div><div class="pr"><b>S/ 69</b><s>S/ 129</s></div></div>
+      <div class="pcard"><div><div class="t1">Pack x10 sachets</div><div class="t2">Para todo el departamento o la casa</div></div><div class="pr"><b>S/ 109</b><s>S/ 219</s></div></div>
+    </div>
+
+    <div class="garantias">
+      <div><svg class="ico"><use href="#i-wallet"/></svg> Pagas al recibir: Yape, efectivo o POS (Lima)</div>
+      <div><svg class="ico"><use href="#i-truck"/></svg> Envío gratis, entrega en Lima al día siguiente</div>
+      <div><svg class="ico"><use href="#i-box"/></svg> Empaque discreto y bien embalado</div>
+    </div>
+
+    <button class="cta buzz" onclick="openCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
+      <div class="l2">Te confirmamos por WhatsApp</div>
+    </button>
+  </section>
+
+  <section class="faq">
+    <h2>Preguntas frecuentes</h2>
+    <details><summary>¿Cómo pago?</summary><p>Pagas al recibir en tu casa (Lima) con Yape, efectivo o POS. No pagas nada por adelantado en Lima.</p></details>
+    <details><summary>¿Cuándo me llega?</summary><p>En Lima, al día siguiente. El repartidor se comunica contigo antes de llegar; si no estás, puede recibirlo otra persona o reprogramas.</p></details>
+    <details><summary>¿Y si vivo en provincia?</summary><p>También enviamos por agencia (Shalom u Olva). Pides con el mismo formulario, eliges “Envío por agencia” y te confirmamos por WhatsApp cómo es el adelanto y el recojo.</p></details>
+    <details><summary>¿Cuánto demora en secar?</summary><p>Entre 3 y 5 días. Cuando seca del todo puedes lijarla y pintarla.</p></details>
+    <details><summary>¿Necesito herramientas?</summary><p>No. Solo abres el sachet, amasas con las manos y presionas en el hueco. Antes limpia y seca la zona.</p></details>
+    <details><summary>¿Cuánto rinde cada sachet?</summary><p>Cada sachet trae 30 g, suficiente para uno o dos huecos pequeños (por ejemplo, el contorno de un tubo). Para huecos más grandes, el pack x5 o x10 te alcanza mejor.</p></details>
+    <details><summary>¿Es seguro para niños y mascotas?</summary><p>Como con cualquier producto de ferretería, mantenlo fuera del alcance de niños y mascotas mientras lo aplicas y lo dejas secar, y lávate las manos al terminar.</p></details>
+  </section>
+
+  <div class="legal">
+    <p>Contenido publicitario. Los resultados dependen de la superficie y del tamaño del hueco; sigue las instrucciones de uso.</p>
+    <p style="margin-top:8px"><a href="/terminos.html">Términos</a> · <a href="/privacidad.html">Privacidad</a></p>
+    <p style="margin-top:8px">This site is not a part of the Facebook website or Facebook Inc. Additionally, This site is NOT endorsed by Facebook in any way. FACEBOOK is a trademark of FACEBOOK, Inc.</p>
+  </div>
+</div>
+
+<div class="sticky-cta-wrap">
+  <button class="cta buzz" onclick="openCOD()">
+    <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
+    <div class="l2">Envío gratis en Lima</div>
+  </button>
+</div>
+
+<!-- Modal COD -->
+<div class="overlay" id="codOverlay">
+  <div class="modal">
+    <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
+
+    <div class="vendedor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg> Pagas al recibir</div>
+    <div class="m-titulo">Masilla selladora multiusos</div>
+    <div class="m-sub">Elige tu pack y completa tus datos</div>
+
+    <div class="variants">
+      <div class="vcard" data-var="2pack" onclick="selVar(this)">
+        <div class="radio"></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x2" width="58" height="58"></div>
+        <div><div class="vname">Pack x2 sachets</div><div class="vdet">60 g en total</div></div>
+        <div class="vprice">S/ 39<span class="vold">S/ 69</span></div>
+      </div>
+      <div class="vcard sel" data-var="5pack" onclick="selVar(this)">
+        <div class="vbadge">MÁS PEDIDO</div>
+        <div class="radio"></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x5" width="58" height="58"></div>
+        <div><div class="vname">Pack x5 sachets</div><div class="vdet">150 g en total</div></div>
+        <div class="vprice">S/ 69<span class="vold">S/ 129</span></div>
+      </div>
+      <div class="vcard" data-var="10pack" onclick="selVar(this)">
+        <div class="radio"></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x10" width="58" height="58"></div>
+        <div><div class="vname">Pack x10 sachets</div><div class="vdet">300 g en total</div></div>
+        <div class="vprice">S/ 109<span class="vold">S/ 219</span></div>
+      </div>
+    </div>
+
+    <div class="sect-title">Método de Envío</div>
+    <div class="ship-opts">
+      <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+      <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
+        <div class="radio"></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="free">Gratis</div>
+      </div>
+    </div>
+
+    <div class="form-head">Completa tu información</div>
+
+    <div class="fg">
+      <label>Nombres<span class="req">*</span></label>
+      <div class="input-icon"><span class="ic"><svg class="ico"><use href="#i-user"/></svg></span><input type="text" id="fName" placeholder="Coloca tu nombre" autocomplete="name"></div>
+    </div>
+    <div class="fg">
+      <label>Whatsapp <span class="req">*</span></label>
+      <div class="input-icon"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><input type="tel" id="fPhone" placeholder="Coloca tu Whatsapp" autocomplete="tel" inputmode="tel"></div>
+      <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega en empaque discreto y embalado.</span>
+    </div>
+
+    <div id="boxCasa">
+      <div class="fg">
+        <label>Dirección de Entrega <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Coloca tu dirección (y distrito)" id="fDir" autocomplete="street-address">
+        <span class="hint">Entregas en horario de la tarde, el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
+      </div>
+    </div>
+    <div id="boxAg" style="display:none">
+      <div class="fg">
+        <label>Agencia de Destino <span class="req">*</span></label>
+        <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="fSucursal">
+        <span class="hint">Envíos por Shalom y Olva. Te enviaremos por WhatsApp la foto de tu comprobante con el número de seguimiento.</span>
+      </div>
+    </div>
+
+    <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan -->
+    <input type="text" id="fWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
+    <div class="entrega-note" id="noteEntrega">Entrega para Lima al día siguiente</div>
+
+    <button class="btn-pedido buzz" id="btnPedido" onclick="submitCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> REALIZAR PEDIDO</div>
+      <div class="l2">Pedir Ahora</div>
+    </button>
+    <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
+  </div>
+</div>
+
+<script>
+  /* ── Configuración de esta landing ─────────────────────────────────────
+     Los precios de FB.variantes deben coincidir con src/lib/sellador.js
+     (`npm run check` falla si no). RESENAS: solo reseñas REALES de clientes,
+     [{ nombre: 'María P.', distrito: 'Surco', texto: '…' }]; vacío = no se muestra. */
+  var WA_NUMERO = '';          // WhatsApp de ventas de este producto, ej. '51999999999' (vacío = sin botón en /gracias)
+  var RESENAS = [];
+
+  var FB = {
+    moneda: 'PEN',
+    producto: 'masilla-selladora',
+    nombre: 'Masilla selladora multiusos',
+    variantes: { '2pack': 39, '5pack': 69, '10pack': 109 },
+    viejos: { '2pack': 69, '5pack': 129, '10pack': 219 },
+    unidades: { '2pack': 2, '5pack': 5, '10pack': 10 },
+    etiquetas: {
+      '2pack': 'Masilla selladora x2 sachets (60 g)',
+      '5pack': 'Masilla selladora x5 sachets (150 g)',
+      '10pack': 'Masilla selladora x10 sachets (300 g)'
+    },
+    enviados: {}
+  };
+
+  function fbTrack(evento, datos, unaVez, eventId) {
+    if (typeof fbq !== 'function') return;
+    if (unaVez) { if (FB.enviados[evento]) return; FB.enviados[evento] = true; }
+    fbq('track', evento, datos, eventId ? { eventID: eventId } : undefined);
+  }
+  function aE164(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (d.length === 9 && d.charAt(0) === '9') return '51' + d;
+    return d;
+  }
+  function fbCookie(nombre) {
+    var m = document.cookie.match('(^|;)\\s*' + nombre + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+  (function guardarFbc() {
+    if (fbCookie('_fbc')) return;
+    var fbclid = new URLSearchParams(location.search).get('fbclid');
+    if (!fbclid) return;
+    document.cookie = '_fbc=fb.1.' + Date.now() + '.' + fbclid + ';path=/;max-age=7776000;SameSite=Lax';
+  })();
+  function fbIdentidad() { return { fbp: fbCookie('_fbp'), fbc: fbCookie('_fbc') }; }
+
+  function fbVariante() {
+    var sel = document.querySelector('.vcard.sel');
+    var v = (sel && sel.getAttribute('data-var')) || '5pack';
+    return { id: v, valor: FB.variantes[v], unidades: FB.unidades[v], etiqueta: FB.etiquetas[v] };
+  }
+
+  fbTrack('ViewContent', {
+    content_ids: [FB.producto], content_type: 'product', content_name: FB.nombre,
+    value: FB.variantes['5pack'], currency: FB.moneda
+  }, true);
+
+  function activarImagenes(c) {
+    [].forEach.call(c.querySelectorAll('img[data-src]'), function (i) {
+      i.src = i.getAttribute('data-src'); i.removeAttribute('data-src');
+    });
+  }
+
+  function openCOD() {
+    var v = fbVariante();
+    fbTrack('AddToCart', {
+      content_ids: [FB.producto], content_type: 'product',
+      contents: [{ id: FB.producto, quantity: v.unidades }], value: v.valor, currency: FB.moneda
+    });
+    var o = document.getElementById('codOverlay');
+    activarImagenes(o);
+    o.classList.add('on');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCOD() {
+    document.getElementById('codOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+
+  function selVar(el) {
+    var cambio = !el.classList.contains('sel');
+    [].forEach.call(document.querySelectorAll('.vcard'), function (c) { c.classList.remove('sel'); });
+    el.classList.add('sel');
+    if (cambio) {
+      var v = fbVariante();
+      fbTrack('AddToCart', {
+        content_ids: [FB.producto], content_type: 'product',
+        contents: [{ id: FB.producto, quantity: v.unidades }], value: v.valor, currency: FB.moneda
+      });
+    }
+  }
+
+  function selShip(mode) {
+    document.getElementById('shipCasa').classList.toggle('sel', mode === 'casa');
+    document.getElementById('shipAg').classList.toggle('sel', mode === 'agencia');
+    document.getElementById('boxCasa').style.display = mode === 'casa' ? 'block' : 'none';
+    document.getElementById('boxAg').style.display = mode === 'agencia' ? 'block' : 'none';
+    document.getElementById('noteEntrega').textContent = mode === 'casa'
+      ? 'Entrega para Lima al día siguiente'
+      : 'Entrega para provincia en 2-3 días';
+  }
+
+  ['fName', 'fPhone', 'fDir', 'fSucursal'].forEach(function (id) {
+    var campo = document.getElementById(id);
+    if (!campo) return;
+    campo.addEventListener('focus', function () {
+      var v = fbVariante();
+      fbTrack('InitiateCheckout', {
+        content_ids: [FB.producto], content_type: 'product', num_items: v.unidades,
+        value: v.valor, currency: FB.moneda
+      }, true);
+    }, { once: true });
+  });
+
+  /* Un fallo de red no puede costar un lead que ya pagamos: se reintenta una
+     vez (solo si no hubo respuesta o fue un 5xx; un 422 es culpa de los datos). */
+  function enviarPedido(cuerpo, intento) {
+    return fetch('/api/order-sellador', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    }).then(function (r) {
+      if (r.status >= 500 && intento < 1) throw new Error('reintentar');
+      return r;
+    }).catch(function (err) {
+      if (intento < 1) {
+        return new Promise(function (ok) { setTimeout(ok, 1200); })
+          .then(function () { return enviarPedido(cuerpo, intento + 1); });
+      }
+      throw err;
+    });
+  }
+
+  /* Último recurso: el pedido va por WhatsApp con los datos ya escritos. */
+  function enlaceRescate(cuerpo, v) {
+    if (!WA_NUMERO) return '';
+    var lineas = [
+      'Hola! Quiero hacer este pedido (la web no pudo registrarlo):', '',
+      'Nombre: ' + cuerpo.nombre,
+      'WhatsApp: ' + aE164(cuerpo.telefono),
+      'Producto: ' + v.etiqueta,
+      'Entrega: ' + (cuerpo.envio === 'casa' ? 'Pago en casa (Lima)' : 'Agencia (provincia)'),
+      (cuerpo.envio === 'casa' ? 'Direccion: ' + cuerpo.direccion : 'Agencia: ' + cuerpo.agencia),
+      'Total a pagar: S/ ' + v.valor.toFixed(2)
+    ];
+    return 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(lineas.join('\n'));
+  }
+
+  function submitCOD() {
+    var n = document.getElementById('fName').value.trim();
+    var p = document.getElementById('fPhone').value.trim();
+    var esCasa = document.getElementById('shipCasa').classList.contains('sel');
+    var dir = document.getElementById('fDir').value.trim();
+    var suc = document.getElementById('fSucursal').value.trim();
+
+    if (n.length < 3) { alert('Ingresa tus nombres y apellidos'); return; }
+    if (p.replace(/\D/g, '').length < 9) { alert('Ingresa un WhatsApp válido de 9 dígitos'); return; }
+    if (esCasa && dir.length < 6) { alert('Ingresa tu dirección de entrega'); return; }
+    if (!esCasa && suc.length < 3) { alert('Indica la agencia de destino'); return; }
+
+    var btn = document.getElementById('btnPedido');
+    btn.disabled = true;
+    btn.querySelector('.l2').textContent = 'Enviando…';
+
+    var v = fbVariante();
+    var ident = fbIdentidad();
+    var cuerpo = {
+      nombre: n, telefono: p,
+      envio: esCasa ? 'casa' : 'agencia',
+      direccion: dir, agencia: suc,
+      variante: v.id,
+      campana: new URLSearchParams(location.search).get('utm_campaign') || '',
+      website: document.getElementById('fWebsite').value,
+      fbp: ident.fbp, fbc: ident.fbc
+    };
+
+    enviarPedido(cuerpo, 0)
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.error || 'Error al registrar');
+        var total = typeof res.body.total === 'number' ? res.body.total : v.valor;
+        try {
+          // Los datos viajan por sessionStorage y NO por la URL: el píxel de
+          // /gracias manda la URL a Meta y no debe llevar datos personales.
+          sessionStorage.setItem('pedido_sellador', JSON.stringify({
+            nombre: n, telefono: aE164(p),
+            envio: esCasa ? 'Pago en casa (Lima)' : 'Agencia (provincia)',
+            destino: esCasa ? dir : suc,
+            producto: v.etiqueta, total: total, eventId: res.body.eventId || '',
+            wa: WA_NUMERO,
+            ahorro: (FB.viejos[v.id] || v.valor) - v.valor
+          }));
+        } catch (e) { /* modo privado sin storage: /gracias saldrá genérica */ }
+        location.href = '/sellador/gracias.html?v=' + encodeURIComponent(total);
+      })
+      .catch(function (err) {
+        console.error(err);
+        var link = enlaceRescate(cuerpo, v);
+        if (link && confirm('No pudimos registrar tu pedido por un problema de conexión.\n\n¿Lo enviamos por WhatsApp para no perderlo?')) {
+          location.href = link;
+        } else if (!link) {
+          alert('No pudimos registrar tu pedido por un problema de conexión. Inténtalo de nuevo en un minuto.');
+        }
+        btn.disabled = false;
+        btn.querySelector('.l2').textContent = 'Pedir Ahora';
+      });
+  }
+
+  // Reseñas reales (si hay)
+  (function () {
+    if (!RESENAS.length) return;
+    var cont = document.getElementById('resenasLista');
+    RESENAS.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'resena';
+      var q = document.createElement('div'); q.className = 'q'; q.textContent = '“' + r.texto + '”';
+      var w = document.createElement('div'); w.className = 'who'; w.textContent = r.nombre + (r.distrito ? ' · ' + r.distrito : '');
+      var s = document.createElement('span'); s.textContent = 'Compra verificada'; w.appendChild(s);
+      d.appendChild(q); d.appendChild(w); cont.appendChild(d);
+    });
+    document.getElementById('resenas').style.display = 'block';
+  })();
+
+  // El botón fijo se esconde cuando hay otro botón a la vista
+  document.addEventListener('DOMContentLoaded', function () {
+    var sticky = document.querySelector('.sticky-cta-wrap');
+    var inline = document.querySelectorAll('.cta:not(.sticky-cta-wrap .cta)');
+    if (!('IntersectionObserver' in window) || !sticky) return;
+    var vis = new Map();
+    var obs = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { vis.set(e.target, e.isIntersecting); });
+      var alguno = Array.from(vis.values()).some(Boolean);
+      sticky.classList.toggle('hidden', alguno);
+    }, { threshold: 0.1 });
+    inline.forEach(function (c) { obs.observe(c); });
+  });
+</script>
+</body>
+</html>

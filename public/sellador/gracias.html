@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/sellador/img/favicon.png" type="image/png">
+<title>¡Pedido recibido!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  :root { --ink:#15181d; --muted:#5b6470; --line:#e3e6ea; --green:#1f9d55; --wa:#25d366; --body-bg:#eef0f3; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--body-bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:480px; margin:0 auto; background:#fff; min-height:100vh; padding:0 20px 48px; box-shadow:0 0 20px rgba(0,0,0,.06); }
+  .tick { width:76px; height:76px; margin:44px auto 22px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; }
+  .tick svg { width:38px; height:38px; stroke:#fff; stroke-width:3.5; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  h1 { font-size:26px; font-weight:900; text-align:center; letter-spacing:-.4px; }
+  .sub { text-align:center; color:var(--muted); font-size:15px; margin-top:10px; }
+  .resumen { margin:24px 0 0; border:1.5px solid var(--line); border-radius:14px; padding:6px 16px; }
+  .fila { display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14.5px; }
+  .fila:last-child { border-bottom:none; }
+  .k { color:var(--muted); flex:0 0 auto; } .v { font-weight:600; text-align:right; }
+  .fila.tot .k { font-weight:800; color:var(--ink); } .fila.tot .v { font-weight:900; font-size:19px; }
+  .pasos { margin:22px 0 0; font-size:14.5px; color:#262a31; padding-left:20px; display:grid; gap:6px; }
+  .wa { display:none; margin:24px 0 0; background:var(--wa); color:#fff; text-decoration:none; text-align:center; font-weight:800; font-size:17px; padding:16px; border-radius:12px; }
+  .pie { text-align:center; color:var(--muted); font-size:12.5px; margin-top:22px; }
+</style>
+<!-- Meta Pixel: mismo PIXEL_ID que la landing (vacío = no se carga) -->
+<script>
+  var PIXEL_ID = '';
+  if (PIXEL_ID) {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="tick"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+  <h1>¡Pedido recibido!</h1>
+  <p class="sub" id="sub">Te escribiremos por WhatsApp para confirmar tu pedido.</p>
+
+  <div class="resumen" id="resumen" style="display:none"></div>
+
+  <ol class="pasos">
+    <li>Te escribimos por WhatsApp para confirmar tu pedido y tu dirección.</li>
+    <li>Coordinamos la entrega (en Lima, al día siguiente).</li>
+    <li>Pagas al recibir con Yape, efectivo o POS.</li>
+  </ol>
+
+  <a class="wa" id="waLink" href="#" rel="noopener">Escríbenos por WhatsApp</a>
+  <p class="pie">Si algo está mal en tu pedido, escríbenos y lo corregimos.</p>
+</div>
+<script>
+  (function () {
+    var p = {};
+    try { p = JSON.parse(sessionStorage.getItem('pedido_sellador') || '{}'); } catch (e) {}
+
+    function fila(k, v, cls) {
+      var d = document.createElement('div'); d.className = 'fila' + (cls ? ' ' + cls : '');
+      var a = document.createElement('span'); a.className = 'k'; a.textContent = k;
+      var b = document.createElement('span'); b.className = 'v'; b.textContent = v;
+      d.appendChild(a); d.appendChild(b); return d;
+    }
+
+    if (p.nombre) {
+      var r = document.getElementById('resumen');
+      var primer = String(p.nombre).split(/\s+/)[0];
+      document.getElementById('sub').textContent = 'Gracias, ' + primer + '. Te escribiremos por WhatsApp para confirmar tu pedido.';
+      r.appendChild(fila('Producto', p.producto));
+      r.appendChild(fila('Entrega', p.envio));
+      r.appendChild(fila('Destino', p.destino));
+      r.appendChild(fila('WhatsApp', '+' + p.telefono));
+      r.appendChild(fila('Total a pagar', 'S/ ' + Number(p.total).toFixed(2), 'tot'));
+      r.style.display = 'block';
+    }
+
+    var wa = (p.wa || '').replace(/\D/g, '');
+    if (wa) {
+      var msg = 'Hola! Acabo de hacer mi pedido de la masilla selladora' + (p.nombre ? ' (' + p.nombre + ')' : '') + '. Quedo atento(a) a la confirmación.';
+      var a = document.getElementById('waLink');
+      a.href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(msg);
+      a.style.display = 'block';
+    }
+
+    // El Lead se dispara aquí, no en la landing: así solo cuenta a quien llegó al final.
+    var total = Number(new URLSearchParams(location.search).get('v')) || Number(p.total) || 0;
+    if (typeof fbq === 'function') {
+      fbq('track', 'Lead', { content_ids: ['masilla-selladora'], content_type: 'product', value: total, currency: 'PEN' },
+          p.eventId ? { eventID: p.eventId } : undefined);
+    }
+  })();
+</script>
+</body>
+</html>

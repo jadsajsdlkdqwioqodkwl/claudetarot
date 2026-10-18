@@ -11,6 +11,7 @@
 
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
+import { onRequestPost as orderSellador } from "./api/order-sellador.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
@@ -132,6 +133,7 @@ import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/upsell": { POST: upsell },
+  "/api/order-sellador": { POST: orderSellador },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
   "/api/seguimiento": { GET: seguimiento },
