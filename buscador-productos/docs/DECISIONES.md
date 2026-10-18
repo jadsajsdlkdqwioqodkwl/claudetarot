@@ -239,3 +239,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Hallazgo:** no había punto de integración. La columna «Uso sugerido» de Exploración era solo una nota; el cargador no leía esa pestaña y los cambios al plan los hacía MEJORA a mano.
 - **Cambio:** `Recetas!D40` v8 (el cargador lee Exploración A:K, carga primero las recetas Confirmada/Parcial con K vacía, las marca «Integrada» y sube regiones/categorías nuevas a Recetas D38). INSTR 08 v1.15 (el Juez marca «Agotada» lo que rinde menos que el plan base). Columna K de Exploración = estado de integración.
 - **Revertir:** quitar el párrafo inicial de D40 v8 y el párrafo v1.15 de INSTR 08.
+
+## D-035 (2026-10-18) Prohibido cerrar parcial por «no cabe en este chat»
+
+- **Evidencia (sesión 2026-10-18-a):** el principal hizo solo la fase 1 (74 créditos, 54 filas), dijo que RANKEA, FILTRA, ALIBABA y el Juez «no caben bien en este chat» y cerró como parcial. Es la tercera corrida seguida que se detiene por una razón distinta (pregunta, no escribir RANKEA, falta de espacio). Además llamó una herramienta de borrado por error (falló, no tocó nada) y no pudo marcar Exploración K por no existir la columna.
+- **Cambio:** INSTR 08 v1.16: el principal es solo coordinador, delega todo a subagentes y lee solo su línea final; el cierre parcial solo vale por orden del dueño, Chrome/PiPiAds sin sesión (tras hacer lo que no los necesita), presupuesto agotado o error repetido 3 veces; con cola > 60 la fase 2 va antes de más cargas. Nota: la fecha de `Crudo!L` no coincide con el filtro de ventana de PiPiAds (casi todas ~hoy-31 d), pero los totales y los productos sí cambian por ventana: no es motivo de parar. Exploración ahora tiene la columna K.
+- **Observación abierta:** el prefiltro de `Recetas!E31` marca «dress» dentro de «Address» (sin límite de palabra); 14 de 54 filas cayeron en prefiltro, varias con razón (Halloween, Christmas) y alguna de más.
+- **Revertir:** quitar el párrafo v1.16 de INSTR 08.
