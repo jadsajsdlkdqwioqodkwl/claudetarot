@@ -201,11 +201,8 @@
   .fg input::placeholder { color:#8a8a8a; opacity:1; }
   .err { border-color:var(--red) !important; }
   .entrega-note { text-align:center; font-size:14px; font-weight:700; margin:18px 0 12px; }
-  .total { padding:10px 0 12px; border-top:1px solid var(--line); }
-  .total .rw { display:flex; justify-content:space-between; align-items:baseline; font-size:14px; padding:3px 0; }
-  .total .rw.t { font-size:15px; font-weight:700; padding-top:6px; }
-  .total .rw.t b { font-size:22px; font-weight:800; }
-  .total s { color:var(--price-old); font-weight:500; font-size:14px; margin-right:6px; }
+  /* El botón se queda pegado al borde de abajo mientras se llena el formulario: siempre visible. */
+  .btn-fijo { position:sticky; bottom:0; z-index:5; background:#fff; margin:14px -18px 0; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.07); }
   .btn-pedido { width:100%; border:none; cursor:pointer; background:var(--cta); color:#fff; border-radius:12px; padding:17px; transition:background .15s, transform .1s; }
   .btn-pedido:hover { background:var(--cta-d); }
   .btn-pedido:active { transform:scale(.99); }
@@ -452,12 +449,12 @@
     <input type="text" id="fWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 
     <div class="entrega-note" id="noteEntrega">Entrega para Lima en 24 a 48 horas</div>
-    <div class="total" id="mResumen"></div>
-
-    <button class="btn-pedido" id="btnPedido" onclick="submitCOD()">
-      <div class="l1">COMPLETAR PEDIDO</div>
-      <div class="l2" id="btnSub">Pagas cuando lo recibes</div>
-    </button>
+    <div class="btn-fijo">
+      <button class="btn-pedido" id="btnPedido" onclick="submitCOD()">
+        <div class="l1">COMPLETAR PEDIDO</div>
+        <div class="l2" id="btnSub">Pagas cuando lo recibes</div>
+      </button>
+    </div>
     <div class="wa-note">Te escribiremos por WhatsApp para confirmar tu pedido</div>
     <div class="seals"><img src="/cable/img/badges.webp" alt="Compra 100% segura · Protegemos tus datos · Envíos a todo el Perú" width="1200" height="518" loading="lazy"></div>
   </div>
@@ -596,17 +593,8 @@
     pintarResumen();
   }
   function pintarResumen() {
-    var p = PACKS[packActual], esCasa = envio === 'casa';
-    var h = '<div class="rw"><span>' + p.nombre + '</span><span><s>' + soles(p.viejo) + '</s>' + soles(p.precio) + '</span></div>' +
-      '<div class="rw"><span>Envío</span><span style="color:var(--ok);font-weight:700">GRATIS</span></div>';
-    if (esCasa) {
-      h += '<div class="rw t"><span>Total a pagar al recibir</span><b>' + soles(p.precio) + '</b></div>';
-    } else {
-      h += '<div class="rw"><span>Adelanto (te lo pedimos por WhatsApp)</span><span>' + soles(ADELANTO) + '</span></div>' +
-        '<div class="rw t"><span>Pagas al recoger</span><b>' + soles(p.precio - ADELANTO) + '</b></div>';
-    }
-    document.getElementById('mResumen').innerHTML = h;
-    document.getElementById('btnSub').textContent = esCasa ? 'Pagas cuando lo recibes' : 'Adelanto de ' + soles(ADELANTO) + ' y el resto al recoger';
+    // El formulario ya no muestra resumen de producto/precio; solo el subtítulo del botón.
+    document.getElementById('btnSub').textContent = envio === 'casa' ? 'Pagas cuando lo recibes' : 'Adelanto de ' + soles(ADELANTO) + ' y el resto al recoger';
   }
   function selShip(modo) {
     envio = modo;
