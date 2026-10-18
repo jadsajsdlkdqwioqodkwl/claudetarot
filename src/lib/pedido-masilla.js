@@ -1,5 +1,5 @@
 /**
- * Catálogo de la Masilla Selladora (landing /masilla/).
+ * Catálogo de la Masilla Selladora (landing /masilla/): ofertas de 10, 20 y 40 sachets.
  *
  * Igual que en pedido-cable.js: los precios viven SOLO aquí. El navegador manda
  * qué pack eligió el cliente, nunca cuánto cuesta. Si cambias un precio, cámbialo
@@ -11,17 +11,15 @@
 export const PRODUCTO_MASILLA = "masilla-selladora";
 
 /**
- * Cada kit trae 20 sobres individuales (como en los videos del proveedor). `viejo` es el
- * precio «antes». PRECIOS PROVISORIOS: el dueño aún no los confirma (ver docs/masilla.md).
+ * Tres ofertas por cantidad de sachets (pedido del dueño, 2026-10-18). Cada oferta es 1 pedido
+ * (`cantidad: 1`); lo que cambia es `sachets`. `viejo` es el precio «antes». Los precios de 20 y 40
+ * son los del advertorial (/sellador); el de 10 sachets es PROVISORIO hasta que el dueño lo confirme.
  */
 export const PACKS = {
-  x1: { etiqueta: "1 Kit de Masilla Selladora (20 sobres)", cantidad: 1, precio: 49, viejo: 99 },
-  x2: { etiqueta: "Pack Dúo: 2 Kits de Masilla Selladora (40 sobres)", cantidad: 2, precio: 79, viejo: 198 },
-  x3: { etiqueta: "Pack Hogar: 3 Kits de Masilla Selladora (60 sobres)", cantidad: 3, precio: 99, viejo: 297 }
+  x1: { etiqueta: "Oferta 1: 10 sachets de Masilla Selladora", sachets: 10, cantidad: 1, precio: 49, viejo: 99 },
+  x2: { etiqueta: "Oferta 2: 20 sachets de Masilla Selladora", sachets: 20, cantidad: 1, precio: 79, viejo: 159 },
+  x3: { etiqueta: "Oferta 3: 40 sachets de Masilla Selladora", sachets: 40, cantidad: 1, precio: 129, viejo: 259 }
 };
-
-/** Detalle que se escribe en la hoja (la columna «Detalle» es la del Cable). */
-export const SOBRES_POR_KIT = 20;
 
 /** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia (igual que el Kit y el Cable). */
 export const ADELANTO_PROVINCIA = 10;

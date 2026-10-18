@@ -64,10 +64,10 @@ const base = {
 /* validate */
 const v = validate(base);
 check("pedido válido pasa", v.errors.length === 0, v.errors.join(","));
-check("el total sale del servidor (pack x3 = 99)", v.order.total === 99 && v.order.cantidad === 3);
-check("el detalle cuenta los sobres (3 kits = 60 sobres)", v.order.detalle === "60 sobres", v.order.detalle);
+check("el total sale del servidor (oferta 3 = S/ 129)", v.order.total === 129 && v.order.cantidad === 1);
+check("el detalle cuenta los sachets (oferta 3 = 40 sachets)", v.order.detalle === "40 sachets", v.order.detalle);
 check("un pack desconocido cae a x1", validate({ ...base, pack: "x99" }).order.cantidad === 1);
-check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 99);
+check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 129);
 for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
   check(`sin ${campo} se rechaza`, validate({ ...base, [campo]: "" }).errors.includes(campo));
 }
@@ -89,7 +89,7 @@ check("la fila encaja con los encabezados",
 /* Flujo completo */
 let r = await onRequestPost(ctx(base));
 let b = await r.json();
-check("responde 200 con fila y total", r.status === 200 && b.ok && b.fila === 2 && b.total === 99, JSON.stringify(b));
+check("responde 200 con fila y total", r.status === 200 && b.ok && b.fila === 2 && b.total === 129, JSON.stringify(b));
 check("el Event ID lleva el prefijo MS-", /^MS-[A-Z0-9]{6}$/.test(b.eventId), b.eventId);
 check("se creó la pestaña «Masilla» en el libro de Pedidos", pestanas.has("Masilla"));
 const append = llamadas.filter((c) => c.url.includes(":append"));

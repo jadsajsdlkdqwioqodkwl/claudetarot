@@ -1093,9 +1093,9 @@ check("las letras de columna llegan hasta la última de la hoja",
   const gr = readFileSync(join(root, "public/masilla/gracias.html"), "utf8");
   const { PACKS, RUTA_LARGA_MASILLA, ADELANTO_PROVINCIA } = await import(join(root, "src/lib/pedido-masilla.js"));
   for (const [id, p] of Object.entries(PACKS)) {
-    const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(ms);
-    check(`masilla: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
-      m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
+    const m = new RegExp(`${id}:\\s*\\{[^}]*?sachets:\\s*(\\d+),\\s*cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(ms);
+    check(`masilla: la oferta ${id} de la página (${m ? `${m[1]} sachets, S/ ${m[3]}, antes ${m[4]}` : "no está"}) coincide con el servidor`,
+      m && Number(m[1]) === p.sachets && Number(m[2]) === p.cantidad && Number(m[3]) === p.precio && Number(m[4]) === p.viejo);
   }
   check("masilla: la página llama a /api/order-masilla", ms.includes("'/api/order-masilla'"));
   check("masilla: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(ms));

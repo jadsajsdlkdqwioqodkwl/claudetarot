@@ -134,9 +134,9 @@
       document.getElementById('p3').innerHTML = '<b>Pagas la diferencia al recoger</b> en la agencia.';
     }
 
-    if (pedido.cantidad > 0) {
+    if (pedido.sachets > 0) {
       var r = document.getElementById('regalo');
-      r.textContent = pedido.cantidad === 1 ? 'Tu kit trae 20 sobres individuales' : 'Tus ' + pedido.cantidad + ' kits traen ' + (pedido.cantidad * 20) + ' sobres en total';
+      r.textContent = 'Tu pedido trae ' + pedido.sachets + ' sachets individuales';
       r.style.display = 'flex';
     }
 

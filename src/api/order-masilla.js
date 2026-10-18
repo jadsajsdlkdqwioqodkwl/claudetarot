@@ -13,7 +13,7 @@
 
 import { appendRowsTo } from "../lib/google-sheets.js";
 import { clean, toE164Peru, makeEventId } from "../lib/pedido.js";
-import { PACKS, ADELANTO_PROVINCIA, SOBRES_POR_KIT } from "../lib/pedido-masilla.js";
+import { PACKS, ADELANTO_PROVINCIA } from "../lib/pedido-masilla.js";
 import { COLUMNAS_CABLE } from "../lib/pedido-cable.js";
 import { ESTADOS } from "../lib/hoja.js";
 import { notificarTelegram } from "../lib/telegram.js";
@@ -44,7 +44,7 @@ export function validate(payload) {
 
   // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
   const pack = PACKS[payload.pack] ? payload.pack : "x1";
-  const { etiqueta, precio, cantidad } = PACKS[pack];
+  const { etiqueta, precio, cantidad, sachets } = PACKS[pack];
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
@@ -65,7 +65,7 @@ export function validate(payload) {
       adelanto: envio === "agencia" ? ADELANTO_PROVINCIA : 0,
       pack,
       etiqueta,
-      detalle: `${cantidad * SOBRES_POR_KIT} sobres`,
+      detalle: `${sachets} sachets`,
       cantidad,
       total: precio,
 
