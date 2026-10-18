@@ -66,11 +66,20 @@ Calcado de la ficha original de beverlygoods, pero limpio y para Lima: galería 
 en el botón; formulario COD limpio con fotos de pack, selector de conector por cable, caja de envío y sellos.
 Sin reseñas inventadas. En escritorio sale en dos columnas.
 
+## Envío a provincia y marca (2026-10-18)
+
+El formulario tiene las dos opciones del COD de Tarot: **Pago en casa (Lima)**, con distrito y dirección, y **Envío por agencia
+(provincia)**, con ciudad/departamento y agencia de destino (Shalom/Olva), con **adelanto de S/ 10** y la diferencia al recoger
+(`ADELANTO_PROVINCIA` en `src/lib/pedido-cable.js` y `var ADELANTO` en `index.html`; el chequeo exige que coincidan). La pestaña
+«Cable» quedó con estas columnas: Fecha · Nombre · WhatsApp · Envío · Distrito / Ciudad · Dirección / Agencia · Pack · Detalle ·
+Cantidad · Total · Adelanto · Estado · FBP · FBC · Event ID · User Agent · IP (la pestaña aún no existía, por eso se pudo reordenar).
+Marca para el testeo: logo de **Puerto Secreto** (`img/logo.webp`) en círculo y badge «Vendedor autorizado» arriba del formulario
+(como en el COD de Tarot) y en la cabecera de la página.
+
 ## Fotos y videos
 
-Salen de la ficha original: la portada (`hero.webp`) es la foto original «Charge & Watch» con su texto **traducido al español**
-(rótulos borrados y reescritos con Inter), `naranja.webp` es la foto limpia del producto y `videollamada.webp` otra foto original
-con su rótulo borrado; los videos están recortados para quitar los subtítulos en
+Fotos de catálogo del producto, sin texto: `principal.webp` y `enrollado.webp` (ficha de Alpha Technology, Perú), `naranja.webp`
+(ficha original); se descartaron las fotos generadas con personas (se veían falsas); los videos están recortados para quitar los subtítulos en
 inglés y sin audio (se ven mudos). Los videos solo se descargan al acercarse (`data-src`).
 En el último tramo de los videos 2 y 3 aparece la bolsa con la marca del proveedor.
 Si se cambia el contenido de un archivo hay que **renombrarlo** (`_headers` los cachea un año).

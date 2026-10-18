@@ -16,7 +16,7 @@
 
 import { appendRowsTo, batchUpdate, getSpreadsheet } from "../lib/google-sheets.js";
 import { clean, toE164Peru, makeEventId } from "../lib/pedido.js";
-import { PACKS, CONECTORES, COLUMNAS_CABLE } from "../lib/pedido-cable.js";
+import { PACKS, CONECTORES, COLUMNAS_CABLE, ADELANTO_PROVINCIA } from "../lib/pedido-cable.js";
 import { ESTADOS } from "../lib/hoja.js";
 import { notificarTelegram } from "../lib/telegram.js";
 import { fechaLima, numeroDeFila } from "./order.js";
@@ -42,9 +42,11 @@ export function validate(payload) {
 
   const nombre = clean(payload.nombre, 80);
   const telefono = toE164Peru(payload.telefono);
+  const envio = payload.envio === "agencia" ? "agencia" : "casa";
+  // Distrito (Lima) o ciudad/departamento (provincia).
   const distrito = clean(payload.distrito, 60);
   const direccion = clean(payload.direccion, 160);
-  const referencia = clean(payload.referencia, 120);
+  const agencia = clean(payload.agencia, 160);
 
   // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
   const pack = PACKS[payload.pack] ? payload.pack : "x1";
@@ -60,16 +62,20 @@ export function validate(payload) {
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
   if (distrito.length < 3) errors.push("distrito");
-  if (direccion.length < 6) errors.push("direccion");
+  if (envio === "casa" && direccion.length < 6) errors.push("direccion");
+  if (envio === "agencia" && agencia.length < 3) errors.push("agencia");
 
   return {
     errors,
     order: {
       nombre,
       telefono,
+      envio,
       distrito,
-      direccion,
-      referencia,
+      // Una sola columna: en Lima la dirección, en provincia la agencia.
+      destino: envio === "casa" ? direccion : agencia,
+      // Provincia: adelanto ahora y el resto al recoger. Lima paga todo al recibir.
+      adelanto: envio === "agencia" ? ADELANTO_PROVINCIA : 0,
       pack,
       etiqueta,
       detalle,
@@ -91,13 +97,14 @@ export function filaDePedidoCable(order, headers) {
     order.fecha,
     order.nombre,
     `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
+    order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
     order.distrito,
-    order.direccion,
-    order.referencia,
+    order.destino,
     order.etiqueta,
     order.detalle,
     order.cantidad,
     order.total,
+    order.adelanto,
     ESTADOS[0],
     order.fbp,
     order.fbc,
@@ -116,9 +123,10 @@ export function mensajeCableNuevo(order) {
     `📱 *WhatsApp:* +${order.telefono}\n` +
     `📦 *Pedido:* ${l(order.etiqueta)}\n` +
     `🔧 *Detalle:* ${l(order.detalle)}\n` +
-    `💰 *Total:* S/ ${order.total.toFixed(2)}\n` +
-    `📍 *Entrega (Lima):* ${l(order.distrito)} — ${l(order.direccion)}` +
-    (order.referencia ? ` (${l(order.referencia)})` : "") +
+    `💰 *Total:* S/ ${order.total.toFixed(2)}` +
+    (order.adelanto ? ` (adelanto S/ ${order.adelanto.toFixed(2)}, resto al recoger)` : "") +
+    `\n🚚 *Entrega:* ${order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)"}\n` +
+    `📍 *${order.envio === "casa" ? "Dirección" : "Agencia"}:* ${l(order.distrito)} — ${l(order.destino)}` +
     `\n\n🔥 _Escríbele rápido para confirmar el pedido._`
   );
 }
@@ -160,6 +168,7 @@ export async function prepararPestana(env, libro, pestana) {
 
   const iEstado = COLUMNAS_CABLE.indexOf("Estado");
   const iTotal = COLUMNAS_CABLE.indexOf("Total");
+  const iAdelanto = COLUMNAS_CABLE.indexOf("Adelanto");
   const iFbp = COLUMNAS_CABLE.indexOf("FBP");
   const col = (i) => ({ sheetId, startColumnIndex: i, endColumnIndex: i + 1, startRowIndex: 1 });
 
@@ -185,13 +194,13 @@ export async function prepararPestana(env, libro, pestana) {
           fields: "userEnteredFormat.numberFormat"
         }
       },
-      {
+      ...[iTotal, iAdelanto].map((i) => ({
         repeatCell: {
-          range: col(iTotal),
+          range: col(i),
           cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: '"S/ "#,##0.00' } } },
           fields: "userEnteredFormat.numberFormat"
         }
-      },
+      })),
       {
         setDataValidation: {
           range: col(iEstado),

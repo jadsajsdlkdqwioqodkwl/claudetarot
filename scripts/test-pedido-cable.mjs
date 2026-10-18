@@ -4,7 +4,7 @@
  */
 import { generateKeyPairSync } from "node:crypto";
 import { onRequestPost, validate, filaDePedidoCable, prepararPestana } from "../src/api/order-cable.js";
-import { COLUMNAS_CABLE, PACKS } from "../src/lib/pedido-cable.js";
+import { COLUMNAS_CABLE, PACKS, ADELANTO_PROVINCIA } from "../src/lib/pedido-cable.js";
 
 let fallos = 0;
 const check = (nombre, cond, detalle = "") => {
@@ -56,8 +56,8 @@ const avisos = [];
 const ctx = (cuerpo, e = env) => ({ request: peticion(cuerpo), env: e, waitUntil: (p) => avisos.push(p) });
 
 const base = {
-  nombre: "María Fernández", telefono: "987 654 321", distrito: "Miraflores",
-  direccion: "Av. Larco 1234, dpto. 502", referencia: "frente al parque", pack: "x3",
+  nombre: "María Fernández", telefono: "987 654 321", envio: "casa", distrito: "Miraflores",
+  direccion: "Av. Larco 1234, dpto. 502", pack: "x3",
   cables: [{ conector: "Lightning" }, { conector: "USB-C" }, { conector: "raro" }]
 };
 
@@ -73,7 +73,18 @@ check("faltan cables: se completan por defecto", validate({ ...base, pack: "x2",
 for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
   check(`sin ${campo} se rechaza`, validate({ ...base, [campo]: "" }).errors.includes(campo));
 }
-check("la referencia es opcional", validate({ ...base, referencia: "" }).errors.length === 0);
+const prov = { ...base, envio: "agencia", distrito: "Arequipa", direccion: "", agencia: "Shalom - Sede Centro" };
+const vp = validate(prov);
+check("pedido de provincia válido pasa", vp.errors.length === 0, vp.errors.join(","));
+check("en provincia el destino es la agencia y hay adelanto", vp.order.destino === "Shalom - Sede Centro" && vp.order.adelanto === ADELANTO_PROVINCIA && ADELANTO_PROVINCIA === 10);
+check("en Lima el destino es la dirección y no hay adelanto", v.order.destino === base.direccion && v.order.adelanto === 0);
+check("provincia sin agencia se rechaza", validate({ ...prov, agencia: "" }).errors.includes("agencia"));
+check("provincia no exige dirección", !validate({ ...prov, direccion: "" }).errors.includes("direccion"));
+check("un envío desconocido cae a Lima", validate({ ...base, envio: "otro" }).order.envio === "casa");
+const filaProv = filaDePedidoCable({ ...vp.order, fecha: "2026-10-18 10:00:00", eventId: "CB-X" }, new Headers());
+check("la fila de provincia lleva envío, ciudad, agencia y adelanto",
+  filaProv[COLUMNAS_CABLE.indexOf("Envío")] === "Agencia (provincia)" && filaProv[COLUMNAS_CABLE.indexOf("Distrito / Ciudad")] === "Arequipa" &&
+  filaProv[COLUMNAS_CABLE.indexOf("Dirección / Agencia")] === "Shalom - Sede Centro" && filaProv[COLUMNAS_CABLE.indexOf("Adelanto")] === 10);
 check("la fila encaja con los encabezados",
   filaDePedidoCable({ ...v.order, fecha: "2026-10-18 10:00:00", eventId: "CB-X" }, new Headers()).length === COLUMNAS_CABLE.length);
 

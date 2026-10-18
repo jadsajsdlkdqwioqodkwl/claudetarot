@@ -20,6 +20,9 @@ export const PACKS = {
   x3: { etiqueta: "Pack Regalo: 3 Cables 2 en 1 + 3 bolsas", cantidad: 3, precio: 169, viejo: 447 }
 };
 
+/** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia (igual que el Kit de Tarot). */
+export const ADELANTO_PROVINCIA = 10;
+
 /** Solo se vende en naranja: no hay elección de color. El primero es el de respaldo. */
 export const CONECTORES = ["USB-C", "Lightning"];
 
@@ -39,13 +42,14 @@ export const COLUMNAS_CABLE = [
   "Fecha",
   "Nombre",
   "WhatsApp",
-  "Distrito",
-  "Dirección",
-  "Referencia",
+  "Envío",
+  "Distrito / Ciudad",
+  "Dirección / Agencia",
   "Pack",
   "Detalle",
   "Cantidad",
   "Total",
+  "Adelanto",
   "Estado",
   "FBP",
   "FBC",

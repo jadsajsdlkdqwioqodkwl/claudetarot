@@ -65,7 +65,7 @@
 <div class="wrap">
   <div class="tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
   <h1>¡Pedido confirmado!</h1>
-  <p class="sub">Ya registramos tu pedido. Te escribimos por WhatsApp para coordinar la entrega en Lima.</p>
+  <p class="sub" id="sub">Ya registramos tu pedido. Te escribimos por WhatsApp para coordinar la entrega.</p>
 
   <div class="regalo" id="regalo" style="display:none"></div>
 
@@ -82,9 +82,9 @@
 
   <div class="pasos">
     <h3>Qué sigue</h3>
-    <div class="paso"><span class="n">1</span><div>Te contactamos por WhatsApp para <b>confirmar tu dirección</b>.</div></div>
-    <div class="paso"><span class="n">2</span><div>Preparamos y despachamos tu pedido: llega en <b>24 a 48 horas</b>.</div></div>
-    <div class="paso"><span class="n">3</span><div><b>Pagas al recibir</b>, con Yape, efectivo o POS, cuando lo tengas en tus manos. Y tienes <b>90 días de garantía</b>.</div></div>
+    <div class="paso"><span class="n">1</span><div id="p1">Te contactamos por WhatsApp para <b>confirmar tu dirección</b>.</div></div>
+    <div class="paso"><span class="n">2</span><div id="p2">Preparamos y despachamos tu pedido: llega en <b>24 a 48 horas</b>.</div></div>
+    <div class="paso"><span class="n">3</span><div id="p3"><b>Pagas al recibir</b>, con Yape, efectivo o POS, cuando lo tengas en tus manos. Y tienes <b>90 días de garantía</b>.</div></div>
   </div>
 
   <p class="pie" id="pie"></p>
@@ -107,11 +107,12 @@
       return (a.length > 1 ? (i + 1) + ') ' : '') + c.conector;
     }).join(' · ');
 
+    var esAg = pedido.envio === 'agencia';
     var filas = [
       ['Pedido', pedido.pack],
       ['Conector(es)', cables],
-      ['Entrega', pedido.distrito ? 'Pago en casa (' + pedido.distrito + ')' : ''],
-      ['Dirección', pedido.direccion],
+      ['Entrega', pedido.envio ? (esAg ? 'Agencia (provincia)' : 'Pago en casa (Lima)') : ''],
+      [esAg ? 'Agencia' : 'Dirección', pedido.destino ? (pedido.ciudad ? pedido.ciudad + ' - ' : '') + pedido.destino : ''],
       ['A nombre de', pedido.nombre]
     ].filter(function (f) { return f[1]; });
 
@@ -120,13 +121,22 @@
     }).join('');
     if (total > 0) {
       var ahorro = typeof pedido.ahorro === 'number' ? pedido.ahorro : 0;
+      var adel = esAg && pedido.adelanto > 0 ? pedido.adelanto : 0;
       var valor = ahorro > 0
-        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(total) + '</span>'
-        : soles(total);
-      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + valor + '</span></div>';
+        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(adel ? total - adel : total) + '</span>'
+        : soles(adel ? total - adel : total);
+      if (adel) html += '<div class="fila"><span class="k">Adelanto (te lo pedimos por WhatsApp)</span><span class="v">' + soles(adel) + '</span></div>';
+      html += '<div class="fila tot"><span class="k">' + (adel ? 'Pagas al recoger' : 'Pagas al recibir') + '</span><span class="v">' + valor + '</span></div>';
     }
     document.getElementById('resumen').innerHTML = html ||
       '<div class="fila"><span class="k">Tu pedido quedó registrado.</span></div>';
+
+    if (esAg) {
+      document.getElementById('sub').textContent = 'Ya registramos tu pedido. Te escribimos por WhatsApp con los datos del adelanto para reservar tu envío.';
+      document.getElementById('p1').innerHTML = 'Te escribimos por WhatsApp con los datos para el <b>adelanto de S/ 10</b> y confirmamos tu agencia.';
+      document.getElementById('p2').innerHTML = 'Despachamos por Shalom u Olva y te enviamos la <b>foto del comprobante con tu número de seguimiento</b>. Llega en 2 a 3 días.';
+      document.getElementById('p3').innerHTML = '<b>Pagas la diferencia al recoger</b> en la agencia. Y tienes <b>90 días de garantía</b>.';
+    }
 
     if (pedido.cantidad > 0) {
       var r = document.getElementById('regalo');
@@ -142,9 +152,10 @@
       if (pedido.telefono) l.push('WhatsApp: +' + pedido.telefono);
       if (pedido.pack) l.push('Pedido: ' + pedido.pack);
       if (cables) l.push('Cables: ' + cables);
-      if (pedido.distrito) l.push('Distrito: ' + pedido.distrito);
-      if (pedido.direccion) l.push('Direccion: ' + pedido.direccion);
-      if (total > 0) l.push('Total a pagar: ' + soles(total));
+      l.push('Entrega: ' + (esAg ? 'Agencia (provincia)' : 'Pago en casa (Lima)'));
+      if (pedido.ciudad) l.push((esAg ? 'Ciudad: ' : 'Distrito: ') + pedido.ciudad);
+      if (pedido.destino) l.push((esAg ? 'Agencia: ' : 'Direccion: ') + pedido.destino);
+      if (total > 0) l.push('Total del pedido: ' + soles(total) + (esAg && pedido.adelanto ? ' (adelanto ' + soles(pedido.adelanto) + ')' : ''));
       document.getElementById('waLink').href = 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(l.join('\n'));
       document.getElementById('waCard').style.display = '';
       document.getElementById('pie').innerHTML = '¿Algo mal en tu pedido? <a href="https://wa.me/' + WA_NUMERO + '">Escríbenos</a> y lo corregimos.';
