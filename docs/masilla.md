@@ -31,8 +31,7 @@ No dispara el WhatsApp automático de Tarot ni toca `pedidos_web`.
 ## Ofertas (pedido del dueño, 2026-10-18)
 
 Oferta 1 = 10 sachets · Oferta 2 = 20 sachets · Oferta 3 = 40 sachets. Cada oferta es un solo pedido (`cantidad` 1) y
-la hoja guarda «N sachets» en Detalle. El dueño no dio los precios: se usaron los del advertorial (`/sellador`: 20 sachets
-S/ 79, antes 159; 40 sachets S/ 129, antes 259) y **S/ 49 (antes 99) para 10 sachets, provisorio**.
+la hoja guarda «N sachets» en Detalle. **Precios confirmados por el dueño (2026-10-18): S/ 69 (antes 99) · S/ 99 (antes 159) · S/ 129 (antes 259).**
 
 ## Fotos y videos
 
@@ -48,7 +47,7 @@ S/ 79, antes 159; 40 sachets S/ 129, antes 259) y **S/ 49 (antes 99) para 10 sac
 
 ## Antes de lanzar (lo que el dueño debe confirmar)
 
-- **Precio de la Oferta 1 (10 sachets)**: provisorio, S/ 49 (antes 99). Las ofertas 2 y 3 usan los precios del advertorial. Se cambian en `src/lib/pedido-masilla.js` **y** en `PACKS` de `index.html` (el chequeo avisa si difieren).
+- Precios: ya confirmados (arriba). Se cambian en `src/lib/pedido-masilla.js` **y** en `PACKS` de `index.html` (el chequeo avisa si difieren).
 - **Un solo producto, dos páginas**: `/sellador` (advertorial, rama `claude/dreamy-carson-pmtqbe`, aún sin merge a `main`) y `/masilla/` (ficha como la del Cable) escriben en pestañas distintas («Sellador» y «Masilla»). Decidir si se queda una o las dos.
 - **Sin garantía prometida** (la del Cable era de 90 días con cambio). Decidir si se ofrece alguna.
 - Afirmaciones que están en los videos y se repiten en la página: «endurece firme e impermeable», «se puede lijar y pintar»,

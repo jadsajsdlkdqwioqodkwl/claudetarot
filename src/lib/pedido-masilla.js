@@ -12,12 +12,12 @@ export const PRODUCTO_MASILLA = "masilla-selladora";
 
 /**
  * Tres ofertas por cantidad de sachets (pedido del dueño, 2026-10-18). Cada oferta es 1 pedido
- * (`cantidad: 1`); lo que cambia es `sachets`. `viejo` es el precio «antes». Los precios de 20 y 40
- * son los del advertorial (/sellador); el de 10 sachets es PROVISORIO hasta que el dueño lo confirme.
+ * (`cantidad: 1`); lo que cambia es `sachets`. `viejo` es el precio «antes». Precios confirmados por el
+ * dueño el 2026-10-18: S/ 69 · S/ 99 · S/ 129.
  */
 export const PACKS = {
-  x1: { etiqueta: "Oferta 1: 10 sachets de Masilla Selladora", sachets: 10, cantidad: 1, precio: 49, viejo: 99 },
-  x2: { etiqueta: "Oferta 2: 20 sachets de Masilla Selladora", sachets: 20, cantidad: 1, precio: 79, viejo: 159 },
+  x1: { etiqueta: "Oferta 1: 10 sachets de Masilla Selladora", sachets: 10, cantidad: 1, precio: 69, viejo: 99 },
+  x2: { etiqueta: "Oferta 2: 20 sachets de Masilla Selladora", sachets: 20, cantidad: 1, precio: 99, viejo: 159 },
   x3: { etiqueta: "Oferta 3: 40 sachets de Masilla Selladora", sachets: 40, cantidad: 1, precio: 129, viejo: 259 }
 };
 
