@@ -117,8 +117,9 @@
     if (total > 0) {
       var ahorro = typeof pedido.ahorro === 'number' ? pedido.ahorro : 0;
       var adel = esAg && pedido.adelanto > 0 ? pedido.adelanto : 0;
-      var valor = ahorro > 0
-        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(adel ? total - adel : total) + '</span>'
+      // El precio «antes» solo se tacha cuando se paga el total; con adelanto el resto ya no es comparable.
+      var valor = (ahorro > 0 && !adel)
+        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(total) + '</span>'
         : soles(adel ? total - adel : total);
       if (adel) html += '<div class="fila"><span class="k">Adelanto (te lo pedimos por WhatsApp)</span><span class="v">' + soles(adel) + '</span></div>';
       html += '<div class="fila tot"><span class="k">' + (adel ? 'Pagas al recoger' : 'Pagas al recibir') + '</span><span class="v">' + valor + '</span></div>';
