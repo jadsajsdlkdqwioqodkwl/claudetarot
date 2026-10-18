@@ -10,6 +10,7 @@
  */
 
 import { onRequestPost as order } from "./api/order.js";
+import { onRequestPost as orderCable } from "./api/order-cable.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -131,6 +132,7 @@ import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
+  "/api/order-cable": { POST: orderCable },
   "/api/upsell": { POST: upsell },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },

@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cable de carga con soporte 2 en 1 — Envío gratis en Lima, pagas al recibir</title>
+<meta name="description" content="Carga rápido y deja tu celular parado para ver series, hacer videollamadas o jugar. Cable con soporte desmontable + bolsa de regalo. Envío gratis en Lima y pagas al recibir.">
+<meta property="og:title" content="Cable de carga con soporte 2 en 1">
+<meta property="og:description" content="Carga y mira tu celular sin soltarlo. Bolsa de regalo incluida. Envío gratis en Lima, pagas al recibir.">
+<meta property="og:image" content="/cable/img/hero-videollamada.webp">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6A00'/%3E%3Cpath d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preload" as="image" href="/cable/img/hero-videollamada.webp" fetchpriority="high">
+<link rel="preconnect" href="https://connect.facebook.net" crossorigin>
+<link rel="preconnect" href="https://www.facebook.com" crossorigin>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --ink:#111318;
+    --muted:#5b6270;
+    --muted-txt:#464c58;
+    --line:#e5e7eb;
+    --bg:#ffffff;
+    --soft:#fff6ec;
+    --orange:#ff6a00;
+    --orange-d:#d85500;
+    --dark:#0f1115;
+    --green:#16a34a;
+    --green-d:#12823c;
+    --red:#e53935;
+    --body-bg:#eceef1;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--body-bg); color:var(--ink); line-height:1.45; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh; position:relative; box-shadow:0 0 20px rgba(0,0,0,.06); padding-bottom:92px; }
+  img { max-width:100%; display:block; }
+  .ico { width:1em; height:1em; display:inline-block; vertical-align:-.125em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .pad { padding:0 20px; }
+  button { font-family:inherit; }
+
+  /* ── Barra superior ── */
+  .topbar { background:var(--dark); color:#fff; text-align:center; font-size:12.5px; font-weight:700; letter-spacing:.2px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:7px; }
+  .topbar .ico { color:var(--orange); }
+
+  /* ── Carrusel del héroe ── */
+  .hero-gal { position:relative; background:#f3f4f6; }
+  .hero-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; aspect-ratio:5/6; }
+  .hero-track::-webkit-scrollbar { display:none; }
+  .hero-track .slide { flex:0 0 100%; scroll-snap-align:center; height:100%; }
+  .hero-track img { width:100%; height:100%; object-fit:cover; }
+  /* Fotos de producto sobre fondo blanco: se ven enteras, sin recortar el conector */
+  .hero-track .slide.blanco { background:#fff; display:flex; align-items:center; }
+  .hero-track .slide.blanco img { height:auto; max-height:100%; object-fit:contain; }
+  .hero-badge { position:absolute; top:12px; left:12px; background:var(--dark); color:#fff; border-radius:999px; padding:6px 13px 6px 10px; font-size:12px; font-weight:800; display:flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+  .hero-badge .ico { color:var(--orange); font-size:14px; }
+  .hero-dots { position:absolute; left:0; right:0; bottom:12px; display:flex; justify-content:center; gap:6px; pointer-events:none; }
+  .hero-dots i { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.65); box-shadow:0 0 0 1px rgba(0,0,0,.18); transition:.2s; }
+  .hero-dots i.on { background:var(--orange); width:20px; border-radius:4px; }
+
+  .hero-copy { padding:18px 20px 4px; }
+  .kicker { display:inline-flex; align-items:center; gap:6px; color:var(--orange-d); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.7px; }
+  h1 { font-size:27px; font-weight:900; line-height:1.14; letter-spacing:-.5px; margin-top:6px; }
+  h1 em { font-style:normal; color:var(--orange-d); }
+  .lead { color:var(--muted-txt); font-size:15.5px; margin-top:10px; }
+
+  .price { display:flex; align-items:flex-end; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .price .now { font-size:42px; font-weight:900; line-height:1; letter-spacing:-1px; }
+  .price .was { color:var(--red); text-decoration:line-through; font-weight:700; font-size:17px; padding-bottom:4px; }
+  .price .off { background:var(--red); color:#fff; font-size:12px; font-weight:800; padding:4px 9px; border-radius:6px; margin-bottom:5px; }
+  .price-note { color:var(--muted); font-size:13px; margin-top:6px; }
+
+  .ticks { list-style:none; margin:14px 0 0; display:grid; gap:8px; }
+  .ticks li { display:flex; gap:9px; align-items:flex-start; font-size:14.5px; font-weight:600; }
+  .ticks .ico { color:var(--green); flex:0 0 auto; font-size:19px; margin-top:1px; stroke-width:2.6; }
+
+  /* Regalo: lo que se lleva GRATIS */
+  .regalo { margin:18px 20px 0; border:2px dashed var(--orange); background:var(--soft); border-radius:14px; padding:12px; display:flex; gap:12px; align-items:center; }
+  .regalo .ph { width:74px; height:74px; flex:0 0 74px; border-radius:10px; overflow:hidden; background:#e9d9c8; position:relative; }
+  .regalo .ph img { width:100%; height:100%; object-fit:cover; }
+  .regalo .tag { display:inline-block; background:var(--green); color:#fff; font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; letter-spacing:.4px; }
+  .regalo b { display:block; font-size:15px; font-weight:800; margin-top:4px; line-height:1.2; }
+  .regalo small { display:block; color:var(--muted-txt); font-size:12.5px; margin-top:3px; line-height:1.3; }
+
+  .cta { display:block; width:calc(100% - 40px); margin:18px 20px 0; border:none; cursor:pointer; background:linear-gradient(180deg,#22c55e,var(--green)); color:#fff; border-radius:13px; padding:16px 12px; text-align:center; box-shadow:0 8px 20px rgba(22,163,74,.34), inset 0 -3px 0 rgba(0,0,0,.12); transition:transform .15s; }
+  .cta:active { transform:scale(.98); }
+  .cta .l1 { font-size:18px; font-weight:900; display:flex; align-items:center; justify-content:center; gap:8px; letter-spacing:.2px; }
+  .cta .l2 { font-size:12.5px; font-weight:600; margin-top:3px; opacity:.95; }
+  .buzz { animation:buzz 2.4s ease-in-out infinite; transform-origin:center; }
+  @keyframes buzz {
+    0%,84%,100%{transform:translateX(0) rotate(0)}
+    86%{transform:translateX(-3px) rotate(-.7deg)}88%{transform:translateX(3px) rotate(.7deg)}
+    90%{transform:translateX(-3px) rotate(-.7deg)}92%{transform:translateX(3px) rotate(.7deg)}
+    94%{transform:translateX(-1px)}96%{transform:translateX(1px)}
+  }
+  @media (prefers-reduced-motion:reduce) { .buzz, .btn-pedido { animation:none !important; } html { scroll-behavior:auto; } }
+
+  .trust { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 20px 0; }
+  .trust div { text-align:center; font-size:11.5px; font-weight:700; color:var(--muted-txt); line-height:1.25; }
+  .trust .ico { display:block; margin:0 auto 5px; font-size:22px; color:var(--ink); }
+
+  /* ── Secciones ── */
+  section { padding:34px 0 6px; }
+  .sec-head { padding:0 20px; text-align:center; }
+  .sec-head .kicker { justify-content:center; }
+  h2 { font-size:24px; font-weight:900; line-height:1.15; letter-spacing:-.4px; margin-top:5px; }
+  .sec-sub { color:var(--muted-txt); font-size:14.5px; margin-top:8px; }
+
+  /* Míralo en acción */
+  .accion { background:var(--dark); color:#fff; margin-top:30px; padding:30px 0 28px; }
+  .accion .kicker { color:var(--orange); }
+  .accion .sec-sub { color:#c6cad2; }
+  .vids { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:18px 20px 4px; scrollbar-width:none; }
+  .vids::-webkit-scrollbar { display:none; }
+  .vcard { flex:0 0 76%; scroll-snap-align:center; position:relative; }
+  .vbox { position:relative; border-radius:16px; overflow:hidden; background:#1b1e25; aspect-ratio:4/5; cursor:pointer; }
+  .vbox video { width:100%; height:100%; object-fit:cover; display:block; }
+  .vbox .pp { position:absolute; right:10px; bottom:10px; width:38px; height:38px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; backdrop-filter:blur(4px); transition:opacity .2s; }
+  .vbox.playing .pp { opacity:0; }
+  .vbox:hover .pp, .vbox:focus-visible .pp { opacity:1; }
+  .vcap { font-size:13.5px; font-weight:600; margin-top:10px; color:#e8eaee; line-height:1.3; }
+  .vcap b { color:var(--orange); }
+  .vhint { text-align:center; color:#9aa0ab; font-size:12px; margin-top:6px; display:flex; align-items:center; justify-content:center; gap:5px; }
+  .accion .cta { margin-top:20px; }
+
+  /* Escenas de uso */
+  .wide { margin:16px 0 0; }
+  .wide img { width:100%; height:auto; aspect-ratio:896/400; object-fit:cover; }
+  .escenas { padding:14px 20px 0; display:grid; gap:12px; }
+  .escena { display:flex; gap:14px; align-items:flex-start; padding:14px; border:1.5px solid var(--line); border-radius:14px; }
+  .escena .ic { flex:0 0 44px; height:44px; border-radius:12px; background:var(--soft); color:var(--orange-d); display:flex; align-items:center; justify-content:center; font-size:23px; }
+  .escena b { display:block; font-size:15.5px; font-weight:800; line-height:1.2; }
+  .escena p { font-size:13.5px; color:var(--muted-txt); margin-top:4px; }
+
+  /* Comparación */
+  .vs { margin:18px 20px 0; border:1.5px solid var(--line); border-radius:14px; overflow:hidden; font-size:13.5px; }
+  .vs .row { display:grid; grid-template-columns:1fr 78px 92px; align-items:center; border-bottom:1px solid var(--line); }
+  .vs .row:last-child { border-bottom:none; }
+  .vs .row > div { padding:11px 10px; }
+  .vs .row > div:first-child { font-weight:600; }
+  .vs .row > div:not(:first-child) { text-align:center; }
+  .vs .head { background:#f6f7f9; font-weight:800; font-size:12px; }
+  .vs .head div:last-child { background:var(--dark); color:#fff; }
+  .vs .row > div:last-child { background:var(--soft); }
+  .vs .head > div:last-child { background:var(--dark); }
+  .vs .si { color:var(--green); font-size:20px; stroke-width:3; }
+  .vs .no { color:#b6bcc6; font-size:18px; stroke-width:3; }
+
+  /* Qué incluye */
+  .inc-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:16px 20px 0; }
+  .inc-grid figure { border-radius:12px; overflow:hidden; background:#f3f4f6; position:relative; }
+  .inc-grid img { width:100%; height:auto; aspect-ratio:1/1; object-fit:cover; }
+  .inc-grid figcaption { position:absolute; left:8px; bottom:8px; background:rgba(15,17,21,.82); color:#fff; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .inc-grid .gratis figcaption { background:var(--green); }
+  .inc-list { list-style:none; padding:16px 20px 0; display:grid; gap:10px; }
+  .inc-list li { display:flex; gap:10px; font-size:14.5px; align-items:flex-start; }
+  .inc-list .ico { color:var(--green); stroke-width:2.8; font-size:19px; flex:0 0 auto; margin-top:1px; }
+  .inc-list .nota { color:var(--muted); font-size:12.5px; }
+
+  /* Packs */
+  .packs { display:grid; gap:12px; padding:18px 20px 0; }
+  .pack { position:relative; border:2px solid var(--line); border-radius:16px; padding:16px 14px 14px; background:#fff; }
+  .pack.top { border-color:var(--orange); background:var(--soft); }
+  .pack.regalo-pack { border-color:var(--dark); }
+  .pack .flag { position:absolute; top:-11px; left:14px; background:var(--orange); color:#fff; font-size:10.5px; font-weight:800; padding:4px 11px; border-radius:999px; letter-spacing:.4px; display:flex; align-items:center; gap:5px; }
+  .pack.regalo-pack .flag { background:var(--dark); }
+  .pack .cab { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .pack .pname { font-size:17px; font-weight:900; line-height:1.15; }
+  .pack .psub { color:var(--muted-txt); font-size:13px; margin-top:3px; }
+  .pack .pprice { text-align:right; flex:0 0 auto; }
+  .pack .pprice b { display:block; font-size:26px; font-weight:900; line-height:1; letter-spacing:-.5px; }
+  .pack .pprice s { color:var(--red); font-size:13px; font-weight:600; }
+  .pack ul { list-style:none; margin-top:10px; display:grid; gap:5px; }
+  .pack li { display:flex; gap:8px; font-size:13px; font-weight:600; align-items:flex-start; }
+  .pack li .ico { color:var(--green); stroke-width:3; flex:0 0 auto; margin-top:2px; }
+  .pack li.reg .ico { color:var(--orange-d); }
+  .pack .ahorro { display:inline-block; margin-top:10px; background:#e8f7ee; color:var(--green-d); font-size:12px; font-weight:800; padding:4px 10px; border-radius:6px; }
+  .pack .elegir { width:100%; margin-top:12px; border:none; cursor:pointer; background:var(--dark); color:#fff; font-weight:800; font-size:15px; padding:13px; border-radius:11px; }
+  .pack.top .elegir { background:linear-gradient(180deg,#22c55e,var(--green)); }
+
+  /* FAQ */
+  .faq { padding:16px 20px 0; display:grid; gap:9px; }
+  .faq details { border:1.5px solid var(--line); border-radius:12px; background:#fff; }
+  .faq summary { list-style:none; cursor:pointer; padding:14px 40px 14px 14px; font-weight:700; font-size:14.5px; position:relative; }
+  .faq summary::-webkit-details-marker { display:none; }
+  .faq summary::after { content:''; position:absolute; right:15px; top:50%; width:8px; height:8px; border-right:2.5px solid var(--muted); border-bottom:2.5px solid var(--muted); transform:translateY(-70%) rotate(45deg); transition:transform .2s; }
+  .faq details[open] summary::after { transform:translateY(-30%) rotate(-135deg); }
+  .faq details p { padding:0 14px 14px; color:var(--muted-txt); font-size:14px; }
+
+  /* Reseñas: la sección solo aparece si hay reseñas reales cargadas (ver RESENAS en el script) */
+  .resenas { padding:16px 20px 0; display:grid; gap:10px; }
+  .resena { border:1.5px solid var(--line); border-radius:12px; padding:14px; }
+  .resena .who { font-weight:800; font-size:14.5px; display:flex; justify-content:space-between; gap:8px; }
+  .resena .who span { color:var(--muted); font-weight:500; font-size:12px; }
+  .resena .st { color:#f5a623; margin:3px 0; font-size:14px; }
+  .resena p { font-size:14px; color:var(--muted-txt); }
+  .resena img { margin-top:10px; border-radius:8px; max-width:200px; }
+
+  .final { margin:34px 0 0; background:var(--dark); color:#fff; padding:30px 0 28px; text-align:center; }
+  .final h2 { color:#fff; padding:0 20px; }
+  .final .sec-sub { color:#c6cad2; padding:0 20px; }
+
+  .legal { text-align:center; padding:20px 20px 8px; font-size:11px; color:var(--muted); line-height:1.5; }
+
+  /* CTA fijo */
+  .sticky-cta-wrap { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:#fff; padding:10px 20px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 -4px 14px rgba(0,0,0,.1); z-index:45; transition:transform .3s, opacity .3s; }
+  .sticky-cta-wrap.hidden { transform:translateX(-50%) translateY(120%); opacity:0; pointer-events:none; }
+  .sticky-cta-wrap .cta { margin:0; width:100%; padding:13px 12px; }
+
+  /* ── Modal COD ── */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:100; display:none; overflow-y:auto; padding:14px 0; -webkit-overflow-scrolling:touch; }
+  .overlay.on { display:block; }
+  .modal { background:#fff; width:calc(100% - 24px); max-width:456px; margin:0 auto; border-radius:16px; position:relative; padding:22px 18px 24px; box-shadow:0 20px 40px rgba(0,0,0,.25); }
+  .mclose { position:absolute; top:12px; right:12px; color:var(--muted); cursor:pointer; line-height:0; padding:6px; z-index:10; }
+  .m-title { font-size:21px; font-weight:900; letter-spacing:-.3px; padding-right:30px; }
+  .m-sub { color:var(--green-d); font-weight:700; font-size:13.5px; margin-top:3px; display:flex; align-items:center; gap:6px; }
+  .sect-title { font-size:14.5px; font-weight:800; margin:20px 0 9px; display:flex; align-items:center; gap:8px; }
+  .sect-title .n { width:22px; height:22px; border-radius:50%; background:var(--dark); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+
+  .pk { display:flex; align-items:center; gap:11px; border:2px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:8px; cursor:pointer; position:relative; transition:.15s; }
+  .pk.sel { border-color:var(--green); background:#f0fbf4; }
+  .pk .radio { width:21px; height:21px; border:2px solid #cbd0d8; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  .pk.sel .radio { border-color:var(--green); }
+  .pk.sel .radio::after { content:''; width:11px; height:11px; border-radius:50%; background:var(--green); }
+  .pk .tx { flex:1; min-width:0; }
+  .pk .tx b { font-size:14.5px; font-weight:800; display:block; line-height:1.2; }
+  .pk .tx small { color:var(--muted-txt); font-size:12px; display:block; margin-top:2px; }
+  .pk .pr { text-align:right; flex:0 0 auto; }
+  .pk .pr b { font-size:17px; font-weight:900; display:block; line-height:1; }
+  .pk .pr s { color:var(--red); font-size:11.5px; }
+  .pk .tg { position:absolute; top:-9px; right:12px; background:var(--orange); color:#fff; font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:999px; letter-spacing:.3px; }
+  .pk .tg.dk { background:var(--dark); }
+
+  .cable { border:1.5px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:8px; background:#fafbfc; }
+  .cable .ct { font-size:13px; font-weight:800; margin-bottom:8px; display:flex; align-items:center; gap:7px; }
+  .cable .ct .ico { color:var(--orange-d); }
+  .opt-row { display:flex; gap:7px; margin-bottom:7px; }
+  .opt-row:last-child { margin-bottom:0; }
+  .chip { flex:1; border:1.5px solid var(--line); background:#fff; border-radius:9px; padding:9px 6px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; line-height:1.2; display:flex; align-items:center; justify-content:center; gap:6px; color:var(--ink); }
+  .chip small { display:block; font-weight:500; font-size:10.5px; color:var(--muted); margin-top:1px; }
+  .chip.sel { border-color:var(--dark); background:var(--dark); color:#fff; }
+  .chip.sel small { color:#c6cad2; }
+  .chip .dot { width:13px; height:13px; border-radius:50%; border:1.5px solid rgba(0,0,0,.25); flex:0 0 auto; }
+  .gift-line { display:flex; align-items:center; gap:9px; background:var(--soft); border:1.5px dashed var(--orange); border-radius:11px; padding:10px 12px; font-size:13px; font-weight:700; margin-top:4px; }
+  .gift-line .ico { color:var(--orange-d); font-size:20px; flex:0 0 auto; }
+
+  .ship-opt { display:flex; align-items:center; gap:12px; padding:14px; border:2px solid var(--green); background:#f0fbf4; border-radius:12px; }
+  .ship-opt .ico { font-size:24px; color:var(--green-d); flex:0 0 auto; }
+  .ship-opt .txt { flex:1; }
+  .ship-opt b { font-size:14px; display:block; }
+  .ship-opt small { display:block; color:var(--muted-txt); font-size:12.5px; margin-top:2px; }
+  .ship-opt .free { font-weight:900; color:var(--green-d); font-size:14px; }
+
+  .fg { margin-top:14px; }
+  .fg label { display:block; font-weight:700; font-size:13px; margin-bottom:6px; }
+  .fg label .req { color:var(--red); }
+  .fg label .opc { color:var(--muted); font-weight:500; }
+  .fg .hint { display:block; font-size:12px; color:var(--muted-txt); margin-top:6px; line-height:1.3; font-style:italic; }
+  .fg .input-icon { display:flex; align-items:stretch; border:1px solid #cfd4db; border-radius:10px; overflow:hidden; background:#fff; transition:border .2s; }
+  .fg .input-icon:focus-within { border-color:var(--ink); box-shadow:0 0 0 3px rgba(17,19,24,.08); }
+  .fg .input-icon .ic { background:#f0f1f4; padding:0 13px; display:flex; align-items:center; color:var(--muted-txt); font-size:18px; border-right:1px solid #cfd4db; }
+  .fg input { border:none; outline:none; flex:1; min-width:0; padding:14px; font-size:16px; font-family:inherit; color:var(--ink); background:#fff; }
+  .fg .solo { width:100%; border:1px solid #cfd4db; border-radius:10px; }
+  .fg .solo:focus { border-color:var(--ink); box-shadow:0 0 0 3px rgba(17,19,24,.08); }
+  .fg input::placeholder { color:#7a8190; opacity:1; }
+  .fg input.err, .fg .input-icon.err { border-color:var(--red); }
+
+  .resumen { margin-top:18px; border-top:1.5px dashed var(--line); padding-top:12px; }
+  .resumen .rw { display:flex; justify-content:space-between; font-size:14px; padding:3px 0; }
+  .resumen .rw.tot { font-size:18px; font-weight:900; padding-top:8px; }
+  .resumen .rw .g { color:var(--green-d); font-weight:800; }
+  .resumen s { color:var(--red); font-weight:600; font-size:13px; margin-right:6px; }
+
+  .btn-pedido { width:100%; border:none; cursor:pointer; background:linear-gradient(180deg,#22c55e,var(--green)); color:#fff; border-radius:13px; padding:17px; margin-top:14px; box-shadow:0 8px 18px rgba(22,163,74,.32), inset 0 -3px 0 rgba(0,0,0,.12); transition:transform .15s; }
+  .btn-pedido:active { transform:scale(.98); }
+  .btn-pedido:disabled { opacity:.7; cursor:wait; }
+  .btn-pedido .l1 { font-size:18px; font-weight:900; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-pedido .l2 { font-size:12.5px; font-weight:600; margin-top:3px; opacity:.95; }
+  .wa-note { text-align:center; color:var(--green-d); font-size:13.5px; font-weight:700; margin:14px 0 0; line-height:1.35; display:flex; justify-content:center; align-items:center; gap:6px; }
+  .m-garantia { display:flex; gap:8px; align-items:center; justify-content:center; text-align:center; font-size:12.5px; color:var(--muted-txt); margin-top:12px; }
+  .m-garantia .ico { color:var(--green-d); flex:0 0 auto; font-size:18px; }
+</style>
+<script>
+  /* ── Datos que NO deben quedar vacíos antes de lanzar ───────────────────
+     PIXEL_ID: el píxel de Meta de ESTE producto (vacío = no se carga el píxel).
+     WA_NUMERO: WhatsApp de atención, con 51 y sin signos, ej. 51999999999
+     (vacío = no se muestran los botones de WhatsApp). */
+  var PIXEL_ID = '';
+  var WA_NUMERO = '';
+
+  if (PIXEL_ID) {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 100-4 2 2 0 000 4zM18 18a2 2 0 100-4 2 2 0 000 4z"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v.01M18 14.5v.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="4"/><rect x="5" y="13" width="14" height="8"/><path d="M12 9v12M12 9C9.5 9 8 7.5 8 6a2.5 2.5 0 015 0c0-1.5 1.5-3 3-3a2 2 0 010 4c1 .5 1 2 1 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5 21 7v10l-5.5-3.5"/></symbol>
+  <symbol id="i-game" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10.5v4M5 12.5h4M15.5 11.5v.01M18 13.5v.01"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M4 4h5l2 5-3 2a12 12 0 006 6l2-3 5 2v5a2 2 0 01-2 2A17 17 0 014 6a2 2 0 010-2z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M5 9.5V21h14V9.5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8"/></symbol>
+  <symbol id="i-cable" viewBox="0 0 24 24"><path d="M6 3v5a3 3 0 003 3h6a3 3 0 013 3v7M4 3h4M16 21h4"/></symbol>
+  <symbol id="i-swipe" viewBox="0 0 24 24"><path d="M5 12h14M15 8l4 4-4 4"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0012.04 2z" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+
+  <div class="topbar"><svg class="ico"><use href="#i-truck"/></svg> ENVÍO GRATIS EN LIMA · PAGAS AL RECIBIR</div>
+
+  <!-- 1. Héroe: lo primero que ve es el beneficio en uso, no un render del producto -->
+  <div class="hero-gal">
+    <div class="hero-track" id="heroTrack">
+      <div class="slide"><img src="/cable/img/hero-videollamada.webp" alt="Videollamada con el celular parado sobre el escritorio gracias al soporte del cable" width="576" height="715" fetchpriority="high" decoding="async"></div>
+      <div class="slide blanco"><img src="/cable/img/naranja.webp" alt="Cable de carga con soporte desmontable, color naranja" width="1000" height="1000" loading="lazy"></div>
+      <div class="slide blanco"><img src="/cable/img/negro.webp" alt="Cable de carga con soporte desmontable, color negro" width="1000" height="1000" loading="lazy"></div>
+      <div class="slide"><img src="/cable/img/enrollado.webp" alt="El cable enrollado con el módulo del soporte, listo para guardar" width="800" height="800" loading="lazy"></div>
+    </div>
+    <div class="hero-badge"><svg class="ico"><use href="#i-bolt"/></svg> 2 EN 1 · Cable + Soporte</div>
+    <div class="hero-dots" id="heroDots"></div>
+  </div>
+
+  <div class="hero-copy">
+    <span class="kicker"><svg class="ico"><use href="#i-bolt"/></svg> Carga rápida + soporte desmontable</span>
+    <h1>Carga tu celular y <em>míralo sin soltarlo</em></h1>
+    <p class="lead">El cable que también es soporte: lo apoyas en la mesa, la cama o el escritorio y ves series, haces videollamadas o juegas mientras carga. Sin comprar nada más.</p>
+
+    <div class="price">
+      <div class="now">S/ 39</div>
+      <div class="was">S/ 79</div>
+      <div class="off">-50%</div>
+    </div>
+    <div class="price-note">Precio de lanzamiento · Envío gratis en Lima · Pagas al recibir</div>
+
+    <ul class="ticks">
+      <li><svg class="ico"><use href="#i-check"/></svg> Soporte plegable que se desmonta en un segundo</li>
+      <li><svg class="ico"><use href="#i-check"/></svg> Ultradelgado: funciona con fundas delgadas</li>
+      <li><svg class="ico"><use href="#i-check"/></svg> Versión USB-C o Lightning, en naranja o negro</li>
+    </ul>
+  </div>
+
+  <div class="regalo">
+    <div class="ph"><img src="/cable/img/bolsa.webp" alt="Bolsa tipo cuero para guardar el cable" width="800" height="800" loading="lazy"></div>
+    <div>
+      <span class="tag">GRATIS</span>
+      <b>Bolsa tipo cuero para guardar tu cable</b>
+      <small>Se abre apretando los lados. Va en todos los pedidos, una por cada cable.</small>
+    </div>
+  </div>
+
+  <button class="cta buzz" onclick="openCOD()">
+    <div class="l1"><svg class="ico"><use href="#i-bolt"/></svg> QUIERO MI CABLE 2 EN 1</div>
+    <div class="l2">Envío gratis en Lima y pagas al recibir</div>
+  </button>
+
+  <div class="trust">
+    <div><svg class="ico"><use href="#i-cash"/></svg>Pagas al recibir</div>
+    <div><svg class="ico"><use href="#i-truck"/></svg>Entrega en Lima en 24-48 h</div>
+    <div><svg class="ico"><use href="#i-shield"/></svg>30 días de garantía</div>
+  </div>
+
+  <!-- 2. Míralo en acción: arriba del todo, antes de cualquier explicación -->
+  <section class="accion" id="accion">
+    <div class="sec-head">
+      <span class="kicker"><svg class="ico"><use href="#i-play"/></svg> Míralo en acción</span>
+      <h2>Así de fácil: carga, apoya y listo</h2>
+      <p class="sec-sub">Videos reales del producto. Toca uno para pausarlo.</p>
+    </div>
+    <div class="vids" id="vids">
+      <div class="vcard">
+        <div class="vbox" role="button" tabindex="0" aria-label="Pausar o reproducir el video">
+          <video muted loop playsinline preload="none" poster="/cable/video/en-accion-1.webp" data-src="/cable/video/en-accion-1.mp4" aria-label="Viendo un partido con el celular apoyado en el cable con soporte"></video>
+          <span class="pp"><svg class="ico"><use href="#i-pause"/></svg></span>
+        </div>
+        <p class="vcap"><b>Mira tu partido o serie</b> mientras el celular carga, sin tener que sostenerlo.</p>
+      </div>
+      <div class="vcard">
+        <div class="vbox" role="button" tabindex="0" aria-label="Pausar o reproducir el video">
+          <video muted loop playsinline preload="none" poster="/cable/video/en-accion-2.webp" data-src="/cable/video/en-accion-2.mp4" aria-label="Cómo se acopla y se desmonta el soporte del cable"></video>
+          <span class="pp"><svg class="ico"><use href="#i-pause"/></svg></span>
+        </div>
+        <p class="vcap"><b>Se acopla y se desmonta</b> en segundos. Lo guardas enrollado, dentro de su bolsa.</p>
+      </div>
+      <div class="vcard">
+        <div class="vbox" role="button" tabindex="0" aria-label="Pausar o reproducir el video">
+          <video muted loop playsinline preload="none" poster="/cable/video/en-accion-3.webp" data-src="/cable/video/en-accion-3.mp4" aria-label="El celular en vertical y en horizontal sobre el soporte"></video>
+          <span class="pp"><svg class="ico"><use href="#i-pause"/></svg></span>
+        </div>
+        <p class="vcap"><b>Vertical u horizontal:</b> el celular se queda firme como tú lo necesites.</p>
+      </div>
+    </div>
+    <div class="vhint"><svg class="ico"><use href="#i-swipe"/></svg> Desliza para ver más</div>
+    <button class="cta buzz" onclick="openCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-bolt"/></svg> LO QUIERO + PAGO AL RECIBIR</div>
+      <div class="l2">Bolsa de regalo incluida</div>
+    </button>
+  </section>
+
+  <!-- 3. Escenas de uso: deseo antes que ficha técnica -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Para tu día a día</span>
+      <h2>Tu celular parado y tu cable sin enredos</h2>
+    </div>
+    <div class="wide"><img src="/cable/img/ver-series.webp" alt="Celular apoyado en el soporte del cable reproduciendo un video familiar" width="896" height="400" loading="lazy"></div>
+    <div class="escenas">
+      <div class="escena"><div class="ic"><svg class="ico"><use href="#i-tv"/></svg></div><div><b>Series y videos sin cansar la mano</b><p>Apóyalo en la mesa, el velador o la cama y mira lo que quieras mientras carga.</p></div></div>
+      <div class="escena"><div class="ic"><svg class="ico"><use href="#i-video"/></svg></div><div><b>Videollamadas y clases con las manos libres</b><p>Tu celular queda firme y a buena altura mientras tú hablas, cocinas o tomas apuntes.</p></div></div>
+      <div class="escena"><div class="ic"><svg class="ico"><use href="#i-game"/></svg></div><div><b>Juega sin que el cable estorbe</b><p>El conector en ángulo de 90° deja el cable fuera del camino de tus manos.</p></div></div>
+      <div class="escena"><div class="ic"><svg class="ico"><use href="#i-bag"/></svg></div><div><b>Se desmonta y viaja contigo</b><p>El soporte se separa cuando no lo necesitas y todo entra en su bolsa: mochila, cartera o maletín.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>¿Por qué no un cable normal?</h2>
+    </div>
+    <div class="vs" role="table" aria-label="Comparación entre un cable normal y el Cable 2 en 1">
+      <div class="row head" role="row"><div role="columnheader">&nbsp;</div><div role="columnheader">Cable normal</div><div role="columnheader">Cable 2 en 1</div></div>
+      <div class="row" role="row"><div>Soporte para el celular</div><div><svg class="ico no"><use href="#i-x"/></svg></div><div><svg class="ico si"><use href="#i-check"/></svg></div></div>
+      <div class="row" role="row"><div>Se desmonta cuando no lo usas</div><div><svg class="ico no"><use href="#i-x"/></svg></div><div><svg class="ico si"><use href="#i-check"/></svg></div></div>
+      <div class="row" role="row"><div>Cable fuera del camino al jugar</div><div><svg class="ico no"><use href="#i-x"/></svg></div><div><svg class="ico si"><use href="#i-check"/></svg></div></div>
+      <div class="row" role="row"><div>Viene con bolsa para guardarlo</div><div><svg class="ico no"><use href="#i-x"/></svg></div><div><svg class="ico si"><use href="#i-check"/></svg></div></div>
+      <div class="row" role="row"><div>Carga con tu cargador de siempre</div><div><svg class="ico si"><use href="#i-check"/></svg></div><div><svg class="ico si"><use href="#i-check"/></svg></div></div>
+    </div>
+  </section>
+
+  <!-- 4. Qué incluye (y el regalo) -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Lo que recibes</span>
+      <h2>Elige tu color y llévate la bolsa gratis</h2>
+    </div>
+    <div class="inc-grid">
+      <figure><img src="/cable/img/naranja.webp" alt="Cable con soporte color naranja" width="1000" height="1000" loading="lazy"><figcaption>Naranja</figcaption></figure>
+      <figure><img src="/cable/img/negro.webp" alt="Cable con soporte color negro" width="1000" height="1000" loading="lazy"><figcaption>Negro</figcaption></figure>
+      <figure class="gratis"><img src="/cable/img/bolsa.webp" alt="Bolsa tipo cuero que se abre apretando los lados" width="800" height="800" loading="lazy"><figcaption>Bolsa GRATIS</figcaption></figure>
+      <figure><img src="/cable/img/enrollado.webp" alt="Cable enrollado junto al módulo del soporte" width="800" height="800" loading="lazy"><figcaption>Enrollado y ordenado</figcaption></figure>
+    </div>
+    <ul class="inc-list">
+      <li><svg class="ico"><use href="#i-check"/></svg><span>Cable de carga rápida con soporte plegable desmontable</span></li>
+      <li><svg class="ico"><use href="#i-check"/></svg><span>Tú eliges: <b>USB-C</b> (iPhone 15 en adelante y la mayoría de Android) o <b>Lightning</b> (iPhone 14 y anteriores)</span></li>
+      <li><svg class="ico"><use href="#i-check"/></svg><span><b>Bolsa tipo cuero GRATIS</b> por cada cable</span></li>
+      <li><span class="nota">No incluye cargador de pared: se usa con el que ya tienes.</span></li>
+    </ul>
+  </section>
+
+  <!-- 5. Packs -->
+  <section id="packs">
+    <div class="sec-head">
+      <span class="kicker">Oferta de lanzamiento</span>
+      <h2>Elige tu pack</h2>
+      <p class="sec-sub">Entre más llevas, menos pagas por cable. Todos con bolsa gratis.</p>
+    </div>
+    <div class="packs" id="packsList"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Preguntas frecuentes</h2></div>
+    <div class="faq">
+      <details><summary>¿Sirve para mi celular?</summary><p>Hay dos versiones. <b>USB-C</b>: iPhone 15 en adelante, Samsung, Xiaomi, Motorola y la mayoría de Android. <b>Lightning</b>: iPhone 14 y anteriores. Eliges la tuya al hacer el pedido.</p></details>
+      <details><summary>¿Cómo pago?</summary><p>Pagas al recibir, en tu casa: con Yape, efectivo o POS. No pagas nada por adelantado.</p></details>
+      <details><summary>¿Cuánto demora y cuánto cuesta el envío?</summary><p>El envío es gratis en Lima y la entrega toma de 24 a 48 horas. El repartidor te escribe antes de llegar y, si te surge un imprevisto, puedes reprogramar.</p></details>
+      <details><summary>¿Funciona con mi funda?</summary><p>Funciona con fundas delgadas, de hasta unos 2 mm de grosor. Con fundas muy gruesas o con relieve el soporte podría no apoyar bien.</p></details>
+      <details><summary>¿Incluye cargador de pared?</summary><p>No. Es el cable con soporte; lo usas con el cargador que ya tienes en casa.</p></details>
+      <details><summary>¿Cómo es la bolsa de regalo?</summary><p>Es una bolsita tipo cuero sintético que se abre apretando los lados. Sirve para llevar tu cable enrollado y ordenado en la mochila o la cartera. Cada cable viene con la suya.</p></details>
+      <details><summary>¿Y si no me convence o falla?</summary><p>Tienes 30 días de garantía: escríbenos por WhatsApp y lo resolvemos con un cambio.</p></details>
+    </div>
+  </section>
+
+  <!-- Reseñas: se llena con reseñas REALES de clientes en RESENAS (script). Vacío = no se muestra. -->
+  <section id="resenasSec" style="display:none">
+    <div class="sec-head"><h2>Lo que dicen quienes ya lo tienen</h2></div>
+    <div class="resenas" id="resenasList"></div>
+  </section>
+
+  <div class="final">
+    <h2>Tu celular parado. Tu cable sin enredos.</h2>
+    <p class="sec-sub">Pide ahora, paga cuando lo tengas en tus manos.</p>
+    <button class="cta buzz" onclick="openCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-bolt"/></svg> HACER MI PEDIDO</div>
+      <div class="l2">Envío gratis en Lima · Bolsa de regalo incluida</div>
+    </button>
+  </div>
+
+  <footer class="legal">
+    <p>Este sitio no forma parte de Facebook ni de Meta Platforms, Inc., y no está respaldado por ellos. FACEBOOK es una marca registrada de Meta Platforms, Inc.</p>
+  </footer>
+</div>
+
+<div class="sticky-cta-wrap hidden" id="stickyCta">
+  <button class="cta buzz" onclick="openCOD()">
+    <div class="l1"><svg class="ico"><use href="#i-bolt"/></svg> LO QUIERO + PAGO AL RECIBIR</div>
+    <div class="l2">Envío gratis en Lima</div>
+  </button>
+</div>
+
+<!-- Modal COD -->
+<div class="overlay" id="codOverlay" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal">
+    <span class="mclose" onclick="closeCOD()" role="button" aria-label="Cerrar"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
+    <div class="m-title" id="mTitle">Completa tu pedido</div>
+    <div class="m-sub"><svg class="ico"><use href="#i-check"/></svg> Pagas al recibir · Envío gratis en Lima</div>
+
+    <div class="sect-title"><span class="n">1</span> Elige tu pack</div>
+    <div id="pkSel"></div>
+
+    <div class="sect-title"><span class="n">2</span> Elige tu cable</div>
+    <div id="cables"></div>
+    <div class="gift-line"><svg class="ico"><use href="#i-gift"/></svg><span id="giftTxt">Incluye 1 bolsa tipo cuero GRATIS</span></div>
+
+    <div class="sect-title"><span class="n">3</span> Entrega en Lima</div>
+    <div class="ship-opt">
+      <svg class="ico"><use href="#i-home"/></svg>
+      <div class="txt"><b>Pago en casa (Lima y Callao)</b><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+      <div class="free">Gratis</div>
+    </div>
+
+    <div class="sect-title"><span class="n">4</span> Tus datos</div>
+    <div class="fg">
+      <label for="fName">Nombres y apellidos <span class="req">*</span></label>
+      <div class="input-icon" id="gName"><span class="ic"><svg class="ico"><use href="#i-user"/></svg></span><input type="text" id="fName" placeholder="Coloca tu nombre" autocomplete="name"></div>
+    </div>
+    <div class="fg">
+      <label for="fPhone">WhatsApp <span class="req">*</span></label>
+      <div class="input-icon" id="gPhone"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><input type="tel" id="fPhone" placeholder="Tu número de 9 dígitos" inputmode="numeric" autocomplete="tel"></div>
+      <span class="hint">Si no estás, puede recibirlo cualquier persona. Te escribiremos para confirmar.</span>
+    </div>
+    <div class="fg">
+      <label for="fDistrito">Distrito <span class="req">*</span></label>
+      <input class="solo" type="text" id="fDistrito" list="distritos" placeholder="Ej: Miraflores" autocomplete="address-level2">
+      <datalist id="distritos"></datalist>
+    </div>
+    <div class="fg">
+      <label for="fDir">Dirección de entrega <span class="req">*</span></label>
+      <input class="solo" type="text" id="fDir" placeholder="Calle, número, piso o dpto." autocomplete="street-address">
+      <span class="hint">Entregas en horario de la tarde; el repartidor te contactará con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
+    </div>
+    <div class="fg">
+      <label for="fRef">Referencia <span class="opc">(opcional)</span></label>
+      <input class="solo" type="text" id="fRef" placeholder="Ej: frente al parque, portón negro">
+    </div>
+
+    <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan -->
+    <input type="text" id="fWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
+    <div class="resumen" id="resumen"></div>
+
+    <button class="btn-pedido buzz" id="btnPedido" onclick="submitCOD()">
+      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> REALIZAR PEDIDO</div>
+      <div class="l2">Pagas cuando lo recibes</div>
+    </button>
+    <div class="wa-note"><svg class="ico" style="font-size:19px"><use href="#i-check"/></svg> Te escribiremos por WhatsApp para confirmar tu pedido</div>
+    <div class="m-garantia"><svg class="ico"><use href="#i-shield"/></svg> 30 días de garantía · Tus datos se usan solo para entregar tu pedido</div>
+  </div>
+</div>
+
+<script>
+  /* ── Packs ─────────────────────────────────────────────────────────────
+     Los precios de aquí deben coincidir con src/lib/pedido-cable.js (el
+     servidor manda). `npm run check` falla si dejan de coincidir. */
+  var PRODUCTO = 'cable-soporte';
+  var MONEDA = 'PEN';
+  var PACKS = {
+    x1: { nombre: '1 Cable 2 en 1', corto: 'Para ti', cant: 1, precio: 39, viejo: 79,
+          etiqueta: '1 Cable 2 en 1 + bolsa' },
+    x2: { nombre: 'Pack Dúo', corto: 'Para ti y alguien más', cant: 2, precio: 69, viejo: 158,
+          etiqueta: 'Pack Dúo: 2 Cables 2 en 1 + 2 bolsas' },
+    x3: { nombre: 'Pack Regalo', corto: 'Ideal para regalar', cant: 3, precio: 89, viejo: 237,
+          etiqueta: 'Pack Regalo: 3 Cables 2 en 1 + 3 bolsas' }
+  };
+  var CONECTORES = [
+    { id: 'USB-C', hint: 'iPhone 15+ y Android' },
+    { id: 'Lightning', hint: 'iPhone 14 o anterior' }
+  ];
+  var COLORES = [
+    { id: 'Naranja', css: '#ff6a00' },
+    { id: 'Negro', css: '#1b1e25' }
+  ];
+
+  /* Reseñas REALES: { nombre, fecha, texto, foto (opcional) }. Mientras esté
+     vacío, la sección no se muestra: no se inventan reseñas. */
+  var RESENAS = [];
+
+  var packActual = 'x2';          // el más elegido arranca marcado
+  var cablesSel = [];             // un { conector, color } por unidad del pack
+  var FB = { enviados: {} };
+
+  function soles(n) { return 'S/ ' + Number(n).toFixed(2); }
+  function icon(id, extra) { return '<svg class="ico"' + (extra ? ' ' + extra : '') + '><use href="#i-' + id + '"/></svg>'; }
+
+  /* ── Meta Pixel ─────────────────────────────────────────────────────── */
+  function fbTrack(evento, datos, unaVez, eventId) {
+    if (typeof fbq !== 'function') return;
+    if (unaVez) { if (FB.enviados[evento]) return; FB.enviados[evento] = true; }
+    fbq('track', evento, datos, eventId ? { eventID: eventId } : undefined);
+  }
+  function fbCookie(nombre) {
+    var m = document.cookie.match('(^|;)\\s*' + nombre + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+  /* _fbc solo existe si el visitante llegó con ?fbclid=...; lo guardamos
+     nosotros con el formato que documenta Meta (fb.1.<timestamp>.<fbclid>). */
+  (function guardarFbc() {
+    if (fbCookie('_fbc')) return;
+    var fbclid = new URLSearchParams(location.search).get('fbclid');
+    if (!fbclid) return;
+    document.cookie = '_fbc=fb.1.' + Date.now() + '.' + fbclid + ';path=/;max-age=7776000;SameSite=Lax';
+  })();
+  function fbIdentidad() { return { fbp: fbCookie('_fbp'), fbc: fbCookie('_fbc') }; }
+  function aE164(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    return (d.length === 9 && d.charAt(0) === '9') ? '51' + d : d;
+  }
+  function datosCarrito() {
+    var p = PACKS[packActual];
+    return { content_ids: [PRODUCTO], content_type: 'product', content_name: p.etiqueta,
+             contents: [{ id: PRODUCTO, quantity: p.cant }], num_items: p.cant, value: p.precio, currency: MONEDA };
+  }
+  fbTrack('ViewContent', { content_ids: [PRODUCTO], content_type: 'product',
+    content_name: 'Cable de carga con soporte 2 en 1', value: PACKS.x1.precio, currency: MONEDA }, true);
+
+  /* ── Carrusel del héroe: puntos ─────────────────────────────────────── */
+  (function hero() {
+    var tr = document.getElementById('heroTrack'), dots = document.getElementById('heroDots');
+    var n = tr.children.length;
+    for (var i = 0; i < n; i++) { var d = document.createElement('i'); if (!i) d.className = 'on'; dots.appendChild(d); }
+    tr.addEventListener('scroll', function () {
+      var a = Math.round(tr.scrollLeft / tr.clientWidth);
+      [].forEach.call(dots.children, function (d, i) { d.className = i === a ? 'on' : ''; });
+    }, { passive: true });
+  })();
+
+  /* ── Videos: cargan al acercarse, se reproducen solos (sin sonido) y se
+        pausan al salir de pantalla. Tocar uno lo pausa o lo reanuda. ──── */
+  (function videos() {
+    var cajas = [].slice.call(document.querySelectorAll('.vbox'));
+    function cargar(v) {
+      if (v.getAttribute('data-src')) { v.src = v.getAttribute('data-src'); v.removeAttribute('data-src'); v.load(); }
+    }
+    function reproducir(caja) {
+      var v = caja.querySelector('video'); cargar(v);
+      var p = v.play();
+      if (p && p.catch) p.catch(function () { v.controls = true; });  // iOS en bajo consumo
+    }
+    function pintar(caja, activo) {
+      caja.classList.toggle('playing', activo);
+      caja.querySelector('.pp use').setAttribute('href', activo ? '#i-pause' : '#i-play');
+    }
+    cajas.forEach(function (caja) {
+      var v = caja.querySelector('video');
+      v.addEventListener('play', function () { pintar(caja, true); });
+      v.addEventListener('pause', function () { pintar(caja, false); });
+      function alternar() { v.paused ? (caja.dataset.manual = '', reproducir(caja)) : (caja.dataset.manual = '1', v.pause()); }
+      caja.addEventListener('click', alternar);
+      caja.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
+    });
+    if (!('IntersectionObserver' in window)) { cajas.forEach(function (c) { cargar(c.querySelector('video')); }); return; }
+    // Carga con 300 px de margen; reproduce cuando se ve más de la mitad.
+    var carga = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { cargar(e.target.querySelector('video')); carga.unobserve(e.target); } });
+    }, { rootMargin: '300px 0px' });
+    var juega = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var v = e.target.querySelector('video');
+        if (e.isIntersecting && !e.target.dataset.manual) reproducir(e.target);
+        else if (!e.isIntersecting && !v.paused) v.pause();
+      });
+    }, { threshold: 0.55 });
+    cajas.forEach(function (c) { carga.observe(c); juega.observe(c); });
+  })();
+
+  /* ── Sección de packs ───────────────────────────────────────────────── */
+  (function pintarPacks() {
+    var cont = document.getElementById('packsList');
+    var plan = [
+      { id: 'x1', clase: '', flag: '', lis: ['1 cable 2 en 1 con soporte desmontable', '1 bolsa tipo cuero GRATIS'] },
+      { id: 'x2', clase: 'top', flag: icon('star') + ' MÁS ELEGIDO', lis: ['2 cables 2 en 1 con soporte', '2 bolsas tipo cuero GRATIS', 'Uno para ti y otro para tu pareja, un familiar o un amigo'] },
+      { id: 'x3', clase: 'regalo-pack', flag: icon('gift') + ' IDEAL PARA REGALAR', lis: ['3 cables 2 en 1 con soporte', '3 bolsas tipo cuero GRATIS: cada cable con la suya', 'El regalo útil para cumpleaños, aniversarios o fin de año'] }
+    ];
+    cont.innerHTML = plan.map(function (it) {
+      var p = PACKS[it.id], c = p.precio / p.cant, ahorro = PACKS.x1.precio * p.cant - p.precio;
+      return '<div class="pack ' + it.clase + '">' +
+        (it.flag ? '<div class="flag">' + it.flag + '</div>' : '') +
+        '<div class="cab"><div><div class="pname">' + p.nombre + '</div><div class="psub">' + p.corto + (p.cant > 1 ? ' · ' + soles(c) + ' c/u' : '') + '</div></div>' +
+        '<div class="pprice"><b>S/ ' + p.precio + '</b><s>S/ ' + p.viejo + '</s></div></div>' +
+        '<ul>' + it.lis.map(function (t, i) { return '<li' + (t.indexOf('GRATIS') > -1 ? ' class="reg"' : '') + '>' + icon('check') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
+        (ahorro > 0 ? '<span class="ahorro">Ahorras ' + soles(ahorro) + ' frente a comprarlos por separado</span>' : '') +
+        '<button class="elegir" onclick="openCOD(\'' + it.id + '\')">Elegir ' + p.nombre + '</button></div>';
+    }).join('');
+  })();
+
+  /* ── Reseñas reales (si las hay) ───────────────────────────────────── */
+  (function pintarResenas() {
+    if (!RESENAS.length) return;
+    document.getElementById('resenasSec').style.display = '';
+    var est = icon('star') + icon('star') + icon('star') + icon('star') + icon('star');
+    function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    document.getElementById('resenasList').innerHTML = RESENAS.map(function (r) {
+      return '<div class="resena"><div class="who">' + esc(r.nombre) + '<span>' + esc(r.fecha || '') + '</span></div><div class="st">' + est + '</div><p>' + esc(r.texto) + '</p>' +
+        (r.foto ? '<img src="' + esc(r.foto) + '" alt="Foto de ' + esc(r.nombre) + '" loading="lazy">' : '') + '</div>';
+    }).join('');
+  })();
+
+  /* ── Modal: pack, cables y resumen ──────────────────────────────────── */
+  function ajustarCables() {
+    var n = PACKS[packActual].cant;
+    while (cablesSel.length < n) cablesSel.push({ conector: 'USB-C', color: 'Naranja' });
+    cablesSel.length = n;
+  }
+  function pintarModal() {
+    ajustarCables();
+    var tags = { x2: '<span class="tg">MÁS ELEGIDO</span>', x3: '<span class="tg dk">PARA REGALAR</span>' };
+    document.getElementById('pkSel').innerHTML = ['x1', 'x2', 'x3'].map(function (id) {
+      var p = PACKS[id];
+      return '<div class="pk' + (id === packActual ? ' sel' : '') + '" data-pack="' + id + '" role="radio" aria-checked="' + (id === packActual) + '" tabindex="0">' + (tags[id] || '') +
+        '<div class="radio"></div><div class="tx"><b>' + p.nombre + '</b><small>' + (p.cant > 1 ? p.cant + ' cables + ' + p.cant + ' bolsas gratis' : '1 cable + bolsa gratis') + '</small></div>' +
+        '<div class="pr"><b>S/ ' + p.precio + '</b><s>S/ ' + p.viejo + '</s></div></div>';
+    }).join('');
+
+    document.getElementById('cables').innerHTML = cablesSel.map(function (c, i) {
+      return '<div class="cable"><div class="ct">' + icon('cable') + (cablesSel.length > 1 ? 'Cable ' + (i + 1) : 'Tu cable') + '</div>' +
+        '<div class="opt-row">' + CONECTORES.map(function (k) {
+          return '<div class="chip' + (c.conector === k.id ? ' sel' : '') + '" data-i="' + i + '" data-k="conector" data-v="' + k.id + '" role="radio" aria-checked="' + (c.conector === k.id) + '" tabindex="0"><span>' + k.id + '<small>' + k.hint + '</small></span></div>';
+        }).join('') + '</div>' +
+        '<div class="opt-row">' + COLORES.map(function (k) {
+          return '<div class="chip' + (c.color === k.id ? ' sel' : '') + '" data-i="' + i + '" data-k="color" data-v="' + k.id + '" role="radio" aria-checked="' + (c.color === k.id) + '" tabindex="0"><span class="dot" style="background:' + k.css + '"></span>' + k.id + '</div>';
+        }).join('') + '</div></div>';
+    }).join('');
+
+    var p = PACKS[packActual];
+    document.getElementById('giftTxt').textContent = p.cant === 1 ? 'Incluye 1 bolsa tipo cuero GRATIS' : 'Incluye ' + p.cant + ' bolsas tipo cuero GRATIS (una por cable)';
+    document.getElementById('resumen').innerHTML =
+      '<div class="rw"><span>' + p.nombre + '</span><span><s>' + soles(p.viejo) + '</s>' + soles(p.precio) + '</span></div>' +
+      '<div class="rw"><span>Envío en Lima</span><span class="g">GRATIS</span></div>' +
+      '<div class="rw"><span>' + (p.cant === 1 ? 'Bolsa de regalo' : p.cant + ' bolsas de regalo') + '</span><span class="g">GRATIS</span></div>' +
+      '<div class="rw tot"><span>Total a pagar al recibir</span><span>' + soles(p.precio) + '</span></div>';
+  }
+
+  function elegir(el) {
+    if (el.getAttribute('data-pack')) {
+      var antes = packActual;
+      packActual = el.getAttribute('data-pack');
+      pintarModal();
+      if (antes !== packActual) fbTrack('AddToCart', datosCarrito());
+    } else if (el.getAttribute('data-k')) {
+      cablesSel[Number(el.getAttribute('data-i'))][el.getAttribute('data-k')] = el.getAttribute('data-v');
+      pintarModal();
+    }
+  }
+  document.getElementById('codOverlay').addEventListener('click', function (e) {
+    var el = e.target.closest('[data-pack],[data-k]'); if (el) elegir(el);
+  });
+  document.getElementById('codOverlay').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var el = e.target.closest('[data-pack],[data-k]'); if (el) { e.preventDefault(); elegir(el); }
+  });
+
+  function openCOD(pack) {
+    if (pack && PACKS[pack]) packActual = pack;
+    pintarModal();
+    // Abrir el modal es el "añadir al carrito" de esta página.
+    fbTrack('AddToCart', datosCarrito());
+    document.getElementById('codOverlay').classList.add('on');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCOD() {
+    document.getElementById('codOverlay').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCOD(); });
+
+  // InitiateCheckout al tocar el primer campo, no al abrir el modal: no cuenta clics accidentales.
+  ['fName', 'fPhone', 'fDistrito', 'fDir'].forEach(function (id) {
+    document.getElementById(id).addEventListener('focus', function () {
+      fbTrack('InitiateCheckout', datosCarrito(), true);
+    }, { once: true });
+  });
+
+  var LIMA = ['Ancón','Ate','Barranco','Breña','Carabayllo','Chaclacayo','Chorrillos','Cieneguilla','Comas','El Agustino','Independencia','Jesús María','La Molina','La Victoria','Lima Cercado','Lince','Los Olivos','Lurigancho-Chosica','Lurín','Magdalena del Mar','Miraflores','Pachacámac','Pucusana','Pueblo Libre','Puente Piedra','Punta Hermosa','Punta Negra','Rímac','San Bartolo','San Borja','San Isidro','San Juan de Lurigancho','San Juan de Miraflores','San Luis','San Martín de Porres','San Miguel','Santa Anita','Santa María del Mar','Santa Rosa','Santiago de Surco','Surquillo','Villa El Salvador','Villa María del Triunfo','Callao','Bellavista','La Perla','La Punta','Carmen de la Legua','Ventanilla','Mi Perú'];
+  document.getElementById('distritos').innerHTML = LIMA.map(function (d) { return '<option value="' + d + '">'; }).join('');
+
+  /* ── Envío del pedido ───────────────────────────────────────────────── */
+  /* Un fallo de red no puede costar un lead que ya pagamos: se reintenta una
+     vez. Solo se reintenta si el servidor no contestó o dio un error suyo
+     (5xx); un 422 es culpa de los datos. */
+  function enviarPedido(cuerpo, intento) {
+    return fetch('/api/order-cable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    }).then(function (r) {
+      if (r.status >= 500 && intento < 1) throw new Error('reintentar');
+      return r;
+    }).catch(function (err) {
+      if (intento < 1) {
+        return new Promise(function (ok) { setTimeout(ok, 1200); })
+          .then(function () { return enviarPedido(cuerpo, intento + 1); });
+      }
+      throw err;
+    });
+  }
+
+  /* Último recurso: el pedido va por WhatsApp con los datos ya escritos. */
+  function enlaceRescate(c) {
+    var p = PACKS[c.pack];
+    var lineas = ['Hola! Quiero hacer este pedido (la web no pudo registrarlo):', '',
+      'Nombre: ' + c.nombre, 'WhatsApp: ' + aE164(c.telefono), 'Pedido: ' + p.etiqueta,
+      'Cables: ' + c.cables.map(function (k, i) { return (i + 1) + ') ' + k.conector + ' ' + k.color; }).join(' · '),
+      'Entrega (Lima): ' + c.distrito + ' - ' + c.direccion, 'Total a pagar: ' + soles(p.precio)];
+    return 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(lineas.join('\n'));
+  }
+
+  function marcar(id, malo) {
+    var el = document.getElementById(id); if (!el) return;
+    el.classList.toggle('err', !!malo);
+  }
+  function submitCOD() {
+    var n = document.getElementById('fName').value.trim();
+    var p = document.getElementById('fPhone').value.trim();
+    var dis = document.getElementById('fDistrito').value.trim();
+    var dir = document.getElementById('fDir').value.trim();
+    var ref = document.getElementById('fRef').value.trim();
+
+    var malo = null;
+    marcar('gName', n.length < 3); marcar('gPhone', p.replace(/\D/g, '').length < 9);
+    marcar('fDistrito', dis.length < 3); marcar('fDir', dir.length < 6);
+    if (n.length < 3) malo = ['fName', 'Ingresa tus nombres y apellidos'];
+    else if (p.replace(/\D/g, '').length < 9) malo = ['fPhone', 'Ingresa un WhatsApp válido de 9 dígitos'];
+    else if (dis.length < 3) malo = ['fDistrito', 'Indica tu distrito'];
+    else if (dir.length < 6) malo = ['fDir', 'Ingresa tu dirección de entrega'];
+    if (malo) { alert(malo[1]); document.getElementById(malo[0]).focus(); return; }
+
+    var btn = document.getElementById('btnPedido');
+    btn.disabled = true;
+    btn.querySelector('.l2').textContent = 'Enviando…';
+
+    var ident = fbIdentidad();
+    var cuerpo = {
+      nombre: n, telefono: p, distrito: dis, direccion: dir, referencia: ref,
+      pack: packActual, cables: cablesSel.map(function (c) { return { conector: c.conector, color: c.color }; }),
+      website: document.getElementById('fWebsite').value, fbp: ident.fbp, fbc: ident.fbc
+    };
+    var pk = PACKS[packActual];
+
+    enviarPedido(cuerpo, 0)
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.error || 'Error al registrar');
+        var total = typeof res.body.total === 'number' ? res.body.total : pk.precio;
+        /* Los datos viajan por sessionStorage y NO por la URL: el píxel de
+           /cable/gracias manda la URL a Meta y no debe llevar datos personales.
+           En la URL solo va el total, que es lo que el píxel necesita. */
+        try {
+          sessionStorage.setItem('pedidoCable', JSON.stringify({
+            nombre: n, telefono: aE164(p), distrito: dis, direccion: dir, pack: pk.etiqueta,
+            cables: cuerpo.cables, total: total, ahorro: pk.viejo - pk.precio,
+            eventId: res.body.eventId || '', cantidad: pk.cant
+          }));
+        } catch (e) { /* modo privado sin storage: la página de gracias saldrá genérica */ }
+        location.href = '/cable/gracias?v=' + encodeURIComponent(total);
+      })
+      .catch(function (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.querySelector('.l2').textContent = 'Pagas cuando lo recibes';
+        if (WA_NUMERO && confirm('No pudimos registrar tu pedido por un problema de conexión.\n\n¿Lo enviamos por WhatsApp para no perderlo?')) {
+          location.href = enlaceRescate(cuerpo);
+        } else if (!WA_NUMERO) {
+          alert('No pudimos registrar tu pedido por un problema de conexión. Inténtalo de nuevo en un minuto.');
+        }
+      });
+  }
+
+  /* ── CTA fijo: aparece solo cuando no hay otro botón a la vista ───── */
+  document.addEventListener('DOMContentLoaded', function () {
+    var sticky = document.getElementById('stickyCta');
+    var ctas = document.querySelectorAll('.wrap .cta, .pack .elegir');
+    var visibles = new Map();
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { visibles.set(e.target, e.isIntersecting); });
+      sticky.classList.toggle('hidden', Array.from(visibles.values()).some(Boolean));
+    }, { threshold: 0.1 });
+    ctas.forEach(function (c) { io.observe(c); });
+  });
+</script>
+</body>
+</html>

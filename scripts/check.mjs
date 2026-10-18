@@ -1037,5 +1037,47 @@ check("las letras de columna llegan hasta la última de la hoja",
     /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));
 }
 
+/* Landing del Cable con Soporte 2 en 1 (/cable/): precios, archivos y enganches.
+   La prueba del endpoint con Google simulado es scripts/test-pedido-cable.mjs. */
+{
+  const cable = readFileSync(join(root, "public/cable/index.html"), "utf8");
+  const gr = readFileSync(join(root, "public/cable/gracias.html"), "utf8");
+  const { PACKS, CONECTORES, COLORES } = await import(join(root, "src/lib/pedido-cable.js"));
+  for (const [id, p] of Object.entries(PACKS)) {
+    const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(cable);
+    check(`cable: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
+      m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
+  }
+  check("cable: la página llama a /api/order-cable", cable.includes("'/api/order-cable'"));
+  check("cable: la página manda los conectores y colores que el servidor acepta",
+    CONECTORES.every((c) => cable.includes(`id: '${c}'`)) && COLORES.every((c) => cable.includes(`id: '${c}'`)));
+  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fRef", "fWebsite", "btnPedido"]) {
+    check(`cable: index.html tiene #${id}`, cable.includes(`id="${id}"`));
+  }
+  const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
+  check("cable: PIXEL_ID y WA_NUMERO son iguales en la página y en gracias",
+    dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
+  check("cable: los datos personales no viajan por la URL de gracias",
+    /location\.href = '\/cable\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
+  check("cable: el Lead se dispara en gracias", /fbq\('track', 'Lead'/.test(gr));
+  const faltan = [];
+  const tamanos = [];
+  for (const [, ruta] of cable.matchAll(/(?:src|href|data-src|poster|content)="(\/cable\/[^"]+)"/g)) {
+    if (!existsSync(join(root, "public", ruta))) faltan.push(ruta);
+  }
+  for (const d of ["img", "video"]) {
+    for (const f of readdirSync(join(root, "public/cable", d))) {
+      const mb = statSync(join(root, "public/cable", d, f)).size / 1024 / 1024;
+      if (mb > (f.endsWith(".mp4") ? 2.5 : 1)) tamanos.push(`${d}/${f} ${mb.toFixed(1)} MB`);
+    }
+  }
+  check("cable: todas las fotos y videos que usa la página existen", !faltan.length, faltan.join(", "));
+  check("cable: ninguna foto pasa de 1 MB ni video de 2,5 MB", !tamanos.length, tamanos.join(", "));
+  check("cable: _headers no solapa reglas de /cable/ (Cloudflare junta sus encabezados)",
+    !/^\/cable\/\*\s*$/m.test(headers));
+  check("cable: no queda texto en inglés quemado en la página",
+    !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(cable + gr));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

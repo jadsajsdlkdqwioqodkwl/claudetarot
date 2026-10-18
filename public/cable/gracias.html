@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6A00'/%3E%3Cpath d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23fff'/%3E%3C/svg%3E">
+<title>¡Pedido confirmado! — Cable 2 en 1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  :root { --ink:#111318; --muted:#5b6270; --line:#e5e7eb; --green:#16a34a; --green-d:#12823c; --wa:#25d366; --orange:#ff6a00; --soft:#fff6ec; --red:#e53935; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#eceef1; color:var(--ink); line-height:1.5; }
+  .wrap { max-width:480px; margin:0 auto; background:#fff; min-height:100vh; box-shadow:0 0 20px rgba(0,0,0,.06); padding:0 20px 48px; }
+  .tick { width:76px; height:76px; margin:44px auto 22px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; animation:pop .45s cubic-bezier(.2,.9,.3,1.4) both; }
+  .tick svg { width:38px; height:38px; stroke:#fff; stroke-width:3.5; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  @keyframes pop { from { transform:scale(.4); opacity:0 } to { transform:scale(1); opacity:1 } }
+  h1 { font-size:26px; font-weight:900; text-align:center; letter-spacing:-.4px; }
+  .sub { text-align:center; color:var(--muted); font-size:15px; margin-top:10px; }
+  .regalo { display:flex; gap:10px; align-items:center; justify-content:center; text-align:center; background:var(--soft); border:1.5px dashed var(--orange); border-radius:12px; padding:11px 14px; margin-top:18px; font-size:13.5px; font-weight:700; }
+  .resumen { margin:20px 0 0; border:1.5px solid var(--line); border-radius:14px; padding:6px 16px; }
+  .fila { display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14.5px; }
+  .fila:last-child { border-bottom:none; }
+  .k { color:var(--muted); flex:0 0 auto; }
+  .v { font-weight:600; text-align:right; }
+  .fila.tot { padding:14px 0; }
+  .fila.tot .k { font-weight:800; color:var(--ink); }
+  .fila.tot .v { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+  .fila.tot .viejo { font-size:13px; font-weight:600; color:var(--red); text-decoration:line-through; }
+  .fila.tot .nuevo { font-size:19px; font-weight:900; }
+  .card { border:1.5px solid var(--line); border-radius:16px; padding:22px; margin-top:24px; }
+  .card h2 { font-size:18px; font-weight:800; text-align:center; margin-top:18px; }
+  .card p { font-size:14.5px; color:var(--muted); text-align:center; margin-top:9px; }
+  .wa { display:flex; align-items:center; justify-content:center; gap:10px; background:var(--wa); color:#fff; font-size:17px; font-weight:800; padding:17px; border-radius:13px; text-decoration:none; box-shadow:0 5px 16px rgba(37,211,102,.34); }
+  .wa:active { transform:scale(.98) }
+  .wa svg { width:23px; height:23px; fill:currentColor }
+  .pasos { margin-top:26px; }
+  .pasos h3 { font-size:13px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.9px; text-align:center; }
+  .paso { display:flex; gap:13px; align-items:flex-start; margin-top:15px; }
+  .paso .n { flex:0 0 27px; height:27px; border-radius:50%; background:var(--ink); color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .paso div { font-size:14.5px; }
+  .pie { text-align:center; font-size:12.5px; color:var(--muted); margin-top:30px; }
+  .pie a { color:var(--muted) }
+</style>
+<script>
+  /* Mismo ID que PIXEL_ID en /cable/ (index.html). Vacío = sin píxel. */
+  var PIXEL_ID = '';
+  /* Mismo número que WA_NUMERO en /cable/. Vacío = sin botón de WhatsApp. */
+  var WA_NUMERO = '';
+  if (PIXEL_ID) {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+  <h1>¡Pedido confirmado!</h1>
+  <p class="sub">Ya registramos tu pedido. Te escribimos por WhatsApp para coordinar la entrega en Lima.</p>
+
+  <div class="regalo" id="regalo" style="display:none"></div>
+
+  <div class="resumen" id="resumen"></div>
+
+  <div class="card" id="waCard" style="display:none">
+    <a class="wa" id="waLink" href="#" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.23 8.23 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.21 8.21 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.22-.16-.47-.28z"/></svg>
+      Confirmar por WhatsApp
+    </a>
+    <h2>Escríbenos y aseguramos tu entrega</h2>
+    <p>Confirmar por WhatsApp toma 10 segundos y tu cable sale antes.</p>
+  </div>
+
+  <div class="pasos">
+    <h3>Qué sigue</h3>
+    <div class="paso"><span class="n">1</span><div>Te contactamos por WhatsApp para <b>confirmar tu dirección</b>.</div></div>
+    <div class="paso"><span class="n">2</span><div>Preparamos y despachamos tu pedido: llega en <b>24 a 48 horas</b>.</div></div>
+    <div class="paso"><span class="n">3</span><div><b>Pagas al recibir</b>, con Yape, efectivo o POS, cuando lo tengas en tus manos.</div></div>
+  </div>
+
+  <p class="pie" id="pie"></p>
+</div>
+
+<script>
+  (function () {
+    var total = parseFloat(new URLSearchParams(location.search).get('v'));
+
+    /* Los datos llegan por sessionStorage, no por la URL: el píxel de esta
+       página manda su URL a Meta, y ahí no pueden ir datos personales. */
+    var pedido = {};
+    try { pedido = JSON.parse(sessionStorage.getItem('pedidoCable') || '{}'); } catch (e) {}
+    if (!(total > 0) && typeof pedido.total === 'number') total = pedido.total;
+
+    function soles(n) { return 'S/ ' + Number(n).toFixed(2); }
+    function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    var cables = (pedido.cables || []).map(function (c, i, a) {
+      return (a.length > 1 ? (i + 1) + ') ' : '') + c.conector + ' ' + c.color;
+    }).join(' · ');
+
+    var filas = [
+      ['Pedido', pedido.pack],
+      ['Cable(s)', cables],
+      ['Entrega', pedido.distrito ? 'Pago en casa (' + pedido.distrito + ')' : ''],
+      ['Dirección', pedido.direccion],
+      ['A nombre de', pedido.nombre]
+    ].filter(function (f) { return f[1]; });
+
+    var html = filas.map(function (f) {
+      return '<div class="fila"><span class="k">' + f[0] + '</span><span class="v">' + esc(f[1]) + '</span></div>';
+    }).join('');
+    if (total > 0) {
+      var ahorro = typeof pedido.ahorro === 'number' ? pedido.ahorro : 0;
+      var valor = ahorro > 0
+        ? '<span class="viejo">' + soles(total + ahorro) + '</span><span class="nuevo">' + soles(total) + '</span>'
+        : soles(total);
+      html += '<div class="fila tot"><span class="k">Pagas al recibir</span><span class="v">' + valor + '</span></div>';
+    }
+    document.getElementById('resumen').innerHTML = html ||
+      '<div class="fila"><span class="k">Tu pedido quedó registrado.</span></div>';
+
+    if (pedido.cantidad > 0) {
+      var r = document.getElementById('regalo');
+      r.textContent = pedido.cantidad === 1 ? 'Tu bolsa tipo cuero de regalo va incluida' : 'Tus ' + pedido.cantidad + ' bolsas tipo cuero de regalo van incluidas';
+      r.style.display = 'flex';
+    }
+
+    if (WA_NUMERO) {
+      /* El mensaje de WhatsApp sí lleva los datos: es el canal donde el
+         vendedor los necesita, y lo abre el cliente a propósito. */
+      var l = ['Hola! Acabo de hacer mi pedido del Cable 2 en 1 y quiero confirmarlo.', ''];
+      if (pedido.nombre) l.push('Nombre: ' + pedido.nombre);
+      if (pedido.telefono) l.push('WhatsApp: +' + pedido.telefono);
+      if (pedido.pack) l.push('Pedido: ' + pedido.pack);
+      if (cables) l.push('Cables: ' + cables);
+      if (pedido.distrito) l.push('Distrito: ' + pedido.distrito);
+      if (pedido.direccion) l.push('Direccion: ' + pedido.direccion);
+      if (total > 0) l.push('Total a pagar: ' + soles(total));
+      document.getElementById('waLink').href = 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(l.join('\n'));
+      document.getElementById('waCard').style.display = '';
+      document.getElementById('pie').innerHTML = '¿Algo mal en tu pedido? <a href="https://wa.me/' + WA_NUMERO + '">Escríbenos</a> y lo corregimos.';
+    }
+
+    /* El Lead se dispara aquí, al final del embudo, con el total real. */
+    if (typeof fbq === 'function') {
+      fbq('track', 'Lead', {
+        content_name: pedido.pack || 'Cable de carga con soporte 2 en 1',
+        content_category: 'COD',
+        value: total > 0 ? total : 39,
+        currency: 'PEN'
+      }, pedido.eventId ? { eventID: pedido.eventId } : undefined);
+    }
+    /* Contact solo al pulsar el botón de WhatsApp, una vez. */
+    var enviado = false;
+    document.getElementById('waLink').addEventListener('click', function () {
+      if (enviado || typeof fbq !== 'function') return;
+      enviado = true;
+      fbq('track', 'Contact', { content_name: pedido.pack || 'Cable 2 en 1', content_category: 'COD', value: total > 0 ? total : 39, currency: 'PEN' });
+    });
+  })();
+</script>
+</body>
+</html>
