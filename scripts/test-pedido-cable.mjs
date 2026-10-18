@@ -60,6 +60,7 @@ const base = {
   direccion: "Av. Larco 1234, dpto. 502", pack: "x3",
   cables: [{ conector: "Lightning" }, { conector: "USB-C" }, { conector: "raro" }]
 };
+const sinCables = (() => { const { cables, ...resto } = base; return resto; })();
 
 /* validate */
 const v = validate(base);
@@ -69,7 +70,7 @@ check("un conector raro cae al primero de la lista (USB-C)",
   v.order.detalle === "1) Lightning · 2) USB-C · 3) USB-C", v.order.detalle);
 check("un pack desconocido cae a x1", validate({ ...base, pack: "x99" }).order.cantidad === 1);
 check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 169);
-check("faltan cables: se completan por defecto", validate({ ...base, pack: "x2", cables: [] }).order.detalle === "1) USB-C · 2) USB-C");
+check("sin conector (el formulario ya no lo pregunta) queda por confirmar por WhatsApp", validate(sinCables).order.detalle === "Conector por confirmar (WhatsApp)");
 for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
   check(`sin ${campo} se rechaza`, validate({ ...base, [campo]: "" }).errors.includes(campo));
 }

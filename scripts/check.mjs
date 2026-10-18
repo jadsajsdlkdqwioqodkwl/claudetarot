@@ -1042,7 +1042,7 @@ check("las letras de columna llegan hasta la última de la hoja",
 {
   const cable = readFileSync(join(root, "public/cable/index.html"), "utf8");
   const gr = readFileSync(join(root, "public/cable/gracias.html"), "utf8");
-  const { PACKS, CONECTORES, RUTA_LARGA_CABLE, ADELANTO_PROVINCIA, HOST_CABLE } = await import(join(root, "src/lib/pedido-cable.js"));
+  const { PACKS, RUTA_LARGA_CABLE, ADELANTO_PROVINCIA, HOST_CABLE } = await import(join(root, "src/lib/pedido-cable.js"));
   for (const [id, p] of Object.entries(PACKS)) {
     const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(cable);
     check(`cable: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
@@ -1052,8 +1052,8 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("cable: el dominio largo es válido (label de 63 o menos) y el Worker lo atiende", HOST_CABLE.split(".")[0].length <= 63 && /HOST_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && HOST_CABLE.endsWith(".tarotperu.store"));
   check("cable: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(cable));
   check("cable: el logo y el badge de vendedor autorizado están en el formulario", cable.includes('class="logo-circle"') && /Vendedor autorizado/.test(cable));
-  check("cable: la página manda los conectores que el servidor acepta y no ofrece color",
-    CONECTORES.every((c) => cable.includes(`id: '${c}'`)) && !/data-k="color"|COLORES/.test(cable));
+  check("cable: el formulario no pregunta conector ni color (se confirma por WhatsApp)", !/data-k="color"|COLORES|id="cables"|CONECTORES/.test(cable));
+  check("cable: la página principal no lleva el logo de Puerto Secreto (solo el formulario)", (cable.match(/img\/logo\.webp/g) || []).length === 1 && cable.indexOf('class="brand"') === -1);
   check("cable: la ruta larga del Worker apunta a /cable/ y la página redirige relativa a su ruta",
     /RUTA_LARGA_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && RUTA_LARGA_CABLE.length > 60 &&
     /location\.pathname\.replace\(\/\\\/\+\$\/, ''\) \+ '\/gracias\?v='/.test(cable));

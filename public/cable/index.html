@@ -35,10 +35,6 @@
   button { font-family:inherit; }
   .ico { width:1em; height:1em; display:inline-block; vertical-align:-.125em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
-  .brand { display:flex; align-items:center; justify-content:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--line); }
-  .brand .lc { width:38px; height:38px; border-radius:50%; overflow:hidden; flex:0 0 38px; }
-  .brand .lc img { width:100%; height:100%; object-fit:cover; }
-  .brand b { display:block; font-size:15px; line-height:1.1; }
   .ann { background:var(--ink); color:#fff; text-align:center; font-size:12.5px; font-weight:600; letter-spacing:.3px; padding:9px 12px; }
 
   /* ── Producto (galería + info), como la ficha original ── */
@@ -176,8 +172,6 @@
   .garantia { text-align:center; color:var(--red); font-size:19px; font-weight:800; line-height:1.2; margin:4px 26px 14px; }
   .sect-title { font-size:15px; font-weight:800; margin:18px 0 8px; }
   .modal .pk { margin-top:8px; }
-  .cabl { display:flex; align-items:center; gap:10px; margin-top:8px; }
-  .cabl label { flex:0 0 64px; font-size:13px; font-weight:700; }
   select, .inp { width:100%; border:1px solid #cfcfcf; border-radius:10px; padding:13px 10px; font-size:15px; font-family:inherit; background:#fff; outline:none; color:var(--ink); transition:border-color .2s; }
   select:focus, .inp:focus { border-color:var(--ink); }
   .logo-circle { width:92px; height:92px; margin:0 auto 10px; border-radius:50%; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.18); }
@@ -266,7 +260,6 @@
 </defs></svg>
 
 <div class="ann">ENVÍO GRATIS A TODO EL PERÚ · EN LIMA PAGAS AL RECIBIR</div>
-<div class="brand"><span class="lc"><img src="/cable/img/logo.webp" alt="Puerto Secreto" width="38" height="38"></span><span><b>Puerto Secreto</b></span></div>
 
 <main class="pdp">
 
@@ -364,7 +357,7 @@
 <section class="sec">
   <h2>Preguntas frecuentes</h2>
   <div class="faq">
-    <details><summary>¿Sirve para mi celular?</summary><p>Hay dos versiones. <b>USB-C</b>: iPhone 15 en adelante, Samsung, Xiaomi, Motorola y la mayoría de Android. <b>Lightning</b>: iPhone 14 y anteriores. Eliges la tuya al completar el pedido.</p></details>
+    <details><summary>¿Sirve para mi celular?</summary><p>Hay dos versiones. <b>USB-C</b>: iPhone 15 en adelante, Samsung, Xiaomi, Motorola y la mayoría de Android. <b>Lightning</b>: iPhone 14 y anteriores. Cuando confirmemos tu pedido por WhatsApp te preguntamos cuál necesitas.</p></details>
     <details><summary>¿Cómo pago?</summary><p><b>Lima:</b> pagas al recibir, en tu casa, con Yape, efectivo o POS; no pagas nada por adelantado. <b>Provincia:</b> pagas un adelanto de S/ 10 y el resto al recoger en la agencia.</p></details>
     <details><summary>¿Cuánto demora y cuánto cuesta el envío?</summary><p>El envío es gratis a todo el Perú. En Lima la entrega toma de 24 a 48 horas y el repartidor te escribe antes de llegar. En provincia sale por Shalom u Olva y llega en 2 a 3 días; te enviamos por WhatsApp la foto del comprobante con el número de seguimiento.</p></details>
     <details><summary>¿Funciona con mi funda?</summary><p>Funciona con fundas delgadas, de hasta unos 2 mm de grosor. Con fundas muy gruesas o con relieve el soporte podría no apoyar bien.</p></details>
@@ -402,9 +395,6 @@
     <div class="garantia">Garantía de 90 días por tu pedido</div>
 
     <div id="packsModal"></div>
-
-    <div class="sect-title">¿Para qué celular?</div>
-    <div id="cables"></div>
 
     <div class="sect-title">Método de envío</div>
     <div class="ship-opts">
@@ -487,14 +477,9 @@
     x3: { nombre: 'Pack Regalo', sub: 'Ideal para regalar: 3 cables + 3 bolsas', cant: 3, precio: 169, viejo: 447,
           etiqueta: 'Pack Regalo: 3 Cables 2 en 1 + 3 bolsas', tag: 'IDEAL PARA REGALAR', dk: true }
   };
-  var CONECTORES = [
-    { id: 'USB-C', texto: 'USB-C · iPhone 15+ / Android' },
-    { id: 'Lightning', texto: 'Lightning · iPhone 14 o menos' }
-  ];
   var ADELANTO = 10;              // provincia: adelanto y el resto al recoger (igual que src/lib/pedido-cable.js)
   var envio = 'casa';             // 'casa' (Lima) | 'agencia' (provincia)
   var packActual = 'x1';          // arranca en 1 cable: coincide con el precio de la ficha
-  var cablesSel = [];             // un { conector } por unidad del pack
   var FB = { enviados: {} };
 
   function soles(n) { return 'S/ ' + Number(n).toFixed(2); }
@@ -601,13 +586,7 @@
       '<div class="tx"><b>' + p.nombre + '</b><small>' + p.sub + (p.cant > 1 ? ' · S/ ' + (p.precio / p.cant).toFixed(2) + ' c/u' : '') + '</small></div>' +
       '<div class="pr"><b>S/ ' + p.precio + '</b><s>S/ ' + p.viejo + '</s></div></div>';
   }
-  function ajustarCables() {
-    var n = PACKS[packActual].cant;
-    while (cablesSel.length < n) cablesSel.push({ conector: 'USB-C' });
-    cablesSel.length = n;
-  }
   function pintar() {
-    ajustarCables();
     var filas = ['x1', 'x2', 'x3'].map(filaPack).join('');
     document.getElementById('packsPage').innerHTML = filas;
     document.getElementById('packsModal').innerHTML = '<div class="sect-title">Elige tu pack</div>' + filas;
@@ -615,12 +594,6 @@
     document.getElementById('sNow').textContent = soles(p.precio);
     document.getElementById('sWas').textContent = soles(p.viejo);
     pintarResumen();
-    document.getElementById('cables').innerHTML = cablesSel.map(function (c, i) {
-      return '<div class="cabl"><label for="cn' + i + '">' + (cablesSel.length > 1 ? 'Cable ' + (i + 1) : 'Tu cable') + '</label>' +
-        '<select id="cn' + i + '" data-i="' + i + '">' + CONECTORES.map(function (k) {
-          return '<option value="' + k.id + '"' + (c.conector === k.id ? ' selected' : '') + '>' + k.texto + '</option>';
-        }).join('') + '</select></div>';
-    }).join('');
   }
   function pintarResumen() {
     var p = PACKS[packActual], esCasa = envio === 'casa';
@@ -655,9 +628,6 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var el = e.target.closest && e.target.closest('.pk'); if (el) { e.preventDefault(); elegirPack(el); }
-  });
-  document.getElementById('cables').addEventListener('change', function (e) {
-    var i = e.target.getAttribute('data-i'); if (i !== null) cablesSel[Number(i)].conector = e.target.value;
   });
   pintar();
 
@@ -711,7 +681,6 @@
     var p = PACKS[c.pack];
     var lineas = ['Hola! Quiero hacer este pedido (la web no pudo registrarlo):', '',
       'Nombre: ' + c.nombre, 'WhatsApp: ' + aE164(c.telefono), 'Pedido: ' + p.etiqueta,
-      'Cables: ' + c.cables.map(function (k, i) { return (i + 1) + ') ' + k.conector; }).join(' · '),
       'Entrega: ' + (c.envio === 'casa' ? 'Pago en casa (Lima)' : 'Agencia (provincia)'),
       (c.envio === 'casa' ? 'Direccion: ' + c.distrito + ' - ' + c.direccion : 'Agencia: ' + c.distrito + ' - ' + c.agencia),
       'Total del pedido: ' + soles(p.precio) + (c.envio === 'agencia' ? ' (adelanto ' + soles(ADELANTO) + ')' : '')];
@@ -746,7 +715,7 @@
     var cuerpo = {
       nombre: n, telefono: p, envio: envio, distrito: dis,
       direccion: esCasa ? dir : '', agencia: esCasa ? '' : suc,
-      pack: packActual, cables: cablesSel.map(function (c) { return { conector: c.conector }; }),
+      pack: packActual,
       website: document.getElementById('fWebsite').value, fbp: ident.fbp, fbc: ident.fbc
     };
     var pk = PACKS[packActual];
@@ -762,7 +731,7 @@
         try {
           sessionStorage.setItem('pedidoCable', JSON.stringify({
             nombre: n, telefono: aE164(p), envio: envio, ciudad: dis, destino: esCasa ? dir : suc, pack: pk.etiqueta,
-            cables: cuerpo.cables, total: total, adelanto: esCasa ? 0 : ADELANTO, ahorro: pk.viejo - pk.precio,
+            total: total, adelanto: esCasa ? 0 : ADELANTO, ahorro: pk.viejo - pk.precio,
             eventId: res.body.eventId || '', cantidad: pk.cant
           }));
         } catch (e) { /* modo privado sin storage: la página de gracias saldrá genérica */ }

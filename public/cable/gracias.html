@@ -82,7 +82,7 @@
 
   <div class="pasos">
     <h3>Qué sigue</h3>
-    <div class="paso"><span class="n">1</span><div id="p1">Te contactamos por WhatsApp para <b>confirmar tu dirección</b>.</div></div>
+    <div class="paso"><span class="n">1</span><div id="p1">Te contactamos por WhatsApp para <b>confirmar tu dirección</b> y qué conector necesitas (USB-C o Lightning).</div></div>
     <div class="paso"><span class="n">2</span><div id="p2">Preparamos y despachamos tu pedido: llega en <b>24 a 48 horas</b>.</div></div>
     <div class="paso"><span class="n">3</span><div id="p3"><b>Pagas al recibir</b>, con Yape, efectivo o POS, cuando lo tengas en tus manos. Y tienes <b>90 días de garantía</b>.</div></div>
   </div>
@@ -103,14 +103,9 @@
     function soles(n) { return 'S/ ' + Number(n).toFixed(2); }
     function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-    var cables = (pedido.cables || []).map(function (c, i, a) {
-      return (a.length > 1 ? (i + 1) + ') ' : '') + c.conector;
-    }).join(' · ');
-
     var esAg = pedido.envio === 'agencia';
     var filas = [
       ['Pedido', pedido.pack],
-      ['Conector(es)', cables],
       ['Entrega', pedido.envio ? (esAg ? 'Agencia (provincia)' : 'Pago en casa (Lima)') : ''],
       [esAg ? 'Agencia' : 'Dirección', pedido.destino ? (pedido.ciudad ? pedido.ciudad + ' - ' : '') + pedido.destino : ''],
       ['A nombre de', pedido.nombre]
@@ -133,7 +128,7 @@
 
     if (esAg) {
       document.getElementById('sub').textContent = 'Ya registramos tu pedido. Te escribimos por WhatsApp con los datos del adelanto para reservar tu envío.';
-      document.getElementById('p1').innerHTML = 'Te escribimos por WhatsApp con los datos para el <b>adelanto de S/ 10</b> y confirmamos tu agencia.';
+      document.getElementById('p1').innerHTML = 'Te escribimos por WhatsApp con los datos para el <b>adelanto de S/ 10</b>, confirmamos tu agencia y qué conector necesitas (USB-C o Lightning).';
       document.getElementById('p2').innerHTML = 'Despachamos por Shalom u Olva y te enviamos la <b>foto del comprobante con tu número de seguimiento</b>. Llega en 2 a 3 días.';
       document.getElementById('p3').innerHTML = '<b>Pagas la diferencia al recoger</b> en la agencia. Y tienes <b>90 días de garantía</b>.';
     }
@@ -151,7 +146,6 @@
       if (pedido.nombre) l.push('Nombre: ' + pedido.nombre);
       if (pedido.telefono) l.push('WhatsApp: +' + pedido.telefono);
       if (pedido.pack) l.push('Pedido: ' + pedido.pack);
-      if (cables) l.push('Cables: ' + cables);
       l.push('Entrega: ' + (esAg ? 'Agencia (provincia)' : 'Pago en casa (Lima)'));
       if (pedido.ciudad) l.push((esAg ? 'Ciudad: ' : 'Distrito: ') + pedido.ciudad);
       if (pedido.destino) l.push((esAg ? 'Agencia: ' : 'Direccion: ') + pedido.destino);
