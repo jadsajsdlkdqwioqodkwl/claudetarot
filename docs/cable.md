@@ -58,10 +58,19 @@ N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al 
 - Especificaciones: la ficha original se contradice (240 W en las fotos, 140 W en el texto), por eso
   la página dice solo «carga rápida» y no cita vatios. Confirmar con el proveedor antes de citarlos.
 
+## Diseño (2026-10-18, rehecho a pedido del dueño)
+
+Calcado de la ficha original de beverlygoods, pero limpio y para Lima: galería + título + precio, packs
+(1 · Dúo · Regalo), bolsa gratis, CTA «COMPLETAR PEDIDO», línea de entrega con fechas reales de Lima,
+**«Míralo en acción» justo debajo**, beneficios, preguntas y cierre. Fondo blanco, texto negro y naranja solo
+en el botón; formulario COD limpio con fotos de pack, selector de conector por cable, caja de envío y sellos.
+Sin reseñas inventadas. En escritorio sale en dos columnas.
+
 ## Fotos y videos
 
-Salen de la ficha original, sin los textos en inglés: la portada es un recorte de una foto de
-estilo de vida con el rótulo borrado, los videos están recortados para quitar los subtítulos en
+Salen de la ficha original: la portada (`hero.webp`) es la foto original «Charge & Watch» con su texto **traducido al español**
+(rótulos borrados y reescritos con Inter), `naranja.webp` es la foto limpia del producto y `videollamada.webp` otra foto original
+con su rótulo borrado; los videos están recortados para quitar los subtítulos en
 inglés y sin audio (se ven mudos). Los videos solo se descargan al acercarse (`data-src`).
 En el último tramo de los videos 2 y 3 aparece la bolsa con la marca del proveedor.
 Si se cambia el contenido de un archivo hay que **renombrarlo** (`_headers` los cachea un año).

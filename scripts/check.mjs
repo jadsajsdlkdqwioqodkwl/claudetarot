@@ -1054,7 +1054,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("cable: la ruta larga del Worker apunta a /cable/ y la página redirige relativa a su ruta",
     /RUTA_LARGA_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && RUTA_LARGA_CABLE.length > 60 &&
     /location\.pathname\.replace\(\/\\\/\+\$\/, ''\) \+ '\/gracias\?v='/.test(cable));
-  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fRef", "fWebsite", "btnPedido"]) {
+  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fWebsite", "btnPedido"]) {
     check(`cable: index.html tiene #${id}`, cable.includes(`id="${id}"`));
   }
   const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
