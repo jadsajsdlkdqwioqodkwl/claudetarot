@@ -24,7 +24,7 @@ se copian).
 2. **`PIXEL_ID`** del producto, en `index.html` y en `gracias.html` (vacío = sin píxel).
 3. **`WA_NUMERO`** (51XXXXXXXXX) en `index.html`: activa el botón de WhatsApp en
    `/gracias` y la salida de rescate si falla la red.
-4. Reseñas **reales** (`RESENAS` en `index.html`); vacío = la sección no aparece.
+4. Reseñas **reales** de clientes: la página es clon del advertorial original (mismas secciones y orden); las citas con nombre del original NO se copiaron porque eran inventadas. Cuando haya reseñas reales, se agregan como cita bajo cada motivo.
 5. Garantía, tiempos de entrega y términos del producto (hoy: pago al recibir y
    entrega en Lima al día siguiente, igual que Tarot).
 6. Deploy (`npm run deploy`). No hay migraciones.
