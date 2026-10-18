@@ -5,6 +5,7 @@
 > Todo cambio al workflow actualiza `docs/MAPA.md` en el mismo commit.
 > Toda Routine nueva, borrada o cambiada (hora, prompt, conectores) se anota en
 > `docs/MAPA.md` y en `docs/routines.md` (sus prompts), para poder recrearlas.
+> **Cada respuesta que cambie código o CRM termina con el link de vista previa del Worker** (formato y advertencias en `docs/MAPA.md`, «Regla: cada respuesta de código lleva el link de vista previa»).
 > **En el MAPA no se remueve nada** (regla del dueño): solo se AGREGA o se corrige.
 > Nunca se borra ni se acorta lo ya escrito; si algo se quitó del sistema, se anota
 > que se quitó (y cuándo), conservando su historia.

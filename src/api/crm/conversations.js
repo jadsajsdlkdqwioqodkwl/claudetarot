@@ -20,6 +20,7 @@
  * de Workers tiene tope de requests por día.
  */
 
+import { extraerFechas, limitesUtc } from "../../lib/busqueda-fechas.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
 import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
@@ -47,6 +48,17 @@ export function tokensBusqueda(q) {
     .replace(/(\d)[\s.-]+(?=\d)/g, "$1").replace(/\+/g, "");
   return [...new Set(limpio.split(/[^a-z0-9@]+/).filter((t) => t.length >= 2))].slice(0, 5);
 }
+
+/* Cola «Atención pendiente»: chats con el último mensaje del cliente sin contestar (y sin «Atendido») o con una
+   recomendación del asesor pendiente, incluidas las de chats con la ventana de 24 h ya cerrada (para evaluar
+   una plantilla). Las recomendaciones que aún no subieron a la bandeja y tienen ventana abierta esperan su turno. */
+const ATENCION_FALTA = `(lm.direction = 'in' AND (conv.atendido_at IS NULL OR conv.atendido_at < conv.last_inbound_at))`;
+const ATENCION_REC = `EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
+                AND sg.tipo = 'seguimiento' AND (sg.reflotada_at IS NOT NULL OR conv.last_inbound_at IS NULL OR conv.last_inbound_at < datetime('now', '-24 hours')))`;
+
+// En la cola, «Falta respuesta» solo cuenta si el mensaje del cliente es de los últimos 3 días: los chats viejos
+// sin contestar (leads perdidos) la llenarían de ruido; siguen con su etiqueta en la lista normal.
+const ATENCION_COLA = `((${ATENCION_FALTA} AND conv.last_inbound_at >= datetime('now', '-3 days')) OR ${ATENCION_REC})`;
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -88,6 +100,7 @@ async function handler({ request, env, agent }) {
     if (Number(linea)) { condiciones.push("conv.linea_id = ?"); params.push(Number(linea)); }
     else condiciones.push("conv.linea_id IS NULL");
   }
+  if (url.searchParams.get("atencion") === "1") condiciones.push(ATENCION_COLA);
   if (url.searchParams.get("olva") === "1") condiciones.push("c.olva = 1"); // los chats marcados «Envío por Olva»
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
@@ -98,7 +111,19 @@ async function handler({ request, env, agent }) {
     condiciones.push("conv.last_message_at >= datetime('now', ?)");
     params.push(`-${dias} days`);
   }
-  const tokens = tokensBusqueda(q);
+  // Fechas en el buscador: «venta del 15/10», «ayer», «10/10 al 12/10» (ver busqueda-fechas.js).
+  const fechas = extraerFechas(q);
+  if (fechas.desde) {
+    const [ini, fin] = limitesUtc(fechas.desde, fechas.hasta);
+    if (fechas.tipo === "compra") {
+      condiciones.push("conv.id IN (SELECT e.conversation_id FROM capi_events e WHERE e.event_name = 'Purchase' AND e.created_at >= ? AND e.created_at < ?)");
+    } else {
+      condiciones.push("conv.last_message_at >= ? AND conv.id IN (SELECT m.conversation_id FROM messages m WHERE m.created_at >= ? AND m.created_at < ?)");
+      params.push(ini);
+    }
+    params.push(ini, fin);
+  }
+  const tokens = tokensBusqueda(fechas.desde ? fechas.resto : q);
   if (url.searchParams.get("ocultos") === "1") condiciones.push("(conv.hidden = 1 OR conv.blocked = 1)");
   else if (!tokens.length) condiciones.push("conv.hidden = 0 AND conv.blocked = 0");
   for (const t of tokens) {
@@ -136,7 +161,7 @@ async function handler({ request, env, agent }) {
         conv.blocked,
         conv.pausa_auto,
         conv.atendido_at,
-        (lm.direction = 'in' AND (conv.atendido_at IS NULL OR conv.atendido_at < conv.last_inbound_at)) AS falta_respuesta,
+        ${ATENCION_FALTA} AS falta_respuesta,
         c.olva,
         c.saldo,
         c.id AS contact_id,
@@ -153,8 +178,7 @@ async function handler({ request, env, agent }) {
         lm.body AS last_body,
         lm.type AS last_type,
         lm.direction AS last_direction,
-        EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
-                AND sg.tipo = 'seguimiento' AND sg.reflotada_at IS NOT NULL) AS con_recomendacion,
+        ${ATENCION_REC} AS con_recomendacion,
         seg.pendientes AS seg_pendientes,
         seg.proximo AS seg_proximo,
         seg.auto_proximo AS seg_auto_proximo
@@ -183,11 +207,25 @@ async function handler({ request, env, agent }) {
     .bind(...(clave ? [`%${clave}%`] : []), ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, ...params, limite + 1, offset)
     .all();
 
+  // Cuántos hay en la cola (con las restricciones de la cuenta, sin los filtros de la lista).
+  const restr = [];
+  const rp = [];
+  if (agent?.productoId) {
+    const ids = [agent.productoId, agent.productoLecturaId].filter(Boolean);
+    restr.push(`conv.producto_id IN (${ids.map(() => "?").join(",")})`);
+    rp.push(...ids);
+  }
+  const { n: atencionTotal } = await env.CRM_DB.prepare(
+    `SELECT COUNT(*) AS n FROM conversations conv
+     LEFT JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
+     WHERE conv.hidden = 0 AND conv.blocked = 0 AND ${ATENCION_COLA} ${restr.map((r) => `AND ${r}`).join(" ")}`
+  ).bind(...rp).first();
+
   const hayMas = results.length > limite;
   const conversations = hayMas ? results.slice(0, limite) : results;
   return json(chat
-    ? { conversations, hay_mas: hayMas, chat: { conversation_id: chatId, ...chat } }
-    : { conversations, hay_mas: hayMas });
+    ? { conversations, hay_mas: hayMas, atencion_total: atencionTotal, busqueda_fecha: fechas.desde ? { tipo: fechas.tipo, desde: fechas.desde, hasta: fechas.hasta } : null, chat: { conversation_id: chatId, ...chat } }
+    : { conversations, hay_mas: hayMas, atencion_total: atencionTotal, busqueda_fecha: fechas.desde ? { tipo: fechas.tipo, desde: fechas.desde, hasta: fechas.hasta } : null });
 }
 
 export const onRequestGet = conAuth(handler);

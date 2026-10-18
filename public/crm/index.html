@@ -84,7 +84,7 @@
     </header>
     <div id="buscador">
       <span class="icono-buscar"></span>
-      <input type="text" id="buscar" placeholder="Buscar nombre, número, DNI, dirección o lo que dijo…" />
+      <input type="text" id="buscar" placeholder="Buscar nombre, número, DNI, dirección, lo que dijo o una fecha (venta del 15/10, ayer, 10/10 al 12/10)…" />
       <div id="buscador-opciones">
         <select id="buscar-dias" title="Desde cuándo">
           <option value="0">Todo el historial</option>
@@ -102,6 +102,7 @@
     </div>
     <div id="filtros">
       <button data-mine="" class="activo">Todos</button>
+      <button id="btn-filtro-atencion" type="button" title="Chats con un mensaje del cliente sin responder (últimos 3 días) y recomendaciones del asesor, también las pasadas. Salen de aquí con «Atendido»."></button>
       <button data-mine="1" id="btn-filtro-mias">Mis chats</button>
       <select id="filtro-agente" title="Ver los chats de una asesora"><option value="">Asesora…</option></select>
       <select id="filtro-producto" title="Ver los chats de un producto" style="display:none"><option value="">Producto…</option></select>
