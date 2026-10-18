@@ -208,6 +208,9 @@ export async function onRequestGetImagen({ request, env }) {
  *      de la noche lee solo lo que pasó después del corte y suma a esto: así las
  *      de las 23:00 y 00:00 no releen el día entero. Lo escribe enviar.py al
  *      mandar bien el reporte, nunca la Routine a mano.
+ *      Con `&tipo=pedidos` es lo mismo para el reporte de PEDIDOS (10:30, 11:30,
+ *      16:30, 22:30) de esa fecha de despacho: lo último reportado, el historial
+ *      de corridas y los pedidos agendados para ese día desde otros días.
  */
 export async function onRequestVentasEstado({ request, env }) {
   const cortar = await puerta(request, env);
@@ -216,17 +219,18 @@ export async function onRequestVentasEstado({ request, env }) {
   const url = new URL(request.url);
   const fecha = url.searchParams.get("fecha") || "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "fecha inválida." }, 400);
-  const key = `ventas-estado/${fecha}.json`;
+  const tipo = url.searchParams.get("tipo") === "pedidos" ? "pedidos" : "ventas";
+  const key = `${tipo}-estado/${fecha}.json`;
   if (request.method === "PUT") {
     const cuerpo = await request.text();
     if (cuerpo.length > 2_000_000) return json({ error: "Demasiado grande." }, 413);
     try { JSON.parse(cuerpo); } catch { return json({ error: "JSON inválido." }, 400); }
     await env.CRM_MEDIA.put(key, cuerpo, { httpMetadata: { contentType: "application/json" } });
-    return json({ ok: true });
+    return json({ ok: true, tipo });
   }
   const obj = await env.CRM_MEDIA.get(key);
-  if (!obj) return json({ existe: false });
-  return json({ existe: true, estado: JSON.parse(await obj.text()) });
+  if (!obj) return json({ existe: false, tipo });
+  return json({ existe: true, tipo, estado: JSON.parse(await obj.text()) });
 }
 
 export async function onRequestPostMemoria({ request, env }) {

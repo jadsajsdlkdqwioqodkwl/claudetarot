@@ -261,3 +261,7 @@ Aclaración sobre «fallos» que muestra claude.ai: `trig_01XkT6T8HZstc4YDvVwZHy
 ## 2026-10-15 · URO — lista de llamadas: actualizar clientes ya listados (barato)
 
 Pedido del dueño: los clientes ya en la lista deben actualizarse cuando vuelven a escribir. `llamadas.py preparar` ahora muestra de esos chats SOLO lo posterior al último mensaje leído (+2 de contexto); la hoja suma la columna H «Novedad desde la última vez». Paso 4 del prompt, parte «actualizar»: reescribe SOLO `Llamadas!D{fila}:E{fila}` (Interés, Última actividad) y `Llamadas!H{fila}` (1 o 2 frases con lo nuevo: qué dijo o pidió, qué se le respondió, en qué quedó); NO toca A, F, G ni I, y no necesita leer el resumen anterior. El gate solo mira mensajes del CLIENTE de las últimas 3 h (una respuesta de la vendedora sola no dispara la corrida; entra cuando la Routine corre por otro motivo).
+
+## 2026-10-18 · Prompts sin cambios, comportamiento nuevo de enviar.py
+
+Ningún prompt de Routine cambió. `enviar.py` ahora registra el reporte de pedidos por fecha (suma las corridas, agenda los `OTRO_DIA` y no envía un Lima confirmado con entrega otro día). Para que una Routine saque un pedido ya reportado usa `quitar` [{whatsapp, motivo}] en salida.json; para agendar, `fecha_entrega` en AAAA-MM-DD. Detalle en `docs/MAPA.md` (2026-10-18) y `CLAUDE.md` regla 17.
