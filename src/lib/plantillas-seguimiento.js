@@ -16,7 +16,7 @@ import { PREFIJO_PLAN, IDIOMA_PLAN, leerDias } from "./planes-plantilla.js";
 
 const CLAVE = "plantillas_seguimiento";
 export const PREFIJO_SEGUIMIENTO_PLANTILLA = "Seguimiento con plantilla";
-const RE_RECOJO = /recojo_shalom_\d$/;
+const RE_RECOJO = /recojo_(shalom|agencia)_\d$/;
 
 async function leerAjustado(db) {
   try {

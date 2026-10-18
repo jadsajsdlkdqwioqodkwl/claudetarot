@@ -29,6 +29,7 @@ import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente } from "../../lib/crm-db.js";
+import { cancelarPlanRecojo } from "../../lib/planes-plantilla.js";
 
 const SITIO = "https://kit-tarot-para-principiantes.tarotperu.store";
 const MAX_FOTOS = 6;
@@ -184,6 +185,9 @@ export async function saldoPagado(env, codigo) {
   if (!hallada) return json({ error: "No encontré ese pedido." }, 404);
   await updateValues(env, `${hojaVentas(env)}!${col("Saldo")}${hallada.fila}`, [[0]]);
   olvidarCache();
+  // Ya pagó todo: se termina su seguimiento de recojo (Shalom u Olva), sin gastar más plantillas.
+  const chat = await chatDe(env, telefonoDe(String(hallada.valores[indiceVenta("DNI / WSP")] || ""))).catch(() => null);
+  if (chat) await cancelarPlanRecojo(env.CRM_DB, chat.id).catch((err) => console.error("Cancelar recojo al pagar saldo:", err.message));
   return json({ ok: true });
 }
 

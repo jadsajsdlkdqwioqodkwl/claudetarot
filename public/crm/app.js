@@ -475,9 +475,11 @@ $("#bienvenida-cerrar").addEventListener("click", () => {
 
 /** Marca el plan en el chat. De una vendedora queda por aprobar; del admin, aprobado. */
 async function marcarPlan(c, plan) {
-  const titulo = plan === "shalom" ? "recordarle el recojo en Shalom" : "rescatarlo con plantilla";
+  const titulo = plan === "shalom" ? "recordarle el recojo en Shalom" : plan === "olva" ? "recordarle el recojo en su agencia (Olva)" : "rescatarlo con plantilla";
   const aviso = estado.miRol === "admin" ? "Salen solos (son plantillas pagadas)." : "Quedan por aprobar del dueño.";
-  const reglas = plan === "shalom"
+  const reglas = plan === "olva"
+    ? "3 plantillas a los 3 (aviso de llegada), 7 y 13 días a partir de hoy. Si el cliente escribe, se vuelve a contar desde su mensaje; si toca «Ya lo recogí» o ya pagó su saldo, termina."
+    : plan === "shalom"
     ? "3 plantillas a los 4, 7 y 21 días a partir de hoy (úsalo cuando ya le mandaste la boleta dentro de las 24 h, sin plantilla). Si el cliente escribe, se vuelve a contar desde su mensaje; si toca «Ya lo recogí», termina."
     : "3 mensajes a los 4, 7 y 21 días de su último mensaje. Si el cliente escribe, lo que falta se cancela.";
   if (!confirm(`¿Programar ${titulo}? ${reglas} ${aviso}`)) return;
@@ -1906,6 +1908,7 @@ function pintarLista() {
         ${badgeEtapa(c)}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
+        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
         ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat">${icon("sparkle")} Recomendación</span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
@@ -1915,7 +1918,7 @@ function pintarLista() {
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -1923,6 +1926,10 @@ function pintarLista() {
     div.querySelector(".btn-star").addEventListener("click", (e) => {
       e.stopPropagation();
       clicEstrella(c);
+    });
+    div.querySelector(".btn-atendido")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      marcarAtendido(c);
     });
     div.querySelector(".btn-conv-menu").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3892,6 +3899,16 @@ async function transcribirAudio(btn) {
   }
 }
 
+/** Casilla «Atendido»: quita «Falta respuesta» de este chat hasta que el cliente escriba otra vez. */
+async function marcarAtendido(c) {
+  try {
+    await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "atendido" }) });
+    c.falta_respuesta = 0;
+    c.atendido_at = new Date().toISOString();
+    pintarLista();
+  } catch (err) { alert(err.message); }
+}
+
 function pintarMensajes({ alFinal = false } = {}) {
   const cont = $("#mensajes");
   if (!cont) return;
@@ -3902,6 +3919,7 @@ function pintarMensajes({ alFinal = false } = {}) {
   // «Reactivar seguimiento» va solo debajo de la última burbuja de cada respuesta rápida que tiene seguimiento.
   const ultimaDeRapida = new Map();
   for (const m of mensajes) if (m.con_seguimiento && m.quick_reply_id && m.direction === "out") ultimaDeRapida.set(m.quick_reply_id, m.id);
+  const ultimoMensajeId = mensajes.length ? mensajes[mensajes.length - 1].id : null;
   const filas = mensajes.map((m) => {
     const dia = etiquetaDia(m.created_at);
     const separador = dia !== diaAnterior ? `<div class="separador-fecha"><span>${dia}</span></div>` : "";
@@ -3917,6 +3935,9 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${contenidoMensaje(m)}
         <span class="hora">${m.sent_by ? escapar(m.sent_by) + " · " : ""}${horaCorta(m.created_at)}${estadoMensaje(m)}</span>
         ${reaccionesHtml(m)}
+        ${m.id === ultimoMensajeId && m.direction === "out" && !m.quick_reply_id && m.type === "text" && !/autom[aá]tic/i.test(m.sent_by || "")
+          ? `<button type="button" class="msg-seg msg-seg-manual" title="Este mensaje lo escribiste a mano, así que no trae seguimiento propio. Tócalo para programar uno si el cliente no responde">${icon("clock")} Programar seguimiento</button>`
+          : ""}
         ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
           ? (m.seg_activo
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
@@ -4047,7 +4068,8 @@ function configurarAccionesMensajes() {
       return;
     }
     const chipSeg = e.target.closest(".msg-seg");
-    if (chipSeg) reactivarSeguimientoRapida(chipSeg);
+    if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
+    else if (chipSeg) reactivarSeguimientoRapida(chipSeg);
     const fotoChat = e.target.closest("img.foto-chat");
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
     const btnTrans = e.target.closest(".audio-transcribir");
@@ -8370,9 +8392,11 @@ async function pintarDetalle(c) {
     <h2>Código Shalom</h2>
     <div id="detalle-shalom"></div>
     <div class="olva-saldo">
-      <label class="olva-marca" title="Márcalo si este pedido va por Olva (desmárcalo si no)"><input type="checkbox" id="detalle-olva" ${c.olva ? "checked" : ""} /> Envío por Olva</label>
+      <label class="olva-marca" title="Márcalo si este pedido va por Olva: programa solo el recojo (3 · 7 · 13 días). Desmárcalo y se cancela"><input type="checkbox" id="detalle-olva" ${c.olva ? "checked" : ""} /> Envío por Olva</label>
       <label class="saldo-marca" title="Cuánto le falta pagar al cliente">Saldo <input type="text" id="detalle-saldo" maxlength="20" placeholder="S/" value="${escapar(c.saldo || "")}" /></label>
     </div>
+
+    <button class="cancelar" id="detalle-pago-saldo" type="button" style="width:100%;font-size:12px;margin-top:6px" title="Cancela los recordatorios de recojo (Shalom u Olva) que falten y deja el saldo en 0">${icon("checkBox")} Ya pagó su saldo · quitar seguimiento de recojo</button>
 
     <h2>Asesora asignada</h2>
     <div id="detalle-asignacion"></div>
@@ -8390,6 +8414,7 @@ async function pintarDetalle(c) {
     <button type="button" id="detalle-kill-chat" class="kill-chat ${c.pausa_auto ? "puesto" : ""}" title="${c.pausa_auto ? "Lo automático de este chat está detenido. Toca para reanudar" : "Cancela todo lo programado de este chat y frena bienvenida, seguimientos y plantillas automáticas"}">${icon("power")} ${c.pausa_auto ? "Automático detenido en este chat: reanudar" : "Detener todo lo automático en este chat"}</button>
     <button class="cancelar" id="detalle-nuevo-seguimiento" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("plus")} Programar seguimiento</button>
     <button class="cancelar plan-plantilla" data-plan="shalom" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Programar recojo en Shalom (4 · 7 · 21 días desde hoy)</button>
+    <button class="cancelar plan-plantilla" data-plan="olva" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("box")} Programar recojo en agencia / Olva (3 · 7 · 13 días desde hoy)</button>
     <button class="cancelar plan-plantilla" data-plan="lead" type="button" style="width:100%;font-size:12px;margin-top:6px">${icon("rotate")} Rescatar con plantilla (4 · 7 · 21 días)</button>
 
     ${estado.miRol === "admin" ? `
@@ -8432,7 +8457,17 @@ async function pintarDetalle(c) {
       await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, olva: e.target.checked }) });
       for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.olva = e.target.checked ? 1 : 0;
       c.olva = e.target.checked ? 1 : 0;
+      await actualizarSeguimientosDetalle();
     } catch (err) { alert(err.message); e.target.checked = !e.target.checked; }
+  });
+  $("#detalle-pago-saldo").addEventListener("click", async () => {
+    try {
+      await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+      await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, saldo: "0" }) });
+      c.saldo = "0";
+      $("#detalle-saldo").value = "0";
+      await actualizarSeguimientosDetalle();
+    } catch (err) { alert(err.message); }
   });
   $("#detalle-saldo").addEventListener("change", async (e) => {
     const valor = e.target.value.trim();

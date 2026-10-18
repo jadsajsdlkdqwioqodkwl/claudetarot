@@ -39,8 +39,8 @@ export function propuestasDe(marca, cambios = {}) {
     for (const [i, paso] of pasosOrdenados(p.pasos, cambios[`orden:${marca}:${clave}`]).entries()) {
       lista.push({
         plan: clave, posicion: i,
-        nombre: paso.nombre, grupo: clave === "shalom" ? "Recojo en Shalom (prioridad)" : "Rescate de interesado",
-        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: clave === "shalom" ? `${originales[i].dias} días después de despachar el pedido` : `${originales[i].dias} días después de su último mensaje`,
+        nombre: paso.nombre, grupo: clave === "shalom" ? "Recojo en Shalom (prioridad)" : clave === "olva" ? "Recojo en agencia (Olva, plantilla universal)" : "Rescate de interesado",
+        titulo: `${p.titulo} · mensaje ${i + 1}`, cuando: clave === "shalom" || clave === "olva" ? `${originales[i].dias} días después de despachar el pedido` : `${originales[i].dias} días después de su último mensaje`,
         categoria: p.categoria, texto: paso.texto, botones: p.botones,
         componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), ...botones(p.botones)]
       });
@@ -86,7 +86,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Plantillas propias"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 
@@ -265,9 +265,35 @@ export async function mandarPropuestas(env, marca, nombres, reenviar = false) {
  * pasada solo toma la foto, sin avisar. De paso deja el estado en el caché de plantillaAprobada, así
  * los planes y toques la usan al instante (si no, tardaban hasta 10 min en enterarse).
  */
+/**
+ * Plantillas que el dueño pidió mandar a Meta «al toque» (2026-10-18): las 3 del recojo en agencia (Olva).
+ * Se mandan UNA vez, desde el primer cron que corre después del despliegue; lo que Meta ya tiene no se
+ * toca, y lo que falla (red, límite de Meta) se reintenta en el siguiente ciclo. Lo hecho queda en el
+ * ajuste `plantillas_autoenviadas`. Las de URO NO van: se mandan a mano desde Plantillas para Meta.
+ */
+const AUTOENVIAR = { tarot: ["recojo_agencia_1", "recojo_agencia_2", "recojo_agencia_3"] };
+async function autoenviarAMeta(env) {
+  const db = env.CRM_DB;
+  let hechas;
+  try { hechas = JSON.parse((await obtenerAjuste(db, "plantillas_autoenviadas")) || "[]"); } catch { hechas = []; }
+  let cambio = false;
+  for (const [marca, nombres] of Object.entries(AUTOENVIAR)) {
+    const faltan = nombres.filter((n) => !hechas.includes(`${marca}:${n}`));
+    if (!faltan.length) continue;
+    try {
+      for (const r of await mandarPropuestas(env, marca, faltan)) {
+        if (r.ok || /Ya existe/.test(r.error || "")) { hechas.push(`${marca}:${r.nombre}`); cambio = true; }
+        else console.error(`Autoenviar plantilla ${r.nombre}:`, r.error);
+      }
+    } catch (err) { console.error(`Autoenviar plantillas (${marca}):`, err.message); }
+  }
+  if (cambio) await guardarAjuste(db, "plantillas_autoenviadas", JSON.stringify(hechas));
+}
+
 export async function vigilarPlantillas(env) {
   const db = env.CRM_DB;
   if (!db) return { avisos: 0 };
+  await autoenviarAMeta(env).catch((err) => console.error("Autoenviar plantillas:", err.message));
   const antes = JSON.parse((await obtenerAjuste(db, "plantillas_estados").catch(() => null)) || "null");
   const ahora = {};
   const avisos = [];

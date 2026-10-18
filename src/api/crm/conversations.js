@@ -135,6 +135,8 @@ async function handler({ request, env, agent }) {
         conv.producto_origen,
         conv.blocked,
         conv.pausa_auto,
+        conv.atendido_at,
+        (lm.direction = 'in' AND (conv.atendido_at IS NULL OR conv.atendido_at < conv.last_inbound_at)) AS falta_respuesta,
         c.olva,
         c.saldo,
         c.id AS contact_id,

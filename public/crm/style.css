@@ -1123,3 +1123,8 @@ body.solo-lectura #form-envio { display: none; }
 #banner-recomendacion .reco-acciones button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); font: inherit; font-size: 13px; cursor: pointer; }
 #banner-recomendacion .reco-enviar { background: var(--verde-osc); color: #fff; border-color: var(--verde-osc); }
 .badge-reco { color: var(--verde-osc); }
+
+/* Etiqueta «Falta respuesta» con su casilla «Atendido» */
+.badge-falta { background: #fff3e0; color: #b45309; }
+.badge-falta .btn-atendido { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; padding: 0 5px; font-size: 10px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.badge-falta .btn-atendido .icono-svg { width: 11px; height: 11px; }

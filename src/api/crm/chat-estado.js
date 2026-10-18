@@ -1,6 +1,9 @@
 /**
  * POST /api/crm/chat-estado — { conversation_id, accion }
- *   accion: "ocultar" | "mostrar"   → saca/devuelve el chat de la lista
+ *   accion: "quitar_recojo" → termina el seguimiento de recojo (Shalom u Olva) cuando el cliente ya pagó o recogió.
+ *           "atendido" | "no_atendido" → casilla «Atendido»: quita la etiqueta «Falta respuesta» hasta
+ *           que el cliente escriba otra vez (conversations.atendido_at).
+ *           "ocultar" | "mostrar"   → saca/devuelve el chat de la lista
  *           (vuelve solo cuando el cliente escribe otra vez).
  *           "pausar_auto" | "reanudar_auto" → killswitch de este chat (cancela lo programado y
  *           frena bienvenida, seguimientos y plantillas automáticas).
@@ -14,6 +17,7 @@
 import { conAuth } from "../../lib/crm-auth.js";
 import { bloquearUsuario } from "../../lib/whatsapp.js";
 import { envDeConversacion } from "../../lib/lineas.js";
+import { cancelarPlanRecojo } from "../../lib/planes-plantilla.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -21,7 +25,7 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
-const ACCIONES = new Set(["ocultar", "mostrar", "bloquear", "desbloquear", "pausar_auto", "reanudar_auto"]);
+const ACCIONES = new Set(["quitar_recojo", "atendido", "no_atendido", "ocultar", "mostrar", "bloquear", "desbloquear", "pausar_auto", "reanudar_auto"]);
 
 async function post({ request, env }) {
   let payload;
@@ -38,6 +42,17 @@ async function post({ request, env }) {
     "SELECT conv.id, conv.contact_id, c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
   ).bind(conversationId).first();
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
+
+  // «Ya pagó su saldo» / «Ya lo recogió»: termina el seguimiento de recojo (Shalom u Olva) de este chat.
+  if (accion === "quitar_recojo") {
+    return json({ ok: true, cancelados: await cancelarPlanRecojo(env.CRM_DB, conversationId) });
+  }
+
+  if (accion === "atendido" || accion === "no_atendido") {
+    const marcar = accion === "atendido";
+    await env.CRM_DB.prepare(`UPDATE conversations SET atendido_at = ${marcar ? "datetime('now')" : "NULL"} WHERE id = ?`).bind(conversationId).run();
+    return json({ ok: true, atendido: marcar });
+  }
 
   if (accion === "ocultar" || accion === "mostrar") {
     await env.CRM_DB.prepare("UPDATE conversations SET hidden = ? WHERE id = ?").bind(accion === "ocultar" ? 1 : 0, conversationId).run();
