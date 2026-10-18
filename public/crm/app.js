@@ -3735,6 +3735,7 @@ async function actualizarHistorialCapi(conversationId) {
 /** El texto a mostrar de un seguimiento programado — cubre los tres orígenes posibles: texto propio, respuesta rápida, o plantilla (envío masivo). */
 function textoSeguimiento(s) {
   if (s.catalogo) return etiquetaCatalogo(s) + (s.body ? ` — ${s.body}` : "");
+  if (s.template_name && s.contenido && (!s.body || /^Plantilla: /.test(s.body))) return s.contenido; // lo que dice la plantilla, con sus botones
   if (s.body) return s.body;
   // Respuesta rápida: el texto que va a salir (con {link} y {nombre} ya puestos), no solo su nombre.
   if (s.quick_reply_body) {
@@ -3763,7 +3764,7 @@ async function actualizarSeguimientosDetalle() {
       <div class="ad-card seguimiento-detalle" data-id="${s.id}" style="margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
         <div>
           <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)} ${etiquetaTipoSeguimiento(s)}</div>
-          <div>${escapar(textoSeguimiento(s))}</div>
+          <div style="white-space:pre-line">${escapar(textoSeguimiento(s))}</div>
         </div>
         <div style="display:flex;gap:4px">
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
@@ -4048,7 +4049,7 @@ async function verSeguimientoActivo(chip) {
     $("#ra-pasos").innerHTML = pasos.map((s, i) => `
       <div class="ra-paso" data-id="${s.id}">
         <div class="seg-label">Paso ${i + 1} · sale ${fechaCorta(s.send_at)}</div>
-        <div>${escapar(textoSeguimiento(s))}</div>
+        <div style="white-space:pre-line">${escapar(textoSeguimiento(s))}</div>
         ${seguimientoEditable(s) ? `<button type="button" class="ra-editar" data-id="${s.id}">${icon("pencil")} Editar</button>` : ""}
       </div>`).join("") || `<p class="ayuda-modal">Ya no quedan pasos pendientes de este seguimiento.</p>`;
     $("#ra-pasos").querySelectorAll(".ra-editar").forEach((btn) => btn.addEventListener("click", () => {
@@ -7464,7 +7465,7 @@ async function pintarSeguimientosPanel() {
     <div class="item" data-id="${s.id}">
       <div>
         <div class="titulo">${icon(s.batch_id ? "broadcast" : "clock")} ${fechaCorta(s.send_at)}${s.media_key ? " " + icon(s.media_type === "video" ? "video" : "image") : ""}${s.batch_id ? ` <span style="font-weight:400;color:var(--ad)">· masivo</span>` : ""}</div>
-        <div class="cuerpo">${escapar(textoSeguimiento(s))}</div>
+        <div class="cuerpo" style="white-space:pre-line">${escapar(textoSeguimiento(s))}</div>
       </div>
       ${seguimientoEditable(s) ? `<button class="editar" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
       <button class="borrar" data-id="${s.id}" title="Cancelar">${icon("close")}</button>

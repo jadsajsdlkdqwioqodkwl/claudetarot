@@ -14,7 +14,8 @@ import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { notificarTelegram } from "./telegram.js";
 import { primerNombre } from "./plantillas.js";
 import { listarTemplates, crearTemplate, editarTemplate } from "./whatsapp.js";
-import { planesDe, pasosOrdenados, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO } from "./planes-plantilla.js";
+import { planesDe, pasosOrdenados, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO, RESCATE_CATALOGO } from "./planes-plantilla.js";
+import { pasarAgendadosAlCatalogo } from "./rescate-lead.js";
 import { TOQUES, marcaDeToque, toquesActivos, guardarToqueActivo } from "./toques.js";
 
 export const MARCAS = { tarot: "Tarot Store", uro: "URO" };
@@ -45,6 +46,15 @@ export function propuestasDe(marca, cambios = {}) {
         componentes: [cuerpo(paso.texto, ejemploDe(paso.texto, p.ejemplo)), ...botones(p.botones)]
       });
     }
+  }
+  const cat = RESCATE_CATALOGO[marca];
+  if (cat) {
+    lista.push({
+      nombre: cat.nombre, grupo: "Rescate de interesado", titulo: "Rescate 1 con catálogo (predeterminada del día 7)",
+      cuando: "día 7 desde que escribió (la de fábrica del rescate; si Meta no la aprobó sale rescate_lead_1)",
+      categoria: cat.categoria, texto: cat.texto, botones: cat.botones,
+      componentes: [cuerpo(cat.texto, ejemploDe(cat.texto, cat.ejemplo)), ...botones(cat.botones)]
+    });
   }
   for (const [id, def] of Object.entries(TOQUES)) {
     if (marcaDeToque(def) !== marca) continue;
@@ -266,12 +276,13 @@ export async function mandarPropuestas(env, marca, nombres, reenviar = false) {
  * los planes y toques la usan al instante (si no, tardaban hasta 10 min en enterarse).
  */
 /**
- * Plantillas que el dueño pidió mandar a Meta «al toque» (2026-10-18): las 3 del recojo en agencia (Olva).
+ * Plantillas que el dueño pidió mandar a Meta «al toque» (2026-10-18): las 3 del recojo en agencia (Olva) y el
+ * rescate 1 con catálogo.
  * Se mandan UNA vez, desde el primer cron que corre después del despliegue; lo que Meta ya tiene no se
  * toca, y lo que falla (red, límite de Meta) se reintenta en el siguiente ciclo. Lo hecho queda en el
  * ajuste `plantillas_autoenviadas`. Las de URO NO van: se mandan a mano desde Plantillas para Meta.
  */
-const AUTOENVIAR = { tarot: ["recojo_agencia_1", "recojo_agencia_2", "recojo_agencia_3"] };
+const AUTOENVIAR = { tarot: ["recojo_agencia_1", "recojo_agencia_2", "recojo_agencia_3", RESCATE_CATALOGO.tarot.nombre] };
 async function autoenviarAMeta(env) {
   const db = env.CRM_DB;
   let hechas;
@@ -325,6 +336,7 @@ export async function vigilarPlantillas(env) {
     }
   }
   await guardarAjuste(db, "plantillas_estados", JSON.stringify(ahora));
+  if (ahora[`tarot:${RESCATE_CATALOGO.tarot.nombre}`] === "APPROVED") await pasarAgendadosAlCatalogo(db).catch((err) => console.error("Pasar rescates al catálogo:", err.message));
   if (avisos.length) await notificarTelegram(env, `📋 *Meta respondió sobre tus plantillas*\n\n${avisos.join("\n")}`);
   return { avisos: avisos.length };
 }

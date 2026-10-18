@@ -26,6 +26,8 @@ import { textoPorDefectoSql } from "../../lib/crm-variantes.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";
+import { textoParaChat, parametrosDePlantilla } from "../../lib/plantillas-propuestas.js";
+import { envDeConversacion } from "../../lib/lineas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -62,6 +64,21 @@ async function get({ request, env }) {
   )
     .bind(conversationId)
     .all();
+
+  // Plantillas: el reloj muestra lo que dice (con el nombre puesto) y sus botones, no solo el nombre.
+  const conPlantilla = results.filter((s) => s.template_name);
+  if (conPlantilla.length) {
+    const envChat = await envDeConversacion(env, conversationId).catch(() => env);
+    const cliente = await env.CRM_DB.prepare(
+      "SELECT COALESCE(c.name, c.profile_name) AS nombre FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
+    ).bind(conversationId).first();
+    for (const s of conPlantilla) {
+      let params = null;
+      try { const p = JSON.parse(s.template_params || "null"); if (Array.isArray(p)) params = p; } catch { /* sin variables guardadas */ }
+      if (!params) params = await parametrosDePlantilla(envChat, s.template_name, cliente?.nombre).catch(() => []);
+      s.contenido = await textoParaChat(envChat, s.template_name, params).catch(() => null);
+    }
+  }
 
   return json({ scheduled: results });
 }

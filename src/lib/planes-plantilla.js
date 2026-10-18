@@ -116,6 +116,23 @@ export const AVISOS_ENVIO = {
   uro: { nombre: "uro_aviso_envio_shalom", categoria: "UTILITY", texto: "Hola {{1}}, de URO: ya despachamos su pedido ✅ Toque uno de los botones de abajo para enviarle por este chat su boleta de Shalom y los datos para recogerlo.", botones: ["Ver mi boleta", "Tengo una consulta"], ejemplo: ["María"] }
 };
 
+/**
+ * Rescate 1 con catálogo (dueño, 2026-10-18): la plantilla predeterminada del rescate del día 7 de Tarot. Dos botones de
+ * respuesta rápida: «REALIZAR PEDIDO» (el chat sube y la vendedora toma el pedido) y «VER CATÁLOGO» (el Worker
+ * le manda el catálogo al toque: catalogo-boton.js). Mientras Meta no la apruebe, el cron manda `rescate_lead_1`.
+ * No es un paso del plan «lead»: no cambia sus días ni su orden.
+ */
+export const RESCATE_CATALOGO = {
+  tarot: {
+    nombre: "rescate_lead_catalogo_1",
+    categoria: "MARKETING",
+    texto: "Hola {{1}} 🩷 espero que se encuentre muy bien. El envío es gratis a todo el Perú y en Lima paga al recibir ☺️ ¿Desea hacer su pedido o ver nuestro catálogo?",
+    botones: ["REALIZAR PEDIDO", "VER CATÁLOGO"],
+    ejemplo: ["María"],
+    respaldo: "rescate_lead_1"
+  }
+};
+
 export const planesDe = (marca) => (marca === "uro" ? PLANES_URO : PLANES);
 
 /** Planes de recojo en agencia: cuentan desde hoy (el despacho), no desde el último mensaje del cliente. */

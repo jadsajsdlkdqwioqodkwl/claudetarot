@@ -1046,6 +1046,15 @@ check("las letras de columna llegan hasta la última de la hoja",
       c.desde === "2026-10-10" && c.hasta === "2026-10-12" && c.resto === "maria" && d.desde === "2026-10-15" && d.tipo === "compra" &&
       e.desde === null && f.desde === "2025-12-31");
   }
+  {
+    const { propuestasDe } = await import(join(root, "src/lib/plantillas-propuestas.js"));
+    const { esBotonVerCatalogo } = await import(join(root, "src/lib/catalogo-boton.js"));
+    const { plantillasDia7 } = await import(join(root, "src/lib/rescate-lead.js"));
+    const rc = propuestasDe("tarot").find((x) => x.nombre === "rescate_lead_catalogo_1");
+    const bots = rc?.componentes?.find((c) => c.type === "BUTTONS")?.buttons?.map((b) => b.text) || [];
+    check("rescate 1 con catálogo: botones REALIZAR PEDIDO y VER CATÁLOGO, el segundo manda el catálogo, y es el del día 7 de fábrica",
+      bots.join("|") === "REALIZAR PEDIDO|VER CATÁLOGO" && esBotonVerCatalogo(bots[1]) && (await plantillasDia7({ prepare: () => ({ bind: () => ({ first: async () => null }), first: async () => null }) })).tarot === "rescate_lead_catalogo_1");
+  }
   check("seguimiento aprobado del asesor y texto de Shalom no reflotan el chat",
     /undefined, \{ subirEnBandeja: false \}, botones\)/.test(readFileSync(join(root, "src/api/crm/sugerencias.js"), "utf8")) &&
     /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));

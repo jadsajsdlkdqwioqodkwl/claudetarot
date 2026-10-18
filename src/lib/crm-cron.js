@@ -12,7 +12,7 @@
 
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
-import { encadenarRescate } from "./planes-plantilla.js";
+import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
@@ -185,6 +185,12 @@ export async function procesarSeguimientosVencidos(env) {
         // Plantilla: para escribirle a alguien fuera de la ventana de 24h
         // (típico de un envío masivo a contactos viejos que no escribieron).
         const envChat = await envDeConversacion(env, s.conv_id);
+        // Rescate con catálogo sin aprobar en Meta (en revisión o rechazada): sale el de siempre, no espera.
+        if (s.template_name === RESCATE_CATALOGO.tarot.nombre && !(await plantillaAprobada(envChat, s.template_name).catch(() => null))) {
+          s.template_name = RESCATE_CATALOGO.tarot.respaldo;
+          s.template_params = null;
+          await env.CRM_DB.prepare("UPDATE scheduled_messages SET template_name = ?, body = ?, template_params = NULL WHERE id = ?").bind(s.template_name, `Plantilla: ${s.template_name}`, s.id).run();
+        }
         // Los seguimientos de plantilla guardan solo el nombre: las variables se arman al mandar.
         const parametros = s.template_params ? JSON.parse(s.template_params) : await parametrosDePlantilla(envChat, s.template_name, s.contact_nombre).catch(() => []);
         // Solo sale si Meta ya la aprobó en la cuenta de ese número: si el admin todavía no la mandó

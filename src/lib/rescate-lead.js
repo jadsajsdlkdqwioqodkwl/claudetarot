@@ -16,7 +16,7 @@
 
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { listarLineas } from "./lineas.js";
-import { planesDe, marcaDeLinea, IDIOMA_PLAN, PREFIJO_PLAN, textoDePaso } from "./planes-plantilla.js";
+import { planesDe, marcaDeLinea, IDIOMA_PLAN, PREFIJO_PLAN, textoDePaso, RESCATE_CATALOGO } from "./planes-plantilla.js";
 import { primerNombre } from "./plantillas.js";
 import { listarProductos } from "./productos.js";
 
@@ -45,14 +45,30 @@ function filaDePaso(db, c, marca, n, sendAt, quien, productos, elegida = null) {
 }
 
 const NO_COMPRO = "COALESCE(conv.etapa, 0) < 5 AND instr(' ' || COALESCE(conv.meta_tags, '') || ' ', ' purchase ') = 0";
-const TEMPLATES_RESCATE_1 = "('rescate_lead_1', 'uro_rescate_lead_1')";
+const TEMPLATES_RESCATE_1 = `('rescate_lead_1', 'uro_rescate_lead_1', '${RESCATE_CATALOGO.tarot.nombre}')`;
 const AJUSTE_PLANTILLAS = "rescate7_plantillas";
 
 /** La plantilla del día 7 de cada marca: { tarot, uro } (la de fábrica si el admin no eligió otra). */
 export async function plantillasDia7(db) {
   let elegidas = {};
   try { elegidas = JSON.parse((await obtenerAjuste(db, AJUSTE_PLANTILLAS)) || "{}") || {}; } catch { elegidas = {}; }
-  return { tarot: elegidas.tarot || nombrePaso("tarot", 1), uro: elegidas.uro || nombrePaso("uro", 1) };
+  return { tarot: elegidas.tarot || RESCATE_CATALOGO.tarot.nombre, uro: elegidas.uro || nombrePaso("uro", 1) };
+}
+
+/**
+ * Cuando Meta aprueba el rescate con catálogo, los rescates del día 7 de Tarot que ya estaban agendados con
+ * la de fábrica (`rescate_lead_1`) pasan a esa; los que el admin dejó con otra plantilla no se tocan. Una sola vez.
+ */
+export async function pasarAgendadosAlCatalogo(db) {
+  if ((await obtenerAjuste(db, "rescate7_catalogo_aplicado").catch(() => null)) === "1") return 0;
+  const nombre = RESCATE_CATALOGO.tarot.nombre;
+  const r = await db.prepare(
+    `UPDATE scheduled_messages SET template_name = ?, body = ?, template_params = NULL
+     WHERE status = 'pendiente' AND created_by LIKE ? AND template_name = ?
+       AND conversation_id IN (SELECT conv.id FROM conversations conv WHERE conv.linea_id IS NULL)`
+  ).bind(nombre, `Plantilla: ${nombre}`, `%${ORIGEN_DIA7}`, RESCATE_CATALOGO.tarot.respaldo).run();
+  await guardarAjuste(db, "rescate7_catalogo_aplicado", "1");
+  return r?.meta?.changes || 0;
 }
 
 /**
@@ -119,7 +135,7 @@ export async function ponerRescate7(db, activo) {
 /** Los rescates 1 que decidió el asesor: [{ whatsapp, motivo }] → { programados, rechazados: [{ whatsapp, razon }] }. */
 export async function rescateUnoPorAsesor(env, items) {
   const db = env.CRM_DB;
-  const [lineas, productos] = await Promise.all([listarLineas(db), listarProductos(db)]);
+  const [lineas, productos, elegidas] = await Promise.all([listarLineas(db), listarProductos(db), plantillasDia7(db)]);
   const recientes = (await db.prepare(
     "SELECT COUNT(*) AS n FROM scheduled_messages WHERE created_by LIKE ? AND created_at >= datetime('now', '-1 day')"
   ).bind(`%Asesor IA%`).first())?.n || 0;
@@ -144,10 +160,10 @@ export async function rescateUnoPorAsesor(env, items) {
     if (!c.last_inbound_at || c.last_inbound_at >= hace24h) { rechazar("escribió hace menos de 24 h (ahí van mensajes normales) o nunca escribió"); continue; }
     const marca = marcaDeLinea(c.linea_id ? lineas.find((l) => l.id === c.linea_id) : null);
     if (!marca) { rechazar("ese número no tiene plantillas de rescate"); continue; }
-    const ya = await db.prepare("SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND template_name = ? LIMIT 1").bind(c.id, nombrePaso(marca, 1)).first();
+    const ya = await db.prepare(`SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND template_name IN ${TEMPLATES_RESCATE_1} LIMIT 1`).bind(c.id).first();
     if (ya) { rechazar("ya se le programó o mandó el rescate 1"); continue; }
     if (cupo <= 0) { rechazar("tope diario de rescates del asesor"); continue; }
-    const f = filaDePaso(db, c, marca, 1, cuando, `Asesor IA${it.motivo ? ` · ${String(it.motivo).slice(0, 80)}` : ""}`, productos);
+    const f = filaDePaso(db, c, marca, 1, cuando, `Asesor IA${it.motivo ? ` · ${String(it.motivo).slice(0, 80)}` : ""}`, productos, elegidas[marca]);
     if (!f) { rechazar("sin plantilla"); continue; }
     filas.push(f); programados.push(wa); cupo--;
   }
