@@ -11,7 +11,9 @@
 
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as orderCable } from "./api/order-cable.js";
+import { onRequestPost as orderMasilla } from "./api/order-masilla.js";
 import { RUTA_LARGA_CABLE, HOST_CABLE } from "./lib/pedido-cable.js";
+import { RUTA_LARGA_MASILLA } from "./lib/pedido-masilla.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -134,6 +136,7 @@ import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
 const ROUTES = {
   "/api/order": { POST: order },
   "/api/order-cable": { POST: orderCable },
+  "/api/order-masilla": { POST: orderMasilla },
   "/api/upsell": { POST: upsell },
   "/api/diag": { GET: diag },
   "/api/setup": { POST: setup },
@@ -277,6 +280,16 @@ export default {
     if (pathname === `/${RUTA_LARGA_CABLE}` || pathname.startsWith(`/${RUTA_LARGA_CABLE}/`)) {
       const resto = pathname.slice(RUTA_LARGA_CABLE.length + 1).replace(/^\/+|\/+$/g, "");
       const archivo = resto === "gracias" ? "/cable/gracias.html" : "/cable/index.html";
+      const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
+    }
+
+    // La landing de la Masilla Selladora también se comparte con una ruta larga; es la misma página de /masilla/.
+    if (pathname === `/${RUTA_LARGA_MASILLA}` || pathname.startsWith(`/${RUTA_LARGA_MASILLA}/`)) {
+      const resto = pathname.slice(RUTA_LARGA_MASILLA.length + 1).replace(/^\/+|\/+$/g, "");
+      const archivo = resto === "gracias" ? "/masilla/gracias.html" : "/masilla/index.html";
       const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
       const headers = new Headers(res.headers);
       headers.set("Cache-Control", "public, max-age=0, must-revalidate");

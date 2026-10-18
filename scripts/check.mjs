@@ -1086,5 +1086,52 @@ check("las letras de columna llegan hasta la última de la hoja",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(cable + gr));
 }
 
+/* Landing de la Masilla Selladora (/masilla/): precios, archivos y enganches.
+   La prueba del endpoint con Google simulado es scripts/test-pedido-masilla.mjs. */
+{
+  const ms = readFileSync(join(root, "public/masilla/index.html"), "utf8");
+  const gr = readFileSync(join(root, "public/masilla/gracias.html"), "utf8");
+  const { PACKS, RUTA_LARGA_MASILLA, ADELANTO_PROVINCIA } = await import(join(root, "src/lib/pedido-masilla.js"));
+  for (const [id, p] of Object.entries(PACKS)) {
+    const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(ms);
+    check(`masilla: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
+      m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
+  }
+  check("masilla: la página llama a /api/order-masilla", ms.includes("'/api/order-masilla'"));
+  check("masilla: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(ms));
+  check("masilla: el logo y el badge de vendedor autorizado están en el formulario", ms.includes('class="logo-circle"') && /Vendedor autorizado/.test(ms));
+  check("masilla: la ruta larga del Worker apunta a /masilla/ y la página redirige relativa a su ruta",
+    /RUTA_LARGA_MASILLA/.test(readFileSync(join(root, "src/index.js"), "utf8")) && RUTA_LARGA_MASILLA.length > 60 &&
+    /location\.pathname\.replace\(\/\\\/\+\$\/, ''\) \+ '\/gracias\?v='/.test(ms));
+  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fCiudad", "fSucursal", "shipCasa", "shipAg", "fWebsite", "btnPedido"]) {
+    check(`masilla: index.html tiene #${id}`, ms.includes(`id="${id}"`));
+  }
+  const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
+  check("masilla: PIXEL_ID y WA_NUMERO son iguales en la página y en gracias",
+    dato(ms, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(ms, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
+  check("masilla: los datos personales no viajan por la URL de gracias",
+    /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(ms) && ms.includes("sessionStorage.setItem('pedidoMasilla'"));
+  check("masilla: solo eventos hasta InitiateCheckout (gracias sin Lead/Contact/Purchase)", !/track\('(Lead|Contact|Purchase)'/.test(ms + gr) && /fbTrack\('InitiateCheckout'/.test(ms));
+  check("masilla: píxel de Puerto Secreto (no el de Tarot)", dato(ms, "PIXEL_ID") === "1788156381816025");
+  const faltan = [];
+  const tamanos = [];
+  for (const [, ruta] of ms.matchAll(/(?:src|href|data-src|poster|content)="(\/masilla\/[^"]+)"/g)) {
+    if (!existsSync(join(root, "public", ruta))) faltan.push(ruta);
+  }
+  for (const d of ["img", "video"]) {
+    for (const f of readdirSync(join(root, "public/masilla", d))) {
+      const mb = statSync(join(root, "public/masilla", d, f)).size / 1024 / 1024;
+      if (mb > (f.endsWith(".mp4") ? 2.5 : 1)) tamanos.push(`${d}/${f} ${mb.toFixed(1)} MB`);
+    }
+  }
+  check("masilla: todas las fotos y videos que usa la página existen", !faltan.length, faltan.join(", "));
+  check("masilla: ninguna foto pasa de 1 MB ni video de 2,5 MB", !tamanos.length, tamanos.join(", "));
+  check("masilla: _headers no solapa reglas de /masilla/ (Cloudflare junta sus encabezados)", !/^\/masilla\/\*\s*$/m.test(headers));
+  check("masilla: la página no menciona el cable ni su garantía de 90 días (se copió de la del Cable)",
+    !/\b(cable|USB|Lightning|90 días)\b/i.test(ms + gr));
+  check("masilla: no queda texto en inglés quemado en la página",
+    !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(ms + gr));
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);
