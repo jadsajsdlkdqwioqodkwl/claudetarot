@@ -101,6 +101,9 @@
   "vars": {
     "GOOGLE_SHEET_ID": "1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc",
     "GOOGLE_SHEET_NAME": "Pedidos",
+    // Landing del Cable (/cable/): sus pedidos caen en la pestaña "Cable" de este mismo libro, que se crea sola.
+    // Para mandarlos a OTRO libro (compartido como Editor con GOOGLE_CLIENT_EMAIL) o con otro nombre de pestaña,
+    // agregar aquí GOOGLE_CABLE_SHEET_ID y/o GOOGLE_CABLE_SHEET_NAME. Ver docs/cable.md.
     // La pestaña del CRM manual de ventas, la que alimenta el seguimiento.
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
