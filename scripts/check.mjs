@@ -1036,6 +1036,16 @@ check("las letras de columna llegan hasta la última de la hoja",
     !/reflotarSinRespuesta/.test(readFileSync(join(root, "src/index.js"), "utf8")) &&
     !/reflotarSinRespuesta/.test(readFileSync(join(root, "src/lib/crm-sugerencias.js"), "utf8")) &&
     /atencion/.test(readFileSync(join(root, "src/api/crm/conversations.js"), "utf8")));
+  {
+    const { extraerFechas } = await import(join(root, "src/lib/busqueda-fechas.js"));
+    const ahora = Date.UTC(2026, 9, 18, 15); // 18/10/2026 10:00 Lima
+    const t = (q) => extraerFechas(q, ahora);
+    const a = t("venta del 15/10"), b = t("ayer"), c = t("10/10 al 12/10 maria"), d = t("ventas 15 oct"), e = t("lucia"), f = t("31/12");
+    check("buscador con fechas: venta del 15/10, ayer, rangos, '15 oct', año anterior y texto sin fecha",
+      a.desde === "2026-10-15" && a.tipo === "compra" && a.resto === "" && b.desde === "2026-10-17" && b.tipo === "actividad" &&
+      c.desde === "2026-10-10" && c.hasta === "2026-10-12" && c.resto === "maria" && d.desde === "2026-10-15" && d.tipo === "compra" &&
+      e.desde === null && f.desde === "2025-12-31");
+  }
   check("seguimiento aprobado del asesor y texto de Shalom no reflotan el chat",
     /undefined, \{ subirEnBandeja: false \}, botones\)/.test(readFileSync(join(root, "src/api/crm/sugerencias.js"), "utf8")) &&
     /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));

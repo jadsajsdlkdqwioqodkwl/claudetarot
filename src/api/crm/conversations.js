@@ -20,6 +20,7 @@
  * de Workers tiene tope de requests por día.
  */
 
+import { extraerFechas, limitesUtc } from "../../lib/busqueda-fechas.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
 import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
@@ -110,7 +111,19 @@ async function handler({ request, env, agent }) {
     condiciones.push("conv.last_message_at >= datetime('now', ?)");
     params.push(`-${dias} days`);
   }
-  const tokens = tokensBusqueda(q);
+  // Fechas en el buscador: «venta del 15/10», «ayer», «10/10 al 12/10» (ver busqueda-fechas.js).
+  const fechas = extraerFechas(q);
+  if (fechas.desde) {
+    const [ini, fin] = limitesUtc(fechas.desde, fechas.hasta);
+    if (fechas.tipo === "compra") {
+      condiciones.push("conv.id IN (SELECT e.conversation_id FROM capi_events e WHERE e.event_name = 'Purchase' AND e.created_at >= ? AND e.created_at < ?)");
+    } else {
+      condiciones.push("conv.last_message_at >= ? AND conv.id IN (SELECT m.conversation_id FROM messages m WHERE m.created_at >= ? AND m.created_at < ?)");
+      params.push(ini);
+    }
+    params.push(ini, fin);
+  }
+  const tokens = tokensBusqueda(fechas.desde ? fechas.resto : q);
   if (url.searchParams.get("ocultos") === "1") condiciones.push("(conv.hidden = 1 OR conv.blocked = 1)");
   else if (!tokens.length) condiciones.push("conv.hidden = 0 AND conv.blocked = 0");
   for (const t of tokens) {
@@ -211,8 +224,8 @@ async function handler({ request, env, agent }) {
   const hayMas = results.length > limite;
   const conversations = hayMas ? results.slice(0, limite) : results;
   return json(chat
-    ? { conversations, hay_mas: hayMas, atencion_total: atencionTotal, chat: { conversation_id: chatId, ...chat } }
-    : { conversations, hay_mas: hayMas, atencion_total: atencionTotal });
+    ? { conversations, hay_mas: hayMas, atencion_total: atencionTotal, busqueda_fecha: fechas.desde ? { tipo: fechas.tipo, desde: fechas.desde, hasta: fechas.hasta } : null, chat: { conversation_id: chatId, ...chat } }
+    : { conversations, hay_mas: hayMas, atencion_total: atencionTotal, busqueda_fecha: fechas.desde ? { tipo: fechas.tipo, desde: fechas.desde, hasta: fechas.hasta } : null });
 }
 
 export const onRequestGet = conAuth(handler);

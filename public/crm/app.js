@@ -1700,6 +1700,7 @@ function sincronizar() {
     estado.conversaciones = data.conversations;
     estado.hayMasChats = Boolean(data.hay_mas);
     estado.atencionTotal = data.atencion_total || 0;
+    estado.busquedaFecha = data.busqueda_fecha || null;
     pintarColaAtencion();
     for (const [id, local] of asignacionesLocales) {
       if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
@@ -1973,7 +1974,7 @@ function pintarLista() {
     cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">No hay chats ocultos ni contactos bloqueados.</p>`);
   }
   if (!estado.conversaciones.length && estado.filtroTexto) {
-    cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">Nada con "${escapar(estado.filtroTexto)}"${estado.filtroDias ? " en ese periodo. Prueba con Todo el historial." : "."}</p>`);
+    cont.insertAdjacentHTML("beforeend", `<p class="lista-vacia">${estado.busquedaFecha ? `${estado.busquedaFecha.tipo === "compra" ? "Ventas" : "Chats con mensajes"} del ${estado.busquedaFecha.desde === estado.busquedaFecha.hasta ? fechaLimaCorta(estado.busquedaFecha.desde) : `${fechaLimaCorta(estado.busquedaFecha.desde)} al ${fechaLimaCorta(estado.busquedaFecha.hasta)}`}: ` : ""}Nada con "${escapar(estado.filtroTexto)}"${estado.filtroDias ? " en ese periodo. Prueba con Todo el historial." : "."}</p>`);
   }
   if (estado.hayMasChats) {
     const mas = document.createElement("button");
@@ -2109,18 +2110,18 @@ function resaltarBusqueda(texto) {
   return out;
 }
 
-/** Cola «Atención pendiente»: franja visible bajo los filtros; tocarla deja solo esos chats. */
+/** Filtro «Atención pendiente»: botón naranja tenue al lado de «Todos», con el número que sube solo en cada sincronización. */
 function pintarColaAtencion() {
-  const b = $("#cola-atencion");
+  const b = $("#btn-filtro-atencion");
   if (!b) return;
   b.classList.toggle("activo", estado.filtroAtencion);
   b.classList.toggle("vacia", !estado.atencionTotal);
-  b.innerHTML = `${icon("alertCircle")} <span>Atención pendiente</span> <span class="cola-n">${estado.atencionTotal}</span>${estado.filtroAtencion ? ` <span class="cola-ver">Ver todos</span>` : ""}`;
+  b.innerHTML = `${icon("alertCircle")} Atención <span class="cola-n">${estado.atencionTotal}</span>`;
 }
 
-$("#cola-atencion")?.addEventListener("click", () => {
+$("#btn-filtro-atencion")?.addEventListener("click", () => {
   estado.filtroAtencion = !estado.filtroAtencion;
-  pintarColaAtencion();
+  pintarFiltros();
   cargarConversaciones();
 });
 
@@ -2130,6 +2131,7 @@ function pintarFiltros() {
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
   $("#filtro-linea").classList.toggle("activo", estado.filtroLinea !== "");
+  pintarColaAtencion();
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-olva").classList.toggle("activo", estado.filtroOlva);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
@@ -2157,7 +2159,6 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroLinea = "";
   }
   pintarFiltros();
-  pintarColaAtencion();
   cargarConversaciones();
 });
 
@@ -3499,6 +3500,12 @@ const ETAPAS = [["purchase", "Compra"], ["lead", "Interés"], ["contact", "Conta
 
 /** La etapa más avanzada del chat, como etiqueta en la lista. */
 /** "28/09" en hora de Lima, desde la fecha UTC de D1 (o una ISO). */
+/** 'AAAA-MM-DD' → 'DD/MM'. */
+function fechaLimaCorta(f) {
+  const [, m, d] = String(f).split("-");
+  return `${d}/${m}`;
+}
+
 function diaMesLima(fecha) {
   if (!fecha) return "";
   const d = new Date(fecha.includes("T") ? fecha : fecha.replace(" ", "T") + "Z");
