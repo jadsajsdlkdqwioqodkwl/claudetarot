@@ -55,6 +55,10 @@ const ATENCION_FALTA = `(lm.direction = 'in' AND (conv.atendido_at IS NULL OR co
 const ATENCION_REC = `EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
                 AND sg.tipo = 'seguimiento' AND (sg.reflotada_at IS NOT NULL OR conv.last_inbound_at IS NULL OR conv.last_inbound_at < datetime('now', '-24 hours')))`;
 
+// En la cola, «Falta respuesta» solo cuenta si el mensaje del cliente es de los últimos 3 días: los chats viejos
+// sin contestar (leads perdidos) la llenarían de ruido; siguen con su etiqueta en la lista normal.
+const ATENCION_COLA = `((${ATENCION_FALTA} AND conv.last_inbound_at >= datetime('now', '-3 days')) OR ${ATENCION_REC})`;
+
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -95,7 +99,7 @@ async function handler({ request, env, agent }) {
     if (Number(linea)) { condiciones.push("conv.linea_id = ?"); params.push(Number(linea)); }
     else condiciones.push("conv.linea_id IS NULL");
   }
-  if (url.searchParams.get("atencion") === "1") condiciones.push(`(${ATENCION_FALTA} OR ${ATENCION_REC})`);
+  if (url.searchParams.get("atencion") === "1") condiciones.push(ATENCION_COLA);
   if (url.searchParams.get("olva") === "1") condiciones.push("c.olva = 1"); // los chats marcados «Envío por Olva»
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
@@ -201,7 +205,7 @@ async function handler({ request, env, agent }) {
   const { n: atencionTotal } = await env.CRM_DB.prepare(
     `SELECT COUNT(*) AS n FROM conversations conv
      LEFT JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
-     WHERE conv.hidden = 0 AND conv.blocked = 0 AND (${ATENCION_FALTA} OR ${ATENCION_REC}) ${restr.map((r) => `AND ${r}`).join(" ")}`
+     WHERE conv.hidden = 0 AND conv.blocked = 0 AND ${ATENCION_COLA} ${restr.map((r) => `AND ${r}`).join(" ")}`
   ).bind(...rp).first();
 
   const hayMas = results.length > limite;
