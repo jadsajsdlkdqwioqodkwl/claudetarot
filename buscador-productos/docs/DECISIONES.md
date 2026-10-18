@@ -232,3 +232,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Hallazgo:** EXPLORA corrió una sola vez (2026-10-14-e). En la hoja Exploración quedan 11 pruebas «Por probar» (regiones SG/PH/MY/IE y otras, orden por crecimiento, subcategorías no leídas, Pages:100, banda 500-999, ficha de producto, búsqueda por texto) y nunca se corrieron; EXPLORA no formaba parte de BUSCA AÉREO.
 - **Cambio:** INSTR 08 v1.14: alias «INICIA AEREO»; fase 1B corre hasta 6 pruebas de Exploración (tope 150 créditos) cuando quedan más de 300 créditos; el principal lee que D39 sea v4 y D40 v7, y escribe nota de Sesiones y Laboratorio aunque la corrida sea parcial. ARRANQUE del proyecto actualizado. Sesiones fila 880 (-d) cerrada con nota.
 - **Revertir:** quitar el párrafo v1.14 de INSTR 08 y la frase de alias del ARRANQUE.
+
+## D-034 (2026-10-18) Lazo de EXPLORA: los hallazgos entran al plan de carga
+
+- **Pregunta del dueño:** en qué parte del loop los hallazgos de EXPLORA amplían los parámetros o lugares de búsqueda.
+- **Hallazgo:** no había punto de integración. La columna «Uso sugerido» de Exploración era solo una nota; el cargador no leía esa pestaña y los cambios al plan los hacía MEJORA a mano.
+- **Cambio:** `Recetas!D40` v8 (el cargador lee Exploración A:K, carga primero las recetas Confirmada/Parcial con K vacía, las marca «Integrada» y sube regiones/categorías nuevas a Recetas D38). INSTR 08 v1.15 (el Juez marca «Agotada» lo que rinde menos que el plan base). Columna K de Exploración = estado de integración.
+- **Revertir:** quitar el párrafo inicial de D40 v8 y el párrafo v1.15 de INSTR 08.
