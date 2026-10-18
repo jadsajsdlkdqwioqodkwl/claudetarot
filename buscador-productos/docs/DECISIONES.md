@@ -225,3 +225,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Evidencia (sesión 2026-10-17-d):** ~760 créditos cargados, RANKEA devolvió su primera tanda y el orquestador no la escribió en Productos y preguntó «¿sigo o cortas aquí?». Segunda vez que el paso de «copiar lo que devuelve el subagente» se pierde en el principal.
 - **Cambio:** `Recetas!D39` v4: el subagente recibe `FILA_INICIAL` e `ID_INICIAL` (bloque de 10 propio), escribe él sus filas de Productos (solo columnas no-fórmula, nunca AD:AF) y marca Crudo R:S de todas sus filas; devuelve una línea por grupo. INSTR 08 v1.13: el principal reserva bloques, cuenta `Config!B100`, copia SOBREEXPLOTADO a Excluidos y sigue; prohibido preguntar «¿sigo o corto?» o cerrar por «datos estimados».
 - **Revertir:** `Recetas!D39` v3 (el subagente devuelve, el principal escribe) + quitar el párrafo v1.13 de INSTR 08.
+
+## D-033 (2026-10-18) «INICIA AEREO» = BUSCA AÉREO y EXPLORA integrada como fase 1B
+
+- **Pregunta del dueño:** si EXPLORA ya exploró todo y qué falta para que un solo comando dé todo.
+- **Hallazgo:** EXPLORA corrió una sola vez (2026-10-14-e). En la hoja Exploración quedan 11 pruebas «Por probar» (regiones SG/PH/MY/IE y otras, orden por crecimiento, subcategorías no leídas, Pages:100, banda 500-999, ficha de producto, búsqueda por texto) y nunca se corrieron; EXPLORA no formaba parte de BUSCA AÉREO.
+- **Cambio:** INSTR 08 v1.14: alias «INICIA AEREO»; fase 1B corre hasta 6 pruebas de Exploración (tope 150 créditos) cuando quedan más de 300 créditos; el principal lee que D39 sea v4 y D40 v7, y escribe nota de Sesiones y Laboratorio aunque la corrida sea parcial. ARRANQUE del proyecto actualizado. Sesiones fila 880 (-d) cerrada con nota.
+- **Revertir:** quitar el párrafo v1.14 de INSTR 08 y la frase de alias del ARRANQUE.
