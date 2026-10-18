@@ -1080,6 +1080,53 @@ console.log("\nMasilla selladora (/sellador)");
   check("sellador: los datos del cliente no viajan por la URL a /gracias",
     !/gracias\.html\?[^'"]*(nombre|telefono|tel=)/.test(selHtml) && selGracias.includes("sessionStorage"));
   check("sellador: el formulario manda al endpoint propio", selHtml.includes("'/api/order-sellador'"));
+/* Landing del Cable con Soporte 2 en 1 (/cable/): precios, archivos y enganches.
+   La prueba del endpoint con Google simulado es scripts/test-pedido-cable.mjs. */
+{
+  const cable = readFileSync(join(root, "public/cable/index.html"), "utf8");
+  const gr = readFileSync(join(root, "public/cable/gracias.html"), "utf8");
+  const { PACKS, CONECTORES, RUTA_LARGA_CABLE, ADELANTO_PROVINCIA, HOST_CABLE } = await import(join(root, "src/lib/pedido-cable.js"));
+  for (const [id, p] of Object.entries(PACKS)) {
+    const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(cable);
+    check(`cable: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
+      m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
+  }
+  check("cable: la página llama a /api/order-cable", cable.includes("'/api/order-cable'"));
+  check("cable: el dominio largo es válido (label de 63 o menos) y el Worker lo atiende", HOST_CABLE.split(".")[0].length <= 63 && /HOST_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && HOST_CABLE.endsWith(".tarotperu.store"));
+  check("cable: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(cable));
+  check("cable: el logo y el badge de vendedor autorizado están en el formulario", cable.includes('class="logo-circle"') && /Vendedor autorizado/.test(cable));
+  check("cable: la página manda los conectores que el servidor acepta y no ofrece color",
+    CONECTORES.every((c) => cable.includes(`id: '${c}'`)) && !/data-k="color"|COLORES/.test(cable));
+  check("cable: la ruta larga del Worker apunta a /cable/ y la página redirige relativa a su ruta",
+    /RUTA_LARGA_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && RUTA_LARGA_CABLE.length > 60 &&
+    /location\.pathname\.replace\(\/\\\/\+\$\/, ''\) \+ '\/gracias\?v='/.test(cable));
+  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fCiudad", "fSucursal", "shipCasa", "shipAg", "fWebsite", "btnPedido"]) {
+    check(`cable: index.html tiene #${id}`, cable.includes(`id="${id}"`));
+  }
+  const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
+  check("cable: PIXEL_ID y WA_NUMERO son iguales en la página y en gracias",
+    dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
+  check("cable: los datos personales no viajan por la URL de gracias",
+    /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
+  check("cable: solo eventos hasta InitiateCheckout (gracias sin Lead/Contact/Purchase)", !/track\('(Lead|Contact|Purchase)'/.test(cable + gr) && /fbTrack\('InitiateCheckout'/.test(cable));
+  check("cable: píxel de Puerto Secreto (no el de Tarot)", dato(cable, "PIXEL_ID") === "1788156381816025");
+  const faltan = [];
+  const tamanos = [];
+  for (const [, ruta] of cable.matchAll(/(?:src|href|data-src|poster|content)="(\/cable\/[^"]+)"/g)) {
+    if (!existsSync(join(root, "public", ruta))) faltan.push(ruta);
+  }
+  for (const d of ["img", "video"]) {
+    for (const f of readdirSync(join(root, "public/cable", d))) {
+      const mb = statSync(join(root, "public/cable", d, f)).size / 1024 / 1024;
+      if (mb > (f.endsWith(".mp4") ? 2.5 : 1)) tamanos.push(`${d}/${f} ${mb.toFixed(1)} MB`);
+    }
+  }
+  check("cable: todas las fotos y videos que usa la página existen", !faltan.length, faltan.join(", "));
+  check("cable: ninguna foto pasa de 1 MB ni video de 2,5 MB", !tamanos.length, tamanos.join(", "));
+  check("cable: _headers no solapa reglas de /cable/ (Cloudflare junta sus encabezados)",
+    !/^\/cable\/\*\s*$/m.test(headers));
+  check("cable: no queda texto en inglés quemado en la página",
+    !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(cable + gr));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

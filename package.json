@@ -5,7 +5,7 @@
   "description": "Product page COD en Cloudflare Workers, con Google Sheets como CRM",
   "scripts": {
     "dev": "wrangler dev",
-    "check": "node --no-warnings scripts/test-seguimientos-rapida.mjs && node scripts/check.mjs",
+    "check": "node --no-warnings scripts/test-seguimientos-rapida.mjs && node scripts/test-pedido-cable.mjs && node scripts/check.mjs",
     "setup:sheet": "NODE_USE_ENV_PROXY=1 node scripts/setup-sheet.mjs",
     "deploy": "wrangler deploy",
     "check:gs": "node scripts/check-gs.mjs",

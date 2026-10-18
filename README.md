@@ -600,6 +600,10 @@ recién hecho puede tardar hasta 20 s en verse en la página del cliente.
 **Precios**: viven en `src/lib/pedido.js`. Si los cambias, actualiza también los textos
 de `public/index.html` — `npm run check` avisa si dejan de coincidir.
 
+## Landing del Cable con Soporte 2 en 1 — `/cable/`
+
+Otra página COD, solo Lima, con su propio endpoint (`POST /api/order-cable`) y su pestaña «Cable» en el mismo libro de Pedidos (se crea sola con el primer pedido). Todo el detalle —archivos, columnas, qué completar antes de lanzar— está en [`docs/cable.md`](docs/cable.md).
+
 ## CRM de WhatsApp — `/crm`
 
 Bandeja de entrada tipo WhatsApp Business / Meta Business Suite para la **WhatsApp Cloud

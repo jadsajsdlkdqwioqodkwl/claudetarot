@@ -45,3 +45,19 @@
 /seguimiento.html
   Cache-Control: public, max-age=0, must-revalidate
   X-Robots-Tag: noindex, nofollow
+
+# Landing del Cable con Soporte 2 en 1 (/cable/). El HTML se revalida siempre;
+# fotos y videos no cambian de contenido sin cambiar de nombre. Las reglas no se
+# solapan a propósito: Cloudflare junta los encabezados de todas las que coinciden.
+/cable/
+  Cache-Control: public, max-age=0, must-revalidate
+/cable/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/cable/gracias
+  Cache-Control: public, max-age=0, must-revalidate
+/cable/gracias.html
+  Cache-Control: public, max-age=0, must-revalidate
+/cable/img/*
+  Cache-Control: public, max-age=31536000, immutable
+/cable/video/*
+  Cache-Control: public, max-age=31536000, immutable

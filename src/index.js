@@ -10,6 +10,8 @@
  */
 
 import { onRequestPost as order } from "./api/order.js";
+import { onRequestPost as orderCable } from "./api/order-cable.js";
+import { RUTA_LARGA_CABLE, HOST_CABLE } from "./lib/pedido-cable.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestPost as orderSellador } from "./api/order-sellador.js";
 import { onRequestGet as diag } from "./api/diag.js";
@@ -132,6 +134,7 @@ import { cancelarLinksAutomaticos } from "./lib/crm-links-envio.js";
 
 const ROUTES = {
   "/api/order": { POST: order },
+  "/api/order-cable": { POST: orderCable },
   "/api/upsell": { POST: upsell },
   "/api/order-sellador": { POST: orderSellador },
   "/api/diag": { GET: diag },
@@ -280,6 +283,25 @@ export default {
 
     if (pathname === RUTA_SELLADOR_LARGA || pathname === RUTA_SELLADOR_LARGA + "/") {
       return paginaSellador(request, env);
+    }
+
+    // En el dominio largo del Cable, «/» es la landing y «/gracias» su gracias (el resto, archivos y /api, igual que siempre).
+    if (new URL(request.url).hostname === HOST_CABLE && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
+      const archivo = pathname === "/" ? "/cable/index.html" : "/cable/gracias.html";
+      const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
+    }
+
+    // La landing del Cable se comparte con una ruta larga; es la misma página de /cable/.
+    if (pathname === `/${RUTA_LARGA_CABLE}` || pathname.startsWith(`/${RUTA_LARGA_CABLE}/`)) {
+      const resto = pathname.slice(RUTA_LARGA_CABLE.length + 1).replace(/^\/+|\/+$/g, "");
+      const archivo = resto === "gracias" ? "/cable/gracias.html" : "/cable/index.html";
+      const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
     }
 
     if (RE_RUTA_SEGUIMIENTO.test(pathname)) {
