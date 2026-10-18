@@ -47,6 +47,10 @@
   .g-slide.contain { background:#2f2931; }
   .g-slide.contain img { object-fit:contain; }
   .g-count { position:absolute; right:12px; top:12px; background:rgba(17,17,17,.7); color:#fff; font-size:12px; font-weight:600; padding:3px 10px; border-radius:999px; }
+  /* v2: la galería es 4:5 como los videos (no se recorta); las fotos cuadradas se ven completas sobre blanco */
+  .g-track { aspect-ratio:4/5; background:#fff; }
+  .g-slide img, .g-slide video { width:100%; height:100%; object-fit:contain; display:block; background:#fff; }
+  .g-slide video { object-fit:cover; }
   .g-thumbs { display:flex; gap:8px; padding:10px 16px 0; }
   .g-thumbs button { width:64px; height:64px; padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden; cursor:pointer; background:var(--soft); opacity:.75; }
   .g-thumbs button.on { border-color:var(--ink); opacity:1; }
@@ -263,7 +267,7 @@
   <!-- Galería -->
   <div class="gallery">
     <div class="g-track" id="gTrack">
-      <div class="g-slide"><img src="/cable-v2/img/hero-accion.gif" data-thumb="/cable-v2/img/hero-miniatura.webp" alt="Cable de carga con soporte plegable en acción: sostiene el celular mientras carga y se guarda en su bolsita de regalo" width="320" height="320" fetchpriority="high" decoding="async"></div>
+      <div class="g-slide" data-thumb="/cable/video/en-accion-3.webp"><video autoplay muted loop playsinline preload="auto" poster="/cable/video/en-accion-3.webp" src="/cable/video/en-accion-3.mp4" aria-label="El celular en vertical y en horizontal sobre el soporte del cable"></video></div>
       <div class="g-slide"><img src="/cable/img/principal.webp" alt="Cable de carga naranja con módulo de soporte plegable que apoya el celular en vertical u horizontal" width="800" height="800" loading="lazy"></div>
       <div class="g-slide"><img src="/cable/img/power-delivery.webp" alt="Carga rápida compatible con Power Delivery, con el celular apoyado en el soporte" width="1000" height="1000" loading="lazy"></div>
       <div class="g-slide"><img src="/cable/img/naranja.webp" alt="Cable de carga con módulo de soporte plegable, color naranja" width="1000" height="1000" loading="lazy"></div>
@@ -332,10 +336,10 @@
     </div>
     <div class="vc">
       <div class="vbox" role="button" tabindex="0" aria-label="Pausar o reproducir el video">
-        <video muted loop playsinline preload="none" poster="/cable/video/en-accion-3.webp" data-src="/cable/video/en-accion-3.mp4" aria-label="El celular en vertical y en horizontal sobre el soporte"></video>
+        <video muted loop playsinline preload="none" poster="/cable-v2/video/bolsa-regalo.webp" data-src="/cable-v2/video/bolsa-regalo.mp4" aria-label="El cable con el celular apoyado y guardándose en su bolsita de regalo"></video>
         <span class="pp"><svg class="ico"><use href="#i-pause"/></svg></span>
       </div>
-      <p>Vertical u horizontal: el celular queda firme como lo necesites</p>
+      <p>Se guarda en su bolsita de regalo, lista para llevar a todos lados</p>
     </div>
   </div>
 </section>
@@ -519,8 +523,8 @@
     slides.forEach(function (s, i) {
       var b = document.createElement('button'); b.type = 'button';
       b.setAttribute('aria-label', 'Ver foto ' + (i + 1));
-      var im = s.querySelector('img');
-      b.innerHTML = '<img src="' + (im.getAttribute('data-thumb') || im.getAttribute('src')) + '" alt="" width="64" height="64" loading="lazy">';
+      var th0 = s.getAttribute('data-thumb') || s.querySelector('img').getAttribute('src');
+      b.innerHTML = '<img src="' + th0 + '" alt="" width="64" height="64" loading="lazy">';
       b.addEventListener('click', function () { tr.scrollTo({ left: i * tr.clientWidth, behavior: 'smooth' }); });
       th.appendChild(b);
     });

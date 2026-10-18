@@ -58,6 +58,6 @@ la hoja guarda «N sachets» en Detalle. **Precios confirmados por el dueño (20
   `/masilla/` o la ruta larga `RUTA_LARGA_MASILLA`.
 - Reseñas: no hay; la página no trae reseñas inventadas.
 
-## Versión 2 (2026-10-18): hero en GIF
+## Versión 2 (2026-10-18): hero en video
 
-`public/masilla-v2/` es una copia de `public/masilla/` (misma página, mismo endpoint, mismos precios; las fotos y videos se siguen sirviendo desde `/masilla/…`). Cambia solo la primera imagen de la galería: `img/hero-accion.gif` (miniatura estática `img/hero-miniatura.webp`). El GIF sale de los videos de la v1 con ffmpeg (recorte cuadrado, 320 px, 9 fps, menos de 1 MB). Link: `https://puerto-secreto-masilla-selladora-moldeable-huecos-y-tuberias.tarotperu.store` (`HOST_MASILLA_V2`; hostname de Workers → `claudetarot`) o `/masilla-v2/` bajo cualquier dominio del Worker. Si se cambia el GIF hay que renombrarlo (`_headers` lo cachea un año). Si se cambia un precio o un texto común, hacerlo en las dos versiones.
+`public/masilla-v2/` es una copia de `public/masilla/` (misma página, mismo endpoint, mismos precios; las fotos y videos de la v1 se siguen sirviendo desde `/masilla/…`). La primera imagen de la galería es un video largo (17 s, 576×720, 4:5) hecho desde el original `imagenes-fuente/masilla/video-es-ES-1.mp4` (parte superior, sin subtítulos en inglés; mudo), `video/hero-masilla.mp4` con su portada `.webp`, en mejor calidad que el GIF de la primera entrega, que se descartó. La galería es 4:5 para no recortar. Si se cambia un video hay que renombrarlo (`_headers` lo cachea un año). Si se cambia un precio o un texto común, hacerlo en las dos versiones.

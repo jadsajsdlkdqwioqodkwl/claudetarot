@@ -1163,8 +1163,9 @@ check("las letras de columna llegan hasta la última de la hoja",
   const { HOST_MASILLA_V2 } = await import(join(root, "src/lib/pedido-masilla.js"));
   for (const [p, host, api] of [["cable", HOST_CABLE_V2, "/api/order-cable"], ["masilla", HOST_MASILLA_V2, "/api/order-masilla"]]) {
     const html = readFileSync(join(root, `public/${p}-v2/index.html`), "utf8");
-    check(`${p}-v2: la primera imagen de la galería es el GIF`, /class="g-slide"><img src="\/[a-z]+-v2\/img\/hero-accion\.gif"/.test(html));
-    check(`${p}-v2: el GIF y su miniatura existen`, existsSync(join(root, `public/${p}-v2/img/hero-accion.gif`)) && existsSync(join(root, `public/${p}-v2/img/hero-miniatura.webp`)));
+    check(`${p}-v2: la primera imagen de la galería es un video que se reproduce solo`, /class="g-slide" data-thumb="[^"]+"><video autoplay muted loop playsinline/.test(html));
+    const archivosV2 = [...html.matchAll(new RegExp(`(?:src|poster|data-src|data-thumb)="(/${p}-v2/[^"]+)"`, "g"))].map((m) => m[1]);
+    check(`${p}-v2: los videos y portadas propios de la v2 existen`, archivosV2.length >= 2 && archivosV2.every((r) => existsSync(join(root, "public", r))), archivosV2.join(", "));
     check(`${p}-v2: manda el pedido al mismo endpoint que la v1`, html.includes(`'${api}'`));
     check(`${p}-v2: el dominio largo es válido, no dice «tarot» y el Worker lo atiende`, host.split(".")[0].length <= 63 && !/tarot/i.test(host.split(".")[0]) && host.endsWith(".tarotperu.store") && idx.includes(host.startsWith("puerto-secreto-cable") ? "HOST_CABLE_V2" : "HOST_MASILLA_V2"));
   }

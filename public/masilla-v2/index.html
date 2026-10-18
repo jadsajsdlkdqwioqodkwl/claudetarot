@@ -47,6 +47,10 @@
   .g-slide.contain { background:#2f2931; }
   .g-slide.contain img { object-fit:contain; }
   .g-count { position:absolute; right:12px; top:12px; background:rgba(17,17,17,.7); color:#fff; font-size:12px; font-weight:600; padding:3px 10px; border-radius:999px; }
+  /* v2: la galería es 4:5 como los videos (no se recorta); las fotos cuadradas se ven completas sobre blanco */
+  .g-track { aspect-ratio:4/5; background:#fff; }
+  .g-slide img, .g-slide video { width:100%; height:100%; object-fit:contain; display:block; background:#fff; }
+  .g-slide video { object-fit:cover; }
   .g-thumbs { display:flex; gap:8px; padding:10px 16px 0; }
   .g-thumbs button { width:64px; height:64px; padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden; cursor:pointer; background:var(--soft); opacity:.75; }
   .g-thumbs button.on { border-color:var(--ink); opacity:1; }
@@ -267,7 +271,7 @@
   <!-- Galería -->
   <div class="gallery">
     <div class="g-track" id="gTrack">
-      <div class="g-slide"><img src="/masilla-v2/img/hero-accion.gif" data-thumb="/masilla-v2/img/hero-miniatura.webp" alt="Masilla selladora en acción: se moldea con la mano y se presiona alrededor de una tubería" width="320" height="320" fetchpriority="high" decoding="async"></div>
+      <div class="g-slide" data-thumb="/masilla-v2/video/hero-masilla.webp"><video autoplay muted loop playsinline preload="auto" poster="/masilla-v2/video/hero-masilla.webp" src="/masilla-v2/video/hero-masilla.mp4" aria-label="Masilla selladora en acción: se amasa y se presiona alrededor de una tubería"></video></div>
       <div class="g-slide"><img src="/masilla/img/real.webp" alt="Sachets de masilla selladora, cada uno individual" width="720" height="720" loading="lazy"></div>
       <div class="g-slide"><img src="/masilla/img/hueco.webp" alt="Hueco en la pared tapado con masilla selladora alisada con la mano" width="500" height="500" loading="lazy"></div>
       <div class="g-slide"><img src="/masilla/img/tuberia.webp" alt="Mano moldeando masilla blanca alrededor de una tubería" width="500" height="500" loading="lazy"></div>
@@ -525,8 +529,8 @@
     slides.forEach(function (s, i) {
       var b = document.createElement('button'); b.type = 'button';
       b.setAttribute('aria-label', 'Ver foto ' + (i + 1));
-      var im = s.querySelector('img');
-      b.innerHTML = '<img src="' + (im.getAttribute('data-thumb') || im.getAttribute('src')) + '" alt="" width="64" height="64" loading="lazy">';
+      var th0 = s.getAttribute('data-thumb') || s.querySelector('img').getAttribute('src');
+      b.innerHTML = '<img src="' + th0 + '" alt="" width="64" height="64" loading="lazy">';
       b.addEventListener('click', function () { tr.scrollTo({ left: i * tr.clientWidth, behavior: 'smooth' }); });
       th.appendChild(b);
     });
