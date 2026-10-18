@@ -67,6 +67,12 @@ el despacho sin ser venta nueva del día lleva `tipo` (`CAMBIO`, `REPOSICION` o
 después de los confirmados y antes de los por confirmar, y cuentan en los kits
 a despachar (`ESPECIALES` en `scripts/asesor/enviar.py`).
 
+**Registro de pedidos (2026-10-18)**: `scripts/asesor/pedidos_estado.py` guarda en el
+Worker (`pedidos-estado/AAAA-MM-DD.json`) lo reportado de cada fecha de despacho, con el
+historial de corridas (`corridas`: nuevos, cambiados, quitados, no mencionados). Cada corrida
+de `enviar.py` se suma a lo anterior; los `OTRO_DIA` con `fecha_entrega` quedan agendados en
+su fecha como `AGENDADO`. Ver: `pedidos_estado.py ver AAAA-MM-DD`.
+
 **Cómo escribe el bot**: `CLAUDE.md` (lo lee cada Routine) le pide leer
 `docs/negocio.md`, `contexto.py` y la skill `voz-tarot-store` (ejemplos
 reales de las vendedoras). `enviar.py` descarta y lista las propuestas con

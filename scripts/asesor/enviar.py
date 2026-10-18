@@ -38,6 +38,7 @@ salida.json:
   "analisis": [{"whatsapp": "", "intencion": "alta|media|baja|ninguna", "resultado": "ganado|perdido|abierto",
                 "motivo": "", "objecion": "", "calidad": 1-5, "agente": "", "upsell": "", "nota": "coaching"}],
   "envios": [{"whatsapp": "", "nombre": "", "link": "https://…/TS-…", "motivo": "", "mensaje": ""}],
+  "quitar": [{"whatsapp": "", "motivo": "canceló / se pasó a otro día"}],   # único modo de sacar un pedido ya reportado (ver pedidos_estado.py)
   "rescates": [{"whatsapp": "", "motivo": "por qué tiene posibilidades de comprar"}],   # rescate de lead 1 (plantilla): SALE SOLO, sin aprobación
   "origen": "asesor 16:30"
 }
@@ -410,6 +411,32 @@ def main():
             if problemas:
                 sys.exit("NO SE ENVIÓ EL REPORTE: no cuadra con el CRM. Revisa cada chat y corrige salida.json:\n" + "\n".join(problemas))
             print("Cuadre con el CRM: OK (todo candidato del sistema está explicado en el reporte)", flush=True)
+    import pedidos_estado as _pe
+    mal_fecha = _pe.revisar_fechas(datos) if not solo_mensajes else []
+    if mal_fecha:
+        sys.exit("NO SE ENVIÓ: pedidos de Lima confirmados con entrega en otro día (regla 6 de negocio.md: separa hoy de otros días):\n"
+                 + "\n".join(mal_fecha))
+    registro = None
+    if datos.get("tipo_reporte") != "ventas" and not prueba and not solo_mensajes and "--sin-estado" not in args \
+            and clave and datos.get("fecha_objetivo") and datos.get("pedidos") is not None:
+        import pedidos_estado
+        try:
+            # Registro de pedidos por fecha de despacho: esta corrida se SUMA a lo ya reportado y deja su diferencia escrita.
+            previo = pedidos_estado.traer(clave, datos["fecha_objetivo"])
+            datos, dif = pedidos_estado.combinar(previo, datos)
+            registro = dif
+            print(f"Registro de pedidos {datos['fecha_objetivo']}: {len((previo or {}).get('pedidos', []))} ya reportados "
+                  f"+ esta corrida = {len(datos['pedidos'])}", flush=True)
+            for k, titulo in (("nuevos", "NUEVOS"), ("cambiados", "CAMBIARON"), ("quitados", "QUITADOS (con motivo)"),
+                              ("no_mencionados", "ya reportados que esta corrida NO mencionó (se conservan)")):
+                if dif[k]:
+                    print(f"  {titulo}: " + " | ".join(x if isinstance(x, str) else f"{x['pedido']} — {x['motivo'] or 'sin motivo'}" for x in dif[k]), flush=True)
+            _, sin_fecha = pedidos_estado.agenda(datos)
+            if sin_fecha:
+                print("⚠️ OTRO_DIA sin fecha de entrega entendible (pon `fecha_entrega` como AAAA-MM-DD para que quede agendado): "
+                      + " | ".join(sin_fecha), flush=True)
+        except RuntimeError as err:
+            sys.exit(f"NO SE ENVIÓ EL REPORTE: {err}. Reintenta; solo si el Worker está caído usa --sin-estado y dilo en la respuesta.")
     faltan = revisar_promesas(datos, carpeta, clave)
     if faltan:
         print("📦 PROMESAS DEL CHAT QUE NO ESTABAN EN `empaque` (se agregaron con ⚠️ al PDF; revisa cada chat y "
@@ -449,6 +476,11 @@ def main():
                                  f"{'Ventas' if ventas else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             cuerpo["resumen"] += f"\n📄 Reporte: {link}"
             print(f"REPORTE PDF: {link}", flush=True)
+            if registro is not None:
+                import pedidos_estado
+                futuros, _ = pedidos_estado.registrar(clave, datos, registro, datos.get("origen", "asesor"))
+                print(f"Registro de pedidos guardado ({len(datos['pedidos'])} pedidos)."
+                      + "".join(f" Agendados: {len(v)} para {f}." for f, v in futuros.items()), flush=True)
             if estado_nuevo:
                 import ventas_estado
                 ventas_estado.guardar(clave, estado_nuevo.get("fecha_objetivo", ""), estado_nuevo)
