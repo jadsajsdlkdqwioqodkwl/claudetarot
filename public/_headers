@@ -64,3 +64,27 @@
   Cache-Control: public, max-age=31536000, immutable
 /masilla/video/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Versión 2 de /cable/ (hero en GIF): mismas reglas, sin solapes.
+/cable-v2/
+  Cache-Control: public, max-age=0, must-revalidate
+/cable-v2/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/cable-v2/gracias
+  Cache-Control: public, max-age=0, must-revalidate
+/cable-v2/gracias.html
+  Cache-Control: public, max-age=0, must-revalidate
+/cable-v2/img/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Versión 2 de /masilla/ (hero en GIF): mismas reglas, sin solapes.
+/masilla-v2/
+  Cache-Control: public, max-age=0, must-revalidate
+/masilla-v2/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/masilla-v2/gracias
+  Cache-Control: public, max-age=0, must-revalidate
+/masilla-v2/gracias.html
+  Cache-Control: public, max-age=0, must-revalidate
+/masilla-v2/img/*
+  Cache-Control: public, max-age=31536000, immutable

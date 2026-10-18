@@ -39,6 +39,9 @@ export const RUTA_LARGA_CABLE =
  */
 export const HOST_CABLE = "puerto-secreto-cable-carga-rapida-soporte-plegable-celular.tarotperu.store";
 
+/** Dominio largo de la VERSION 2 del Cable (hero en GIF, `/cable-v2/`): `/` es esa landing y `/gracias` su gracias. */
+export const HOST_CABLE_V2 = "puerto-secreto-cable-carga-rapida-con-soporte-plegable-celular.tarotperu.store";
+
 /**
  * Columnas de la pestaña «Cable». El orden de este array ES el orden en que se
  * escribe cada fila (ver filaDePedidoCable en ../api/order-cable.js).

@@ -27,3 +27,6 @@ export const ADELANTO_PROVINCIA = 10;
 /** Ruta larga y descriptiva con la que se comparte la landing (el Worker la sirve como /masilla/). */
 export const RUTA_LARGA_MASILLA =
   "masilla-selladora-moldeable-para-huecos-grietas-y-tuberias-sin-herramientas-envio-gratis-a-lima-pago-contra-entrega";
+
+/** Dominio largo de la VERSION 2 de la Masilla (hero en GIF, `/masilla-v2/`): `/` es esa landing y `/gracias` su gracias. Sin la palabra tarot. Un label DNS admite 63 caracteres como máximo. */
+export const HOST_MASILLA_V2 = "puerto-secreto-masilla-selladora-moldeable-huecos-y-tuberias.tarotperu.store";

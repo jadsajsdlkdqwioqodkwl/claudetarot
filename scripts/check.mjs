@@ -1156,5 +1156,19 @@ check("las letras de columna llegan hasta la última de la hoja",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(ms + gr));
 }
 
+/* Versión 2 de las landings del Cable y de la Masilla (hero en GIF, /cable-v2/ y /masilla-v2/). */
+{
+  const idx = readFileSync(join(root, "src/index.js"), "utf8");
+  const { HOST_CABLE_V2 } = await import(join(root, "src/lib/pedido-cable.js"));
+  const { HOST_MASILLA_V2 } = await import(join(root, "src/lib/pedido-masilla.js"));
+  for (const [p, host, api] of [["cable", HOST_CABLE_V2, "/api/order-cable"], ["masilla", HOST_MASILLA_V2, "/api/order-masilla"]]) {
+    const html = readFileSync(join(root, `public/${p}-v2/index.html`), "utf8");
+    check(`${p}-v2: la primera imagen de la galería es el GIF`, /class="g-slide"><img src="\/[a-z]+-v2\/img\/hero-accion\.gif"/.test(html));
+    check(`${p}-v2: el GIF y su miniatura existen`, existsSync(join(root, `public/${p}-v2/img/hero-accion.gif`)) && existsSync(join(root, `public/${p}-v2/img/hero-miniatura.webp`)));
+    check(`${p}-v2: manda el pedido al mismo endpoint que la v1`, html.includes(`'${api}'`));
+    check(`${p}-v2: el dominio largo es válido, no dice «tarot» y el Worker lo atiende`, host.split(".")[0].length <= 63 && !/tarot/i.test(host.split(".")[0]) && host.endsWith(".tarotperu.store") && idx.includes(host.startsWith("puerto-secreto-cable") ? "HOST_CABLE_V2" : "HOST_MASILLA_V2"));
+  }
+}
+
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);
 process.exit(failures === 0 ? 0 : 1);

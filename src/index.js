@@ -12,8 +12,8 @@
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as orderCable } from "./api/order-cable.js";
 import { onRequestPost as orderMasilla } from "./api/order-masilla.js";
-import { RUTA_LARGA_CABLE, HOST_CABLE } from "./lib/pedido-cable.js";
-import { RUTA_LARGA_MASILLA } from "./lib/pedido-masilla.js";
+import { RUTA_LARGA_CABLE, HOST_CABLE, HOST_CABLE_V2 } from "./lib/pedido-cable.js";
+import { RUTA_LARGA_MASILLA, HOST_MASILLA_V2 } from "./lib/pedido-masilla.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -271,6 +271,16 @@ export default {
     if (new URL(request.url).hostname === HOST_CABLE && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
       const archivo = pathname === "/" ? "/cable/index.html" : "/cable/gracias.html";
       const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
+    }
+
+    // Versión 2 (hero en GIF): cada una con su dominio largo (sin «tarot»); `/` es la landing y `/gracias` su gracias.
+    const hostV2 = new URL(request.url).hostname;
+    const carpetaV2 = hostV2 === HOST_CABLE_V2 ? "/cable-v2" : hostV2 === HOST_MASILLA_V2 ? "/masilla-v2" : null;
+    if (carpetaV2 && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
+      const res = await env.ASSETS.fetch(new Request(new URL(pathname === "/" ? `${carpetaV2}/index.html` : `${carpetaV2}/gracias.html`, request.url), { method: "GET" }));
       const headers = new Headers(res.headers);
       headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       return new Response(res.body, { status: res.status, headers });

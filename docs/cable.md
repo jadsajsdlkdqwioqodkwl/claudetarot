@@ -100,3 +100,7 @@ Es la misma página que `/cable/`; el `<title>` también es largo y descriptivo.
   y la columna «Detalle» de la pestaña Cable queda como «Conector por confirmar (WhatsApp)». El servidor aún acepta `cables` si algún día vuelve.
 - El logo de Puerto Secreto ya **no está en la página**: solo en el formulario, con el badge «Vendedor autorizado».
 - Se quitó el bloque de resumen del formulario (producto, precio, envío, total) y el botón «COMPLETAR PEDIDO» quedó **fijo al borde inferior** del formulario (siempre visible; `.btn-fijo`). El subtítulo del botón sigue diciendo «Pagas cuando lo recibes» o el adelanto de provincia.
+
+## Versión 2 (2026-10-18): hero en GIF
+
+`public/cable-v2/` es una copia de `public/cable/` (misma página, mismo endpoint, mismos precios; las fotos y videos se siguen sirviendo desde `/cable/…`). Cambia solo la primera imagen de la galería: `img/hero-accion.gif` (miniatura estática `img/hero-miniatura.webp`). El GIF sale de los videos de la v1 con ffmpeg (recorte cuadrado, 320 px, 9 fps, menos de 1 MB). Link: `https://puerto-secreto-cable-carga-rapida-con-soporte-plegable-celular.tarotperu.store` (`HOST_CABLE_V2`; hostname de Workers → `claudetarot`) o `/cable-v2/` bajo cualquier dominio del Worker. Si se cambia el GIF hay que renombrarlo (`_headers` lo cachea un año). Si se cambia un precio o un texto común, hacerlo en las dos versiones.
