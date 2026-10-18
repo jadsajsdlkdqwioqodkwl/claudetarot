@@ -11,7 +11,7 @@
 
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as orderCable } from "./api/order-cable.js";
-import { RUTA_LARGA_CABLE } from "./lib/pedido-cable.js";
+import { RUTA_LARGA_CABLE, HOST_CABLE } from "./lib/pedido-cable.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -262,6 +262,15 @@ export default {
     // /r/<id>.pdf: los reportes de ventas del asesor (link imposible de adivinar).
     if (pathname.startsWith("/r/")) {
       return request.method === "GET" ? reportePdf({ request, env }) : json({ error: "Método no permitido." }, 405);
+    }
+
+    // En el dominio largo del Cable, «/» es la landing y «/gracias» su gracias (el resto, archivos y /api, igual que siempre).
+    if (new URL(request.url).hostname === HOST_CABLE && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
+      const archivo = pathname === "/" ? "/cable/index.html" : "/cable/gracias.html";
+      const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
     }
 
     // La landing del Cable se comparte con una ruta larga; es la misma página de /cable/.

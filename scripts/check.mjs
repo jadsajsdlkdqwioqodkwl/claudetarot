@@ -1042,13 +1042,14 @@ check("las letras de columna llegan hasta la última de la hoja",
 {
   const cable = readFileSync(join(root, "public/cable/index.html"), "utf8");
   const gr = readFileSync(join(root, "public/cable/gracias.html"), "utf8");
-  const { PACKS, CONECTORES, RUTA_LARGA_CABLE, ADELANTO_PROVINCIA } = await import(join(root, "src/lib/pedido-cable.js"));
+  const { PACKS, CONECTORES, RUTA_LARGA_CABLE, ADELANTO_PROVINCIA, HOST_CABLE } = await import(join(root, "src/lib/pedido-cable.js"));
   for (const [id, p] of Object.entries(PACKS)) {
     const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(cable);
     check(`cable: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
       m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
   }
   check("cable: la página llama a /api/order-cable", cable.includes("'/api/order-cable'"));
+  check("cable: el dominio largo es válido (label de 63 o menos) y el Worker lo atiende", HOST_CABLE.split(".")[0].length <= 63 && /HOST_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && HOST_CABLE.endsWith(".tarotperu.store"));
   check("cable: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(cable));
   check("cable: el logo y el badge de vendedor autorizado están en el formulario", cable.includes('class="logo-circle"') && /Vendedor autorizado/.test(cable));
   check("cable: la página manda los conectores que el servidor acepta y no ofrece color",

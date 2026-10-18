@@ -34,6 +34,12 @@ export const RUTA_LARGA_CABLE =
   "cable-de-carga-rapida-con-soporte-plegable-para-celular-usb-c-y-lightning-envio-gratis-a-lima-pago-contra-entrega";
 
 /**
+ * Dominio largo con el que se comparte la landing (hostname de Workers → `claudetarot`). En ese host
+ * `/` es la landing y `/gracias` su página de gracias. Un label DNS admite 63 caracteres como máximo.
+ */
+export const HOST_CABLE = "puerto-secreto-cable-carga-rapida-soporte-plegable-celular.tarotperu.store";
+
+/**
  * Columnas de la pestaña «Cable». El orden de este array ES el orden en que se
  * escribe cada fila (ver filaDePedidoCable en ../api/order-cable.js).
  * A–K es lo que ve y edita el vendedor; L–P quedan ocultas, para la Conversions API.
