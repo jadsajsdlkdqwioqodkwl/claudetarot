@@ -222,6 +222,21 @@ const ROUTES = {
  */
 const RE_RUTA_SEGUIMIENTO = /^\/TS-[A-Za-z0-9-]{3,24}$/i;
 
+/**
+ * Landing de la masilla selladora bajo un link largo (parece una nota, no una
+ * tienda): la misma página de public/sellador/ servida bajo este título como
+ * ruta. Los datos, fotos y /api/order-sellador no cambian.
+ */
+const RUTA_SELLADOR_LARGA =
+  "/7-razones-por-las-que-en-lima-cada-vez-mas-gente-deja-la-silicona-y-la-espuma-para-sellar-huecos-con-esta-masilla-moldeable";
+
+async function paginaSellador(request, env) {
+  const res = await env.ASSETS.fetch(new Request(new URL("/sellador/", request.url), { method: "GET" }));
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  return new Response(res.body, { status: res.status, headers });
+}
+
 const json = (data, status) =>
   new Response(JSON.stringify(data), {
     status,
@@ -261,6 +276,10 @@ export default {
     // /r/<id>.pdf: los reportes de ventas del asesor (link imposible de adivinar).
     if (pathname.startsWith("/r/")) {
       return request.method === "GET" ? reportePdf({ request, env }) : json({ error: "Método no permitido." }, 405);
+    }
+
+    if (pathname === RUTA_SELLADOR_LARGA || pathname === RUTA_SELLADOR_LARGA + "/") {
+      return paginaSellador(request, env);
     }
 
     if (RE_RUTA_SEGUIMIENTO.test(pathname)) {

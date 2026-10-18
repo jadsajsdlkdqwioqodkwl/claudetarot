@@ -18,7 +18,7 @@ se copian).
   pedido» por el número de Tarot.
 
 ## Lo que el dueño debe completar antes de abrir anuncios
-1. **Precios** (hoy provisionales: x2 S/39, x5 S/69, x10 S/109): `src/lib/sellador.js`
+1. **Precios** (dueño, 2026-10-18; mínimo S/79, costo supuesto ~S/20 por x2: x2 S/79, x5 S/129, x10 S/199; «antes» 159/259/399): `src/lib/sellador.js`
    y `FB` en `public/sellador/index.html` (+ las tarjetas de la página). `npm run check`
    avisa si no coinciden.
 2. **`PIXEL_ID`** del producto, en `index.html` y en `gracias.html` (vacío = sin píxel).
@@ -28,3 +28,10 @@ se copian).
 5. Garantía, tiempos de entrega y términos del producto (hoy: pago al recibir y
    entrega en Lima al día siguiente, igual que Tarot).
 6. Deploy (`npm run deploy`). No hay migraciones.
+
+## Link y estilo (2026-10-18)
+- Link con título largo bajo el dominio de Tarot (la misma página, `RUTA_SELLADOR_LARGA` en
+  `src/index.js`): `https://kit-tarot-para-principiantes.tarotperu.store/7-razones-por-las-que-en-lima-cada-vez-mas-gente-deja-la-silicona-y-la-espuma-para-sellar-huecos-con-esta-masilla-moldeable`
+  (también abre `/sellador/`).
+- Estilo igual al advertorial original: fondo blanco, titulares negros en Poppins, azul plano `#4A90E2`.
+  Botones simples: «COMPLETAR PEDIDO». Garantía de 90 días (devolución del dinero) en la oferta, el modal y las preguntas.

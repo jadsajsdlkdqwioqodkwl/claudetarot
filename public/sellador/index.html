@@ -9,15 +9,15 @@
 <title>Masilla selladora moldeable para huecos, tuberías y paredes — Lima</title>
 <meta name="description" content="Sella huecos de tuberías, cables y paredes en 5 minutos, sin pistola ni herramientas. Pagas al recibir en Lima.">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    --bg:#ffffff; --card:#ffffff; --ink:#15181d; --muted:#5b6470; --muted-txt:#4a4f57;
-    --line:#e3e6ea; --green:#1f9d55; --blue:#0b63d6; --blue-dark:#1e3a8a; --soft:#f1f6ff;
-    --cta1:#ff2a00; --cta2:#ff6a00; --old:#e53935; --body-bg:#eef0f3; --warn:#fff6e5;
+    --bg:#ffffff; --card:#ffffff; --ink:#000000; --muted:#5b6470; --muted-txt:#3d434b;
+    --line:#e3e6ea; --green:#4a90e2; --blue:#4a90e2; --blue-dark:#1f5fae; --soft:#eef5fd;
+    --cta1:#4a90e2; --cta2:#4a90e2; --old:#8a8f98; --body-bg:#eef0f3;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--body-bg); color:var(--ink); line-height:1.55; overflow-x:hidden; }
+  body { font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--body-bg); color:var(--ink); line-height:1.55; overflow-x:hidden; }
   img { max-width:100%; display:block; height:auto; }
   .ico { width:1em; height:1em; display:inline-block; vertical-align:-.125em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .wrap { max-width:560px; margin:0 auto; background:var(--bg); min-height:100vh; box-shadow:0 0 20px rgba(0,0,0,.06); padding-bottom:104px; }
@@ -59,7 +59,7 @@
   .comp .si { color:var(--green); } .comp .no { color:var(--old); }
   .comp td.yo { background:var(--soft); }
 
-  .cta { display:block; width:calc(100% - 40px); margin:22px 20px 0; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:16px 12px; text-align:center; box-shadow:0 6px 18px rgba(255,42,0,.3); font-family:inherit; }
+  .cta { display:block; width:calc(100% - 40px); margin:22px 20px 0; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:8px; padding:16px 12px; text-align:center; box-shadow:0 6px 18px rgba(74,144,226,.35); font-family:inherit; }
   .cta:active { transform:scale(.98); }
   .buzz { animation:buzz 2s ease-in-out infinite; transform-origin:center; }
   @keyframes buzz { 0%,82%,100%{transform:translateX(0) rotate(0)} 84%{transform:translateX(-3px) rotate(-.8deg)} 86%{transform:translateX(3px) rotate(.8deg)} 88%{transform:translateX(-3px) rotate(-.8deg)} 90%{transform:translateX(3px) rotate(.8deg)} 92%{transform:translateX(-2px)} 94%{transform:translateX(2px)} 96%{transform:translateX(-1px)} 98%{transform:translateX(1px)} }
@@ -67,7 +67,7 @@
   .cta .l2, .btn-pedido .l2 { font-size:13px; font-weight:600; margin-top:4px; opacity:.92; }
 
   /* Oferta */
-  .oferta { margin:38px 0 0; background:linear-gradient(180deg,#f1f6ff,#fff); padding:26px 0 8px; border-top:1px solid var(--line); }
+  .oferta { margin:38px 0 0; background:linear-gradient(180deg,#eef5fd,#fff); padding:26px 0 8px; border-top:1px solid var(--line); }
   .oferta h2 { padding:0 20px; font-size:23px; line-height:1.2; font-weight:900; text-align:center; letter-spacing:-.4px; }
   .oferta .sub { padding:8px 24px 0; text-align:center; color:var(--muted-txt); font-size:15px; }
   .oferta .packimg { width:210px; margin:16px auto 0; }
@@ -79,7 +79,7 @@
   .pcard .pr { margin-left:auto; text-align:right; }
   .pcard .pr b { font-size:21px; font-weight:900; }
   .pcard .pr s { display:block; color:var(--old); font-size:12.5px; }
-  .pcard .tag { position:absolute; top:-10px; left:14px; background:var(--old); color:#fff; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.3px; }
+  .pcard .tag { position:absolute; top:-10px; left:14px; background:var(--ink); color:#fff; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.3px; }
   .garantias { margin:16px 20px 0; display:grid; gap:8px; }
   .garantias div { display:flex; gap:10px; align-items:center; font-size:14.5px; font-weight:600; }
   .garantias .ico { color:var(--green); width:20px; height:20px; flex:0 0 20px; }
@@ -113,7 +113,7 @@
   .overlay.on { display:block; }
   .modal { background:#fff; width:calc(100% - 24px); max-width:456px; margin:0 auto; border-radius:16px; position:relative; padding:22px 20px 26px; box-shadow:0 20px 40px rgba(0,0,0,.2); }
   .mclose { position:absolute; top:16px; right:16px; color:var(--muted); cursor:pointer; line-height:1; padding:4px; z-index:10; }
-  .vendedor { display:flex; align-items:center; justify-content:center; gap:6px; margin:6px auto 10px; background:#eaf3ff; color:#0b63d6; border:1px solid #cfe3ff; border-radius:999px; padding:5px 14px; font-size:13px; font-weight:800; width:fit-content; }
+  .vendedor { display:flex; align-items:center; justify-content:center; gap:6px; margin:6px auto 10px; background:var(--soft); color:var(--blue-dark); border:1px solid #cfe0f5; border-radius:999px; padding:5px 14px; font-size:13px; font-weight:800; width:fit-content; }
   .vendedor svg { width:15px; height:15px; }
   .m-titulo { text-align:center; font-size:20px; font-weight:900; line-height:1.2; margin:10px 0 4px; }
   .m-sub { text-align:center; font-size:13.5px; color:var(--muted-txt); margin-bottom:16px; }
@@ -130,7 +130,7 @@
   .vcard .vdet { font-size:12px; color:var(--muted-txt); margin-top:2px; }
   .vcard .vprice { margin-left:auto; text-align:right; font-size:18px; font-weight:900; }
   .vcard .vold { display:block; font-size:12px; color:var(--old); text-decoration:line-through; font-weight:500; }
-  .vbadge { position:absolute; top:-10px; right:12px; background:var(--old); color:#fff; font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; }
+  .vbadge { position:absolute; top:-10px; right:12px; background:var(--ink); color:#fff; font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; }
 
   .sect-title { font-size:16px; font-weight:800; margin:12px 0 10px; }
   .ship-opts { border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:18px; background:#fff; }
@@ -146,10 +146,10 @@
   .ship-opt .txt .loc-line { display:block; color:var(--blue-dark); font-weight:800; font-size:13px; margin-top:3px; }
   .ship-opt .free { font-weight:800; font-size:14px; }
 
-  .form-head { text-align:center; color:#2d9cdb; font-size:18px; font-weight:800; margin:16px 0; }
+  .form-head { text-align:center; color:var(--blue-dark); font-size:18px; font-weight:800; margin:16px 0; }
   .fg { margin-bottom:16px; }
   .fg label { display:block; font-weight:700; font-size:13px; margin-bottom:6px; }
-  .fg label .req { color:var(--old); }
+  .fg label .req { color:var(--blue-dark); }
   .fg .hint { display:block; font-size:12px; color:var(--muted-txt); margin-top:6px; line-height:1.3; font-style:italic; }
   .fg .input-icon { display:flex; align-items:stretch; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
   .fg .input-icon:focus-within { border-color:var(--blue); }
@@ -159,7 +159,7 @@
   .sel-input:focus { border-color:var(--blue); }
   .fg input::placeholder, .sel-input::placeholder { color:var(--muted-txt); opacity:1; }
   .entrega-note { text-align:center; color:var(--blue-dark); font-size:15px; font-weight:800; margin:18px 0 14px; line-height:1.4; }
-  .btn-pedido { width:100%; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:18px; margin-top:6px; box-shadow:0 6px 16px rgba(255,42,0,.3); font-family:inherit; }
+  .btn-pedido { width:100%; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:18px; margin-top:6px; box-shadow:0 6px 16px rgba(74,144,226,.35); font-family:inherit; }
   .btn-pedido:disabled { opacity:.7; }
   .wa-note { text-align:center; color:var(--green); font-size:14px; font-weight:700; margin:16px 0 4px; display:flex; justify-content:center; align-items:center; gap:6px; }
 </style>
@@ -200,7 +200,7 @@
 
   <div class="seccion-tag">Hogar y bricolaje · Lima</div>
   <h1>7 razones por las que en Lima cada vez más gente deja la silicona y la espuma para sellar huecos con esta masilla moldeable</h1>
-  <p class="bajada">Cucarachas que entran por el hueco del desagüe, olor a cloaca, corrientes de aire… y el parche que se vuelve a abrir a los pocos meses. Hay una forma de arreglarlo en 5 minutos, solo con las manos.</p>
+  <p class="bajada">Cucarachas que entran por el hueco del desagüe, olor a cloaca, corrientes de aire… y el parche que se vuelve a abrir a los pocos meses. Hay una forma de arreglarlo en 5 minutos, solo con las manos, y de que el sellado quede firme y duradero.</p>
 
   <div class="hero"><img src="/sellador/img/hero.webp" alt="Persona sellando el hueco de una tubería con masilla moldeable" width="1000" height="500" fetchpriority="high" decoding="async"></div>
   <div class="pie-foto">Se amasa, se presiona en el hueco y listo: sin pistola, sin mezclar, sin ensuciar.</div>
@@ -271,8 +271,8 @@
       <div class="paso"><div class="num">3</div><div><b>Deja secar</b><span>Déjala 3 a 5 días sin tocar. Después puedes lijar y pintar para que combine con tu pared.</span></div></div>
     </div>
     <button class="cta buzz" onclick="openCOD()">
-      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> QUIERO SELLAR MIS HUECOS</div>
-      <div class="l2">Envío gratis y pagas al recibir</div>
+      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> COMPLETAR PEDIDO</div>
+      <div class="l2">Pagas al recibir en tu casa</div>
     </button>
   </section>
 
@@ -281,30 +281,32 @@
 
   <!-- Oferta -->
   <section class="oferta" id="oferta">
-    <h2>Sella huecos en 5 minutos y deja de repetir el mismo arreglo</h2>
-    <p class="sub">Elige tu pack. Pagas cuando lo recibes en tu casa.</p>
+    <h2>Oferta de lanzamiento: hasta 50% de descuento</h2>
+    <p class="sub">Sella huecos en 5 minutos y deja de repetir el mismo arreglo. Elige tu pack y pagas cuando lo recibes en tu casa.</p>
     <img class="packimg" src="/sellador/img/pack.webp" alt="Sachets de masilla selladora" width="400" height="400" loading="lazy">
 
     <div class="precios">
-      <div class="pcard"><div><div class="t1">Pack x2 sachets</div><div class="t2">Para 1 o 2 huecos pequeños</div></div><div class="pr"><b>S/ 39</b><s>S/ 69</s></div></div>
-      <div class="pcard top"><span class="tag">MÁS PEDIDO</span><div><div class="t1">Pack x5 sachets</div><div class="t2">Para varias zonas de la casa</div></div><div class="pr"><b>S/ 69</b><s>S/ 129</s></div></div>
-      <div class="pcard"><div><div class="t1">Pack x10 sachets</div><div class="t2">Para todo el departamento o la casa</div></div><div class="pr"><b>S/ 109</b><s>S/ 219</s></div></div>
+      <div class="pcard"><div><div class="t1">Pack x2 sachets</div><div class="t2">Para 1 o 2 huecos pequeños</div></div><div class="pr"><b>S/ 79</b><s>S/ 159</s></div></div>
+      <div class="pcard top"><span class="tag">MÁS PEDIDO</span><div><div class="t1">Pack x5 sachets</div><div class="t2">Para varias zonas de la casa</div></div><div class="pr"><b>S/ 129</b><s>S/ 259</s></div></div>
+      <div class="pcard"><div><div class="t1">Pack x10 sachets</div><div class="t2">Para todo el departamento o la casa</div></div><div class="pr"><b>S/ 199</b><s>S/ 399</s></div></div>
     </div>
 
     <div class="garantias">
+      <div><svg class="ico"><use href="#i-shield"/></svg> Garantía de 90 días: si no te convence, te devolvemos tu dinero</div>
       <div><svg class="ico"><use href="#i-wallet"/></svg> Pagas al recibir: Yape, efectivo o POS (Lima)</div>
       <div><svg class="ico"><use href="#i-truck"/></svg> Envío gratis, entrega en Lima al día siguiente</div>
       <div><svg class="ico"><use href="#i-box"/></svg> Empaque discreto y bien embalado</div>
     </div>
 
     <button class="cta buzz" onclick="openCOD()">
-      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
-      <div class="l2">Te confirmamos por WhatsApp</div>
+      <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> COMPLETAR PEDIDO</div>
+      <div class="l2">Pagas al recibir en tu casa</div>
     </button>
   </section>
 
   <section class="faq">
     <h2>Preguntas frecuentes</h2>
+    <details><summary>¿Cómo funciona la garantía de 90 días?</summary><p>Tienes 90 días desde que recibes tu pedido. Si la masilla no te convence, escríbenos por WhatsApp y te devolvemos tu dinero. Sin letra chica.</p></details>
     <details><summary>¿Cómo pago?</summary><p>Pagas al recibir en tu casa (Lima) con Yape, efectivo o POS. No pagas nada por adelantado en Lima.</p></details>
     <details><summary>¿Cuándo me llega?</summary><p>En Lima, al día siguiente. El repartidor se comunica contigo antes de llegar; si no estás, puede recibirlo otra persona o reprogramas.</p></details>
     <details><summary>¿Y si vivo en provincia?</summary><p>También enviamos por agencia (Shalom u Olva). Pides con el mismo formulario, eliges “Envío por agencia” y te confirmamos por WhatsApp cómo es el adelanto y el recojo.</p></details>
@@ -323,8 +325,8 @@
 
 <div class="sticky-cta-wrap">
   <button class="cta buzz" onclick="openCOD()">
-    <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> LO QUIERO! + PAGO AL RECIBIR</div>
-    <div class="l2">Envío gratis en Lima</div>
+    <div class="l1"><svg class="ico"><use href="#i-bag"/></svg> COMPLETAR PEDIDO</div>
+    <div class="l2">Pagas al recibir · Envío gratis</div>
   </button>
 </div>
 
@@ -333,29 +335,29 @@
   <div class="modal">
     <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
 
-    <div class="vendedor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg> Pagas al recibir</div>
+    <div class="vendedor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg> Garantía de 90 días</div>
     <div class="m-titulo">Masilla selladora multiusos</div>
-    <div class="m-sub">Elige tu pack y completa tus datos</div>
+    <div class="m-sub">Hasta 50% de descuento · Pagas al recibir · Si no te convence, te devolvemos tu dinero</div>
 
     <div class="variants">
       <div class="vcard" data-var="2pack" onclick="selVar(this)">
         <div class="radio"></div>
         <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x2" width="58" height="58"></div>
         <div><div class="vname">Pack x2 sachets</div><div class="vdet">60 g en total</div></div>
-        <div class="vprice">S/ 39<span class="vold">S/ 69</span></div>
+        <div class="vprice">S/ 79<span class="vold">S/ 159</span></div>
       </div>
       <div class="vcard sel" data-var="5pack" onclick="selVar(this)">
         <div class="vbadge">MÁS PEDIDO</div>
         <div class="radio"></div>
         <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x5" width="58" height="58"></div>
         <div><div class="vname">Pack x5 sachets</div><div class="vdet">150 g en total</div></div>
-        <div class="vprice">S/ 69<span class="vold">S/ 129</span></div>
+        <div class="vprice">S/ 129<span class="vold">S/ 259</span></div>
       </div>
       <div class="vcard" data-var="10pack" onclick="selVar(this)">
         <div class="radio"></div>
         <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x10" width="58" height="58"></div>
         <div><div class="vname">Pack x10 sachets</div><div class="vdet">300 g en total</div></div>
-        <div class="vprice">S/ 109<span class="vold">S/ 219</span></div>
+        <div class="vprice">S/ 199<span class="vold">S/ 399</span></div>
       </div>
     </div>
 
@@ -406,8 +408,8 @@
     <div class="entrega-note" id="noteEntrega">Entrega para Lima al día siguiente</div>
 
     <button class="btn-pedido buzz" id="btnPedido" onclick="submitCOD()">
-      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> REALIZAR PEDIDO</div>
-      <div class="l2">Pedir Ahora</div>
+      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> COMPLETAR PEDIDO</div>
+      <div class="l2">Pagas al recibir</div>
     </button>
     <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
   </div>
@@ -425,8 +427,8 @@
     moneda: 'PEN',
     producto: 'masilla-selladora',
     nombre: 'Masilla selladora multiusos',
-    variantes: { '2pack': 39, '5pack': 69, '10pack': 109 },
-    viejos: { '2pack': 69, '5pack': 129, '10pack': 219 },
+    variantes: { '2pack': 79, '5pack': 129, '10pack': 199 },
+    viejos: { '2pack': 159, '5pack': 259, '10pack': 399 },
     unidades: { '2pack': 2, '5pack': 5, '10pack': 10 },
     etiquetas: {
       '2pack': 'Masilla selladora x2 sachets (60 g)',
@@ -616,7 +618,7 @@
           alert('No pudimos registrar tu pedido por un problema de conexión. Inténtalo de nuevo en un minuto.');
         }
         btn.disabled = false;
-        btn.querySelector('.l2').textContent = 'Pedir Ahora';
+        btn.querySelector('.l2').textContent = 'Pagas al recibir';
       });
   }
 
