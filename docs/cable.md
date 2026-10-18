@@ -93,3 +93,9 @@ como `/cable/` en `src/index.js`, y `/…/gracias` como la página de gracias):
 `https://kit-tarot-para-principiantes.tarotperu.store/cable-de-carga-rapida-con-soporte-plegable-para-celular-usb-c-y-lightning-envio-gratis-a-lima-pago-contra-entrega`
 
 Es la misma página que `/cable/`; el `<title>` también es largo y descriptivo. Se publica al hacer merge a `main`.
+
+## Cambios del 2026-10-18 (tarde)
+
+- Se quitó «¿Para qué celular?» del formulario: ya **no se pregunta el conector** (USB-C o Lightning). La vendedora lo confirma por WhatsApp
+  y la columna «Detalle» de la pestaña Cable queda como «Conector por confirmar (WhatsApp)». El servidor aún acepta `cables` si algún día vuelve.
+- El logo de Puerto Secreto ya **no está en la página**: solo en el formulario, con el badge «Vendedor autorizado».
