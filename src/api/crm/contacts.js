@@ -10,6 +10,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { obtenerOCrearContacto, obtenerOCrearConversacion } from "../../lib/crm-db.js";
+import { aplicarOlva, cancelarPlanRecojo } from "../../lib/planes-plantilla.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -47,7 +48,7 @@ async function post({ request, env }) {
   return json({ ok: true, contact: contacto, conversation_id: conversacion.id });
 }
 
-async function patch({ request, env }) {
+async function patch({ request, env, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -101,7 +102,21 @@ async function patch({ request, env }) {
     .run();
 
   const contacto = await env.CRM_DB.prepare("SELECT * FROM contacts WHERE id = ?").bind(contactId).first();
-  return json({ ok: true, contact: contacto });
+
+  // Seguimiento de recojo: «Envío por Olva» lo programa (3 · 7 · 13 días) y reemplaza el de Shalom; si se
+  // desmarca, se cancela. Si el saldo queda en 0 o vacío (ya pagó todo), termina el seguimiento de recojo.
+  const { results: chats } = payload.olva !== undefined || typeof payload.saldo === "string"
+    ? await env.CRM_DB.prepare("SELECT id FROM conversations WHERE contact_id = ?").bind(contactId).all()
+    : { results: [] };
+  let seguimiento = null;
+  if (payload.olva !== undefined) {
+    for (const c of chats) seguimiento = await aplicarOlva(env, c.id, Boolean(payload.olva), agent?.displayName || agent?.username).catch((err) => ({ error: err.message }));
+  }
+  if (typeof payload.saldo === "string" && /^(s\/\.?\s*)?0([.,]0+)?$/i.test(payload.saldo.trim()) || payload.saldo === "") {
+    for (const c of chats) await cancelarPlanRecojo(env.CRM_DB, c.id).catch(() => {});
+    seguimiento = { ...(seguimiento || {}), recojo_cancelado: true };
+  }
+  return json({ ok: true, contact: contacto, seguimiento });
 }
 
 export const onRequestPost = conAuth(post);

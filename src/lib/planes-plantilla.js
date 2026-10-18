@@ -42,6 +42,18 @@ export const PLANES = {
     botones: ["Ya lo recogí", "Necesito ayuda"],
     ejemplo: ["María"]
   },
+  olva: {
+    titulo: "Recojo en agencia (Olva)",
+    categoria: "UTILITY",
+    // Plantilla UNIVERSAL: dice «agencia», no «Shalom», para servir a cualquier agencia. Días 3 (aviso de llegada), 7 y 13.
+    pasos: [
+      { dias: 3, nombre: "recojo_agencia_1", texto: "Hola {{1}}, su pedido ya llegó a su agencia y está listo para recoger. Lleve su DNI y la clave de retiro; si no la tiene, respóndanos aquí y se la enviamos." },
+      { dias: 7, nombre: "recojo_agencia_2", texto: "Hola {{1}}, le recordamos que su pedido sigue esperándolo en su agencia. Si tiene algún problema para recogerlo, respóndanos y le ayudamos." },
+      { dias: 13, nombre: "recojo_agencia_3", texto: "Hola {{1}}, su pedido todavía está en la agencia. Las agencias devuelven los envíos que no se recogen, ¿podrá recogerlo esta semana?" }
+    ],
+    botones: ["Ya lo recogí", "Necesito ayuda"],
+    ejemplo: ["María"]
+  },
   lead: {
     titulo: "Rescate de interesado",
     categoria: "MARKETING",
@@ -70,6 +82,17 @@ export const PLANES_URO = {
     botones: ["Ya lo recogí", "Necesito ayuda"],
     ejemplo: ["María"]
   },
+  olva: {
+    titulo: "Recojo en agencia (Olva)",
+    categoria: "UTILITY",
+    pasos: [
+      { dias: 3, nombre: "uro_recojo_agencia_1", texto: "Hola {{1}}, le escribimos de URO: su pedido ya llegó a su agencia y está listo para recoger. Lleve su DNI y la clave de retiro; si no la tiene, respóndanos aquí y se la enviamos." },
+      { dias: 7, nombre: "uro_recojo_agencia_2", texto: "Hola {{1}}, de URO: su pedido sigue a su nombre en su agencia. Si tiene algún problema para recogerlo, respóndanos y le ayudamos." },
+      { dias: 13, nombre: "uro_recojo_agencia_3", texto: "Hola {{1}}, de URO: su pedido todavía está en la agencia. Las agencias devuelven los envíos que no se recogen, ¿podrá recogerlo esta semana?" }
+    ],
+    botones: ["Ya lo recogí", "Necesito ayuda"],
+    ejemplo: ["María"]
+  },
   lead: {
     titulo: "Rescate de interesado",
     categoria: "MARKETING",
@@ -94,6 +117,20 @@ export const AVISOS_ENVIO = {
 };
 
 export const planesDe = (marca) => (marca === "uro" ? PLANES_URO : PLANES);
+
+/** Planes de recojo en agencia: cuentan desde hoy (el despacho), no desde el último mensaje del cliente. */
+export const esPlanDeRecojo = (plan) => plan === "shalom" || plan === "olva";
+/** Los `created_by` de todos los recojos (Shalom y agencia/Olva) empiezan así. */
+export const ORIGEN_RECOJO = `${PREFIJO_PLAN} · Recojo en`;
+export const DIAS_OLVA_POR_DEFECTO = [3, 7, 13];
+/** Los días de un plan: el recojo Olva tiene los suyos (ajuste `plan_dias_olva`); los demás, `plan_dias`. */
+export async function diasDelPlan(db, plan) {
+  if (plan === "olva") {
+    const d = leerDias(await obtenerAjuste(db, "plan_dias_olva").catch(() => null));
+    return d === DIAS_POR_DEFECTO ? DIAS_OLVA_POR_DEFECTO : d;
+  }
+  return leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
+}
 
 
 
@@ -125,7 +162,7 @@ export function leerDias(texto) {
 export function pasosDelPlan(plan, { lastInboundAt, nombre, producto }, ahora = Date.now(), dias = DIAS_POR_DEFECTO, marca = "tarot", orden = []) {
   const p = planesDe(marca)[plan];
   // El recojo en Shalom cuenta desde hoy (el despacho), no desde el último mensaje del cliente: ese puede ser de hace días.
-  const base = plan === "shalom" || !lastInboundAt ? ahora : new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime();
+  const base = esPlanDeRecojo(plan) || !lastInboundAt ? ahora : new Date(String(lastInboundAt).replace(" ", "T") + (String(lastInboundAt).includes("Z") ? "" : "Z")).getTime();
   const params = p.conProducto ? [primerNombre(nombre), producto || "el kit de tarot"] : [primerNombre(nombre)];
   let previo = 0;
   return pasosOrdenados(p.pasos, orden).map((paso, i) => {
@@ -156,7 +193,7 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   const marca = marcaDeLinea(conv.linea_id ? await lineaPorId(db, conv.linea_id) : null);
   if (!marca) return { error: "Este número no tiene plantillas propuestas todavía." };
   const producto = await productoPorId(db, conv.producto_id);
-  const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
+  const dias = await diasDelPlan(db, plan);
   const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
   await db.batch(pasos.map((p) => db.prepare(
@@ -247,19 +284,56 @@ export async function rearmarPlanShalom(env, conversationId, texto) {
   const db = env.CRM_DB;
   const { results } = await db.prepare(
     "SELECT id, template_name, mandar_siempre FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?"
-  ).bind(conversationId, `${PREFIJO_PLAN} · Recojo en Shalom%`).all();
+  ).bind(conversationId, `${ORIGEN_RECOJO}%`).all();
   if (!results.length) return;
   if (/ya lo recog/i.test(texto || "")) {
     await db.batch(results.map((r) => db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(r.id)));
     return;
   }
-  const dias = leerDias(await obtenerAjuste(db, "plan_dias").catch(() => null));
+  const plan = /recojo_agencia_\d$/.test(String(results[0].template_name)) ? "olva" : "shalom";
+  const dias = await diasDelPlan(db, plan);
   const ahora = Date.now();
   const marca = String(results[0].template_name).startsWith("uro_") ? "uro" : "tarot";
-  const orden = pasosOrdenados(planesDe(marca).shalom.pasos, await ordenDelPlan(db, marca, "shalom")).map((p) => p.nombre);
+  const orden = pasosOrdenados(planesDe(marca)[plan].pasos, await ordenDelPlan(db, marca, plan)).map((p) => p.nombre);
   const mover = results.filter((r) => !r.mandar_siempre).map((r) => { // «sí o sí»: sale en sus días, no se vuelve a contar
     const i = Math.max(0, orden.indexOf(r.template_name));
     return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
   });
   if (mover.length) await db.batch(mover);
+}
+
+/**
+ * Termina el seguimiento de recojo (Shalom u Olva) de un chat: cancela lo que falte, aprobado o por aprobar.
+ * Se llama cuando el cliente pagó el saldo / recogió, o con el botón «Ya pagó su saldo» del chat.
+ * Devuelve cuántos mensajes canceló.
+ */
+export async function cancelarPlanRecojo(db, conversationId) {
+  const r = await db.prepare(
+    "UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND created_by LIKE ?"
+  ).bind(conversationId, `${ORIGEN_RECOJO}%`).run();
+  return r.meta?.changes || 0;
+}
+
+/**
+ * Se marcó «Envío por Olva» (o se quitó). Marcado: el recojo de Shalom que hubiera se reemplaza por el de
+ * agencia (3 · 7 · 13 días desde hoy), ya aprobado (el cron espera a que Meta apruebe las plantillas).
+ * Desmarcado: se cancela el de Olva. Devuelve { programados } o { error }.
+ */
+export async function aplicarOlva(env, conversationId, olva, quien) {
+  const db = env.CRM_DB;
+  if (!olva) {
+    const n = await db.prepare(
+      "UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND instr(created_by, ?) = 1"
+    ).bind(conversationId, `${PREFIJO_PLAN} · ${PLANES.olva.titulo}`).run();
+    return { cancelados: n.meta?.changes || 0 };
+  }
+  const ya = await db.prepare(
+    "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND instr(created_by, ?) = 1 LIMIT 1"
+  ).bind(conversationId, `${PREFIJO_PLAN} · ${PLANES.olva.titulo}`).first();
+  if (ya) return { programados: 0 };
+  await db.prepare(
+    "UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND instr(created_by, ?) = 1"
+  ).bind(conversationId, `${PREFIJO_PLAN} · ${PLANES.shalom.titulo}`).run();
+  const r = await programarPlan(env, conversationId, "olva", { estado: "pendiente", quien: quien || "Marcó Olva" });
+  return r.error ? { error: r.error } : { programados: r.pasos.length };
 }
