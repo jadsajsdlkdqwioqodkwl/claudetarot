@@ -246,3 +246,9 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Cambio:** INSTR 08 v1.16: el principal es solo coordinador, delega todo a subagentes y lee solo su línea final; el cierre parcial solo vale por orden del dueño, Chrome/PiPiAds sin sesión (tras hacer lo que no los necesita), presupuesto agotado o error repetido 3 veces; con cola > 60 la fase 2 va antes de más cargas. Nota: la fecha de `Crudo!L` no coincide con el filtro de ventana de PiPiAds (casi todas ~hoy-31 d), pero los totales y los productos sí cambian por ventana: no es motivo de parar. Exploración ahora tiene la columna K.
 - **Observación abierta:** el prefiltro de `Recetas!E31` marca «dress» dentro de «Address» (sin límite de palabra); 14 de 54 filas cayeron en prefiltro, varias con razón (Halloween, Christmas) y alguna de más.
 - **Revertir:** quitar el párrafo v1.16 de INSTR 08.
+
+## D-036 (2026-10-18) RANKEA en paralelo y chico (Recetas D39 v5, INSTR 08 v1.17)
+
+- **Evidencia (sesión 2026-10-18-b, ya con el texto de proyecto nuevo):** el chat trabajó solo 8 tandas de RANKEA, 43 productos (261018-A-001 a 043), pero cada subagente se quedó sin contexto tras 1 o 2 grupos (Meta devuelve texto largo) y el principal cerró parcial con la cola en 430, llamando «error de herramienta repetido» a lo que era falta de contexto. Además le pasó al cargador datos de Config equivocados (fila de sesión, cola, fila de Log).
+- **Cambio:** `Recetas!D39` v5 (máx. 4 grupos por subagente, escribir cada grupo antes del siguiente, Meta con limit 8/5 y máx. 2 frases, leer solo las filas propias de la Cola). INSTR 08 v1.17: tres subagentes a la vez con bloques distintos, relanzar si uno se queda sin contexto, limpieza en bloque de filas con `[prefiltro:` antes de la primera tanda, releer Config justo antes de pasar datos.
+- **Revertir:** quitar el párrafo inicial de D39 v5 y el v1.17 de INSTR 08; limit 25/10 como antes.
