@@ -25,9 +25,9 @@
   .wa { display:none; margin:24px 0 0; background:var(--wa); color:#fff; text-decoration:none; text-align:center; font-weight:800; font-size:17px; padding:16px; border-radius:12px; }
   .pie { text-align:center; color:var(--muted); font-size:12.5px; margin-top:22px; }
 </style>
-<!-- Meta Pixel: mismo PIXEL_ID que la landing (vacío = no se carga) -->
+<!-- Meta Pixel -->
 <script>
-  var PIXEL_ID = '';
+  var PIXEL_ID = '1788156381816025';   // píxel de Puerto Secreto: aquí solo PageView (sin Lead ni Purchase)
   if (PIXEL_ID) {
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -91,12 +91,6 @@
       a.style.display = 'block';
     }
 
-    // El Lead se dispara aquí, no en la landing: así solo cuenta a quien llegó al final.
-    var total = Number(new URLSearchParams(location.search).get('v')) || Number(p.total) || 0;
-    if (typeof fbq === 'function') {
-      fbq('track', 'Lead', { content_ids: ['masilla-selladora'], content_type: 'product', value: total, currency: 'PEN' },
-          p.eventId ? { eventID: p.eventId } : undefined);
-    }
   })();
 </script>
 </body>

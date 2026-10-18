@@ -141,6 +141,16 @@
   .overlay.on { display:block; }
   .modal { background:#fff; width:calc(100% - 24px); max-width:456px; margin:0 auto; border-radius:16px; position:relative; padding:22px 20px 26px; box-shadow:0 20px 40px rgba(0,0,0,.2); }
   .mclose { position:absolute; top:16px; right:16px; color:var(--muted); cursor:pointer; line-height:1; padding:4px; z-index:10; }
+  .logo-circle { width:92px; height:92px; margin:0 auto 10px; border-radius:50%; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.18); }
+  .logo-circle img { width:100%; height:100%; object-fit:cover; }
+  .garantia { text-align:center; color:#e02424; font-size:19px; font-weight:800; line-height:1.2; margin:4px 26px 14px; }
+  .total { padding:10px 0 12px; border-top:1px solid var(--line); }
+  .total .rw { display:flex; justify-content:space-between; align-items:baseline; font-size:14px; padding:3px 0; }
+  .total .rw.t { font-size:15px; font-weight:700; padding-top:6px; }
+  .total .rw.t b { font-size:22px; font-weight:800; }
+  .total s { color:var(--old); font-weight:500; font-size:14px; margin-right:6px; }
+  .stars { color:#f5b800; letter-spacing:3px; margin:6px 0 0; font-size:20px; line-height:1; }
+  .row .stars { margin:0 0 8px; }
   .vendedor { display:flex; align-items:center; justify-content:center; gap:6px; margin:6px auto 10px; background:var(--soft); color:var(--blue-dark); border:1px solid #cfe0f5; border-radius:999px; padding:5px 14px; font-size:13px; font-weight:800; width:fit-content; }
   .vendedor svg { width:15px; height:15px; }
   .m-titulo { text-align:center; font-size:20px; font-weight:900; line-height:1.2; margin:10px 0 4px; }
@@ -156,7 +166,7 @@
   .vcard .foto img { width:100%; height:100%; object-fit:cover; }
   .vcard .vname { font-size:14px; font-weight:800; line-height:1.2; }
   .vcard .vdet { font-size:12px; color:var(--muted-txt); margin-top:2px; }
-  .vcard .vprice { margin-left:auto; text-align:right; font-size:18px; font-weight:900; }
+  .vcard .vprice { white-space:nowrap; flex:0 0 auto; margin-left:auto; text-align:right; font-size:18px; font-weight:900; }
   .vcard .vold { display:block; font-size:12px; color:var(--old); text-decoration:line-through; font-weight:500; }
   .vbadge { position:absolute; top:-10px; right:12px; background:var(--ink); color:#fff; font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; }
 
@@ -187,15 +197,17 @@
   .sel-input:focus { border-color:var(--blue); }
   .fg input::placeholder, .sel-input::placeholder { color:var(--muted-txt); opacity:1; }
   .entrega-note { text-align:center; color:var(--blue-dark); font-size:15px; font-weight:800; margin:18px 0 14px; line-height:1.4; }
-  .btn-pedido { width:100%; border:none; cursor:pointer; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; border-radius:12px; padding:18px; margin-top:6px; box-shadow:0 6px 16px rgba(74,144,226,.35); font-family:inherit; }
+  .btn-pedido { text-align:center; width:100%; border:none; cursor:pointer; background:var(--blue); color:#fff; border-radius:12px; padding:18px; margin-top:6px; box-shadow:0 6px 16px rgba(74,144,226,.35); font-family:inherit; }
   .btn-pedido:disabled { opacity:.7; }
+  .btn-pedido .l1 { font-size:18px; font-weight:800; letter-spacing:.3px; }
+  .btn-pedido .l2 { font-size:12.5px; font-weight:500; margin-top:2px; opacity:.95; }
   .wa-note { text-align:center; color:var(--green); font-size:14px; font-weight:700; margin:16px 0 4px; display:flex; justify-content:center; align-items:center; gap:6px; }
 </style>
 
 
-<!-- Meta Pixel: pega el ID del píxel de este producto en PIXEL_ID (vacío = no se carga) -->
+<!-- Meta Pixel -->
 <script>
-  var PIXEL_ID = '';
+  var PIXEL_ID = '1788156381816025';   // píxel de Puerto Secreto (el mismo de URO). Eventos: PageView, ViewContent, AddToCart, InitiateCheckout (sin Lead ni Purchase)
   if (PIXEL_ID) {
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -275,7 +287,7 @@
     <div class="pic"><img src="/sellador/img/antes-despues.webp" alt="Antes y después: hueco abierto junto a una tubería y el mismo hueco sellado" width="500" height="322" loading="lazy">
       <div class="cita-card" data-resena="6"></div>
     </div>
-    <div class="txt"><h2>6. Un Acabado de Aspecto Profesional Sin Pagar un Maestro</h2>
+    <div class="txt"><div class="stars" aria-label="5 estrellas">★★★★★</div><h2>6. Un Acabado de Aspecto Profesional Sin Pagar un Maestro</h2>
       <p>Seas inquilino o experto en bricolaje, esta masilla da resultados de aspecto profesional sin el precio de un profesional. Solo presionar, moldear y listo.</p>
       <div class="ico-item"><img src="/sellador/img/ico-garantia.webp" alt="" width="48" height="48"> Garantía de devolución de 90 días</div>
       <div class="ico-item"><img src="/sellador/img/ico-pintable.webp" alt="" width="48" height="48"> Reparación invisible, lijable y pintable</div>
@@ -327,6 +339,7 @@
 
  <aside class="side">
   <h3>Masilla Selladora Multiusos para Paredes y Tuberías</h3>
+  <div class="stars" aria-label="5 estrellas">★★★★★</div>
   <img class="pk" src="/sellador/img/pack.webp" alt="Sachets de masilla selladora" width="400" height="400">
   <button class="btn" onclick="openCOD()">Obtén 50% de Descuento Ahora</button>
   <ul class="checks">
@@ -346,14 +359,13 @@
 <div class="sticky"><button class="btn" onclick="openCOD()">Obtén 50% de Descuento Ahora</button></div>
 
 
-<!-- Modal COD -->
-<div class="overlay" id="codOverlay">
+<!-- Modal COD (igual al del Cable: logo de Puerto Secreto, Lima y provincia) -->
+<div class="overlay" id="codOverlay" role="dialog" aria-modal="true" aria-label="Completar pedido">
   <div class="modal">
-    <span class="mclose" onclick="closeCOD()"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
-
-    <div class="vendedor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg> Garantía de 90 días</div>
-    <div class="m-titulo">Masilla selladora multiusos</div>
-    <div class="m-sub">Hasta 50% de descuento · Pagas al recibir · Si no te convence, te devolvemos tu dinero</div>
+    <span class="mclose" onclick="closeCOD()" role="button" aria-label="Cerrar"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
+    <div class="logo-circle"><img data-src="/sellador/img/logo.webp" alt="Puerto Secreto" width="92" height="92"></div>
+    <div class="vendedor"><svg class="ico" style="width:15px;height:15px"><use href="#i-shield"/></svg> Vendedor autorizado</div>
+    <div class="garantia">Garantía de 90 días por tu pedido</div>
 
     <div class="variants">
       <div class="vcard" data-var="1pack" onclick="selVar(this)">
@@ -377,43 +389,51 @@
       </div>
     </div>
 
-    <div class="sect-title">Método de Envío</div>
+    <div class="sect-title">Método de envío</div>
     <div class="ship-opts">
       <div class="ship-opt sel" id="shipCasa" onclick="selShip('casa')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en Casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-box"/></svg> Pago en casa:</b><span class="loc-line">Lima</span><small>Pagas al recibir con Yape, efectivo o POS.</small></div>
         <div class="free">Gratis</div>
       </div>
       <div class="ship-opt" id="shipAg" onclick="selShip('agencia')">
         <div class="radio"></div>
-        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por Agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/10 y la diferencia pagas al recojer.</small></div>
+        <div class="txt"><b><svg class="ico"><use href="#i-truck"/></svg> Envío por agencia:</b><span class="loc-line">Provincia</span><small>Adelanto de S/ 10 y la diferencia pagas al recoger.</small></div>
         <div class="free">Gratis</div>
       </div>
     </div>
 
     <div class="form-head">Completa tu información</div>
-
     <div class="fg">
-      <label>Nombres<span class="req">*</span></label>
+      <label for="fName">Nombres <span class="req">*</span></label>
       <div class="input-icon"><span class="ic"><svg class="ico"><use href="#i-user"/></svg></span><input type="text" id="fName" placeholder="Coloca tu nombre" autocomplete="name"></div>
     </div>
     <div class="fg">
-      <label>Whatsapp <span class="req">*</span></label>
-      <div class="input-icon"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><input type="tel" id="fPhone" placeholder="Coloca tu Whatsapp" autocomplete="tel" inputmode="tel"></div>
-      <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega en empaque discreto y embalado.</span>
+      <label for="fPhone">WhatsApp <span class="req">*</span></label>
+      <div class="input-icon"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><input type="tel" id="fPhone" placeholder="Coloca tu WhatsApp" inputmode="numeric" autocomplete="tel"></div>
+      <span class="hint">Si no estás, puede recibirlo cualquier persona. El paquete llega bien embalado.</span>
     </div>
 
     <div id="boxCasa">
       <div class="fg">
-        <label>Dirección de Entrega <span class="req">*</span></label>
-        <input class="sel-input" type="text" placeholder="Coloca tu dirección (y distrito)" id="fDir" autocomplete="street-address">
-        <span class="hint">Entregas en horario de la tarde, el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
+        <label for="fDistrito">Distrito <span class="req">*</span></label>
+        <input class="sel-input" type="text" id="fDistrito" list="distritos" placeholder="Ej: Miraflores" autocomplete="address-level2">
+        <datalist id="distritos"></datalist>
+      </div>
+      <div class="fg">
+        <label for="fDir">Dirección de entrega <span class="req">*</span></label>
+        <input class="sel-input" type="text" id="fDir" placeholder="Coloca tu dirección" autocomplete="street-address">
+        <span class="hint">Entregas en horario de la tarde; el repartidor se contactará contigo con anticipación. Puedes reprogramar si te surge un imprevisto.</span>
       </div>
     </div>
     <div id="boxAg" style="display:none">
       <div class="fg">
-        <label>Agencia de Destino <span class="req">*</span></label>
-        <input class="sel-input" type="text" placeholder="Ej: Shalom - Sede Centro" id="fSucursal">
+        <label for="fCiudad">Ciudad o departamento <span class="req">*</span></label>
+        <input class="sel-input" type="text" id="fCiudad" placeholder="Ej: Arequipa" autocomplete="address-level1">
+      </div>
+      <div class="fg">
+        <label for="fSucursal">Agencia de destino <span class="req">*</span></label>
+        <input class="sel-input" type="text" id="fSucursal" placeholder="Ej: Shalom - Sede Centro">
         <span class="hint">Envíos por Shalom y Olva. Te enviaremos por WhatsApp la foto de tu comprobante con el número de seguimiento.</span>
       </div>
     </div>
@@ -421,16 +441,16 @@
     <!-- Trampa anti-bots: invisible para personas, los bots sí la llenan -->
     <input type="text" id="fWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 
-    <div class="entrega-note" id="noteEntrega">Entrega para Lima al día siguiente</div>
+    <div class="entrega-note" id="noteEntrega">Entrega para Lima en 24 a 48 horas</div>
+    <div class="total" id="mResumen"></div>
 
-    <button class="btn-pedido buzz" id="btnPedido" onclick="submitCOD()">
-      <div class="l1"><svg class="ico"><use href="#i-box"/></svg> COMPLETAR PEDIDO</div>
-      <div class="l2">Pagas al recibir</div>
+    <button class="btn-pedido" id="btnPedido" onclick="submitCOD()">
+      <div class="l1">COMPLETAR PEDIDO</div>
+      <div class="l2" id="btnSub">Pagas cuando lo recibes</div>
     </button>
-    <div class="wa-note"><svg class="ico" style="font-size:20px"><use href="#i-check"/></svg> Te escribiremos por Whatsapp para confirmar tu pedido</div>
+    <div class="wa-note">Te escribiremos por WhatsApp para confirmar tu pedido</div>
   </div>
 </div>
-
 
 <script>
   /* ── Configuración de esta landing ─────────────────────────────────────
@@ -440,9 +460,23 @@
      permiso. AUTOR: foto subida a public/sellador/img/ y su nombre/cargo.
      RESENAS: { 1: { texto, nombre }, … } por motivo (1 a 5); la 6 va en tarjeta
      con { texto, nombre, verificado: true }. Vacío = no se muestra. */
-  var AUTOR = { nombre: '', cargo: '', foto: '' };      // ej. { nombre: 'Marcos T.', cargo: 'Especialista en Hogar y Bricolaje', foto: '/sellador/img/autor.webp' }
-  var RESENAS = {};
-  var WA_NUMERO = '';          // WhatsApp de ventas de este producto, ej. '51999999999' (vacío = sin botón en /gracias)
+  /* ▼▼ REEMPLAZA AQUÍ (solo con datos reales y con permiso) ▼▼
+     Foto del doctor: sustituye el archivo public/sellador/img/autor.webp (mismo nombre, cuadrada).
+     Nombre y especialidad del doctor: AUTOR.nombre y AUTOR.cargo.
+     Reseñas: el texto y el NOMBRE de cada una (1 a 5 van bajo cada motivo; la 6 va en la tarjeta). */
+  var AUTOR = { nombre: '[Nombre del doctor]', cargo: '[Especialidad]', foto: '/sellador/img/autor.webp' };
+  var RESENAS = {
+    1: { texto: '[Texto de la reseña 1]', nombre: '[Nombre 1]' },
+    2: { texto: '[Texto de la reseña 2]', nombre: '[Nombre 2]' },
+    3: { texto: '[Texto de la reseña 3]', nombre: '[Nombre 3]' },
+    4: { texto: '[Texto de la reseña 4]', nombre: '[Nombre 4]' },
+    5: { texto: '[Texto de la reseña 5]', nombre: '[Nombre 5]' },
+    6: { texto: '[Texto de la reseña 6]', nombre: '[Nombre 6]', verificado: true }
+  };
+  /* ▲▲ fin de lo que se reemplaza ▲▲ */
+  var WA_NUMERO = '51930575181';   // WhatsApp de atención (el de URO / Puerto Secreto)
+  var ADELANTO = 10;              // provincia: adelanto y el resto al recoger (igual que src/lib/sellador.js)
+  var DISTRITOS = ['Ancón','Ate','Barranco','Breña','Carabayllo','Chaclacayo','Chorrillos','Cieneguilla','Comas','El Agustino','Independencia','Jesús María','La Molina','La Victoria','Lima Cercado','Lince','Los Olivos','Lurigancho-Chosica','Lurín','Magdalena del Mar','Miraflores','Pachacámac','Pucusana','Pueblo Libre','Puente Piedra','Punta Hermosa','Punta Negra','Rímac','San Bartolo','San Borja','San Isidro','San Juan de Lurigancho','San Juan de Miraflores','San Luis','San Martín de Porres','San Miguel','Santa Anita','Santa María del Mar','Santa Rosa','Santiago de Surco','Surquillo','Villa El Salvador','Villa María del Triunfo','Callao','Bellavista','La Perla','La Punta','Carmen de la Legua','Ventanilla','Mi Perú'];
 
   var FB = {
     moneda: 'PEN',
@@ -506,6 +540,7 @@
     });
     var o = document.getElementById('codOverlay');
     activarImagenes(o);
+    pintarResumen();
     o.classList.add('on');
     document.body.style.overflow = 'hidden';
   }
@@ -518,6 +553,7 @@
     var cambio = !el.classList.contains('sel');
     [].forEach.call(document.querySelectorAll('.vcard'), function (c) { c.classList.remove('sel'); });
     el.classList.add('sel');
+    pintarResumen();
     if (cambio) {
       var v = fbVariante();
       fbTrack('AddToCart', {
@@ -533,9 +569,28 @@
     document.getElementById('boxCasa').style.display = mode === 'casa' ? 'block' : 'none';
     document.getElementById('boxAg').style.display = mode === 'agencia' ? 'block' : 'none';
     document.getElementById('noteEntrega').textContent = mode === 'casa'
-      ? 'Entrega para Lima al día siguiente'
-      : 'Entrega para provincia en 2-3 días';
+      ? 'Entrega para Lima en 24 a 48 horas'
+      : 'Entrega para provincia en 2 a 3 días';
+    pintarResumen();
   }
+
+  function pintarResumen() {
+    var v = fbVariante();
+    var agencia = document.getElementById('shipAg').classList.contains('sel');
+    var h = '<div class="rw"><span>' + v.etiqueta + '</span><span><s>S/ ' + FB.viejos[v.id].toFixed(2) + '</s></span></div>' +
+            '<div class="rw"><span>Envío</span><span>Gratis</span></div>';
+    if (agencia) {
+      h += '<div class="rw"><span>Adelanto hoy (Yape)</span><span>S/ ' + ADELANTO.toFixed(2) + '</span></div>' +
+           '<div class="rw"><span>Pagas al recoger</span><span>S/ ' + (v.valor - ADELANTO).toFixed(2) + '</span></div>';
+    }
+    h += '<div class="rw t"><span>Total</span><b>S/ ' + v.valor.toFixed(2) + '</b></div>';
+    document.getElementById('mResumen').innerHTML = h;
+    document.getElementById('btnSub').textContent = agencia ? 'Adelanto de S/ ' + ADELANTO.toFixed(2) + ' y el resto al recoger' : 'Pagas cuando lo recibes';
+  }
+  (function () {
+    var dl = document.getElementById('distritos');
+    DISTRITOS.forEach(function (d) { var o = document.createElement('option'); o.value = d; dl.appendChild(o); });
+  })();
 
   ['fName', 'fPhone', 'fDir', 'fSucursal'].forEach(function (id) {
     var campo = document.getElementById(id);
@@ -577,7 +632,7 @@
       'WhatsApp: ' + aE164(cuerpo.telefono),
       'Producto: ' + v.etiqueta,
       'Entrega: ' + (cuerpo.envio === 'casa' ? 'Pago en casa (Lima)' : 'Agencia (provincia)'),
-      (cuerpo.envio === 'casa' ? 'Direccion: ' + cuerpo.direccion : 'Agencia: ' + cuerpo.agencia),
+      (cuerpo.envio === 'casa' ? 'Distrito: ' + cuerpo.distrito + '\nDireccion: ' + cuerpo.direccion : 'Ciudad: ' + cuerpo.distrito + '\nAgencia: ' + cuerpo.agencia),
       'Total a pagar: S/ ' + v.valor.toFixed(2)
     ];
     return 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(lineas.join('\n'));
@@ -589,9 +644,11 @@
     var esCasa = document.getElementById('shipCasa').classList.contains('sel');
     var dir = document.getElementById('fDir').value.trim();
     var suc = document.getElementById('fSucursal').value.trim();
+    var dist = (esCasa ? document.getElementById('fDistrito') : document.getElementById('fCiudad')).value.trim();
 
     if (n.length < 3) { alert('Ingresa tus nombres y apellidos'); return; }
     if (p.replace(/\D/g, '').length < 9) { alert('Ingresa un WhatsApp válido de 9 dígitos'); return; }
+    if (dist.length < 3) { alert(esCasa ? 'Indica tu distrito' : 'Indica tu ciudad o departamento'); return; }
     if (esCasa && dir.length < 6) { alert('Ingresa tu dirección de entrega'); return; }
     if (!esCasa && suc.length < 3) { alert('Indica la agencia de destino'); return; }
 
@@ -604,7 +661,7 @@
     var cuerpo = {
       nombre: n, telefono: p,
       envio: esCasa ? 'casa' : 'agencia',
-      direccion: dir, agencia: suc,
+      distrito: dist, direccion: dir, agencia: suc,
       variante: v.id,
       campana: new URLSearchParams(location.search).get('utm_campaign') || '',
       website: document.getElementById('fWebsite').value,
@@ -622,7 +679,8 @@
           sessionStorage.setItem('pedido_sellador', JSON.stringify({
             nombre: n, telefono: aE164(p),
             envio: esCasa ? 'Pago en casa (Lima)' : 'Agencia (provincia)',
-            destino: esCasa ? dir : suc,
+            destino: dist + ' — ' + (esCasa ? dir : suc),
+            adelanto: esCasa ? 0 : ADELANTO,
             producto: v.etiqueta, total: total, eventId: res.body.eventId || '',
             wa: WA_NUMERO,
             ahorro: (FB.viejos[v.id] || v.valor) - v.valor

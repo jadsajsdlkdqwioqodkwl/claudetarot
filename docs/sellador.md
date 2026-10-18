@@ -36,5 +36,8 @@ se copian).
 - Estilo igual al advertorial original: fondo blanco, titulares negros en Poppins, azul plano `#4A90E2`.
   Botones simples: «COMPLETAR PEDIDO». Garantía de 90 días (devolución del dinero) en la oferta, el modal y las preguntas.
 
-## Autor y reseñas (espacios listos)
-`AUTOR` y `RESENAS` al inicio del script de `public/sellador/index.html` llenan el byline con foto y las citas bajo cada motivo (igual que el original). Van vacíos hasta tener la foto subida a `public/sellador/img/` y los textos de personas reales con su permiso.
+## Autor y reseñas (placeholders)
+En `public/sellador/index.html`, el bloque «REEMPLAZA AQUÍ» (`AUTOR`, `RESENAS`) llena el byline y las citas bajo cada motivo (igual que el original). La foto del doctor es el archivo `public/sellador/img/autor.webp` (reemplazarlo con el mismo nombre, cuadrado). Hoy son placeholders entre corchetes; solo se reemplazan con datos reales y con permiso.
+
+## Meta y WhatsApp
+Píxel de Puerto Secreto `1788156381816025` (el de URO); eventos PageView, ViewContent, AddToCart e InitiateCheckout. No se envían Lead ni Purchase. WhatsApp `51930575181`.

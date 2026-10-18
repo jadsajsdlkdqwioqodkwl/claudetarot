@@ -134,6 +134,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-18 · `/sellador`: COD igual al del Cable (logo de Puerto Secreto, «Vendedor autorizado», distrito/ciudad, adelanto de S/ 10 en provincia y resumen del total; la hoja «Sellador» suma «Distrito / Ciudad» y «Adelanto»), píxel de Puerto Secreto `1788156381816025` solo hasta InitiateCheckout (la gracias ya no manda Lead), WhatsApp `51930575181`, estrellas de vuelta y espacios `AUTOR`/`RESENAS` con placeholders. Se mezcló `main` (Cable) en la rama. No se quitó nada de lo anterior.
+
 - 2026-10-18 · `/sellador`: packs de 20 sachets (1 pack S/79 · 2 packs S/129 · 3 packs S/179; ids `1pack/2pack/3pack`, columna «Sachets» = 20/40/60), letra más grande y ~10% menos texto como el original, y espacios `AUTOR`/`RESENAS` listos para foto y reseñas reales (ver `docs/sellador.md`). No se quitó nada de lo anterior.
 
 - 2026-10-18 · Landing `/sellador` rehecha como **clon fiel del advertorial original en español** (a pedido del dueño): misma estructura PC/móvil, filas alternadas, tabla comparativa, oferta con cuenta regresiva y CTA fijo «OBTÉN 50% DE DESCUENTO AHORA». Se quitó el rótulo «Contenido publicitario». Sin logos de medios, sin persona-experto y sin citas/cifras inventadas (ver `docs/sellador.md`). Modal COD, endpoint y precios iguales. No se quitó nada de lo anterior fuera de esa página.

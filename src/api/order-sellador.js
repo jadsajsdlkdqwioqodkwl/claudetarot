@@ -12,7 +12,7 @@ import { appendRowsTo, asegurarPestana } from "../lib/google-sheets.js";
 import { clean, toE164Peru, makeEventId } from "../lib/pedido.js";
 import { notificarTelegram } from "../lib/telegram.js";
 import { fechaLima, numeroDeFila } from "./order.js";
-import { VARIANTES, VARIANTE_POR_DEFECTO, PESTANA, COLUMNAS } from "../lib/sellador.js";
+import { VARIANTES, VARIANTE_POR_DEFECTO, PESTANA, COLUMNAS, ADELANTO_PROVINCIA } from "../lib/sellador.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -30,12 +30,15 @@ export function validate(payload) {
   const envio = payload.envio === "agencia" ? "agencia" : "casa";
   const direccion = clean(payload.direccion, 160);
   const agencia = clean(payload.agencia, 160);
+  // Distrito (Lima) o ciudad/departamento (provincia).
+  const distrito = clean(payload.distrito, 60);
 
   // El precio SIEMPRE sale de la tabla del servidor, nunca del formulario.
   const variante = VARIANTES[payload.variante] ? payload.variante : VARIANTE_POR_DEFECTO;
   const { etiqueta, precio, cantidad } = VARIANTES[variante];
 
   if (nombre.length < 3) errors.push("nombre");
+  if (distrito.length < 3) errors.push("distrito");
   if (!telefono) errors.push("telefono");
   if (envio === "casa" && direccion.length < 6) errors.push("direccion");
   if (envio === "agencia" && agencia.length < 3) errors.push("agencia");
@@ -46,11 +49,14 @@ export function validate(payload) {
       nombre,
       telefono,
       envio,
+      distrito,
       destino: envio === "casa" ? direccion : agencia,
       variante,
       etiqueta,
       cantidad,
       total: precio,
+      // Provincia: adelanto ahora y el resto al recoger. Lima paga todo al recibir.
+      adelanto: envio === "agencia" ? ADELANTO_PROVINCIA : 0,
       campana: clean(payload.campana, 120),
       fbp: clean(payload.fbp, 120),
       fbc: clean(payload.fbc, 255)
@@ -66,10 +72,12 @@ export function filaDeSellador(order, headers) {
     order.nombre,
     `'+${order.telefono}`, // apóstrofo: evita que Sheets lo trate como número
     order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)",
+    order.distrito,
     order.destino,
     order.etiqueta,
     order.cantidad,
     order.total,
+    order.adelanto,
     "Pendiente",
     order.campana,
     order.fbp,
@@ -91,7 +99,8 @@ export function mensajeSelladorNuevo(order) {
     `📦 *Producto:* ${limpiar(order.etiqueta)}\n` +
     `💰 *Total:* S/ ${order.total.toFixed(2)}\n` +
     `🚚 *Entrega:* ${entrega}\n` +
-    `📍 *Destino:* ${limpiar(order.destino)}`
+    (order.adelanto ? `💳 *Adelanto:* S/ ${order.adelanto.toFixed(2)} (resto al recoger)\n` : "") +
+    `📍 *Destino:* ${limpiar(order.distrito)} — ${limpiar(order.destino)}`
   );
 }
 

@@ -1055,7 +1055,7 @@ console.log("\nMasilla selladora (/sellador)");
   check("sellador: la variante por defecto existe y es la marcada", !!sel.VARIANTES[sel.VARIANTE_POR_DEFECTO] &&
     new RegExp(`vcard sel" data-var="${sel.VARIANTE_POR_DEFECTO}"`).test(selHtml));
 
-  const base = { nombre: "María Pérez", telefono: "987654321", envio: "casa", direccion: "Av. Los Olivos 123, Surco", variante: "3pack" };
+  const base = { nombre: "María Pérez", telefono: "987654321", envio: "casa", distrito: "Santiago de Surco", direccion: "Av. Los Olivos 123, Surco", variante: "3pack" };
   const r = selApi.validate(base);
   check("sellador: pedido válido pasa y el precio sale del servidor",
     r.errors.length === 0 && selApi.validate({ ...base, precio: 1 }).order.total === sel.VARIANTES["3pack"].precio);
@@ -1080,6 +1080,18 @@ console.log("\nMasilla selladora (/sellador)");
   check("sellador: los datos del cliente no viajan por la URL a /gracias",
     !/gracias\.html\?[^'"]*(nombre|telefono|tel=)/.test(selHtml) && selGracias.includes("sessionStorage"));
   check("sellador: el formulario manda al endpoint propio", selHtml.includes("'/api/order-sellador'"));
+  check("sellador: píxel de Puerto Secreto, sin Lead ni Purchase (solo hasta InitiateCheckout)",
+    selHtml.includes("PIXEL_ID = '1788156381816025'") && selGracias.includes("PIXEL_ID = '1788156381816025'") &&
+    !/fbTrack\('(Lead|Purchase)'|fbq\('track',\s*'(Lead|Purchase)'/.test(selHtml + selGracias) && selHtml.includes("'InitiateCheckout'"));
+  check("sellador: WhatsApp 51930575181 en la página", selHtml.includes("WA_NUMERO = '51930575181'"));
+  check("sellador: el adelanto de provincia coincide entre la página y el servidor",
+    new RegExp(`var ADELANTO = ${sel.ADELANTO_PROVINCIA};`).test(selHtml) &&
+    selApi.validate({ ...base, envio: "agencia", agencia: "Shalom Centro", distrito: "Arequipa" }).order.adelanto === sel.ADELANTO_PROVINCIA &&
+    selApi.validate(base).order.adelanto === 0);
+  check("sellador: sin distrito se rechaza", selApi.validate({ ...base, distrito: "" }).errors.includes("distrito"));
+  check("sellador: el COD lleva el logo de Puerto Secreto", selHtml.includes("sellador/img/logo.webp") && existsSync(join(root, "public/sellador/img/logo.webp")));
+}
+
 /* Landing del Cable con Soporte 2 en 1 (/cable/): precios, archivos y enganches.
    La prueba del endpoint con Google simulado es scripts/test-pedido-cable.mjs. */
 {

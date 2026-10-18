@@ -20,6 +20,9 @@ export const VARIANTES = {
 
 export const VARIANTE_POR_DEFECTO = "2pack";
 
+/** Provincia: adelanto por Yape y el resto al recoger en la agencia (igual que el Kit y el Cable). */
+export const ADELANTO_PROVINCIA = 10;
+
 /** Pestaña del MISMO libro de Pedidos (un solo GOOGLE_SHEET_ID). */
 export const PESTANA = "Sellador";
 
@@ -29,13 +32,15 @@ export const COLUMNAS = [
   "Nombre",
   "WhatsApp",
   "Envío",
+  "Distrito / Ciudad",
   "Dirección / Agencia",
-  "Producto",
+  "Pack",
   "Sachets",
   "Total",
+  "Adelanto",
   "Estado",
   "Campaña",
-  // K–O: solo para la Conversions API (igual que la hoja de Tarot)
+  // Solo para la Conversions API (igual que las otras hojas)
   "FBP",
   "FBC",
   "Event ID",
