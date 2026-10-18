@@ -52,12 +52,12 @@ export function validate(payload) {
   const pack = PACKS[payload.pack] ? payload.pack : "x1";
   const { etiqueta, precio, cantidad } = PACKS[pack];
 
-  // Un cable por unidad del pack: solo se elige el conector (todos son naranja).
+  // El formulario ya no pregunta el conector: la vendedora lo confirma por WhatsApp (todos son naranja).
+  // Si algún día llega `cables` (un conector por unidad), se respeta; si no, queda «por confirmar».
   const recibidos = Array.isArray(payload.cables) ? payload.cables : [];
-  const cables = Array.from({ length: cantidad }, (_, i) => ({
-    conector: deLista(recibidos[i]?.conector, CONECTORES)
-  }));
-  const detalle = cables.map((c, i) => `${i + 1}) ${c.conector}`).join(" · ");
+  const detalle = recibidos.length
+    ? Array.from({ length: cantidad }, (_, i) => `${i + 1}) ${deLista(recibidos[i]?.conector, CONECTORES)}`).join(" · ")
+    : "Conector por confirmar (WhatsApp)";
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");
