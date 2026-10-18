@@ -2,7 +2,8 @@
  * POST /api/crm/chat-estado — { conversation_id, accion }
  *   accion: "quitar_recojo" → termina el seguimiento de recojo (Shalom u Olva) cuando el cliente ya pagó o recogió.
  *           "atendido" | "no_atendido" → casilla «Atendido»: quita la etiqueta «Falta respuesta» hasta
- *           que el cliente escriba otra vez (conversations.atendido_at).
+ *           que el cliente escriba otra vez (conversations.atendido_at) y descarta su recomendación
+ *           pendiente: el chat sale de la cola «Atención pendiente».
  *           "ocultar" | "mostrar"   → saca/devuelve el chat de la lista
  *           (vuelve solo cuando el cliente escribe otra vez).
  *           "pausar_auto" | "reanudar_auto" → killswitch de este chat (cancela lo programado y
@@ -27,7 +28,7 @@ const json = (data, status = 200) =>
 
 const ACCIONES = new Set(["quitar_recojo", "atendido", "no_atendido", "ocultar", "mostrar", "bloquear", "desbloquear", "pausar_auto", "reanudar_auto"]);
 
-async function post({ request, env }) {
+async function post({ request, env, agent }) {
   let payload;
   try {
     payload = JSON.parse(await request.text());
@@ -51,6 +52,13 @@ async function post({ request, env }) {
   if (accion === "atendido" || accion === "no_atendido") {
     const marcar = accion === "atendido";
     await env.CRM_DB.prepare(`UPDATE conversations SET atendido_at = ${marcar ? "datetime('now')" : "NULL"} WHERE id = ?`).bind(conversationId).run();
+    // Sale de la cola «Atención pendiente»: la recomendación pendiente de este chat también se descarta
+    // (ya no reflota); un mensaje nuevo del cliente lo vuelve a poner en la cola.
+    if (marcar) {
+      await env.CRM_DB.prepare(
+        "UPDATE asesor_sugerencias SET estado = 'descartada', resuelto_por = ?, resuelto_at = datetime('now') WHERE conversation_id = ? AND tipo = 'seguimiento' AND estado = 'pendiente'"
+      ).bind(`${agent?.displayName || agent?.username || "CRM"} (atendido)`, conversationId).run();
+    }
     return json({ ok: true, atendido: marcar });
   }
 

@@ -238,6 +238,7 @@ export async function proponerPlanPorVentanaCerrada(env, limite = 5) {
      WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento'
        AND conv.last_inbound_at IS NOT NULL AND conv.last_inbound_at < datetime('now', '-24 hours')
        AND NOT EXISTS (SELECT 1 FROM scheduled_messages m WHERE m.conversation_id = conv.id AND m.template_name IS NOT NULL AND m.status IN ('pendiente', 'por_aprobar'))
+       AND NOT EXISTS (SELECT 1 FROM scheduled_messages m WHERE m.conversation_id = conv.id AND m.created_by LIKE '%Asesor (se cerró la ventana)')
      LIMIT ?`
   ).bind(limite).all();
   if (!results.length) return 0;

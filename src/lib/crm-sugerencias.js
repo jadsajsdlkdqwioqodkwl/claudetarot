@@ -2,9 +2,10 @@
  * Que las sugerencias no se acumulen: una sugerencia para un chat deja de
  * tener sentido en cuanto alguien le escribe al cliente (a mano, una
  * respuesta rápida, otra sugerencia o un automático), si el cliente ya
- * compró o si se cerró su ventana de 24 h. Se cierran solas (estado
+ * compró. Las que quedaron con la ventana de 24 h cerrada NO se cierran: siguen en la cola «Atención
+ * pendiente» para que la asesora evalúe mandarles una plantilla (2026-10-18). Se cierran solas (estado
  * 'obsoleta', con el motivo en resuelto_por) antes de listar o contar.
- * Tres UPDATE en un batch; nada de IA.
+ * Dos UPDATE en un batch; nada de IA.
  */
 import { proponerPlanPorVentanaCerrada } from "./planes-plantilla.js";
 import { enSilencio } from "./horario.js";
@@ -23,11 +24,6 @@ export async function limpiarSugerenciasViejas(db, env = null) {
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'ya compró', resuelto_at = datetime('now')
        WHERE estado = 'pendiente' AND tipo = 'seguimiento'
          AND conversation_id IN (SELECT id FROM conversations WHERE etapa >= 5)`
-    ),
-    db.prepare(
-      `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'se cerró su ventana de 24 h', resuelto_at = datetime('now')
-       WHERE estado = 'pendiente' AND tipo = 'seguimiento'
-         AND conversation_id IN (SELECT id FROM conversations WHERE last_inbound_at IS NULL OR last_inbound_at < datetime('now', '-24 hours'))`
     )
   ]);
 }
@@ -48,12 +44,14 @@ export async function reflotarSugerencia(env) {
   let { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.reflotada_at IS NULL AND conv.blocked = 0
+       AND conv.last_inbound_at >= datetime('now', '-24 hours')
      ORDER BY s.created_at ASC, s.id ASC LIMIT ?`
   ).bind(POR_PASADA).all();
   if (!results.length) {
     ({ results } = await db.prepare(
       `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
        WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.reflotada_at < datetime('now', ?) AND conv.blocked = 0
+         AND conv.last_inbound_at >= datetime('now', '-24 hours')
        ORDER BY s.reflotada_at ASC LIMIT 1`
     ).bind(`-${VUELVE_A_SUBIR_H} hours`).all());
   }
@@ -63,29 +61,4 @@ export async function reflotarSugerencia(env) {
     db.prepare("UPDATE conversations SET last_message_at = datetime('now') WHERE id = ?").bind(s.conversation_id)
   ]));
   return results.map((s) => s.conversation_id);
-}
-
-/**
- * Cada 10 min (cron) sube a la bandeja hasta 2 chats cuyo último mensaje es del cliente y nadie le contestó
- * (etiqueta «Falta respuesta»), sin que la vendedora los haya marcado «Atendido». Un chat solo vuelve a subir
- * pasadas REFLOTE_RESP_H horas, y solo mientras el mensaje del cliente tenga menos de 3 días. No sube de
- * madrugada. Es solo orden de bandeja: no manda nada ni toca «sin leer». Devuelve los ids reflotados.
- */
-const REFLOTE_RESP_H = 4;
-export async function reflotarSinRespuesta(env) {
-  const db = env.CRM_DB;
-  if (!db || enSilencio(Date.now(), env.HORARIO_ENVIO)) return [];
-  const { results } = await db.prepare(
-    `SELECT conv.id FROM conversations conv
-     JOIN messages lm ON lm.id = (SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = conv.id)
-     WHERE conv.hidden = 0 AND conv.blocked = 0 AND lm.direction = 'in' AND lm.type NOT IN ('reaction', 'sticker')
-       AND conv.last_inbound_at >= datetime('now', '-3 days') AND conv.last_message_at <= datetime('now', ?)
-       AND (conv.atendido_at IS NULL OR conv.atendido_at < conv.last_inbound_at)
-       AND (conv.reflotada_resp_at IS NULL OR conv.reflotada_resp_at < datetime('now', ?))
-     ORDER BY conv.last_inbound_at ASC LIMIT 2`
-  ).bind(`-${REFLOTE_RESP_H} hours`, `-${REFLOTE_RESP_H} hours`).all();
-  if (!results.length) return [];
-  await db.batch(results.map((c) =>
-    db.prepare("UPDATE conversations SET last_message_at = datetime('now'), reflotada_resp_at = datetime('now') WHERE id = ?").bind(c.id)));
-  return results.map((c) => c.id);
 }

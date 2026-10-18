@@ -36,6 +36,8 @@ const estado = {
   filtroEtiqueta: "",
   filtroOcultos: false,
   filtroOlva: false,
+  filtroAtencion: false,
+  atencionTotal: 0,
   // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
   filtroProducto: "",
   filtroLinea: "",
@@ -1677,6 +1679,7 @@ function sincronizar() {
   if (estado.filtroEtiqueta) params.set("etiqueta", estado.filtroEtiqueta);
   if (estado.filtroOcultos) params.set("ocultos", "1");
   if (estado.filtroOlva) params.set("olva", "1");
+  if (estado.filtroAtencion) params.set("atencion", "1");
   if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
   if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
@@ -1696,6 +1699,8 @@ function sincronizar() {
     const data = await pedir(`/api/crm/conversations?${clave}`);
     estado.conversaciones = data.conversations;
     estado.hayMasChats = Boolean(data.hay_mas);
+    estado.atencionTotal = data.atencion_total || 0;
+    pintarColaAtencion();
     for (const [id, local] of asignacionesLocales) {
       if (local.t <= inicio) { asignacionesLocales.delete(id); continue; } // este GET ya salió después — confiamos en el servidor
       const conv = estado.conversaciones.find((x) => x.conversation_id === id);
@@ -1917,7 +1922,7 @@ function pintarLista() {
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
-        ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat">${icon("sparkle")} Recomendación</span>` : ""}
+        ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
       </div>`;
@@ -1935,10 +1940,10 @@ function pintarLista() {
       e.stopPropagation();
       clicEstrella(c);
     });
-    div.querySelector(".btn-atendido")?.addEventListener("click", (e) => {
+    div.querySelectorAll(".btn-atendido").forEach((btn) => btn.addEventListener("click", (e) => {
       e.stopPropagation();
       marcarAtendido(c);
-    });
+    }));
     div.querySelector(".btn-conv-menu").addEventListener("click", (e) => {
       e.stopPropagation();
       const r = e.currentTarget.getBoundingClientRect();
@@ -2104,8 +2109,23 @@ function resaltarBusqueda(texto) {
   return out;
 }
 
+/** Cola «Atención pendiente»: franja visible bajo los filtros; tocarla deja solo esos chats. */
+function pintarColaAtencion() {
+  const b = $("#cola-atencion");
+  if (!b) return;
+  b.classList.toggle("activo", estado.filtroAtencion);
+  b.classList.toggle("vacia", !estado.atencionTotal);
+  b.innerHTML = `${icon("alertCircle")} <span>Atención pendiente</span> <span class="cola-n">${estado.atencionTotal}</span>${estado.filtroAtencion ? ` <span class="cola-ver">Ver todos</span>` : ""}`;
+}
+
+$("#cola-atencion")?.addEventListener("click", () => {
+  estado.filtroAtencion = !estado.filtroAtencion;
+  pintarColaAtencion();
+  cargarConversaciones();
+});
+
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroAtencion && estado.filtroProducto === "" && estado.filtroLinea === "");
   $("#filtro-producto").value = estado.filtroProducto;
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
@@ -2132,10 +2152,12 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroEtiqueta = "";
     estado.filtroOcultos = false;
     estado.filtroOlva = false;
+    estado.filtroAtencion = false;
     estado.filtroProducto = "";
     estado.filtroLinea = "";
   }
   pintarFiltros();
+  pintarColaAtencion();
   cargarConversaciones();
 });
 
@@ -3912,7 +3934,11 @@ async function marcarAtendido(c) {
   try {
     await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "atendido" }) });
     c.falta_respuesta = 0;
+    c.con_recomendacion = 0;
     c.atendido_at = new Date().toISOString();
+    if (estado.filtroAtencion) estado.conversaciones = estado.conversaciones.filter((x) => x.conversation_id !== c.conversation_id);
+    estado.atencionTotal = Math.max(0, estado.atencionTotal - 1);
+    pintarColaAtencion();
     pintarLista();
   } catch (err) { alert(err.message); }
 }
