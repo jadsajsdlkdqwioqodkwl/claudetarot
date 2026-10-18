@@ -1042,15 +1042,18 @@ check("las letras de columna llegan hasta la última de la hoja",
 {
   const cable = readFileSync(join(root, "public/cable/index.html"), "utf8");
   const gr = readFileSync(join(root, "public/cable/gracias.html"), "utf8");
-  const { PACKS, CONECTORES, COLORES } = await import(join(root, "src/lib/pedido-cable.js"));
+  const { PACKS, CONECTORES, RUTA_LARGA_CABLE } = await import(join(root, "src/lib/pedido-cable.js"));
   for (const [id, p] of Object.entries(PACKS)) {
     const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(cable);
     check(`cable: el pack ${id} de la página (${m ? `${m[1]} u. S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
       m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
   }
   check("cable: la página llama a /api/order-cable", cable.includes("'/api/order-cable'"));
-  check("cable: la página manda los conectores y colores que el servidor acepta",
-    CONECTORES.every((c) => cable.includes(`id: '${c}'`)) && COLORES.every((c) => cable.includes(`id: '${c}'`)));
+  check("cable: la página manda los conectores que el servidor acepta y no ofrece color",
+    CONECTORES.every((c) => cable.includes(`id: '${c}'`)) && !/data-k="color"|COLORES/.test(cable));
+  check("cable: la ruta larga del Worker apunta a /cable/ y la página redirige relativa a su ruta",
+    /RUTA_LARGA_CABLE/.test(readFileSync(join(root, "src/index.js"), "utf8")) && RUTA_LARGA_CABLE.length > 60 &&
+    /location\.pathname\.replace\(\/\\\/\+\$\/, ''\) \+ '\/gracias\?v='/.test(cable));
   for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fRef", "fWebsite", "btnPedido"]) {
     check(`cable: index.html tiene #${id}`, cable.includes(`id="${id}"`));
   }
@@ -1058,7 +1061,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("cable: PIXEL_ID y WA_NUMERO son iguales en la página y en gracias",
     dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("cable: los datos personales no viajan por la URL de gracias",
-    /location\.href = '\/cable\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
+    /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
   check("cable: el Lead se dispara en gracias", /fbq\('track', 'Lead'/.test(gr));
   const faltan = [];
   const tamanos = [];

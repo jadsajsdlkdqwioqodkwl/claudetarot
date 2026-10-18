@@ -11,6 +11,7 @@
 
 import { onRequestPost as order } from "./api/order.js";
 import { onRequestPost as orderCable } from "./api/order-cable.js";
+import { RUTA_LARGA_CABLE } from "./lib/pedido-cable.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -261,6 +262,16 @@ export default {
     // /r/<id>.pdf: los reportes de ventas del asesor (link imposible de adivinar).
     if (pathname.startsWith("/r/")) {
       return request.method === "GET" ? reportePdf({ request, env }) : json({ error: "Método no permitido." }, 405);
+    }
+
+    // La landing del Cable se comparte con una ruta larga; es la misma página de /cable/.
+    if (pathname === `/${RUTA_LARGA_CABLE}` || pathname.startsWith(`/${RUTA_LARGA_CABLE}/`)) {
+      const resto = pathname.slice(RUTA_LARGA_CABLE.length + 1).replace(/^\/+|\/+$/g, "");
+      const archivo = resto === "gracias" ? "/cable/gracias.html" : "/cable/index.html";
+      const res = await env.ASSETS.fetch(new Request(new URL(archivo, request.url), { method: "GET" }));
+      const headers = new Headers(res.headers);
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      return new Response(res.body, { status: res.status, headers });
     }
 
     if (RE_RUTA_SEGUIMIENTO.test(pathname)) {

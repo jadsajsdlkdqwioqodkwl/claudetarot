@@ -58,18 +58,18 @@ const ctx = (cuerpo, e = env) => ({ request: peticion(cuerpo), env: e, waitUntil
 const base = {
   nombre: "María Fernández", telefono: "987 654 321", distrito: "Miraflores",
   direccion: "Av. Larco 1234, dpto. 502", referencia: "frente al parque", pack: "x3",
-  cables: [{ conector: "Lightning", color: "Negro" }, { conector: "USB-C", color: "Naranja" }, { conector: "raro", color: "verde" }]
+  cables: [{ conector: "Lightning" }, { conector: "USB-C" }, { conector: "raro" }]
 };
 
 /* validate */
 const v = validate(base);
 check("pedido válido pasa", v.errors.length === 0, v.errors.join(","));
-check("el total sale del servidor (pack x3 = 89)", v.order.total === 89 && v.order.cantidad === 3);
-check("un valor raro de conector/color cae al primero de la lista",
-  v.order.detalle === "1) Lightning Negro · 2) USB-C Naranja · 3) USB-C Naranja", v.order.detalle);
+check("el total sale del servidor (pack x3 = 169)", v.order.total === 169 && v.order.cantidad === 3);
+check("un conector raro cae al primero de la lista (USB-C)",
+  v.order.detalle === "1) Lightning · 2) USB-C · 3) USB-C", v.order.detalle);
 check("un pack desconocido cae a x1", validate({ ...base, pack: "x99" }).order.cantidad === 1);
-check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 89);
-check("faltan cables: se completan por defecto", validate({ ...base, pack: "x2", cables: [] }).order.detalle === "1) USB-C Naranja · 2) USB-C Naranja");
+check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 169);
+check("faltan cables: se completan por defecto", validate({ ...base, pack: "x2", cables: [] }).order.detalle === "1) USB-C · 2) USB-C");
 for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
   check(`sin ${campo} se rechaza`, validate({ ...base, [campo]: "" }).errors.includes(campo));
 }
@@ -80,7 +80,7 @@ check("la fila encaja con los encabezados",
 /* Flujo completo */
 let r = await onRequestPost(ctx(base));
 let b = await r.json();
-check("responde 200 con fila y total", r.status === 200 && b.ok && b.fila === 2 && b.total === 89, JSON.stringify(b));
+check("responde 200 con fila y total", r.status === 200 && b.ok && b.fila === 2 && b.total === 169, JSON.stringify(b));
 check("el Event ID lleva el prefijo CB-", /^CB-[A-Z0-9]{6}$/.test(b.eventId), b.eventId);
 check("se creó la pestaña «Cable» en el libro de Pedidos", pestanas.has("Cable"));
 const append = llamadas.filter((c) => c.url.includes(":append"));

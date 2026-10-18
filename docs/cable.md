@@ -19,7 +19,7 @@ beverlygoods.com, rehecha para Perú.
 ## Qué hace cada pedido
 
 1. El formulario manda nombre, WhatsApp, distrito, dirección, referencia (opcional), pack y,
-   por cada cable del pack, conector (USB-C / Lightning) y color (Naranja / Negro).
+   por cada cable del pack, el conector (USB-C / Lightning). Solo se vende en naranja: no hay elección de color.
 2. El servidor valida, **recalcula el total con su propia tabla** y escribe una fila en la
    pestaña **«Cable»** del mismo libro de Pedidos (`GOOGLE_SHEET_ID`). La pestaña **se crea
    sola** con el primer pedido (encabezados, filtro, Estado con desplegable, FBP/FBC/Event ID/UA/IP
@@ -37,7 +37,7 @@ Para usar **otro libro** de Google Sheets: poner `GOOGLE_CABLE_SHEET_ID` (y, si 
 ## Columnas de la pestaña «Cable»
 
 A Fecha · B Nombre · C WhatsApp · D Distrito · E Dirección · F Referencia · G Pack · H Detalle
-(`1) USB-C Naranja · 2) Lightning Negro`) · I Cantidad · J Total · K Estado · L FBP · M FBC ·
+(`1) USB-C · 2) Lightning`) · I Cantidad · J Total · K Estado · L FBP · M FBC ·
 N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al final**.
 
 ## Antes de lanzar (valores que hay que poner o confirmar)
@@ -46,11 +46,13 @@ N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al 
   son constantes al inicio del `<script>` de `public/cable/index.html` **y** de `gracias.html`
   (`npm run check` falla si no coinciden). Vacíos = no se carga el píxel y no se muestran los
   botones de WhatsApp.
-- Precios y packs: hoy S/ 39 (antes 79) · S/ 69 (antes 158) · S/ 89 (antes 237), cada uno con
-  una bolsa de regalo por cable. Se cambian en `src/lib/pedido-cable.js` **y** en `PACKS` de
+- Precios y packs (piso del dueño: 1 cable = S/ 79; costo supuesto ~S/ 20 por unidad): 1 cable S/ 79 (antes 149) ·
+  Pack Dúo S/ 129 (antes 298) · Pack Regalo S/ 169 (antes 447), cada uno con una bolsa de regalo por cable.
+  Margen bruto por pedido: S/ 59 · S/ 89 · S/ 109, antes de publicidad y envío. Se cambian en `src/lib/pedido-cable.js` **y** en `PACKS` de
   `index.html` (el chequeo avisa si difieren).
-- Textos que prometen algo y hay que confirmar: entrega «24 a 48 horas» en Lima, garantía de
-  30 días con cambio, colores Naranja y Negro disponibles, bolsa incluida en todos los packs.
+- Textos que prometen algo (confirmados por el dueño el 2026-10-18, es un testeo): entrega «24 a 48 horas» en Lima,
+  **garantía de 90 días con cambio sin costo**, solo naranja, bolsa incluida en todos los packs. CTAs: «COMPLETAR PEDIDO».
+  Copy con promesa fuerte pero sin afirmaciones que Meta rechace (nada de cifras de carga ni de salud).
 - Reseñas: la página **no trae reseñas inventadas**. Se agregan reseñas reales en el arreglo
   `RESENAS` (`{ nombre, fecha, texto, foto }`); mientras esté vacío la sección no se muestra.
 - Especificaciones: la ficha original se contradice (240 W en las fotos, 140 W en el texto), por eso
@@ -63,3 +65,12 @@ estilo de vida con el rótulo borrado, los videos están recortados para quitar 
 inglés y sin audio (se ven mudos). Los videos solo se descargan al acercarse (`data-src`).
 En el último tramo de los videos 2 y 3 aparece la bolsa con la marca del proveedor.
 Si se cambia el contenido de un archivo hay que **renombrarlo** (`_headers` los cachea un año).
+
+## Link para compartir
+
+Ruta larga bajo el mismo dominio del Worker (`RUTA_LARGA_CABLE` en `src/lib/pedido-cable.js`; el Worker la sirve
+como `/cable/` en `src/index.js`, y `/…/gracias` como la página de gracias):
+
+`https://kit-tarot-para-principiantes.tarotperu.store/cable-de-carga-rapida-con-soporte-plegable-para-celular-usb-c-y-lightning-envio-gratis-a-lima-pago-contra-entrega`
+
+Es la misma página que `/cable/`; el `<title>` también es largo y descriptivo. Se publica al hacer merge a `main`.

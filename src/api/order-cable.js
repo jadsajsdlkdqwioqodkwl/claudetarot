@@ -16,7 +16,7 @@
 
 import { appendRowsTo, batchUpdate, getSpreadsheet } from "../lib/google-sheets.js";
 import { clean, toE164Peru, makeEventId } from "../lib/pedido.js";
-import { PACKS, CONECTORES, COLORES, COLUMNAS_CABLE } from "../lib/pedido-cable.js";
+import { PACKS, CONECTORES, COLUMNAS_CABLE } from "../lib/pedido-cable.js";
 import { ESTADOS } from "../lib/hoja.js";
 import { notificarTelegram } from "../lib/telegram.js";
 import { fechaLima, numeroDeFila } from "./order.js";
@@ -50,13 +50,12 @@ export function validate(payload) {
   const pack = PACKS[payload.pack] ? payload.pack : "x1";
   const { etiqueta, precio, cantidad } = PACKS[pack];
 
-  // Un cable por unidad del pack: conector y color de cada uno.
+  // Un cable por unidad del pack: solo se elige el conector (todos son naranja).
   const recibidos = Array.isArray(payload.cables) ? payload.cables : [];
   const cables = Array.from({ length: cantidad }, (_, i) => ({
-    conector: deLista(recibidos[i]?.conector, CONECTORES),
-    color: deLista(recibidos[i]?.color, COLORES)
+    conector: deLista(recibidos[i]?.conector, CONECTORES)
   }));
-  const detalle = cables.map((c, i) => `${i + 1}) ${c.conector} ${c.color}`).join(" · ");
+  const detalle = cables.map((c, i) => `${i + 1}) ${c.conector}`).join(" · ");
 
   if (nombre.length < 3) errors.push("nombre");
   if (!telefono) errors.push("telefono");

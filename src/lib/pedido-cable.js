@@ -9,16 +9,26 @@
 
 export const PRODUCTO_CABLE = "cable-soporte";
 
-/** Cada pack lleva su bolsa de regalo: una por cable. `viejo` es el precio "antes". */
+/**
+ * Cada pack lleva su bolsa de regalo: una por cable. `viejo` es el precio "antes".
+ * Piso del dueño: 1 cable = S/ 79. Con un costo de ~S/ 20 por unidad el margen bruto
+ * queda en S/ 59 (1), S/ 89 (2) y S/ 109 (3), antes de publicidad y envío.
+ */
 export const PACKS = {
-  x1: { etiqueta: "1 Cable 2 en 1 + bolsa", cantidad: 1, precio: 39, viejo: 79 },
-  x2: { etiqueta: "Pack Dúo: 2 Cables 2 en 1 + 2 bolsas", cantidad: 2, precio: 69, viejo: 158 },
-  x3: { etiqueta: "Pack Regalo: 3 Cables 2 en 1 + 3 bolsas", cantidad: 3, precio: 89, viejo: 237 }
+  x1: { etiqueta: "1 Cable 2 en 1 + bolsa", cantidad: 1, precio: 79, viejo: 149 },
+  x2: { etiqueta: "Pack Dúo: 2 Cables 2 en 1 + 2 bolsas", cantidad: 2, precio: 129, viejo: 298 },
+  x3: { etiqueta: "Pack Regalo: 3 Cables 2 en 1 + 3 bolsas", cantidad: 3, precio: 169, viejo: 447 }
 };
 
-/** El primero de cada lista es el que se usa si el navegador manda algo raro. */
+/** Solo se vende en naranja: no hay elección de color. El primero es el de respaldo. */
 export const CONECTORES = ["USB-C", "Lightning"];
-export const COLORES = ["Naranja", "Negro"];
+
+/**
+ * Ruta larga y descriptiva con la que se comparte la landing (el Worker la sirve como
+ * /cable/). Si se cambia, cambiarla también en los anuncios.
+ */
+export const RUTA_LARGA_CABLE =
+  "cable-de-carga-rapida-con-soporte-plegable-para-celular-usb-c-y-lightning-envio-gratis-a-lima-pago-contra-entrega";
 
 /**
  * Columnas de la pestaña «Cable». El orden de este array ES el orden en que se
