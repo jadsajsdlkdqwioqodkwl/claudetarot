@@ -18,7 +18,7 @@ se copian).
   pedido» por el número de Tarot.
 
 ## Lo que el dueño debe completar antes de abrir anuncios
-1. **Precios** (dueño, 2026-10-18; mínimo S/79, costo supuesto ~S/20 por x2: x2 S/79, x5 S/129, x10 S/199; «antes» 159/259/399): `src/lib/sellador.js`
+1. **Precios** (dueño, 2026-10-18; mínimo S/79, costo supuesto ~S/20 por x2: 1 pack (20 sachets) S/79, 2 packs (40) S/129, 3 packs (60) S/179; «antes» 159/259/359): `src/lib/sellador.js`
    y `FB` en `public/sellador/index.html` (+ las tarjetas de la página). `npm run check`
    avisa si no coinciden.
 2. **`PIXEL_ID`** del producto, en `index.html` y en `gracias.html` (vacío = sin píxel).
@@ -35,3 +35,6 @@ se copian).
   (también abre `/sellador/`).
 - Estilo igual al advertorial original: fondo blanco, titulares negros en Poppins, azul plano `#4A90E2`.
   Botones simples: «COMPLETAR PEDIDO». Garantía de 90 días (devolución del dinero) en la oferta, el modal y las preguntas.
+
+## Autor y reseñas (espacios listos)
+`AUTOR` y `RESENAS` al inicio del script de `public/sellador/index.html` llenan el byline con foto y las citas bajo cada motivo (igual que el original). Van vacíos hasta tener la foto subida a `public/sellador/img/` y los textos de personas reales con su permiso.

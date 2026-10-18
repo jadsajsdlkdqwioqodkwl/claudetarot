@@ -1055,10 +1055,10 @@ console.log("\nMasilla selladora (/sellador)");
   check("sellador: la variante por defecto existe y es la marcada", !!sel.VARIANTES[sel.VARIANTE_POR_DEFECTO] &&
     new RegExp(`vcard sel" data-var="${sel.VARIANTE_POR_DEFECTO}"`).test(selHtml));
 
-  const base = { nombre: "María Pérez", telefono: "987654321", envio: "casa", direccion: "Av. Los Olivos 123, Surco", variante: "10pack" };
+  const base = { nombre: "María Pérez", telefono: "987654321", envio: "casa", direccion: "Av. Los Olivos 123, Surco", variante: "3pack" };
   const r = selApi.validate(base);
   check("sellador: pedido válido pasa y el precio sale del servidor",
-    r.errors.length === 0 && selApi.validate({ ...base, precio: 1 }).order.total === sel.VARIANTES["10pack"].precio);
+    r.errors.length === 0 && selApi.validate({ ...base, precio: 1 }).order.total === sel.VARIANTES["3pack"].precio);
   check("sellador: variante desconocida cae a la de por defecto",
     selApi.validate({ ...base, variante: "x" }).order.variante === sel.VARIANTE_POR_DEFECTO);
   check("sellador: Lima sin dirección se rechaza", selApi.validate({ ...base, direccion: "" }).errors.includes("direccion"));

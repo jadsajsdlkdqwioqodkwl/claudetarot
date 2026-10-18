@@ -30,53 +30,60 @@
   .btn { display:block; width:100%; background:var(--blue); color:#fff; font-family:inherit; font-weight:700; text-transform:uppercase; font-size:24px; line-height:1.3; border:0; border-radius:6px; padding:18px 14px; cursor:pointer; text-align:center; text-decoration:none; }
   .btn:hover { background:#3f84d6; }
   .side .btn { font-size:23px; padding:22px 12px; }
-  .checks { list-style:none; margin:34px 0 0; padding:0 8px; text-align:left; display:grid; gap:14px; font-size:14px; }
+  .checks { list-style:none; margin:34px 0 0; padding:0 8px; text-align:left; display:grid; gap:14px; font-size:16px; }
   .checks li { display:flex; align-items:center; gap:10px; }
   .checks .ok { width:22px; height:22px; border-radius:50%; background:#2fb344; color:#fff; display:flex; align-items:center; justify-content:center; flex:0 0 22px; }
   .checks .ok svg { width:13px; height:13px; stroke-width:3.4; }
 
-  h1 { font-size:36px; line-height:1.12; font-weight:700; letter-spacing:-.4px; padding-top:8px; }
+  h1 { font-size:38px; line-height:1.12; font-weight:700; letter-spacing:-.4px; padding-top:8px; }
   .by { display:flex; align-items:center; gap:14px; margin-top:12px; }
   .by .av { width:70px; height:70px; border-radius:50%; object-fit:contain; background:#f1f3f5; border:1px solid var(--line); flex:0 0 70px; }
   .by .tx { border-left:2px solid #f5d000; padding-left:12px; line-height:1.35; }
-  .by .nm { color:#2b6fd4; font-weight:600; font-size:17px; }
-  .by .dt { font-size:14px; color:#222; }
+  .by .nm { color:#2b6fd4; font-weight:600; font-size:19px; }
+  .by .dt { font-size:16px; color:#222; }
   .hero { margin-top:34px; }
   .hero img { width:100%; }
-  .intro { margin-top:40px; font-size:17px; line-height:1.55; }
+  .intro { margin-top:40px; font-size:19px; line-height:1.55; }
 
   .row { display:flex; gap:32px; align-items:center; padding:20px 10px; margin-top:20px; }
   .row.alt { background:var(--tint); }
   .row .pic { flex:0 0 400px; max-width:400px; }
   .row .pic img { width:100%; aspect-ratio:1/1; object-fit:cover; }
   .row .txt { flex:1; min-width:0; }
-  .row h2 { font-size:24px; font-weight:600; line-height:1.33; }
-  .row p { margin-top:16px; font-size:16px; line-height:1.5; }
+  .row h2 { font-size:27px; font-weight:600; line-height:1.3; }
+  .row p { margin-top:16px; font-size:18px; line-height:1.55; }
 
-  .ico-item { display:flex; align-items:center; gap:12px; margin-top:16px; font-weight:600; font-size:16px; }
+  .cita { margin-top:18px; border-left:2px solid #8a8f98; padding:4px 0 4px 16px; color:#6b7078; font-size:16px; line-height:1.5; }
+  .cita:empty { display:none; }
+  .cita b { display:block; margin-top:8px; font-weight:700; font-size:18px; color:#6b7078; }
+  .cita-card { margin-top:14px; background:#fff; border-radius:12px; padding:18px 16px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.12); font-size:15px; }
+  .cita-card:empty { display:none; }
+  .cita-card b { display:block; margin-top:12px; font-size:17px; }
+  .cita-card small { display:block; color:var(--blue); font-size:13px; margin-top:4px; }
+  .ico-item { display:flex; align-items:center; gap:12px; margin-top:16px; font-weight:600; font-size:18px; }
   .ico-item img { width:48px; height:48px; border-radius:50%; flex:0 0 48px; }
 
   .pasos { flex:1; min-width:0; }
-  .pasos h2 { font-size:24px; font-weight:700; margin-bottom:6px; }
+  .pasos h2 { font-size:27px; font-weight:700; margin-bottom:6px; }
   .paso { display:flex; gap:16px; align-items:flex-start; margin-top:22px; }
   .paso .n { flex:0 0 96px; height:96px; border-radius:50%; border:1px solid var(--line); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:24px; background:#fff; }
-  .paso b { display:block; font-size:18px; font-weight:700; margin-top:2px; }
-  .paso span { display:block; font-size:16px; color:#333; line-height:1.5; margin-top:6px; }
+  .paso b { display:block; font-size:20px; font-weight:700; margin-top:2px; }
+  .paso span { display:block; font-size:18px; color:#333; line-height:1.5; margin-top:6px; }
 
   .porque { background:var(--tint2); text-align:center; padding:34px 10px; margin-top:20px; }
-  .porque h2 { font-size:28px; font-weight:700; text-transform:uppercase; line-height:1.25; }
-  .porque > p { margin-top:14px; font-size:17px; line-height:1.55; }
+  .porque h2 { font-size:30px; font-weight:700; text-transform:uppercase; line-height:1.25; }
+  .porque > p { margin-top:14px; font-size:19px; line-height:1.55; }
   .tabla { margin-top:26px; background:#e3effc; padding:8px 8px 14px; overflow-x:auto; }
-  .tabla table { width:100%; border-collapse:collapse; min-width:560px; font-size:14px; }
-  .tabla th { font-size:15px; font-weight:700; padding:16px 8px 10px; }
+  .tabla table { width:100%; border-collapse:collapse; min-width:560px; font-size:16px; }
+  .tabla th { font-size:17px; font-weight:700; padding:16px 8px 10px; }
   .tabla th.yo, .tabla td.yo { background:var(--blue); color:#fff; }
   .tabla td { padding:13px 8px; text-align:center; border-top:1px solid #cfe0f5; font-weight:500; }
   .tabla .x { color:#e0393e; display:block; font-size:20px; line-height:1; margin-bottom:3px; }
   .tabla .v { display:block; font-size:20px; line-height:1; margin-bottom:3px; }
 
   .fix { text-align:center; padding:56px 14px 0; }
-  .fix h2 { font-size:28px; font-weight:700; line-height:1.3; }
-  .fix p { margin-top:14px; font-size:17px; line-height:1.55; }
+  .fix h2 { font-size:30px; font-weight:700; line-height:1.3; }
+  .fix p { margin-top:14px; font-size:19px; line-height:1.55; }
 
   .oferta { background:var(--tint2); padding:48px; margin-top:42px; }
   .oferta .box { display:flex; border:1px dashed #222; background:#fff; }
@@ -85,13 +92,13 @@
   .oferta .info { flex:1; padding:34px 28px; text-align:center; display:flex; flex-direction:column; justify-content:center; }
   .oferta .rojo { color:var(--red); font-size:30px; font-weight:700; line-height:1.2; text-transform:uppercase; }
   .oferta .tit { font-size:30px; font-weight:700; text-transform:uppercase; line-height:1.3; margin-top:6px; }
-  .oferta .info p { font-size:16px; margin-top:12px; }
+  .oferta .info p { font-size:18px; margin-top:12px; }
   .oferta .btn { font-size:20px; max-width:340px; margin:28px auto 0; padding:16px; }
-  .oferta .fin { margin-top:26px; font-weight:700; font-size:16px; text-transform:uppercase; }
+  .oferta .fin { margin-top:26px; font-weight:700; font-size:18px; text-transform:uppercase; }
   .oferta .fin b { color:var(--red); }
-  .oferta .gar { margin-top:6px; font-size:16px; }
+  .oferta .gar { margin-top:6px; font-size:18px; }
 
-  footer { background:#f5f5f5; text-align:center; padding:56px 14px 60px; font-size:14px; color:#222; }
+  footer { background:#f5f5f5; text-align:center; padding:56px 14px 60px; font-size:16px; color:#222; }
   footer .links a { color:#111; text-decoration:none; padding:0 8px; border-right:1px solid #111; }
   footer .links a:last-child { border-right:0; }
   footer .copy { margin-top:18px; }
@@ -103,28 +110,30 @@
   @media (max-width: 900px) {
     .page { display:block; padding:0 10px; }
     .side { display:none; }
-    h1 { font-size:24px; line-height:1.35; letter-spacing:0; }
+    h1 { font-size:27px; line-height:1.3; letter-spacing:0; }
     .by .av { width:44px; height:44px; flex-basis:44px; }
-    .by .nm { font-size:15px; }
+    .by .nm { font-size:17px; }
     .hero { margin:30px -10px 0; }
-    .intro { margin-top:28px; font-size:16px; line-height:1.7; }
+    .intro { margin-top:28px; font-size:19px; line-height:1.6; }
     .row { display:block; padding:0 0 22px; margin:28px -10px 0; }
     .row.alt { padding-top:10px; }
     .row .pic { max-width:none; padding:0 10px; }
     .row .txt { padding:22px 10px 0; }
-    .row h2 { font-size:20px; line-height:1.4; }
-    .row p { font-size:16px; line-height:1.6; }
+    .row h2 { font-size:24px; line-height:1.3; }
+    .row p { font-size:19px; line-height:1.55; }
     .pasos { padding:0 10px; margin-top:30px; }
-    .pasos h2 { font-size:20px; text-align:center; }
+    .pasos h2 { font-size:24px; text-align:center; }
     .paso .n { flex-basis:76px; height:76px; font-size:22px; }
     .porque, .oferta { margin-left:-10px; margin-right:-10px; }
-    .porque h2, .fix h2 { font-size:22px; }
+    .porque h2, .fix h2 { font-size:25px; }
+    .porque > p, .fix p { font-size:19px; }
+    .paso span { font-size:18px; }
     .oferta { padding:0; margin-top:34px; background:#fff; }
     .oferta .box { display:block; border:0; }
     .oferta .info { padding:26px 18px; }
     .oferta .btn { max-width:none; }
     .sticky { padding:12px 14px; }
-    .sticky .btn { font-size:20px; padding:14px; }
+    .sticky .btn { font-size:21px; padding:15px 12px; }
   }
 
   /* Modal COD (mismo formulario que Tarot Store) */
@@ -219,48 +228,55 @@
  <main class="art">
   <h1>7 Razones Por Las Que los Peruanos Están Dejando la Silicona y la Espuma Expansiva por Esta Masilla Selladora Moldeable a Mano</h1>
   <div class="by">
-    <img class="av" src="/sellador/img/pack.webp" alt="" width="70" height="70">
-    <div class="tx"><div class="nm">Por el equipo de Hogar y Bricolaje</div><div class="dt">18/10/2026</div></div>
+    <img class="av" id="autorFoto" src="/sellador/img/pack.webp" alt="" width="70" height="70">
+    <div class="tx"><div class="nm" id="autorNombre">Por el equipo de Hogar y Bricolaje</div><div class="dt">18/10/2026</div></div>
   </div>
 
   <div class="hero"><a href="#oferta" onclick="openCOD();return false"><img src="/sellador/img/hero.webp" alt="Persona sellando el hueco de una tubería con masilla moldeable" width="1000" height="500" fetchpriority="high" decoding="async"></a></div>
 
-  <p class="intro">Mira: si alguna vez rellenaste un hueco feo alrededor de la tubería con espuma expansiva, viste cómo crecía hasta volverse una masa amarilla y quebradiza, y tres meses después notaste que se agrietaba… ya conoces la historia. La silicona se encoge. La espuma se desmorona. El hueco vuelve. Y junto con él vuelven los bichos, las corrientes de aire y los olores. Hay una solución más inteligente, y toma literalmente cinco minutos con tus propias manos.</p>
+  <p class="intro">Mira: si alguna vez rellenaste un hueco feo alrededor de la tubería con espuma expansiva, viste cómo crecía hasta volverse una masa amarilla y quebradiza, y tres meses después se agrietaba… ya conoces la historia. La silicona se encoge. La espuma se desmorona. El hueco vuelve, y con él los bichos, las corrientes de aire y los olores. Hay una solución más inteligente, y toma cinco minutos con tus propias manos.</p>
 
   <section class="row">
     <div class="pic"><img src="/sellador/img/hueco.webp" alt="Masilla rellenando un hueco en la pared" width="500" height="500" loading="lazy"></div>
     <div class="txt"><h2>1. La Silicona Tradicional Se Encoge Hasta un 50% — Y Vuelve a Abrir el Mismo Hueco</h2>
-      <p>La silicona común contiene solvente líquido que se evapora al secar, y por eso el material se encoge, se agrieta, se pela y se despega de la pared. La Masilla Selladora se aplica en estado sólido, moldeada a mano. No se evapora nada y nada se encoge, así que cura al 100% del tamaño con que la moldeaste y se queda al ras y sellada para siempre.</p></div>
+      <p>La silicona común contiene solvente líquido que se evapora al secar, por eso se encoge, se agrieta y se despega de la pared. La Masilla Selladora se aplica sólida, moldeada a mano. No se evapora nada y nada se encoge: cura al 100% del tamaño con que la moldeaste y queda al ras y sellada para siempre.</p>
+      <blockquote class="cita" data-resena="1"></blockquote></div>
   </section>
 
   <section class="row alt">
     <div class="pic"><img src="/sellador/img/espuma.webp" alt="Espuma expansiva desbordada alrededor de una tubería" width="500" height="500" loading="lazy"></div>
     <div class="txt"><h2>2. Resiste Temperaturas Extremas Donde Otros Fallan</h2>
-      <p>La espuma expansiva puede crecer de más, pegarse a todo, curar en una masa amarillenta y porosa, y agrietarse con los cambios de temperatura. Esta masilla se moldea a mano con la forma exacta que necesitas. Solo presiónala para obtener bordes limpios, sin pistola, sin boquilla, sin salpicaduras y sin limpieza complicada.</p></div>
+      <p>La espuma expansiva puede crecer de más, pegarse a todo, curar en una masa amarillenta y porosa, y agrietarse con los cambios de temperatura. Esta masilla se moldea a mano con la forma exacta que necesitas: bordes limpios, sin pistola, sin boquilla y sin limpieza complicada.</p>
+      <blockquote class="cita" data-resena="2"></blockquote></div>
   </section>
 
   <section class="row">
     <div class="pic"><img src="/sellador/img/plagas.webp" alt="Hormigas entrando por una grieta junto a una tubería sellada" width="500" height="500" loading="lazy"></div>
     <div class="txt"><h2>3. Sella Huecos Más Finos Que una Moneda por Donde Entran las Plagas a Tu Casa</h2>
-      <p>Las grietas pequeñas alrededor de tuberías de desagüe y del aire acondicionado dejan entrar insectos y roedores a tu casa. Como esta masilla cura en un bloque denso, sólido y hermético, cierra físicamente los micro-huecos y crea una barrera dura que las plagas no pueden comprimir ni roer con facilidad.</p></div>
+      <p>Las grietas pequeñas alrededor de tuberías de desagüe y del aire acondicionado dejan entrar insectos y roedores. Como la masilla cura en un bloque denso, sólido y hermético, cierra los micro-huecos y crea una barrera dura que las plagas no pueden comprimir ni roer con facilidad.</p>
+      <blockquote class="cita" data-resena="3"></blockquote></div>
   </section>
 
   <section class="row alt">
     <div class="pic"><img src="/sellador/img/familia.webp" alt="Familia tranquila en casa" width="500" height="500" loading="lazy"></div>
     <div class="txt"><h2>4. Bloquea Corrientes de Aire y Olores de Desagüe Que Te Hacen Pensar Que Hay Algo Muerto en la Pared</h2>
-      <p>Los olores a cloaca y las corrientes de aire frío alrededor de los huecos del desagüe, tuberías junto al zócalo y aberturas en la pared muchas veces significan que el sellador actual falló. Esta masilla cura en una barrera hermética que bloquea el aire de afuera, el gas del desagüe y los malos olores desde el origen.</p></div>
+      <p>Los olores a cloaca y el aire frío alrededor de desagües, tuberías junto al zócalo y aberturas en la pared suelen significar que el sellador falló. Esta masilla cura en una barrera hermética que corta el aire de afuera, el gas del desagüe y los malos olores desde el origen.</p>
+      <blockquote class="cita" data-resena="4"></blockquote></div>
   </section>
 
   <section class="row">
     <div class="pic"><img src="/sellador/img/aplicar-anim.webp" alt="Aplicando la masilla con la mano sobre una tubería" width="500" height="500" loading="lazy"></div>
     <div class="txt"><h2>5. Cero Herramientas — Sin Pistola de Silicona, Sin Mezclar, Sin Necesitar Experiencia</h2>
-      <p>Muchos productos de reparación necesitan pistola, mezclas, lijas, mallas o varias capas. Esta masilla es simple: abres el sachet, la amasas y la presionas. Sin herramientas, sin curva de aprendizaje y sin limpieza.</p></div>
+      <p>Muchos productos de reparación necesitan pistola, mezclas, lijas, mallas o varias capas. Esta masilla es simple: abres el sachet, la amasas y la presionas. Sin herramientas, sin experiencia y sin limpieza.</p>
+      <blockquote class="cita" data-resena="5"></blockquote></div>
   </section>
 
   <section class="row alt">
-    <div class="pic"><img src="/sellador/img/antes-despues.webp" alt="Antes y después: hueco abierto junto a una tubería y el mismo hueco sellado" width="500" height="322" loading="lazy"></div>
+    <div class="pic"><img src="/sellador/img/antes-despues.webp" alt="Antes y después: hueco abierto junto a una tubería y el mismo hueco sellado" width="500" height="322" loading="lazy">
+      <div class="cita-card" data-resena="6"></div>
+    </div>
     <div class="txt"><h2>6. Un Acabado de Aspecto Profesional Sin Pagar un Maestro</h2>
-      <p>Ya seas inquilino por primera vez o un experto en bricolaje, esta masilla selladora da resultados de aspecto profesional sin el precio de un profesional. No necesitas habilidades ni herramientas especiales: solo presionar, moldear y listo.</p>
+      <p>Seas inquilino o experto en bricolaje, esta masilla da resultados de aspecto profesional sin el precio de un profesional. Solo presionar, moldear y listo.</p>
       <div class="ico-item"><img src="/sellador/img/ico-garantia.webp" alt="" width="48" height="48"> Garantía de devolución de 90 días</div>
       <div class="ico-item"><img src="/sellador/img/ico-pintable.webp" alt="" width="48" height="48"> Reparación invisible, lijable y pintable</div>
     </div>
@@ -277,7 +293,7 @@
 
   <section class="porque">
     <h2>Por Qué Elegir la Masilla Selladora Multiusos para Paredes y Tuberías</h2>
-    <p>Esta masilla selladora moldeable a mano crea una reparación limpia, hermética y sin herramientas que resiste el encogimiento, bloquea plagas y olores, y termina lo bastante lisa para lijar y pintar.</p>
+    <p>Esta masilla moldeable crea una reparación limpia, hermética y sin herramientas que resiste el encogimiento, bloquea plagas y olores, y queda lo bastante lisa para lijar y pintar.</p>
     <div class="tabla"><table>
       <tr><th>Característica</th><th class="yo">Masilla Selladora</th><th>Silicona Común</th><th>Espuma Expansiva</th></tr>
       <tr><td>Cero Encogimiento</td><td class="yo"><span class="v">✓</span>Mantiene su tamaño</td><td><span class="x">⊗</span>Se encoge hasta 50%</td><td><span class="x">⊗</span>Se hunde con el tiempo</td></tr>
@@ -291,7 +307,7 @@
 
   <section class="fix">
     <h2>La Solución de Cinco Minutos para Huecos Feos, Corrientes de Aire, Plagas y Olores — Sin Pistola de Silicona ni el Desorden de la Espuma</h2>
-    <p>Deja de repetir la misma reparación cada pocos meses. Esta masilla selladora se moldea a mano, cura sólida y deja un acabado liso que puedes lijar y pintar para un sellado limpio y duradero.</p>
+    <p>Deja de repetir la misma reparación cada pocos meses. Esta masilla se moldea a mano, cura sólida y deja un acabado liso que puedes lijar y pintar.</p>
   </section>
 
   <section class="oferta" id="oferta">
@@ -300,7 +316,7 @@
       <div class="info">
         <div class="rojo">Hasta 50% de Descuento</div>
         <div class="tit">Oferta por Tiempo Limitado:</div>
-        <p>Esta oferta por tiempo limitado tiene mucha demanda y el stock se agota seguido.</p>
+        <p>Oferta por tiempo limitado, con mucha demanda.</p>
         <button class="btn" onclick="openCOD()">Obtén 50% de Descuento →</button>
         <div class="fin">La oferta termina en <b id="cuenta">01:52:00</b></div>
         <div class="gar">¡Pruébalo hoy con garantía de devolución de dinero de 90 días!</div>
@@ -340,24 +356,24 @@
     <div class="m-sub">Hasta 50% de descuento · Pagas al recibir · Si no te convence, te devolvemos tu dinero</div>
 
     <div class="variants">
-      <div class="vcard" data-var="2pack" onclick="selVar(this)">
+      <div class="vcard" data-var="1pack" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x2" width="58" height="58"></div>
-        <div><div class="vname">Pack x2 sachets</div><div class="vdet">60 g en total</div></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="1 pack" width="58" height="58"></div>
+        <div><div class="vname">1 Pack · 20 sachets</div><div class="vdet">600 g en total</div></div>
         <div class="vprice">S/ 79<span class="vold">S/ 159</span></div>
       </div>
-      <div class="vcard sel" data-var="5pack" onclick="selVar(this)">
+      <div class="vcard sel" data-var="2pack" onclick="selVar(this)">
         <div class="vbadge">MÁS PEDIDO</div>
         <div class="radio"></div>
-        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x5" width="58" height="58"></div>
-        <div><div class="vname">Pack x5 sachets</div><div class="vdet">150 g en total</div></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="2 packs" width="58" height="58"></div>
+        <div><div class="vname">2 Packs · 40 sachets</div><div class="vdet">1,2 kg en total</div></div>
         <div class="vprice">S/ 129<span class="vold">S/ 259</span></div>
       </div>
-      <div class="vcard" data-var="10pack" onclick="selVar(this)">
+      <div class="vcard" data-var="3pack" onclick="selVar(this)">
         <div class="radio"></div>
-        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="Pack x10" width="58" height="58"></div>
-        <div><div class="vname">Pack x10 sachets</div><div class="vdet">300 g en total</div></div>
-        <div class="vprice">S/ 199<span class="vold">S/ 399</span></div>
+        <div class="foto"><img data-src="/sellador/img/pack.webp" alt="3 packs" width="58" height="58"></div>
+        <div><div class="vname">3 Packs · 60 sachets</div><div class="vdet">1,8 kg en total</div></div>
+        <div class="vprice">S/ 179<span class="vold">S/ 359</span></div>
       </div>
     </div>
 
@@ -420,19 +436,25 @@
   /* ── Configuración de esta landing ─────────────────────────────────────
      Los precios de FB.variantes deben coincidir con src/lib/sellador.js
      (`npm run check` falla si no). */
+  /* Autor (el «doctor» del original) y reseñas: SOLO con personas reales y con su
+     permiso. AUTOR: foto subida a public/sellador/img/ y su nombre/cargo.
+     RESENAS: { 1: { texto, nombre }, … } por motivo (1 a 5); la 6 va en tarjeta
+     con { texto, nombre, verificado: true }. Vacío = no se muestra. */
+  var AUTOR = { nombre: '', cargo: '', foto: '' };      // ej. { nombre: 'Marcos T.', cargo: 'Especialista en Hogar y Bricolaje', foto: '/sellador/img/autor.webp' }
+  var RESENAS = {};
   var WA_NUMERO = '';          // WhatsApp de ventas de este producto, ej. '51999999999' (vacío = sin botón en /gracias)
 
   var FB = {
     moneda: 'PEN',
     producto: 'masilla-selladora',
     nombre: 'Masilla selladora multiusos',
-    variantes: { '2pack': 79, '5pack': 129, '10pack': 199 },
-    viejos: { '2pack': 159, '5pack': 259, '10pack': 399 },
-    unidades: { '2pack': 2, '5pack': 5, '10pack': 10 },
+    variantes: { '1pack': 79, '2pack': 129, '3pack': 179 },
+    viejos: { '1pack': 159, '2pack': 259, '3pack': 359 },
+    unidades: { '1pack': 1, '2pack': 2, '3pack': 3 },
     etiquetas: {
-      '2pack': 'Masilla selladora x2 sachets (60 g)',
-      '5pack': 'Masilla selladora x5 sachets (150 g)',
-      '10pack': 'Masilla selladora x10 sachets (300 g)'
+      '1pack': 'Masilla selladora x1 pack (20 sachets)',
+      '2pack': 'Masilla selladora x2 packs (40 sachets)',
+      '3pack': 'Masilla selladora x3 packs (60 sachets)'
     },
     enviados: {}
   };
@@ -461,13 +483,13 @@
 
   function fbVariante() {
     var sel = document.querySelector('.vcard.sel');
-    var v = (sel && sel.getAttribute('data-var')) || '5pack';
+    var v = (sel && sel.getAttribute('data-var')) || '2pack';
     return { id: v, valor: FB.variantes[v], unidades: FB.unidades[v], etiqueta: FB.etiquetas[v] };
   }
 
   fbTrack('ViewContent', {
     content_ids: [FB.producto], content_type: 'product', content_name: FB.nombre,
-    value: FB.variantes['5pack'], currency: FB.moneda
+    value: FB.variantes['2pack'], currency: FB.moneda
   }, true);
 
   function activarImagenes(c) {
@@ -621,6 +643,20 @@
       });
   }
 
+
+  (function () {
+    if (AUTOR.nombre) {
+      document.getElementById('autorNombre').textContent = 'Por ' + AUTOR.nombre + (AUTOR.cargo ? ', ' + AUTOR.cargo : '');
+      if (AUTOR.foto) document.getElementById('autorFoto').src = AUTOR.foto;
+    }
+    [].forEach.call(document.querySelectorAll('[data-resena]'), function (el) {
+      var r = RESENAS[el.getAttribute('data-resena')];
+      if (!r || !r.texto) return;
+      el.appendChild(document.createTextNode('“' + r.texto + '”'));
+      var b = document.createElement('b'); b.textContent = (el.classList.contains('cita-card') ? '— ' : '-') + r.nombre; el.appendChild(b);
+      if (r.verificado) { var v = document.createElement('small'); v.textContent = 'Comprador verificado'; el.appendChild(v); }
+    });
+  })();
 
   /* Cuenta regresiva de la oferta (como el original): arranca en 01:52:00 y se
      reinicia sola al llegar a cero; el fin se guarda en sessionStorage para que

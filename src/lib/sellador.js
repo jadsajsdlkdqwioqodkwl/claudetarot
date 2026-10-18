@@ -6,19 +6,19 @@
  * public/sellador/index.html (el "antes" solo se muestra, no se cobra).
  * `npm run check` verifica que ambos coincidan.
  *
- * Precios (dueño, 2026-10-18): mínimo S/79; con costo ~S/20 por x2 sachets quedan
- * x2 S/79 · x5 S/129 · x10 S/199 (los "antes" 159/259/399 solo se muestran).
+ * Precios (dueño, 2026-10-18): cada pack trae 20 sachets de 30 g; mínimo S/79 y costo ~S/20 por pack:
+ * 1 pack S/79 · 2 packs S/129 · 3 packs S/179 (los "antes" 159/259/359 solo se muestran).
  */
 
 export const PRODUCTO = "masilla-selladora";
 
 export const VARIANTES = {
-  "2pack": { etiqueta: "Masilla selladora x2 sachets (60 g)", cantidad: 2, precio: 79 },
-  "5pack": { etiqueta: "Masilla selladora x5 sachets (150 g)", cantidad: 5, precio: 129 },
-  "10pack": { etiqueta: "Masilla selladora x10 sachets (300 g)", cantidad: 10, precio: 199 }
+  "1pack": { etiqueta: "Masilla selladora x1 pack (20 sachets)", cantidad: 20, precio: 79 },
+  "2pack": { etiqueta: "Masilla selladora x2 packs (40 sachets)", cantidad: 40, precio: 129 },
+  "3pack": { etiqueta: "Masilla selladora x3 packs (60 sachets)", cantidad: 60, precio: 179 }
 };
 
-export const VARIANTE_POR_DEFECTO = "5pack";
+export const VARIANTE_POR_DEFECTO = "2pack";
 
 /** Pestaña del MISMO libro de Pedidos (un solo GOOGLE_SHEET_ID). */
 export const PESTANA = "Sellador";

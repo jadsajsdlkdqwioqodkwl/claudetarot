@@ -133,6 +133,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-18 · `/sellador`: packs de 20 sachets (1 pack S/79 · 2 packs S/129 · 3 packs S/179; ids `1pack/2pack/3pack`, columna «Sachets» = 20/40/60), letra más grande y ~10% menos texto como el original, y espacios `AUTOR`/`RESENAS` listos para foto y reseñas reales (ver `docs/sellador.md`). No se quitó nada de lo anterior.
+
 - 2026-10-18 · Landing `/sellador` rehecha como **clon fiel del advertorial original en español** (a pedido del dueño): misma estructura PC/móvil, filas alternadas, tabla comparativa, oferta con cuenta regresiva y CTA fijo «OBTÉN 50% DE DESCUENTO AHORA». Se quitó el rótulo «Contenido publicitario». Sin logos de medios, sin persona-experto y sin citas/cifras inventadas (ver `docs/sellador.md`). Modal COD, endpoint y precios iguales. No se quitó nada de lo anterior fuera de esa página.
 
 - 2026-10-18 · Landing `/sellador` ajustada a pedido del dueño: precios x2 S/79 · x5 S/129 · x10 S/199, garantía de 90 días, CTAs «COMPLETAR PEDIDO», paleta y tipografía del advertorial original (azul plano, Poppins), y link largo bajo el dominio de Tarot (`RUTA_SELLADOR_LARGA` en `src/index.js`, ver `docs/sellador.md`). No se quitó nada de lo anterior.
