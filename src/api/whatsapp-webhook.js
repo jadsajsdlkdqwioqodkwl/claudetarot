@@ -11,6 +11,7 @@
  */
 
 import { activarPlanTrasAviso, rearmarPlanShalom } from "../lib/planes-plantilla.js";
+import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
 import {
   obtenerOCrearContacto,
   obtenerOCrearConversacion,
@@ -259,6 +260,9 @@ async function procesarCambio(envBase, db, value, origen) {
     // Killswitch del chat: sin bienvenida ni seguimiento automático.
     if (!conversacion.pausa_auto) {
       await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
+      if (type === "text" && esBotonVerCatalogo(bodyFinal)) {
+        await mandarCatalogoPorBoton(env, conversacion.id, contacto.wa_id).catch((err) => console.error("Botón Ver catálogo:", err.message));
+      }
       await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
       await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
     }

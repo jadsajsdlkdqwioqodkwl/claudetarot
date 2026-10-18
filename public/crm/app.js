@@ -559,7 +559,15 @@ const botonesDeFila = (p) => { try { return JSON.parse(p?.botones || "[]") || []
 const textoConBotones = (texto, botones) => (botones?.length ? `${texto}\n\n${botones.map((b) => `[ ${b} ]`).join("  ")}` : texto);
 const leerCamposBotones = (cont, clase) => [...cont.querySelectorAll("." + clase)].map((i) => i.value.trim()).filter(Boolean).slice(0, 3);
 const ponerCamposBotones = (cont, clase, valores = []) => cont.querySelectorAll("." + clase).forEach((el, i) => { el.value = valores[i] || ""; });
-const camposBotonesHtml = (clase, valores = []) => `<div class="campos-botones">${[0, 1, 2].map((i) => `<input type="text" class="${clase}" maxlength="20" value="${escapar(valores[i] || "")}" placeholder="Botón ${i + 1}" />`).join("")}</div>`;
+const camposBotonesHtml = (clase, valores = []) => `<div class="campos-botones">${[0, 1, 2].map((i) => `<input type="text" class="${clase}" maxlength="20" value="${escapar(valores[i] || "")}" placeholder="Botón ${i + 1}" />`).join("")}<button type="button" class="boton-catalogo-atajo" title="Pone el botón «Ver catálogo»: al tocarlo, el cliente recibe el catálogo solo">${icon("bag")} Ver catálogo</button></div>`;
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".boton-catalogo-atajo");
+  if (!b) return;
+  const campos = [...b.parentElement.querySelectorAll("input[type=text]")];
+  if (campos.some((c) => c.value.trim().toLowerCase() === "ver catálogo")) return;
+  const libre = campos.find((c) => !c.value.trim()) || campos[campos.length - 1];
+  if (libre) { libre.value = "Ver catálogo"; libre.dispatchEvent(new Event("input", { bubbles: true })); }
+});
 
 /** Cómo ve el cliente una plantilla en WhatsApp: la burbuja con el texto (variables de ejemplo) y sus botones debajo. */
 function vistaPreviaPlantilla(texto, botones = [], nombre = "María") {
@@ -3015,8 +3023,8 @@ function pintarChatBase(c) {
       <button type="button" class="icono" id="btn-stickers" title="Stickers">${icon("sticker")}</button>
       <button type="button" class="icono" id="btn-adjuntar" title="Adjuntar foto o video">${icon("paperclip")}</button>
       <!-- Solo image/* y video/*: así el celular abre la galería de fotos y no el explorador de archivos. -->
-      <input type="file" id="input-galeria" accept="image/*,video/*" multiple style="display:none" />
-      <input type="file" id="input-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" />
+      <input type="file" id="input-galeria" accept="image/*,video/*" multiple class="input-oculto" />
+      <input type="file" id="input-archivo" accept="*/*" multiple class="input-oculto" />
       <input type="file" id="input-sticker" accept="image/webp" style="display:none" />
       <textarea id="texto-envio" placeholder="${window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…"}" title="Enter hace un salto de línea; el botón de enviar lo manda" rows="1" autocomplete="off"></textarea>
       <button type="button" class="icono" id="btn-formato" title="Formato: negrita, cursiva, tachado (también Ctrl+B, Ctrl+I, Ctrl+Shift+X)">${icon("formato")}</button>

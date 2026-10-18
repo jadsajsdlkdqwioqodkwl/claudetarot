@@ -1128,3 +1128,8 @@ body.solo-lectura #form-envio { display: none; }
 .badge-falta { background: #fff3e0; color: #b45309; }
 .badge-falta .btn-atendido { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; padding: 0 5px; font-size: 10px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .badge-falta .btn-atendido .icono-svg { width: 11px; height: 11px; }
+
+/* Inputs de archivo del chat: ocultos pero presentes (en algunos celulares display:none no abre el selector de archivos / Archivos guardados). */
+.input-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.boton-catalogo-atajo { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; font-size: 11px; border: 1px dashed var(--borde); border-radius: 6px; background: transparent; color: var(--gris); cursor: pointer; }
+.boton-catalogo-atajo .icono-svg { width: 12px; height: 12px; }
