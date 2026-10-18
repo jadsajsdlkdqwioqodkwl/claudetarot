@@ -134,6 +134,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-10-18 · **Dominio largo de la masilla selladora** `puerto-secreto-masilla-selladora-huecos-tuberias-paredes-lima.tarotperu.store` (hostname de Workers → `claudetarot`, creado con la API de Cloudflare igual que el del Cable) y 2 reglas de reescritura **agregadas** al final del ruleset `http_request_transform` de la zona `tarotperu.store`: `/` → `/sellador/` y `/gracias` → `/sellador/gracias` (las 2 del Cable no se tocaron; no tocar estas 2 tampoco). En ese host el formulario redirige a `/gracias`. Pedido de prueba real hecho el mismo día (fila «PRUEBA Claude NO DESPACHAR» en la pestaña Sellador; se puede borrar). No se quitó nada de lo anterior.
+
 - 2026-10-18 · `/sellador`: COD igual al del Cable (logo de Puerto Secreto, «Vendedor autorizado», distrito/ciudad, adelanto de S/ 10 en provincia y resumen del total; la hoja «Sellador» suma «Distrito / Ciudad» y «Adelanto»), píxel de Puerto Secreto `1788156381816025` solo hasta InitiateCheckout (la gracias ya no manda Lead), WhatsApp `51930575181`, estrellas de vuelta y espacios `AUTOR`/`RESENAS` con placeholders. Se mezcló `main` (Cable) en la rama. No se quitó nada de lo anterior.
 
 - 2026-10-18 · `/sellador`: packs de 20 sachets (1 pack S/79 · 2 packs S/129 · 3 packs S/179; ids `1pack/2pack/3pack`, columna «Sachets» = 20/40/60), letra más grande y ~10% menos texto como el original, y espacios `AUTOR`/`RESENAS` listos para foto y reseñas reales (ver `docs/sellador.md`). No se quitó nada de lo anterior.

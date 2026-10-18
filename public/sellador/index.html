@@ -686,7 +686,8 @@
             ahorro: (FB.viejos[v.id] || v.valor) - v.valor
           }));
         } catch (e) { /* modo privado sin storage: /gracias saldrá genérica */ }
-        location.href = '/sellador/gracias.html?v=' + encodeURIComponent(total);
+        // En el dominio largo (donde «/» es la landing) la gracias es «/gracias»; en las demás rutas, el archivo.
+        location.href = (location.pathname === '/' ? '/gracias' : '/sellador/gracias.html') + '?v=' + encodeURIComponent(total);
       })
       .catch(function (err) {
         console.error(err);

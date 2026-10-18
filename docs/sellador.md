@@ -41,3 +41,6 @@ En `public/sellador/index.html`, el bloque «REEMPLAZA AQUÍ» (`AUTOR`, `RESENA
 
 ## Meta y WhatsApp
 Píxel de Puerto Secreto `1788156381816025` (el de URO); eventos PageView, ViewContent, AddToCart e InitiateCheckout. No se envían Lead ni Purchase. WhatsApp `51930575181`.
+
+## Link de producción (como el del Cable)
+`https://puerto-secreto-masilla-selladora-huecos-tuberias-paredes-lima.tarotperu.store/` (`/gracias` para la página de gracias). Es un hostname de Workers a `claudetarot` más 2 reglas de reescritura de URL en la zona `tarotperu.store` (ver MAPA). Los links largos con ruta (`…tarotperu.store/7-razones-…` y el de workers.dev) siguen funcionando.
