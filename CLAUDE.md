@@ -81,6 +81,12 @@
    rescate no arregla. Tope: 15 por envío y 30 por día; el Worker rechaza lo que
    no cumple (ya compró, bloqueado, killswitch del chat, ya recibió el rescate 1).
 
+17. **Registro de pedidos (2026-10-18):** `enviar.py` guarda cada reporte de pedidos por fecha de
+   despacho y SUMA las corridas (ninguna borra un pedido; para sacar uno usa `quitar`
+   [{whatsapp, motivo}]). Todo pedido que sale otro día va `OTRO_DIA` con `fecha_entrega`
+   AAAA-MM-DD: queda agendado en esa fecha. Un Lima confirmado con entrega en otro día no sale
+   (también en el reporte de ventas). Ver: `python3 scripts/asesor/pedidos_estado.py ver AAAA-MM-DD`.
+
 Más detalle: `docs/asesor.md`.
 
 **Qué es una venta (regla del dueño, 2026-10-14):** Lima = el cliente pasó su dirección; provincia = el cliente mandó el adelanto. Una confirmación verbal de la vendedora sin eso es otra cosa o error de asesor, no cuenta como venta en ningún reporte.
