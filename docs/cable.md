@@ -99,3 +99,4 @@ Es la misma página que `/cable/`; el `<title>` también es largo y descriptivo.
 - Se quitó «¿Para qué celular?» del formulario: ya **no se pregunta el conector** (USB-C o Lightning). La vendedora lo confirma por WhatsApp
   y la columna «Detalle» de la pestaña Cable queda como «Conector por confirmar (WhatsApp)». El servidor aún acepta `cables` si algún día vuelve.
 - El logo de Puerto Secreto ya **no está en la página**: solo en el formulario, con el badge «Vendedor autorizado».
+- Se quitó el bloque de resumen del formulario (producto, precio, envío, total) y el botón «COMPLETAR PEDIDO» quedó **fijo al borde inferior** del formulario (siempre visible; `.btn-fijo`). El subtítulo del botón sigue diciendo «Pagas cuando lo recibes» o el adelanto de provincia.
