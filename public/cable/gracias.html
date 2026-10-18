@@ -43,8 +43,8 @@
   .pie a { color:var(--muted) }
 </style>
 <script>
-  /* Mismo ID que PIXEL_ID en /cable/ (index.html). Vacío = sin píxel. */
-  var PIXEL_ID = '';
+  /* Mismo ID que PIXEL_ID en /cable/ (index.html). Sin Lead/Contact/Purchase por ahora. */
+  var PIXEL_ID = '1788156381816025';
   /* Mismo número que WA_NUMERO en /cable/. Vacío = sin botón de WhatsApp. */
   var WA_NUMERO = '';
   if (PIXEL_ID) {
@@ -161,22 +161,8 @@
       document.getElementById('pie').innerHTML = '¿Algo mal en tu pedido? <a href="https://wa.me/' + WA_NUMERO + '">Escríbenos</a> y lo corregimos.';
     }
 
-    /* El Lead se dispara aquí, al final del embudo, con el total real. */
-    if (typeof fbq === 'function') {
-      fbq('track', 'Lead', {
-        content_name: pedido.pack || 'Cable de carga con soporte 2 en 1',
-        content_category: 'COD',
-        value: total > 0 ? total : 39,
-        currency: 'PEN'
-      }, pedido.eventId ? { eventID: pedido.eventId } : undefined);
-    }
-    /* Contact solo al pulsar el botón de WhatsApp, una vez. */
-    var enviado = false;
-    document.getElementById('waLink').addEventListener('click', function () {
-      if (enviado || typeof fbq !== 'function') return;
-      enviado = true;
-      fbq('track', 'Contact', { content_name: pedido.pack || 'Cable 2 en 1', content_category: 'COD', value: total > 0 ? total : 39, currency: 'PEN' });
-    });
+    /* Por ahora el embudo mide solo hasta InitiateCheckout (en la página de venta): aquí no se envían
+       Lead, Contact ni Purchase; el píxel solo registra la visita (PageView). */
   })();
 </script>
 </body>

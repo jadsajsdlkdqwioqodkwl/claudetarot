@@ -1064,7 +1064,8 @@ check("las letras de columna llegan hasta la última de la hoja",
     dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("cable: los datos personales no viajan por la URL de gracias",
     /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
-  check("cable: el Lead se dispara en gracias", /fbq\('track', 'Lead'/.test(gr));
+  check("cable: solo eventos hasta InitiateCheckout (gracias sin Lead/Contact/Purchase)", !/track\('(Lead|Contact|Purchase)'/.test(cable + gr) && /fbTrack\('InitiateCheckout'/.test(cable));
+  check("cable: píxel de Puerto Secreto (no el de Tarot)", dato(cable, "PIXEL_ID") === "1788156381816025");
   const faltan = [];
   const tamanos = [];
   for (const [, ruta] of cable.matchAll(/(?:src|href|data-src|poster|content)="(\/cable\/[^"]+)"/g)) {

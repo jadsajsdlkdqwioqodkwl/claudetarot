@@ -42,7 +42,7 @@ N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al 
 
 ## Antes de lanzar (valores que hay que poner o confirmar)
 
-- `PIXEL_ID` (píxel de Meta de este producto) y `WA_NUMERO` (WhatsApp de atención, con 51):
+- `PIXEL_ID` ya está puesto: `1788156381816025`, el píxel de Puerto Secreto (el mismo que usa el Worker `uro`; no es el de Tarot). Eventos: PageView, ViewContent, AddToCart e InitiateCheckout; **todavía no se envían Lead ni Purchase** (`npm run check` lo vigila). Falta `WA_NUMERO`; las constantes están en `index.html` y `gracias.html`. Antes: `PIXEL_ID` y `WA_NUMERO` (WhatsApp de atención, con 51):
   son constantes al inicio del `<script>` de `public/cable/index.html` **y** de `gracias.html`
   (`npm run check` falla si no coinciden). Vacíos = no se carga el píxel y no se muestran los
   botones de WhatsApp.
@@ -74,12 +74,13 @@ El formulario tiene las dos opciones del COD de Tarot: **Pago en casa (Lima)**, 
 «Cable» quedó con estas columnas: Fecha · Nombre · WhatsApp · Envío · Distrito / Ciudad · Dirección / Agencia · Pack · Detalle ·
 Cantidad · Total · Adelanto · Estado · FBP · FBC · Event ID · User Agent · IP (la pestaña aún no existía, por eso se pudo reordenar).
 Marca para el testeo: logo de **Puerto Secreto** (`img/logo.webp`) en círculo y badge «Vendedor autorizado» arriba del formulario
-(como en el COD de Tarot) y en la cabecera de la página.
+(como en el COD de Tarot); la cabecera de la página lleva el logo y el nombre, sin badge.
 
 ## Fotos y videos
 
-Fotos de catálogo del producto, sin texto: `principal.webp` y `enrollado.webp` (ficha de Alpha Technology, Perú), `naranja.webp`
-(ficha original); se descartaron las fotos generadas con personas (se veían falsas); los videos están recortados para quitar los subtítulos en
+Galería de 4: `principal.webp` (catálogo, ficha de Alpha Technology, Perú), `combinacion.webp` y `power-delivery.webp` (infografías originales de la
+ficha con el texto **traducido al español** y sin cifras de vatios ni «80% en 30 min»), `naranja.webp` (catálogo). `bolsa.webp` es el fotograma
+real de la bolsa en los videos. Se descartaron las fotos generadas con personas (se veían falsas); los videos están recortados para quitar los subtítulos en
 inglés y sin audio (se ven mudos). Los videos solo se descargan al acercarse (`data-src`).
 En el último tramo de los videos 2 y 3 aparece la bolsa con la marca del proveedor.
 Si se cambia el contenido de un archivo hay que **renombrarlo** (`_headers` los cachea un año).
