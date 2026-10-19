@@ -43,10 +43,10 @@
   .pie a { color:var(--muted) }
 </style>
 <script>
-  /* Mismo ID que PIXEL_ID en /masilla/ (index.html). Sin Lead/Contact/Purchase por ahora. */
+  /* Mismo ID que PIXEL_ID en /masilla/ (index.html). Lead y Purchase se envían desde esta página al confirmar el pedido. */
   var PIXEL_ID = '1788156381816025';
   /* Mismo número que WA_NUMERO en /masilla/. Vacío = sin botón de WhatsApp. */
-  var WA_NUMERO = '51930575181';
+  var WA_NUMERO = '51940028332';
   if (PIXEL_ID) {
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -156,8 +156,20 @@
       document.getElementById('pie').innerHTML = '¿Algo mal en tu pedido? <a href="https://wa.me/' + WA_NUMERO + '">Escríbenos</a> y lo corregimos.';
     }
 
-    /* Por ahora el embudo mide solo hasta InitiateCheckout (en la página de venta): aquí no se envían
-       Lead, Contact ni Purchase; el píxel solo registra la visita (PageView). */
+    /* Lead y Purchase al enviarse el formulario: el pedido ya quedó registrado (la página de venta solo
+       redirige acá si el servidor contestó OK). Solo con datos del pedido en sessionStorage y una vez por
+       pedido (recargar no duplica); el mismo eventID en ambos sirve para deduplicar con el servidor. */
+    try {
+      var envKey = 'fbEnviado_' + (pedido.eventId || '');
+      if (pedido.eventId && total > 0 && typeof fbq === 'function' && !sessionStorage.getItem(envKey)) {
+        sessionStorage.setItem(envKey, '1');
+        var datosFb = { content_ids: ['masilla-selladora'], content_type: 'product', content_name: pedido.pack || 'Masilla selladora moldeable',
+          contents: [{ id: 'masilla-selladora', quantity: pedido.cantidad || 1 }], num_items: pedido.cantidad || 1,
+          value: total, currency: 'PEN' };
+        fbq('track', 'Lead', datosFb, { eventID: pedido.eventId });
+        fbq('track', 'Purchase', datosFb, { eventID: pedido.eventId });
+      }
+    } catch (e) {}
   })();
 </script>
 </body>
