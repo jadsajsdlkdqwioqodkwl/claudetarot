@@ -265,3 +265,10 @@ Pedido del dueño: los clientes ya en la lista deben actualizarse cuando vuelven
 ## 2026-10-18 · Prompts sin cambios, comportamiento nuevo de enviar.py
 
 Ningún prompt de Routine cambió. `enviar.py` ahora registra el reporte de pedidos por fecha (suma las corridas, agenda los `OTRO_DIA` y no envía un Lima confirmado con entrega otro día). Para que una Routine saque un pedido ya reportado usa `quitar` [{whatsapp, motivo}] en salida.json; para agendar, `fecha_entrega` en AAAA-MM-DD. Detalle en `docs/MAPA.md` (2026-10-18) y `CLAUDE.md` regla 17.
+
+
+## Propuesta (NO creada todavía): Finanzas quincenal
+
+Cuándo: los días 15 y 1 de cada mes a las 8:30 (hora de Lima), o a pedido. Conectores: Meta Ads, Google Drive. Entorno «Default».
+
+> (Inicio común) 1) Con el conector de Meta Ads trae, por día y campaña de la cuenta de Tarot Store, de la quincena que acaba de cerrar: gasto, impresiones, clics, chats de WhatsApp iniciados (conversaciones de mensajería), compras y valor de compras; escríbelos en /tmp/fin/ads.json como `{"ads": [...]}` (formato en docs/finanzas.md). 2) Busca en Drive el reporte de Dinsides de la quincena (carpeta «Finanzas»); si está, `python3 scripts/finanzas/importar_dinsides.py <archivo> --salida /tmp/fin/dinsides.json` (si avisa REVISAR, no cargues y dilo). 3) `python3 scripts/finanzas/cargar.py` con cada archivo. 4) Pedidos de Shalom y Olva cobrados en la quincena: arma /tmp/fin/provincia.json con las capturas de pago de los chats (`imagenes.py`), `courier` shalom/olva, `estado` completado y `fecha_cierre` = día del recojo; no cargues devoluciones. 5) `python3 scripts/finanzas/reporte.py --quincena <la que cerró>` y guarda el texto con `enviar.py --informe`. En tu respuesta di: utilidad, la palanca que más suma (ads, CRO o producto) y qué datos faltaron. No propones mensajes a clientes.

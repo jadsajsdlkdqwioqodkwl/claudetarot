@@ -137,6 +137,7 @@ function iconizar() {
   $("#btn-sugerencias").innerHTML = icon("sparkle");
   $("#btn-reportes").innerHTML = icon("doc");
   $("#btn-comisiones").innerHTML = icon("star");
+  $("#btn-finanzas").innerHTML = icon("chart");
   $("#btn-shalom").innerHTML = icon("bag");
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
@@ -231,6 +232,7 @@ async function mostrarApp() {
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
+  $("#btn-finanzas").style.display = role === "admin" ? "" : "none";
   $("#btn-shalom").style.display = shalom ? "" : "none";
   if (shalom) actualizarConteoShalom();
   abrirChatDelLink(cargarConversaciones());
@@ -2737,6 +2739,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
   "btn-comisiones": "Comisiones por quincena",
+  "btn-finanzas": "Finanzas del negocio",
   "btn-colores": "Colores de las tiendas",
   "btn-galeria": "Fotos del catálogo",
   "btn-equipo": "Equipo",
@@ -8082,7 +8085,7 @@ async function cargarComisiones(quincena = "") {
     const d = await pedir(`/api/crm/comisiones${quincena ? `?quincena=${encodeURIComponent(quincena)}` : ""}`);
     const sel = $("#com-quincena");
     sel.innerHTML = d.quincenas.map((q) => `<option value="${q.id}"${q.id === d.quincena.id ? " selected" : ""}>${escapar(q.etiqueta)}</option>`).join("");
-    $("#com-ayuda").textContent = `${d.porcentaje} % del valor de cada venta, se haya recogido el pedido o no. Si la venta tiene la estrella compartida, se reparte 50/50; si no, es de quien cerró. Cuenta lo marcado como COMPRA en el CRM.`;
+    $("#com-ayuda").textContent = `${d.porcentaje} % del valor de cada venta${Object.entries(d.porcentajes_propios || {}).map(([n, v]) => ` (${n}: ${v} %)`).join("")}, se haya recogido el pedido o no. Si la venta tiene la estrella compartida, se reparte 50/50; si no, es de quien cerró. Cuenta lo marcado como COMPRA en el CRM.`;
     const filas = d.asesoras.map((a) => `<tr><td>${escapar(a.asesora)}</td><td>${a.completas}</td><td>${a.compartidas}</td><td>${soles(a.valor_ventas)}</td><td><b>${soles(a.comision)}</b></td></tr>`).join("");
     cont.innerHTML = `
       <p><b>${d.total_ventas}</b> ventas · ${soles(d.total_valor)} vendidos · <b>${soles(d.total_comision)}</b> en comisiones</p>
@@ -8104,6 +8107,48 @@ async function cargarComisiones(quincena = "") {
       try { await pedir("/api/crm/comisiones", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }); } catch (err) { alert(err.message); }
       cargarComisiones($("#com-quincena").value);
     }));
+  } catch (err) {
+    cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
+
+/* ---------- Finanzas del negocio (solo admin): utilidad, embudo y dónde enfocarse ---------- */
+
+const pctTxt = (n) => (n === null || n === undefined ? "—" : `${(n * 100).toFixed(1)} %`);
+const solesTxt = (n) => (n === null || n === undefined ? "—" : soles(n));
+$("#btn-finanzas").addEventListener("click", () => { $("#modal-finanzas-fondo").classList.add("abierto"); cargarFinanzas(); });
+$("#fin-cerrar").addEventListener("click", () => $("#modal-finanzas-fondo").classList.remove("abierto"));
+$("#fin-periodo").addEventListener("change", () => cargarFinanzas($("#fin-periodo").value));
+
+async function cargarFinanzas(periodo = "") {
+  const cont = $("#fin-contenido");
+  cont.innerHTML = `<p class="ayuda-modal">Cargando…</p>`;
+  try {
+    const d = await pedir(`/api/crm/finanzas${periodo ? `?${periodo.length === 7 ? "mes" : "quincena"}=${encodeURIComponent(periodo)}` : ""}`);
+    const sel = $("#fin-periodo");
+    const meses = [...new Set(d.quincenas.map((q) => q.id.slice(0, 7)))];
+    sel.innerHTML = d.quincenas.map((q) => `<option value="${q.id}"${q.id === d.periodo.id ? " selected" : ""}>${escapar(q.etiqueta)}</option>`).join("")
+      + meses.map((m) => `<option value="${m}"${m === d.periodo.id ? " selected" : ""}>Mes completo ${m}</option>`).join("");
+    $("#fin-ayuda").textContent = `${d.nombre}. Un pedido cuenta el día que se entrega o se rechaza. Producto S/ ${d.reglas.costo_producto} por kit; el envío lo paga el negocio solo en Dinsides y Lima; comisiones y anuncios, el día en que ocurren.`;
+    const k = d.kpis, p = d.pedidos, a = d.ads;
+    const fila = (t, v, fuerte) => `<tr><td>${t}</td><td align="right">${fuerte ? `<b>${v}</b>` : v}</td></tr>`;
+    const nombres = { ads: "Anuncios (costo de la publicidad)", cro: "CRO (convertir mejor el tráfico)", producto: "Producto (ofertas, upsells)" };
+    cont.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        ${fila("Cobrado (pedidos entregados)", solesTxt(d.ingresos))}${fila("Costo del producto", "− " + solesTxt(d.costo_producto))}${fila("Envíos que paga el negocio", "− " + solesTxt(d.envios))}
+        ${fila("Margen bruto", solesTxt(d.margen_bruto), true)}${fila("Comisiones de asesoras", "− " + solesTxt(d.comisiones))}${fila("Anuncios (Meta)", "− " + solesTxt(d.anuncios))}${fila("Otros gastos", "− " + solesTxt(d.otros_gastos))}
+        ${fila("Utilidad", solesTxt(d.utilidad) + ` (${pctTxt(k.margen_pct)} de lo cobrado)`, true)}
+      </table>
+      <p style="font-size:13px;margin:10px 0 2px"><b>${p.completados}</b> entregados · <b>${p.rechazados}</b> rechazados (${pctTxt(k.tasa_rechazo)}) · ${p.pendientes} en camino (${solesTxt(p.por_cobrar)} por cobrar) · ${p.ventas_crm ?? "—"} ventas en el CRM</p>
+      <p style="font-size:13px;margin:2px 0">Ticket ${solesTxt(k.ticket)} · cada pedido deja ${solesTxt(k.contribucion_por_pedido)} antes de anuncios y cuesta ${solesTxt(k.costo_por_pedido_entregado)} en anuncios · ROAS real ${k.roas_real ?? "—"}</p>
+      <p style="font-size:13px;margin:2px 0">${a.conversaciones || a.chats_anuncio || 0} chats de anuncio (${solesTxt(k.costo_por_mensaje)} c/u) · chat a venta ${pctTxt(k.mensaje_a_venta)} · venta a entrega ${pctTxt(k.venta_a_entrega)} · CTR ${pctTxt(k.ctr)}</p>
+      <h3 style="margin:12px 0 4px;font-size:14px">Dónde enfocarse</h3>
+      <p class="ayuda-modal" style="margin:0 0 4px">Utilidad que sumaría mejorar cada palanca un 10 %, sin tocar las otras.</p>
+      ${d.palancas.map((x, i) => `<div class="ad-card" style="margin-bottom:4px;font-size:13px"><b>${i + 1}. ${escapar(nombres[x.palanca])}</b>: +${solesTxt(x.utilidad_extra)}<br>${escapar(x.cambio)}</div>`).join("")}
+      ${d.alertas.length ? `<h3 style="margin:12px 0 4px;font-size:14px">Alertas</h3>${d.alertas.map((x) => `<div class="ad-card" style="margin-bottom:4px;font-size:13px">${escapar(x.texto)}</div>`).join("")}` : ""}
+      ${d.por_courier.length ? `<h3 style="margin:12px 0 4px;font-size:14px">Por courier</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Courier</th><th>Entregados</th><th>Rechazados</th><th>Cobrado</th><th>Envíos</th><th>Margen</th></tr>
+      ${d.por_courier.map((c) => `<tr><td>${escapar(c.courier)}</td><td align="center">${c.completados}</td><td align="center">${c.rechazados}</td><td align="right">${solesTxt(c.ingresos)}</td><td align="right">${solesTxt(c.envios)}</td><td align="right">${solesTxt(c.margen)}</td></tr>`).join("")}</table>` : ""}`;
   } catch (err) {
     cont.innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
   }

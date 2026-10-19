@@ -7,7 +7,7 @@
  * El día de una venta se mira en hora de Lima (UTC-5).
  *
  * Venta = evento Purchase enviado (`capi_events`: lo que la asesora marca como COMPRA y lo que ve Meta).
- * Comisión = 10 % del valor de la venta, se haya recogido el pedido o no (ajuste `comision_pct` para cambiarlo).
+ * Comisión = 10 % del valor de la venta (Danitza 13 %: `pctPorAsesora`), se haya recogido el pedido o no (ajuste `comision_pct` para cambiarlo).
  *
  * Atribución (según la estrella del chat, `assigned_agent` + `shared_with`):
  *   · Sin estrella compartida: 100 % de la comisión para la dueña del chat (quien cerró; quien solo confirmó no cobra aparte).
@@ -70,23 +70,41 @@ const lineas = (t) => String(t || "").split(/\r?\n/).map((x) => x.trim()).filter
 const redondear = (n) => Math.round(n * 100) / 100;
 
 /** Reparte una venta entre personas. Devuelve { modo, reparto: { nombre: monto } }. */
-export function repartir(venta, pct, ajuste) {
-  const comision = redondear((Number(venta.value) || 0) * pct / 100);
+export function repartir(venta, pct, ajuste, pctPorAsesora = {}) {
+  const valor = Number(venta.value) || 0;
+  const pctDe = (nombre) => Number(pctPorAsesora[String(nombre).trim().toLowerCase()]) || pct; // Danitza 13 %, el resto el general
+  const comision = redondear(valor * pct / 100);
   const dueno = (ajuste?.responsable || venta.assigned_agent || "").trim();
   const ayudantes = ajuste ? lineas(ajuste.ayudante) : lineas(venta.shared_with).filter((n) => n !== dueno);
   const modo = ajuste ? ajuste.modo : (ayudantes.length ? "mitad" : "dueno");
   if (!dueno) return { modo, comision, reparto: { "(sin asesora)": comision } };
   if (modo === "mitad" && ayudantes.length) {
-    const mitad = redondear(comision / 2);
-    return { modo, comision, reparto: { [dueno]: mitad, [ayudantes[0]]: redondear(comision - mitad) } };
+    const a = ayudantes[0];
+    if (pctDe(dueno) === pctDe(a)) { // mismo porcentaje: el reparto de siempre
+      const c = redondear(valor * pctDe(dueno) / 100), mitad = redondear(c / 2);
+      return { modo, comision: c, reparto: { [dueno]: mitad, [a]: redondear(c - mitad) } };
+    }
+    const r = { [dueno]: redondear(valor / 2 * pctDe(dueno) / 100), [a]: redondear(valor / 2 * pctDe(a) / 100) };
+    return { modo, comision: redondear(r[dueno] + r[a]), reparto: r };
   }
-  return { modo: "dueno", comision, reparto: { [dueno]: comision } };
+  const c = redondear(valor * pctDe(dueno) / 100);
+  return { modo: "dueno", comision: c, reparto: { [dueno]: c } };
+}
+
+/** Porcentajes propios por asesora (ajuste `comision_pct_asesoras`, JSON {"danitza":13}). De fábrica: Danitza 13 % (dueño, 2026-10-19). */
+export const PCT_POR_ASESORA_DE_FABRICA = { danitza: 13 };
+export async function pctPorAsesora(db) {
+  try {
+    const crudo = await obtenerAjuste(db, "comision_pct_asesoras");
+    return { ...PCT_POR_ASESORA_DE_FABRICA, ...(crudo ? JSON.parse(crudo) : {}) };
+  } catch { return { ...PCT_POR_ASESORA_DE_FABRICA }; }
 }
 
 /** El contador de una quincena: totales por asesora y detalle de cada venta. */
 export async function calcularQuincena(db, quincenaId) {
   const q = quincenaPorId(quincenaId);
   const pct = Number(await obtenerAjuste(db, "comision_pct").catch(() => null)) || 10;
+  const pcts = await pctPorAsesora(db);
   // Ventana en UTC con margen de un día; el recorte exacto se hace por fecha de Lima.
   const { results } = await db.prepare(
     `SELECT e.id, e.conversation_id, e.value, e.currency, e.product_label, e.created_by, e.created_at,
@@ -105,7 +123,7 @@ export async function calcularQuincena(db, quincenaId) {
   for (const v of results) {
     const dia = fechaLima(v.created_at);
     if (dia < q.desde || dia > q.hasta) continue;
-    const r = repartir(v, pct, v.modo ? { modo: v.modo, responsable: v.responsable, ayudante: v.ayudante } : null);
+    const r = repartir(v, pct, v.modo ? { modo: v.modo, responsable: v.responsable, ayudante: v.ayudante } : null, pcts);
     ventas.push({ id: v.id, fecha: dia, cliente: v.cliente, whatsapp: v.wa_id, producto: v.product_label, valor: Number(v.value) || 0, marcada_por: v.created_by,
                   modo: r.modo, ajustada: Boolean(v.modo), nota: v.nota || null, comision: r.comision, reparto: r.reparto });
     for (const [nombre, monto] of Object.entries(r.reparto)) {
@@ -118,7 +136,7 @@ export async function calcularQuincena(db, quincenaId) {
   }
   const asesoras = Object.values(por).sort((x, y) => y.comision - x.comision);
   return {
-    quincena: q, porcentaje: pct, moneda: "PEN",
+    quincena: q, porcentaje: pct, porcentajes_propios: pcts, moneda: "PEN",
     total_ventas: ventas.length, total_valor: redondear(ventas.reduce((s, v) => s + v.valor, 0)),
     total_comision: redondear(asesoras.reduce((s, t) => s + t.comision, 0)),
     asesoras, ventas
