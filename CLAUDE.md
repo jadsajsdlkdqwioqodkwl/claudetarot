@@ -162,3 +162,6 @@ Esta sección solo añade reglas de trabajo; no cambia lo anterior.
   autorizadas. No las ejecutes contra el sitio en vivo sin autorización explícita.
 - **Arranque:** `.claude/hooks/session-start.sh` instala CodeGraph e indexa el repo
   al iniciar una sesión. Es idempotente.
+- **Trato con el dueño:** si pide algo de forma explícita, hazlo sin discutirlo. Si
+  hay un riesgo real (producción, datos, despliegues), menciónalo en una línea y
+  sigue con lo que pidió. No repitas la objeción.
