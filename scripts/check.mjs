@@ -323,9 +323,9 @@ check("las tres fotos del carrusel de reseñas ya están subidas",
 check("se sirve el MP4, que es el mas ligero de los dos",
   fuentesVideo[0] === "kittarotcod/2.mp4", fuentesVideo.join(", "));
 
-/* 14. Tarjetas de variante en 4:5 */
-check("la foto de la variante es una banda horizontal",
-  /\.vcard \.foto\s*\{[^}]*height:\s*86px/.test(html));
+/* 14. Tarjetas de variante: foto de alto fijo (120 px, como en el diseño actual) */
+check("la foto de la variante es una banda horizontal de 120 px",
+  /\.vcard \.foto\s*\{[^}]*height:\s*120px/.test(html));
 check("la imagen del kit se sirve apaisada", html.includes('width="500" height="300"'));
 
 

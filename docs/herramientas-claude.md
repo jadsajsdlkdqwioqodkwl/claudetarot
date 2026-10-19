@@ -7,6 +7,7 @@ Todo lo de esta página vive en el repositorio. Funciona en Claude Code en el na
 | Herramienta | Para qué sirve | Cómo se usa |
 |---|---|---|
 | **CodeGraph** | Busca código sin leer archivos completos, así gasta menos. | Automático. Pregunta normal: "¿dónde se calcula el precio?". |
+| **Memoria del proyecto** | Guarda datos que le pidas recordar durante la sesión. | "Recuerda que el precio de la masilla es S/ 89". |
 | **claude-mem** | Recuerda decisiones de sesiones anteriores. | "¿Qué decidimos sobre el seguimiento la vez pasada?" |
 | **claude-code-setup** | Revisa el proyecto y sugiere automatizaciones. | "Recomiéndame automatizaciones para este proyecto". |
 | **Strix** (skills de seguridad) | Auditorías y pruebas de seguridad. | Solo con autorización explícita. Ver abajo. |

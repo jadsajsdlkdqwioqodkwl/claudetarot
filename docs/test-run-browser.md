@@ -8,7 +8,7 @@ Haz una prueba de las herramientas de este repo y dame un informe corto, en 10 l
 
 1. **Plugins:** ¿`claude-code-setup` y `claude-mem` aparecen activos? (`/plugin` o lista de plugins).
 2. **CodeGraph:** ¿el servidor `codegraph` está conectado? Luego busca con `codegraph_explore` la función `textoSirvePara` y dime en qué archivo está. Si no devuelve nada, dilo.
-3. **Memoria (claude-mem):** busca en la memoria de sesiones anteriores "herramientas del equipo" y dime si encontraste algo. Si no hay nada, dilo; no lo des por error.
+3. **Memoria:** guarda esta nota con la herramienta de memoria: "prueba de sesión web, fecha de hoy". Luego búscala y confirma que la encontraste. Además, busca "herramientas del equipo" en claude-mem y dime si hay algo.
 4. **Reglas:** ¿lees la sección «Herramientas del equipo» de `CLAUDE.md`? Dime las tres reglas en una línea cada una.
 5. **Skills de seguridad:** ¿aparecen las skills de Strix (por ejemplo `penetration-testing-with-strix`)? Solo dilo; no las ejecutes.
 6. **Chequeo del proyecto:** corre `npm install` y luego `npm run check`. Dime solo cuántos chequeos fallaron y el nombre de cada uno que falle. No cambies nada del código.
