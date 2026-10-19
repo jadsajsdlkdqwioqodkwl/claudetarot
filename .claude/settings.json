@@ -26,7 +26,6 @@
   "permissions": {
     "allow": [
       "mcp__codegraph__*",
-      "mcp__memory__*",
       "mcp__Google_Sheets__*",
       "mcp__Google_Docs__*",
       "mcp__Google_Drive__*",
