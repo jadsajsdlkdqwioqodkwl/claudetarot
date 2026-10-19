@@ -15,4 +15,10 @@ if command -v codegraph >/dev/null 2>&1 && [ ! -d .codegraph ]; then
   codegraph init -i >/dev/null 2>&1 || echo "session-start: codegraph init falló" >&2
 fi
 
+# Agent Reach (RSS y YouTube): solo si hay uv y aún no está instalado.
+if ! command -v agent-reach >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
+  uv tool install agent-reach >/dev/null 2>&1 \
+    || echo "session-start: no se pudo instalar agent-reach" >&2
+fi
+
 exit 0
