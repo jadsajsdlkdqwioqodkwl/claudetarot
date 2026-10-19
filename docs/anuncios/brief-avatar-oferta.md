@@ -286,7 +286,7 @@ que A2–A8 son hipótesis a probar con anuncios):
 
 - No saber cómo empezar al recibir el kit.
 - Que le falte algo (instrucciones, cartas, significado del amuleto).
-- NO relevantes: estigma social/religioso, "hacerlo mal", juicio ajeno,
+- NO relevantes: estigma social/religioso, "hacerlo mal", juicio ajeno, (corregido 2026-10-19 con 907 chats: «es copia / no creo que sea original» aparece en 1 comprador de provincia; la desconfianza real es del adelanto y del envío «gratis» que termina con flete en agencia, 14 y 10 chats)
   autenticidad del producto.
 
 ### Insights psicográficos
@@ -392,6 +392,20 @@ de agradecimiento con un primer tip de lectura.
 
 ---
 
+## PARTE 4: Escalera de ofertas (hipótesis a probar, 2026-10-19)
+
+Detalle y evidencia en `docs/anuncios/oferta-escalonada.md`. Precios y costos son escenarios: faltan costos reales del kit, courier y anuncios.
+
+- Oferta 1 (entrada, control): Kit Tarot de Aprendizaje, S/89 (S/149 por 2), tal como está.
+- Oferta 2 (principal, probar primero): Kit Guiado = kit + bolsa de organza + guía de tiradas de consulta rápida + 5 a 7 clases grabadas cortas entregadas por WhatsApp el mismo día de la compra. Precio a probar: S/119 (rango S/109 a 129). Respaldo: 13 chats piden curso o video, 23 libro o manual, compradores sin saber descifrar.
+- Oferta 3 (premium, hipótesis débil): Kit Guiado Plus = oferta 2 + libro/manual ampliado impreso + diario de práctica 21 días + soporte acotado. Precio a probar: S/159. Se ofrece solo a quien pregunta por libro, curso o soporte.
+- No recomendado por falta de evidencia: collar de nudos de bruja, manteles múltiples, premium para leer a terceros.
+- Hipótesis: H1 la oferta 2 no baja la conversión más de 30 % frente al kit solo; H2 la mitad de quienes preguntan por libro o curso la elige; H3 aclarar el flete baja los reclamos post-compra; H4 el contenido digital el mismo día baja los «no llega».
+
 ## Bitácora de aprendizajes (lo más nuevo arriba)
 
 Formato: `AAAA-MM-DD · fuente · aprendizaje (números)`.
+- 2026-10-19 · oferta escalonada (907 chats del 22-09 al 18-10, 124 compras CRM = 13,7 %) · Análisis completo en `docs/anuncios/oferta-escalonada.md`. Lo más fuerte: 25 % de los chats escribe un solo mensaje; Lima compra ~34 % y provincia ~20 %; el precio se pregunta (187 chats) pero casi no se rechaza; la falta de efectivo del momento (15 chats, 1 compró) pide fecha/separación, no descuento.
+- 2026-10-19 · oferta escalonada · Pedido de guía: libro o manual físico (23 chats), curso/clases/video (13), «cómo aprendo», y un comprador con el kit en mano pidiendo cómo descifrar. Es la palanca de valor con más respaldo (A1/A7).
+- 2026-10-19 · oferta escalonada · Objeción nueva y cuantificada: ~10 chats (9 compradores) reclaman que «el envío era gratis» y en agencia les cobran flete (S/8), o que tarda. La promesa de envío debe redactarse con exactitud. Corrige «sin objeción fuerte»: la desconfianza del adelanto en provincia sí aparece (14 chats).
+- 2026-10-19 · oferta escalonada · Accesorios extra con poca demanda: collar 13 chats (se valora como regalo del kit), tapete 6, oráculos 7. «Leer a otros / profesional»: 0 señales. Brujería/amarres: 4 chats, otro público. Otras barajas (española de 40 cartas, otro tarot): 14 chats.
