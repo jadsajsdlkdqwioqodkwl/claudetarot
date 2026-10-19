@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cable de Carga Rápida con Soporte Plegable para Celular, USB-C y Lightning 2 en 1 — Envío Gratis a Todo el Perú y Garantía de 90 Días</title>
-<meta name="description" content="Carga tu celular y déjalo parado para ver series, hacer videollamadas o jugar. Cable con soporte plegable desmontable + bolsa de regalo. Envío gratis a todo el Perú; en Lima pagas al recibir.">
+<meta name="description" content="Carga tu celular y déjalo parado para ver series, hacer videollamadas o jugar. Cable con soporte plegable desmontable. Envío gratis a todo el Perú; en Lima pagas al recibir.">
 <meta property="og:title" content="Cable de carga rápida con soporte plegable 2 en 1">
-<meta property="og:description" content="Carga y mira tu celular sin soltarlo. Bolsa de regalo incluida. Envío gratis a todo el Perú; en Lima pagas al recibir.">
+<meta property="og:description" content="Carga y mira tu celular sin soltarlo. Envío gratis a todo el Perú; en Lima pagas al recibir.">
 <meta property="og:image" content="/cable/img/combinacion.webp">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6A00'/%3E%3Cpath d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23fff'/%3E%3C/svg%3E">
@@ -292,11 +292,6 @@
     <div class="lbl">Elige tu pack <small>· compra más, ahorra más</small></div>
     <div id="packsPage"></div>
 
-    <div class="gift">
-      <div class="im"><img src="/cable/img/bolsa.webp" alt="Bolsa tipo cuero para guardar el cable" width="480" height="480" loading="lazy"></div>
-      <div><b><em>GRATIS</em>Bolsa tipo cuero para guardarlo</b><small>Se abre apretando los lados. Una por cada cable.</small></div>
-    </div>
-
     <button class="cta" id="ctaMain" onclick="openCOD()">
       <div class="l1">COMPLETAR PEDIDO</div>
       <div class="l2">Envío gratis a todo el Perú</div>
@@ -328,7 +323,7 @@
         <video muted loop playsinline preload="none" poster="/cable/video/en-accion-2.webp" data-src="/cable/video/en-accion-2.mp4" aria-label="Cómo se acopla y se desmonta el soporte del cable"></video>
         <span class="pp"><svg class="ico"><use href="#i-pause"/></svg></span>
       </div>
-      <p>Se acopla y se desmonta en segundos; lo guardas en su bolsa</p>
+      <p>Se acopla y se desmonta en segundos</p>
     </div>
     <div class="vc">
       <div class="vbox" role="button" tabindex="0" aria-label="Pausar o reproducir el video">
@@ -347,7 +342,7 @@
     <div class="f"><div class="ic"><svg class="ico"><use href="#i-bolt"/></svg></div><div><b>Carga rápida</b><p>Compatible con Power Delivery y con el cargador que ya tienes en casa.</p></div></div>
     <div class="f"><div class="ic"><svg class="ico"><use href="#i-tv"/></svg></div><div><b>Ideal para ver series y videollamadas</b><p>El soporte integrado sostiene tu celular en vertical u horizontal, sin accesorios extra.</p></div></div>
     <div class="f"><div class="ic"><svg class="ico"><use href="#i-game"/></svg></div><div><b>Perfecto para jugar</b><p>El conector en ángulo de 90° deja el cable fuera del camino de tus manos.</p></div></div>
-    <div class="f"><div class="ic"><svg class="ico"><use href="#i-fold"/></svg></div><div><b>Se pliega, se desmonta y viaja contigo</b><p>Ultradelgado, funciona con fundas delgadas y entra en su bolsa de regalo.</p></div></div>
+    <div class="f"><div class="ic"><svg class="ico"><use href="#i-fold"/></svg></div><div><b>Se pliega, se desmonta y viaja contigo</b><p>Ultradelgado, funciona con fundas delgadas.</p></div></div>
   </div>
 </section>
 
@@ -467,12 +462,12 @@
   var PRODUCTO = 'cable-soporte';
   var MONEDA = 'PEN';
   var PACKS = {
-    x1: { nombre: '1 Cable 2 en 1', sub: '+ bolsa gratis', cant: 1, precio: 79, viejo: 149,
-          etiqueta: '1 Cable 2 en 1 + bolsa' },
-    x2: { nombre: 'Pack Dúo', sub: '2 cables + 2 bolsas gratis', cant: 2, precio: 129, viejo: 298,
-          etiqueta: 'Pack Dúo: 2 Cables 2 en 1 + 2 bolsas', tag: 'MÁS POPULAR' },
-    x3: { nombre: 'Pack Regalo', sub: 'Ideal para regalar: 3 cables + 3 bolsas', cant: 3, precio: 169, viejo: 447,
-          etiqueta: 'Pack Regalo: 3 Cables 2 en 1 + 3 bolsas', tag: 'IDEAL PARA REGALAR', dk: true }
+    x1: { nombre: '1 Cable 2 en 1', sub: '', cant: 1, precio: 79, viejo: 149,
+          etiqueta: '1 Cable 2 en 1' },
+    x2: { nombre: 'Pack Dúo', sub: '2 cables', cant: 2, precio: 129, viejo: 298,
+          etiqueta: 'Pack Dúo: 2 Cables 2 en 1', tag: 'MÁS POPULAR' },
+    x3: { nombre: 'Pack Regalo', sub: 'Ideal para regalar: 3 cables', cant: 3, precio: 169, viejo: 447,
+          etiqueta: 'Pack Regalo: 3 Cables 2 en 1', tag: 'IDEAL PARA REGALAR', dk: true }
   };
   var ADELANTO = 10;              // provincia: adelanto y el resto al recoger (igual que src/lib/pedido-cable.js)
   var envio = 'casa';             // 'casa' (Lima) | 'agencia' (provincia)
