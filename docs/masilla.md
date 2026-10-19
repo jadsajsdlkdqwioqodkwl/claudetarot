@@ -52,7 +52,7 @@ la hoja guarda «N sachets» en Detalle. **Precios confirmados por el dueño (20
 - **Sin garantía prometida** (la del Cable era de 90 días con cambio). Decidir si se ofrece alguna.
 - Afirmaciones que están en los videos y se repiten en la página: «endurece firme e impermeable», «se puede lijar y pintar»,
   «ayuda a bloquear malos olores e insectos». Confirmar con el proveedor antes de anunciarlas.
-- Píxel (`1788156381816025`, Puerto Secreto) y WhatsApp (`51940028332`, corregido el 2026-10-19; antes `51930575181`, descartado) son los del Cable; eventos hasta InitiateCheckout (sin Lead ni Purchase).
+- Píxel (`1788156381816025`, Puerto Secreto) y WhatsApp (`51940028332`, corregido el 2026-10-19; antes `51930575181`, descartado) son los del Cable; eventos hasta InitiateCheckout en la página de venta; Lead y Purchase salen desde `/gracias` (corregido el 2026-10-19; antes decía «sin Lead ni Purchase»).
 - Entrega «24 a 48 horas» en Lima y «2 a 3 días» en provincia (como el Cable).
 - Falta la regla de reescritura de dominio propio (si se quiere un dominio largo como el del Cable): hoy se comparte
   `/masilla/` o la ruta larga `RUTA_LARGA_MASILLA`.

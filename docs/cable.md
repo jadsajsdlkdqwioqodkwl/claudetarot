@@ -42,7 +42,7 @@ N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al 
 
 ## Antes de lanzar (valores que hay que poner o confirmar)
 
-- `PIXEL_ID` ya está puesto: `1788156381816025`, el píxel de Puerto Secreto (el mismo que usa el Worker `uro`; no es el de Tarot). Eventos: PageView, ViewContent, AddToCart e InitiateCheckout; **todavía no se envían Lead ni Purchase** (`npm run check` lo vigila). Falta `WA_NUMERO`; las constantes están en `index.html` y `gracias.html`. Antes: `PIXEL_ID` y `WA_NUMERO` (WhatsApp de atención, con 51):
+- `PIXEL_ID` ya está puesto: `1788156381816025`, el píxel de Puerto Secreto (el mismo que usa el Worker `uro`; no es el de Tarot). Eventos: PageView, ViewContent, AddToCart e InitiateCheckout; **Lead y Purchase se envían desde `/gracias` (corregido el 2026-10-19; antes decía que no), una vez por pedido y con `eventID`** (`npm run check` lo vigila). Falta `WA_NUMERO`; las constantes están en `index.html` y `gracias.html`. Antes: `PIXEL_ID` y `WA_NUMERO` (WhatsApp de atención, con 51):
   son constantes al inicio del `<script>` de `public/cable/index.html` **y** de `gracias.html`
   (`npm run check` falla si no coinciden). Vacíos = no se carga el píxel y no se muestran los
   botones de WhatsApp.
