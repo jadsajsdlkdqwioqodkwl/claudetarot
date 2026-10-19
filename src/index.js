@@ -99,7 +99,6 @@ import {
   onRequestDelete as crmStickersDelete
 } from "./api/crm/stickers.js";
 import { onRequestGet as crmComisionesGet, onRequestPatch as crmComisionesPatch } from "./api/crm/comisiones.js";
-import { onRequestGet as crmFinanzasGet, onRequestPatch as crmFinanzasPatch, onRequestGetAsesor as asesorFinanzasGet, onRequestPostAsesor as asesorFinanzasPost } from "./api/finanzas.js";
 import { onRequestGet as crmPausaGet, onRequestPost as crmPausaPost } from "./api/crm/pausa.js";
 import {
   onRequestGet as crmPushSubscribeGet,
@@ -127,6 +126,7 @@ import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestGet as asesorComisionesGet } from "./api/asesor-comisiones.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -165,7 +165,7 @@ const ROUTES = {
   "/api/asesor/reportes": { GET: asesorReportesGet },
   "/api/crm/reportes": { GET: crmReportesGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
-  "/api/asesor/finanzas": { GET: asesorFinanzasGet, POST: asesorFinanzasPost },
+  "/api/asesor/comisiones": { GET: asesorComisionesGet },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
   "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },
@@ -206,7 +206,6 @@ const ROUTES = {
   "/api/crm/capi-send": { GET: crmCapiSendGet, POST: crmCapiSendPost },
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/comisiones": { GET: crmComisionesGet, PATCH: crmComisionesPatch },
-  "/api/crm/finanzas": { GET: crmFinanzasGet, PATCH: crmFinanzasPatch },
   "/api/crm/pausa": { GET: crmPausaGet, POST: crmPausaPost },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },

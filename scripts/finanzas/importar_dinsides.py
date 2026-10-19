@@ -3,7 +3,8 @@ Convierte el reporte quincenal de Dinsides (CSV o XLSX) al formato de cargar.py.
 nombre (sin tildes ni mayúsculas); lo que no reconozca lo lista, para ajustar SINONIMOS al primer reporte real.
 
     python3 scripts/finanzas/importar_dinsides.py reporte.xlsx --salida /tmp/dinsides.json [--ver]
-    ASESOR_CLAVE=... python3 scripts/finanzas/cargar.py /tmp/dinsides.json
+    python3 scripts/finanzas/a_hoja.py /tmp/dinsides.json --existente pedidos_hoja.json --salida /tmp/fin/filas.json
+    (después se escribe en la hoja privada «Finanzas Tarot Store (privado)» con el conector de Google Sheets)
 
 --ver imprime cómo entendió las columnas y los primeros pedidos, sin escribir nada.
 Estados: entregado/completado/cobrado → completado · rechazado/no recibió/anulado/devuelto al remitente → rechazado ·
