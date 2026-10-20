@@ -6351,7 +6351,7 @@ function pintarQuickPanel() {
   if (!panel) return;
 
   const buscando = Boolean(estado.filtroRapidas.trim());
-  // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
+  // Sin búsqueda: en el orden del equipo (el número de cada una se cambia tocándolo). Buscando: por relevancia.
   // Las de su producto primero, después las generales (rapidasDelChat).
   const lista = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
   const prodChat = productoDe(chatActivo()?.producto_id);
@@ -6364,7 +6364,7 @@ function pintarQuickPanel() {
       const foto = q.media[0];
       return `
       <div class="item" data-id="${q.id}">
-        ${buscando ? "" : `<span class="arrastrar" title="Arrastra para ordenar">⋮⋮</span>`}
+        <button type="button" class="posicion" data-id="${q.id}" title="Cambiar su posición (toca y escribe un número)">${posicionRapida(q.id)}</button>
         ${q.catalogo ? `<div class="miniatura">${icon("bag")}</div>`
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
@@ -6394,11 +6394,16 @@ function pintarQuickPanel() {
     $("#rapidas-buscar").setSelectionRange(v.length, v.length);
   });
 
-  if (!buscando) activarArrastreRapidas(panel);
+  panel.querySelectorAll(".posicion").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirPosicionRapida(Number(btn.dataset.id));
+    });
+  });
 
   panel.querySelectorAll(".item[data-id]").forEach((el) => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".borrar") || e.target.closest(".editar") || e.target.closest(".arrastrar")) return;
+      if (e.target.closest(".borrar") || e.target.closest(".editar") || e.target.closest(".posicion")) return;
       const q = estado.quickReplies.find((x) => x.id === Number(el.dataset.id));
       // Con una versión elegida en sus 1·2·3 va esa; si no, el CRM sortea.
       const indice = el.dataset.version !== undefined ? Number(el.dataset.version) : null;
@@ -6470,55 +6475,58 @@ $("#or-guardar").addEventListener("click", async () => {
   }
 });
 
-/**
- * Ordenar arrastrando del ⋮⋮ (mouse y dedo). Al soltar se guarda el orden de
- * todas para todo el equipo (PATCH { ordenar: [ids] }).
- */
-function activarArrastreRapidas(panel) {
-  panel.querySelectorAll(".arrastrar").forEach((asa) => {
-    asa.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      const item = asa.closest(".item");
-      const antes = [...panel.querySelectorAll(".item[data-id]")].map((x) => x.dataset.id).join(",");
-      item.classList.add("arrastrando");
-      // Escucha en window: al mover el item en la lista el navegador suelta la
-      // captura del puntero, y el ⋮⋮ dejaría de recibir los movimientos.
-      const mover = (ev) => {
-        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]");
-        if (bajo && bajo !== item) {
-          const r = bajo.getBoundingClientRect();
-          bajo[ev.clientY < r.top + r.height / 2 ? "before" : "after"](item);
-        }
-        // Cerca de los bordes, la lista se desplaza sola.
-        const p = panel.getBoundingClientRect();
-        if (ev.clientY < p.top + 40) panel.scrollTop -= 12;
-        else if (ev.clientY > p.bottom - 60) panel.scrollTop += 12;
-      };
-      const soltar = async () => {
-        window.removeEventListener("pointermove", mover);
-        window.removeEventListener("pointerup", soltar);
-        window.removeEventListener("pointercancel", soltar);
-        item.classList.remove("arrastrando");
-        const visibles = [...panel.querySelectorAll(".item[data-id]")].map((x) => Number(x.dataset.id));
-        if (visibles.join(",") === antes) return;
-        // Las que no se ven (de otros productos) conservan su lugar relativo, al final.
-        const ids = [...visibles, ...estado.quickReplies.map((q) => q.id).filter((id) => !visibles.includes(id))];
-        const porId = new Map(estado.quickReplies.map((q) => [q.id, q]));
-        estado.quickReplies = ids.map((id) => porId.get(id)).filter(Boolean);
-        try {
-          await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ordenar: ids }) });
-        } catch (err) {
-          alert(err.message);
-          await cargarQuickReplies().catch(() => {});
-          pintarQuickPanel();
-        }
-      };
-      window.addEventListener("pointermove", mover);
-      window.addEventListener("pointerup", soltar);
-      window.addEventListener("pointercancel", soltar);
-    });
-  });
+/** Su lugar en el orden del equipo (1 = sale primero). */
+function posicionRapida(id) {
+  return estado.quickReplies.findIndex((q) => q.id === id) + 1;
 }
+
+/**
+ * Ventana para fijar la posición de UNA respuesta rápida: se escribe el número
+ * y ahí queda (las demás se corren). Vale para todo el equipo (PATCH { ordenar }).
+ */
+function abrirPosicionRapida(id) {
+  const q = estado.quickReplies.find((x) => x.id === id);
+  if (!q) return;
+  const total = estado.quickReplies.length;
+  $("#pr-nombre").textContent = q.title;
+  $("#pr-actual").textContent = `Ahora está en la posición ${posicionRapida(id)} de ${total}.`;
+  const num = $("#pr-numero");
+  num.min = 1;
+  num.max = total;
+  num.value = posicionRapida(id);
+  $("#pr-error").textContent = "";
+  $("#pr-guardar").dataset.id = String(id);
+  $("#modal-posicion-rapida-fondo").classList.add("abierto");
+  num.focus();
+  num.select();
+}
+function cerrarPosicionRapida() { $("#modal-posicion-rapida-fondo").classList.remove("abierto"); }
+async function guardarPosicionRapida() {
+  const id = Number($("#pr-guardar").dataset.id);
+  const total = estado.quickReplies.length;
+  const n = Number($("#pr-numero").value);
+  if (!Number.isInteger(n) || n < 1 || n > total) {
+    $("#pr-error").textContent = `Escribe un número entero del 1 al ${total}.`;
+    return;
+  }
+  const ids = estado.quickReplies.map((q) => q.id).filter((x) => x !== id);
+  ids.splice(n - 1, 0, id);
+  const boton = $("#pr-guardar");
+  boton.disabled = true;
+  try {
+    await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ordenar: ids }) });
+    cerrarPosicionRapida();
+    await cargarQuickReplies();
+    if ($("#panel-rapidas").classList.contains("abierto")) pintarQuickPanel();
+  } catch (err) {
+    $("#pr-error").textContent = err.message;
+  } finally {
+    boton.disabled = false;
+  }
+}
+$("#pr-cancelar").addEventListener("click", cerrarPosicionRapida);
+$("#pr-guardar").addEventListener("click", guardarPosicionRapida);
+$("#pr-numero").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); guardarPosicionRapida(); } });
 
 /** Elegir una respuesta rápida ya no la manda al toque — la pone en el escribidor (texto y/o adjunto pendiente) para que el vendedor la revise/edite y mande con Enter o el botón, como cualquier otro mensaje. */
 /**

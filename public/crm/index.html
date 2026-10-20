@@ -259,6 +259,20 @@
   </div>
 </div>
 
+<div class="modal-fondo" id="modal-posicion-rapida-fondo">
+  <div class="modal">
+    <h2>Cambiar posición</h2>
+    <p class="ayuda-modal"><b id="pr-nombre"></b><br><span id="pr-actual"></span></p>
+    <label for="pr-numero">Nueva posición (1 = sale primero)</label>
+    <input type="number" id="pr-numero" min="1" step="1" inputmode="numeric" style="width:100%;font-size:18px" />
+    <p id="pr-error" class="ayuda-modal" style="color:var(--peligro);min-height:1em"></p>
+    <div class="acciones">
+      <button class="cancelar" id="pr-cancelar" type="button">Cancelar</button>
+      <button class="crear" id="pr-guardar" type="button">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-fondo" id="modal-ordenar-rapidas-fondo">
   <div class="modal">
     <h2 id="or-titulo">Ordenar respuestas rápidas</h2>

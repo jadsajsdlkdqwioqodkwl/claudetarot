@@ -900,8 +900,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #versiones-rapida .sub { font-size: 12px; color: var(--gris); }
 
 /* Respuestas rápidas agrupadas por cadena o tipo */
-#panel-rapidas .arrastrar { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
-#panel-rapidas .item.arrastrando { opacity: .6; background: var(--hover); }
+#panel-rapidas .posicion { min-width: 34px; height: 30px; padding: 0 8px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: var(--texto, #111); font-weight: 700; font-size: 14px; cursor: pointer; flex-shrink: 0; align-self: center; }
+#panel-rapidas .posicion:hover { background: var(--hover); border-color: var(--gris); }
+body.solo-lectura #panel-rapidas .posicion { display: none; }
 .versiones-rapida { align-items: center; gap: 8px; margin: -4px 0 8px; }
 .versiones-rapida .versiones { margin-top: 0; }
 .versiones-rapida .sub { font-size: 12px; color: var(--gris); }

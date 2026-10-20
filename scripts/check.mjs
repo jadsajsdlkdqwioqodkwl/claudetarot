@@ -940,7 +940,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("el mensaje del link cuenta algo del kit, no solo el link",
     TEXTO_LINK_POR_DEFECTO.includes("{link}") && /manual|significado/.test(TEXTO_LINK_POR_DEFECTO));
   const app = readFileSync(new URL("../public/crm/app.js", import.meta.url), "utf8");
-  check("las respuestas rápidas se ordenan arrastrando (sin grupos)", app.includes("activarArrastreRapidas") && !app.includes("ordenarPorGrupo"));
+  check("las respuestas rápidas se ordenan con el número de posición (ventana), sin arrastrar y sin grupos", app.includes("abrirPosicionRapida") && !app.includes("activarArrastreRapidas") && !app.includes("ordenarPorGrupo"));
   check("los buscadores de los editores muestran las versiones 1·2·3", app.includes("itemRapidaHtml") && app.includes("pintarVersionesSeg"));
   check("las recomendaciones tienen cronómetro de ventana", app.includes("pintarRelojes"));
   check("las sugerencias muestran objeción, otra opción y preguntas al dueño",
