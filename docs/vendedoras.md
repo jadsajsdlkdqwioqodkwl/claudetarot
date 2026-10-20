@@ -9,6 +9,9 @@ CRM: https://kit-tarot-para-principiantes.tarotperu.store/crm/
    escribiste en las últimas 24 h.
 2. En el CRM pon tu **usuario** y la **contraseña temporal** que te pasó el dueño.
 3. Te llega un código de 6 dígitos por WhatsApp (vence en 5 min). Escríbelo y entras.
+4. Si el código no llega, el CRM te muestra el botón **«Escribir a Tarot Store por WhatsApp»**
+   (abre el chat con el número de la tienda): mándale el mensaje, vuelve al CRM y toca
+   **«Reenviar código»** (se puede volver a pedir cada 30 s). Al reenviar, el código anterior deja de servir.
 
 ## Cambiar la contraseña (hazlo el primer día)
 Arriba en "Chats", botón de la **llave** ("Cambiar mi contraseña") → la actual,
@@ -29,3 +32,9 @@ campana del CRM (en el celular, con el CRM agregado a la pantalla de inicio).
 CRM → botón **Equipo** → nombre, usuario, contraseña temporal (mín. 8),
 WhatsApp con 51 adelante → "Agregar vendedor". Ahí mismo se resetea una
 contraseña olvidada o se desactiva a alguien.
+
+## Cuando alguien deja el equipo
+Se desactiva su cuenta (CRM → Equipo, o la migración que lo indique). No se borra:
+sus chats, ventas y comisiones quedan con su nombre. Su sesión se corta sola.
+Sus chats abiertos siguen asignados a ella hasta que alguien los reasigne.
+Ejemplo: Priscila (2026-10-20), migración `migrations/0061_baja_priscila.sql`.

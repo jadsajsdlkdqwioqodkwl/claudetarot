@@ -122,6 +122,14 @@ button { font-family: inherit; touch-action: manipulation; }
   margin-top: 12px; padding: 4px; text-decoration: none;
 }
 #login .link-secundario:hover { text-decoration: underline; }
+#login .link-secundario:disabled { color: var(--gris); cursor: default; text-decoration: none; }
+#login .ayuda-wa { font-size: 12px; color: var(--gris); margin: 12px 0 0; line-height: 1.45; }
+#login .ayuda-wa p { margin: 0 0 8px; }
+#login #link-wa-tienda {
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: 10px;
+  background: var(--verde-osc); color: #fff; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 8px;
+}
+#login #link-wa-tienda .icono-svg { width: 16px; height: 16px; }
 #login .error { color: var(--peligro); font-size: 13px; margin-bottom: 8px; min-height: 16px; }
 #login .ayuda { font-size: 12px; color: var(--gris); margin-top: -6px; margin-bottom: 10px; }
 #login .ayuda-modal { font-size: 12px; color: var(--gris); margin: 0 0 12px; }

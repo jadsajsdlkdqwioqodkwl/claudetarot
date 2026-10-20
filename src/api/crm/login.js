@@ -28,6 +28,9 @@ async function hayAgentes(env) {
   return (fila?.n || 0) > 0;
 }
 
+/** WhatsApp de Tarot Store (el mismo de index.html): el aviso «escríbele primero» abre un chat con él. */
+export const WA_TIENDA = "51927066862";
+
 function codigoOTP() {
   return String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
 }
@@ -69,6 +72,9 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "Usuario o contraseña incorrectos." }, 401);
     }
 
+    // Un login (o un reenvío) reemplaza los códigos anteriores: el último que llegó es el único que sirve.
+    await env.CRM_DB.prepare("UPDATE login_challenges SET used = 1 WHERE agent_id = ? AND used = 0").bind(agente.id).run();
+
     const challengeId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
@@ -104,7 +110,8 @@ export async function onRequestPost({ request, env }) {
       // un día). Antes esto se perdía en el console.error y a la vendedora
       // solo le llegaba un "no se pudo mandar" genérico, imposible de
       // diagnosticar sin acceso a los logs del Worker.
-      return json({ error: `No se pudo mandar el código por WhatsApp: ${err.message}` }, 502);
+      // no_llego: el formulario muestra el aviso «escríbele primero a Tarot Store» con el link wa.me.
+      return json({ error: `No se pudo mandar el código por WhatsApp: ${err.message}`, no_llego: true, wa_tienda: WA_TIENDA }, 502);
     }
 
     return json({ requiere2FA: true, challenge_id: challengeId, metodo2FA: "whatsapp" });
