@@ -3951,6 +3951,26 @@ async function marcarAtendido(c) {
   } catch (err) { alert(err.message); }
 }
 
+/** Con clave de Shalom en el chat: programar el seguimiento de cobro (plan de recojo en Shalom); sin ella: desactivarlo. */
+function chipSeguimientoCobro() {
+  const programar = Boolean(chatActivo()?.shalom_code);
+  return `<button type="button" class="msg-seg msg-seg-cobro" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat tiene clave de Shalom: programa el seguimiento de cobro" : "Este chat no tiene clave de Shalom: desactiva su seguimiento de cobro"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
+}
+
+async function accionSeguimientoCobro(chip) {
+  const c = chatActivo();
+  if (!c) return;
+  if (chip.dataset.accion === "programar") return marcarPlan(c, "shalom");
+  chip.disabled = true;
+  try {
+    await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+  }
+  chip.disabled = false;
+}
+
 function pintarMensajes({ alFinal = false } = {}) {
   const cont = $("#mensajes");
   if (!cont) return;
@@ -3985,6 +4005,7 @@ function pintarMensajes({ alFinal = false } = {}) {
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
             : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
+        ${m.direction === "out" && (m.id === ultimoMensajeId || m.con_seguimiento) ? chipSeguimientoCobro() : ""}
       </div>
     </div>`;
   }).join("");
@@ -4110,7 +4131,8 @@ function configurarAccionesMensajes() {
       return;
     }
     const chipSeg = e.target.closest(".msg-seg");
-    if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
+    if (chipSeg?.classList.contains("msg-seg-cobro")) accionSeguimientoCobro(chipSeg);
+    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
     else if (chipSeg) reactivarSeguimientoRapida(chipSeg);
     const fotoChat = e.target.closest("img.foto-chat");
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
