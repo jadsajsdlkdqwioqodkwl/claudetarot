@@ -166,10 +166,10 @@
   .sticky .sp s { font-size:12px; color:var(--price-old); }
   .sticky .cta { padding:13px 10px; }
   .sticky .cta .l1 { font-size:15.5px; }
-  @media (min-width:900px) { .sticky { display:none; } .legal { padding-bottom:30px; } }
+  @media (min-width:900px) { .sticky { justify-content:center; } .sticky .cta { max-width:340px; flex:1 1 auto; } }
 
   /* ── Formulario COD (modal) ── */
-  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:none; overflow-y:auto; padding:14px 0; -webkit-overflow-scrolling:touch; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); z-index:100; display:none; overflow-y:auto; padding:14px 0; -webkit-overflow-scrolling:touch; }
   .overlay.on { display:block; }
   .modal { background:#fff; width:calc(100% - 24px); max-width:456px; margin:0 auto; border-radius:16px; position:relative; padding:22px 18px 22px; box-shadow:0 20px 40px rgba(0,0,0,.25); }
   .mclose { position:absolute; top:12px; right:12px; color:var(--muted); cursor:pointer; line-height:0; padding:6px; z-index:10; }
@@ -353,12 +353,12 @@
 <section class="sec">
   <h2>Preguntas frecuentes</h2>
   <div class="faq">
-    <details><summary>¿Sirve para mi celular?</summary><p>Hay dos versiones. <b>USB-C</b>: iPhone 15 en adelante, Samsung, Xiaomi, Motorola y la mayoría de Android. <b>Lightning</b>: iPhone 14 y anteriores. Cuando confirmemos tu pedido por WhatsApp te preguntamos cuál necesitas.</p></details>
+    <details><summary>¿Es USB-C o Lightning?</summary><p>Tenemos las dos versiones. <b>USB-C</b>: iPhone 15 en adelante, Samsung, Xiaomi, Motorola y la mayoría de Android. <b>Lightning</b>: iPhone 14 y anteriores. Al confirmar tu pedido por WhatsApp te acompañamos a elegir la tuya.</p></details>
+    <details><summary>¿Cómo funciona el soporte?</summary><p>El módulo del cable se despliega y sostiene tu celular en vertical o en horizontal mientras carga, y se desmonta cuando no lo necesitas. Míralo en los videos de arriba.</p></details>
+    <details><summary>¿Qué incluye mi pedido?</summary><p>Tu cable de carga 2 en 1 con soporte plegable y una bolsa tipo cuero de regalo por cada cable. El envío es gratis a todo el Perú.</p></details>
     <details><summary>¿Cómo pago?</summary><p><b>Lima:</b> pagas al recibir, en tu casa, con Yape, efectivo o POS; no pagas nada por adelantado. <b>Provincia:</b> pagas un adelanto de S/ 10 y el resto al recoger en la agencia.</p></details>
-    <details><summary>¿Cuánto demora y cuánto cuesta el envío?</summary><p>El envío es gratis a todo el Perú. En Lima la entrega toma de 24 a 48 horas y el repartidor te escribe antes de llegar. En provincia sale por Shalom u Olva y llega en 2 a 3 días; te enviamos por WhatsApp la foto del comprobante con el número de seguimiento.</p></details>
-    <details><summary>¿Funciona con mi funda?</summary><p>Funciona con fundas delgadas, de hasta unos 2 mm de grosor. Con fundas muy gruesas o con relieve el soporte podría no apoyar bien.</p></details>
-    <details><summary>¿Incluye cargador de pared?</summary><p>No. Es el cable con soporte; lo usas con el cargador que ya tienes.</p></details>
-    <details><summary>¿Y si falla o no me convence?</summary><p>Tienes 90 días de garantía: escríbenos y lo resolvemos con un cambio sin costo. Además, como pagas al recibir, no arriesgas nada.</p></details>
+    <details><summary>¿Cuánto demora en llegar?</summary><p>En Lima la entrega toma de 24 a 48 horas y el repartidor te escribe antes de llegar. En provincia sale por Shalom u Olva y llega en 2 a 3 días; te enviamos por WhatsApp la foto del comprobante con el número de seguimiento.</p></details>
+    <details><summary>¿Tengo garantía?</summary><p>Sí, 90 días de garantía. Si tienes cualquier inconveniente escríbenos por WhatsApp y lo resolvemos con un cambio sin costo. Y en Lima pagas recién cuando lo tienes en tus manos.</p></details>
   </div>
 </section>
 
@@ -377,7 +377,7 @@
 </footer>
 
 <!-- Barra fija -->
-<div class="sticky hidden" id="sticky">
+<div class="sticky" id="sticky">
   <div class="sp"><b id="sNow">S/ 79.00</b><s id="sWas">S/ 149.00</s></div>
   <button class="cta" onclick="openCOD()"><div class="l1">COMPLETAR PEDIDO</div></button>
 </div>
@@ -565,7 +565,7 @@
     var juega = new IntersectionObserver(function (es) {
       es.forEach(function (e) {
         var v = e.target.querySelector('video');
-        if (e.isIntersecting && !e.target.dataset.manual) reproducir(e.target);
+        if (e.isIntersecting && !e.target.dataset.manual && !document.body.classList.contains('cod-open')) reproducir(e.target);
         else if (!e.isIntersecting && !v.paused) v.pause();
       });
     }, { threshold: 0.55 });
@@ -619,16 +619,24 @@
   pintar();
 
   /* ── Modal ──────────────────────────────────────────────────────────── */
+  var codPausados = [];
   function openCOD(pack) {
     if (pack && PACKS[pack] && pack !== packActual) { packActual = pack; pintar(); }
     // Abrir el formulario es el "añadir al carrito" de esta página.
     fbTrack('AddToCart', datosCarrito());
     document.getElementById('codOverlay').classList.add('on');
     document.body.style.overflow = 'hidden';
+    // Sin distracciones: los videos se detienen mientras el formulario está abierto.
+    document.body.classList.add('cod-open');
+    codPausados = [].filter.call(document.querySelectorAll('video'), function (v) { return !v.paused; });
+    document.querySelectorAll('video').forEach(function (v) { v.pause(); });
   }
   function closeCOD() {
     document.getElementById('codOverlay').classList.remove('on');
     document.body.style.overflow = '';
+    document.body.classList.remove('cod-open');
+    codPausados.forEach(function (v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); });
+    codPausados = [];
   }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCOD(); });
 
@@ -736,16 +744,6 @@
       });
   }
 
-  /* ── Barra fija: aparece solo cuando no hay otro botón de pedido a la vista ── */
-  document.addEventListener('DOMContentLoaded', function () {
-    var sticky = document.getElementById('sticky');
-    var visibles = new Map();
-    var io = new IntersectionObserver(function (es) {
-      es.forEach(function (e) { visibles.set(e.target, e.isIntersecting); });
-      sticky.classList.toggle('hidden', Array.from(visibles.values()).some(Boolean));
-    }, { threshold: 0.1 });
-    ['ctaMain', 'ctaFinal'].forEach(function (id) { io.observe(document.getElementById(id)); });
-  });
 </script>
 </body>
 </html>
