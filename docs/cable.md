@@ -42,7 +42,7 @@ N Event ID (`CB-…`) · O User Agent · P IP. Si se agregan columnas, van **al 
 
 ## Antes de lanzar (valores que hay que poner o confirmar)
 
-- `PIXEL_ID` ya está puesto: `1788156381816025`, el píxel de Puerto Secreto (el mismo que usa el Worker `uro`; no es el de Tarot). Eventos: PageView, ViewContent, AddToCart e InitiateCheckout; **todavía no se envían Lead ni Purchase** (`npm run check` lo vigila). Falta `WA_NUMERO`; las constantes están en `index.html` y `gracias.html`. Antes: `PIXEL_ID` y `WA_NUMERO` (WhatsApp de atención, con 51):
+- `PIXEL_ID` ya está puesto: `1788156381816025`, el píxel de Puerto Secreto (el mismo que usa el Worker `uro`; no es el de Tarot). Eventos: PageView, ViewContent, AddToCart e InitiateCheckout; **Lead y Purchase se envían desde `/gracias` (corregido el 2026-10-19; antes decía que no), una vez por pedido y con `eventID`** (`npm run check` lo vigila). Falta `WA_NUMERO`; las constantes están en `index.html` y `gracias.html`. Antes: `PIXEL_ID` y `WA_NUMERO` (WhatsApp de atención, con 51):
   son constantes al inicio del `<script>` de `public/cable/index.html` **y** de `gracias.html`
   (`npm run check` falla si no coinciden). Vacíos = no se carga el píxel y no se muestran los
   botones de WhatsApp.
@@ -104,3 +104,5 @@ Es la misma página que `/cable/`; el `<title>` también es largo y descriptivo.
 ## Versión 2 (2026-10-18): hero en video
 
 `public/cable-v2/` es una copia de `public/cable/` (misma página, mismo endpoint, mismos precios; las fotos y videos de la v1 se siguen sirviendo desde `/cable/…`). La primera imagen de la galería es el video 3 de «Míralo en acción» (`/cable/video/en-accion-3.mp4`, 4:5, se reproduce solo, mudo y en bucle); la galería es 4:5 para no recortarlo. El GIF de la primera entrega (celular + bolsita de regalo, recortado a cuadrado) se descartó porque se cortaba feo: esa escena ahora es un video 4:5 sin recorte, `video/bolsa-regalo.mp4`, que ocupa el lugar del video 3 en «Míralo en acción» (con su pie «Se guarda en su bolsita de regalo…»). Si se cambia un video hay que renombrarlo (`_headers` lo cachea un año). Si se cambia un precio o un texto común, hacerlo en las dos versiones.
+
+**2026-10-19: la bolsa de regalo se OCULTÓ** de `/cable/` y `/cable-v2/` (Juan avisó que no hay stock): bloque «GRATIS bolsa», video de la bolsa (v2), textos de packs, meta y línea de la gracias. Los archivos `bolsa.webp` y `bolsa-regalo.*` siguen en el repo para volver a mostrarla cuando haya stock.

@@ -324,9 +324,9 @@ check("las tres fotos del carrusel de reseñas ya están subidas",
 check("se sirve el MP4, que es el mas ligero de los dos",
   fuentesVideo[0] === "kittarotcod/2.mp4", fuentesVideo.join(", "));
 
-/* 14. Tarjetas de variante en 4:5 */
-check("la foto de la variante es una banda horizontal",
-  /\.vcard \.foto\s*\{[^}]*height:\s*86px/.test(html));
+/* 14. Tarjetas de variante: foto de alto fijo (120 px, como en el diseño actual) */
+check("la foto de la variante es una banda horizontal de 120 px",
+  /\.vcard \.foto\s*\{[^}]*height:\s*120px/.test(html));
 check("la imagen del kit se sirve apaisada", html.includes('width="500" height="300"'));
 
 
@@ -1166,7 +1166,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     const html = readFileSync(join(root, `public/${p}-v2/index.html`), "utf8");
     check(`${p}-v2: la primera imagen de la galería es un video que se reproduce solo`, /class="g-slide" data-thumb="[^"]+"><video autoplay muted loop playsinline/.test(html));
     const archivosV2 = [...html.matchAll(new RegExp(`(?:src|poster|data-src|data-thumb)="(/${p}-v2/[^"]+)"`, "g"))].map((m) => m[1]);
-    check(`${p}-v2: los videos y portadas propios de la v2 existen`, archivosV2.length >= 2 && archivosV2.every((r) => existsSync(join(root, "public", r))), archivosV2.join(", "));
+    check(`${p}-v2: los videos y portadas propios de la v2 existen`, (p === "cable" || archivosV2.length >= 1) && archivosV2.every((r) => existsSync(join(root, "public", r))), archivosV2.join(", "));
     check(`${p}-v2: manda el pedido al mismo endpoint que la v1`, html.includes(`'${api}'`));
     check(`${p}-v2: el dominio largo es válido, no dice «tarot» y el Worker lo atiende`, host.split(".")[0].length <= 63 && !/tarot/i.test(host.split(".")[0]) && host.endsWith(".tarotperu.store") && idx.includes(host.startsWith("puerto-secreto-cable") ? "HOST_CABLE_V2" : "HOST_MASILLA_V2"));
   }

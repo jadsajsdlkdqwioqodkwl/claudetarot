@@ -134,11 +134,6 @@
       document.getElementById('p3').innerHTML = '<b>Pagas la diferencia al recoger</b> en la agencia. Y tienes <b>90 días de garantía</b>.';
     }
 
-    if (pedido.cantidad > 0) {
-      var r = document.getElementById('regalo');
-      r.textContent = pedido.cantidad === 1 ? 'Tu bolsa tipo cuero de regalo va incluida' : 'Tus ' + pedido.cantidad + ' bolsas tipo cuero de regalo van incluidas';
-      r.style.display = 'flex';
-    }
 
     if (WA_NUMERO) {
       /* El mensaje de WhatsApp sí lleva los datos: es el canal donde el

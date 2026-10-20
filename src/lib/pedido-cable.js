@@ -10,14 +10,14 @@
 export const PRODUCTO_CABLE = "cable-soporte";
 
 /**
- * Cada pack lleva su bolsa de regalo: una por cable. `viejo` es el precio "antes".
+ * La bolsa de regalo se ocultó el 2026-10-19 (sin stock). `viejo` es el precio "antes".
  * Piso del dueño: 1 cable = S/ 79. Con un costo de ~S/ 20 por unidad el margen bruto
  * queda en S/ 59 (1), S/ 89 (2) y S/ 109 (3), antes de publicidad y envío.
  */
 export const PACKS = {
-  x1: { etiqueta: "1 Cable 2 en 1 + bolsa", cantidad: 1, precio: 79, viejo: 149 },
-  x2: { etiqueta: "Pack Dúo: 2 Cables 2 en 1 + 2 bolsas", cantidad: 2, precio: 129, viejo: 298 },
-  x3: { etiqueta: "Pack Regalo: 3 Cables 2 en 1 + 3 bolsas", cantidad: 3, precio: 169, viejo: 447 }
+  x1: { etiqueta: "1 Cable 2 en 1", cantidad: 1, precio: 79, viejo: 149 },
+  x2: { etiqueta: "Pack Dúo: 2 Cables 2 en 1", cantidad: 2, precio: 129, viejo: 298 },
+  x3: { etiqueta: "Pack Regalo: 3 Cables 2 en 1", cantidad: 3, precio: 169, viejo: 447 }
 };
 
 /** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia (igual que el Kit de Tarot). */

@@ -13,12 +13,12 @@ export const PRODUCTO_MASILLA = "masilla-selladora";
 /**
  * Tres ofertas por cantidad de sachets (pedido del dueño, 2026-10-18). Cada oferta es 1 pedido
  * (`cantidad: 1`); lo que cambia es `sachets`. `viejo` es el precio «antes». Precios confirmados por el
- * dueño el 2026-10-18: S/ 69 · S/ 99 · S/ 129.
+ * dueño el 2026-10-18: S/ 89 · S/ 129 · S/ 199.
  */
 export const PACKS = {
-  x1: { etiqueta: "Oferta 1: 10 sachets de Masilla Selladora", sachets: 10, cantidad: 1, precio: 69, viejo: 99 },
-  x2: { etiqueta: "Oferta 2: 20 sachets de Masilla Selladora", sachets: 20, cantidad: 1, precio: 99, viejo: 159 },
-  x3: { etiqueta: "Oferta 3: 40 sachets de Masilla Selladora", sachets: 40, cantidad: 1, precio: 129, viejo: 259 }
+  x1: { etiqueta: "Oferta 1: 10 sachets de Masilla Selladora", sachets: 10, cantidad: 1, precio: 89, viejo: 99 },
+  x2: { etiqueta: "Oferta 2: 20 sachets de Masilla Selladora", sachets: 20, cantidad: 1, precio: 129, viejo: 159 },
+  x3: { etiqueta: "Oferta 3: 40 sachets de Masilla Selladora", sachets: 40, cantidad: 1, precio: 199, viejo: 259 }
 };
 
 /** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia (igual que el Kit y el Cable). */

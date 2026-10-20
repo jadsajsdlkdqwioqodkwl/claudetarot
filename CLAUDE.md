@@ -142,3 +142,26 @@ llamadas de URO: `docs/uro/llamadas.md`.
   dentro de `crm-send.js`); los callbacks de `mandarConEscribiendo()` /
   `mandarAlToque()` reciben ese `env` como argumento: úsalo, no el de afuera.
 - Costos de WhatsApp: `docs/whatsapp-ventanas-y-costos.md`.
+
+## Herramientas del equipo (Claude Code)
+
+Esta sección solo añade reglas de trabajo; no cambia lo anterior.
+
+- **Código primero con CodeGraph:** antes de `grep` o de leer archivos completos,
+  usa la herramienta MCP `codegraph_explore` con los nombres de símbolos o
+  archivos. Solo si no alcanza, recurre a `grep` o a leer el archivo.
+- **Memoria de sesiones:** claude-mem guarda decisiones entre sesiones. Consúltala
+  antes de rehacer algo que ya se discutió.
+- **Menor código posible:** antes de escribir código nuevo, revisa en este orden:
+  (1) si se resuelve con configuración o un comando existente, (2) si hay una función
+  nativa o de la librería estándar, (3) si ya existe algo reutilizable en el repo.
+  Evita dependencias nuevas salvo que sean necesarias.
+- **Investigación externa:** para documentación fuera del repo, Reddit, X o GitHub,
+  usa `agent-reach` (`agent-reach doctor` muestra qué canales funcionan).
+- **Seguridad:** las skills de Strix (`.agents/skills/`) son solo para auditorías
+  autorizadas. No las ejecutes contra el sitio en vivo sin autorización explícita.
+- **Arranque:** `.claude/hooks/session-start.sh` instala CodeGraph e indexa el repo
+  al iniciar una sesión. Es idempotente.
+- **Trato con el dueño:** si pide algo de forma explícita, hazlo sin discutirlo. Si
+  hay un riesgo real (producción, datos, despliegues), menciónalo en una línea y
+  sigue con lo que pidió. No repitas la objeción.
