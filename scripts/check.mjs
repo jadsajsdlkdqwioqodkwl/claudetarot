@@ -143,6 +143,7 @@ const csp = headers.match(/Content-Security-Policy:.*/)?.[0] ?? "";
 check("la CSP permite el script del pixel", csp.includes("https://connect.facebook.net"));
 check("la CSP permite el pixel de imagen", /img-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
 check("la CSP permite las llamadas del pixel", /connect-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
+check("la CSP deja al pixel usar su envío de respaldo (form-action y frame-src a facebook.com); sin esto se pierde el PageView", /form-action[^;]*https:\/\/www\.facebook\.com/.test(csp) && /frame-src[^;]*https:\/\/www\.facebook\.com/.test(csp));
 
 /* 9. Página de gracias: sin código, sin datos personales en la URL */
 check("el embudo termina en /gracias", html.includes("'/gracias?v='"));
