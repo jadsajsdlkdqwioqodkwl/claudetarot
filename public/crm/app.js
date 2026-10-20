@@ -1665,6 +1665,10 @@ function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
     seg_auto_proximo: bienvenida.length ? bienvenida.map((x) => x.send_at).sort()[0] : null
   };
   const conv = estado.conversaciones.find((x) => x.conversation_id === conversationId);
+  if (conv) {
+    const cobro = scheduled.some((x) => /^Plan con plantilla · Recojo en/.test(x.created_by || "")) ? 1 : 0;
+    if (conv.cobro_activo !== cobro) { conv.cobro_activo = cobro; if (conversationId === estado.conversacionActivaId) pintarMensajes(); }
+  }
   seguimientosLocales.set(conversationId, { ...seg, t: Date.now() });
   if (conv && (conv.seg_pendientes !== seg.seg_pendientes || conv.seg_proximo !== seg.seg_proximo || conv.seg_auto_proximo !== seg.seg_auto_proximo)) {
     Object.assign(conv, seg);
@@ -3951,10 +3955,15 @@ async function marcarAtendido(c) {
   } catch (err) { alert(err.message); }
 }
 
-/** Con clave de Shalom en el chat: programar el seguimiento de cobro (plan de recojo en Shalom); sin ella: desactivarlo. */
+/**
+ * Chats con clave de Shalom (así se marca que el envío es por Shalom): en cada mensaje nuestro, el estado del
+ * seguimiento de cobro (plan de recojo en Shalom). Sin seguimiento: PROGRAMAR; con seguimiento: DESACTIVAR (al pagar).
+ */
 function chipSeguimientoCobro() {
-  const programar = Boolean(chatActivo()?.shalom_code);
-  return `<button type="button" class="msg-seg msg-seg-cobro" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat tiene clave de Shalom: programa el seguimiento de cobro" : "Este chat no tiene clave de Shalom: desactiva su seguimiento de cobro"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
+  const c = chatActivo();
+  if (!c?.shalom_code) return "";
+  const programar = !c.cobro_activo;
+  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat no tiene seguimiento de cobro: tócalo para programarlo" : "El seguimiento de cobro está activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
 }
 
 async function accionSeguimientoCobro(chip) {
@@ -3964,11 +3973,13 @@ async function accionSeguimientoCobro(chip) {
   chip.disabled = true;
   try {
     await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+    c.cobro_activo = 0;
+    pintarMensajes();
     await actualizarSeguimientosDetalle();
   } catch (err) {
     alert(err.message);
+    chip.disabled = false;
   }
-  chip.disabled = false;
 }
 
 function pintarMensajes({ alFinal = false } = {}) {
@@ -4005,7 +4016,7 @@ function pintarMensajes({ alFinal = false } = {}) {
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
             : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
-        ${m.direction === "out" && (m.id === ultimoMensajeId || m.con_seguimiento) ? chipSeguimientoCobro() : ""}
+        ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
     </div>`;
   }).join("");
