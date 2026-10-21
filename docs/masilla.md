@@ -61,3 +61,5 @@ la hoja guarda «N sachets» en Detalle. **Precios confirmados por el dueño (20
 ## Versión 2 (2026-10-18): hero en video
 
 `public/masilla-v2/` es una copia de `public/masilla/` (misma página, mismo endpoint, mismos precios; las fotos y videos de la v1 se siguen sirviendo desde `/masilla/…`). La primera imagen de la galería es un video largo (17 s, 576×720, 4:5) hecho desde el original `imagenes-fuente/masilla/video-es-ES-1.mp4` (parte superior, sin subtítulos en inglés; mudo), `video/hero-masilla.mp4` con su portada `.webp`, en mejor calidad que el GIF de la primera entrega, que se descartó. La galería es 4:5 para no recortar. Si se cambia un video hay que renombrarlo (`_headers` lo cachea un año). Si se cambia un precio o un texto común, hacerlo en las dos versiones.
+
+- **2026-10-20:** Lead y Purchase ahora salen desde la página de venta (`index.html`) al confirmarse el pedido, con teléfono, nombre, ciudad y país para el EMQ (`fbCompra()`), y `/gracias` ya no los envía; ver `docs/MAPA.md`. Lo dicho arriba sobre Lead y Purchase desde `/gracias` queda como historia.
