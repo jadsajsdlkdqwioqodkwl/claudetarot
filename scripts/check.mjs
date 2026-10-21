@@ -1089,7 +1089,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("cable: los datos personales no viajan por la URL de gracias",
     /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
-  check("cable: gracias dispara Lead y Purchase (una vez por pedido, con eventID) y la página de venta no", /fbq\('track', 'Lead'/.test(gr) && /fbq\('track', 'Purchase'/.test(gr) && gr.includes("eventID: pedido.eventId") && !/track\('(Lead|Purchase)'|fbTrack\('(Lead|Purchase)'/.test(cable) && /fbTrack\('InitiateCheckout'/.test(cable));
+  check("cable: Lead y Purchase salen de la página de venta al confirmarse el pedido (con datos del cliente para el EMQ, mismo eventID) y /gracias no los envía", /function fbCompra/.test(cable) && /fbq\('init', PIXEL_ID, datosUsuario\)/.test(cable) && /fbq\('track', 'Lead', datos, \{ eventID: c\.eventId \}\)/.test(cable) && /fbq\('track', 'Purchase', datos, \{ eventID: c\.eventId \}\)/.test(cable) && !/'(Lead|Purchase)'/.test(gr) && /fbTrack\('InitiateCheckout'/.test(cable));
   check("cable: píxel de Puerto Secreto (no el de Tarot)", dato(cable, "PIXEL_ID") === "1788156381816025");
   const faltan = [];
   const tamanos = [];
@@ -1135,7 +1135,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     dato(ms, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(ms, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("masilla: los datos personales no viajan por la URL de gracias",
     /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(ms) && ms.includes("sessionStorage.setItem('pedidoMasilla'"));
-  check("masilla: gracias dispara Lead y Purchase (una vez por pedido, con eventID) y la página de venta no", /fbq\('track', 'Lead'/.test(gr) && /fbq\('track', 'Purchase'/.test(gr) && gr.includes("eventID: pedido.eventId") && !/track\('(Lead|Purchase)'|fbTrack\('(Lead|Purchase)'/.test(ms) && /fbTrack\('InitiateCheckout'/.test(ms));
+  check("masilla: Lead y Purchase salen de la página de venta al confirmarse el pedido (con datos del cliente para el EMQ, mismo eventID) y /gracias no los envía", /function fbCompra/.test(ms) && /fbq\('init', PIXEL_ID, datosUsuario\)/.test(ms) && /fbq\('track', 'Lead', datos, \{ eventID: c\.eventId \}\)/.test(ms) && /fbq\('track', 'Purchase', datos, \{ eventID: c\.eventId \}\)/.test(ms) && !/'(Lead|Purchase)'/.test(gr) && /fbTrack\('InitiateCheckout'/.test(ms));
   check("masilla: píxel de Puerto Secreto (no el de Tarot)", dato(ms, "PIXEL_ID") === "1788156381816025");
   const faltan = [];
   const tamanos = [];

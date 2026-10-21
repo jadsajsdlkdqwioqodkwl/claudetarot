@@ -219,7 +219,7 @@
 <script>
   /* ── Datos que NO deben quedar vacíos antes de lanzar ───────────────────
      PIXEL_ID: el píxel de Meta de Puerto Secreto. Eventos de esta página: PageView, ViewContent, AddToCart e
-     InitiateCheckout. Todavía NO se envían Lead ni Purchase.
+     InitiateCheckout, y Lead y Purchase al confirmarse el pedido (con datos del cliente para el EMQ).
      WA_NUMERO: WhatsApp de atención, con 51 y sin signos, ej. 51999999999
      (vacío = no se muestran los botones de WhatsApp). */
   var PIXEL_ID = '1788156381816025';   // píxel de Puerto Secreto (el mismo del Worker `uro`; NO el de Tarot)
@@ -682,6 +682,22 @@
     return 'https://wa.me/' + WA_NUMERO + '?text=' + encodeURIComponent(lineas.join('\n'));
   }
 
+  /* Lead y Purchase salen aquí, apenas el servidor confirma el pedido y con los datos del cliente
+     (teléfono, nombre, ciudad, país): el píxel los hashea solo y sube la calidad de coincidencia (EMQ).
+     Mismo eventID en ambos; /gracias ya no los envía. */
+  function fbCompra(c) {
+    if (typeof fbq !== 'function' || !c.eventId) return;
+    var partes = c.nombre.toLowerCase().split(/\s+/);
+    var tel = aE164(c.telefono).replace(/\D/g, '');
+    var datosUsuario = { ph: tel, fn: partes[0], ct: c.ciudad.toLowerCase().replace(/\s+/g, ''), country: 'pe', external_id: tel };
+    if (partes.length > 1) datosUsuario.ln = partes.slice(1).join(' ');
+    fbq('init', PIXEL_ID, datosUsuario);
+    var datos = datosCarrito();
+    datos.value = c.total;
+    fbq('track', 'Lead', datos, { eventID: c.eventId });
+    fbq('track', 'Purchase', datos, { eventID: c.eventId });
+  }
+
   function marcar(id, malo) { var el = document.getElementById(id); if (el) el.classList.toggle('err', !!malo); }
   function submitCOD() {
     var esCasa = envio === 'casa';
@@ -730,7 +746,11 @@
             eventId: res.body.eventId || '', cantidad: pk.cant
           }));
         } catch (e) { /* modo privado sin storage: la página de gracias saldrá genérica */ }
-        location.href = location.pathname.replace(/\/+$/, '') + '/gracias?v=' + encodeURIComponent(total);
+        fbCompra({ nombre: n, telefono: p, ciudad: dis, total: total, eventId: res.body.eventId || '' });
+        /* Pausa corta para que el navegador alcance a mandar Lead y Purchase antes de cambiar de página. */
+        setTimeout(function () {
+          location.href = location.pathname.replace(/\/+$/, '') + '/gracias?v=' + encodeURIComponent(total);
+        }, 600);
       })
       .catch(function (err) {
         console.error(err);
