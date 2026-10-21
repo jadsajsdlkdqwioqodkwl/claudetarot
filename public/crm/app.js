@@ -81,7 +81,7 @@ const estado = {
 function pedir(url, opciones = {}) {
   return fetch(url, { credentials: "same-origin", ...opciones }).then(async (res) => {
     const datos = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(datos.error || `HTTP ${res.status}`);
+    if (!res.ok) throw Object.assign(new Error(datos.error || `HTTP ${res.status}`), { datos });
     return datos;
   });
 }
@@ -150,6 +150,7 @@ function iconizar() {
   $(".icono-buscar").innerHTML = icon("search");
   $("#btn-filtro-mias").innerHTML = icon("star") + " Mis chats";
   $("#vacio-icono").innerHTML = icon("chat");
+  $("#link-wa-tienda").innerHTML = icon("chat") + " Escribir a Tarot Store por WhatsApp";
 }
 iconizar();
 
@@ -186,6 +187,58 @@ function mostrarFormularioLogin() {
   $("#form-login").style.display = "flex";
   $("#form-olvide").style.display = "none";
   $("#login-error").textContent = "";
+  $("#ayuda-wa").style.display = "none";
+  $("#btn-reenviar").style.display = "none";
+  clearInterval(estado.login.timerReenvio);
+}
+
+/** Espera entre un código y el siguiente, para no mandar mensajes de WhatsApp en cadena. */
+const ESPERA_REENVIO_S = 30;
+
+function ponerReenvio(quedan = 0) {
+  const boton = $("#btn-reenviar");
+  boton.disabled = quedan > 0;
+  boton.innerHTML = icon("rotate") + (quedan > 0 ? ` Reenviar código en ${quedan} s` : " Reenviar código");
+}
+
+function empezarEsperaReenvio() {
+  clearInterval(estado.login.timerReenvio);
+  let quedan = ESPERA_REENVIO_S;
+  ponerReenvio(quedan);
+  estado.login.timerReenvio = setInterval(() => {
+    quedan -= 1;
+    ponerReenvio(quedan);
+    if (quedan <= 0) clearInterval(estado.login.timerReenvio);
+  }, 1000);
+}
+
+/** Si Meta no dejó mandar el código: el vendedor le escribe primero a Tarot Store (abre la ventana de 24 h). */
+function mostrarAyudaWa(waTienda) {
+  const texto = encodeURIComponent("Hola, necesito entrar al CRM de Tarot Store.");
+  $("#link-wa-tienda").href = `https://wa.me/${waTienda}?text=${texto}`;
+  $("#ayuda-wa").style.display = "block";
+  $("#btn-reenviar").style.display = "block";
+  clearInterval(estado.login.timerReenvio);
+  ponerReenvio(0);
+}
+
+/** Manda (o vuelve a mandar) el código con el usuario y la contraseña que ya están en el formulario. */
+async function pedirCodigo() {
+  $("#login-error").textContent = "";
+  try {
+    const r = await pedir("/api/crm/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
+    });
+    estado.login.challengeId = r.challenge_id;
+    $("#ayuda-wa").style.display = "none";
+    mostrarPasoCodigo(r.metodo2FA);
+    if (r.metodo2FA === "whatsapp") empezarEsperaReenvio();
+  } catch (err) {
+    if (err.datos?.no_llego) mostrarAyudaWa(err.datos.wa_tienda);
+    throw err;
+  }
 }
 
 function mostrarFormularioOlvide() {
@@ -210,6 +263,8 @@ function mostrarPasoCodigo(metodo2FA) {
     : "Te llegó un código de 6 dígitos por WhatsApp";
   $("#ayuda-2fa").style.display = "block";
   $("#btn-login").textContent = "Verificar código";
+  // El reenvío solo sirve con código por WhatsApp (con app de códigos no hay nada que reenviar).
+  $("#btn-reenviar").style.display = metodo2FA === "whatsapp" ? "block" : "none";
   $("#code").focus();
 }
 
@@ -258,13 +313,7 @@ $("#form-login").addEventListener("submit", async (e) => {
     }
 
     if (estado.login.mode === "agents") {
-      const r = await pedir("/api/crm/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
-      });
-      estado.login.challengeId = r.challenge_id;
-      mostrarPasoCodigo(r.metodo2FA);
+      await pedirCodigo();
       return;
     }
 
@@ -274,6 +323,14 @@ $("#form-login").addEventListener("submit", async (e) => {
       body: JSON.stringify({ password: $("#password").value, code: $("#code").value })
     });
     mostrarApp();
+  } catch (err) {
+    $("#login-error").textContent = err.message;
+  }
+});
+
+$("#btn-reenviar").addEventListener("click", async () => {
+  try {
+    await pedirCodigo();
   } catch (err) {
     $("#login-error").textContent = err.message;
   }
@@ -1665,6 +1722,10 @@ function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
     seg_auto_proximo: bienvenida.length ? bienvenida.map((x) => x.send_at).sort()[0] : null
   };
   const conv = estado.conversaciones.find((x) => x.conversation_id === conversationId);
+  if (conv) {
+    const cobro = scheduled.some((x) => /^Plan con plantilla · Recojo en/.test(x.created_by || "")) ? 1 : 0;
+    if (conv.cobro_activo !== cobro) { conv.cobro_activo = cobro; if (conversationId === estado.conversacionActivaId) pintarMensajes(); }
+  }
   seguimientosLocales.set(conversationId, { ...seg, t: Date.now() });
   if (conv && (conv.seg_pendientes !== seg.seg_pendientes || conv.seg_proximo !== seg.seg_proximo || conv.seg_auto_proximo !== seg.seg_auto_proximo)) {
     Object.assign(conv, seg);
@@ -3951,6 +4012,33 @@ async function marcarAtendido(c) {
   } catch (err) { alert(err.message); }
 }
 
+/**
+ * Chats con clave de Shalom (así se marca que el envío es por Shalom): en cada mensaje nuestro, el estado del
+ * seguimiento de cobro (plan de recojo en Shalom). Sin seguimiento: PROGRAMAR; con seguimiento: DESACTIVAR (al pagar).
+ */
+function chipSeguimientoCobro() {
+  const c = chatActivo();
+  if (!c?.shalom_code) return "";
+  const programar = !c.cobro_activo;
+  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat no tiene seguimiento de cobro: tócalo para programarlo" : "El seguimiento de cobro está activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
+}
+
+async function accionSeguimientoCobro(chip) {
+  const c = chatActivo();
+  if (!c) return;
+  if (chip.dataset.accion === "programar") return marcarPlan(c, "shalom");
+  chip.disabled = true;
+  try {
+    await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+    c.cobro_activo = 0;
+    pintarMensajes();
+    await actualizarSeguimientosDetalle();
+  } catch (err) {
+    alert(err.message);
+    chip.disabled = false;
+  }
+}
+
 function pintarMensajes({ alFinal = false } = {}) {
   const cont = $("#mensajes");
   if (!cont) return;
@@ -3985,6 +4073,7 @@ function pintarMensajes({ alFinal = false } = {}) {
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
             : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
+        ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
     </div>`;
   }).join("");
@@ -4110,7 +4199,8 @@ function configurarAccionesMensajes() {
       return;
     }
     const chipSeg = e.target.closest(".msg-seg");
-    if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
+    if (chipSeg?.classList.contains("msg-seg-cobro")) accionSeguimientoCobro(chipSeg);
+    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
     else if (chipSeg) reactivarSeguimientoRapida(chipSeg);
     const fotoChat = e.target.closest("img.foto-chat");
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }

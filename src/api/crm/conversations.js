@@ -179,6 +179,8 @@ async function handler({ request, env, agent }) {
         lm.type AS last_type,
         lm.direction AS last_direction,
         ${ATENCION_REC} AS con_recomendacion,
+        EXISTS (SELECT 1 FROM scheduled_messages sc WHERE sc.conversation_id = conv.id AND sc.status IN ('pendiente', 'por_aprobar')
+                AND sc.created_by LIKE 'Plan con plantilla · Recojo en%') AS cobro_activo,
         seg.pendientes AS seg_pendientes,
         seg.proximo AS seg_proximo,
         seg.auto_proximo AS seg_auto_proximo

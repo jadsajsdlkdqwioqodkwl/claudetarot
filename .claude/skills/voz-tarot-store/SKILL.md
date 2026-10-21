@@ -110,7 +110,7 @@ las respuestas rápidas vigentes y **cómo editaron las vendedoras los textos**
 
 ## Antes de proponer, revisa
 
-- ¿Lo mandaría Danitza, Priscila o Moi tal cual, sin cambiarle nada?
+- ¿Lo mandaría Danitza o Moi tal cual, sin cambiarle nada?
 - ¿Tiene una sola pregunta y una sola acción?
 - ¿Menos de ~300 caracteres?
 - ¿Es distinto de lo que se le propuso a otros clientes?
