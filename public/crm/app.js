@@ -44,6 +44,7 @@ const estado = {
   productos: [],
   lineas: [],
   filtroTexto: "",
+  baseLista: [], // la última lista completa del servidor (sin búsqueda): la búsqueda al instante filtra aquí
   filtroDias: 0,
   buscarEn: "",
   limiteLista: 200,
@@ -1763,6 +1764,7 @@ function sincronizar() {
   const promesa = (async () => {
     const data = await pedir(`/api/crm/conversations?${clave}`);
     estado.conversaciones = data.conversations;
+    if (!estado.filtroTexto) estado.baseLista = data.conversations;
     estado.hayMasChats = Boolean(data.hay_mas);
     estado.atencionTotal = data.atencion_total || 0;
     estado.busquedaFecha = data.busqueda_fecha || null;
@@ -2135,12 +2137,27 @@ function pintarEstrellaHeader(c) {
   btn.title = tituloEstrella(c);
 }
 
-$("#buscar").addEventListener("input", debounce((e) => {
+/** Búsqueda en el navegador (al instante): nombre, teléfono, notas, clave de Shalom, anuncio o asesora. */
+function filtrarLocal(lista, texto) {
+  const norm = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const tokens = norm(texto).split(/\s+/).filter(Boolean);
+  return lista.filter((c) => {
+    const campos = norm([c.contact_name, c.profile_name, c.wa_id, c.notes, c.shalom_code, c.ad_headline, c.assigned_agent].join(" "));
+    return tokens.every((t) => campos.includes(t));
+  });
+}
+
+// El servidor afina con el texto de los mensajes (más lento), así que la lista de al lado se pinta ya.
+const buscarEnServidor = debounce(() => cargarConversaciones(), 150);
+$("#buscar").addEventListener("input", (e) => {
   estado.filtroTexto = e.target.value.trim();
   estado.limiteLista = 200;
   $("#buscador").classList.toggle("buscando", Boolean(estado.filtroTexto));
-  cargarConversaciones();
-}, 300));
+  if (estado.filtroTexto) estado.conversaciones = filtrarLocal(estado.baseLista, estado.filtroTexto);
+  else estado.conversaciones = estado.baseLista;
+  pintarLista();
+  buscarEnServidor();
+});
 $("#buscar-dias").addEventListener("change", (e) => {
   estado.filtroDias = Number(e.target.value) || 0;
   estado.limiteLista = 200;
