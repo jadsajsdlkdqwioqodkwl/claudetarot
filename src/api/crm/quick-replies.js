@@ -7,6 +7,9 @@
  *
  * PATCH { ordenar: [ids] } guarda el orden en que el equipo las arrastró
  * (sort_order 1, 2, 3…). Las nuevas van al final. (Los grupos ya no se usan.)
+ * Orden que ve el equipo: fijadas arriba (Provincia mensaje 1·2·3, después Lima 1·2·3); el resto por uso
+ * (`usos`: cuántas veces se mandó desde el chat). Si alguien arrastró, el resto sigue su orden manual
+ * (ajuste `rapidas_orden` = "manual") hasta que se pida PATCH { modo: "uso" }.
  *
  * POST y PATCH aceptan además `followup_pasos`: la secuencia de seguimiento
  * si el cliente no responde, hasta 4 pasos [{ horas, body?, media_key?,
@@ -33,7 +36,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo, sincronizarSeguimientosPendientes } from "../../lib/crm-db.js";
+import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo, sincronizarSeguimientosPendientes, obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
@@ -108,12 +111,26 @@ async function guardarCatalogoDespues(env, id, payload) {
     .bind(payload.catalogo_despues ? 1 : 0, id).run().catch(() => {});
 }
 
+/** Posición fija de una respuesta: «Provincia mensaje 1» (0) … «Lima 3» (5). Las demás, sin posición (99). */
+function posicionFijada(titulo) {
+  const m = /^(provincia|lima)\s*(?:mensaje\s*)?([123])$/i.exec(String(titulo || "").trim());
+  return m ? (m[1].toLowerCase() === "provincia" ? 0 : 3) + Number(m[2]) - 1 : 99;
+}
+
 async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
-  // Sin la migración 0055 aplicada todavía, se lee sin `catalogo_despues`.
-  const rapidas = await env.CRM_DB.prepare(`SELECT ${columnas}, catalogo_despues FROM quick_replies ORDER BY sort_order ASC, id ASC`).all()
-    .then((r) => r.results)
-    .catch(async () => (await env.CRM_DB.prepare(`SELECT ${columnas} FROM quick_replies ORDER BY sort_order ASC, id ASC`).all()).results);
+  // Sin las migraciones 0055 (catalogo_despues) y 0062 (usos) aplicadas todavía, se lee sin esas columnas.
+  let rapidas = [];
+  for (const extra of [", catalogo_despues, usos", ", catalogo_despues", ""]) {
+    try {
+      rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
+      break;
+    } catch { /* columna que todavía no existe: se prueba sin ella */ }
+  }
+  const manual = (await obtenerAjuste(env.CRM_DB, "rapidas_orden").catch(() => null)) === "manual";
+  rapidas.sort((a, b) => posicionFijada(a.title) - posicionFijada(b.title)
+    || (manual ? (a.sort_order ?? 0) - (b.sort_order ?? 0) : (b.usos || 0) - (a.usos || 0))
+    || (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
   ).all();
@@ -127,8 +144,10 @@ async function get({ env, agent }) {
 
   return json({
     // Cuenta limitada a un producto: solo las de ese producto (las generales son de Tarot).
+    orden: manual ? "manual" : "uso",
     quick_replies: rapidas.filter((r) => !agent?.productoId || r.producto_id === agent.productoId).map((r) => ({
       ...r,
+      fijada: posicionFijada(r.title) < 99,
       followup_pasos: pasosDe(r),
       botones: botonesDe(r.botones),
       media: porRapida[r.id] || [],
@@ -190,10 +209,15 @@ async function patch({ request, env, agent }) {
     return json({ error: "Solicitud inválida." }, 400);
   }
 
+  if (payload?.modo === "uso") {
+    await guardarAjuste(env.CRM_DB, "rapidas_orden", "uso");
+    return json({ ok: true });
+  }
   if (Array.isArray(payload?.ordenar)) {
     const ids = [...new Set(payload.ordenar.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 500);
     if (!ids.length) return json({ error: "Falta el orden." }, 400);
     await env.CRM_DB.batch(ids.map((qid, i) => env.CRM_DB.prepare("UPDATE quick_replies SET sort_order = ? WHERE id = ?").bind(i + 1, qid)));
+    await guardarAjuste(env.CRM_DB, "rapidas_orden", "manual");
     return json({ ok: true });
   }
 

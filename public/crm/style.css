@@ -908,6 +908,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #versiones-rapida .sub { font-size: 12px; color: var(--gris); }
 
 /* Respuestas rápidas agrupadas por cadena o tipo */
+#panel-rapidas .rapidas-orden-ayuda { margin: 0 8px 6px; font-size: 12px; }
+#panel-rapidas .fijada-icono { color: var(--acento, #c9a227); padding: 6px 6px 6px 0; align-self: center; display: inline-flex; width: 14px; }
+#panel-rapidas .fijada-icono .icono-svg svg { width: 14px; height: 14px; }
 #panel-rapidas .arrastrar { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
 #panel-rapidas .item.arrastrando { opacity: .6; background: var(--hover); }
 .versiones-rapida { align-items: center; gap: 8px; margin: -4px 0 8px; }

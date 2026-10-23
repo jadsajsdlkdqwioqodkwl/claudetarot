@@ -108,6 +108,8 @@ async function post({ request, env, agent }) {
   const sentBy = agent?.displayName || agent?.username || null;
   const programarRapida = async (waMessageId) => {
     if (!quickReplyId) return;
+    // Cuenta el uso para ordenar «según uso» (mismo viaje a D1, sin pedir nada más).
+    await env.CRM_DB.prepare("UPDATE quick_replies SET usos = usos + 1 WHERE id = ?").bind(quickReplyId).run().catch(() => {});
     // Queda en la burbuja: desde ahí se reactiva el seguimiento si otro mensaje lo canceló.
     if (waMessageId) await env.CRM_DB.prepare("UPDATE messages SET quick_reply_id = ? WHERE wa_message_id = ?").bind(quickReplyId, waMessageId).run().catch(() => {});
     await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));

@@ -6419,8 +6419,9 @@ function buscarRapidas(lista, consulta) {
 }
 
 async function cargarQuickReplies() {
-  const { quick_replies } = await pedir("/api/crm/quick-replies");
+  const { quick_replies, orden } = await pedir("/api/crm/quick-replies");
   estado.quickReplies = quick_replies;
+  estado.rapidasOrden = orden || "uso";
 }
 
 async function toggleQuickPanel() {
@@ -6452,11 +6453,12 @@ function pintarQuickPanel() {
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
     ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las demás.
       <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="rapidas-solo" ${rapidasSoloProducto() ? "checked" : ""} /> Solo las de este producto</label></div>` : ""}
+    ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según cuántas veces se usan. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
-      <div class="item" data-id="${q.id}">
-        ${buscando ? "" : `<span class="arrastrar" title="Arrastra para ordenar">⋮⋮</span>`}
+      <div class="item${q.fijada ? " fijada" : ""}" data-id="${q.id}">
+        ${buscando ? "" : q.fijada ? `<span class="fijada-icono" title="Fijada arriba">${icon("star")}</span>` : `<span class="arrastrar" title="Arrastra para reacomodar">⋮⋮</span>`}
         ${q.catalogo ? `<div class="miniatura">${icon("bag")}</div>`
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
@@ -6472,6 +6474,7 @@ function pintarQuickPanel() {
     <footer>
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
       <button id="ordenar-rapidas" type="button">${icon("tag")} Ordenar por número</button>
+      ${estado.rapidasOrden === "manual" ? `<button id="rapidas-por-uso" type="button">${icon("sparkle")} Volver a ordenar por uso</button>` : ""}
     </footer>`;
 
   $("#rapidas-solo")?.addEventListener("change", (e) => {
@@ -6527,6 +6530,13 @@ function pintarQuickPanel() {
     panel.classList.remove("abierto");
     abrirOrdenarRapidas();
   });
+  $("#rapidas-por-uso")?.addEventListener("click", async () => {
+    try {
+      await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo: "uso" }) });
+      await cargarQuickReplies();
+      pintarQuickPanel();
+    } catch (err) { alert(err.message); }
+  });
 }
 
 /** Panel para darles su número a todas las respuestas rápidas de una vez (PATCH { ordenar }). */
@@ -6576,7 +6586,7 @@ function activarArrastreRapidas(panel) {
       // Escucha en window: al mover el item en la lista el navegador suelta la
       // captura del puntero, y el ⋮⋮ dejaría de recibir los movimientos.
       const mover = (ev) => {
-        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]");
+        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]:not(.fijada)");
         if (bajo && bajo !== item) {
           const r = bajo.getBoundingClientRect();
           bajo[ev.clientY < r.top + r.height / 2 ? "before" : "after"](item);

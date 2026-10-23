@@ -12,6 +12,12 @@
 import { proponerPlanPorVentanaCerrada } from "./planes-plantilla.js";
 import { enSilencio } from "./horario.js";
 
+/**
+ * Un seguimiento que cuenta como «tiene seguimiento» para la recomendación sin pregunta. El rescate universal
+ * (día 7 y «Rescate de interesado») no cuenta: está agendado a casi todos los leads, sin importar la conversación.
+ */
+const SEGUIMIENTO_PROPIO = "instr(sm.created_by, 'Automático (día 7)') = 0 AND instr(sm.created_by, 'Rescate de interesado') = 0";
+
 export async function limpiarSugerenciasViejas(db, env = null) {
   // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
   if (env) await proponerPlanPorVentanaCerrada(env).catch((err) => console.error("Plan por ventana cerrada:", err.message));
@@ -27,7 +33,7 @@ export async function limpiarSugerenciasViejas(db, env = null) {
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'ya tiene seguimiento', resuelto_at = datetime('now')
        WHERE estado = 'pendiente' AND tipo = 'sin_pregunta'
          AND EXISTS (SELECT 1 FROM scheduled_messages sm WHERE sm.conversation_id = asesor_sugerencias.conversation_id
-                     AND sm.status IN ('pendiente', 'por_aprobar'))`
+                     AND sm.status IN ('pendiente', 'por_aprobar') AND ${SEGUIMIENTO_PROPIO})`
     ),
     db.prepare(
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'ya compró', resuelto_at = datetime('now')
@@ -86,7 +92,7 @@ export async function sugerirSinPregunta(db) {
        AND m.body NOT LIKE '%?%' AND m.body NOT LIKE '%¿%'
        AND conv.blocked = 0 AND COALESCE(conv.etapa, 0) < 5
        AND conv.last_inbound_at >= datetime('now', '-24 hours')
-       AND NOT EXISTS (SELECT 1 FROM scheduled_messages sm WHERE sm.conversation_id = conv.id AND sm.status IN ('pendiente', 'por_aprobar'))
+       AND NOT EXISTS (SELECT 1 FROM scheduled_messages sm WHERE sm.conversation_id = conv.id AND sm.status IN ('pendiente', 'por_aprobar') AND ${SEGUIMIENTO_PROPIO})
        AND NOT EXISTS (SELECT 1 FROM asesor_sugerencias s WHERE s.conversation_id = conv.id AND s.tipo = 'sin_pregunta' AND s.created_at >= m.created_at)
      LIMIT 50`
   ).all();
