@@ -3,6 +3,11 @@
  * un endpoint vive aquí para no repetir el SQL.
  */
 
+import { contieneCodigo } from "./ventas.js";
+
+// created_by del recojo en Shalom (planes-plantilla.js: PREFIJO_PLAN + título del plan).
+const ORIGEN_COBRO_SHALOM = "Plan con plantilla · Recojo en Shalom";
+
 export async function obtenerOCrearContacto(db, waId, profileName, referral) {
   const existente = await db
     .prepare("SELECT * FROM contacts WHERE wa_id = ?")
@@ -112,6 +117,9 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null, fileName || null)
     .run();
 
+  // Le mandamos su código de Shalom: ya no hace falta su cobro (dueño, 2026-10-23). Cuenta cualquier envío.
+  if (body) await terminarCobroSiLlevaCodigo(db, conversationId, body);
+
   // Un seguimiento automático no sube el chat en la bandeja: sube recién
   // cuando el cliente responde (registrarMensajeEntrante). Una PLANTILLA
   // tampoco, venga de donde venga (a mano, asesor, masivo, rescate, Shalom):
@@ -124,6 +132,19 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     // aparecer recién cuando el cliente escriba de nuevo.
     .prepare(`UPDATE conversations SET last_message_at = datetime('now'), unread_count = 0 WHERE id = ?`)
     .bind(conversationId)
+    .run();
+}
+
+/** Si el texto que salió lleva la clave de Shalom del cliente (su perfil), se cancela el cobro pendiente del chat. */
+async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
+  const c = await db
+    .prepare("SELECT c.shalom_code FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?")
+    .bind(conversationId)
+    .first();
+  if (!contieneCodigo(texto, c?.shalom_code)) return;
+  await db
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND instr(created_by, ?) = 1")
+    .bind(conversationId, ORIGEN_COBRO_SHALOM)
     .run();
 }
 

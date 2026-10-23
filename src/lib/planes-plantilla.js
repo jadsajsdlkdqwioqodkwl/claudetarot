@@ -23,6 +23,7 @@ import { lineaPorId } from "./lineas.js";
 import { obtenerAjuste, esOrigenAutomatico } from "./crm-db.js";
 import { productoPorId } from "./productos.js";
 import { destinosDeChats } from "./crm-destino.js";
+import { contieneCodigo } from "./ventas.js";
 
 export const IDIOMA_PLAN = "es_PE";
 export const PREFIJO_PLAN = "Plan con plantilla";
@@ -318,6 +319,24 @@ export async function rearmarPlanShalom(env, conversationId, texto) {
     return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
   });
   if (mover.length) await db.batch(mover);
+}
+
+/** ¿Ya salió en este chat un mensaje nuestro con el código de Shalom del cliente? */
+async function codigoYaEnviado(db, conversationId, codigo) {
+  const { results } = await db.prepare(
+    "SELECT body FROM messages WHERE conversation_id = ? AND direction = 'out' AND instr(lower(body), lower(?)) > 0"
+  ).bind(conversationId, codigo).all();
+  return results.some((m) => contieneCodigo(m.body, codigo));
+}
+
+/**
+ * Se guardó la clave de Shalom en el perfil del cliente: programa el cobro (recojo en Shalom, 4·7·21 días)
+ * del chat, salvo que ese código ya haya salido en el chat. Lo termina el envío del código (crm-db.js).
+ * Devuelve lo que devuelve programarPlan, o { omitido: true } si el código ya se mandó.
+ */
+export async function activarCobroPorCodigo(env, conversationId, codigo, { estado, quien }) {
+  if (!codigo || (await codigoYaEnviado(env.CRM_DB, conversationId, codigo))) return { omitido: true };
+  return programarPlan(env, conversationId, "shalom", { estado, quien });
 }
 
 /**

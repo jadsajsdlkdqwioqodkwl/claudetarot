@@ -1690,6 +1690,7 @@ const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
+const ORIGEN_DIA7 = "Automático (día 7)"; // rescate-lead.js
 
 function esSeguimientoLead(s) {
   const origen = s.created_by || "";
@@ -1702,6 +1703,8 @@ function esSeguimientoManual(s) {
 
 /** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
 function etiquetaTipoSeguimiento(s) {
+  // El día 7 dice qué plantilla va a salir (la misma que se ve en Herramientas, salvo que Meta no la haya aprobado).
+  if ((s.created_by || "").endsWith(ORIGEN_DIA7)) return `<span class="tipo-seg lead">Día 7 · ${escapar(s.template_name || s.body || "")}</span>`;
   if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · por aprobar</span>`;
   if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · aprobada</span>`;
   if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
@@ -8480,7 +8483,7 @@ function pintarShalom(c, editando = false) {
     const btn = $("#shalom-guardar");
     btn.disabled = true;
     try {
-      await pedir("/api/crm/contacts", {
+      const r = await pedir("/api/crm/contacts", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contact_id: c.contact_id, shalom_code: valor })
@@ -8493,6 +8496,8 @@ function pintarShalom(c, editando = false) {
     if (otro) abrirConversacion(otro);
   }));
   pintarShalom(c);
+  // El servidor programó el cobro al guardar la clave: se refresca el chip de cada chat.
+  if (r.seguimiento?.cobro_programado) { await sincronizar(); pintarMensajes(); }
     } catch (err) {
       $("#shalom-estado").textContent = `No se guardó: ${err.message}`;
       btn.disabled = false;
