@@ -57,7 +57,7 @@ const estado = {
   // en el cuadro (0 = la original) y ese texto, para saber si la editaron.
   rapidaVariante: null, // { id, texto }
   segRapidaMedia: null,
-  segModo: "mensaje",
+  segModo: "secuencia",
   editandoRapidaId: null,
   editandoPasoId: null,
   editandoSeguimientoId: null,
@@ -563,6 +563,7 @@ async function pintarPlanesPorAprobar() {
   try { datosPlanes = await pedir("/api/crm/planes"); } catch (err) { cont.textContent = err.message; return; }
   lista = datosPlanes.por_aprobar || [];
   $("#planes-dias").value = (datosPlanes.dias || []).join(",");
+  $("#planes-dias-olva").value = (datosPlanes.dias_olva || []).join(",");
   $("#planes-auto").checked = Boolean(datosPlanes.auto);
   const porChat = new Map();
   for (const s of lista) (porChat.get(s.conversation_id) || porChat.set(s.conversation_id, []).get(s.conversation_id)).push(s);
@@ -600,7 +601,7 @@ async function guardarAjustePlanes(cuerpo) {
   }
   pintarPlanesPorAprobar();
 }
-$("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim() }));
+$("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim(), dias_olva: $("#planes-dias-olva").value.trim() }));
 $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: e.target.checked }));
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
@@ -3206,7 +3207,7 @@ function pintarChatBase(c) {
     const files = [...(e.dataTransfer.files || [])];
     if (files.length) elegirArchivos(files);
   });
-  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento("mensaje"));
+  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento());
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
   $("#btn-formato").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-formato"]); toggleFormatoPanel(); });
@@ -4203,7 +4204,7 @@ function configurarAccionesMensajes() {
     }
     const chipSeg = e.target.closest(".msg-seg");
     if (chipSeg?.classList.contains("msg-seg-cobro")) accionSeguimientoCobro(chipSeg);
-    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
+    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento();
     else if (chipSeg) reactivarSeguimientoRapida(chipSeg);
     const fotoChat = e.target.closest("img.foto-chat");
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
@@ -5696,6 +5697,7 @@ function pintarSugerencias(lista) {
     if (s.tipo === "variante") return tarjetaVariante(s);
     if (s.tipo === "prueba_lista") return tarjetaPruebaLista(s);
     if (s.tipo === "saldo") return tarjetaSaldo(s);
+    if (s.tipo === "sin_pregunta") return tarjetaSinPregunta(s);
     if (s.tipo === "pregunta") return tarjetaPregunta(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
@@ -5871,6 +5873,19 @@ function pintarSugerencias(lista) {
         abrirConversacion(c);
       }
     });
+    card.querySelector(".sug-programar")?.addEventListener("click", async () => {
+      const convId = Number(card.dataset.conv);
+      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      if (!c) {
+        await cargarConversaciones();
+        c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      }
+      if (c) {
+        $("#modal-sugerencias-fondo").classList.remove("abierto");
+        await abrirConversacion(c);
+        abrirModalProgramarSeguimiento();
+      }
+    });
     if (card.classList.contains("sug-variante")) {
       card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
       return;
@@ -5929,6 +5944,23 @@ function pintarSugerencias(lista) {
 const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) || card.classList.contains("sug-variante");
 
 /** El asesor vio la captura del saldo: quien maneja Shalom lo confirma y la página del cliente muestra la clave. */
+/** Su último mensaje no tenía pregunta ni seguimiento (cron, crm-sugerencias.js): se agenda uno o se le pregunta algo. */
+function tarjetaSinPregunta(s) {
+  return `
+    <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("clock")} ${escapar(s.nombre || "Cliente")}</span><span class="sub">+${escapar(s.wa_id || "")}</span></div>
+      <div class="sub">${escapar(s.motivo || "")}</div>
+      <div class="sug-chat"><p class="sub">Cargando conversación…</p></div>
+      <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">${escapar(s.origen || "")}</span>
+        <button type="button" class="sug-icono sug-abrir" title="Abrir chat">${icon("chat")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-programar">${icon("clock")} Programar seguimiento</button></div>
+      </div>
+    </div>`;
+}
+
 function tarjetaSaldo(s) {
   return `
     <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
@@ -7241,7 +7273,7 @@ function abrirModalProgramarSeguimiento(modo) {
     estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${textoRapida(q) ? ` — ${escapar(recortarTexto(textoRapida(q).replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
   prepararChipsVentana();
   elegirCuando($("#seg-chips button[data-ventana]:not(:disabled)") || $("#seg-chips button:not(:disabled)"));
-  ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");
+  ponerModoSeguimiento(["secuencia", "rapido", "libre"].includes(modo) ? modo : "secuencia");
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
 
@@ -7350,19 +7382,38 @@ function pintarReglaSeguimiento() {
   if (!el) return;
   const leadId = datosLead?.settings?.ad_followup_sequence_id;
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
-  $("#seg-siempre-fila").style.display = estado.segModo === "mensaje" ? "flex" : "none";
+  $("#seg-siempre-fila").style.display = estado.segModo !== "secuencia" ? "flex" : "none";
   el.textContent = esLead
     ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
-    : estado.segModo === "mensaje" && $("#seg-siempre").checked
+    : estado.segModo !== "secuencia" && $("#seg-siempre").checked
       ? "Se manda sí o sí a esa hora, aunque el cliente o tú escriban antes. Solo lo cancelas tú desde el panel derecho."
       : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
+}
+
+/**
+ * Qué se ve según la pestaña. «Mensaje rápido»: el buscador de respuestas rápidas y plantillas, con el texto
+ * editable. «Mensaje libre»: texto, botones, foto/video y catálogo. Con plantilla elegida, solo queda su bloque.
+ */
+function aplicarModoSeg() {
+  const modo = estado.segModo;
+  const plantilla = Boolean(estado.segPlantilla);
+  const editando = Boolean(estado.editandoSeguimientoId);
+  const libre = modo === "libre" && !plantilla;
+  const mostrar = (el, si) => { if (el) el.style.display = si ? "" : "none"; };
+  mostrar($("#seg-modo-mensaje"), modo !== "secuencia");
+  mostrar($("#seg-modo-secuencia"), modo === "secuencia");
+  mostrar($("#seg-elegir"), modo === "rapido" && !editando);
+  mostrar($("#seg-texto"), modo !== "secuencia" && !plantilla);
+  mostrar($("#seg-botones"), libre);
+  mostrar($("#seg-botones").previousElementSibling, libre);
+  mostrar($("#seg-archivo"), libre && !editando);
+  mostrar($("#seg-catalogo"), libre && !editando);
 }
 
 function ponerModoSeguimiento(modo) {
   estado.segModo = modo;
   document.querySelectorAll("#seg-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.modo === modo));
-  $("#seg-modo-mensaje").style.display = modo === "mensaje" ? "" : "none";
-  $("#seg-modo-secuencia").style.display = modo === "secuencia" ? "" : "none";
+  aplicarModoSeg();
   $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
   if (modo === "secuencia") cargarSecuenciasSeguimiento();
   pintarReglaSeguimiento();
@@ -7395,6 +7446,7 @@ async function cargarSecuenciasSeguimiento() {
   cargarDatosLead().then(pintarReglaSeguimiento).catch(() => {});
 }
 
+/** Cada mensaje activo de la secuencia con su hora de salida (por defecto, su espera contada desde ahora). Se pueden cambiar. */
 function pintarPreviewSecuenciaSeg() {
   const cont = $("#seg-secuencia-preview");
   const seq = secuenciasSeguimiento.find((x) => String(x.id) === $("#seg-secuencia").value);
@@ -7402,12 +7454,12 @@ function pintarPreviewSecuenciaSeg() {
     cont.innerHTML = `<p class="ayuda-modal">Crea una con el botón de abajo: varios mensajes, cada uno con su espera en horas o días.</p>`;
     return;
   }
-  const ahora = Date.now();
+  const activos = seq.steps.filter((p) => p.activo !== 0);
   let acum = 0;
-  cont.innerHTML = `<ol class="lead-timeline seg-timeline">${seq.steps.map((p) => {
+  cont.innerHTML = `<ol class="lead-timeline seg-timeline">${activos.map((p, i) => {
     acum += p.delay_minutes;
-    const cuando = new Date(ahora + acum * 60000).toLocaleString("es-PE", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
+    const hora = aInputLocal(new Date(Date.now() + acum * 60000));
+    return `<li><div class="seg-hora-fila"><span class="sub">Mensaje ${i + 1}</span><input type="datetime-local" class="seg-hora-paso" value="${hora}" min="${aInputLocal(new Date())}" /></div>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
   }).join("")}</ol>`;
 }
 
@@ -7422,8 +7474,6 @@ $("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuenc
 function ponerPlantillaSeg(t) {
   estado.segPlantilla = t || null;
   if (t) bloquePlantilla($("#seg-plantilla"), t); else quitarBloquePlantilla($("#seg-plantilla"));
-  const oculto = t ? "none" : "";
-  [$("#seg-texto"), $("#seg-botones"), $("#seg-botones").previousElementSibling, $("#seg-archivo"), $("#seg-catalogo")].forEach((el) => { el.style.display = oculto; });
   if (t) {
     $("#seg-rapida").value = "";
     estado.segRapidaMedia = null;
@@ -7432,6 +7482,7 @@ function ponerPlantillaSeg(t) {
     pintarVersionesSeg(null);
     pintarPreviewSegRapida();
   }
+  aplicarModoSeg();
   $("#seg-elegir").innerHTML = `${icon("search")} ${t ? `Plantilla: ${escapar(t.name)}` : "Buscar respuesta rápida o plantilla"}`;
   if (!$("#modal-seguimiento-fondo").classList.contains("abierto")) return;
   prepararChipsVentana();
@@ -7527,7 +7578,7 @@ function abrirModalEditarSeguimiento(s) {
   estado.editandoSeguimientoId = s.id;
   $("#seg-modal-titulo").textContent = "Editar seguimiento";
   $("#seg-tabs").style.display = "none";
-  ponerModoSeguimiento("mensaje");
+  ponerModoSeguimiento("libre");
   $("#seg-archivo").style.display = "none";
   $("#seg-catalogo").style.display = "none";
   $("#seg-elegir").style.display = "none";
@@ -7607,13 +7658,17 @@ $("#seg-cancelar").addEventListener("click", () => {
 async function programarSecuenciaDesdeModal() {
   const sequenceId = Number($("#seg-secuencia").value);
   if (!sequenceId) return alert("Elige una secuencia (o créala con \"Crear / editar secuencias\").");
+  const horas = [...document.querySelectorAll("#seg-secuencia-preview .seg-hora-paso")].map((i) => new Date(i.value).getTime());
+  if (!horas.length || horas.some((t) => !t)) return alert("Pon la hora de cada mensaje.");
+  if (horas.some((t) => t <= Date.now())) return alert("Hay un mensaje con una hora que ya pasó: ponle una futura.");
+  if (horas.some((t, i) => i && t <= horas[i - 1])) return alert("Cada mensaje tiene que salir después del anterior.");
   const btn = $("#seg-crear");
   btn.disabled = true;
   try {
     await pedir("/api/crm/followup-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.segConversacionId, sequence_id: sequenceId })
+      body: JSON.stringify({ conversation_id: estado.segConversacionId, sequence_id: sequenceId, horas: horas.map((t) => new Date(t).toISOString()) })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
     limpiarFormSeguimiento();

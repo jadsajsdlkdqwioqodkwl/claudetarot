@@ -203,7 +203,8 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   ).bind(conversationId).first();
   if (!conv) return { error: "Conversación no encontrada." };
   if (!conv.last_inbound_at) return { error: "El cliente nunca escribió: no se le puede mandar un plan." };
-  const yaHay = await db.prepare(
+  // El cobro (recojo en Shalom u Olva) tiene prioridad: no hay que cancelar nada a mano, sale aunque haya otro plan.
+  const yaHay = esPlanDeRecojo(plan) ? null : await db.prepare(
     "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND created_by LIKE ? LIMIT 1"
   ).bind(conversationId, `${PREFIJO_PLAN}%`).first();
   if (yaHay) return { error: "Este chat ya tiene un plan con plantilla programado. Cancélalo primero si quieres cambiarlo." };
@@ -214,10 +215,20 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   const dias = await diasDelPlan(db, plan);
   const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
-  await db.batch(pasos.map((p) => db.prepare(
+  const inserts = pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status, mandar_siempre)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, 0)));
+  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, 0));
+  if (esPlanDeRecojo(plan)) {
+    // Se cancelan los demás planes con plantilla pendientes o por aprobar de este chat (rescate, recojo anterior).
+    await db.batch([
+      db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND created_by LIKE ?")
+        .bind(conversationId, `${PREFIJO_PLAN}%`),
+      ...inserts
+    ]);
+  } else {
+    await db.batch(inserts);
+  }
   return { pasos };
 }
 

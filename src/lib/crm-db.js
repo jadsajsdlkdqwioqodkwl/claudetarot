@@ -426,7 +426,11 @@ export async function cancelarSeguimientosDeLead(db, conversationId) {
  * a mano (un chat o varios de una) como la que se dispara sola con un lead
  * nuevo de un anuncio.
  */
-export async function programarSecuenciaSeguimiento(db, conversationId, sequenceId, createdBy) {
+/**
+ * `horas` (opcional): la hora de salida de cada paso activo, en orden (las que puso el admin en el modal).
+ * Sin `horas`, cada paso sale su espera después del anterior.
+ */
+export async function programarSecuenciaSeguimiento(db, conversationId, sequenceId, createdBy, horas = null) {
   const { results: pasos } = await db
     .prepare("SELECT * FROM followup_sequence_steps WHERE sequence_id = ? ORDER BY step_order ASC")
     .bind(sequenceId)
@@ -437,9 +441,9 @@ export async function programarSecuenciaSeguimiento(db, conversationId, sequence
   let acumuladoMs = 0;
   // Un paso apagado no se programa y su espera tampoco cuenta.
   const activos = pasos.filter((p) => p.activo !== 0);
-  const inserts = activos.map((p) => {
+  const inserts = activos.map((p, i) => {
     acumuladoMs += p.delay_minutes * 60 * 1000;
-    const sendAt = new Date(ahora + acumuladoMs).toISOString();
+    const sendAt = horas ? horas[i] : new Date(ahora + acumuladoMs).toISOString();
     return db.prepare(
       `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, botones, mandar_siempre)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
