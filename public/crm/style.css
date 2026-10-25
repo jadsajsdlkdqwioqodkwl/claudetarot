@@ -904,6 +904,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .versiones .version:hover { border-color: var(--verde-osc); color: var(--verde-osc); }
 .versiones .version.activa { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
 #versiones-rapida { align-items: center; gap: 8px; padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#chip-secuencia { padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#chip-secuencia #btn-enviar-secuencia { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--verde-osc); color: #fff; border: none; border-radius: var(--radio-full); font: inherit; font-size: 13px; cursor: pointer; }
 #versiones-rapida .versiones { margin-top: 0; }
 #versiones-rapida .sub { font-size: 12px; color: var(--gris); }
 

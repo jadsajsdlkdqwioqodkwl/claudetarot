@@ -3119,6 +3119,7 @@ function pintarChatBase(c) {
     <div id="preview-archivo" style="display:none"></div>
     <div id="preview-botones"></div>
     <div id="versiones-rapida" style="display:none"></div>
+    <div id="chip-secuencia" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
@@ -5328,6 +5329,7 @@ async function enviarMensaje(e) {
     : {};
   estado.rapidaVariante = null;
   pintarVersionesRapida();
+  pintarChipSecuencia(null);
 
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
@@ -6498,12 +6500,14 @@ function pintarQuickPanel() {
     try { localStorage.setItem("crm_rapidas_solo", e.target.checked ? "1" : "0"); } catch {}
     pintarQuickPanel();
   });
+  const _pintarD = debounce(() => {
+    pintarQuickPanel();
+    const inp = $("#rapidas-buscar");
+    if (inp) { inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); }
+  }, 180);
   $("#rapidas-buscar").addEventListener("input", (e) => {
     estado.filtroRapidas = e.target.value;
-    pintarQuickPanel();
-    $("#rapidas-buscar").focus();
-    const v = $("#rapidas-buscar").value;
-    $("#rapidas-buscar").setSelectionRange(v.length, v.length);
+    _pintarD();
   });
 
   if (!buscando) activarArrastreRapidas(panel);
@@ -6673,6 +6677,7 @@ function usarQuickReply(q, indice = null) {
   pintarBotonesMensaje();
   pintarPreviewArchivo();
   pintarVersionesRapida();
+  pintarChipSecuencia(q);
 }
 
 function ponerTextoRapida(texto) {
@@ -6722,6 +6727,42 @@ function pintarVersionesRapida() {
   }
   cont.style.display = "flex";
   cont.innerHTML = `<span class="sub">${escapar(rv.q.title)} · versión</span>${botonesVersiones(rv.q, rv.indice)}`;
+}
+
+function pintarChipSecuencia(q) {
+  const cont = $("#chip-secuencia");
+  if (!cont) return;
+  const m = q && /^(provincia|lima)\s*(?:mensaje\s*)?1$/i.exec((q.title || "").trim());
+  if (!m) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  const grupo = m[1].toLowerCase();
+  const label = grupo === "provincia" ? "Provincia" : "Lima";
+  cont.style.display = "";
+  cont.innerHTML = `<button type="button" id="btn-enviar-secuencia" title="Envía ${label} 1, 2 y 3 con pausas entre ellos">${icon("send")} Enviar ${label} 1·2·3</button>`;
+  $("#btn-enviar-secuencia").addEventListener("click", () => {
+    const convId = estado.conversacionActivaId;
+    cont.style.display = "none"; cont.innerHTML = "";
+    $("#form-envio")?.requestSubmit();
+    for (const n of [2, 3]) {
+      const sq = (estado.quickReplies || []).find(x =>
+        new RegExp(`^${grupo}\\s*(?:mensaje\\s*)?${n}$`, "i").test((x.title || "").trim())
+      );
+      if (!sq) continue;
+      const versiones = versionesDe(sq);
+      const i = versiones && !sq.orden_fijo ? sortearVersion(sq) : 0;
+      const version = versiones ? versiones[i] : { id: 0, texto: sq.body || "" };
+      const body = version.texto || sq.body || "";
+      if (!body) continue;
+      const qId = sq.id; const vId = version.id || undefined;
+      encolarEnvio(convId, [], async () => {
+        await new Promise(r => setTimeout(r, 2000));
+        return pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: convId, body, quick_reply_id: qId, variante_id: vId })
+        });
+      }, (err) => alert(`Error al mandar ${sq.title}: ${err.message}`));
+    }
+  });
 }
 
 document.addEventListener("click", (e) => {
