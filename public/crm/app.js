@@ -4093,7 +4093,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
           ? (m.seg_activo
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
-            : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
+            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
         ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
