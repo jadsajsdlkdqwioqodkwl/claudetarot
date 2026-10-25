@@ -79,4 +79,4 @@ Al terminar una carga, lo que más pesa para decidir qué repetir es **AH (créd
 | Tu computadora (Claude Code o chat con **Claude in Chrome** y tu sesión de PiPiAds/Alibaba) | BUSCA, BUSCA AÉREO, EXPLORA, ALIBABA, ALIBABA AÉREO | Necesitan el navegador con tus sesiones. Solo uno a la vez (comparten Chrome) |
 | Cualquier sesión, incluida la nube | RANKEA, FILTRA, MEJORA (y sus versiones AÉREO) | Solo usan Meta MCP, Firecrawl y Google Sheets/Drive. Pueden correr en paralelo con uno de Chrome |
 
-Si una sesión sin Chrome recibe un comando de Chrome: lo dice en una línea, **no gasta nada**, registra la sesión en `Sesiones` con su nota y deja hecho lo que sí se puede (leer Log BUSCA y dejar el plan). Ver `BUSCA-AEREO-2026-10-15.md`.
+Si una sesión sin Chrome recibe un comando de Chrome: lo dice en una línea, **no gasta nada**, registra la sesión en `Sesiones!H` con «Sin Chrome — [fecha] — [comando]» y termina. Ver compuerta en INSTR 06 §1 y `BUSCA-AEREO-2026-10-15.md`.

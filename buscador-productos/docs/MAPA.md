@@ -14,7 +14,7 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.29) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 BUSCA, RANKEA, FILTRA y ALIBABA (v3.30) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.1) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas: se ignoran. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
@@ -65,3 +65,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 ## Lo que se agregó desde esta carpeta (2026-10-15)
 
 - INSTR 06 v3.29, INSTR 00 v4.18, Recetas C36/D36/fila 37, Mejoras M-017/M-028/M-051/M-052/M-055 aplicadas y M-056 a M-058 nuevas, fila de sesión 863 en Sesiones. Detalle y texto anterior en `DECISIONES.md`.
+
+## Lo que se agregó desde esta carpeta (2026-10-25)
+
+- INSTR 06 v3.29 → v3.30: compuerta de Chrome en §1 (D-008). Copia de respaldo `1Y63bsi8qVkmD5HsbE8GC41mYYt2k7JdSWhNweNo-blU` («INSTR 06 ... (v3.29)») en la carpeta «Buscador de Productos Ganadores Perú». Espejo local actualizado. Detalle en `DECISIONES.md`.

@@ -43,6 +43,15 @@ Fuente de cada decisión: el dueño pidió el 2026-10-15 «aplica todo… resuel
 - **Numeración de INSTR 00 §2:** cosmético, exige editar la estructura del documento.
 - **Crear un repo propio:** la integración de GitHub de esta sesión no tiene permiso para crear repos (403) y solo ve `claudetarot`. La carpeta es autocontenida para moverla después.
 
+## D-008 — Compuerta de Chrome en §1 (2026-10-25)
+
+- **Problema:** una sesión en la nube recibió BUSCA AÉREO, leyó INSTR 06 completo, Config, Log BUSCA y Recetas antes de descubrir que Chrome no estaba disponible → ~70 % del plan diario gastado en cero trabajo (sesión `2026-10-15-r`, ver `docs/BUSCA-AEREO-2026-10-15.md`).
+- **Decisión:** agregar la compuerta al §1 de INSTR 06 (sección «Tokens»), antes del separador de §2. Las sesiones de BUSCA, BUSCA AÉREO, ALIBABA y EXPLORA deben verificar Chrome como PRIMERA acción, antes de leer cualquier rango o documento. Si Chrome no responde: leen solo `Config!B102`, escriben una línea en `Sesiones!H` y terminan.
+- **Texto anterior (§1, párrafo Tokens, al final):** terminaba en «Entrega en tablas cortas.» — sin párrafo de compuerta.
+- **Texto nuevo:** ídem + párrafo «Compuerta de Chrome (BUSCA, BUSCA AÉREO, ALIBABA y EXPLORA): antes de leer Config, este INSTR, Log BUSCA ni ninguna pestaña — como primera acción — ejecuta una operación mínima con browser-use o Claude in Chrome. Si no responde: lee solo Config!B102; escribe en Sesiones!H «Sin Chrome — [fecha] — [comando]»; y termina.»
+- **Dónde:** INSTR 06 §1 (v3.30), `docs/espejo/INSTR-06.md` actualizado.
+- **Riesgo:** mínimo. Una sesión con Chrome disponible nunca activa la compuerta. Solo evita gastos en sesiones nube que no pueden hacer nada.
+
 ## Versiones resultantes
 
-INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36 corregidas, fila 37 nueva · Mejoras: M-017, M-028, M-051, M-052, M-055 pasaron a Aplicada; M-056 y M-058 Aplicadas; M-057 Propuesta · Sesiones: fila 863 (`2026-10-15-q MEJORA`).
+INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> v3.29 -> **v3.30** · Recetas: C36 y D36 corregidas, fila 37 nueva · Mejoras: M-017, M-028, M-051, M-052, M-055 pasaron a Aplicada; M-056 y M-058 Aplicadas; M-057 Propuesta · Sesiones: fila 863 (`2026-10-15-q MEJORA`).

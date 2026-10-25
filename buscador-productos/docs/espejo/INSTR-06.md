@@ -1,6 +1,6 @@
 # **INSTR 06 — BUSCA, RANKEA, FILTRA y ALIBABA**
 
-Versión 3.29 · 2026-10-15 (v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
+Versión 3.30 · 2026-10-25 (v3.30: compuerta de Chrome en §1 — BUSCA, BUSCA AÉREO, ALIBABA y EXPLORA comprueban Chrome antes de leer nada; si falla, una línea a Sesiones!H y terminan. v3.29: FILTRA en modo tandas con subagentes; retomar parciales sin repetir rondas; scripts de ALIBABA en Recetas\!E30; reglas de O y de la foto U. Mejoras M-017, M-028, M-051, M-052, M-055, M-056)
 
 Cambios respecto de v3.16 (para auditoría): regla maestra "todo suma" (lo que se paga se guarda; solo se descarta lo que no sirve de ninguna forma); BUSCA AÉREO en todas las fuentes y categorías; Asia incluida con triangulación del veredicto; RANKEA sin tope de grupos por chat; créditos de Claude sin tope en ningún comando.
 
@@ -32,6 +32,8 @@ Cada comando va en un chat nuevo, salvo MEJORA al cierre de una sesión (INSTR 0
 **Reportes:** las pestañas Top (productos para testear, casi vírgenes en Perú) y Oportunidades (WINNER y RENTABLE que no están en Top: sin validar en Meta, o con competencia pero con demanda) se arman solas con fórmulas y se actualizan con cualquier comando. Nunca las escribas. Lo que las completa es lo que escribes en Productos: la foto (BD), el proveedor (AZ, BA, BB y BE) y el peso y tamaño (O), que llena ALIBABA (sección 5).
 
 **Tokens:** sin tope (regla de INSTR 00, sección 2). Resume lo que devuelven las herramientas en el chat. No abras ventanas de Chrome que no hagan falta. Entrega en tablas cortas.
+
+**Compuerta de Chrome (BUSCA, BUSCA AÉREO, ALIBABA y EXPLORA):** antes de leer Config, este INSTR, Log BUSCA ni ninguna pestaña — como primera acción — ejecuta una operación mínima con browser-use o Claude in Chrome. Si no responde (error, timeout, herramienta no disponible, chrome-not-running): lee solo Config!B102 (tu fila de sesión); escribe en Sesiones!H de esa fila «Sin Chrome — [fecha] — [comando]»; y termina. No leas nada más.
 
 -----
 
