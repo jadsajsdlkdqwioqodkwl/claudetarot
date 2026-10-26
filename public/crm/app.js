@@ -5675,7 +5675,7 @@ $("#rapida-insertar-yape").addEventListener("click", () => {
   $("#rapida-texto").focus();
 });
 $("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
-$("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida());
+$("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida({ horas: 20 }, true));
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-formato, #btn-formato, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
@@ -6878,16 +6878,21 @@ function renumerarPasosRapida() {
   $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 4 ? "none" : "";
 }
 
-function agregarPasoRapida(p = { horas: 20 }) {
+function agregarPasoRapida(p = { horas: 20 }, marcaEdicion = false) {
   const cont = $("#rapida-pasos");
   cont.insertAdjacentHTML("beforeend", pasoRapidaHtml(p, cont.children.length + 1));
   const el = cont.lastElementChild;
   agregarRapidasA(el.querySelector(".rp-texto"));
-  el.querySelector(".rp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosRapida(); });
-  el.querySelector(".rp-activo").addEventListener("change", (e) => el.classList.toggle("paso-apagado", !e.target.checked));
-  el.querySelector(".rp-subir").addEventListener("click", () => { el.previousElementSibling?.before(el); renumerarPasosRapida(); });
-  el.querySelector(".rp-bajar").addEventListener("click", () => { el.nextElementSibling?.after(el); renumerarPasosRapida(); });
+  el.querySelector(".rp-texto").addEventListener("input", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  el.querySelector(".rp-horas").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  el.querySelector(".rp-dias").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  if (marcaEdicion) estado.rapidaPasosEditados = true;
+  el.querySelector(".rp-quitar").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.remove(); renumerarPasosRapida(); });
+  el.querySelector(".rp-activo").addEventListener("change", (e) => { estado.rapidaPasosEditados = true; el.classList.toggle("paso-apagado", !e.target.checked); });
+  el.querySelector(".rp-subir").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.previousElementSibling?.before(el); renumerarPasosRapida(); });
+  el.querySelector(".rp-bajar").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.nextElementSibling?.after(el); renumerarPasosRapida(); });
   el.querySelector(".rp-tipo").addEventListener("change", (e) => {
+    estado.rapidaPasosEditados = true;
     const pl = e.target.value === "plantilla";
     el.querySelector(".rp-bloque-plantilla").hidden = !pl;
     el.querySelector(".rp-bloque-texto").hidden = pl;
@@ -6900,11 +6905,13 @@ function agregarPasoRapida(p = { horas: 20 }) {
   input.addEventListener("change", () => {
     const f = input.files[0];
     if (!f) return;
+    estado.rapidaPasosEditados = true;
     el._archivo = f;
     el.querySelector(".rp-nombre").textContent = f.name;
     el.querySelector(".rp-quitar-archivo").hidden = false;
   });
   el.querySelector(".rp-quitar-archivo").addEventListener("click", () => {
+    estado.rapidaPasosEditados = true;
     el._archivo = null;
     input.value = "";
     el.dataset.mediaKey = "";
@@ -6940,6 +6947,7 @@ async function leerPasosRapida() {
 
 /** La secuencia de seguimiento en el modal, y el interruptor global (solo admin). */
 function pintarSeguimientoRapida(q) {
+  estado.rapidaPasosEditados = false;
   $("#rapida-pasos").innerHTML = "";
   const pasos = q?.followup_pasos?.length ? q.followup_pasos
     : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
@@ -7032,14 +7040,16 @@ $("#rapida-crear").addEventListener("click", async () => {
         media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
       }
     }
-    const followup_pasos = await leerPasosRapida();
+    // Solo leer pasos del DOM si el usuario los editó (evita borrar pasos por bug de carga del modal).
+    const pasosDom = estado.rapidaPasosEditados ? await leerPasosRapida() : undefined;
     if (editandoId) {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
       });
     } else {
+      const followup_pasos = await leerPasosRapida();
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

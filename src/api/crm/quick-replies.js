@@ -246,7 +246,11 @@ async function patch({ request, env, agent }) {
     if (!tieneMedia) return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
   }
 
-  const seguimiento = leerSeguimiento(payload);
+  // Si el payload no trae datos de seguimiento, conservar los que ya había.
+  const tieneSeguimiento = "followup_pasos" in (payload || {}) || "followup_body" in (payload || {});
+  const seguimiento = tieneSeguimiento
+    ? leerSeguimiento(payload)
+    : { pasos: existente.followup_pasos || null, body: existente.followup_body || null, hours: existente.followup_hours || null };
   // Texto nuevo = otro mensaje: se guarda el anterior y la cuenta de la original vuelve a 0.
   if ((existente.body || null) !== body) {
     await guardarAnterior(env.CRM_DB, "rapida", id, existente.body, agent?.displayName || agent?.username).run().catch(() => {});
