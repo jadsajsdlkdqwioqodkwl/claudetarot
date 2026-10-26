@@ -2750,6 +2750,18 @@ $("#escribiendo-vivo").addEventListener("change", async (e) => {
   }
 });
 
+$("#yape-numero").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ yape_numero: e.target.value.trim() })
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 $("#avisos-canal").addEventListener("change", async (e) => {
   const datos = await accionAvisos({ channel: e.target.value }, e.target);
   if (datos) pintarAvisos(datos);
@@ -5657,6 +5669,11 @@ function agregarRapidasA(el) {
 }
 
 agregarRapidasA($("#rapida-texto"));
+$("#rapida-insertar-yape").addEventListener("click", () => {
+  insertarEnCursor($("#rapida-texto"), "{yape}");
+  $("#rapida-texto").dispatchEvent(new Event("input", { bubbles: true }));
+  $("#rapida-texto").focus();
+});
 $("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
 $("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida());
 
@@ -8152,6 +8169,8 @@ async function pintarEquipo() {
       $("#sin-visto-fila").style.display = "flex";
       $("#escribiendo-vivo").checked = s.escribiendo_vivo;
       $("#escribiendo-vivo-fila").style.display = "flex";
+      $("#yape-numero").value = s.yape_numero || "";
+      $("#yape-numero-fila").style.display = "block";
     }).catch(() => {});
   }
   const { agents } = await pedir("/api/crm/agents");

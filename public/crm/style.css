@@ -796,6 +796,13 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #editor-media.recortando #em-restablecer,
 #editor-media.recortando #em-quitar { display: none; }
 
+/* Placeholders insertables en el editor de respuesta rápida */
+.rapida-placeholders { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.rapida-placeholders button { padding: 2px 8px; font: inherit; font-size: 12px; font-family: monospace; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-full); cursor: pointer; color: var(--texto); }
+.rapida-placeholders button:hover { background: var(--hover); }
+.rapida-placeholders .ayuda-inline { font-size: 12px; color: var(--subtexto); }
+.rapida-placeholders code { background: var(--fondo); padding: 0 3px; border-radius: 3px; font-size: 12px; }
+
 /* Secuencia de seguimiento de una respuesta rápida */
 .rp-titulo { font-weight: 600; font-size: 14px; margin-top: 6px; }
 #rapida-pasos { display: flex; flex-direction: column; gap: 8px; }

@@ -17,7 +17,8 @@
  *         mensajes se siguen viendo igual. Sin valor guardado: apagado.
  *       - escribiendo_vivo: «escribiendo…» en vivo mientras la vendedora teclea
  *         (POST /api/crm/escribiendo). Sin valor guardado: encendido.
- * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean, sin_visto?: boolean, escribiendo_vivo?: boolean } → solo admin
+ *       - yape_numero: número que reemplaza {yape} en respuestas rápidas al enviarse.
+ * PATCH /api/crm/settings — { ad_welcome_quick_reply_id?, ad_followup_sequence_id?: number|null, ad_followup_auto?: boolean, quick_followup_auto?: boolean, sin_visto?: boolean, escribiendo_vivo?: boolean, yape_numero?: string } → solo admin
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
@@ -30,13 +31,14 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, sinVisto, escribiendoVivo] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, sinVisto, escribiendoVivo, yapeNumero] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
     obtenerAjuste(env.CRM_DB, "quick_followup_auto"),
     obtenerAjuste(env.CRM_DB, "sin_visto"),
-    obtenerAjuste(env.CRM_DB, "escribiendo_vivo")
+    obtenerAjuste(env.CRM_DB, "escribiendo_vivo"),
+    obtenerAjuste(env.CRM_DB, "yape_numero")
   ]);
   return json({
     ad_welcome_quick_reply_id: adWelcomeQuickReplyId ? Number(adWelcomeQuickReplyId) : null,
@@ -44,7 +46,8 @@ async function get({ env }) {
     ad_followup_auto: adFollowupAuto !== "0",
     quick_followup_auto: quickFollowupAuto !== "0",
     sin_visto: sinVisto === "1",
-    escribiendo_vivo: escribiendoVivo !== "0"
+    escribiendo_vivo: escribiendoVivo !== "0",
+    yape_numero: yapeNumero || ""
   });
 }
 
@@ -75,6 +78,9 @@ async function patch({ request, env }) {
   }
   if ("escribiendo_vivo" in payload) {
     await guardarAjuste(env.CRM_DB, "escribiendo_vivo", payload.escribiendo_vivo ? "1" : "0");
+  }
+  if ("yape_numero" in payload) {
+    await guardarAjuste(env.CRM_DB, "yape_numero", String(payload.yape_numero || "").trim().slice(0, 20));
   }
   return json({ ok: true });
 }

@@ -172,6 +172,10 @@
     <h2 id="rapida-modal-titulo">Nueva respuesta rápida</h2>
     <input type="text" id="rapida-titulo" placeholder="Título (ej. Precio, Horario…)" />
     <textarea id="rapida-texto" placeholder="Texto del mensaje (opcional si adjuntas un archivo)"></textarea>
+    <div class="rapida-placeholders">
+      <button type="button" id="rapida-insertar-yape">{yape}</button>
+      <span class="ayuda-inline">Pon <code>{yape}</code> donde quieras que aparezca el número de Yape. Al mandarse, se reemplaza con el número guardado en Equipo.</span>
+    </div>
     <div class="rp-titulo">Botones de respuesta (opcional)</div>
     <div class="campos-botones" id="rapida-botones"><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 1" /><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 2" /><input type="text" class="rapida-boton" maxlength="20" placeholder="Botón 3" /></div>
     <div class="ayuda-modal">Hasta 3 botones debajo del texto (20 caracteres cada uno). Solo con texto, sin archivo ni catálogo, y dentro de las 24 h. Al tocar uno, el cliente responde con ese texto.</div>
@@ -462,6 +466,10 @@
       <input type="checkbox" id="escribiendo-vivo" />
       <span><strong>"Escribiendo…" en vivo.</strong> Mientras la vendedora teclea, el cliente ve "escribiendo…" (se quita al llegar el mensaje o a los 25 s si deja de escribir). Lo tecleado a mano sale sin la pausa extra, con 1 s entre mensajes; respuestas rápidas, texto pegado y automáticos siguen con su pausa. Marca como visto el último mensaje del cliente; con "no marcar como visto" no funciona.</span>
     </label>
+    <div id="yape-numero-fila" style="display:none">
+      <p class="ayuda-modal"><strong>Número de Yape.</strong> Pon <code>{yape}</code> en una respuesta rápida y al enviarse se reemplaza con este número. El cliente lo ve en el chat y puede copiarlo.</p>
+      <input type="text" id="yape-numero" placeholder="Número (ej. 987654321)" maxlength="20" />
+    </div>
     <input type="text" id="eq-nombre" placeholder="Nombre del vendedor" />
     <input type="text" id="eq-usuario" placeholder="Usuario (para entrar)" />
     <input type="password" id="eq-password" placeholder="Contraseña (mín. 8 caracteres)" />

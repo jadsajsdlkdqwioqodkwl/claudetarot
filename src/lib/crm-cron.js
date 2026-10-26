@@ -74,10 +74,12 @@ const POR_PASADA = 12;
  */
 const MARGEN_DIA7_MS = 45 * 60 * 1000;
 
-/** Rellena {nombre} y {link} de los mensajes automáticos que los llevan (Link de envío). */
+/** Rellena {nombre}, {link} y {yape} de los mensajes automáticos. */
 export function rellenar(texto, datos) {
-  if (!texto || !datos) return texto;
-  return String(texto)
+  if (!texto) return texto;
+  let s = String(texto).replace(/\{yape\}/gi, datos?.yape || "");
+  if (!datos) return s;
+  return s
     .replace(/\{link\}/gi, datos.link || "")
     .replace(/\{nombre\}/gi, datos.nombre || "estimad@");
 }

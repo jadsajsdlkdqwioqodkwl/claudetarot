@@ -19,7 +19,7 @@
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
-import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
+import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA, obtenerAjuste } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 
 const json = (data, status = 200) =>
@@ -145,8 +145,12 @@ async function post({ request, env, agent }) {
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
-    const texto = String(payload?.body || "").trim();
+    let texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
+    if (/\{yape\}/i.test(texto)) {
+      const yn = await obtenerAjuste(env.CRM_DB, "yape_numero");
+      texto = texto.replace(/\{yape\}/gi, yn || "");
+    }
     const botones = limpiarBotones(payload?.botones);
     if (botones.length && texto.length > 1024) return json({ error: "Con botones el mensaje puede tener hasta 1024 caracteres." }, 413);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
