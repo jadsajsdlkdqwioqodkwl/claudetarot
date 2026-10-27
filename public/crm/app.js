@@ -5351,6 +5351,7 @@ async function enviarMensaje(e) {
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
   input.value = "";
+  input.placeholder = window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…";
   input.style.height = "auto";
   estado.archivoAdjunto = null; // sin revocar la vista previa: la usa la burbuja "enviando"
   estado.rapidaPendiente = null;
@@ -6696,7 +6697,12 @@ function usarQuickReply(q, indice = null) {
   const version = versiones ? versiones[i] : { id: 0, texto: q.body || "" };
   estado.rapidaVariante = { id: version.id, texto: version.texto, aMano: Boolean(aMano), indice: i, q };
   estado.rapidaPlantillaPrincipal = q.plantilla_principal || null;
-  if (!q.plantilla_principal) ponerTextoRapida(version.texto);
+  if (!q.plantilla_principal) {
+    ponerTextoRapida(version.texto);
+  } else {
+    const _inp = $("#texto-envio");
+    if (_inp) { _inp.placeholder = "Plantilla lista → pulsa Enviar para mandarla"; _inp.focus(); }
+  }
 
   // "Con catálogo": sale el catálogo o el producto en vez de sus fotos/videos.
   estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null, despues: Boolean(q.catalogo_despues) }

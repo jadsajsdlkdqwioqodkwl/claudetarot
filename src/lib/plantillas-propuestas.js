@@ -87,8 +87,8 @@ export function propuestasDe(marca, cambios = {}) {
     if (c.marca !== marca) continue;
     lista.push({
       nombre: c.nombre, propia: true, grupo: "Plantillas propias", titulo: c.titulo, cuando: "a mano, desde el botón de plantillas del chat",
-      categoria: c.categoria, texto: c.texto, botones: c.botones,
-      componentes: [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)]
+      categoria: c.categoria, texto: c.texto, botones: c.botones, copyCode: c.copyCode || false,
+      componentes: [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(c.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))]
     });
   }
   // Nombre que el admin les puso (solo en el CRM: el nombre en Meta no se puede cambiar).
