@@ -155,7 +155,8 @@ async function post({ request, env, agent }) {
         const botonesParams = [];
         if (aprobada.conCopyCode) {
           const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
-          if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
+          if (!yapeNum) return json({ error: 'Falta el número Yape. Ponlo en CRM → Equipo → Ajustes → "Número Yape".' }, 400);
+          botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
         }
         await pausaEnvio(env, conversationId, PAUSA_RAPIDA_MS);
         const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, qr.plantilla_principal, aprobada.idioma || "es", undefined, botonesParams.length ? botonesParams : undefined));
