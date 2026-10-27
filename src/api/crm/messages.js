@@ -16,11 +16,12 @@
  *              (POST /api/crm/escribiendo): sale sin repetir la pausa (ver crm-send.js)
  */
 
-import { limpiarBotones } from "../../lib/whatsapp.js";
+import { limpiarBotones, enviarTemplate } from "../../lib/whatsapp.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA, obtenerAjuste } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
+import { plantillaAprobada } from "../../lib/plantillas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -143,6 +144,25 @@ async function post({ request, env, agent }) {
       await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
       await programarRapida(waMessageId);
       return json({ ok: true, wa_message_id: waMessageId });
+    }
+
+    // Si la respuesta rápida tiene plantilla_principal, se manda como template (fuera de ventana).
+    if (quickReplyId) {
+      const qr = await env.CRM_DB.prepare("SELECT plantilla_principal FROM quick_replies WHERE id = ?").bind(quickReplyId).first().catch(() => null);
+      if (qr?.plantilla_principal) {
+        const aprobada = await plantillaAprobada(env, qr.plantilla_principal);
+        if (!aprobada) return json({ error: `La plantilla "${qr.plantilla_principal}" no está aprobada en Meta.` }, 400);
+        const botonesParams = [];
+        if (aprobada.conCopyCode) {
+          const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
+          if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
+        }
+        await pausaEnvio(env, conversationId, PAUSA_RAPIDA_MS);
+        const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, qr.plantilla_principal, aprobada.idioma || "es", undefined, botonesParams.length ? botonesParams : undefined));
+        await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+        await programarRapida(waMessageId);
+        return json({ ok: true, wa_message_id: waMessageId });
+      }
     }
 
     let texto = String(payload?.body || "").trim();

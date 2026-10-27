@@ -119,9 +119,9 @@ function posicionFijada(titulo) {
 
 async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
-  // Sin las migraciones 0055 (catalogo_despues) y 0062 (usos) aplicadas todavía, se lee sin esas columnas.
+  // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -169,19 +169,20 @@ async function post({ request, env }) {
   const mediaKeys = Array.isArray(payload?.media_keys) ? payload.media_keys.slice(0, 10) : [];
 
   const { catalogo, catalogoNombre } = leerCatalogo(payload);
+  const plantillaPrincipal = /^[a-z0-9_]{1,100}$/.test(String(payload?.plantilla_principal || "")) ? String(payload.plantilla_principal) : null;
 
   if (!title) return json({ error: "Falta un título." }, 400);
-  if (!body && !mediaKeys.length && !catalogo) return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
+  if (!body && !mediaKeys.length && !catalogo && !plantillaPrincipal) return json({ error: "Necesita texto, al menos un archivo, el catálogo o una plantilla principal." }, 400);
 
   const seguimiento = leerSeguimiento(payload);
   const { grupo, orden } = leerGrupo(payload);
   const productoId = Number(payload?.producto_id) || null;
   const botones = limpiarBotones(payload?.botones);
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies))) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order, plantilla_principal)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)), ?) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal)
     .first();
   await guardarCatalogoDespues(env, creada.id, payload);
 
@@ -224,7 +225,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos, plantilla_principal FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -237,13 +238,16 @@ async function patch({ request, env, agent }) {
     ? leerCatalogo(payload)
     : { catalogo: existente.catalogo || null, catalogoNombre: existente.catalogo_nombre || null };
 
+  const plantillaPrincipalPatch = "plantilla_principal" in (payload || {})
+    ? (/^[a-z0-9_]{1,100}$/.test(String(payload.plantilla_principal || "")) ? String(payload.plantilla_principal) : null)
+    : existente.plantilla_principal || null;
   if (!title) return json({ error: "Falta un título." }, 400);
-  if (!body && !catalogo && mediaKeys !== null && !mediaKeys.length) {
-    return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
+  if (!body && !catalogo && !plantillaPrincipalPatch && mediaKeys !== null && !mediaKeys.length) {
+    return json({ error: "Necesita texto, al menos un archivo, el catálogo o una plantilla principal." }, 400);
   }
-  if (!body && !catalogo && mediaKeys === null) {
+  if (!body && !catalogo && !plantillaPrincipalPatch && mediaKeys === null) {
     const tieneMedia = await env.CRM_DB.prepare("SELECT 1 FROM quick_reply_media WHERE quick_reply_id = ? LIMIT 1").bind(id).first();
-    if (!tieneMedia) return json({ error: "Necesita texto, al menos un archivo o el catálogo." }, 400);
+    if (!tieneMedia) return json({ error: "Necesita texto, al menos un archivo, el catálogo o una plantilla principal." }, 400);
   }
 
   // Si el payload no trae datos de seguimiento, conservar los que ya había.
@@ -259,8 +263,8 @@ async function patch({ request, env, agent }) {
   const productoId = "producto_id" in (payload || {}) ? Number(payload.producto_id) || null : existente.producto_id || null;
   // Sin el campo `botones` se dejan como estaban.
   const botones = "botones" in (payload || {}) ? limpiarBotones(payload.botones) : botonesDe(existente.botones);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order) WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, id)
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order), plantilla_principal = ? WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, plantillaPrincipalPatch, id)
     .run();
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
@@ -286,7 +290,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, botones, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, botones, plantilla_principal: plantillaPrincipalPatch, media: media.results } });
 }
 
 async function del({ request, env }) {

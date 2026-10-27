@@ -54,6 +54,7 @@ const estado = {
   // La respuesta rápida cargada en el escribidor: al mandarla, el servidor
   // programa su seguimiento automático si tiene uno.
   rapidaUsadaId: null,
+  rapidaPlantillaPrincipal: null,
   // Prueba de mensajes: qué versión del texto de la respuesta rápida se puso
   // en el cuadro (0 = la original) y ese texto, para saber si la editaron.
   rapidaVariante: null, // { id, texto }
@@ -5324,7 +5325,7 @@ async function enviarMensaje(e) {
   const texto = input.value.trim();
   const adjunto = estado.archivoAdjunto;
   const rapida = estado.rapidaPendiente;
-  if (!texto && !adjunto && !rapida) return;
+  if (!texto && !adjunto && !rapida && !estado.rapidaPlantillaPrincipal) return;
   const botones = estado.botonesMensaje.slice();
   if (botones.length && adjunto) return alert("Los botones no se pueden mandar junto con un archivo: quita el archivo o los botones.");
   if (botones.length && !texto && !rapida?.media.length && !rapida?.catalogo) return alert("Los botones van con un texto: escribe el mensaje.");
@@ -5335,6 +5336,8 @@ async function enviarMensaje(e) {
   const replyToId = respondiendoA?.id || undefined;
   const rapidaUsadaId = estado.rapidaUsadaId || undefined;
   estado.rapidaUsadaId = null;
+  const rapidaPlantillaPrincipal = estado.rapidaPlantillaPrincipal;
+  estado.rapidaPlantillaPrincipal = null;
   const enVivo = salioEnVivo(conversationId) && !adjunto && !rapida && !rapidaUsadaId;
   const variante = rapidaUsadaId && estado.rapidaVariante
     ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim(), a_mano: estado.rapidaVariante.aMano || undefined }
@@ -5427,6 +5430,12 @@ async function enviarMensaje(e) {
       if (fallidas.length) {
         alert(`Se mandaron ${rapida.media.length - fallidas.length} de ${rapida.media.length} — falló: ${fallidas[0].reason.message}`);
       }
+    } else if (rapidaPlantillaPrincipal && rapidaUsadaId) {
+      await pedir("/api/crm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId, quick_reply_id: rapidaUsadaId })
+      });
     } else {
       await pedir("/api/crm/messages", {
         method: "POST",
@@ -6499,7 +6508,7 @@ function pintarQuickPanel() {
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}</div>
+          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}${q.plantilla_principal ? ` <span class="badge-producto">${icon("bolt")} Plantilla</span>` : ""}</div>
           ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -6684,7 +6693,8 @@ function usarQuickReply(q, indice = null) {
   const i = aMano ? indice : versiones && !q.orden_fijo ? sortearVersion(q) : 0;
   const version = versiones ? versiones[i] : { id: 0, texto: q.body || "" };
   estado.rapidaVariante = { id: version.id, texto: version.texto, aMano: Boolean(aMano), indice: i, q };
-  ponerTextoRapida(version.texto);
+  estado.rapidaPlantillaPrincipal = q.plantilla_principal || null;
+  if (!q.plantilla_principal) ponerTextoRapida(version.texto);
 
   // "Con catálogo": sale el catálogo o el producto en vez de sus fotos/videos.
   estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null, despues: Boolean(q.catalogo_despues) }
@@ -6802,6 +6812,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(null);
   $("#rapida-catalogo-orden").value = "0";
+  llenarSelectPlantillaPrincipal();
   pintarSeguimientoRapida(null);
   // Nueva desde un chat de un producto: ya sale de ese producto.
   $("#rapida-producto").innerHTML = opcionesProducto(chatActivo()?.producto_id || "");
@@ -6855,6 +6866,16 @@ $("#rapida-producto").addEventListener("change", () => {
   }
   if (document.querySelector("#rapida-pasos .rp-plantilla")) llenarPlantillasDePasos();
 });
+
+async function llenarSelectPlantillaPrincipal(actual = "") {
+  const sel = $("#rapida-plantilla-principal");
+  if (!sel) return;
+  const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
+  let nombres = [];
+  try { nombres = (await pedir(`/api/crm/templates${lineaId ? `?linea_id=${lineaId}` : ""}`)).templates.filter((t) => t.status === "APPROVED").map((t) => t.name); } catch { /* sin Meta */ }
+  const lista = [...new Set([...(actual ? [actual] : []), ...nombres])];
+  sel.innerHTML = `<option value="">Sin plantilla (usa el texto de arriba)</option>` + lista.map((n) => `<option value="${escapar(n)}"${n === actual ? " selected" : ""}>${escapar(n)}</option>`).join("");
+}
 
 async function llenarPlantillasDePasos() {
   const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
@@ -6988,6 +7009,7 @@ function abrirModalRapidaEdicion(q) {
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
   $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
+  llenarSelectPlantillaPrincipal(q.plantilla_principal || "");
   pintarSeguimientoRapida(q);
   $("#rapida-producto").innerHTML = opcionesProducto(q.producto_id || "");
   $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
@@ -7024,9 +7046,10 @@ $("#rapida-crear").addEventListener("click", async () => {
   const cat = catalogoDeSelect($("#rapida-catalogo"));
   // Con catálogo no se suben fotos nuevas: las que tenía se conservan.
   const files = cat.catalogo ? [] : [...$("#rapida-archivo").files];
+  const plantillaPrincipal = ($("#rapida-plantilla-principal")?.value || "").trim() || null;
   const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
-  if (!body && !files.length && !cat.catalogo && !editandoId) return alert("Necesita texto, al menos un archivo o el catálogo.");
+  if (!body && !files.length && !cat.catalogo && !plantillaPrincipal && !editandoId) return alert("Necesita texto, al menos un archivo, el catálogo o una plantilla principal.");
 
   const btn = $("#rapida-crear");
   btn.disabled = true;
@@ -7046,14 +7069,14 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, ...cat })
       });
     } else {
       const followup_pasos = await leerPasosRapida();
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, ...cat })
       });
     }
     await cargarQuickReplies();
