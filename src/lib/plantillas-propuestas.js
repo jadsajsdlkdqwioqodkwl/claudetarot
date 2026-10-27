@@ -79,7 +79,7 @@ export function propuestasDe(marca, cambios = {}) {
       nombre: "yape_pago", grupo: "Pago Yape", titulo: "Número Yape con botón copiar",
       cuando: "en un paso de seguimiento de Provincia, cuando el cliente tiene que pagar por Yape",
       categoria: "MARKETING", texto: YAPE_TEXTO, botones: [], copyCode: true,
-      componentes: [cuerpo(YAPE_TEXTO, []), { type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "COPIAR YAPE", example: "927633099" }] }]
+      componentes: [cuerpo(YAPE_TEXTO, []), { type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }]
     });
   }
   // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
@@ -103,7 +103,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.editada = true;
     p.texto = c.texto;
     p.botones = c.botones;
-    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "COPIAR YAPE", example: "927633099" }] }] : botones(c.botones))];
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
   const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
