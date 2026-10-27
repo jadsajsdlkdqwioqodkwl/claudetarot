@@ -37,6 +37,8 @@ const estado = {
   filtroOcultos: false,
   filtroOlva: false,
   filtroAtencion: false,
+  filtroProvincia: false,
+  filtroCompraFecha: "",
   atencionTotal: 0,
   // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
   filtroProducto: "",
@@ -1749,6 +1751,8 @@ function sincronizar() {
   if (estado.filtroOcultos) params.set("ocultos", "1");
   if (estado.filtroOlva) params.set("olva", "1");
   if (estado.filtroAtencion) params.set("atencion", "1");
+  if (estado.filtroProvincia) params.set("provincia", "1");
+  if (estado.filtroCompraFecha) params.set("compra_fecha", estado.filtroCompraFecha);
   if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
   if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
@@ -1990,6 +1994,7 @@ function pintarLista() {
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${badgesProducto(c)}
         ${badgeEtapa(c)}
+        ${c.saldo && c.saldo !== "0" ? `<span class="badge-saldo" title="Saldo pendiente de provincia">${icon("bag")} Saldo S/${escapar(c.saldo)} <button type="button" class="btn-pago-saldo-lista" title="Marcar que ya pagó el saldo y quitar seguimiento de recojo">${icon("check")}</button></span>` : ""}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
@@ -2015,6 +2020,17 @@ function pintarLista() {
       e.stopPropagation();
       marcarAtendido(c);
     }));
+    div.querySelector(".btn-pago-saldo-lista")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`¿Confirmas que ${escapar(c.contact_name || c.profile_name || c.wa_id)} ya pagó el saldo? Se quitará el seguimiento de recojo.`)) return;
+      try {
+        await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+        await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, saldo: "0" }) });
+        for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.saldo = "0";
+        c.saldo = "0";
+        pintarLista();
+      } catch (err) { alert(err.message); }
+    });
     div.querySelector(".btn-conv-menu").addEventListener("click", (e) => {
       e.stopPropagation();
       const r = e.currentTarget.getBoundingClientRect();
@@ -2211,7 +2227,7 @@ $("#btn-filtro-atencion")?.addEventListener("click", () => {
 });
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroAtencion && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroAtencion && !estado.filtroProvincia && !estado.filtroCompraFecha && estado.filtroProducto === "" && estado.filtroLinea === "");
   $("#filtro-producto").value = estado.filtroProducto;
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
@@ -2220,6 +2236,9 @@ function pintarFiltros() {
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-olva").classList.toggle("activo", estado.filtroOlva);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
+  $("#btn-filtro-provincia").classList.toggle("activo", estado.filtroProvincia);
+  const fcEl = $("#filtro-compra-fecha");
+  if (fcEl) { fcEl.value = estado.filtroCompraFecha; fcEl.classList.toggle("activo", Boolean(estado.filtroCompraFecha)); }
   $("#filtro-agente").value = estado.filtroAgente;
   $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
   document.querySelectorAll("#filtros button[data-etiqueta]").forEach((b) => b.classList.toggle("activo", b.dataset.etiqueta === estado.filtroEtiqueta));
@@ -2240,6 +2259,8 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroOcultos = false;
     estado.filtroOlva = false;
     estado.filtroAtencion = false;
+    estado.filtroProvincia = false;
+    estado.filtroCompraFecha = "";
     estado.filtroProducto = "";
     estado.filtroLinea = "";
   }
@@ -2249,6 +2270,18 @@ $("#filtros").addEventListener("click", (e) => {
 
 $("#btn-filtro-olva").addEventListener("click", () => {
   estado.filtroOlva = !estado.filtroOlva;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#btn-filtro-provincia").addEventListener("click", () => {
+  estado.filtroProvincia = !estado.filtroProvincia;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#filtro-compra-fecha").addEventListener("change", (e) => {
+  estado.filtroCompraFecha = e.target.value || "";
   pintarFiltros();
   cargarConversaciones();
 });

@@ -102,6 +102,12 @@ async function handler({ request, env, agent }) {
   }
   if (url.searchParams.get("atencion") === "1") condiciones.push(ATENCION_COLA);
   if (url.searchParams.get("olva") === "1") condiciones.push("c.olva = 1"); // los chats marcados «Envío por Olva»
+  if (url.searchParams.get("provincia") === "1") condiciones.push("(c.olva = 1 OR (c.saldo IS NOT NULL AND c.saldo <> '') OR c.shalom_code IS NOT NULL)");
+  const compraFecha = url.searchParams.get("compra_fecha");
+  if (compraFecha && /^\d{4}-\d{2}-\d{2}$/.test(compraFecha)) {
+    condiciones.push("conv.id IN (SELECT e.conversation_id FROM capi_events e WHERE e.event_name = 'Purchase' AND date(e.created_at) = ?)");
+    params.push(compraFecha);
+  }
   const dias = Math.max(0, Math.min(Number(url.searchParams.get("dias")) || 0, 3650));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
   // Cuántos traer: 200 por defecto; "Cargar más" en el CRM sube de a 200 (hasta 2000).
