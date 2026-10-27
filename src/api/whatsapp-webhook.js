@@ -35,6 +35,7 @@ import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { programarSeguimientoDeInteresados } from "../lib/crm-interesados.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
+import { notificarTelegram } from "../lib/telegram.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
 import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
 
@@ -153,6 +154,7 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
     if (mandados) await programarSeguimientoDeInteresados(env, conversacion.id);
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
+    notificarTelegram(env, `⚠️ *Bienvenida automática fallida*\n\nChat: ${contacto.wa_id}\nError: ${String(err.message).replace(/[_*`[]/g, "")}`).catch(() => {});
   }
 }
 

@@ -1710,9 +1710,9 @@ function esSeguimientoManual(s) {
 function etiquetaTipoSeguimiento(s) {
   // El día 7 dice qué plantilla va a salir (la misma que se ve en Herramientas, salvo que Meta no la haya aprobado).
   if ((s.created_by || "").endsWith(ORIGEN_DIA7)) return `<span class="tipo-seg lead">Día 7 · ${escapar(s.template_name || s.body || "")}</span>`;
-  if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · por aprobar</span>`;
-  if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · aprobada</span>`;
-  if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
+  if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · ${escapar(s.template_name || "?")} · por aprobar</span>`;
+  if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · ${escapar(s.template_name)} · aprobada</span>`;
+  if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo${s.template_name ? ` · ${escapar(s.template_name)}` : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SUGERENCIA)) return `<span class="tipo-seg lead">Sugerencia aprobada · ${escapar(s.created_by.slice(PREFIJO_SUGERENCIA.length).replace(/^ · /, ""))}</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg lead">Tras no respuesta · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
@@ -4147,10 +4147,10 @@ async function reactivarSeguimientoRapida(chip) {
     reactivando = { chip, quickReplyId, pasos: d.pasos || [] };
     $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»`;
     $("#ra-pasos").innerHTML = reactivando.pasos.map((p, i) => `
-      <div class="ra-paso" data-i="${i}">
+      <div class="ra-paso" data-i="${i}"${p.plantilla ? ` data-plantilla="${escapar(p.plantilla)}"` : ""}>
         <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
         <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después del paso anterior</label>
-        ${p.plantilla ? "" : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
+        ${p.plantilla ? `<div class="ayuda-modal" style="font-size:11px;padding:4px 0">Plantilla aprobada · no editable aquí</div>` : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
         <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
       </div>`).join("") || `<p class="ayuda-modal">Esta respuesta rápida ya no tiene pasos de seguimiento prendidos.</p>`;
     $("#ra-programar").disabled = !reactivando.pasos.length;
@@ -4199,6 +4199,7 @@ $("#ra-programar").addEventListener("click", async () => {
   const pasos = [...document.querySelectorAll("#ra-pasos .ra-paso")].map((el) => ({
     horas: Number(el.querySelector(".ra-horas").value) || undefined,
     body: el.querySelector(".ra-texto")?.value,
+    plantilla: el.dataset.plantilla || undefined,
     activo: el.querySelector(".ra-activo").checked
   }));
   if (!pasos.some((p) => p.activo)) { alert("Deja al menos un paso para mandar."); return; }
