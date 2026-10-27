@@ -19,7 +19,8 @@
 import { limpiarBotones, enviarTemplate } from "../../lib/whatsapp.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido, mandarConEscribiendo } from "../../lib/crm-send.js";
-import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA, obtenerAjuste } from "../../lib/crm-db.js";
+import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA, obtenerAjuste, registrarMensajeSaliente } from "../../lib/crm-db.js";
+import { textoParaChat } from "../../lib/plantillas-propuestas.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 import { plantillaAprobada } from "../../lib/plantillas.js";
 
@@ -160,6 +161,7 @@ async function post({ request, env, agent }) {
         }
         await pausaEnvio(env, conversationId, PAUSA_RAPIDA_MS);
         const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, qr.plantilla_principal, aprobada.idioma || "es", undefined, botonesParams.length ? botonesParams : undefined));
+        await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "template", body: await textoParaChat(env, qr.plantilla_principal, []).catch(() => `Plantilla: ${qr.plantilla_principal}`), sentBy });
         await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
         await programarRapida(waMessageId);
         return json({ ok: true, wa_message_id: waMessageId });
