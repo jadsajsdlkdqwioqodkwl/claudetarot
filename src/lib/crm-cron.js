@@ -213,7 +213,12 @@ export async function procesarSeguimientosVencidos(env) {
           while (parametros.length < aprobada.variables) parametros.push(porDefecto[parametros.length] || "");
         }
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
-        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros));
+        const botonesParams = [];
+        if (aprobada.conCopyCode) {
+          const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
+          if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
+        }
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros, botonesParams.length ? botonesParams : undefined));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",

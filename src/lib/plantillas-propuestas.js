@@ -72,6 +72,16 @@ export function propuestasDe(marca, cambios = {}) {
       });
     }
   }
+  // Plantilla con botón COPY_CODE para copiar el número de Yape con un toque (solo Tarot Store).
+  if (marca === "tarot") {
+    const YAPE_TEXTO = "Hola, aquí te mandamos nuestro número de Yape para que puedas pagar tu pedido. Toca el botón para copiarlo.";
+    lista.push({
+      nombre: "yape_pago", grupo: "Pago Yape", titulo: "Número Yape con botón copiar",
+      cuando: "en un paso de seguimiento de Provincia, cuando el cliente tiene que pagar por Yape",
+      categoria: "MARKETING", texto: YAPE_TEXTO, botones: [], copyCode: true,
+      componentes: [cuerpo(YAPE_TEXTO, []), { type: "BUTTONS", buttons: [{ type: "COPY_CODE", example: "987654321" }] }]
+    });
+  }
   // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
   for (const c of cambios.propias || []) {
     if (c.marca !== marca) continue;
@@ -93,10 +103,10 @@ export function propuestasDe(marca, cambios = {}) {
     p.editada = true;
     p.texto = c.texto;
     p.botones = c.botones;
-    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)];
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", example: "987654321" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Plantillas propias"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 
@@ -328,7 +338,8 @@ export async function vigilarPlantillas(env) {
       const cuerpoTxt = (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
       const cache = envM.LINEA_ID ? `plantilla_estado:${envM.WHATSAPP_BUSINESS_ACCOUNT_ID}:${p.nombre}` : `plantilla_estado:${p.nombre}`;
       const variables = Math.max(0, ...(cuerpoTxt.match(/\{\{(\d+)\}\}/g) || []).map((v) => Number(v.slice(2, -2))));
-      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}|${variables}`).catch(() => {});
+      const conCopyCodeV = (t.components || []).some((c) => String(c.type).toUpperCase() === "BUTTONS" && (c.buttons || []).some((b) => String(b.type).toUpperCase() === "COPY_CODE"));
+      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}|${variables}|${conCopyCodeV ? 1 : 0}`).catch(() => {});
       if (antes && antes[clave] !== t.status && ["APPROVED", "REJECTED", "PAUSED", "DISABLED"].includes(t.status)) {
         const icono = t.status === "APPROVED" ? "✅ aprobó" : "❌ " + (t.status === "REJECTED" ? "rechazó" : "dejó " + t.status.toLowerCase());
         avisos.push(`${icono}: ${nombre} · ${p.titulo} (\`${p.nombre}\`)${t.rejected_reason && t.rejected_reason !== "NONE" ? ` — motivo: \`${t.rejected_reason}\`` : ""}`);
