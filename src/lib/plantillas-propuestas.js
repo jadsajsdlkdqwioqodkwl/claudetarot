@@ -103,6 +103,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.editada = true;
     p.texto = c.texto;
     p.botones = c.botones;
+    if (c.copyCode !== undefined) p.copyCode = c.copyCode;
     p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
@@ -158,7 +159,7 @@ export async function guardarAlias(env, marca, nombre, titulo) {
 }
 
 /** Agrega una plantilla nueva (queda "Sin enviar" hasta que el admin la mande a Meta). El nombre en Meta se arma solo. */
-export async function crearPropia(env, marca, { titulo, texto, botones: btns, categoria }) {
+export async function crearPropia(env, marca, { titulo, texto, botones: btns, categoria, copyCode }) {
   if (!MARCAS[marca]) throw new Error("Marca inválida.");
   titulo = String(titulo || "").trim().slice(0, 80);
   if (!titulo) throw new Error("Ponle un nombre a la plantilla.");
@@ -166,7 +167,7 @@ export async function crearPropia(env, marca, { titulo, texto, botones: btns, ca
   const cambios = await leerCambios(env.CRM_DB);
   const base = titulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "plantilla";
   const nombre = `${marca === "uro" ? "uro_" : ""}propia_${base}_${Date.now().toString(36).slice(-4)}`;
-  cambios.propias = [...(cambios.propias || []), { marca, nombre, titulo, texto: v.texto, botones: v.btns, categoria }];
+  cambios.propias = [...(cambios.propias || []), { marca, nombre, titulo, texto: v.texto, botones: v.btns, categoria, ...(copyCode ? { copyCode: true } : {}) }];
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
   return nombre;
 }
@@ -182,7 +183,7 @@ export async function borrarPropia(env, marca, nombre) {
 
 export { toquesActivos, guardarToqueActivo };
 
-export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer }) {
+export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer, copyCode }) {
   const cambios = await leerCambios(env.CRM_DB);
   const original = propuestasDe(marca).find((p) => p.nombre === nombre);
   const propia = (cambios.propias || []).find((c) => c.marca === marca && c.nombre === nombre);
@@ -190,14 +191,14 @@ export async function guardarCambio(env, marca, nombre, { texto, botones: btns, 
   if (propia) {
     if (restablecer) throw new Error("Una plantilla propia no tiene texto original: bórrala si no la quieres.");
     const v = validarPlantilla(texto, btns, categoria);
-    Object.assign(propia, { texto: v.texto, botones: v.btns, categoria });
+    Object.assign(propia, { texto: v.texto, botones: v.btns, categoria, ...(copyCode !== undefined ? { copyCode: !!copyCode } : {}) });
   } else {
     const clave = `${marca}:${nombre}`;
     if (restablecer) {
       delete cambios[clave];
     } else {
       const v = validarPlantilla(texto, btns, categoria, original.texto);
-      cambios[clave] = { texto: v.texto, botones: v.btns, categoria };
+      cambios[clave] = { texto: v.texto, botones: v.btns, categoria, ...(copyCode !== undefined ? { copyCode: !!copyCode } : {}) };
     }
   }
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));

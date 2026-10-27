@@ -682,7 +682,7 @@ async function abrirPlantillasMeta() {
                 ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
                 ${p.textoMeta && p.textoMeta.trim() !== p.texto.trim() ? `<div style="font-size:12px;margin:4px 0;padding:6px 8px;border-radius:8px;color:#8a6500;background:#fff8e1"><b>Meta todavía tiene otro texto</b> (el que ves arriba es el tuyo, aún sin aprobar). Lo que Meta tiene hoy:<br><i>${escapar(p.textoMeta)}</i><br>Usa «Reenviar a revisión» para cambiarlo.</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                  ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
+                  ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" data-copy-code="${p.copyCode ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
                   <button type="button" class="cancelar renombrar-plantilla" data-nombre="${escapar(p.nombre)}" data-titulo="${escapar(p.titulo)}" style="font-size:12px" title="Cambia el nombre que ves en el CRM (el nombre en Meta no se puede cambiar)">${icon("pencil")} Cambiar nombre</button>
                   ${p.propia && p.estado === "SIN_ENVIAR" ? `<button type="button" class="cancelar quitar-propia" data-nombre="${escapar(p.nombre)}" style="font-size:12px">${icon("trash")} Quitar</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
@@ -725,12 +725,13 @@ async function abrirPlantillasMeta() {
         <select class="np-categoria" style="width:100%"><option value="MARKETING">Marketing: ofrece, recuerda o intenta vender</option><option value="UTILITY">Utilidad: avisa algo de un pedido que ya hizo</option></select>
         <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, uno por línea, hasta 25 caracteres, sin emojis)</label>
         <textarea class="np-botones" rows="3" style="width:100%"></textarea>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gris);margin-top:8px;cursor:pointer"><input type="checkbox" class="np-copy-code"> Botón "Copiar código de oferta" (número Yape)</label>
         <div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="cancelar np-cancelar" style="font-size:12px">Cancelar</button><button type="button" class="crear np-guardar" style="font-size:12px">Guardar (queda sin enviar a Meta)</button></div>
       </div>`;
       caja.querySelector(".np-cancelar").addEventListener("click", () => { caja.innerHTML = ""; });
       caja.querySelector(".np-guardar").addEventListener("click", async () => {
         try {
-          await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, crear: { titulo: caja.querySelector(".np-titulo").value, texto: caja.querySelector(".np-texto").value, categoria: caja.querySelector(".np-categoria").value, botones: caja.querySelector(".np-botones").value.split("\n").map((x) => x.trim()).filter(Boolean) } }) });
+          await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, crear: { titulo: caja.querySelector(".np-titulo").value, texto: caja.querySelector(".np-texto").value, categoria: caja.querySelector(".np-categoria").value, botones: caja.querySelector(".np-botones").value.split("\n").map((x) => x.trim()).filter(Boolean), copyCode: caja.querySelector(".np-copy-code")?.checked || false } }) });
           abrirPlantillasMeta();
         } catch (err) { alert(err.message); }
       });
@@ -762,6 +763,7 @@ async function abrirPlantillasMeta() {
         <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, hasta 25 caracteres, sin emojis)</label>
         <div class="pl-botones"></div>
         <button type="button" class="cancelar pl-agregar-boton" style="font-size:12px;margin-top:4px">${icon("plus")} Agregar botón</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gris);margin-top:8px;cursor:pointer"><input type="checkbox" class="pl-copy-code"${b.dataset.copyCode === "1" ? " checked" : ""}> Botón "Copiar código de oferta" (número Yape)</label>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button type="button" class="cancelar pl-cancelar" style="font-size:12px">Cancelar</button>
           ${b.dataset.editada === "1" ? `<button type="button" class="cancelar pl-restablecer" style="font-size:12px">Volver al texto original</button>` : ""}
@@ -793,7 +795,7 @@ async function abrirPlantillasMeta() {
       };
       card.querySelector(".pl-cancelar").addEventListener("click", abrirPlantillasMeta);
       card.querySelector(".pl-restablecer")?.addEventListener("click", () => guardar({ restablecer: true }));
-      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, categoria: card.querySelector(".pl-categoria").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value) }));
+      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, categoria: card.querySelector(".pl-categoria").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value), copyCode: card.querySelector(".pl-copy-code")?.checked || false }));
     }));
     cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
       const nombres = b.dataset.nombres.split(",");
