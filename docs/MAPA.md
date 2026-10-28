@@ -492,3 +492,41 @@ Flujo actualizado para cada cliente:
 ### Pendiente (actualizado)
 - ~~`PLANTILLA_ENVIO` params por ajustar~~ — resuelto: ahora usa `aviso_envio_shalom` directamente.
 - Migración 0064 aplicada a mano en D1 (sigue pendiente).
+
+---
+
+## Entorno Claude Code (cloud) — acceso Cloudflare ya configurado
+
+El token `CLOUDFLARE_API_TOKEN` está inyectado en el entorno del contenedor de Claude Code.
+En esta sesión no hay que pedir permiso para deploys (`npx wrangler deploy`), consultas D1
+(`npx wrangler d1 execute …`), R2, etc. Cualquier cambio en producción se hace directamente
+sin confirmación extra — el dueño ya dio esta autorización para este entorno.
+Si en una sesión futura el token no está, revisar los secretos del entorno en claude.ai/code.
+
+---
+
+## 2026-10-28 (noche) — saldo automático desde capturas Yape en la Routine de boletas
+
+### POST /api/asesor/ventas ahora acepta saldo en accion "boleta" y "estado"
+`src/api/asesor-ventas.js` — `actualizar` acepta campo `saldo` (opcional):
+- Actualiza columna "Saldo" en Sheets.
+- Si la fila tiene WhatsApp (formato 51XXXXXXXXX en columna "DNI / WSP"), actualiza
+  `contacts.saldo` en D1 también — en el mismo call, sin endpoint extra.
+- Formato del call: `POST /api/asesor/ventas { accion: "boleta", dni, imagen_base64, mime, saldo: "59" }`
+
+### Cálculo de saldo (Routine, visión)
+1. Extraer adelanto de la columna "Adelanto" en Sheets (ya estaba al crear la venta).
+2. Confirmar o corregir con la captura Yape del chat (GET /api/asesor/imagenes).
+3. Precio total = S/89 base × kits + extras (leer del chat o notas de la fila).
+4. Saldo = precio_total − adelanto.
+5. Mandar el saldo en el mismo call de `accion: "boleta"`.
+
+### Cuándo corre la Routine de boletas
+La Routine NO corre automáticamente. Flujo:
+1. Dueño manda fotos al número empresa → manda "ENVIAR".
+2. El Worker activa el lote y manda notificación a Telegram.
+3. El dueño abre una sesión de Claude Code y corre:
+   `ASESOR_CLAVE=... python3 scripts/asesor/boletas.py /tmp/ventas`
+4. Claude lee `boletas.md`, analiza las imágenes, despacha y actualiza staging + ventas.
+Si en el futuro se quiere una Routine programada (p. ej. dos veces al día), se puede
+crear un cron de Claude Code que corra `boletas.py` y procese si hay items listos.

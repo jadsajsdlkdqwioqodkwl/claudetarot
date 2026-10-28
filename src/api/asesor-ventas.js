@@ -149,6 +149,23 @@ async function actualizar(env, p, conImagen) {
   const extra = [p.orden && `Orden ${p.orden}`, p.cod_shalom && `Cód ${p.cod_shalom}`].filter(Boolean).join(" · ");
   if (extra && !celda.includes(extra)) celda = celda.includes("/") ? `${celda} · ${extra}` : `${celda.trim() || "-"} / ${extra}`;
   if (celda !== original) await updateValues(env, `${hoja}!${col("Clave Shalom / Notas")}${fila}`, [[celda]]);
+
+  // Saldo calculado por la Routine (opcional): actualiza la Sheets y D1 en un solo call.
+  if (p.saldo !== undefined) {
+    await updateValues(env, `${hoja}!${col("Saldo")}${fila}`, [[String(p.saldo)]]);
+    if (env.CRM_DB) {
+      const celda_wsp = String(valores[indiceVenta("DNI / WSP")] || "");
+      const waId = celda_wsp.match(/\b51\d{9}\b/)?.[0];
+      if (waId) {
+        const cont = await env.CRM_DB.prepare("SELECT id FROM contacts WHERE wa_id = ? LIMIT 1").bind(waId).first();
+        if (cont?.id) {
+          await env.CRM_DB.prepare("UPDATE contacts SET saldo = ?, updated_at = datetime('now') WHERE id = ?")
+            .bind(String(p.saldo), cont.id).run();
+        }
+      }
+    }
+  }
+
   olvidarCache();
   return json({ ok: true, codigo, link: `${SITIO}/${codigo}` });
 }

@@ -97,18 +97,31 @@ def main():
             alertas.append(f"Cliente {n} (staging_id={b['id']}): falta foto de la caja.")
         lineas.append(
             f"  → Leer BOLETA con Read, extraer: NOMBRE, DNI, COURIER (Shalom o Olva).\n"
-            f"    Buscar contacto en CRM por DNI. Ver si la ventana de 24 h está abierta:\n"
-            f"      - Abierta → mandar AMBAS fotos (boleta y caja) directamente como media.\n"
-            f"      - Cerrada → mandar plantilla aviso_envio_shalom ({{{{1}}}} = nombre);\n"
-            f"                  el cliente aprieta el botón → ventana abre → se mandan las fotos.\n"
-            f"    Después de enviar: activar plan de cobro según courier\n"
-            f"      (Shalom: activarCobroPorCodigo; Olva: aplicarOlva).\n"
-            f"    Marcar las dos boletas como 'enviado':\n"
-            f"      PATCH /api/asesor/boletas_staging {{id:{b['id']}, status:'enviado', courier, nombre_boleta, dni_boleta}}"
+            f"    1. Buscar en Sheets Ventas la fila con ese DNI (GET /api/asesor/ventas-lista o leerFilas).\n"
+            f"       La columna 'DNI / WSP' tiene el DNI y/o el número WhatsApp del cliente.\n"
+            f"    2. Leer el adelanto de la columna 'Adelanto' de esa fila.\n"
+            f"       Leer las imágenes del chat del cliente (api/asesor/imagenes) para confirmar\n"
+            f"       el monto Yape/Plin si difiere de la Sheets. Precio base: S/89 (1 kit);\n"
+            f"       ajustar si pidió 2+ kits o extras (revisar notas o mensajes del chat).\n"
+            f"       Saldo = precio_total - adelanto (ejemplo: S/89 - S/30 = S/59).\n"
+            f"    3. Ver si la ventana de 24 h está abierta (last_inbound_at < 24 h):\n"
+            f"       - Abierta → mandar AMBAS fotos directamente como media.\n"
+            f"       - Cerrada → mandar plantilla aviso_envio_shalom ({{{{1}}}} = nombre);\n"
+            f"                   cliente aprieta botón → ventana abre → se mandan las fotos.\n"
+            f"    4. Activar plan de cobro según courier:\n"
+            f"       Shalom → PATCH /api/crm/contacts {{ contact_id, shalom_code: <clave> }}\n"
+            f"       Olva   → PATCH /api/crm/contacts {{ contact_id, olva: true }}\n"
+            f"    5. Actualizar ventas y saldo en un solo call:\n"
+            f"       POST /api/asesor/ventas {{\n"
+            f"         accion: 'boleta', dni: '<DNI>', imagen_base64: '<base64>',\n"
+            f"         mime: 'image/jpeg', saldo: '<monto>'\n"
+            f"       }}\n"
+            f"    6. Marcar las dos boletas como 'enviado':\n"
+            f"       PATCH /api/asesor/boletas_staging {{id:{b['id']}, status:'enviado', courier, nombre_boleta, dni_boleta}}"
         )
         if c:
             lineas.append(
-                f"      PATCH /api/asesor/boletas_staging {{id:{c['id']}, status:'enviado'}}"
+                f"       PATCH /api/asesor/boletas_staging {{id:{c['id']}, status:'enviado'}}"
             )
 
     if err_items:
