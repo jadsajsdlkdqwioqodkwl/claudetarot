@@ -1174,3 +1174,9 @@ body.solo-lectura #form-envio { display: none; }
 /* Filtro por fecha de compra — date input inline con los chips (2026-10-27) */
 #filtro-compra-fecha { font-size: 12px; border: 1px solid var(--borde); border-radius: 14px; padding: 3px 8px; cursor: pointer; color: var(--gris); background: #fff; font-family: inherit; }
 #filtro-compra-fecha.activo { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+
+/* Badge Shalom (automático al tener clave de recojo) y toggle Olva en lista (2026-10-28) */
+.badge-provincia { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #e8f0fe; color: #1a56db; margin-top: 3px; margin-left: 4px; }
+.badge-provincia .icono-svg { width: 11px; height: 11px; }
+.badge-olva-lista { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #f0fdf4; color: #166534; border: none; cursor: pointer; margin-top: 3px; margin-left: 4px; font-family: inherit; }
+.badge-olva-lista .icono-svg { width: 11px; height: 11px; }

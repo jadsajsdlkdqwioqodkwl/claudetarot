@@ -1994,7 +1994,9 @@ function pintarLista() {
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${badgesProducto(c)}
         ${badgeEtapa(c)}
-        ${c.saldo && c.saldo !== "0" ? `<span class="badge-saldo" title="Saldo pendiente de provincia">${icon("bag")} Saldo S/${escapar(c.saldo)} <button type="button" class="btn-pago-saldo-lista" title="Marcar que ya pagó el saldo y quitar seguimiento de recojo">${icon("check")}</button></span>` : ""}
+        ${c.saldo && c.saldo !== "0" ? `<span class="badge-saldo" title="Saldo pendiente de provincia">${icon("bag")} Saldo S/${escapar(c.saldo)} <button type="button" class="btn-pago-saldo-lista" title="Marcar que ya pagó el saldo y quitar seguimiento de recojo">${icon("squareEmpty")}</button></span>` : ""}
+        ${c.shalom_code ? `<span class="badge-provincia">${icon("map")} Shalom · ${escapar(c.shalom_code)}</span>` : ""}
+        ${(c.shalom_code || c.olva) ? `<button type="button" class="badge-olva-lista btn-toggle-olva" title="${c.olva ? "Envío por Olva — clic para quitar" : "Clic para marcar como Olva"}">${icon(c.olva ? "checkBox" : "squareEmpty")} Olva</button>` : ""}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
         ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
@@ -2007,7 +2009,7 @@ function pintarLista() {
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -2028,6 +2030,16 @@ function pintarLista() {
         await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, saldo: "0" }) });
         for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.saldo = "0";
         c.saldo = "0";
+        pintarLista();
+      } catch (err) { alert(err.message); }
+    });
+    div.querySelector(".btn-toggle-olva")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const nuevoOlva = !c.olva;
+      try {
+        await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, olva: nuevoOlva }) });
+        for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.olva = nuevoOlva ? 1 : 0;
+        c.olva = nuevoOlva ? 1 : 0;
         pintarLista();
       } catch (err) { alert(err.message); }
     });
