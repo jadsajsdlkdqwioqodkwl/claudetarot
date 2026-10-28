@@ -126,6 +126,7 @@ import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -159,6 +160,7 @@ const ROUTES = {
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/rescates": { POST: asesorRescatesPost },
+  "/api/asesor/boletas_staging": { GET: asesorBoletasGet, PATCH: asesorBoletasPatch },
   "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
   "/api/asesor/reportes": { GET: asesorReportesGet },

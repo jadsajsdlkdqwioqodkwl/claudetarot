@@ -114,6 +114,9 @@
     // CRM de WhatsApp — el ID del número de teléfono de la Cloud API (texto,
     // no es secreto). Los secretos van por dashboard/CLI, ver README.
     "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928",
+    // Número personal del dueño (formato internacional sin +) desde el que manda
+    // fotos de boletas al número empresa. El webhook lo intercepta antes del CRM.
+    "NUMERO_DUENO": "51927633099",
     // Para listar y mandar Message Templates (mensajes fuera de la ventana
     // de 24h) desde /api/crm/templates.
     "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194",

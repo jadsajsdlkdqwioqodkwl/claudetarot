@@ -38,6 +38,7 @@ import { notificarMensajeNuevo } from "../lib/crm-push.js";
 import { notificarTelegram } from "../lib/telegram.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
 import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
+import { esDueno, stagingGuardar, stagingActivarLote } from "../lib/boletas-staging.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -208,6 +209,27 @@ async function reportarConversacionSiAplica(env, contacto, conversacion, referra
   }
 }
 
+/**
+ * Foto → guarda media_id en staging.
+ * "ENVIAR" → activa el lote y avisa por Telegram.
+ * Cualquier otro texto → ignora silenciosamente.
+ */
+async function manejarMensajeDueno(env, db, msg) {
+  const { type, body, mediaId, mediaMime } = tipoYCuerpo(msg);
+  if (type === "image" && mediaId) {
+    await stagingGuardar(db, msg.id, mediaId, mediaMime || "image/jpeg");
+    return;
+  }
+  if (type === "text" && body?.trim() === "ENVIAR") {
+    const { cantidad, loteId } = await stagingActivarLote(db);
+    if (cantidad === 0) {
+      await notificarTelegram(env, "Boletas staging: el dueño mandó ENVIAR pero no hay fotos pendientes.").catch(() => {});
+    } else {
+      await notificarTelegram(env, `Boletas staging: lote ${loteId} activado — ${cantidad} foto${cantidad !== 1 ? "s" : ""} listas para la Routine.`).catch(() => {});
+    }
+  }
+}
+
 async function procesarCambio(envBase, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
   // A qué número de WhatsApp escribió (Tarot Store = principal, o una línea
@@ -221,6 +243,12 @@ async function procesarCambio(envBase, db, value, origen) {
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
     const waId = msg.from;
+    // Fotos de boleta y comandos que manda el dueño desde su número personal
+    // al número empresa → staging; no se procesan como chat de cliente.
+    if (esDueno(env, waId)) {
+      await manejarMensajeDueno(env, db, msg);
+      continue;
+    }
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).

@@ -428,3 +428,33 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - **Badge automático «Shalom · {código}» (`public/crm/app.js`, `public/crm/style.css`):** cuando `c.shalom_code` tiene valor, la tarjeta de la lista muestra `.badge-provincia` con el ícono de mapa y el código de retiro (`Shalom · {código}`). Se genera automáticamente al rellenar el campo de clave de recojo. Azul claro (`#e8f0fe`/`#1a56db`).
 - **Badge/checkbox Olva interactivo en lista (`public/crm/app.js`, `public/crm/style.css`):** cuando `c.shalom_code` o `c.olva` tienen valor, la tarjeta muestra un botón `.badge-olva-lista.btn-toggle-olva` con `icon("checkBox")` (si `c.olva = 1`) o `icon("squareEmpty")` (si no). Al pulsarlo se llama `PATCH /api/crm/contacts { contact_id, olva: bool }` (mismo endpoint que el panel de detalle), se actualiza `estado.conversaciones` en memoria y se repinta la lista. El clic no abre la conversación (excluido en el guard del `.conv-info`). CSS nuevo: `.badge-provincia`, `.badge-provincia .icono-svg`, `.badge-olva-lista`, `.badge-olva-lista .icono-svg`.
 - Sin migraciones. Sin rutas nuevas. Sin cambios de horario.
+
+## 2026-10-28 (noche, corrección) — `terminarCobroSiLlevaCodigo` preserva planes de cobro de recojo
+- **Corrección de la entrada anterior («Clave de retiro cancela TODOS los seguimientos»):** el dueño aclaró (mensaje 4 de la sesión) que cuando el código de retiro sale en el chat, los seguimientos de VENTA se cancelan, pero los de COBRO (el cliente aún debe el saldo) deben seguir. El código de `terminarCobroSiLlevaCodigo` (`src/lib/crm-db.js`, línea 148) tiene actualmente `AND created_by NOT LIKE 'Plan con plantilla · Recojo%'`: preserva exactamente los planes de recojo/cobro (Shalom y Olva). La entrada anterior («Ahora cancela TODOS») describía un estado intermedio del diseño, no el código final.
+
+## 2026-10-28 (noche) — Staging de boletas: el dueño manda fotos al número empresa y dice «ENVIAR»
+El dueño manda las fotos de boleta de Shalom/Olva desde su número personal (`NUMERO_DUENO = 51927633099`) al número empresa de WhatsApp. El Worker las intercepta antes del CRM y las guarda en staging. Cuando manda «ENVIAR» en mayúsculas, se activa el lote y la Routine analiza y despacha.
+
+### Archivos nuevos
+- **`migrations/0064_boletas_staging.sql`** — tabla `boletas_staging` (id, wa_message_id UNIQUE, media_id, media_mime, lote_id, status, conversation_id, courier, nombre_boleta, dni_boleta, orden, error, created_at). **Se aplica a mano en D1.** Índices en `status` y `lote_id`.
+- **`src/lib/boletas-staging.js`** — módulo de staging. Funciones: `esDueno(env, waId)` (compara contra `NUMERO_DUENO`), `stagingGuardar(db, waMessageId, mediaId, mediaMime)`, `stagingActivarLote(db)` (marca `pendiente → listo`, asigna `lote_id = ISO timestamp sin segundos`), `stagingListarListos(db)`, `stagingActualizar(db, id, {...})`.
+- **`src/api/asesor-boletas.js`** — endpoint `GET /api/asesor/boletas_staging` (lista items con `status='listo'`) y `PATCH /api/asesor/boletas_staging` (actualiza status/conversation_id/courier/etc. después del despacho). Misma clave `x-asesor-clave`.
+- **`scripts/asesor/boletas.py`** — descarga las fotos del staging vía `GET /api/asesor/boletas_staging` + `GET /api/asesor/imagen?id={media_id}`, las guarda en `{carpeta}/boletas/<id>.<ext>` y genera `{carpeta}/boletas.md` con instrucciones de análisis para la Routine. `ASESOR_CLAVE=... python3 scripts/asesor/boletas.py /tmp/ventas`.
+
+### Archivos modificados
+- **`src/api/whatsapp-webhook.js`**: importa `esDueno, stagingGuardar, stagingActivarLote` desde `boletas-staging.js`. En el loop de mensajes, ANTES de `obtenerOCrearContacto`, si `esDueno(env, waId)` → llama `manejarMensajeDueno` y hace `continue` (no toca el CRM). `manejarMensajeDueno`: imagen → `stagingGuardar`; texto «ENVIAR» → `stagingActivarLote` + avisa por Telegram; cualquier otro texto → silencio.
+- **`src/index.js`**: importa `asesorBoletasGet, asesorBoletasPatch` de `asesor-boletas.js`; ruta `"/api/asesor/boletas_staging": { GET, PATCH }`.
+- **`wrangler.jsonc`**: nueva var en texto plano `NUMERO_DUENO = "51927633099"` (número personal del dueño, sin `+`). No es secreto.
+
+### Flujo completo del despacho (Routine)
+1. `python3 scripts/asesor/boletas.py /tmp/ventas` → descarga fotos y genera `boletas.md`.
+2. Leer `boletas.md` + cada imagen con `Read` → extraer nombre, DNI, courier (Shalom o Olva, del logo o del encabezado de la boleta).
+3. Buscar contacto por DNI en `/api/asesor/chats` o CRM.
+4. Si la ventana de 24 h está abierta: mandar foto directamente. Si no: usar plantilla `PLANTILLA_ENVIO` (el cliente aprieta botón → se le manda la boleta).
+5. Registrar boleta en Sheets con `POST /api/asesor/ventas { accion: "boleta", dni, imagen_base64, mime, courier }`.
+6. Activar plan de cobro según courier: Shalom → `activarCobroPorCodigo` (días 4/7/21); Olva → `aplicarOlva` (días 3/7/13). Solo si el cliente tiene saldo pendiente.
+7. `PATCH /api/asesor/boletas_staging { id, status: "enviado", conversation_id, courier, nombre_boleta, dni_boleta }`.
+
+### Pendiente
+- Migración 0064 aplicada a mano en D1 (el Worker falla si la tabla no existe en el momento en que llega la primera foto del dueño).
+- `PLANTILLA_ENVIO` tiene actualmente `{{1}} = nombre` y `{{2}} = link` (link deprecado). Cuando el dueño actualice la plantilla en Meta, hay que ajustar los params en `conPlantilla` (`src/api/crm/sugerencias.js`, línea 203).
