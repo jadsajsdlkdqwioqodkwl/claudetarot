@@ -144,7 +144,8 @@ async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
     .first();
   if (!contieneCodigo(texto, c?.shalom_code)) return;
   await db
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND batch_id IS NULL")
+    // Los planes de recojo (cobro Shalom/Olva) se conservan: el cliente todavía tiene que pagar el saldo.
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND batch_id IS NULL AND created_by NOT LIKE 'Plan con plantilla · Recojo%'")
     .bind(conversationId)
     .run();
 }
