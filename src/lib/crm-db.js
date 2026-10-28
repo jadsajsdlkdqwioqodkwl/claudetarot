@@ -135,7 +135,8 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
     .run();
 }
 
-/** Si el texto que salió lleva la clave de Shalom del cliente (su perfil), se cancela el cobro pendiente del chat. */
+/** Si el texto que salió lleva la clave de Shalom del cliente (su perfil), se cancelan TODOS los
+ * seguimientos no-batch y no-mandar_siempre del chat: si le damos su código es porque ya pagó. */
 async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
   const c = await db
     .prepare("SELECT c.shalom_code FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?")
@@ -143,8 +144,8 @@ async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
     .first();
   if (!contieneCodigo(texto, c?.shalom_code)) return;
   await db
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND instr(created_by, ?) = 1")
-    .bind(conversationId, ORIGEN_COBRO_SHALOM)
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND batch_id IS NULL")
+    .bind(conversationId)
     .run();
 }
 

@@ -5474,9 +5474,11 @@ async function enviarMensaje(e) {
         body: JSON.stringify({ conversation_id: conversationId, quick_reply_id: rapidaUsadaId })
       });
     } else {
+      // keepalive: true → el navegador termina el request aunque se cierre el tab.
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, escribiendo_vivo: enVivo || undefined, ...variante })
       });
     }
