@@ -458,3 +458,37 @@ El dueño manda las fotos de boleta de Shalom/Olva desde su número personal (`N
 ### Pendiente
 - Migración 0064 aplicada a mano en D1 (el Worker falla si la tabla no existe en el momento en que llega la primera foto del dueño).
 - `PLANTILLA_ENVIO` tiene actualmente `{{1}} = nombre` y `{{2}} = link` (link deprecado). Cuando el dueño actualice la plantilla en Meta, hay que ajustar los params en `conPlantilla` (`src/api/crm/sugerencias.js`, línea 203).
+
+---
+
+## 2026-10-28 (noche) — aviso_envio_shalom y grupos de 2 fotos por cliente
+
+### conPlantilla ya no usa PLANTILLA_ENVIO
+`src/api/crm/sugerencias.js` — `conPlantilla` ahora usa `"aviso_envio_shalom"` directamente
+(constante `PLANTILLA_AVISO_ENVIO`). La plantilla tiene un solo param: `{{1}} = nombre` (sin link).
+`PLANTILLA_ENVIO` queda vacía y deprecada en `wrangler.jsonc` (se conserva para no romper código
+que la lea; ya no la consume `conPlantilla`).
+
+### boletas.py: grupos de 2 fotos por cliente (boleta + caja)
+`scripts/asesor/boletas.py` actualizado. Las fotos llegan en pares consecutivos (orden de ID):
+- Foto impar (1, 3, 5…) = boleta/guía de remisión (orden 1).
+- Foto par (2, 4, 6…) = foto del paquete/caja (orden 2).
+
+Si el total es impar, la última foto queda sin par: `boletas.md` la señala con `⚠️ FALTA` y
+la lista en un bloque de alertas al inicio. La Routine notifica al dueño **en la sesión** (sin
+llamada a la API de WhatsApp) y espera; si el dueño no puede mandar la segunda foto, se procede
+con solo la boleta.
+
+Flujo actualizado para cada cliente:
+1. Leer boleta con Read → extraer NOMBRE, DNI, COURIER.
+2. Leer caja (si existe) → confirmar que el paquete es el correcto.
+3. Buscar contacto en CRM por DNI.
+4. Si ventana abierta → mandar boleta + caja directamente como media.
+5. Si ventana cerrada → mandar `aviso_envio_shalom` ({{1}} = nombre); cliente aprieta botón →
+   ventana abre → se mandan las fotos.
+6. Activar plan de cobro: Shalom → `activarCobroPorCodigo`; Olva → `aplicarOlva`.
+7. `PATCH /api/asesor/boletas_staging` × 2 (una por foto).
+
+### Pendiente (actualizado)
+- ~~`PLANTILLA_ENVIO` params por ajustar~~ — resuelto: ahora usa `aviso_envio_shalom` directamente.
+- Migración 0064 aplicada a mano en D1 (sigue pendiente).

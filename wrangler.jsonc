@@ -140,8 +140,9 @@
     // CARRITO_MENSAJE_LIMA / CARRITO_MENSAJE_PROVINCIA (opcionales) cambian
     // el texto; {nombre} = su primer nombre.
     "CARRITO_AUTO_HORAS": "",
-    // Plantilla utility aprobada en Meta para mandar el link de seguimiento
-    // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
+    // Plantilla utility que se usaba para el link de seguimiento ({{1}}=nombre, {{2}}=link).
+    // Deprecada 2026-10-28: conPlantilla ahora usa aviso_envio_shalom directamente (solo {{1}}=nombre).
+    // Se deja vacía para no romper código que pueda leerla, pero ya no la consume conPlantilla.
     "PLANTILLA_ENVIO": "",
     // Plantilla "recibimos su pedido" + botón CONFIRMA TU PEDIDO (la armó el
     // dueño en WhatsApp Manager, Spanish PER) que le sale al cliente de la web a
