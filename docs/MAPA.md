@@ -652,3 +652,21 @@ Tres lugares corregidos:
 ### boletas.py: instrucción corregida
 El paso 1 (antes: "GET /api/asesor/ventas-lista o leerFilas") ahora documenta el endpoint real
 con su formato exacto y la nota de que `wa_id` ya viene normalizado.
+
+## 2026-10-29 — CRM: badges de motivo en compras, Jennifer admin
+
+### Jennifer (agent) → admin
+Ejecutado: `UPDATE agents SET role='admin' WHERE username='jennifer'` en D1 remoto.
+
+### Badges de motivo en la lista de conversaciones (app.js líneas ~2002-2003)
+Para conversaciones que tienen la etiqueta `purchase` (compra registrada):
+- `falta_respuesta=1`: badge muestra **"falta agendar seguimiento"** (antes: "Falta respuesta")
+  y el botón de acción dice **"agendé seguimiento"** (antes: "Atendido").
+- `con_recomendacion=1`: badge mantiene "Recomendación", el botón dice **"agendé seguimiento"**.
+Para conversaciones sin `purchase`, los badges no cambian.
+Ambos botones siguen llamando a `marcarAtendido()` → `POST /api/crm/chat-estado {accion:"atendido"}`.
+
+### Respuestas rápidas — ya accesibles a todos los roles
+Confirmado: `onRequestPost = conAuth(post)` en `src/api/crm/quick-replies.js` (no `conAuthAdmin`).
+El botón "Nueva respuesta rápida" en el panel de rápidas tampoco tiene check de admin.
+No se requirió ningún cambio.
