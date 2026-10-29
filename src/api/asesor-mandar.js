@@ -15,6 +15,7 @@
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
+import { agregarEtiquetaMeta } from "../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -61,6 +62,7 @@ export async function onRequestPost({ request, env }) {
       if (!p.texto) return json({ error: "Falta texto." }, 400);
       await pausaEnvio(env, conv.convId);
       const waMessageId = await mandarTexto(env, conv.convId, conv.waId, String(p.texto), "asesor-boletas");
+      await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta").catch(() => {});
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
@@ -72,10 +74,18 @@ export async function onRequestPost({ request, env }) {
       ).bind(stagingId).first();
       if (!item?.media_id) return json({ error: "No encontré esa foto en staging." }, 404);
       const waMessageId = await mandarMediaPorId(env, conv.convId, conv.waId, item.media_id, item.media_mime, "asesor-boletas");
+      await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta").catch(() => {});
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
-    return json({ error: "tipo inválido (texto | foto-staging)." }, 400);
+    if (p.tipo === "etiqueta") {
+      const etiqueta = String(p.etiqueta || "").trim();
+      if (!etiqueta) return json({ error: "Falta etiqueta." }, 400);
+      await agregarEtiquetaMeta(env.CRM_DB, conv.convId, etiqueta);
+      return json({ ok: true });
+    }
+
+    return json({ error: "tipo inválido (texto | foto-staging | etiqueta)." }, 400);
   } catch (err) {
     console.error("asesor-mandar:", err.message);
     return json({ error: err.message }, 502);
