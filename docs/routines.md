@@ -351,3 +351,16 @@ Cambios frente a versión 4:
 - La Routine usa `wa_id` obtenido de Sheets en el Paso 2e (triangulación).
 
 Prompt completo: guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines. Ver MAPA.md sección "2026-10-29 (noche 3)" para el resumen de cambios.
+
+## 2026-10-29 (noche 4) · Routine boletas — versión 6 (2026-10-29 ~22:37 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 5:
+- Quitada la advertencia "NUNCA conversation_id" (era incorrecta: la Routine ya usaba wa_id bien;
+  el error de María Córdova fue un envío manual en esta sesión, no un bug de la Routine).
+- **Paso 5b (NUEVO)**: saldo = 0 → `POST tipo: "etiqueta", etiqueta: "saldo_pagado"` (mutuamente
+  excluyente con cobro_3x). El dueño ve el filtro "Ya pagó saldo" en el CRM.
+- **Paso 8 (NUEVO)**: al terminar, envía reporte al dueño por Telegram con ✅ despachados,
+  ⏳ pendiente_ventana, ❌ errores, 💡 sugerencias de mejora del lote.

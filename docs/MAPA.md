@@ -958,3 +958,31 @@ ya que Chrome bloquea el paste nativo de imágenes en textarea.
   de Sheets siempre da la conversación correcta).
 - El shalom_code NO se manda al cliente ni en el mensaje (corregido desde v4).
 - Ver docs/routines.md para el prompt completo.
+
+## 2026-10-29 (noche 4) — Tag saldo_pagado + auto-mejora en Routine boletas (v6)
+
+### Corrección de la entrada anterior (noche 3)
+La regla "NUNCA uses conversation_id" agregada en v5 implicaba incorrectamente que la Routine cometió
+el error de María Córdova. Aclaración del dueño: la Routine siempre usó `wa_id` correctamente y despachó
+a Haydee bien. El error fue un envío manual de esta sesión usando un `conversation_id` incorrecto.
+La v6 quita esa advertencia redundante del prompt.
+
+### Nueva etiqueta: saldo_pagado
+- Se aplica automáticamente por la Routine cuando saldo = 0 (cliente pagó completo).
+  `POST /api/asesor/mandar { tipo: "etiqueta", wa_id, etiqueta: "saldo_pagado" }`
+- Mutuamente excluyente con `cobro_3x`: saldo > 0 → cobro_3x; saldo = 0 → saldo_pagado.
+- Whitelist: `src/api/crm/conversations.js` — agregado `"saldo_pagado"`.
+- Botón de filtro CRM: `public/crm/index.html` — «Ya pagó saldo» (data-etiqueta="saldo_pagado").
+
+### Paso 8 — Auto-mejora (nuevo en v6)
+Al terminar cada lote, la Routine envía un resumen al dueño por Telegram con:
+- ✅ Clientes despachados (nombre, courier, saldo).
+- ⏳ Pendiente_ventana.
+- ❌ Errores con motivo.
+- 💡 Sugerencias de mejora del lote.
+Usa `$TELEGRAM_BOT_TOKEN` y `$TELEGRAM_CHAT_ID` del entorno.
+
+### Sesión separada para envío de boletas
+La Routine usa sesión PERSISTENTE (`persist_session: true`, `session_0173yPdM1ph4oTtfowxkUSmJ`).
+La idea de sesión separada/aislada se descartó: la sesión persistente es suficiente porque
+la Routine siempre parte de `boletas.md` (generado en Paso 1) y no acumula contexto entre lotes.
