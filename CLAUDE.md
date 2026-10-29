@@ -39,6 +39,12 @@
 3. **Nunca mandas mensajes a clientes.** Todo va a ✨ Sugerencias vía
    `scripts/asesor/enviar.py`; una persona lo aprueba. No llamas a ninguna
    API de IA.
+   **Excepción autorizada por el dueño (2026-10-29): despacho automático de
+   boletas de provincia.** La Routine «Despacho automático de boletas»
+   (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, cada hora a los :23 min Lima) usa
+   `POST /api/asesor/mandar` para enviar fotos de boleta + mensaje de tracking
+   directamente al cliente, sin pasar por ✨ Sugerencias. Igual que la regla 10
+   (rescate lead 1), este envío automático está aprobado por el dueño.
 4. `enviar.py` descarta lo que suena a bot y lo lista: reescríbelo y vuelve a
    mandarlo.
 5. Saldos: si un cliente de provincia mandó la captura del pago del saldo

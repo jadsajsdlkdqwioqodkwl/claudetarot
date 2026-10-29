@@ -49,6 +49,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Asesor — reporte de ventas | 21:00 | Ventas del día, mensajes de seguimiento | Telegram + Drive |
 | Asesor — reporte A PEDIDO | a mano | Igual que el de 10:30, cuando el dueño lo pide | Telegram |
 | Asesor — rescate de lead 1 | 9:47 | Decide a quién de los chats pasados (fuera de su ventana de 7 días) mandarle el rescate 1 (regla 10 de `CLAUDE.md`) | Sale solo por `POST /api/asesor/rescates` |
+| **Despacho automático de boletas** | cada hora a los :23 min Lima (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, creada 2026-10-29) | Revisa `boletas_staging` con `GET /api/asesor/boletas_staging`; si hay items listos: descarga fotos con `boletas.py`, lee cada boleta con visión, extrae nombre/DNI/courier/código, busca el cliente y el saldo, y envía fotos + mensaje de tracking directo al cliente vía `POST /api/asesor/mandar` (excepción autorizada por el dueño). Si la ventana está cerrada, manda plantilla `aviso_envio_shalom`. Luego activa plan de cobro, registra boleta en Sheets y marca staging `enviado`. Si no hay items → noop | Sale directo al cliente por `POST /api/asesor/mandar` (sin ✨ Sugerencias); excepciones de error a staging `error` |
 | **URO — lista de llamadas** | cada hora, 7:07–22:07 | Chats nuevos de URO (línea 1) con interés mínimo → resumen, speech de venta por teléfono y teléfono en la hoja de llamadas; solo lee lo nuevo (`scripts/uro/llamadas.py`, memoria en la pestaña Estado). Sin API de IA | Google Sheet «URO - Lista de llamadas». Conector: Google Sheets (agregarlo en claude.ai → Routines → Editar) |
 | Coaching y voz del cliente (semanal) | lunes 7:37 | Análisis por chat, coaching por vendedora, variantes | CRM → Reportes y ✨ Sugerencias |
 | **Asesor — reporte de ventas (22:00 · 23:00 · 00:00)** (desde 2026-10-15 solo **22:00 y 23:30**, dos Routines: `trig_01XkT6T8…` y `trig_011ZpgQq…`) | 22:00, 23:30 (antes 22:00, 23:00, 00:00) | Ventas del día (a las 00:00, del día que cerró), por vendedora, Lima/provincia, kits, adelantos y saldos; qué cambió desde la hora anterior. No propone mensajes | CRM → Reportes (`enviar.py --informe`). Agregada 2026-10-13 a pedido del dueño |
@@ -521,20 +522,50 @@ Si en una sesión futura el token no está, revisar los secretos del entorno en 
 4. Saldo = precio_total − adelanto.
 5. Mandar el saldo en el mismo call de `accion: "boleta"`.
 
-### Cuándo corre la Routine de boletas
-La Routine NO corre automáticamente. Flujo:
-1. Dueño manda fotos al número empresa → manda "ENVIAR".
-2. El Worker activa el lote y manda notificación a Telegram.
-3. El dueño abre una sesión de Claude Code y corre:
-   `ASESOR_CLAVE=... python3 scripts/asesor/boletas.py /tmp/ventas`
-4. Claude lee `boletas.md`, analiza las imágenes, despacha y actualiza staging + ventas.
-Si en el futuro se quiere una Routine programada (p. ej. dos veces al día), se puede
-crear un cron de Claude Code que corra `boletas.py` y procese si hay items listos.
+### Cuándo corre la Routine de boletas (OBSOLETO — ver sección 2026-10-29)
+~~La Routine NO corre automáticamente.~~ (Quitado 2026-10-29: ahora hay una Routine programada cada hora, `trig_01VqGRf1KXr5WJ8rHcPyjoaT`. Ver la sección «2026-10-29 — Despacho automático de boletas» más adelante.)
+
+## 2026-10-29 — Despacho automático de boletas: Routine + POST /api/asesor/mandar
+
+### Arquitectura de envío automático (autorizado por el dueño, 2026-10-29)
+El flujo de boletas ahora es completamente automático. No requiere sesión manual ni correr comandos.
+
+**Nuevo endpoint: POST /api/asesor/mandar** (`src/api/asesor-mandar.js`, desplegado en versión `ac0e0ddf`)
+- `{ tipo: "texto", wa_id, texto }` → manda texto al cliente (1,5 s escribiendo… vía `pausaEnvio` + `mandarTexto`)
+- `{ tipo: "foto-staging", wa_id, staging_id }` → manda foto por su `media_id` de staging (sin pausa, fotos van al toque)
+- Misma clave `x-asesor-clave`. Acepta también `conversation_id` en lugar de `wa_id`.
+
+**Nueva función: `mandarMediaPorId`** (`src/lib/crm-send.js`, línea 355)
+Envía imagen/video por su `media_id` de WhatsApp (staging), sin pasar por R2. Registra el mensaje saliente en D1.
+
+**Routine: «Despacho automático de boletas»** (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, creada 2026-10-29)
+- Dispara cada hora a los :23 minutos, hora Lima, en una sesión nueva.
+- Paso 0: GET `/api/asesor/boletas_staging` → si vacío, termina (noop).
+- Paso 1: corre `boletas.py` → descarga fotos → genera `boletas.md`.
+- Paso 2: lee cada imagen con visión, extrae nombre/DNI/courier/código/saldo.
+- Paso 3: verifica ventana de 24 h.
+- Paso 4a (abierta): POST `/api/asesor/mandar` × 3 (foto boleta, foto caja, texto).
+- Paso 4b (cerrada): plantilla `aviso_envio_shalom`; queda en `pendiente_ventana`.
+- Paso 5: activa plan de cobro (shalom_code / olva).
+- Paso 6: registra boleta en Sheets (`POST /api/asesor/ventas accion:boleta`).
+- Paso 7: PATCH staging → `enviado`.
+
+### Cuándo corre la Routine de boletas (actualizado 2026-10-29)
+La Routine SIGUE corriendo automáticamente cada hora. Flujo:
+1. Dueño manda fotos al número empresa → manda "ENVIAR" → Worker activa el lote.
+2. Routine siguiente (hasta 59 min después) detecta los items y los procesa.
+3. El cliente recibe fotos + mensaje de tracking sin intervención humana.
+~~El dueño abre una sesión de Claude Code y corre `boletas.py` manualmente~~ (ya no necesario).
+
+### Excepción de envío directo (CLAUDE.md regla 3, actualizada 2026-10-29)
+Esta Routine usa `POST /api/asesor/mandar` que envía DIRECTAMENTE al cliente (sin ✨ Sugerencias). Esta excepción está aprobada por el dueño (al igual que rescate lead 1 en la regla 10). Ver CLAUDE.md.
+
+---
 
 ## 2026-10-29 — Mensajes de envío provincia (Shalom y Olva) y calidad de foto
 
 ### Mensajes raw de provincia (NO son plantillas de Meta)
-Los mensajes que Claude compone y manda al cliente son texto libre (no templates de WhatsApp), van vía `enviar.py` para aprobación del dueño en la misma sesión. `boletas.md` incluye el texto exacto para que la Routine lo complete.
+Los mensajes que Claude compone y manda al cliente son texto libre (no templates de WhatsApp). Antes iban vía `enviar.py` (aprobación manual); desde 2026-10-29 la Routine los envía automáticamente vía `POST /api/asesor/mandar`. `boletas.md` incluye el texto exacto para que la Routine lo complete.
 
 **Shalom** (parámetros a extraer de la boleta):
 - Primer nombre del cliente (de la boleta o de contacts)

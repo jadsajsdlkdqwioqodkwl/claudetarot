@@ -265,3 +265,28 @@ Pedido del dueño: los clientes ya en la lista deben actualizarse cuando vuelven
 ## 2026-10-18 · Prompts sin cambios, comportamiento nuevo de enviar.py
 
 Ningún prompt de Routine cambió. `enviar.py` ahora registra el reporte de pedidos por fecha (suma las corridas, agenda los `OTRO_DIA` y no envía un Lima confirmado con entrega otro día). Para que una Routine saque un pedido ya reportado usa `quitar` [{whatsapp, motivo}] en salida.json; para agendar, `fecha_entrega` en AAAA-MM-DD. Detalle en `docs/MAPA.md` (2026-10-18) y `CLAUDE.md` regla 17.
+
+## 2026-10-29 · Despacho automático de boletas (nueva Routine)
+
+ID: `trig_01VqGRf1KXr5WJ8rHcPyjoaT`
+Cron: `CRON_TZ=America/Lima 23 * * * *` (cada hora a los :23, hora Lima)
+Crea sesión nueva en cada disparo.
+Notificaciones push: sí.
+
+Prompt:
+```
+Eres el asesor automático de Tarot Store Perú. Tu única tarea en este disparo es revisar si hay boletas de provincia listas para despachar y, si las hay, procesarlas completas.
+
+Paso 0 — Verificar si hay trabajo
+GET https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/boletas_staging
+Header: x-asesor-clave: $ASESOR_CLAVE
+Si `items` está vacío → terminar sin hacer nada más (noop).
+
+Paso 1 — Descargar fotos e índice
+Corre en Bash: ASESOR_CLAVE=$ASESOR_CLAVE python3 /home/user/claudetarot/scripts/asesor/boletas.py /tmp/ventas
+Lee /tmp/ventas/boletas.md.
+
+Paso 2-7: ver scripts/asesor/boletas.md generado en Paso 1 (incluye templates de mensajes Shalom/Olva, lógica de calidad de foto, y llamadas a POST /api/asesor/mandar).
+
+Excepción autorizada por el dueño (2026-10-29): el despacho de boletas usa POST /api/asesor/mandar directamente, sin ✨ Sugerencias.
+```

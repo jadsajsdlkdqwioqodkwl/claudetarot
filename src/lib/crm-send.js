@@ -347,6 +347,22 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   return waMessageId;
 }
 
+/**
+ * Manda una imagen/video por su media_id de WhatsApp (staging de boletas).
+ * No usa R2: el media_id viene directo del mensaje recibido. Sale al toque,
+ * sin "escribiendo…", igual que mandarMediaGuardada.
+ */
+export async function mandarMediaPorId(env, conversationId, waId, mediaId, mime, sentBy) {
+  const type = (mime || "").startsWith("video") ? "video" : "image";
+  const envL = await envDeConversacion(env, conversationId);
+  const waMessageId = await enviarMedia(envL, waId, type, mediaId, null, null, null);
+  await marcarEnviado(env, conversationId);
+  await registrarMensajeSaliente(env.CRM_DB, conversationId, {
+    waMessageId, type, body: null, mediaMime: mime || "image/jpeg", sentBy
+  }, {});
+  return waMessageId;
+}
+
 /** Reacciona (o quita la reacción, con emoji null) a un mensaje ya mandado, de cualquiera de los dos lados. */
 export async function mandarReaccion(env, waId, mensajeObjetivo, emoji) {
   await enviarReaccion(await envDeConversacion(env, mensajeObjetivo.conversation_id), waId, mensajeObjetivo.wa_message_id, emoji);
