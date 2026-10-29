@@ -530,3 +530,30 @@ La Routine NO corre automáticamente. Flujo:
 4. Claude lee `boletas.md`, analiza las imágenes, despacha y actualiza staging + ventas.
 Si en el futuro se quiere una Routine programada (p. ej. dos veces al día), se puede
 crear un cron de Claude Code que corra `boletas.py` y procese si hay items listos.
+
+## 2026-10-29 — Mensajes de envío provincia (Shalom y Olva) y calidad de foto
+
+### Mensajes raw de provincia (NO son plantillas de Meta)
+Los mensajes que Claude compone y manda al cliente son texto libre (no templates de WhatsApp), van vía `enviar.py` para aprobación del dueño en la misma sesión. `boletas.md` incluye el texto exacto para que la Routine lo complete.
+
+**Shalom** (parámetros a extraer de la boleta):
+- Primer nombre del cliente (de la boleta o de contacts)
+- Saldo = precio_total − adelanto
+- Número de orden (campo orden/pedido de la boleta Shalom)
+- Código de recojo (campo clave/código de la boleta Shalom; es el que va en `contacts.shalom_code`)
+
+Texto: "Buenas estimad@ [NOMBRE] le envío su comprobante ✨ … saldo restante de [S/SALDO] … *Nro de orden:* [ORDEN] *Código:* [CODIGO]"
+Link de rastreo: https://shalom.com.pe/rastrea
+
+**Olva** (parámetros a extraer de la boleta):
+- Mismo encabezado con nombre + saldo
+- Código de seguimiento: Olva imprime el número con prefijo "26" en la boleta. La web https://tracking.olvaexpress.pe/ ya lo pre-pone, así que Claude EXTRAE el número SIN el prefijo "26" para el mensaje.
+
+Texto: "… *Código de seguimiento:* [TRACKING SIN '26']"
+Link de rastreo: https://tracking.olvaexpress.pe/
+
+### Calidad de foto en boletas.py
+Si la foto de la boleta es borrosa o ilegible → notificar al dueño en la sesión y pedir reenvío antes de continuar. Si está parcialmente legible → extraer lo posible y marcar "(ilegible)" en los campos faltantes. Si es duplicada → preguntar al dueño cuál usar. El batch NO se detiene por un cliente; los demás siguen.
+
+### boletas.py actualizado (2026-10-29)
+`scripts/asesor/boletas.py`: instrucciones en `boletas.md` ahora incluyen templates de mensajes Shalom y Olva, lógica de calidad de foto (borrosa/duplicada/parcial), y nota de strip del prefijo "26" para Olva.
