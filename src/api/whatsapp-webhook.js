@@ -285,7 +285,12 @@ async function procesarCambio(envBase, db, value, origen) {
   const linea = await lineaDePhoneId(db, envBase, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
   const env = envDeLinea(envBase, linea);
 
-  for (const msg of value.messages || []) {
+  // Si el dueño manda fotos y "ENVIAR" en el mismo batch, las fotos van primero.
+  const _msgs = [...(value.messages || [])].sort((a, b) => {
+    if (!esDueno(env, a.from) || !esDueno(env, b.from)) return 0;
+    return (a.type === "image" ? 0 : 1) - (b.type === "image" ? 0 : 1);
+  });
+  for (const msg of _msgs) {
     // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
