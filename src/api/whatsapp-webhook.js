@@ -291,17 +291,19 @@ async function procesarCambio(envBase, db, value, origen) {
     return (a.type === "image" ? 0 : 1) - (b.type === "image" ? 0 : 1);
   });
   for (const msg of _msgs) {
-    // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
-    // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
-    // doble en el embudo y volvía a cancelar/avisar.
-    if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
     const waId = msg.from;
     // Fotos de boleta y comandos que manda el dueño desde su número personal
     // al número empresa → staging; no se procesan como chat de cliente.
     if (esDueno(env, waId)) {
-      await manejarMensajeDueno(env, db, msg);
+      if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
+      await manejarMensajeDueno(env, db, msg).catch((err) => console.error("Mensaje dueño:", err.message));
       continue;
     }
+    try {
+    // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
+    // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
+    // doble en el embudo y volvía a cancelar/avisar.
+    if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).
@@ -354,6 +356,13 @@ async function procesarCambio(envBase, db, value, origen) {
     }
     await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
+    } catch (err) {
+      console.error(`Webhook msg ${msg.id || "?"} de ${waId}: ${err.message}`);
+      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
+        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500))
+        .run()
+        .catch(() => {});
+    }
   }
 
   for (const st of value.statuses || []) {

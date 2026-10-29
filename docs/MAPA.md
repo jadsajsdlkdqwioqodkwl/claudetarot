@@ -743,3 +743,41 @@ Import añadido: `import { aplicarOlva } from "../lib/planes-plantilla.js"`.
 2. **Línea de retención añadida**: las 4 plantillas de mensaje (Shalom+saldo, Olva+saldo, Shalom+completo, Olva+completo) incluyen ahora "Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️" después del link de rastreo.
 3. **Paso 2 simplificado**: quitada la instrucción de `GET /api/asesor/imagenes?wa_id=` (endpoint no existe). Ahora: usar el `adelanto` de Sheets si está disponible; si solo hay CRM sin Sheets, preguntar al dueño.
 4. **Paso 5 corregido**: shalom_code es MANUAL (lo pone el dueño en el CRM, NUNCA la Routine). Olva se activa automáticamente via el PATCH del paso 7 (`asesor-boletas.js`). No se hace ninguna llamada a `/api/crm/contacts` desde la Routine para estos campos.
+
+## 2026-10-29 — Fix: mensajes perdidos + log webhook_errores
+
+### Problema confirmado
+Mensajes de clientes nuevos que llegan desde anuncios Meta (CTWA) o links wa.me
+a veces no aparecían en el CRM. Tres causas raíz identificadas en el código.
+
+### migrations/0066_webhook_errores.sql (NUEVO — aplicar a mano en D1)
+Tabla `webhook_errores (id, wa_id, wa_message_id, error, created_at)` para registrar
+mensajes que el webhook recibió pero no pudo guardar. Índice en `created_at DESC`.
+Comando: `wrangler d1 execute CRM --file=migrations/0066_webhook_errores.sql`
+
+### src/lib/crm-db.js — dos fixes
+1. **`obtenerOCrearContacto`**: INSERT del contacto nuevo ahora envuelto en try/catch.
+   Si lanza UNIQUE constraint (race condition: dos webhooks paralelos para el mismo número nuevo),
+   se reintenta un SELECT para obtener el contacto que ganó la carrera. Antes: el segundo webhook moría.
+2. **`registrarMensajeEntrante`**: `INSERT INTO messages` → `INSERT OR IGNORE INTO messages`.
+   Si Meta reintenta el webhook antes del 200, el mismo wa_message_id ya está en la BD.
+   Con `OR IGNORE` se descarta silenciosamente; el UPDATE de `unread_count` también se salta
+   (guarda por el `if (!msgMeta?.changes) return`).
+
+### src/api/whatsapp-webhook.js — per-message try/catch
+El for loop sobre `_msgs` no tenía aislamiento: un error en el mensaje N mataba los mensajes N+1, N+2, etc.
+Ahora:
+- Mensajes del dueño: dedup + `.catch()` en `manejarMensajeDueno`.
+- Mensajes de clientes: todo el procesamiento (dedup, INSERT contacto, INSERT mensaje, seguimientos,
+  bienvenida) está dentro de `try { ... } catch (err)`. En el catch: log en consola + INSERT en
+  `webhook_errores`. El error no se propaga; el siguiente mensaje del mismo batch se procesa igual.
+
+### src/api/crm/salud.js — incluye errores recientes
+`GET /api/crm/salud` ahora también devuelve `errores_mensajes` (últimos 10 de `webhook_errores`),
+consultado en paralelo con los 4 ajustes existentes.
+
+### public/crm/app.js — cargarSalud() muestra errores
+`cargarSalud()` ahora considera `hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0`:
+- Badge rojo en botón admin aparece también si hay `errores_mensajes`.
+- Si hay errores: lista `<ul>` con wa_id, mensaje de error y timestamp.
+- Si todo OK y sin errores: sigue mostrando "Todo en orden".

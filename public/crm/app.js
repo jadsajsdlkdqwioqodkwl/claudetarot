@@ -1213,26 +1213,29 @@ async function cargarSalud() {
     const d = await pedir("/api/crm/salud");
     // Badge rojo en el botón admin si hay alertas
     const btn = $("#btn-admin");
+    const hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0;
     const badgeExistente = btn?.querySelector(".badge-error-admin");
-    if (d.hay_alertas && !badgeExistente) {
+    if (hayProblemas && !badgeExistente) {
       const b = document.createElement("span");
       b.className = "badge-error-admin";
-      b.title = `${d.alertas.length} alerta${d.alertas.length !== 1 ? "s" : ""} del sistema`;
+      b.title = "Problemas del sistema";
       btn?.appendChild(b);
-    } else if (!d.hay_alertas && badgeExistente) {
+    } else if (!hayProblemas && badgeExistente) {
       badgeExistente.remove();
     }
     if (!contenedor) return;
-    if (!d.hay_alertas) {
+    const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
+    if (!hayProblemas) {
       titulo.style.color = "";
-      const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
       contenedor.innerHTML = `${icon("check")} Todo en orden · último webhook recibido: ${escapar(ultimoOk)}`;
       return;
     }
     titulo.style.color = "var(--peligro, #d33)";
     const lineas = d.alertas.map((a) => `<div style="margin-bottom:8px"><strong>${escapar(a.etiqueta)}:</strong><br><code style="font-size:12px;word-break:break-all">${escapar(a.valor)}</code></div>`).join("");
-    const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
-    contenedor.innerHTML = `${lineas}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
+    const errLines = d.errores_mensajes?.length ? `<div style="margin-top:8px"><strong>Mensajes no procesados (últimos ${d.errores_mensajes.length}):</strong><ul style="margin:4px 0;padding-left:16px">` +
+      d.errores_mensajes.map((e) => `<li><code>${escapar(e.wa_id || "?")}</code> — ${escapar(e.error)} <small style="opacity:.7">${escapar((e.created_at || "").slice(0, 16).replace("T", " "))}</small></li>`).join("") +
+      `</ul></div>` : "";
+    contenedor.innerHTML = `${lineas}${errLines}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
   } catch {
     if (contenedor) contenedor.innerHTML = "No se pudo cargar el estado.";
   }

@@ -19,11 +19,15 @@ async function handler({ request, env, agent }) {
   if (!esAdmin(agent)) return json({ error: "Solo admin." }, 403);
   const db = env.CRM_DB;
 
-  const [ultimoOk, ultimoRechazo, ultimoError, ultimoErrorEscribiendo] = await Promise.all([
-    obtenerAjuste(db, "webhook_ultimo_ok"),
-    obtenerAjuste(db, "webhook_ultimo_rechazo"),
-    obtenerAjuste(db, "webhook_ultimo_error"),
-    obtenerAjuste(db, "ultimo_error_escribiendo"),
+  const [[ultimoOk, ultimoRechazo, ultimoError, ultimoErrorEscribiendo], erroresRows] = await Promise.all([
+    Promise.all([
+      obtenerAjuste(db, "webhook_ultimo_ok"),
+      obtenerAjuste(db, "webhook_ultimo_rechazo"),
+      obtenerAjuste(db, "webhook_ultimo_error"),
+      obtenerAjuste(db, "ultimo_error_escribiendo"),
+    ]),
+    db.prepare("SELECT wa_id, wa_message_id, error, created_at FROM webhook_errores ORDER BY created_at DESC LIMIT 10")
+      .all().then((r) => r.results).catch(() => []),
   ]);
 
   const alertas = [];
@@ -35,6 +39,7 @@ async function handler({ request, env, agent }) {
     webhook_ultimo_ok: ultimoOk,
     alertas,
     hay_alertas: alertas.length > 0,
+    errores_mensajes: erroresRows,
   });
 }
 

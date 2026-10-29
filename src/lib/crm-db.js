@@ -26,25 +26,36 @@ export async function obtenerOCrearContacto(db, waId, profileName, referral) {
   // El `referral` solo viene en el primer mensaje si el chat empezó desde un
   // anuncio "Click to WhatsApp" — así queda guardado desde el primer contacto,
   // que es el único momento en que WhatsApp lo manda.
-  const insertado = await db
-    .prepare(
-      `INSERT INTO contacts
-        (wa_id, profile_name, first_seen_at, ctwa_clid, ad_source_type, ad_source_id, ad_source_url, ad_headline, ad_body, ad_media_type)
-       VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)
-       RETURNING *`
-    )
-    .bind(
-      waId,
-      profileName || null,
-      referral?.ctwa_clid || null,
-      referral?.source_type || null,
-      referral?.source_id || null,
-      referral?.source_url || null,
-      referral?.headline || null,
-      referral?.body || null,
-      referral?.media_type || null
-    )
-    .first();
+  let insertado;
+  try {
+    insertado = await db
+      .prepare(
+        `INSERT INTO contacts
+          (wa_id, profile_name, first_seen_at, ctwa_clid, ad_source_type, ad_source_id, ad_source_url, ad_headline, ad_body, ad_media_type)
+         VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)
+         RETURNING *`
+      )
+      .bind(
+        waId,
+        profileName || null,
+        referral?.ctwa_clid || null,
+        referral?.source_type || null,
+        referral?.source_id || null,
+        referral?.source_url || null,
+        referral?.headline || null,
+        referral?.body || null,
+        referral?.media_type || null
+      )
+      .first();
+  } catch (e) {
+    // Race condition: dos webhooks paralelos para el mismo número nuevo — el segundo
+    // ve UNIQUE constraint en wa_id. Reobtenemos el que ya quedó insertado.
+    if (/unique|constraint/i.test(e.message)) {
+      const existente2 = await db.prepare("SELECT * FROM contacts WHERE wa_id = ?").bind(waId).first();
+      if (existente2) return { ...existente2, _isNew: false };
+    }
+    throw e;
+  }
   return { ...insertado, _isNew: true };
 }
 
@@ -86,13 +97,16 @@ export async function obtenerOCrearConversacion(db, contactId, lineaId = null) {
 }
 
 export async function registrarMensajeEntrante(db, conversationId, { waMessageId, type, body, fileName, mediaId, mediaMime, replyToMessageId, viewOnce }) {
-  await db
+  const { meta: msgMeta } = await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, file_name, media_id, media_mime, status, reply_to_message_id, view_once)
+      `INSERT OR IGNORE INTO messages (conversation_id, wa_message_id, direction, type, body, file_name, media_id, media_mime, status, reply_to_message_id, view_once)
        VALUES (?, ?, 'in', ?, ?, ?, ?, ?, 'received', ?, ?)`
     )
     .bind(conversationId, waMessageId || null, type, body || null, fileName || null, mediaId || null, mediaMime || null, replyToMessageId || null, viewOnce ? 1 : 0)
     .run();
+
+  // Si no insertó (duplicate wa_message_id por reintento de Meta), no actualizamos contadores.
+  if (!msgMeta?.changes) return;
 
   await db
     .prepare(
