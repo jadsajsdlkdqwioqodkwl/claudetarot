@@ -23,6 +23,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Pestaña **Avatares** | en la hoja de creativos | Project de conceptos (reparto de cada lote), Routine de voz del cliente (suma chats y avatares nuevos), REVISA COMENTARIOS (Estado). Las fórmulas de Cobertura leen Prompts col. D, J y L |
 | Hoja de chats del CRM (TAROT CHATS - VENTAS CRM) | la escribe el Worker cada 10 min | `apps-script/ASESOR.gs`, `preparar.py` (modo xlsx) |
 | Reglas del negocio | `docs/negocio.md` | Todo lo que escribe a clientes o anuncios (precios y regalos mandan aquí) |
+| **Diagnóstico de errores** | `docs/diagnóstico.md` | Queries D1, claves crm_settings y checklist para cualquier sesión que investigue mensajes perdidos o envíos fallidos |
 | Scripts del asesor | `scripts/asesor/*.py` | Todas las Routines del asesor y del director (rutas fijas en sus prompts) |
 | API del asesor | `https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/*` + clave `ASESOR_CLAVE` | Scripts del asesor |
 | Skills | `.claude/skills/*` (ver su README) | Routines y sesiones de Claude Code |
