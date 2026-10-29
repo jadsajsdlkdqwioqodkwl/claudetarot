@@ -986,3 +986,31 @@ Usa `$TELEGRAM_BOT_TOKEN` y `$TELEGRAM_CHAT_ID` del entorno.
 La Routine usa sesión PERSISTENTE (`persist_session: true`, `session_0173yPdM1ph4oTtfowxkUSmJ`).
 La idea de sesión separada/aislada se descartó: la sesión persistente es suficiente porque
 la Routine siempre parte de `boletas.md` (generado en Paso 1) y no acumula contexto entre lotes.
+
+## 2026-10-29 (noche 5) — Routine boletas v7: prohibición absoluta de mensajes libres al cliente
+
+### Incidente documentado (2026-10-29)
+La Routine (v6) mandó un texto no autorizado a Abigail: una disculpa/corrección de saldo
+("Estimada Abigail, le escribimos para comunicarle que su pago ya está completo...").
+Esto NO estaba autorizado. La regla del dueño es clara: la Routine SOLO puede mandar
+boleta + caja + mensaje del Paso 3.
+
+### Corrección — Routine boletas v7 (2026-10-29 ~22:49 UTC)
+Añadida al inicio del prompt (antes del Paso 0) la REGLA ABSOLUTA de envíos:
+> La Routine SOLO puede mandarle al cliente TRES cosas (Paso 4):
+>   1. foto-staging de la boleta
+>   2. foto-staging de la caja
+>   3. El texto exacto del Paso 3, sin modificar
+> NADA MÁS. Los errores y observaciones van SIEMPRE al dueño por Telegram en el Paso 8.
+
+También reforzado en el Paso 4 con: "⛔ SOLO estos 3 POST. Ningún otro texto al cliente."
+Y en el Paso 2g: "NUNCA mandas un mensaje de corrección al cliente" (inconsistencia de saldo).
+
+### Estado del fix de imágenes en CRM
+Commit `ef48b35` (rama `claude/zen-johnson-4li7zj`):
+- `src/lib/crm-db.js`: `registrarMensajeSaliente` ahora acepta y guarda `mediaId` en la columna `media_id`.
+- `src/lib/crm-send.js`: `mandarMediaPorId` pasa `mediaId` a `registrarMensajeSaliente`.
+- `public/crm/app.js` línea 4010: ya verificaba `m.media_key || m.media_id` → renderiza `<img>`.
+- `src/api/crm/messages.js` línea 56: ya devolvía `media_id` en el SELECT.
+- Resultado: imágenes enviadas por el bot serán visibles en el CRM tras el deploy.
+- Mensajes anteriores al fix tienen `media_id=NULL` en D1 y seguirán mostrando `[image]`; no se pueden recuperar sin una migración manual.

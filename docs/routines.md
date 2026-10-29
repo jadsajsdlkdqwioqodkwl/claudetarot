@@ -364,3 +364,18 @@ Cambios frente a versión 5:
   excluyente con cobro_3x). El dueño ve el filtro "Ya pagó saldo" en el CRM.
 - **Paso 8 (NUEVO)**: al terminar, envía reporte al dueño por Telegram con ✅ despachados,
   ⏳ pendiente_ventana, ❌ errores, 💡 sugerencias de mejora del lote.
+
+## 2026-10-29 (noche 5) · Routine boletas — versión 7 (2026-10-29 ~22:49 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 6:
+- **REGLA ABSOLUTA (nueva, al inicio del prompt)**: la Routine SOLO puede mandar al cliente
+  (1) foto-staging de boleta, (2) foto-staging de caja, (3) texto exacto del Paso 3.
+  NINGÚN otro mensaje. Errores y correcciones van al dueño por Telegram (Paso 8).
+  Origen: la v6 mandó un texto de disculpa/corrección a Abigail (no autorizado por el dueño).
+- **Paso 4**: añadido "⛔ SOLO estos 3 POST. Ningún otro texto al cliente."
+- **Paso 2g**: añadido "NUNCA mandas un mensaje de corrección al cliente" (para inconsistencias de saldo).
+
+Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.
