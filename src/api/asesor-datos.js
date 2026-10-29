@@ -32,6 +32,7 @@
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { servirMensaje } from "./crm/media.js";
+import { descargarMedia } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -193,7 +194,21 @@ export async function onRequestGetControlVentas({ request, env }) {
 export async function onRequestGetImagen({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
-  const id = Number(new URL(request.url).searchParams.get("id"));
+  const url = new URL(request.url);
+  // staging_id: descarga directamente de Meta por media_id del dueño (boletas).
+  const stagingId = Number(url.searchParams.get("staging_id"));
+  if (stagingId) {
+    const item = await env.CRM_DB.prepare("SELECT media_id, media_mime FROM boletas_staging WHERE id = ?").bind(stagingId).first();
+    if (!item?.media_id) return json({ error: "No encontré esa foto en staging." }, 404);
+    let blob, mime;
+    try {
+      ({ blob, mime } = await descargarMedia(env, item.media_id));
+    } catch (err) {
+      return json({ error: "No se pudo descargar la boleta." }, 502);
+    }
+    return new Response(blob, { headers: { "Content-Type": mime || item.media_mime || "image/jpeg", "Cache-Control": "no-store" } });
+  }
+  const id = Number(url.searchParams.get("id"));
   if (!id || !env.CRM_MEDIA) return json({ error: "Falta id o el almacenamiento." }, 400);
   const row = await env.CRM_DB.prepare("SELECT type, direction FROM messages WHERE id = ?").bind(id).first();
   // Solo lo que mandó el cliente y solo imágenes: nada del equipo ni videos.

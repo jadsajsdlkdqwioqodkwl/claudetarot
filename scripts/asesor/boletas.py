@@ -31,9 +31,9 @@ def listar_staging(clave):
         return json.loads(r.read())["items"]
 
 
-def bajar_imagen(clave, media_id):
+def bajar_imagen(clave, staging_id):
     req = urllib.request.Request(
-        f"{API_BASE}/imagen?id={media_id}",
+        f"{API_BASE}/imagen?staging_id={staging_id}",
         headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"}
     )
     with urllib.request.urlopen(req, timeout=60) as r:
@@ -58,10 +58,9 @@ def main():
     fallo = 0
     for item in items:
         id_ = item["id"]
-        media_id = item["media_id"]
         lote = item.get("lote_id", "")
         try:
-            datos, mime = bajar_imagen(clave, media_id)
+            datos, mime = bajar_imagen(clave, id_)
         except (urllib.error.URLError, OSError) as err:
             fallo += 1
             descargadas.append({"id": id_, "lote": lote, "error": str(err)})
