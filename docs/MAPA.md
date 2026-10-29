@@ -694,3 +694,32 @@ Ahora: SIEMPRE leer `GET /api/asesor/imagenes?wa_id=<wa_id>` para extraer el mon
 - Si no cuadran → usar el monto de la imagen y anotar la discrepancia.
 - Si solo CRM (sin Sheets) → adelanto = monto visto en la imagen.
 - Si no hay capturas Yape → usar adelanto de Sheets si existe, si no preguntar al dueño.
+
+## 2026-10-29 — Alertas del sistema en el CRM
+
+### Por qué 927633099 no aparece en el CRM
+El número `51927633099` (NUMERO_DUENO_DEFAULT) es interceptado por `esDueno()` en `src/lib/boletas-staging.js`.
+Todo mensaje entrante de ese número va a `manejarMensajeDueno()` (flujo de staging de boletas), no al CRM.
+Solo procesa imágenes (→ tabla `boletas_staging`) y texto "ENVIAR". Es por diseño, no es un error.
+
+### Nuevo endpoint: GET /api/crm/salud (solo admin)
+Devuelve el estado del sistema para el panel admin del CRM.
+Archivo: `src/api/crm/salud.js`. Ruta en `src/index.js`: `"/api/crm/salud": { GET: crmSaludGet }`.
+Campos devueltos:
+- `webhook_ultimo_ok`: ISO timestamp del último webhook recibido con firma válida.
+- `alertas[]`: lista de alertas activas: `tipo`, `etiqueta`, `valor` (timestamp + descripción del error).
+- `hay_alertas`: boolean.
+Tipos de alertas guardados en D1 (`crm_settings`):
+- `webhook_ultimo_rechazo`: firma inválida rechazada (ya existía).
+- `webhook_ultimo_error`: error al procesar el webhook (`src/api/whatsapp-webhook.js`, catch del waitUntil). **NUEVO**.
+- `ultimo_error_escribiendo`: error al enviar «escribiendo…» (ya existía, ahora visible).
+
+### Badge rojo en el botón admin (panel CRM)
+Si `hay_alertas=true`, aparece un punto rojo (`.badge-error-admin`) en el botón admin.
+Se actualiza: al abrir el modal admin (`#btn-admin` click) y cada 5 minutos automáticamente (admin).
+CSS en `public/crm/style.css`. Lógica en `public/crm/app.js` (`cargarSalud()`, `mostrarApp()`).
+
+### Sección "Estado del sistema" en el modal admin
+Encima de "Plantillas para Meta" en `public/crm/index.html`.
+Muestra "Todo en orden · último webhook: …" o lista las alertas con su timestamp y mensaje.
+Título en rojo (`var(--peligro)`) cuando hay alertas.

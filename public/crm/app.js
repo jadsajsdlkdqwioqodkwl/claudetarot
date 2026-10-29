@@ -300,6 +300,7 @@ async function mostrarApp() {
   configurarNotificaciones();
   configurarInstalacion();
   programarSync();
+  if (role === "admin") { cargarSalud(); setInterval(cargarSalud, 5 * 60 * 1000); }
 }
 
 $("#form-login").addEventListener("submit", async (e) => {
@@ -1204,6 +1205,39 @@ $("#sim-enviar").addEventListener("click", async () => {
 
 let bulkTemplateElegida = null;
 
+/* ---------- Estado del sistema (api/crm/salud.js) ---------- */
+async function cargarSalud() {
+  const contenedor = $("#admin-salud-cuerpo");
+  const titulo = $("#admin-salud-titulo");
+  try {
+    const d = await pedir("/api/crm/salud");
+    // Badge rojo en el botón admin si hay alertas
+    const btn = $("#btn-admin");
+    const badgeExistente = btn?.querySelector(".badge-error-admin");
+    if (d.hay_alertas && !badgeExistente) {
+      const b = document.createElement("span");
+      b.className = "badge-error-admin";
+      b.title = `${d.alertas.length} alerta${d.alertas.length !== 1 ? "s" : ""} del sistema`;
+      btn?.appendChild(b);
+    } else if (!d.hay_alertas && badgeExistente) {
+      badgeExistente.remove();
+    }
+    if (!contenedor) return;
+    if (!d.hay_alertas) {
+      titulo.style.color = "";
+      const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
+      contenedor.innerHTML = `${icon("check")} Todo en orden · último webhook recibido: ${escapar(ultimoOk)}`;
+      return;
+    }
+    titulo.style.color = "var(--peligro, #d33)";
+    const lineas = d.alertas.map((a) => `<div style="margin-bottom:8px"><strong>${escapar(a.etiqueta)}:</strong><br><code style="font-size:12px;word-break:break-all">${escapar(a.valor)}</code></div>`).join("");
+    const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
+    contenedor.innerHTML = `${lineas}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
+  } catch {
+    if (contenedor) contenedor.innerHTML = "No se pudo cargar el estado.";
+  }
+}
+
 /* ---------- Killswitch y rescate del día 7 (api/crm/pausa.js) ---------- */
 async function cargarPausa() {
   try {
@@ -1245,6 +1279,7 @@ document.querySelectorAll("#rescate7-plantilla-tarot, #rescate7-plantilla-uro").
 
 $("#btn-admin").addEventListener("click", () => {
   $("#modal-admin-fondo").classList.add("abierto");
+  cargarSalud();
   cargarPausa();
   pintarPlanesPorAprobar();
   $("#bulk-numeros").value = "";

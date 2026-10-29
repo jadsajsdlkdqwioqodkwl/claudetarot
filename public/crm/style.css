@@ -850,6 +850,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 /* Sugerencias del asesor */
 #btn-sugerencias { position: relative; }
 .badge-sugerencias { position: absolute; top: -2px; right: -4px; background: #e11d48; color: #fff; border-radius: var(--radio-full); font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center; }
+
+/* Badge de alerta del sistema en el botón admin */
+#btn-admin { position: relative; }
+.badge-error-admin { position: absolute; top: -2px; right: -4px; width: 8px; height: 8px; background: #e11d48; border-radius: 50%; pointer-events: none; }
 .tarjeta-sugerencia { border: 1px solid var(--borde); border-radius: var(--radio-m); padding: var(--espacio-m); margin: 0 0 var(--espacio-m); display: flex; flex-direction: column; gap: var(--espacio-s); background: var(--panel); }
 .tarjeta-sugerencia .sub { font-size: 12px; color: var(--gris); }
 .tarjeta-sugerencia textarea { width: 100%; box-sizing: border-box; font: inherit; }

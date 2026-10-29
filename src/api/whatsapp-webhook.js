@@ -434,7 +434,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   // Se procesa en segundo plano pero sin perder errores: Meta solo necesita
   // el 200 rápido, no el resultado.
   waitUntil(
-    Promise.all(tareas).catch((err) => console.error("Webhook WhatsApp:", err.message))
+    Promise.all(tareas).catch(async (err) => {
+      console.error("Webhook WhatsApp:", err.message);
+      if (env.CRM_DB) await guardarAjuste(env.CRM_DB, "webhook_ultimo_error", `${new Date().toISOString()}: ${err.message.slice(0, 300)}`).catch(() => {});
+    })
   );
 
   return json({ ok: true });

@@ -100,6 +100,7 @@ import {
 } from "./api/crm/stickers.js";
 import { onRequestGet as crmComisionesGet, onRequestPatch as crmComisionesPatch } from "./api/crm/comisiones.js";
 import { onRequestGet as crmPausaGet, onRequestPost as crmPausaPost } from "./api/crm/pausa.js";
+import { onRequestGet as crmSaludGet } from "./api/crm/salud.js";
 import {
   onRequestGet as crmPushSubscribeGet,
   onRequestPost as crmPushSubscribePost,
@@ -211,6 +212,7 @@ const ROUTES = {
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/comisiones": { GET: crmComisionesGet, PATCH: crmComisionesPatch },
   "/api/crm/pausa": { GET: crmPausaGet, POST: crmPausaPost },
+  "/api/crm/salud": { GET: crmSaludGet },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },
   "/api/crm/notify-settings": { GET: crmNotifySettingsGet, POST: crmNotifySettingsPost },
