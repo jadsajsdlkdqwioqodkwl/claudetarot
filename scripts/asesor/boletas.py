@@ -96,18 +96,42 @@ def main():
         b = par["boleta"]
         c = par["caja"]
         lineas.append(f"\n## Cliente {n}")
-        lineas.append(f"  - BOLETA  → staging_id={b['id']}  lote={b['lote']}  ruta={b['ruta']}")
+        lineas.append(f"  - FOTO-1  → staging_id={b['id']}  lote={b['lote']}  ruta={b['ruta']}")
         if c:
-            lineas.append(f"  - CAJA    → staging_id={c['id']}  lote={c['lote']}  ruta={c['ruta']}")
+            lineas.append(f"  - FOTO-2  → staging_id={c['id']}  lote={c['lote']}  ruta={c['ruta']}")
         else:
-            lineas.append(f"  - CAJA    → ⚠️ FALTA — pedir al dueño la foto del paquete antes de continuar.")
-            alertas.append(f"Cliente {n} (staging_id={b['id']}): falta foto de la caja.")
+            lineas.append(f"  - FOTO-2  → ⚠️ FALTA — pedir al dueño la foto faltante antes de continuar. NUNCA despachar con solo una foto.")
+            alertas.append(f"Cliente {n} (staging_id={b['id']}): falta foto del par.")
         lineas.append(
-            f"  → Leer BOLETA con Read, extraer: NOMBRE COMPLETO, DNI, COURIER (Shalom o Olva).\n"
+            f"  → ⚠️ VERIFICAR ANTES DE PAREAR: el dueño no siempre manda las fotos en orden\n"
+            f"    boleta-caja. Lee AMBAS fotos primero para clasificarlas:\n"
+            f"      • BOLETA/TICKET: papel impreso con 'DATOS TICKET SHALOM', 'GUIA DE REMISION' o\n"
+            f"        similar. Tiene DNI, NRO ORDEN, CODIGO, nombre del destinatario.\n"
+            f"      • CAJA: etiqueta sobre cartón o paquete. Dice DESTINATARIO: APELLIDO NOMBRE.\n"
+            f"    Si ambas fotos son del mismo tipo (ej. dos cajas o dos tickets), es un lote\n"
+            f"    mezclado: reparear por nombre — la caja y el ticket del mismo apellido van juntos.\n"
+            f"\n"
+            f"    VERIFICAR QUE EL PAR ES DEL MISMO CLIENTE: el APELLIDO o DNI del ticket debe\n"
+            f"    coincidir con el DESTINATARIO de la caja. Si no coinciden → NO despachar;\n"
+            f"    reparear correctamente entre todos los staging de este lote antes de continuar.\n"
+            f"\n"
+            f"    REGLA CRÍTICA: NUNCA mandar boleta sola ni caja sola. Solo despachar\n"
+            f"    cuando tienes AMBAS fotos (boleta+caja) identificadas para el mismo cliente.\n"
+            f"    Si falta una foto del par → esperar al dueño.\n"
+            f"\n"
             f"    CALIDAD DE FOTO: si la imagen es borrosa o ilegible, notificar al dueño en\n"
             f"    esta sesión y pedir que la reenvíe; el batch sigue con los demás clientes.\n"
             f"    Si está parcialmente legible, extraer lo posible y anotar '(ilegible)' donde falte.\n"
-            f"    Si es duplicada (mismo DNI en el mismo lote), preguntar al dueño cuál usar.\n"
+            f"\n"
+            f"    DUPLICADOS: mismo NRO ORDEN en dos fotos = mismo envío del mismo cliente.\n"
+            f"    Descartar el duplicado (PATCH status=error, error='duplicado de staging X').\n"
+            f"    NO descartar una caja como duplicado solo por estar en posición par — verificar\n"
+            f"    que realmente tenga el mismo NRO ORDEN o el mismo DESTINATARIO antes de descartar.\n"
+            f"\n"
+            f"    TRIANGULACIÓN (usar al menos 2 datos para identificar al cliente):\n"
+            f"    Al buscar por DNI y encontrar match, confirmar también que el NOMBRE de Sheets\n"
+            f"    coincide con el NOMBRE de la boleta (al menos el apellido). Si solo hay un dato\n"
+            f"    que coincide pero el otro no, es sospechoso — preguntar al dueño antes de despachar.\n"
             f"\n"
             f"    GÉNERO: usar 'estimado' o 'estimada' según el primer nombre.\n"
             f"    Femeninos comunes (no exhaustiva): Rosa/Carmen/María/Ana/Luz/Patricia/Sandra/Jessica/\n"
@@ -259,9 +283,10 @@ def main():
     indice = os.path.join(carpeta, "boletas.md")
     open(indice, "w", encoding="utf-8").write(
         "# Boletas para despachar\n\n"
-        "Cada cliente tiene DOS fotos en orden: boleta/guía (orden 1) y foto de la caja (orden 2).\n"
-        "Si una caja dice FALTA, notificar al dueño en esta sesión y esperar su respuesta.\n"
-        "Si el dueño no puede mandar la foto, proceder con solo la boleta.\n"
+        "⚠️ REGLA CRÍTICA: NUNCA despachar boleta sola ni caja sola — siempre AMBAS fotos del mismo cliente.\n"
+        "Las fotos están numeradas como FOTO-1 y FOTO-2 pero el dueño NO siempre las manda en orden boleta→caja.\n"
+        "LEE AMBAS fotos de cada par antes de despachar para verificar que pertenecen al mismo cliente.\n"
+        "Si una foto dice FALTA, notificar al dueño y esperar — NO procesar hasta tener el par completo.\n"
         + alerta_encabezado
         + "\n".join(lineas) + "\n"
     )

@@ -323,3 +323,18 @@ Cambios frente a la versión anterior:
 - Saldo = 0 → mensaje de pago completo sin mención de saldo.
 - Paso 5 (shalom_code/olva) corre SIEMPRE (ventana abierta o cerrada).
 - Paso 6 (Sheets) corre SIEMPRE.
+
+## 2026-10-29 (noche 2) · Routine boletas — versión 3 (2026-10-29 21:41 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 2:
+- FOTO-1/FOTO-2 en lugar de BOLETA/CAJA: el dueño no manda las fotos en orden fijo.
+- Paso 2a: leer AMBAS fotos antes de clasificar. Verificar que el par es del mismo cliente.
+- Regla crítica: NUNCA despachar una sola foto; siempre boleta+caja juntas.
+- Triangulación con ≥2 datos (DNI + nombre/apellido) para identificar al cliente.
+- Duplicados: solo descartar si el NRO ORDEN es el mismo, no por posición en el lote.
+- Paso 5 Shalom: ya NO asigna el shalom_code (el dueño lo ingresa a mano). Corrige error.
+
+Prompt: ver docs/MAPA.md sección "2026-10-29 (noche 2, correcciones lote boletas)" y el trigger en claude.ai.

@@ -840,3 +840,89 @@ completaba la corrección local — y en cada nuevo `sincronizar()` volvía a pa
   `PREFIJO_SEGUIMIENTO_PLANTILLA` (plantillas-seguimiento.js). Define `SEG_EXCL` (7 valores)
   y lo usa en el subquery de `pendientes` y `proximo`. Ahora el servidor devuelve el mismo
   conteo que mostraría el frontend sin el paso de corrección local.
+
+## 2026-10-29 (noche, sesión de boletas) — Etiqueta bot_boleta + filtro CRM
+
+### Etiqueta `bot_boleta` en conversaciones
+Cuando la Routine de boletas envía (con éxito) una foto-staging o un texto a un cliente,
+`POST /api/asesor/mandar` llama ahora a `agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta")`
+para marcar la conversación.
+
+- **`src/api/asesor-mandar.js`**: importa `agregarEtiquetaMeta` de `../lib/crm-db.js`;
+  la llama (con `.catch(() => {})`) tras cada `mandarTexto` o `mandarMediaPorId` exitoso.
+  También agrega `tipo: "etiqueta"` para tagging retroactivo sin enviar mensajes:
+  `{ tipo:"etiqueta", wa_id|conversation_id, etiqueta:"bot_boleta" }`.
+- **`src/api/crm/conversations.js`**: `"bot_boleta"` agregado a la lista blanca del filtro
+  `&etiqueta=` (antes solo aceptaba `contact|lead|purchase`).
+- **`public/crm/index.html`**: botón `<button data-etiqueta="bot_boleta">Bot Boleta</button>`
+  en la barra de filtros (`#filtros`), entre «Compra» y «Olva».
+
+El tag tiene la forma espaciada `bot_boleta` (sin espacio, con guión bajo) para evitar
+conflictos con el separador de espacio de `meta_tags`. La función `tieneEtiqueta` del frontend
+busca ` bot_boleta ` rodeado de espacios, lo que funciona correctamente.
+
+### Lote procesado 2026-10-29_20:32 — resumen
+- Staging 3: CAJA de PAREDES GOICOCHEA ILIANA (GR 101724452, LA LIBERTAD-TRUJILLO). Sin boleta ticket en este lote → pendiente que el dueño envíe el ticket Shalom de esta cliente.
+- Staging 4: descartado (era etiqueta GR de Cliente 2 - REAÑO PLASENCIA HAYDEE MARINA, duplicado). Error registrado en staging.
+- Staging 5+6: REAÑO PLASENCIA HAYDEE MARINA (DNI 10139090, conv 3183) — boleta + caja + texto enviados. Sheets actualizado. Tag bot_boleta puesto.
+- Staging 7+8: CHUCNAS CHOMBA LUIS GERMAN (DNI 71883864, conv 739) — boleta + caja + texto enviados. Sheets actualizado. Tag bot_boleta puesto. (Nota: Sheets tenía wa_id 51977452471 pero el CRM tiene 51967452471 — posible error de captura en Sheets; boleta enviada al número del CRM).
+- Staging 9+10: descartados (duplicados de staging 5+6 — el dueño mandó doble la boleta de Cliente 2).
+- Staging 11: ESCALANTE CURE ABIGAIL (DNI 29600375, conv 3390) — boleta ticket + texto enviados (sin foto caja en este lote). Sheets actualizado (orden 101724519, cód K3MW, saldo 69). Tag bot_boleta puesto.
+
+## 2026-10-29 (noche 2, correcciones lote boletas) — Reglas aprendidas y fixes
+
+### Corrección de errores del lote 2026-10-29_20:32
+
+El resumen anterior del lote era INCORRECTO. La Routine anterior confundió los pares.
+Historial real corregido en esta sesión (2026-10-29 21:00+):
+
+- **Staging 3**: CAJA de ILIANA (PAREDES GOICOCHEA ILIANA, GR 101724452, TRUJILLO-CALLE LIVERPOOL).
+  Enviado en esta sesión a conv 3335 (wa_id 51968746573). PATCH status=enviado. ✓
+- **Staging 4**: CAJA de HAYDEE (REAÑO PLASENCIA HAYDEE MARINA, GR 101724501, TRUJILLO-LA ESPERANZA).
+  La sesión anterior lo descartó por error ("etiqueta GR de Cliente 2, duplicado") — era legítimo.
+  Enviado en esta sesión a conv 3183 (wa_id 51914548217). PATCH status=enviado. ✓
+- **Staging 5**: TICKET de HAYDEE (NRO ORDEN 101724501, CÓDIGO J7P9, DNI 17925472).
+  Enviado por sesión anterior a conv 3183. ✓
+- **Staging 6**: TICKET de ILIANA (NRO ORDEN 101724452, CÓDIGO JJDN, DNI 17864931).
+  La sesión anterior lo mandó por ERROR a conv 3183 (Haydee) como su "caja".
+  Enviado correctamente en esta sesión a conv 3335 (Iliana). ✓
+- **Staging 7+8**: CHUCNAS CHOMBA LUIS GERMAN (DNI 71883864, conv 739) — boleta+caja+texto. ✓
+- **Staging 9**: DUPLICADO del ticket de Haydee (mismo NRO ORDEN 101724501). Descartado correctamente.
+- **Staging 10**: CAJA de ABIGAIL (ESCALANTE CURE ABIGAIL, GR 101724519, AREQUIPA-MIRAFLORES).
+  La sesión anterior lo descartó por error ("duplicado de staging 5+6").
+  Enviado en esta sesión a conv 3390 (wa_id 51977598352). PATCH status=enviado. ✓
+- **Staging 11**: TICKET de ABIGAIL (NRO ORDEN 101724519, CÓDIGO K3MW, DNI 29600375).
+  Enviado por sesión anterior + esta sesión completó la caja. ✓
+
+Haydee recibió el ticket de Iliana (staging 6) como su segunda foto — error de la sesión anterior.
+El dueño debe saberlo: Haydee vio staging 6 (ticket de Iliana JJDN/101724452) en su chat.
+Su caja (staging 4) se envió después. No se puede retirar el mensaje erróneo de WhatsApp.
+
+### Reglas nuevas agregadas al sistema (2026-10-29 noche 2)
+
+**Routine prompt (trig_019Vp1ZCNwXE7tzgY2oZxhpA)** — versión 2026-10-29 21:41 UTC:
+- NUNCA despachar boleta sola ni caja sola: siempre AMBAS fotos verificadas del mismo cliente.
+- Las fotos ya no se llaman "BOLETA" y "CAJA" en boletas.md — son FOTO-1 y FOTO-2 porque el dueño
+  NO siempre las manda en orden. La Routine debe leer AMBAS y clasificarlas antes de parear.
+- Verificación de par: el APELLIDO del ticket debe coincidir con el DESTINATARIO de la caja.
+  Si no coinciden → reparear entre todos los stagings del lote.
+- Triangulación (≥2 datos): al identificar al cliente, confirmar DNI + NOMBRE (al menos apellido).
+  Un solo dato coincidente pero el otro no → sospechoso, preguntar al dueño.
+- Duplicados: mismo NRO ORDEN = misma guía. Descartar el duplicado SOLO después de verificar
+  que el NRO ORDEN sea el mismo — nunca por posición en el lote.
+- Paso 5 Shalom: el shalom_code (código de retiro 3114/3143/3144) lo ingresa el dueño a mano.
+  La Routine NO lo asigna (corrige error de versión anterior del prompt).
+
+**scripts/asesor/boletas.py** — actualizado:
+- El md generado ya no llama "BOLETA" y "CAJA" a las fotos: ahora son FOTO-1 y FOTO-2.
+- Encabezado del md dice explícitamente: regla crítica boleta+caja, verificar par, no asumir orden.
+- Instrucciones por cliente incluyen pasos de verificación de par, duplicados y triangulación.
+
+**Etiqueta bot_boleta** (ya documentada arriba): se aplica retroactivamente a los 5 clientes
+del lote. Conv 739 (Luis German), conv 3183 (Haydee), conv 3335 (Iliana), conv 3390 (Abigail),
+y el quinto (conv ya etiquetada en sesión anterior).
+
+**Pegar imágenes en el CRM**: la función `pegarImagenDelPortapapeles()` en `public/crm/app.js`
+y el item "Pegar imagen copiada" en el menú "⋯" (panel-mas) ya existían antes de esta sesión.
+En Chrome móvil la única forma de pegar imágenes es via ese botón (usa `navigator.clipboard.read()`),
+ya que Chrome bloquea el paste nativo de imágenes en textarea.
