@@ -231,6 +231,11 @@ export async function procesarSeguimientosVencidos(env) {
         if (s.media_key_real) {
           await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
         }
+        // Si el paso lleva texto, sale primero como burbuja separada (igual que el envío manual con catálogo).
+        if (texto) {
+          await pausaEnvio(env, s.conv_id, undefined, escribiendo);
+          await mandarTexto(env, s.conv_id, s.wa_id, texto, "Seguimiento automático", undefined, SIN_SUBIR);
+        }
         let waMessageId;
         // El catálogo es el de la línea del chat (el de URO no es el de Tarot Store).
         const catalogoId = (await envDeConversacion(env, s.conv_id)).WHATSAPP_CATALOG_ID;
@@ -241,10 +246,10 @@ export async function procesarSeguimientosVencidos(env) {
           const { results: portadas } = await env.CRM_DB.prepare(
             "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
           ).bind(catalogoId || "").all().catch(() => ({ results: [] }));
-          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, undefined, portadas.map((p) => p.retailer_id)));
         } else {
           if (!catalogoId) throw new Error("Falta el catálogo de esta línea.");
-          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, undefined));
         }
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
