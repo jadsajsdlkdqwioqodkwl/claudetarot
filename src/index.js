@@ -111,7 +111,7 @@ import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-passwor
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
-import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
+import { onRequestPost as asesorVentasPost, onRequestGetVentasLista as asesorVentasListaGet } from "./api/asesor-ventas.js";
 import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet } from "./api/asesor-datos.js";
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
@@ -168,6 +168,7 @@ const ROUTES = {
   "/api/asesor/reportes": { GET: asesorReportesGet },
   "/api/crm/reportes": { GET: crmReportesGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
+  "/api/asesor/ventas-lista": { GET: asesorVentasListaGet },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
   "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },

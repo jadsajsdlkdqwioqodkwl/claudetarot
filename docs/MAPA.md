@@ -628,4 +628,27 @@ Si `mensaje_texto` es NULL (procesado antes de la migración 0065), revierte a `
 - **`despacharBoletasPendientesVentana` — race condition**: dos mensajes simultáneos podían despachar la boleta dos veces. Corregido con reclamo atómico (`UPDATE WHERE status='pendiente_ventana'`).
 
 ### Pendiente del dueño
-- Aplicar migración 0065 a mano en D1: `ALTER TABLE boletas_staging ADD COLUMN mensaje_texto TEXT;`
+- ~~Aplicar migración 0065 a mano en D1~~ **APLICADA** el 2026-10-29 vía `npx wrangler d1 execute claudetarot-crm --remote`.
+
+## 2026-10-29 (madrugada) — Matching de cliente y normalización de wa_id
+
+### Nuevo endpoint: GET /api/asesor/ventas-lista?dni=XXXXXXXX
+`src/api/asesor-ventas.js` — `onRequestGetVentasLista`.
+La Routine llamaba a `/api/asesor/ventas-lista` (que no existía). Ahora existe.
+Acepta `?dni=XXXXXXXX` (mínimo 7 dígitos), busca en Sheets Ventas por la columna "DNI / WSP"
+usando `buscarFila` (regex `(^|\D)${dni}(\D|$)`), y devuelve:
+`{encontrado, wa_id (normalizado con prefijo 51), adelanto, saldo, codigo, courier, clave, estado}`.
+
+### Normalización de wa_id (9 dígitos → 51 + 9)
+La Sheets guarda números como "987654321" (9 dígitos, sin código de país).
+El CRM guarda `wa_id` como "51987654321" (11 dígitos).
+Tres lugares corregidos:
+- `GET /api/asesor/ventas-lista` normaliza la respuesta antes de devolverla.
+- `POST /api/asesor/mandar` (`asesor-mandar.js`): si `wa_id` llega con 9 dígitos, agrega "51".
+- `actualizar()` en `asesor-ventas.js` (accion:"boleta"): el regex `/\b51\d{9}\b/` se reemplazó
+  por `/\b(51\d{9}|\d{9})\b/` + normalización, para que el saldo se pueda escribir en D1
+  aunque el número en Sheets no tenga prefijo de país.
+
+### boletas.py: instrucción corregida
+El paso 1 (antes: "GET /api/asesor/ventas-lista o leerFilas") ahora documenta el endpoint real
+con su formato exacto y la nota de que `wa_id` ya viene normalizado.

@@ -46,10 +46,13 @@ export async function onRequestPost({ request, env }) {
   const p = await request.json().catch(() => null);
   if (!p?.tipo) return json({ error: "Falta tipo." }, 400);
 
+  let waIdNorm = String(p.wa_id || "").replace(/\D/g, "") || null;
+  // Número peruano de 9 dígitos: agregar código de país
+  if (waIdNorm?.length === 9) waIdNorm = "51" + waIdNorm;
   const conv = await resolverConversacion(
     env.CRM_DB,
     Number(p.conversation_id) || null,
-    String(p.wa_id || "").replace(/\D/g, "") || null
+    waIdNorm
   );
   if (!conv) return json({ error: "No encontré la conversación." }, 404);
 

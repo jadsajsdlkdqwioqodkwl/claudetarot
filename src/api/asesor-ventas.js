@@ -155,7 +155,9 @@ async function actualizar(env, p, conImagen) {
     await updateValues(env, `${hoja}!${col("Saldo")}${fila}`, [[String(p.saldo)]]);
     if (env.CRM_DB) {
       const celda_wsp = String(valores[indiceVenta("DNI / WSP")] || "");
-      const waId = celda_wsp.match(/\b51\d{9}\b/)?.[0];
+      // Acepta tanto "51987654321" (11 dígitos) como "987654321" (9 dígitos sin prefijo)
+      const telRaw = celda_wsp.match(/\b(51\d{9}|\d{9})\b/)?.[1] || "";
+      const waId = telRaw.length === 9 ? "51" + telRaw : telRaw;
       if (waId) {
         const cont = await env.CRM_DB.prepare("SELECT id FROM contacts WHERE wa_id = ? LIMIT 1").bind(waId).first();
         if (cont?.id) {
@@ -184,6 +186,47 @@ export async function onRequestPost({ request, env }) {
     return json({ error: err.message }, 502);
   }
   return json({ error: "Acción inválida." }, 400);
+}
+
+/**
+ * GET /api/asesor/ventas-lista?dni=XXXXXXXX
+ * Busca en Sheets Ventas la fila con ese DNI y devuelve los datos del cliente
+ * que la Routine necesita para despachar la boleta: wa_id (con código de país),
+ * adelanto, saldo, código de seguimiento, courier y clave.
+ */
+export async function onRequestGetVentasLista({ request, env }) {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!(await dentroDelLimiteAsesor(env, ip))) return json({ error: "Demasiados intentos." }, 429);
+  if (!(await autorizadoAsesor(request, env))) return json({ error: "No autorizado." }, 401);
+  const url = new URL(request.url);
+  const dni = soloDigitos(url.searchParams.get("dni") || "");
+  if (!dni || dni.length < 7) return json({ error: "dni inválido (mínimo 7 dígitos)." }, 400);
+  try {
+    const filas = await leerFilas(env);
+    const hallada = buscarFila(filas, { dni });
+    if (!hallada) return json({ encontrado: false });
+    const { valores } = hallada;
+    const celdaContact = String(valores[indiceVenta("DNI / WSP")] || "");
+    // Extrae número de teléfono de la celda (puede ser "45781234 / 987654321" o solo "987654321")
+    const partes = celdaContact.split("/").map((s) => soloDigitos(s.trim())).filter(Boolean);
+    const tel = partes.find((p) => p.length >= 9) || "";
+    // Normalizar a wa_id con código de país (Perú = 51)
+    const waId = tel.length === 9 ? "51" + tel : tel.length >= 11 ? tel : "";
+    return json({
+      encontrado: true,
+      wa_id: waId || null,
+      dni: partes.find((p) => p.length <= 9 && p.length >= 7 && p !== tel) || dni,
+      adelanto: String(valores[indiceVenta("Adelanto")] || ""),
+      saldo: String(valores[indiceVenta("Saldo")] || ""),
+      codigo: String(valores[indiceVenta("Código")] || ""),
+      courier: String(valores[indiceVenta("Envío")] || ""),
+      clave: String(valores[indiceVenta("Clave Shalom / Notas")] || ""),
+      estado: String(valores[indiceVenta("Estado")] || "")
+    });
+  } catch (err) {
+    console.error("Asesor ventas-lista:", err.message);
+    return json({ error: err.message }, 502);
+  }
 }
 
 export { COLUMNAS_VENTA };
