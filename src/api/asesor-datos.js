@@ -375,3 +375,46 @@ export async function onRequestGetPedidosWeb({ request, env }) {
   });
   return json({ horas, pedidos });
 }
+
+/**
+ * GET /api/asesor/buscar-dni?dni=XXXXXXXX
+ * Busca en los mensajes del CRM el número de DNI para identificar al cliente
+ * de una boleta cuando no aparece en Sheets Ventas.
+ * Devuelve: { encontrado, conversation_id, wa_id, nombre }
+ * o { encontrado: false } si ningún mensaje contiene ese DNI.
+ */
+export async function onRequestGetBuscarDni({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const dni = (url.searchParams.get("dni") || "").replace(/\D/g, "");
+  if (!dni || dni.length < 7) return json({ error: "dni inválido (mínimo 7 dígitos)." }, 400);
+
+  // Busca en texto de mensajes (cliente o vendedora) del último año.
+  const hace1ano = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 19).replace("T", " ");
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT conv.id AS conversation_id, c.wa_id,
+            COALESCE(c.name, c.profile_name, '') AS nombre,
+            MAX(m.created_at) AS ultimo_match
+     FROM messages m
+     JOIN conversations conv ON conv.id = m.conversation_id
+     JOIN contacts c ON c.id = conv.contact_id
+     WHERE m.body LIKE ? AND m.type = 'text' AND m.created_at >= ?
+     GROUP BY conv.id
+     ORDER BY ultimo_match DESC
+     LIMIT 5`
+  ).bind(`%${dni}%`, hace1ano).all();
+
+  if (!results.length) return json({ encontrado: false });
+  const mejor = results[0];
+  // Normalizar wa_id (9 dígitos → 51 + 9)
+  const telRaw = String(mejor.wa_id || "").replace(/\D/g, "");
+  const waId = telRaw.length === 9 ? "51" + telRaw : telRaw;
+  return json({
+    encontrado: true,
+    conversation_id: mejor.conversation_id,
+    wa_id: waId || null,
+    nombre: mejor.nombre,
+    coincidencias: results.length
+  });
+}

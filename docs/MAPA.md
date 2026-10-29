@@ -670,3 +670,27 @@ Ambos botones siguen llamando a `marcarAtendido()` → `POST /api/crm/chat-estad
 Confirmado: `onRequestPost = conAuth(post)` en `src/api/crm/quick-replies.js` (no `conAuthAdmin`).
 El botón "Nueva respuesta rápida" en el panel de rápidas tampoco tiene check de admin.
 No se requirió ningún cambio.
+
+## 2026-10-29 — Boletas: fallback CRM para cliente sin Sheets + saldo por imágenes
+
+### Nuevo endpoint: GET /api/asesor/buscar-dni?dni=XXXXXXXX
+Busca el DNI en los mensajes de texto del CRM (D1 `messages.body LIKE '%{dni}%'`, último año).
+Respuesta: `{encontrado, conversation_id, wa_id (51XXXXXXXXX normalizado), nombre, coincidencias}`.
+Implementado en `src/api/asesor-datos.js` (`onRequestGetBuscarDni`).
+Ruta registrada en `src/index.js`: `"/api/asesor/buscar-dni": { GET: asesorBuscarDniGet }`.
+
+### boletas.py — paso 1: tres pasos en orden (Sheets → CRM → preguntar)
+Antes: si DNI no estaba en Sheets, se preguntaba al dueño.
+Ahora:
+1. Buscar en Sheets: `GET /api/asesor/ventas-lista?dni=<DNI>`
+2. Si `encontrado=false`: buscar en CRM: `GET /api/asesor/buscar-dni?dni=<DNI>`
+   - Si encontrado en CRM: crear entrada en Sheets: `POST /api/asesor/ventas {accion:'crear', dni, celular:'<9 dígitos>'}`
+3. Si no está en ninguno: preguntar al dueño.
+
+### boletas.py — paso 2: saldo verificado por imágenes siempre
+Antes: solo leía imágenes si el adelanto de Sheets "parecía incorrecto".
+Ahora: SIEMPRE leer `GET /api/asesor/imagenes?wa_id=<wa_id>` para extraer el monto Yape/Plin.
+- Si Sheets tiene adelanto y cuadra con la imagen → usar Sheets.
+- Si no cuadran → usar el monto de la imagen y anotar la discrepancia.
+- Si solo CRM (sin Sheets) → adelanto = monto visto en la imagen.
+- Si no hay capturas Yape → usar adelanto de Sheets si existe, si no preguntar al dueño.
