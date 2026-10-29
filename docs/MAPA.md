@@ -781,3 +781,40 @@ consultado en paralelo con los 4 ajustes existentes.
 - Badge rojo en botón admin aparece también si hay `errores_mensajes`.
 - Si hay errores: lista `<ul>` con wa_id, mensaje de error y timestamp.
 - Si todo OK y sin errores: sigue mostrando "Todo en orden".
+
+## 2026-10-29 — Log de envíos fallidos + fix barra lateral seguimientos
+
+### migrations/0067_envio_errores.sql (NUEVO — aplicar a mano en D1)
+Tabla `envio_errores (id, scheduled_message_id, conversation_id, wa_id, error, created_at)` para
+registrar cada vez que el cron no pudo enviar un seguimiento programado.
+Comando: `wrangler d1 execute CRM --file=migrations/0067_envio_errores.sql`
+
+### src/lib/crm-cron.js — catch de procesarSeguimientosVencidos
+Al fallar un envío, además de marcar `status = 'fallido'` en `scheduled_messages`, ahora:
+1. INSERT en `envio_errores` con scheduled_message_id, conversation_id, wa_id y error.
+2. Actualiza `crm_settings.envio_ultimo_error` con timestamp + id + primer tramo del error.
+Los tres UPDATEs van en un `batch` para atomicidad; si falla, no propaga el error.
+
+### src/api/crm/salud.js — envio_ultimo_error y errores_envio
+`GET /api/crm/salud` ahora:
+- Lee `crm_settings.envio_ultimo_error` en paralelo con los otros ajustes.
+- Si existe, lo agrega a `alertas` con tipo `"error_envio"`.
+- Devuelve `errores_envio` (últimos 10 de `envio_errores`).
+
+### public/crm/app.js — cargarSalud() muestra envíos fallidos
+`hayProblemas` ahora incluye `d.errores_envio?.length > 0`.
+Se agrega sección "Envíos fallidos" en el panel de Estado del sistema.
+
+### public/crm/app.js — fix esSeguimientoManual (barra lateral)
+`esSeguimientoManual` excluye ahora también:
+- Día 7 (`created_by` termina en `"Automático (día 7)"`).
+- Plan con plantilla (Shalom/Olva): `startsWith("Plan con plantilla")`.
+- Seguimiento con plantilla: `startsWith("Seguimiento con plantilla")`.
+- Seguimiento de respuesta rápida: `startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)`.
+Estos tipos nunca deberían contar en el badge "Seguimiento ×N" de la lista de chats.
+
+### public/crm/app.js — fix verSeguimientoActivo (seguimiento rápida renombrada)
+`verSeguimientoActivo` filtraba los pasos pendientes por `s.created_by === origen`
+donde `origen` incluía el título actual de la respuesta rápida. Si el título se renombraba,
+los seguimientos ya programados (con el título viejo en `created_by`) dejaban de aparecer.
+Solución: ahora filtra por `Number(s.quick_reply_id) === qid` (el ID no cambia).

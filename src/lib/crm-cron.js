@@ -275,10 +275,12 @@ export async function procesarSeguimientosVencidos(env) {
       if (!s.template_name) await encadenarRescate(env, s.conv_id, s.created_by, s.etapa).catch((err) => console.error("Encadenar rescate:", err.message));
     } catch (err) {
       console.error("Seguimiento programado:", s.id, err.message);
-      await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?")
-        .bind(s.id)
-        .run()
-        .catch(() => {});
+      const errMsg = String(err.message || "").slice(0, 500);
+      await env.CRM_DB.batch([
+        env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?").bind(s.id),
+        env.CRM_DB.prepare("INSERT INTO envio_errores (scheduled_message_id, conversation_id, wa_id, error) VALUES (?, ?, ?, ?)").bind(s.id, s.conv_id || null, s.wa_id || null, errMsg),
+        env.CRM_DB.prepare("INSERT INTO crm_settings (key, value) VALUES ('envio_ultimo_error', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(`${new Date().toISOString().slice(0, 16)} · msg ${s.id}: ${errMsg.slice(0, 200)}`),
+      ]).catch(() => {});
     }
   }
 }

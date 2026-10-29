@@ -1213,7 +1213,7 @@ async function cargarSalud() {
     const d = await pedir("/api/crm/salud");
     // Badge rojo en el botón admin si hay alertas
     const btn = $("#btn-admin");
-    const hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0;
+    const hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0 || d.errores_envio?.length > 0;
     const badgeExistente = btn?.querySelector(".badge-error-admin");
     if (hayProblemas && !badgeExistente) {
       const b = document.createElement("span");
@@ -1235,7 +1235,10 @@ async function cargarSalud() {
     const errLines = d.errores_mensajes?.length ? `<div style="margin-top:8px"><strong>Mensajes no procesados (últimos ${d.errores_mensajes.length}):</strong><ul style="margin:4px 0;padding-left:16px">` +
       d.errores_mensajes.map((e) => `<li><code>${escapar(e.wa_id || "?")}</code> — ${escapar(e.error)} <small style="opacity:.7">${escapar((e.created_at || "").slice(0, 16).replace("T", " "))}</small></li>`).join("") +
       `</ul></div>` : "";
-    contenedor.innerHTML = `${lineas}${errLines}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
+    const errEnvioLines = d.errores_envio?.length ? `<div style="margin-top:8px"><strong>Envíos fallidos (últimos ${d.errores_envio.length}):</strong><ul style="margin:4px 0;padding-left:16px">` +
+      d.errores_envio.map((e) => `<li>msg ${escapar(String(e.scheduled_message_id || "?"))} · <code>${escapar(e.wa_id || "?")}</code> — ${escapar(e.error)} <small style="opacity:.7">${escapar((e.created_at || "").slice(0, 16).replace("T", " "))}</small></li>`).join("") +
+      `</ul></div>` : "";
+    contenedor.innerHTML = `${lineas}${errLines}${errEnvioLines}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
   } catch {
     if (contenedor) contenedor.innerHTML = "No se pudo cargar el estado.";
   }
@@ -1743,7 +1746,14 @@ function esSeguimientoLead(s) {
 }
 
 function esSeguimientoManual(s) {
-  return !s.batch_id && !esSeguimientoLead(s);
+  if (s.batch_id) return false;
+  if (esSeguimientoLead(s)) return false;
+  const origen = s.created_by || "";
+  if (origen.endsWith(ORIGEN_DIA7)) return false;
+  if (origen.startsWith("Plan con plantilla")) return false;
+  if (origen.startsWith("Seguimiento con plantilla")) return false;
+  if (origen.startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return false;
+  return true;
 }
 
 /** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
@@ -4252,9 +4262,9 @@ async function verSeguimientoActivo(chip) {
   chip.disabled = true;
   try {
     const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
-    const q = estado.quickReplies.find((x) => x.id === Number(chip.dataset.q));
-    const origen = q ? `Seguimiento de respuesta rápida · ${q.title}` : null;
-    const pasos = scheduled.filter((s) => s.status === "pendiente" && s.created_by === origen);
+    const qid = Number(chip.dataset.q);
+    const q = estado.quickReplies.find((x) => x.id === qid);
+    const pasos = scheduled.filter((s) => s.status === "pendiente" && Number(s.quick_reply_id) === qid);
     reactivando = null;
     $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento activo de «${escapar(q?.title || "respuesta rápida")}»`;
     $("#ra-pasos").innerHTML = pasos.map((s, i) => `

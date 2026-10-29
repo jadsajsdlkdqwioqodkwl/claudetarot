@@ -19,14 +19,17 @@ async function handler({ request, env, agent }) {
   if (!esAdmin(agent)) return json({ error: "Solo admin." }, 403);
   const db = env.CRM_DB;
 
-  const [[ultimoOk, ultimoRechazo, ultimoError, ultimoErrorEscribiendo], erroresRows] = await Promise.all([
+  const [[ultimoOk, ultimoRechazo, ultimoError, ultimoErrorEscribiendo, ultimoErrorEnvio], erroresRows, erroresEnvioRows] = await Promise.all([
     Promise.all([
       obtenerAjuste(db, "webhook_ultimo_ok"),
       obtenerAjuste(db, "webhook_ultimo_rechazo"),
       obtenerAjuste(db, "webhook_ultimo_error"),
       obtenerAjuste(db, "ultimo_error_escribiendo"),
+      obtenerAjuste(db, "envio_ultimo_error"),
     ]),
     db.prepare("SELECT wa_id, wa_message_id, error, created_at FROM webhook_errores ORDER BY created_at DESC LIMIT 10")
+      .all().then((r) => r.results).catch(() => []),
+    db.prepare("SELECT scheduled_message_id, conversation_id, wa_id, error, created_at FROM envio_errores ORDER BY created_at DESC LIMIT 10")
       .all().then((r) => r.results).catch(() => []),
   ]);
 
@@ -34,12 +37,14 @@ async function handler({ request, env, agent }) {
   if (ultimoRechazo) alertas.push({ tipo: "firma_invalida", etiqueta: "Firma inválida (webhook rechazado)", valor: ultimoRechazo });
   if (ultimoError) alertas.push({ tipo: "error_procesamiento", etiqueta: "Error al procesar webhook", valor: ultimoError });
   if (ultimoErrorEscribiendo) alertas.push({ tipo: "error_escribiendo", etiqueta: "Error al enviar «escribiendo…»", valor: ultimoErrorEscribiendo });
+  if (ultimoErrorEnvio) alertas.push({ tipo: "error_envio", etiqueta: "Error al enviar seguimiento programado", valor: ultimoErrorEnvio });
 
   return json({
     webhook_ultimo_ok: ultimoOk,
     alertas,
     hay_alertas: alertas.length > 0,
     errores_mensajes: erroresRows,
+    errores_envio: erroresEnvioRows,
   });
 }
 
