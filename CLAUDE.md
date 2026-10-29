@@ -41,7 +41,7 @@
    API de IA.
    **Excepción autorizada por el dueño (2026-10-29): despacho automático de
    boletas de provincia.** La Routine «Despacho automático de boletas»
-   (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, cada hora a los :23 min Lima) usa
+   (`trig_019Vp1ZCNwXE7tzgY2oZxhpA`, **manual — sin cron**, el dueño hace «Run now») usa
    `POST /api/asesor/mandar` para enviar fotos de boleta + mensaje de tracking
    directamente al cliente, sin pasar por ✨ Sugerencias. Igual que la regla 10
    (rescate lead 1), este envío automático está aprobado por el dueño.

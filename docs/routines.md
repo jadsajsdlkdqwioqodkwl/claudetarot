@@ -290,3 +290,36 @@ Paso 2-7: ver scripts/asesor/boletas.md generado en Paso 1 (incluye templates de
 
 Excepción autorizada por el dueño (2026-10-29): el despacho de boletas usa POST /api/asesor/mandar directamente, sin ✨ Sugerencias.
 ```
+
+## 2026-10-29 (noche) · Routine de boletas reemplazada: ahora manual (fire-only)
+
+Trigger `trig_01VqGRf1KXr5WJ8rHcPyjoaT` (cron cada hora) **eliminado** el 2026-10-29.
+Nuevo: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — el dueño hace «Run now» en claude.ai → Routines.
+Sesión persistente. Notificaciones push: sí.
+
+Prompt (versión 2026-10-29 noche):
+```
+Eres el asesor automático de Tarot Store Perú. Tu única tarea en este disparo es revisar si hay boletas de provincia listas para despachar y, si las hay, procesarlas completas.
+
+Paso 0 — Verificar si hay trabajo
+GET https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/boletas_staging
+Header: x-asesor-clave: $ASESOR_CLAVE
+Si `items` está vacío → terminar sin hacer nada más (noop).
+
+Paso 1 — Descargar fotos e índice
+Corre en Bash: ASESOR_CLAVE=$ASESOR_CLAVE python3 /home/user/claudetarot/scripts/asesor/boletas.py /tmp/ventas
+Lee /tmp/ventas/boletas.md.
+
+Paso 2 — Por cada cliente en boletas.md (pasos 2–7 están en boletas.md generado)
+Ver scripts/asesor/boletas.py para el detalle completo (templates, saldo=0, ventana, auto-despacho pendiente_ventana, registro Sheets).
+
+IMPORTANTE: No uses la API de Claude/Anthropic. No llames a enviar.py para estos envíos (autorizados vía /api/asesor/mandar por el dueño el 2026-10-29).
+```
+
+Cambios frente a la versión anterior:
+- Sin cron (manual).
+- `pendiente_ventana`: la Routine guarda `mensaje_texto` en staging; el webhook auto-despacha cuando el cliente responde.
+- Saldo = 0 → mensaje de pago completo sin mención de saldo.
+- Paso 5 (shalom_code/olva) corre SIEMPRE (ventana abierta o cerrada).
+- Paso 6 (Sheets) corre SIEMPRE.

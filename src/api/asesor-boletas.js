@@ -14,6 +14,7 @@
 
 import { autorizadoAsesor } from "./asesor.js";
 import { stagingListarListos, stagingActualizar } from "../lib/boletas-staging.js";
+// stagingListarPendientesVentana no se usa aquí: lo usa el webhook directamente.
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -31,7 +32,7 @@ export async function onRequestPatch({ request, env }) {
   if (!autorizadoAsesor(request, env)) return json({ error: "No autorizado." }, 401);
   const p = await request.json().catch(() => null);
   if (!p?.id) return json({ error: "Falta id." }, 400);
-  const valid = ["en_proceso", "enviado", "error"];
+  const valid = ["en_proceso", "enviado", "pendiente_ventana", "error"];
   if (p.status && !valid.includes(p.status)) return json({ error: `status debe ser uno de: ${valid.join(", ")}.` }, 400);
   await stagingActualizar(env.CRM_DB, p.id, p);
   return json({ ok: true });

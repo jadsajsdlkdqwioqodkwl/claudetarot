@@ -588,3 +588,44 @@ Si la foto de la boleta es borrosa o ilegible → notificar al dueño en la sesi
 
 ### boletas.py actualizado (2026-10-29)
 `scripts/asesor/boletas.py`: instrucciones en `boletas.md` ahora incluyen templates de mensajes Shalom y Olva, lógica de calidad de foto (borrosa/duplicada/parcial), y nota de strip del prefijo "26" para Olva.
+
+---
+
+## 2026-10-29 (noche) — Routine de boletas: manual, auto-despacho pendiente_ventana, y corrección de bugs
+
+### Trigger reemplazado: `trig_01VqGRf1KXr5WJ8rHcPyjoaT` → `trig_019Vp1ZCNwXE7tzgY2oZxhpA`
+`trig_01VqGRf1KXr5WJ8rHcPyjoaT` (cron cada hora) **eliminado** el 2026-10-29.
+Motivo: la espera de hasta 59 min era innecesaria; el dueño confirma que es igual de fácil hacer «Run now» cuando cargó las boletas. Sin cron no hay sesiones vacías desperdiciando tokens.
+
+Nuevo: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+- **Sin cron, fire-only**: el dueño lo dispara manualmente desde claude.ai → Routines → «Run now».
+- Sesión persistente (mantiene contexto entre disparos del dueño).
+- Todo lo demás igual (Paso 0 noop si staging vacío, etc.).
+
+CLAUDE.md actualizado: refleja el nuevo ID y «sin cron, manual».
+
+### Auto-despacho de `pendiente_ventana` vía webhook
+Cuando la ventana del cliente estaba cerrada al procesar la boleta, la Routine:
+1. Guarda el mensaje completo en `boletas_staging.mensaje_texto` (migración 0065).
+2. Marca los ítems como `pendiente_ventana` y manda la plantilla `aviso_envio_shalom`.
+
+Cuando el cliente responde (cualquier mensaje), el webhook (`src/api/whatsapp-webhook.js`)
+llama a `despacharBoletasPendientesVentana`:
+1. **Reclamo atómico**: `UPDATE SET status='en_proceso' WHERE status='pendiente_ventana'`.
+   Previene doble envío si dos mensajes llegan simultáneamente.
+2. Busca los ítems reclamados (`en_proceso`) ordenados por `id`.
+3. `items[0]` = boleta, `items[1]` = caja (por orden de inserción; columna `orden` es NULL).
+4. Manda fotos + texto.
+5. Marca todo `enviado`.
+Si `mensaje_texto` es NULL (procesado antes de la migración 0065), revierte a `pendiente_ventana` sin enviar.
+
+### Bugs corregidos en esta sesión
+- **boletas.py — pairing cross-lote (blindspot)**: antes se emparejaban fotos globalmente. Ahora se agrupa por `lote_id`; cada `ENVIAR` del dueño genera su propio grupo de pares. Ejemplo: 10 fotos → ENVIAR, luego 2 fotos → ENVIAR → dos lotes separados, sin mezcla.
+- **boletas.py — saldo = 0 (blindspot)**: se agregaron los templates de Shalom y Olva para pago completo (sin mención de saldo) en `boletas.md`.
+- **boletas.py — syntax error (IndentationError)**: `if c:` estaba indentado 4 espacios de más; el archivo no se podía parsear. Corregido.
+- **`stagingActualizar` sobreescribía campos (blindspot)**: un PATCH con solo `{id, status}` ponía a NULL `conversation_id`, `courier`, etc. Corregido con `COALESCE(?, campo)` para todos los campos opcionales.
+- **`despacharBoletasPendientesVentana` — `orden` siempre NULL**: usaba `items.find(r => r.orden === 1/2)` pero `orden` nunca se seteó. La caja nunca se enviaba. Corregido: ahora usa `items[0]` y `items[1]` (orden de inserción).
+- **`despacharBoletasPendientesVentana` — race condition**: dos mensajes simultáneos podían despachar la boleta dos veces. Corregido con reclamo atómico (`UPDATE WHERE status='pendiente_ventana'`).
+
+### Pendiente del dueño
+- Aplicar migración 0065 a mano en D1: `ALTER TABLE boletas_staging ADD COLUMN mensaje_texto TEXT;`

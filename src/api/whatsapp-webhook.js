@@ -39,6 +39,7 @@ import { notificarTelegram } from "../lib/telegram.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
 import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
 import { esDueno, stagingGuardar, stagingActivarLote } from "../lib/boletas-staging.js";
+import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -230,6 +231,53 @@ async function manejarMensajeDueno(env, db, msg) {
   }
 }
 
+/**
+ * Cuando el cliente responde al botón de la plantilla, su ventana de 24 h se abre.
+ * Si tenía boletas en staging con status='pendiente_ventana' y su mensaje pre-calculado,
+ * las despachamos automáticamente sin que el dueño tenga que hacer nada.
+ */
+async function despacharBoletasPendientesVentana(env, db, conversationId, waId) {
+  // Reclamo atómico: mueve pendiente_ventana → en_proceso para esta conversación.
+  // Evita doble envío si llegan dos mensajes entrantes simultáneos.
+  const claimed = await db
+    .prepare("UPDATE boletas_staging SET status = 'en_proceso' WHERE conversation_id = ? AND status = 'pendiente_ventana'")
+    .bind(conversationId)
+    .run();
+  if (!claimed.meta?.changes) return;
+
+  const { results: items } = await db
+    .prepare(
+      "SELECT id, media_id, media_mime, mensaje_texto FROM boletas_staging " +
+      "WHERE conversation_id = ? AND status = 'en_proceso' ORDER BY id"
+    )
+    .bind(conversationId)
+    .all();
+  if (!items?.length) return;
+
+  // items[0] = boleta, items[1] = caja (inserción en orden; orden columna es NULL siempre)
+  const boleta = items[0];
+  const caja = items.length > 1 ? items[1] : null;
+
+  if (!boleta?.mensaje_texto) {
+    // Pre-migración 0065: revertir para no bloquear el item
+    await db
+      .prepare("UPDATE boletas_staging SET status = 'pendiente_ventana' WHERE conversation_id = ? AND status = 'en_proceso'")
+      .bind(conversationId)
+      .run();
+    return;
+  }
+
+  await mandarMediaPorId(env, conversationId, waId, boleta.media_id, boleta.media_mime || "image/jpeg", "asesor-boletas-auto");
+  if (caja?.media_id) {
+    await mandarMediaPorId(env, conversationId, waId, caja.media_id, caja.media_mime || "image/jpeg", "asesor-boletas-auto");
+  }
+  await pausaEnvio(env, conversationId);
+  await mandarTexto(env, conversationId, waId, boleta.mensaje_texto, "asesor-boletas-auto");
+  for (const item of items) {
+    await db.prepare("UPDATE boletas_staging SET status = 'enviado' WHERE id = ?").bind(item.id).run();
+  }
+}
+
 async function procesarCambio(envBase, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
   // A qué número de WhatsApp escribió (Tarot Store = principal, o una línea
@@ -285,6 +333,9 @@ async function procesarCambio(envBase, db, value, origen) {
     }
     // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
     if (conversacion.blocked) continue;
+    // Boleta con ventana pendiente: el cliente acaba de abrir la ventana → despachar automáticamente.
+    await despacharBoletasPendientesVentana(env, db, conversacion.id, contacto.wa_id)
+      .catch((err) => console.error("Boletas pendiente_ventana:", err.message));
     // Respondió al "aviso de envío": se abrió su ventana y arranca el plan de recojo (4, 7 y 21 días).
     await rearmarPlanShalom(env, conversacion.id, bodyFinal).catch((err) => console.error("Re-armar recojo:", err.message));
     // Killswitch del chat: sin bienvenida ni seguimiento automático.

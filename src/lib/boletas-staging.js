@@ -49,13 +49,31 @@ export async function stagingListarListos(db) {
   return results || [];
 }
 
-/** Actualiza el estado de un item: conversation_id, courier, nombre, DNI o error. */
-export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, error } = {}) {
+/** Actualiza solo los campos que se pasan (PATCH semántico: los que llegan null no se tocan). */
+export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, mensaje_texto, error } = {}) {
   await db
     .prepare(
-      "UPDATE boletas_staging SET status = ?, conversation_id = ?, courier = ?, " +
-      "nombre_boleta = ?, dni_boleta = ?, error = ? WHERE id = ?"
+      "UPDATE boletas_staging SET " +
+      "status = COALESCE(?, status), conversation_id = COALESCE(?, conversation_id), " +
+      "courier = COALESCE(?, courier), nombre_boleta = COALESCE(?, nombre_boleta), " +
+      "dni_boleta = COALESCE(?, dni_boleta), mensaje_texto = COALESCE(?, mensaje_texto), " +
+      "error = COALESCE(?, error) WHERE id = ?"
     )
-    .bind(status ?? "en_proceso", conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, error ?? null, id)
+    .bind(status ?? null, conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, mensaje_texto ?? null, error ?? null, id)
     .run();
+}
+
+/**
+ * Lista los items con status='pendiente_ventana' de una conversación concreta.
+ * El Worker los envía automáticamente cuando el cliente responde al botón.
+ */
+export async function stagingListarPendientesVentana(db, conversationId) {
+  const { results } = await db
+    .prepare(
+      "SELECT id, media_id, media_mime, orden, mensaje_texto " +
+      "FROM boletas_staging WHERE conversation_id = ? AND status = 'pendiente_ventana' ORDER BY orden, id"
+    )
+    .bind(conversationId)
+    .all();
+  return results || [];
 }

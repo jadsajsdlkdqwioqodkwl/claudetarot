@@ -71,15 +71,23 @@ def main():
         open(ruta, "wb").write(datos)
         descargadas.append({"id": id_, "lote": lote, "ruta": ruta, "mime": mime})
 
-    # Agrupar en pares (orden de llegada: boleta, caja, boleta, caja…)
+    # Agrupar en pares POR LOTE: nunca cruzar fotos de distintos ENVIAR.
+    # Si el dueño mandó 10 fotos → ENVIAR y luego 2 más → ENVIAR, cada lote
+    # se empareja por separado: {lote_1: [b1,c1,b2,c2,...], lote_2: [b3,c3]}.
     ok_items = [d for d in descargadas if "ruta" in d]
     err_items = [d for d in descargadas if "error" in d]
 
+    lote_grupos = {}
+    for d in ok_items:
+        lote_grupos.setdefault(d["lote"], []).append(d)
+
     pares = []
-    for i in range(0, len(ok_items), 2):
-        boleta = ok_items[i]
-        caja = ok_items[i + 1] if i + 1 < len(ok_items) else None
-        pares.append({"boleta": boleta, "caja": caja})
+    for lote_key in sorted(lote_grupos.keys()):
+        grupo = lote_grupos[lote_key]
+        for i in range(0, len(grupo), 2):
+            boleta = grupo[i]
+            caja = grupo[i + 1] if i + 1 < len(grupo) else None
+            pares.append({"boleta": boleta, "caja": caja, "lote": lote_key})
 
     # Construir boletas.md
     lineas = []
@@ -151,14 +159,44 @@ def main():
             f"       *Código de seguimiento:* [TRACKING SIN PREFIJO '26']\n"
             f"       ---\n"
             f"\n"
+            f"       ⚠️ Si saldo = 0 (pago completo, sin deuda), usar los mensajes de abajo.\n"
+            f"       NO mencionar saldo ni código de recojo (el cobro ya fue completado).\n"
+            f"\n"
+            f"       SHALOM — pago completo:\n"
+            f"       ---\n"
+            f"       Buenas [estimado/estimada/estimad@] [PRIMER NOMBRE] le envío su comprobante ✨ muchas gracias por su pago completo, le agradecemos la confianza depositada!\n"
+            f"\n"
+            f"       Puede rastrear su envío por aquí, le avisaremos cuando llegue👉 https://shalom.com.pe/rastrea\n"
+            f"\n"
+            f"       *Nro de orden:* [NUMERO DE ORDEN DE LA BOLETA]\n"
+            f"       *Código:* [CODIGO COMPARTIBLE DE LA BOLETA — no el retiro 3114/3144/3143]\n"
+            f"       ---\n"
+            f"\n"
+            f"       OLVA — pago completo:\n"
+            f"       ---\n"
+            f"       Buenas [estimado/estimada/estimad@] [PRIMER NOMBRE] le envío su comprobante ✨ muchas gracias por su pago completo, le agradecemos la confianza depositada!\n"
+            f"\n"
+            f"       Puede rastrear su envío por aquí, le avisaremos cuando llegue👉 https://tracking.olvaexpress.pe/\n"
+            f"\n"
+            f"       *Código de seguimiento:* [TRACKING SIN PREFIJO '26']\n"
+            f"       ---\n"
+            f"\n"
             f"    4. Ver si la ventana de 24 h está abierta (last_inbound_at < 24 h):\n"
             f"       - Abierta → mandar de forma AUTOMÁTICA (POST {API_BASE}/mandar, header x-asesor-clave):\n"
             f"           1. foto boleta: {{tipo:'foto-staging', wa_id, staging_id: {b['id']}}}\n"
             f"           2. foto caja:   {{tipo:'foto-staging', wa_id, staging_id: <id_caja>}}  (si hay)\n"
             f"           3. texto:       {{tipo:'texto', wa_id, texto: '<mensaje completo>'}}\n"
-            f"       - Cerrada → mandar plantilla aviso_envio_shalom ({{{{1}}}} = primer nombre);\n"
-            f"                   cliente aprieta botón → ventana abre → se mandan fotos + mensaje.\n"
-            f"    5. Activar plan de cobro según courier:\n"
+            f"          Verificar que cada POST devuelva {{ok:true}}; si falla, marcar staging con status='error'.\n"
+            f"       - Cerrada → guardar mensaje para auto-despacho cuando el cliente abra la ventana:\n"
+            f"           a. PATCH {API_BASE}/boletas_staging (header x-asesor-clave) PRIMERO para la boleta:\n"
+            f"              {{id:{b['id']}, status:'pendiente_ventana', conversation_id:<conv_id>,\n"
+            f"               courier:'<Shalom|Olva>', nombre_boleta:'<nombre>', dni_boleta:'<dni>',\n"
+            f"               mensaje_texto:'<mensaje completo que se mandará cuando abra la ventana>'}}\n"
+            f"           b. Si hay caja: PATCH para su id con {{status:'pendiente_ventana', conversation_id:<conv_id>}}\n"
+            f"           c. Luego mandar plantilla aviso_envio_shalom\n"
+            f"              POST /api/crm/sugerencias {{tipo:'plantilla', wa_id, plantilla:'aviso_envio_shalom', params:['<primer_nombre>']}}\n"
+            f"              El Worker despachará las fotos+mensaje automáticamente cuando el cliente toque el botón.\n"
+            f"    5. Activar plan de cobro (SIEMPRE, ventana abierta o cerrada):\n"
             f"       Shalom → PATCH /api/crm/contacts {{ contact_id, shalom_code: <codigo_recojo> }}\n"
             f"       Olva   → PATCH /api/crm/contacts {{ contact_id, olva: true }}\n"
             f"    6. Actualizar ventas y saldo en un solo call:\n"
@@ -166,10 +204,11 @@ def main():
             f"         accion: 'boleta', dni: '<DNI>', imagen_base64: '<base64>',\n"
             f"         mime: 'image/jpeg', saldo: '<monto>'\n"
             f"       }}\n"
-            f"    7. Marcar las dos boletas como 'enviado':\n"
-            f"       PATCH /api/asesor/boletas_staging {{id:{b['id']}, status:'enviado', courier, nombre_boleta, dni_boleta}}"
+            f"    7. Marcar como 'enviado' (SOLO si la ventana estaba ABIERTA y mandaste tú):\n"
+            f"       Si la ventana estaba CERRADA, el paso 4b ya hizo el PATCH con status='pendiente_ventana'; no repetir aquí.\n"
+            f"       PATCH /api/asesor/boletas_staging {{id:{b['id']}, status:'enviado', courier:'<Shalom|Olva>', nombre_boleta:'<nombre>', dni_boleta:'<dni>'}}"
         )
-            if c:
+        if c:
             lineas.append(
                 f"       PATCH /api/asesor/boletas_staging {{id:{c['id']}, status:'enviado'}}"
             )
