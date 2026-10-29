@@ -259,6 +259,7 @@ export const ORIGEN_LINK_ENVIO = "Link de envío";
  * Devuelve null si quedó programado, o el motivo (texto) por el que no.
  */
 export const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
+export const PREFIJO_PLAN_PLANTILLA = "Plan con plantilla";
 export const HORAS_SEGUIMIENTO_RAPIDA = 20;
 
 /** Los pasos activos del seguimiento de una respuesta rápida: { titulo, pasos } (null si ya no existe). */

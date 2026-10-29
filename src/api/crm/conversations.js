@@ -23,7 +23,9 @@
 import { extraerFechas, limitesUtc } from "../../lib/busqueda-fechas.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
 import { leerMensajes } from "./messages.js";
-import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD } from "../../lib/crm-db.js";
+import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD, PREFIJO_SUGERENCIA, PREFIJO_SEGUIMIENTO_RAPIDA, PREFIJO_PLAN_PLANTILLA } from "../../lib/crm-db.js";
+import { ORIGEN_DIA7 } from "../../lib/rescate-lead.js";
+import { PREFIJO_SEGUIMIENTO_PLANTILLA } from "../../lib/plantillas-seguimiento.js";
 
 /** Minúsculas y sin tildes, en SQL (SQLite no trae unaccent y su lower() no toca las tildes). */
 const TILDES = [["á", "a"], ["é", "e"], ["í", "i"], ["ó", "o"], ["ú", "u"], ["ü", "u"], ["ñ", "n"],
@@ -150,6 +152,17 @@ async function handler({ request, env, agent }) {
   // Primero el chat (marca leído), así la lista ya sale con su unread_count en 0.
   const chat = chatId ? await leerMensajes(env, chatId, null, { marcarLeido: !await chatSoloLectura(env, agent, chatId) }) : null;
 
+  // Exclusiones para seg_pendientes/proximo — misma lógica que esSeguimientoManual en app.js.
+  const SEG_EXCL = [
+    ORIGEN_SEGUIMIENTO_AUTO,
+    `${PREFIJO_SEGUIMIENTO_LEAD}%`,
+    `${PREFIJO_SUGERENCIA}%`,
+    `${PREFIJO_SEGUIMIENTO_RAPIDA}%`,
+    `${PREFIJO_PLAN_PLANTILLA}%`,
+    `${PREFIJO_SEGUIMIENTO_PLANTILLA}%`,
+    `%${ORIGEN_DIA7}`,
+  ];
+
   const { results } = await env.CRM_DB.prepare(
     `SELECT
         conv.id AS conversation_id,
@@ -198,8 +211,18 @@ async function handler({ request, env, agent }) {
      -- pasada por los pendientes (índice status, send_at).
      LEFT JOIN (
        SELECT conversation_id,
-         SUM(COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?) AS pendientes,
-         MIN(CASE WHEN COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ? THEN send_at END) AS proximo,
+         SUM(
+           COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ?
+         ) AS pendientes,
+         MIN(CASE WHEN
+           COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ?
+         THEN send_at END) AS proximo,
          MIN(CASE WHEN created_by = ? THEN send_at END) AS auto_proximo
        FROM scheduled_messages
        WHERE status = 'pendiente' AND batch_id IS NULL
@@ -212,7 +235,7 @@ async function handler({ request, env, agent }) {
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT ? OFFSET ?`
   )
-    .bind(...(clave ? [`%${clave}%`] : []), ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, ORIGEN_SEGUIMIENTO_AUTO, ...params, limite + 1, offset)
+    .bind(...(clave ? [`%${clave}%`] : []), ...SEG_EXCL, ...SEG_EXCL, ORIGEN_SEGUIMIENTO_AUTO, ...params, limite + 1, offset)
     .all();
 
   // Cuántos hay en la cola (con las restricciones de la cuenta, sin los filtros de la lista).
