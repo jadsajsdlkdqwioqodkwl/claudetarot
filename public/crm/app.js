@@ -4135,15 +4135,17 @@ async function marcarAtendido(c) {
  */
 function chipSeguimientoCobro() {
   const c = chatActivo();
-  if (!c?.shalom_code) return "";
+  if (!c?.shalom_code && !c?.olva) return "";
   const programar = !c.cobro_activo;
-  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat no tiene seguimiento de cobro: tócalo para programarlo" : "El seguimiento de cobro está activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
+  const plan = c.olva && !c.shalom_code ? "olva" : "shalom";
+  const labelCourier = plan === "olva" ? "Olva" : "Shalom";
+  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" data-plan="${plan}" title="${programar ? `Sin seguimiento de recojo en agencia (${labelCourier}): tócalo para programarlo` : "Seguimiento de recojo activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
 }
 
 async function accionSeguimientoCobro(chip) {
   const c = chatActivo();
   if (!c) return;
-  if (chip.dataset.accion === "programar") return marcarPlan(c, "shalom");
+  if (chip.dataset.accion === "programar") return marcarPlan(c, chip.dataset.plan || "shalom");
   chip.disabled = true;
   try {
     await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });

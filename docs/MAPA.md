@@ -723,3 +723,23 @@ CSS en `public/crm/style.css`. Lógica en `public/crm/app.js` (`cargarSalud()`, 
 Encima de "Plantillas para Meta" en `public/crm/index.html`.
 Muestra "Todo en orden · último webhook: …" o lista las alertas con su timestamp y mensaje.
 Título en rojo (`var(--peligro)`) cuando hay alertas.
+
+## 2026-10-29 — Chip de cobro para Olva + auto-activación plan recojo + boletas.py ajustes
+
+### app.js — chipSeguimientoCobro() extendido a Olva
+Antes: `chipSeguimientoCobro()` solo aparecía si `c.shalom_code` estaba seteado (clientes Shalom).
+Ahora: aparece si `c.shalom_code || c.olva`. Incluye atributo `data-plan` ("shalom" o "olva").
+`accionSeguimientoCobro()` usa `chip.dataset.plan || "shalom"` en lugar de "shalom" hardcodeado.
+Resultado: clientes Olva ahora ven el botón PROGRAMAR / DESACTIVAR SEGUIMIENTO COBRO.
+
+### asesor-boletas.js — Olva auto-activa plan recojo
+En el PATCH handler, cuando `courier === "Olva"` y `conversation_id` y `status` es `"enviado"` o `"pendiente_ventana"`,
+se llama `aplicarOlva(env, conversationId, true, "boleta-auto")` automáticamente.
+Plan activado: `recojo_agencia_1/2/3` (días 3, 7, 13). No requiere intervención del dueño.
+Import añadido: `import { aplicarOlva } from "../lib/planes-plantilla.js"`.
+
+### boletas.py — ajustes (2026-10-29 sesión 2)
+1. **Lista de géneros ampliada**: femeninos ahora incluyen Pepita/Fiorella/Janet/Jennifer/Milagros/Flor/Karen/Diana/Claudia/Carla/Rocío/Nelly/Susana/Elizabeth/Verónica/Vanessa/Paola/Laura/Andrea/Alejandra/Grecia/Stefany/Ingrid/Marisol/Yolanda/Consuelo/Gladys/Soledad/Maritza/Mariela/Giuliana/Evelyn/Gisela/Jimena.
+2. **Línea de retención añadida**: las 4 plantillas de mensaje (Shalom+saldo, Olva+saldo, Shalom+completo, Olva+completo) incluyen ahora "Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️" después del link de rastreo.
+3. **Paso 2 simplificado**: quitada la instrucción de `GET /api/asesor/imagenes?wa_id=` (endpoint no existe). Ahora: usar el `adelanto` de Sheets si está disponible; si solo hay CRM sin Sheets, preguntar al dueño.
+4. **Paso 5 corregido**: shalom_code es MANUAL (lo pone el dueño en el CRM, NUNCA la Routine). Olva se activa automáticamente via el PATCH del paso 7 (`asesor-boletas.js`). No se hace ninguna llamada a `/api/crm/contacts` desde la Routine para estos campos.

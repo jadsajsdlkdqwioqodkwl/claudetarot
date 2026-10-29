@@ -14,6 +14,7 @@
 
 import { autorizadoAsesor } from "./asesor.js";
 import { stagingListarListos, stagingActualizar } from "../lib/boletas-staging.js";
+import { aplicarOlva } from "../lib/planes-plantilla.js";
 // stagingListarPendientesVentana no se usa aquí: lo usa el webhook directamente.
 
 const json = (data, status = 200) =>
@@ -35,5 +36,13 @@ export async function onRequestPatch({ request, env }) {
   const valid = ["en_proceso", "enviado", "pendiente_ventana", "error"];
   if (p.status && !valid.includes(p.status)) return json({ error: `status debe ser uno de: ${valid.join(", ")}.` }, 400);
   await stagingActualizar(env.CRM_DB, p.id, p);
+
+  // Courier Olva + conversation_id al marcar enviado o pendiente_ventana: activar el plan de recojo (3·7·13 días).
+  if (p.courier === "Olva" && p.conversation_id && (p.status === "enviado" || p.status === "pendiente_ventana")) {
+    await aplicarOlva(env, p.conversation_id, true, "boleta-auto").catch((err) =>
+      console.error("aplicarOlva desde boletas_staging:", err.message)
+    );
+  }
+
   return json({ ok: true });
 }
