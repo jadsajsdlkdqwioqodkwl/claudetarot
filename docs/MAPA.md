@@ -819,3 +819,24 @@ Estos tipos nunca deberían contar en el badge "Seguimiento ×N" de la lista de 
 donde `origen` incluía el título actual de la respuesta rápida. Si el título se renombraba,
 los seguimientos ya programados (con el título viejo en `created_by`) dejaban de aparecer.
 Solución: ahora filtra por `Number(s.quick_reply_id) === qid` (el ID no cambia).
+
+## 2026-10-29 — Fix: seg_pendientes del servidor desincronizado con esSeguimientoManual
+
+### Problema
+`seg_pendientes` que devuelve `GET /api/crm/conversations` se calculaba excluyendo solo
+`ORIGEN_SEGUIMIENTO_AUTO` y `PREFIJO_SEGUIMIENTO_LEAD`. La función `esSeguimientoManual`
+del frontend excluye además: Sugerencias del asesor, Seguimiento de respuesta rápida,
+Plan con plantilla, Seguimiento con plantilla, y Automático (día 7).
+
+Esto causaba que al enviar la clave Shalom al cliente (cancelando los seguimientos normales),
+el servidor devolvía `seg_pendientes > 0` por los recojo-planes que quedan (Plan con plantilla
+· Recojo en...). El badge mostraba ×N y parpadeaba hasta que `actualizarSeguimientosDetalle`
+completaba la corrección local — y en cada nuevo `sincronizar()` volvía a parpadear.
+
+### Solución
+- `src/lib/crm-db.js`: exporta `PREFIJO_PLAN_PLANTILLA = "Plan con plantilla"`.
+- `src/api/crm/conversations.js`: importa `PREFIJO_SUGERENCIA`, `PREFIJO_SEGUIMIENTO_RAPIDA`,
+  `PREFIJO_PLAN_PLANTILLA` (crm-db.js), `ORIGEN_DIA7` (rescate-lead.js) y
+  `PREFIJO_SEGUIMIENTO_PLANTILLA` (plantillas-seguimiento.js). Define `SEG_EXCL` (7 valores)
+  y lo usa en el subquery de `pendientes` y `proximo`. Ahora el servidor devuelve el mismo
+  conteo que mostraría el frontend sin el paso de corrección local.
