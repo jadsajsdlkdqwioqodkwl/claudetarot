@@ -122,13 +122,13 @@ export async function registrarMensajeEntrante(db, conversationId, { waMessageId
     .run();
 }
 
-export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaMime, sentBy, replyToMessageId, fileName }, { subirEnBandeja = true } = {}) {
+export async function registrarMensajeSaliente(db, conversationId, { waMessageId, type, body, mediaKey, mediaId, mediaMime, sentBy, replyToMessageId, fileName }, { subirEnBandeja = true } = {}) {
   await db
     .prepare(
-      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_mime, status, sent_by, reply_to_message_id, file_name)
-       VALUES (?, ?, 'out', ?, ?, ?, ?, 'sent', ?, ?, ?)`
+      `INSERT INTO messages (conversation_id, wa_message_id, direction, type, body, media_key, media_id, media_mime, status, sent_by, reply_to_message_id, file_name)
+       VALUES (?, ?, 'out', ?, ?, ?, ?, ?, 'sent', ?, ?, ?)`
     )
-    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaMime || null, sentBy || null, replyToMessageId || null, fileName || null)
+    .bind(conversationId, waMessageId || null, type, body || null, mediaKey || null, mediaId || null, mediaMime || null, sentBy || null, replyToMessageId || null, fileName || null)
     .run();
 
   // Le mandamos su código de Shalom: ya no hace falta su cobro (dueño, 2026-10-23). Cuenta cualquier envío.

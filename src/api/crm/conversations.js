@@ -73,7 +73,7 @@ async function handler({ request, env, agent }) {
   const soloMias = url.searchParams.get("mine") === "1";
   const q = url.searchParams.get("q");
   const chatId = Number(url.searchParams.get("chat")) || null;
-  const etiqueta = ["contact", "lead", "purchase", "bot_boleta", "shalom_codigo_pendiente"].includes(url.searchParams.get("etiqueta")) ? url.searchParams.get("etiqueta") : null;
+  const etiqueta = ["contact", "lead", "purchase", "bot_boleta", "shalom_codigo_pendiente", "cobro_3x"].includes(url.searchParams.get("etiqueta")) ? url.searchParams.get("etiqueta") : null;
   const agente = soloMias ? agent?.displayName || agent?.username || "" : (url.searchParams.get("agente") || "").trim();
 
   const condiciones = [];

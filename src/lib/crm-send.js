@@ -358,7 +358,7 @@ export async function mandarMediaPorId(env, conversationId, waId, mediaId, mime,
   const waMessageId = await enviarMedia(envL, waId, type, mediaId, null, null, null);
   await marcarEnviado(env, conversationId);
   await registrarMensajeSaliente(env.CRM_DB, conversationId, {
-    waMessageId, type, body: null, mediaMime: mime || "image/jpeg", sentBy
+    waMessageId, type, body: null, mediaId, mediaMime: mime || "image/jpeg", sentBy
   }, {});
   return waMessageId;
 }

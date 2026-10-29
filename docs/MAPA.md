@@ -926,3 +926,35 @@ y el quinto (conv ya etiquetada en sesión anterior).
 y el item "Pegar imagen copiada" en el menú "⋯" (panel-mas) ya existían antes de esta sesión.
 En Chrome móvil la única forma de pegar imágenes es via ese botón (usa `navigator.clipboard.read()`),
 ya que Chrome bloquea el paste nativo de imágenes en textarea.
+
+## 2026-10-29 (noche 3) — Seguimiento de cobro automático, fix imagen en CRM, Routine v5
+
+### Nuevas funcionalidades
+
+**`tipo: "cobro"` en `POST /api/asesor/mandar` (`src/api/asesor-mandar.js`)**
+- Body: `{ "tipo": "cobro", "wa_id": "<wa_id>", "courier": "shalom"|"olva" }`
+- Llama `programarPlan(env, convId, courier, { estado: "pendiente", quien: "asesor-boletas" })`.
+- Si el cliente ya tiene plan, lo cancela y crea el nuevo (ya incorporado en `programarPlan`).
+- Aplica etiqueta `cobro_3x` automáticamente al terminar.
+- Importa: `{ programarPlan }` de `src/lib/planes-plantilla.js`.
+
+**Etiqueta `cobro_3x`**
+- Se asigna automáticamente cuando la Routine llama `tipo: "cobro"`.
+- Whitelist en `src/api/crm/conversations.js`: `["contact", "lead", "purchase", "bot_boleta", "shalom_codigo_pendiente", "cobro_3x"]`.
+- Botón de filtro en CRM (`public/crm/index.html`): «Seguimiento Cobro 3X» (data-etiqueta="cobro_3x").
+
+**Fix: imágenes de bot visibles en CRM (`src/lib/crm-db.js` + `src/lib/crm-send.js`)**
+- Causa: `mandarMediaPorId` no pasaba `mediaId` a `registrarMensajeSaliente` → INSERT guardaba `media_id=NULL`.
+  El CRM solo renderiza imagen si `m.media_key || m.media_id`, así que la imagen quedaba oculta.
+- Fix en `registrarMensajeSaliente` (`crm-db.js`): agregado `mediaId` al destructuring y al INSERT.
+- Fix en `mandarMediaPorId` (`crm-send.js`): pasa `mediaId` en la llamada a `registrarMensajeSaliente`.
+- `/api/crm/media?message_id=X` ya sabía descargar por `media_id` desde el CDN de WhatsApp; solo faltaba guardarlo.
+
+**Routine prompt v5 (`trig_019Vp1ZCNwXE7tzgY2oZxhpA`), actualizado 2026-10-29 ~22:00 UTC**
+- Nuevo Paso 5a: si saldo > 0 → `POST /api/asesor/mandar { tipo: "cobro", wa_id, courier }`.
+- Paso 5b: si saldo = 0 → no agendar cobro.
+- Regla crítica añadida: SIEMPRE usar `wa_id` en todos los POST (nunca `conversation_id`) para evitar
+  el error de María Córdova Julca (2026-10-29: conv 3183 pertenecía a ella, no a Haydee; el `wa_id`
+  de Sheets siempre da la conversación correcta).
+- El shalom_code NO se manda al cliente ni en el mensaje (corregido desde v4).
+- Ver docs/routines.md para el prompt completo.

@@ -338,3 +338,16 @@ Cambios frente a versión 2:
 - Paso 5 Shalom: ya NO asigna el shalom_code (el dueño lo ingresa a mano). Corrige error.
 
 Prompt: ver docs/MAPA.md sección "2026-10-29 (noche 2, correcciones lote boletas)" y el trigger en claude.ai.
+
+## 2026-10-29 (noche 3) · Routine boletas — versión 5 (2026-10-29 ~22:00 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 4:
+- **Paso 5a (NUEVO)**: si saldo > 0 → `POST /api/asesor/mandar { tipo: "cobro", wa_id, courier }` para programar los 3 seguimientos de cobro y aplicar tag `cobro_3x` automáticamente.
+- **Paso 5b**: si saldo = 0 → no agendar cobro (ya pagó completo).
+- **Regla crítica añadida**: SIEMPRE usar `wa_id` en todos los POSTs de los pasos 4 y 5 — NUNCA `conversation_id`. Evita el error de María Córdova Julca (2026-10-29: conv 3183 era su conv, no la de Haydee; el `wa_id` de Sheets siempre da la conv correcta).
+- La Routine usa `wa_id` obtenido de Sheets en el Paso 2e (triangulación).
+
+Prompt completo: guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines. Ver MAPA.md sección "2026-10-29 (noche 3)" para el resumen de cambios.

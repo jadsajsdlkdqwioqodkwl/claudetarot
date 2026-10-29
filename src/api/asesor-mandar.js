@@ -8,6 +8,8 @@
  *
  *   { tipo: "texto", conversation_id?, wa_id?, texto }
  *   { tipo: "foto-staging", conversation_id?, wa_id?, staging_id }
+ *   { tipo: "cobro", conversation_id?, wa_id?, courier: "shalom"|"olva" }
+ *     → programa el plan de recojo (3 seguimientos) y aplica el tag cobro_3x
  *
  * Se acepta conversation_id O wa_id; si solo viene wa_id, se busca la
  * conversación más reciente de ese contacto.
@@ -16,6 +18,7 @@
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
+import { programarPlan } from "../lib/planes-plantilla.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -85,7 +88,16 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
-    return json({ error: "tipo inválido (texto | foto-staging | etiqueta)." }, 400);
+    if (p.tipo === "cobro") {
+      const courier = String(p.courier || "").toLowerCase();
+      if (courier !== "shalom" && courier !== "olva") return json({ error: "courier debe ser 'shalom' u 'olva'." }, 400);
+      const resultado = await programarPlan(env, conv.convId, courier, { estado: "pendiente", quien: "asesor-boletas" });
+      if (resultado.error) return json({ error: resultado.error }, 400);
+      await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "cobro_3x").catch(() => {});
+      return json({ ok: true, pasos: resultado.pasos?.length || 0 });
+    }
+
+    return json({ error: "tipo inválido (texto | foto-staging | etiqueta | cobro)." }, 400);
   } catch (err) {
     console.error("asesor-mandar:", err.message);
     return json({ error: err.message }, 502);
