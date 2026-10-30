@@ -26,6 +26,25 @@ function fechaLima() {
     .slice(0, 16);
 }
 
+/**
+ * Escribe una fila en "Boletas auto" directamente (sin auth, para uso interno del Worker).
+ * { nombre, wa_id, courier, nro_orden, saldo, staging_ids, ventana }
+ */
+export async function registrarBoletaLog(env, { nombre, wa_id, courier, nro_orden, saldo, staging_ids, ventana = "abierta" }) {
+  if (!env.GOOGLE_SHEET_ID) return;
+  await asegurarPestana(env, env.GOOGLE_SHEET_ID, PESTAÑA, ENCABEZADOS);
+  await appendRowsTo(env, env.GOOGLE_SHEET_ID, PESTAÑA, [[
+    fechaLima(),
+    String(nombre || ""),
+    String(wa_id || ""),
+    String(courier || ""),
+    String(nro_orden || ""),
+    String(saldo ?? ""),
+    String(Array.isArray(staging_ids) ? staging_ids.join(", ") : staging_ids || ""),
+    String(ventana)
+  ]]);
+}
+
 export async function onRequestPost({ request, env }) {
   const ip = request.headers.get("CF-Connecting-IP");
   if (!(await dentroDelLimiteAsesor(env, ip))) return json({ error: "Demasiados intentos." }, 429);
@@ -36,17 +55,7 @@ export async function onRequestPost({ request, env }) {
   if (!p?.nombre) return json({ error: "Falta nombre." }, 400);
 
   try {
-    await asegurarPestana(env, env.GOOGLE_SHEET_ID, PESTAÑA, ENCABEZADOS);
-    await appendRowsTo(env, env.GOOGLE_SHEET_ID, PESTAÑA, [[
-      fechaLima(),
-      String(p.nombre || ""),
-      String(p.wa_id || ""),
-      String(p.courier || ""),
-      String(p.nro_orden || ""),
-      String(p.saldo ?? ""),
-      String(Array.isArray(p.staging_ids) ? p.staging_ids.join(", ") : p.staging_ids || ""),
-      String(p.ventana || "abierta")
-    ]]);
+    await registrarBoletaLog(env, p);
     return json({ ok: true });
   } catch (err) {
     console.error("boletas-log:", err.message);

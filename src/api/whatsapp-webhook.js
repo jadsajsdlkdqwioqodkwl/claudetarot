@@ -39,6 +39,7 @@ import { notificarTelegram } from "../lib/telegram.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
 import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
 import { esDueno, stagingGuardar, stagingActivarLote } from "../lib/boletas-staging.js";
+import { registrarBoletaLog } from "./asesor-boletas-log.js";
 import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
 
 const json = (data, status = 200) =>
@@ -247,7 +248,7 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
 
   const { results: items } = await db
     .prepare(
-      "SELECT id, media_id, media_mime, mensaje_texto, courier, saldo FROM boletas_staging " +
+      "SELECT id, media_id, media_mime, mensaje_texto, courier, saldo, nombre_boleta, nro_orden FROM boletas_staging " +
       "WHERE conversation_id = ? AND status = 'en_proceso' ORDER BY id"
     )
     .bind(conversationId)
@@ -293,6 +294,17 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
   } catch (err) {
     console.error("boletas-auto cobro/etiquetas:", err.message);
   }
+
+  // Registrar en "Boletas auto" (pestaña del libro de ventas)
+  registrarBoletaLog(env, {
+    nombre: boleta.nombre_boleta || "",
+    wa_id: waId,
+    courier: boleta.courier || "",
+    nro_orden: boleta.nro_orden || "",
+    saldo: boleta.saldo || "",
+    staging_ids: items.map((i) => i.id),
+    ventana: "pendiente"
+  }).catch((err) => console.error("boletas-auto log:", err.message));
 }
 
 async function procesarCambio(envBase, db, value, origen) {
