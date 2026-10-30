@@ -431,3 +431,28 @@ Cambios frente a versión 8 (errores detectados en producción 2026-10-30):
   Omitir la línea *Código:* cuando el documento es una etiqueta GR (sin código compartible).
 
 Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.
+
+## 2026-10-30 · Routine boletas — versión 10 (2026-10-30 ~21:35 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 9:
+
+- **REGLA CRÍTICA 2 — sin excepción**: v9 permitía GR Shalom como foto única.
+  El dueño confirmó: siempre 2 fotos. GR Shalom requiere 2 stagings (etiqueta GR + foto paquete).
+  1 foto = par incompleto = error. Sin excepciones.
+
+- **`saldo` en PATCH** (Paso 4 y Paso 7): se guarda el saldo en ambos caminos
+  (ventana pendiente y enviado). Requiere columna `saldo` (migración 0069).
+
+- **Paso 6b — log visual (NUEVO)**: tras despachar, llamar
+  `POST /api/asesor/boletas-log` con `{ nombre, wa_id, courier, nro_orden, saldo, staging_ids, ventana: "abierta" }`.
+  Esto escribe una fila en la pestaña **"Boletas auto"** del libro de ventas para
+  que el dueño pueda ver todos los despachos en un Sheet.
+
+- **Cobro 3x automático**: se aplica vía webhook `despacharBoletasPendientesVentana`
+  (código en Worker), no es parte directa del prompt de la Routine. El prompt menciona
+  que el Worker lo aplica automáticamente.
+
+Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.

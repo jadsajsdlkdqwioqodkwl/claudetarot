@@ -1085,3 +1085,44 @@ Cliente: TICLIA, wa_id 51971946030, DNI 18161420, Trujillo.
 No registrada en Sheets. Saldo derivado del chat: S/69 (adelanto S/20, resto al llegue).
 GR 101867705 = NRO ORDEN, staging 20 = despachado.
 El dueño debe agregarla manualmente a la hoja de ventas si es necesario.
+
+## 2026-10-30 (noche 3) — Routine boletas v10: 2 fotos siempre, cobro auto en pendiente_ventana, log visual
+
+### Correcciones sobre v9
+
+1. **REGLA CRÍTICA 2 — sin excepción para GR Shalom**:
+   v9 tenía una excepción "GR Shalom SÍ es documento completo; se despacha sola."
+   El dueño confirmó: **siempre van 2 fotos**. Una etiqueta GR Shalom requiere 2 stagings:
+   (1) foto de la etiqueta GR, (2) foto del paquete/caja empacado. Si solo llega 1 staging
+   para ese cliente = par incompleto = error, igual que TICKET sin CAJA.
+   REGLA CRÍTICA 2 sin excepciones: "1 foto = error, siempre. Nunca despachar 1 foto sola."
+
+2. **`saldo` en PATCH de pendiente_ventana y enviado** (Paso 4 y Paso 7):
+   La columna `saldo` (migración 0069) ahora se guarda en ambos caminos.
+   Requiere migración `0069_boletas_staging_saldo.sql` (`ALTER TABLE boletas_staging ADD COLUMN saldo TEXT`).
+   Aplicada en D1 vía REST API el 2026-10-30.
+
+3. **Cobro automático en pendiente_ventana** (webhook `despacharBoletasPendientesVentana`):
+   Cuando el cliente con ventana cerrada responde y el webhook auto-despacha sus fotos+texto,
+   ahora también aplica `programarPlan(cobro_3x)` + etiqueta `cobro_3x` si saldo > 0,
+   o etiqueta `saldo_pagado` si saldo = 0. Fuente: `src/api/whatsapp-webhook.js`.
+   Importa `programarPlan` de `src/lib/planes-plantilla.js`.
+
+4. **Paso 6b — log en "Boletas auto"** (NUEVO):
+   Después de despachar (ventana abierta), la Routine llama
+   `POST /api/asesor/boletas-log` con `{ nombre, wa_id, courier, nro_orden, saldo, staging_ids, ventana: "abierta" }`.
+   Nuevo endpoint `src/api/asesor-boletas-log.js`; escribe una fila en la pestaña **"Boletas auto"**
+   del libro de ventas (`GOOGLE_SHEET_ID`). Ruta registrada en `src/index.js`.
+   Headers: Fecha Lima, Nombre, WA, Courier, NRO Orden, Saldo, Staging IDs, Ventana.
+   El log de pendiente_ventana sale cuando el webhook ejecuta el despacho automático.
+
+### Migrations aplicadas
+- `migrations/0069_boletas_staging_saldo.sql` — `ALTER TABLE boletas_staging ADD COLUMN saldo TEXT`
+
+### Archivos modificados
+- `src/api/asesor-boletas-log.js` (NUEVO)
+- `src/api/whatsapp-webhook.js` — cobro/etiquetas en `despacharBoletasPendientesVentana`
+- `src/lib/boletas-staging.js` — `stagingActualizar` + `stagingListarPendientesVentana` incluyen `saldo`
+- `src/index.js` — ruta `/api/asesor/boletas-log`
+
+Worker desplegado: versión `7a3fbac0-fd77-458d-a39e-911c201967cd`
