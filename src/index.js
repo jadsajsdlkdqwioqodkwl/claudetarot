@@ -113,7 +113,7 @@ import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-passwor
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
 import { onRequestPost as asesorVentasPost, onRequestGetVentasLista as asesorVentasListaGet } from "./api/asesor-ventas.js";
-import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet, onRequestGetBuscarDni as asesorBuscarDniGet } from "./api/asesor-datos.js";
+import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet, onRequestGetBuscarDni as asesorBuscarDniGet, onRequestGetBuscarNombre as asesorBuscarNombreGet } from "./api/asesor-datos.js";
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 import { onRequestGet as crmShalomGet, onRequestPost as crmShalomPost } from "./api/crm/shalom.js";
@@ -155,6 +155,7 @@ const ROUTES = {
   "/api/asesor/contexto": { GET: asesorContextoGet },
   "/api/asesor/chats": { GET: asesorChatsGet },
   "/api/asesor/buscar-dni": { GET: asesorBuscarDniGet },
+  "/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet },
   "/api/asesor/control-ventas": { GET: asesorControlVentasGet },
   "/api/asesor/imagen": { GET: asesorImagenGet },
   "/api/asesor/ventas-estado": { GET: asesorVentasEstado, PUT: asesorVentasEstado },

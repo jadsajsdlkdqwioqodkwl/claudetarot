@@ -433,3 +433,34 @@ export async function onRequestGetBuscarDni({ request, env }) {
     coincidencias: results.length
   });
 }
+
+/**
+ * GET /api/asesor/buscar-nombre?nombre=APELLIDO
+ * Busca en contacts del CRM por nombre/apellido del destinatario de la boleta.
+ * Útil cuando el cliente no aparece en Sheets por DNI.
+ * Devuelve: { encontrado, coincidencias: [{wa_id, nombre, conversation_id, last_inbound_at}] }
+ */
+export async function onRequestGetBuscarNombre({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const nombre = (url.searchParams.get("nombre") || "").trim();
+  if (!nombre || nombre.length < 3) return json({ error: "nombre muy corto (mínimo 3 letras)." }, 400);
+
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre,
+            conv.id AS conversation_id, conv.last_inbound_at
+     FROM contacts c
+     JOIN conversations conv ON conv.contact_id = c.id
+     WHERE c.name LIKE ? OR c.profile_name LIKE ?
+     ORDER BY conv.last_inbound_at DESC
+     LIMIT 8`
+  ).bind(`%${nombre}%`, `%${nombre}%`).all();
+
+  if (!results.length) return json({ encontrado: false });
+  const norm = results.map((r) => {
+    const tel = String(r.wa_id || "").replace(/\D/g, "");
+    return { ...r, wa_id: tel.length === 9 ? "51" + tel : tel };
+  });
+  return json({ encontrado: true, coincidencias: norm });
+}

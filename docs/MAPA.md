@@ -1008,6 +1008,39 @@ Y en el Paso 2g: "NUNCA mandas un mensaje de corrección al cliente" (inconsiste
 
 ### Estado del fix de imágenes en CRM
 Commit `ef48b35` (rama `claude/zen-johnson-4li7zj`):
+
+## 2026-10-30 — Boletas: búsqueda por apellido + dedup por NRO ORDEN (Routine v8)
+
+### Nuevo endpoint: GET /api/asesor/buscar-nombre?nombre=<apellido>
+Busca contactos en el CRM por nombre o apellido (D1 `contacts.name LIKE '%…%' OR contacts.profile_name LIKE '%…%'`).
+Devuelve `{ encontrado, coincidencias: [{ wa_id (51XXXXXXXXX), nombre, conversation_id, last_inbound_at }] }`.
+Implementado en `src/api/asesor-datos.js` (`onRequestGetBuscarNombre`).
+Ruta registrada en `src/index.js`: `"/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet }`.
+Uso: cuando la boleta no se encuentra por DNI en Sheets ni en mensajes del CRM, la Routine busca
+al cliente por APELLIDO de la boleta. Devuelve hasta 8 coincidencias ordenadas por actividad reciente.
+
+### Nuevo endpoint: GET /api/asesor/boletas_staging?nro_orden=<NRO_ORDEN>
+Verifica si un NRO ORDEN ya fue procesado (status `enviado` o `pendiente_ventana`).
+Devuelve `{ ya_procesado: true|false, id, status, nombre_boleta, created_at }`.
+Implementado en `src/api/asesor-boletas.js` (handler GET extendido con `if (nroOrden)`) y
+`stagingVerificarNroOrden` en `src/lib/boletas-staging.js`.
+
+### migrations/0068_boletas_staging_nro_orden.sql (NUEVO — aplicar a mano en D1)
+`ALTER TABLE boletas_staging ADD COLUMN nro_orden TEXT` + índice en esa columna.
+Propósito: guardar el NRO ORDEN de la boleta en la tabla para poder detectar duplicados históricos.
+La Routine guarda `nro_orden` en el PATCH de enviado (Paso 7) y en el PATCH de pendiente_ventana (Paso 4).
+Comando: `wrangler d1 execute CRM --file=migrations/0068_boletas_staging_nro_orden.sql`
+
+### Routine v8 (trig_019Vp1ZCNwXE7tzgY2oZxhpA), 2026-10-30
+Tres cambios respecto a v7:
+1. **Paso 2d — dedup histórico**: después de extraer el NRO ORDEN de la boleta Shalom,
+   `GET /api/asesor/boletas_staging?nro_orden=<NRO_ORDEN>` → si `ya_procesado: true` → PATCH error
+   "duplicado ya procesado" en boleta y caja → SALTAR este cliente. Evita reenviar si el dueño
+   sube la misma foto dos veces en lotes distintos.
+2. **Paso 2e.3 — búsqueda por apellido**: si DNI no aparece en Sheets ni en CRM,
+   `GET /api/asesor/buscar-nombre?nombre=<APELLIDO>` → elegir la coincidencia con el mismo apellido.
+3. **nro_orden en PATCH**: Paso 4 (pendiente_ventana) y Paso 7 (enviado) incluyen `nro_orden`.
+Ver `docs/routines.md` para el prompt completo.
 - `src/lib/crm-db.js`: `registrarMensajeSaliente` ahora acepta y guarda `mediaId` en la columna `media_id`.
 - `src/lib/crm-send.js`: `mandarMediaPorId` pasa `mediaId` a `registrarMensajeSaliente`.
 - `public/crm/app.js` línea 4010: ya verificaba `m.media_key || m.media_id` → renderiza `<img>`.

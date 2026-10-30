@@ -50,17 +50,28 @@ export async function stagingListarListos(db) {
 }
 
 /** Actualiza solo los campos que se pasan (PATCH semántico: los que llegan null no se tocan). */
-export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, mensaje_texto, error } = {}) {
+export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, mensaje_texto, nro_orden, error } = {}) {
   await db
     .prepare(
       "UPDATE boletas_staging SET " +
       "status = COALESCE(?, status), conversation_id = COALESCE(?, conversation_id), " +
       "courier = COALESCE(?, courier), nombre_boleta = COALESCE(?, nombre_boleta), " +
       "dni_boleta = COALESCE(?, dni_boleta), mensaje_texto = COALESCE(?, mensaje_texto), " +
-      "error = COALESCE(?, error) WHERE id = ?"
+      "nro_orden = COALESCE(?, nro_orden), error = COALESCE(?, error) WHERE id = ?"
     )
-    .bind(status ?? null, conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, mensaje_texto ?? null, error ?? null, id)
+    .bind(status ?? null, conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, mensaje_texto ?? null, nro_orden ?? null, error ?? null, id)
     .run();
+}
+
+/**
+ * Verifica si un NRO ORDEN ya fue procesado (status='enviado' o 'pendiente_ventana').
+ * La Routine lo llama antes de despachar para evitar reenvíos si el dueño subió la misma foto dos veces.
+ */
+export async function stagingVerificarNroOrden(db, nroOrden) {
+  return db
+    .prepare("SELECT id, status, nombre_boleta, created_at FROM boletas_staging WHERE nro_orden = ? AND status IN ('enviado','pendiente_ventana') ORDER BY created_at DESC LIMIT 1")
+    .bind(String(nroOrden))
+    .first();
 }
 
 /**

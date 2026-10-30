@@ -379,3 +379,22 @@ Cambios frente a versión 6:
 - **Paso 2g**: añadido "NUNCA mandas un mensaje de corrección al cliente" (para inconsistencias de saldo).
 
 Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.
+
+## 2026-10-30 · Routine boletas — versión 8 (2026-10-30)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 7:
+- **Paso 2d — dedup histórico (NUEVO)**: tras extraer NRO ORDEN de la boleta Shalom,
+  llama `GET /api/asesor/boletas_staging?nro_orden=<NRO_ORDEN>`; si `ya_procesado: true` →
+  PATCH ambos stagings a `status: "error", error: "duplicado ya procesado"` → SALTAR.
+  Evita que el dueño re-mande la misma boleta en un lote posterior y el cliente la reciba dos veces.
+- **Paso 2e.3 — búsqueda por apellido (NUEVO)**: si el DNI no aparece ni en Sheets ni en CRM,
+  usa `GET /api/asesor/buscar-nombre?nombre=<APELLIDO>` (nuevo endpoint en `asesor-datos.js`).
+  Elige la coincidencia cuyo nombre incluya el mismo apellido; con varias, preferir la que más
+  coincida con el nombre completo de la boleta.
+- **nro_orden en PATCH**: Paso 4 (pendiente_ventana) y Paso 7 (enviado) guardan `nro_orden`
+  en `boletas_staging`. Requiere migración `0068_boletas_staging_nro_orden.sql`.
+
+Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.

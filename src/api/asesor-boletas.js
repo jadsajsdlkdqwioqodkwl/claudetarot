@@ -13,7 +13,7 @@
  */
 
 import { autorizadoAsesor } from "./asesor.js";
-import { stagingListarListos, stagingActualizar } from "../lib/boletas-staging.js";
+import { stagingListarListos, stagingActualizar, stagingVerificarNroOrden } from "../lib/boletas-staging.js";
 import { aplicarOlva } from "../lib/planes-plantilla.js";
 // stagingListarPendientesVentana no se usa aquí: lo usa el webhook directamente.
 
@@ -25,6 +25,12 @@ const json = (data, status = 200) =>
 
 export async function onRequestGet({ request, env }) {
   if (!autorizadoAsesor(request, env)) return json({ error: "No autorizado." }, 401);
+  const url = new URL(request.url);
+  const nroOrden = (url.searchParams.get("nro_orden") || "").trim();
+  if (nroOrden) {
+    const row = await stagingVerificarNroOrden(env.CRM_DB, nroOrden);
+    return json({ ya_procesado: !!row, ...(row || {}) });
+  }
   const items = await stagingListarListos(env.CRM_DB);
   return json({ items });
 }
