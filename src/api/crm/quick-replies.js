@@ -127,9 +127,7 @@ async function get({ env, agent }) {
       break;
     } catch { /* columna que todavía no existe: se prueba sin ella */ }
   }
-  const manual = (await obtenerAjuste(env.CRM_DB, "rapidas_orden").catch(() => null)) === "manual";
   rapidas.sort((a, b) => posicionFijada(a.title) - posicionFijada(b.title)
-    || (manual ? (a.sort_order ?? 0) - (b.sort_order ?? 0) : (b.usos || 0) - (a.usos || 0))
     || (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
   const { results: media } = await env.CRM_DB.prepare(
     "SELECT * FROM quick_reply_media ORDER BY sort_order ASC, id ASC"
@@ -144,7 +142,7 @@ async function get({ env, agent }) {
 
   return json({
     // Cuenta limitada a un producto: solo las de ese producto (las generales son de Tarot).
-    orden: manual ? "manual" : "uso",
+    orden: "manual",
     quick_replies: rapidas.filter((r) => !agent?.productoId || r.producto_id === agent.productoId).map((r) => ({
       ...r,
       fijada: posicionFijada(r.title) < 99,
@@ -210,10 +208,6 @@ async function patch({ request, env, agent }) {
     return json({ error: "Solicitud inválida." }, 400);
   }
 
-  if (payload?.modo === "uso") {
-    await guardarAjuste(env.CRM_DB, "rapidas_orden", "uso");
-    return json({ ok: true });
-  }
   if (Array.isArray(payload?.ordenar)) {
     const ids = [...new Set(payload.ordenar.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 500);
     if (!ids.length) return json({ error: "Falta el orden." }, 400);

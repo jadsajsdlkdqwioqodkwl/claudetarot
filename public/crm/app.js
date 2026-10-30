@@ -3371,9 +3371,9 @@ function pintarStickersPanel() {
       ${(cacheStickers || []).map((s) => `
         <div class="sticker-item" data-id="${s.id}">
           <img src="/api/crm/media?key=${encodeURIComponent(s.media_key)}" alt="sticker" loading="lazy" />
-          <button type="button" class="sticker-borrar" data-id="${s.id}" title="Borrar sticker">${icon("trash")}</button>
+          ${estado.miRol === "admin" ? `<button type="button" class="sticker-borrar" data-id="${s.id}" title="Borrar sticker">${icon("trash")}</button>` : ""}
         </div>`).join("")}
-      <div class="sticker-item sticker-agregar" id="sticker-agregar" title="Agregar sticker">${icon("plus")}</div>
+      ${estado.miRol === "admin" ? `<div class="sticker-item sticker-agregar" id="sticker-agregar" title="Agregar sticker">${icon("plus")}</div>` : ""}
     </div>`;
   panel.querySelectorAll(".sticker-item:not(.sticker-agregar)").forEach((el) => {
     el.addEventListener("click", (e) => {
@@ -6599,7 +6599,7 @@ function pintarQuickPanel() {
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
     ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las demás.
       <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="rapidas-solo" ${rapidasSoloProducto() ? "checked" : ""} /> Solo las de este producto</label></div>` : ""}
-    ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según cuántas veces se usan. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
+    ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según el orden del equipo. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
@@ -6620,7 +6620,6 @@ function pintarQuickPanel() {
     <footer>
       <button id="nueva-rapida">${icon("plus")} Nueva respuesta rápida</button>
       <button id="ordenar-rapidas" type="button">${icon("tag")} Ordenar por número</button>
-      ${estado.rapidasOrden === "manual" ? `<button id="rapidas-por-uso" type="button">${icon("sparkle")} Volver a ordenar por uso</button>` : ""}
     </footer>`;
 
   $("#rapidas-solo")?.addEventListener("change", (e) => {
@@ -6677,13 +6676,6 @@ function pintarQuickPanel() {
   $("#ordenar-rapidas")?.addEventListener("click", () => {
     panel.classList.remove("abierto");
     abrirOrdenarRapidas();
-  });
-  $("#rapidas-por-uso")?.addEventListener("click", async () => {
-    try {
-      await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo: "uso" }) });
-      await cargarQuickReplies();
-      pintarQuickPanel();
-    } catch (err) { alert(err.message); }
   });
 }
 
