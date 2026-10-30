@@ -10,7 +10,7 @@
  * llamada de red antes de responder.
  */
 
-import { activarPlanTrasAviso, rearmarPlanShalom } from "../lib/planes-plantilla.js";
+import { activarPlanTrasAviso, rearmarPlanShalom, programarPlan } from "../lib/planes-plantilla.js";
 import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
 import {
   obtenerOCrearContacto,
@@ -247,14 +247,14 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
 
   const { results: items } = await db
     .prepare(
-      "SELECT id, media_id, media_mime, mensaje_texto FROM boletas_staging " +
+      "SELECT id, media_id, media_mime, mensaje_texto, courier, saldo FROM boletas_staging " +
       "WHERE conversation_id = ? AND status = 'en_proceso' ORDER BY id"
     )
     .bind(conversationId)
     .all();
   if (!items?.length) return;
 
-  // items[0] = boleta, items[1] = caja (inserción en orden; orden columna es NULL siempre)
+  // items[0] = boleta, items[1] = caja (inserción en orden)
   const boleta = items[0];
   const caja = items.length > 1 ? items[1] : null;
 
@@ -275,6 +275,23 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
   await mandarTexto(env, conversationId, waId, boleta.mensaje_texto, "asesor-boletas-auto");
   for (const item of items) {
     await db.prepare("UPDATE boletas_staging SET status = 'enviado' WHERE id = ?").bind(item.id).run();
+  }
+
+  // Aplicar cobro y etiquetas (igual que la Routine en ventana abierta)
+  const courier = (boleta.courier || "").toLowerCase();
+  const saldoNum = parseFloat(String(boleta.saldo || "0").replace(/[^\d.]/g, "")) || 0;
+  try {
+    if (saldoNum > 0) {
+      await programarPlan(env, conversationId, courier || "shalom", { estado: "pendiente", quien: "asesor-boletas-auto" });
+      await agregarEtiquetaMeta(db, conversationId, "cobro_3x").catch(() => {});
+    } else {
+      await agregarEtiquetaMeta(db, conversationId, "saldo_pagado").catch(() => {});
+    }
+    if (courier === "shalom" || !courier) {
+      await agregarEtiquetaMeta(db, conversationId, "shalom_codigo_pendiente").catch(() => {});
+    }
+  } catch (err) {
+    console.error("boletas-auto cobro/etiquetas:", err.message);
   }
 }
 

@@ -50,16 +50,16 @@ export async function stagingListarListos(db) {
 }
 
 /** Actualiza solo los campos que se pasan (PATCH semántico: los que llegan null no se tocan). */
-export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, mensaje_texto, nro_orden, error } = {}) {
+export async function stagingActualizar(db, id, { status, conversation_id, courier, nombre_boleta, dni_boleta, mensaje_texto, nro_orden, saldo, error } = {}) {
   await db
     .prepare(
       "UPDATE boletas_staging SET " +
       "status = COALESCE(?, status), conversation_id = COALESCE(?, conversation_id), " +
       "courier = COALESCE(?, courier), nombre_boleta = COALESCE(?, nombre_boleta), " +
       "dni_boleta = COALESCE(?, dni_boleta), mensaje_texto = COALESCE(?, mensaje_texto), " +
-      "nro_orden = COALESCE(?, nro_orden), error = COALESCE(?, error) WHERE id = ?"
+      "nro_orden = COALESCE(?, nro_orden), saldo = COALESCE(?, saldo), error = COALESCE(?, error) WHERE id = ?"
     )
-    .bind(status ?? null, conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, mensaje_texto ?? null, nro_orden ?? null, error ?? null, id)
+    .bind(status ?? null, conversation_id ?? null, courier ?? null, nombre_boleta ?? null, dni_boleta ?? null, mensaje_texto ?? null, nro_orden ?? null, saldo ?? null, error ?? null, id)
     .run();
 }
 
@@ -81,7 +81,7 @@ export async function stagingVerificarNroOrden(db, nroOrden) {
 export async function stagingListarPendientesVentana(db, conversationId) {
   const { results } = await db
     .prepare(
-      "SELECT id, media_id, media_mime, orden, mensaje_texto " +
+      "SELECT id, media_id, media_mime, orden, mensaje_texto, courier, saldo " +
       "FROM boletas_staging WHERE conversation_id = ? AND status = 'pendiente_ventana' ORDER BY orden, id"
     )
     .bind(conversationId)
