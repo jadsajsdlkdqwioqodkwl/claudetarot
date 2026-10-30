@@ -398,3 +398,36 @@ Cambios frente a versión 7:
   en `boletas_staging`. Requiere migración `0068_boletas_staging_nro_orden.sql`.
 
 Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.
+
+## 2026-10-30 · Routine boletas — versión 9 (2026-10-30 ~21:15 UTC)
+
+ID: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+Sin cron — manual (Run now). Sesión persistente.
+
+Cambios frente a versión 8 (errores detectados en producción 2026-10-30):
+
+- **Paso 2a — GR Shalom reconocido como documento completo (nuevo tipo)**:
+  Una etiqueta GR Shalom (pegada físicamente sobre cartón, logo SHALOM, "GR: XXXXXXX"
+  arriba a la derecha, "DESTINATARIO: APELLIDO NOMBRE", ciudad destino en letras grandes,
+  sin DNI) ES documento suficiente para despachar sin ticket papel adicional.
+  GR = NRO ORDEN; sin CÓDIGO (omitir esa línea del mensaje del Paso 3).
+  Sin DNI en el doc: triangular por apellido (buscar-nombre) + ciudad destino vs chat.
+  REGLA CRÍTICA 2 ahora tiene excepción explícita para este tipo.
+
+- **Paso 2h — Anti-duplicado histórico por chat (NUEVO)**:
+  Después de triangular al cliente, y ANTES de despachar, consultar el historial de
+  mensajes salientes del chat para ver si ya recibió su comprobante de tracking en las
+  últimas 48 h. Si encuentra un mensaje que contenga "Nro de orden:" → SKIP:
+  PATCH status="error", error="ya_despachado_previo" → reportar en Paso 8.
+  (El dedup por nro_orden en staging no cubre despachos previos a migración 0068.)
+  Bash query contra D1 directo con `$CLOUDFLARE_API_TOKEN`.
+
+- **Paso 2e — triangulación con ciudad/agencia para GR Shalom**:
+  Para documentos GR (sin DNI): (1) apellido DESTINATARIO → buscar-nombre en CRM;
+  (2) ciudad destino de la etiqueta coincide con lo que el cliente mencionó en el chat.
+  Dos coincidencias = identificado con alta confianza.
+
+- **Paso 3 — variante "Con GR (sin CÓDIGO)"**:
+  Omitir la línea *Código:* cuando el documento es una etiqueta GR (sin código compartible).
+
+Prompt completo guardado en el trigger `trig_019Vp1ZCNwXE7tzgY2oZxhpA` en claude.ai → Routines.

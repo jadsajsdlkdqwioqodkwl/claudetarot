@@ -1047,3 +1047,41 @@ Ver `docs/routines.md` para el prompt completo.
 - `src/api/crm/messages.js` línea 56: ya devolvía `media_id` en el SELECT.
 - Resultado: imágenes enviadas por el bot serán visibles en el CRM tras el deploy.
 - Mensajes anteriores al fix tienen `media_id=NULL` en D1 y seguirán mostrando `[image]`; no se pueden recuperar sin una migración manual.
+
+## 2026-10-30 (noche 2) — Routine boletas v9: GR Shalom, anti-duplicado histórico por chat, triangulación
+
+### Incidente documentado (2026-10-30)
+En el lote de las 20:48 UTC se cometieron tres errores:
+1. **Staging 20 (TICLIA) mal clasificado**: etiqueta GR Shalom ("TICIA" = typo de "TICLIA")
+   fue declarada "caja sin ticket" y se dijo que no había boleta. Es un documento completo.
+2. **TORRES LASTRA duplicado**: staging 23 fue despachado sin verificar el chat; el cliente
+   ya había recibido su comprobante a las 20:19 UTC desde el lote anterior (stagings 1-18).
+   La dedup por nro_orden en D1 no lo detectó porque stagings anteriores tenían nro_orden=NULL.
+3. **Triangulación insuficiente**: TICLIA identificada solo por apellido, sin verificar
+   ciudad/agencia destino en la etiqueta contra lo que dijo en el chat.
+
+### Correcciones — Routine boletas v9 (2026-10-30 ~21:18 UTC)
+1. **Reconocimiento de GR Shalom como documento completo** (Paso 2a):
+   Tercer tipo de documento definido: "GR SHALOM" (etiqueta con logo Shalom grande, "GR: XXXXXXX"
+   arriba a la derecha, DESTINATARIO, ciudad destino). ES SUFICIENTE para despachar solo.
+   GR = NRO ORDEN; no hay CÓDIGO compartible (omitir línea *Código:* en Paso 3).
+2. **REGLA CRÍTICA 2 — excepción para GR Shalom**: "NUNCA boleta sola ni caja sola —
+   EXCEPCIÓN: etiqueta GR Shalom SÍ es documento completo; se despacha sola."
+3. **Paso 2h — anti-duplicado histórico por chat** (NUEVO):
+   Antes de despachar, query D1 en bash:
+   `SELECT body, created_at FROM messages WHERE conversation_id=<CONV_ID> AND direction='out'
+   AND body LIKE '%Nro de orden:%' ORDER BY created_at DESC LIMIT 1`
+   Si results no vacío → ya_despachado_previo → PATCH error + reportar en Paso 8 → NO despachar.
+   Cubre el caso en que stagings anteriores tienen nro_orden=NULL y la dedup por nro_orden falla.
+4. **Triangulación por ciudad/agencia para GR** (Paso 2e.3):
+   Para documentos GR: verificar que ciudad destino de la etiqueta coincida con lo que el
+   cliente mencionó en su chat. Ciudad + apellido = identificado con alta confianza.
+5. **Variante de mensaje sin *Código:* para GR** (Paso 3):
+   "Con saldo > 0 (SHALOM GR)" y "Con saldo = 0 (SHALOM GR)": igual a ticket pero sin
+   línea *Código:*, usando *Nro de orden:* [GR_NUMERO].
+
+### Saldo de TICLIA (pendiente registro manual)
+Cliente: TICLIA, wa_id 51971946030, DNI 18161420, Trujillo.
+No registrada en Sheets. Saldo derivado del chat: S/69 (adelanto S/20, resto al llegue).
+GR 101867705 = NRO ORDEN, staging 20 = despachado.
+El dueño debe agregarla manualmente a la hoja de ventas si es necesario.
