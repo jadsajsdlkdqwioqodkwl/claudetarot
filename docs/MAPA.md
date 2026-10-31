@@ -1126,3 +1126,52 @@ El dueño debe agregarla manualmente a la hoja de ventas si es necesario.
 - `src/index.js` — ruta `/api/asesor/boletas-log`
 
 Worker desplegado: versión `7a3fbac0-fd77-458d-a39e-911c201967cd`
+
+## 2026-10-31 — Routine boletas v11: plantilla ventana cerrada + filtro por fecha de HOY + fallback teléfono
+
+### Correcciones sobre v10
+
+1. **`tipo: "plantilla"` en `POST /api/asesor/mandar`** (NUEVO — `src/api/asesor-mandar.js`, commit `859f047`):
+   Body: `{ "tipo": "plantilla", "conversation_id": <id>, "plantilla": "<nombre>", "params": [] }`
+   → Envía una plantilla WhatsApp al cliente (ej. `aviso_envio_shalom` cuando la ventana está cerrada).
+   Usa `mandarConEscribiendo + enviarTemplate`. NO usar `/api/crm/sugerencias` (requiere sesión browser).
+   La plantilla `aviso_envio_shalom` está registrada en Meta como `es_PE` y tiene **0 variables** (params siempre `[]`).
+
+2. **Fix en `conPlantilla` (`src/api/crm/sugerencias.js`)**:
+   - Corregido idioma `"es"` → `"es_PE"` (Meta registra la plantilla como `es_PE`).
+   - Corregido params `[nombre]` → `[]` (la plantilla no tiene variables `{{1}}`).
+
+3. **Routine v11 — filtro de fecha** (Paso 0):
+   La Routine obtiene `$HOY` (Lima, UTC-5) y filtra SOLO los stagings cuyo `lote_id` empieza con esa fecha.
+   Evita reprocesar boletas de días anteriores.
+
+4. **Routine v11 — fallback por teléfono** (Paso 2e.4):
+   Si el cliente no se encuentra por DNI en Sheets, DNI en CRM, ni apellido en CRM,
+   probar con el TELÉFONO impreso en la boleta: `wa_id = "51" + <telefono_9_digitos>`.
+   Query: `GET /api/asesor/buscar-dni?wa_id=51<telefono>` o consulta D1 directa.
+
+5. **Routine v11 — ventana check via D1** (Paso 4):
+   La verificación de ventana de 24h usa query D1 DIRECTA (no la API del CRM que requiere sesión browser):
+   ```sql
+   SELECT last_inbound_at,
+     CASE WHEN datetime(last_inbound_at) < datetime('now','-24 hours') THEN 'cerrada' ELSE 'abierta' END as ventana
+   FROM conversations WHERE id=<CONV_ID>
+   ```
+
+6. **Routine v11 — revisión del reporte de ventas de ayer** (Paso 0b):
+   Antes de procesar staging, la Routine consulta D1 (`asesor_informes` tabla) para leer el último
+   reporte de ventas y conocer qué clientes de provincia ya están registrados.
+   Evita desconcierto con clientes que compraron ayer pero cuya boleta aparece hoy.
+
+7. **Caso CORTAVARRIA (2026-10-31) — incidente documentado**:
+   - Boleta tenía teléfono "961919732" pero el número real del chat era "961617326" (diferente).
+   - Solución: buscar por DNI 22414481 → `GET /api/asesor/buscar-dni?dni=22414481` → encontrado (conv 3607).
+   - Cliente NO estaba en Sheets (ventas-lista devolvió `encontrado: false`). No se pudo actualizar boleta imagen en Sheets.
+   - **Nota para el dueño**: CORTAVARRIA (DNI 22414481) NO está en Sheets. La venta debe registrarse manualmente.
+
+8. **Caso TICLIA (staging 25, 2026-10-31)**:
+   La boleta ya había sido despachada manualmente el 2026-10-30. Staging marcado como `error: "ya despachado manualmente el 2026-10-30"`.
+
+### Worker desplegado (2026-10-31)
+Versión: `3e2feeaf-b89c-49ee-be82-571940fdeb35`
+Commit: `859f047` — `feat(boletas): agregar tipo 'plantilla' a POST /api/asesor/mandar`
