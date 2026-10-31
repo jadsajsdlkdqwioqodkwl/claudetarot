@@ -57,7 +57,11 @@
 - Estado de cada foto: `python3 scripts/asesor/boletas.py historial 7` o
   `GET /api/asesor/boletas_staging?historial=1`.
 - Chat, ventana y etiquetas de un cliente: `python3 scripts/asesor/boletas.py chat <conversation_id|wa_id>`.
-- Routine: `trig_01` (ver `docs/routines.md`, última versión). Sesión de la Routine: la que se indica ahí.
+- Routine: **`trig_01M97ha817PbZ8gKXZeBE95g`** («Despacho automático de boletas», manual, sin cron).
+  Corre en la sesión **`session_017wTF8bgtkfTRHM2difyptU`** («Boletas — despacho automático (historial de
+  la Routine)», modelo `claude-sonnet-5-5`, clon de la rama `claude/zen-johnson-4li7zj`). Prompt: versión 13
+  en `docs/routines.md`. Las Routines anteriores (`trig_019Vp1…` v11, apagada; `trig_01UMZR…` v12, borrada)
+  ya no corren.
 
 ## Si algo sale mal
 - «Sin boletas hoy» pero sí mandaste fotos → las fotos no llegaron al staging (mira el CRM: deben

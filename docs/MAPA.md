@@ -1236,3 +1236,33 @@ Pestaña **«Boletas auto»** del libro «Pedidos Tarot Kit» (`GOOGLE_SHEET_ID`
 - Rotar fotos que llegan de lado antes de mandarlas (pedido 2026-10-29): no implementado; mandamos el
   `media_id` tal cual (rotar exige bajar, girar y resubir el archivo).
 - Carmen Cortavarria (DNI 22414481) sigue sin fila en el libro de ventas (`ventas-lista` → no encontrado).
+
+## 2026-10-31 (noche 2) — Routine boletas v13: Sonnet, `boletas.py` con subcomandos, venta en Sheets desde el Worker
+
+Pedido del dueño (misma noche): registro práctico del estado actual, prompt «para la IA más básica» y que la
+Routine pueda correr en Sonnet; rotar fotos de lado; que la venta quede registrada aunque el cron de ventas
+no la haya puesto; que mandar el código de retiro apague el cobro. Todo lo que sigue está en el commit
+`3d4a864` (Worker `d9c37c55-c8d1-47e0-a311-fd1c4735776c`). **El estado actual completo está en `docs/boletas.md`**
+(se reescribe cuando cambia algo; aquí solo queda la historia).
+
+- **Routine v13 `trig_01M97ha817PbZ8gKXZeBE95g`** («Despacho automático de boletas», manual) en la sesión
+  `session_017wTF8bgtkfTRHM2difyptU` (modelo `claude-sonnet-5-5`). La v12 (`trig_01UMZR…`, sesión Fable
+  `session_017wTF8ZRjd…`) se borró y su sesión se archivó sin haber corrido nunca. Prompt en `docs/routines.md`.
+- **`scripts/asesor/boletas.py` con subcomandos** (`bajar · historial · buscar · chat · reportes · rotar ·
+  despachar · error · telegram`): el modelo no arma curl, no conoce la clave ni toca D1. `bajar` además
+  endereza solo las fotos con orientación EXIF y las resube; `rotar <id> <90|180|270>` gira a pedido del modelo.
+- **`GET /api/asesor/chat`** (`asesor-datos.js`): contacto, ventana de 24 h, etiquetas, últimos mensajes,
+  `boleta_ya_enviada` y sus fotos en staging; busca por `conversation_id`, `wa_id` o `telefono`. No devuelve
+  el `shalom_code`.
+- **`POST /api/asesor/imagen`**: reemplaza la foto de un staging `listo|pendiente` (la rotada) subiéndola a
+  WhatsApp como media nuevo (`subirMedia`).
+- **`despachar` registra la venta** (`asesor-mandar.js` → `crear`/`actualizar` de `asesor-ventas.js`, ahora
+  exportadas): fila nueva en Ventas si no existe por DNI (celular, Shalom, adelanto, saldo, código TS-…) y
+  la foto de la boleta en R2 con «En camino». Caso Cortavarria (sin fila) ya no se repite.
+- **Código de retiro apaga el cobro** (`terminarCobroSiLlevaCodigo`, `crm-db.js`): antes conservaba los
+  planes «Recojo en Shalom/Olva»; desde hoy los cancela, quita `shalom_codigo_pendiente` y pone
+  `saldo_pagado`. Aplicado a mano a Carmen Cortavarria (recibió «3144» a las 22:30).
+- Estado de hoy al cierre: Carmen ✅ (código dado, cobro cancelado), Leudys ✅ (cobro 3 pasos pendiente),
+  Magda ✅ por botón 23:04 (cobro pendiente), Armando: tocó el botón 23:05–23:06 ANTES del deploy del arreglo
+  del webhook (23:09), no salió nada y el dueño lo mandó a mano 23:18; stagings 33/34 marcados `enviado`
+  y etiquetas puestas a mano (cobro «Tras el aviso de envío», 3 pasos pendiente).
