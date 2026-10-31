@@ -255,9 +255,9 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
     .all();
   if (!items?.length) return;
 
-  // items[0] = boleta, items[1] = caja (inserción en orden)
-  const boleta = items[0];
-  const caja = items.length > 1 ? items[1] : null;
+  // La boleta es la que lleva el mensaje pre-calculado; el dueño no siempre manda primero la boleta.
+  const boleta = items.find((i) => i.mensaje_texto) || items[0];
+  const caja = items.find((i) => i.id !== boleta.id) || null;
 
   if (!boleta?.mensaje_texto) {
     // Pre-migración 0065: revertir para no bloquear el item

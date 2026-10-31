@@ -1,5 +1,7 @@
 /**
- * GET  /api/asesor/boletas_staging → lista de items listos para análisis.
+ * GET  /api/asesor/boletas_staging → lista de items listos (y pendientes sin ENVIAR) para análisis.
+ * GET  /api/asesor/boletas_staging?nro_orden=X → ¿ya se despachó ese NRO ORDEN?
+ * GET  /api/asesor/boletas_staging?historial=1&dias=7 → lo ya procesado (registro para la Routine).
  * PATCH /api/asesor/boletas_staging → actualiza estado de un item tras el despacho.
  *
  * La Routine:
@@ -13,7 +15,7 @@
  */
 
 import { autorizadoAsesor } from "./asesor.js";
-import { stagingListarListos, stagingActualizar, stagingVerificarNroOrden } from "../lib/boletas-staging.js";
+import { stagingListarListos, stagingActualizar, stagingVerificarNroOrden, stagingHistorial } from "../lib/boletas-staging.js";
 import { aplicarOlva } from "../lib/planes-plantilla.js";
 // stagingListarPendientesVentana no se usa aquí: lo usa el webhook directamente.
 
@@ -30,6 +32,9 @@ export async function onRequestGet({ request, env }) {
   if (nroOrden) {
     const row = await stagingVerificarNroOrden(env.CRM_DB, nroOrden);
     return json({ ya_procesado: !!row, ...(row || {}) });
+  }
+  if (url.searchParams.get("historial")) {
+    return json({ historial: await stagingHistorial(env.CRM_DB, Number(url.searchParams.get("dias")) || 7) });
   }
   const items = await stagingListarListos(env.CRM_DB);
   return json({ items });

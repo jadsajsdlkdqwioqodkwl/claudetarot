@@ -38,13 +38,29 @@ export async function stagingActivarLote(db) {
   return { loteId, cantidad: meta?.changes || 0 };
 }
 
-/** Lista los items listos para que la Routine los analice y despache. */
+/**
+ * Lista los items para que la Routine los analice y despache: los 'listo' (ENVIAR recibido) y
+ * también los 'pendiente' (fotos que llegaron después del ENVIAR, o sin ENVIAR: el dueño dispara
+ * la Routine a mano, así que ese disparo vale como ENVIAR). Los sin lote van al final.
+ */
 export async function stagingListarListos(db) {
   const { results } = await db
     .prepare(
-      "SELECT id, wa_message_id, media_id, media_mime, lote_id, orden, created_at " +
-      "FROM boletas_staging WHERE status = 'listo' ORDER BY lote_id, id"
+      "SELECT id, wa_message_id, media_id, media_mime, lote_id, status, orden, created_at " +
+      "FROM boletas_staging WHERE status IN ('listo', 'pendiente') ORDER BY COALESCE(lote_id, '~'), id"
     )
+    .all();
+  return results || [];
+}
+
+/** Registro de lo procesado en los últimos días (para que la Routine vea qué ya salió). */
+export async function stagingHistorial(db, dias = 7) {
+  const { results } = await db
+    .prepare(
+      "SELECT id, status, lote_id, conversation_id, courier, nombre_boleta, dni_boleta, nro_orden, saldo, error, created_at " +
+      "FROM boletas_staging WHERE created_at >= datetime('now', ?) AND status NOT IN ('listo', 'pendiente') ORDER BY id DESC"
+    )
+    .bind(`-${Number(dias) || 7} days`)
     .all();
   return results || [];
 }
