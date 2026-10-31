@@ -128,7 +128,7 @@ export async function procesarSeguimientosVencidos(env) {
        (SELECT mi.wa_message_id FROM messages mi WHERE mi.conversation_id = conv.id AND mi.direction = 'in'
           AND mi.type <> 'call' AND mi.wa_message_id IS NOT NULL AND mi.created_at >= datetime('now', '-1 day')
           ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in,
-       conv.created_at AS conv_creado, conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags,
+       conv.created_at AS conv_creado, conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags, conv.last_inbound_at AS last_inbound_at,
        (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
        EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
           AND md.body = COALESCE(s.body, ${textoPorDefectoSql("rapida")}) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
@@ -153,6 +153,18 @@ export async function procesarSeguimientosVencidos(env) {
       if (s.created_by?.endsWith("Automático (día 7)") && s.conv_creado && Date.now() > new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000) { await cancelar(s.id); continue; }
       // Killswitch de este chat: lo automático y las plantillas que venzan se cancelan (lo que programó una persona a mano sale).
       if (s.pausa_auto && (s.template_name || esOrigenAutomatico(s.created_by))) { await cancelar(s.id); continue; }
+      // Sin plantilla y con la ventana de 24 h cerrada WhatsApp lo rechaza (131047): no se intenta, queda anotado.
+      if (!s.template_name) {
+        const ultimoIn = s.last_inbound_at ? new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() : 0;
+        if (!ultimoIn || Date.now() - ultimoIn >= 24 * 3600 * 1000) {
+          await env.CRM_DB.batch([
+            env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(s.id),
+            env.CRM_DB.prepare("INSERT INTO envio_errores (scheduled_message_id, conversation_id, wa_id, error) VALUES (?, ?, ?, ?)")
+              .bind(s.id, s.conv_id || null, s.wa_id || null, "No salió: pasaron más de 24 h desde el último mensaje del cliente (solo cabe una plantilla).")
+          ]).catch((e) => console.error("Ventana cerrada:", e.message));
+          continue;
+        }
+      }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);

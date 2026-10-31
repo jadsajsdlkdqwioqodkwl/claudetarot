@@ -133,8 +133,16 @@ async function resolverNombresPedido(env, order) {
  * del anuncio (antes: contacto nuevo con ctwa_clid, que es lo mismo con un
  * solo número).
  */
-const chatNuevoDeAnuncio = (contacto, conversacion, referral) =>
-  Boolean(conversacion._isNew && (referral?.ctwa_clid || (contacto._isNew && contacto.ctwa_clid)));
+const chatNuevoDeAnuncio = (contacto, conversacion, referral, texto) =>
+  Boolean(conversacion._isNew && (referral?.ctwa_clid || (contacto._isNew && (contacto.ctwa_clid || esSaludoDeAnuncio(texto)))));
+
+/**
+ * Meta no siempre adjunta el `referral` del anuncio (2026-10-31: 33 de 436 chats nuevos en 4 días
+ * llegaron sin él y se quedaron sin bienvenida). El texto prellenado del botón del anuncio delata
+ * de dónde viene: un contacto nuevo que abre con él se trata como llegado de un anuncio.
+ */
+const esSaludoDeAnuncio = (texto) =>
+  /^¡?\s*hola!?[\s,.]*(me gustar[ií]a (conseguir )?m[aá]s informaci[oó]n|quiero m[aá]s informaci[oó]n)/i.test(String(texto || "").trim());
 
 /**
  * El producto del chat apaga la bienvenida si el admin lo pidió
@@ -148,8 +156,8 @@ async function bienvenidaPermitida(env, conversacion) {
 }
 
 /** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
-async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId, referral) {
-  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
+async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId, referral, texto) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral, texto)) return;
   try {
     if (!(await bienvenidaPermitida(env, conversacion))) return;
     const mandados = await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
@@ -170,8 +178,8 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
  * "tras no respuesta", se cancela sola en cuanto el cliente escribe o alguien le
  * manda algo a mano (ver cancelarSeguimientosPendientes).
  */
-async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral) {
-  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
+async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral, texto) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral, texto)) return;
   try {
     if ((await obtenerAjuste(env.CRM_DB, "ad_followup_auto")) === "0") return;
     // La misma secuencia que sale tras la bienvenida; reemplaza la ya programada, no se duplica.
@@ -380,8 +388,9 @@ async function procesarCambio(envBase, db, value, origen) {
       if (type === "text" && esBotonVerCatalogo(bodyFinal)) {
         await mandarCatalogoPorBoton(env, conversacion.id, contacto.wa_id).catch((err) => console.error("Botón Ver catálogo:", err.message));
       }
-      await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
-      await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
+      const textoEntrante = type === "text" ? bodyFinal : "";
+      await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral, textoEntrante);
+      await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral, textoEntrante);
     }
     await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
@@ -390,7 +399,8 @@ async function procesarCambio(envBase, db, value, origen) {
       await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
         .bind(waId || null, msg.id || null, String(err.message).slice(0, 500))
         .run()
-        .catch(() => {});
+        .catch((e) => console.error("webhook_errores:", e.message));
+      notificarTelegram(env, `⚠️ *Mensaje entrante no procesado*\n\nChat: ${waId || "?"}\nError: ${String(err.message).slice(0, 300).replace(/[_*`[]/g, "")}`).catch(() => {});
     }
   }
 
