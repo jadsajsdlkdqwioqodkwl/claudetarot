@@ -1175,3 +1175,64 @@ Worker desplegado: versión `7a3fbac0-fd77-458d-a39e-911c201967cd`
 ### Worker desplegado (2026-10-31)
 Versión: `3e2feeaf-b89c-49ee-be82-571940fdeb35`
 Commit: `859f047` — `feat(boletas): agregar tipo 'plantilla' a POST /api/asesor/mandar`
+
+## 2026-10-31 (noche) — Routine boletas v12: sesión aparte, `tipo: "despachar"` y auditoría del flujo
+
+### Qué pasó hoy (incidentes, con datos de D1)
+Lote `2026-10-31_21:44`, 8 fotos (stagings 27–34, 4 clientes). La corrida v11:
+1. **Solo vio 6 de las 8 fotos**: 33 y 34 (Armando Siles) llegaron 1–2 s después del «ENVIAR» y quedaron
+   `pendiente` sin `lote_id`; `GET /boletas_staging` solo listaba `listo`.
+2. **Mandó boleta, caja y texto a Magda Auccaille (conv 1531) con la ventana cerrada** (último mensaje de
+   ella 2026-10-30 21:36): WhatsApp los rechazó (131047, `status='failed'`) y la Routine igual marcó
+   `enviado`. No mandó la plantilla.
+3. **Mandó la plantilla aviso_envio_shalom a Leudys (conv 3601), que SÍ había recibido su comprobante**
+   (leído a las 21:53) y dejó 29/30 en `pendiente_ventana`: si Leudys escribía, el webhook le repetía todo.
+4. **Revisó fotos de ayer** (25/26, Ticlia, ya despachada a mano el 30).
+Arreglado a mano en esta sesión: 29/30 → `enviado`; 31/32 (Magda) y 33/34 (Armando) → `pendiente_ventana`
+con su texto + plantilla; Magda tocó el botón a las 23:04 y el webhook le mandó todo; Armando quedó esperando.
+Carmen Cortavarria (27/28) sí salió bien por el camino plantilla→botón→webhook.
+**Error propio de Claude (2026-10-31 23:07):** al probar la guardia de ventana se mandó el texto «prueba» a
+Magda (su ventana se acababa de abrir). Queda anotado: las pruebas de envío NUNCA van contra un chat real.
+
+### Cambios de código (commit `ef0286f`, Worker `7476855e-c8ed-4725-8409-2886e4c5bc5a`)
+- **`POST /api/asesor/mandar { tipo: "despachar" }`** (`src/api/asesor-mandar.js`): UNA llamada por cliente con
+  `staging_ids:[boleta, caja], texto, courier, saldo, nro_orden, nombre_boleta, dni_boleta`. El Worker:
+  (1) rechaza 400 si faltan datos, si el texto no lleva el nro_orden o si lleva el `shalom_code` del contacto;
+  (2) rechaza 409 `ya_procesado` (foto ya usada o nro_orden ya despachado) o `ya_despachado_en_chat`
+  (mensaje saliente no fallido con ese nro_orden, o texto del bot de boletas en los últimos 10 días) salvo `forzar:true`;
+  (3) mira la ventana con `fueraDeVentana` (D1 `last_inbound_at`): **abierta** → foto, foto, texto (con su
+  pausa), etiquetas `bot_boleta` + `cobro_3x`/`saldo_pagado` + `shalom_codigo_pendiente` (u `olva=1`), plan de
+  cobro, staging `enviado`, fila en «Boletas auto» (`ventana: abierta`); **cerrada** → staging
+  `pendiente_ventana` con el texto, plantilla `aviso_envio_shalom`, fila «Boletas auto» (`ventana: plantilla`);
+  el webhook manda todo cuando el cliente toca el botón.
+- `tipo: "texto"` y `"foto-staging"` ahora responden **409 `ventana_cerrada`** si pasaron 24 h (antes
+  WhatsApp los descartaba en silencio y la Routine creía que habían salido).
+- **Webhook** `despacharBoletasPendientesVentana`: la boleta es la foto con `mensaje_texto`, no `items[0]`
+  (la caja puede tener id menor: caso 33/34). Antes revertía a `pendiente_ventana` y no mandaba nada.
+- **`GET /api/asesor/boletas_staging`** lista también los `pendiente` (fotos que llegaron después del ENVIAR o
+  sin ENVIAR: el «Run now» del dueño vale como ENVIAR) y acepta `?historial=1&dias=N` (registro de lo procesado).
+- **`scripts/asesor/boletas.py`**: solo fotos de HOY (hora Lima); las de otros días salen como «vencidas»
+  (la Routine las marca error, nunca las manda); pares por lote + fotos sueltas; se quitó el procedimiento
+  duplicado del `boletas.md` (vivía ahí y en el prompt y se contradecían: ahora manda el prompt + `despachar`).
+  Manda `User-Agent: tarot-asesor/1.0` (sin él Cloudflare responde 403 «error 1010», también a `curl`/python).
+
+### Routine v12 — sesión aparte (pedido del dueño: historial propio, sin mezclar con el chat de desarrollo)
+- Sesión dedicada: `session_017wTF8ZRjd1WRhycyR6M3Uc` («Boletas — despacho automático (historial de la
+  Routine)»), clon de la rama `claude/zen-johnson-4li7zj`, modelo heredado `claude-fable-5-1`.
+- Routine nueva: **`trig_01UMZRmWB3zFxF7gPTA7Pewm`** («Despacho automático de boletas (v12 — sesión aparte)»),
+  **manual (sin cron)**, `persistent_session_id` = la sesión de arriba. Prompt completo en `docs/routines.md`.
+- Routine vieja `trig_019Vp1ZCNwXE7tzgY2oZxhpA` (v11) **apagada** (`enabled: false`, renombrada «APAGADA
+  2026-10-31»). No se borró: borrarla borraría las sesiones que creó. Ya no corre en esta sesión.
+- El conector de Google Sheets no se pudo adjuntar a la Routine desde la API (la organización no lo permite
+  por `create_trigger`); no hace falta: la fila en «Boletas auto» la escribe el Worker (`registrarBoletaLog`).
+  Si el dueño quiere que la Routine lea el Sheet directamente, se agrega en claude.ai → Routines → Editar.
+
+### Registro visual
+Pestaña **«Boletas auto»** del libro «TAROT CHATS - VENTAS CRM» (`GOOGLE_SHEET_ID`): una fila por despacho
+(Fecha Lima, Nombre, WA, Courier, NRO Orden, Saldo, Staging IDs, Ventana = abierta | plantilla | pendiente).
+«plantilla» = se mandó el aviso y se espera al cliente; «pendiente» = el webhook ya mandó todo tras el botón.
+
+### Pendiente / ideas que el dueño pidió y siguen abiertas
+- Rotar fotos que llegan de lado antes de mandarlas (pedido 2026-10-29): no implementado; mandamos el
+  `media_id` tal cual (rotar exige bajar, girar y resubir el archivo).
+- Carmen Cortavarria (DNI 22414481) sigue sin fila en el libro de ventas (`ventas-lista` → no encontrado).
