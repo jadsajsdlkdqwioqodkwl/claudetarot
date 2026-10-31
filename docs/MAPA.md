@@ -1266,3 +1266,29 @@ no la haya puesto; que mandar el código de retiro apague el cobro. Todo lo que 
   Magda ✅ por botón 23:04 (cobro pendiente), Armando: tocó el botón 23:05–23:06 ANTES del deploy del arreglo
   del webhook (23:09), no salió nada y el dueño lo mandó a mano 23:18; stagings 33/34 marcados `enviado`
   y etiquetas puestas a mano (cobro «Tras el aviso de envío», 3 pasos pendiente).
+
+## 2026-10-31 (noche 3) — Rastreo de bugs del CRM: mensajes que no entran / no salen
+
+Pedido del dueño: un paseo por el CRM de lo más crítico a lo menos. Datos de D1, últimos 4 días:
+5 578 mensajes salientes, 7 fallidos (3 boletas con ventana cerrada —ya corregido—, 1 seguimiento fuera
+de ventana, 3 a un cliente bloqueado), 85 en `sent` sin entrega (leads que no volvieron a conectarse),
+entrantes sin archivo: 0, tipo `unsupported`: 1. Lo que sí estaba mal (commit `bc9444a`, Worker
+`d89f1e78-2e3e-4ba9-9878-6eb946679ad1`, también en `main`):
+
+1. **Las tablas `webhook_errores` (migración 0066) y `envio_errores` (0067) no existían en producción.**
+   El webhook y el cron insertaban ahí con `.catch(() => {})`: todo error de entrada o de envío programado
+   se perdía en silencio, y en el cron el `batch` fallido tampoco marcaba `fallido` ni `envio_ultimo_error`
+   (lo rescataba el barrido de 15 min). Aplicadas a mano por la API de D1 y anotadas en `d1_migrations`.
+   CRM → Salud ya las lee.
+2. **Bienvenida que no salía**: 33 de 436 chats nuevos (4 días) llegaron sin `referral.ctwa_clid` aunque
+   abrían con el texto prellenado del anuncio («¡Hola! Me gustaría más información.», «¡Hola! Quiero más
+   información», «…conseguir más información»). `chatNuevoDeAnuncio` ahora también acepta a un contacto
+   nuevo cuyo primer texto es ese saludo (`esSaludoDeAnuncio`): recibe bienvenida y seguimiento de
+   interesados. CAPI no cambia (sin `ctwa_clid` sigue siendo `Contact`).
+3. **Webhook**: un mensaje entrante que no se pudo procesar avisa por Telegram («Mensaje entrante no
+   procesado») además de quedar en `webhook_errores`.
+4. **Cron**: un programado sin plantilla con la ventana de 24 h cerrada se cancela y queda en
+   `envio_errores` («pasaron más de 24 h…») en vez de intentarse y fallar en WhatsApp (131047).
+
+Sin cambios (revisado y sano): entrantes de imagen/audio/documento con su `media_id` al 100 %, CAPI 502
+eventos sin fallos, catálogo/producto salen, `quick_replies.categoria` sí existe en D1.
