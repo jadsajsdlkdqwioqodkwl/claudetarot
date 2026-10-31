@@ -72,6 +72,7 @@ const estado = {
   miRol: null,
   miNombre: null,
   filtroRapidas: "",
+  filtroRapidasCategoria: "",
   rapidasPorSlash: false,
   mensajesCargados: [],
   firmaMensajesPintados: null,
@@ -6577,6 +6578,7 @@ async function toggleQuickPanel() {
   panel.classList.toggle("abierto");
   if (seAbre) {
     estado.filtroRapidas = "";
+    estado.filtroRapidasCategoria = "";
     pintarQuickPanel();
     // Se refresca del servidor cada vez que se abre, para ver al toque las
     // que haya creado otra vendedora — no solo lo que se cargó al iniciar sesión.
@@ -6590,13 +6592,17 @@ function pintarQuickPanel() {
   if (!panel) return;
 
   const buscando = Boolean(estado.filtroRapidas.trim());
+  const cat = estado.filtroRapidasCategoria || "";
   // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
   // Las de su producto primero, después las generales (rapidasDelChat).
-  const lista = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  const listaBase = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  const lista = cat ? listaBase.filter((q) => (q.categoria || "") === cat) : listaBase;
   const prodChat = productoDe(chatActivo()?.producto_id);
+  const CATS = [["", "Todas"], ["ventas", "Ventas"], ["atencion", "Atención al cliente"]];
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
+    <div class="rapidas-cats">${CATS.map(([v, l]) => `<button type="button" class="rapida-cat-btn${cat === v ? " activa" : ""}" data-cat="${v}">${l}</button>`).join("")}</div>
     ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las demás.
       <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="rapidas-solo" ${rapidasSoloProducto() ? "checked" : ""} /> Solo las de este producto</label></div>` : ""}
     ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según el orden del equipo. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
@@ -6622,6 +6628,12 @@ function pintarQuickPanel() {
       <button id="ordenar-rapidas" type="button">${icon("tag")} Ordenar por número</button>
     </footer>`;
 
+  panel.querySelectorAll(".rapida-cat-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      estado.filtroRapidasCategoria = btn.dataset.cat || "";
+      pintarQuickPanel();
+    });
+  });
   $("#rapidas-solo")?.addEventListener("change", (e) => {
     try { localStorage.setItem("crm_rapidas_solo", e.target.checked ? "1" : "0"); } catch {}
     pintarQuickPanel();
@@ -6762,6 +6774,21 @@ function activarArrastreRapidas(panel) {
   });
 }
 
+/** Quita la respuesta rápida del escribidor (equivalente a tocar la X del chip). */
+function deseleccionarRapida() {
+  const inp = $("#texto-envio");
+  if (inp) { inp.value = ""; inp.style.height = ""; inp.placeholder = "Escribe un mensaje…"; }
+  estado.rapidaUsadaId = null;
+  estado.rapidaVariante = null;
+  estado.rapidaPlantillaPrincipal = null;
+  estado.rapidaPendiente = null;
+  estado.botonesMensaje = [];
+  pintarBotonesMensaje();
+  pintarPreviewArchivo();
+  pintarVersionesRapida();
+  pintarChipSecuencia(null);
+}
+
 /** Elegir una respuesta rápida ya no la manda al toque — la pone en el escribidor (texto y/o adjunto pendiente) para que el vendedor la revise/edite y mande con Enter o el botón, como cualquier otro mensaje. */
 /**
  * Pone la respuesta rápida en el cuadro. Si tiene versiones en prueba:
@@ -6840,18 +6867,21 @@ function botonesVersiones(q, activa = null) {
     `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? icon("star") : ""}</button>`).join("")}</div>`;
 }
 
-/** La barrita encima del cuadro para cambiar de versión con un toque. */
+/** La barrita encima del cuadro: nombre de la rápida activa + X para deseleccionar + botones de versión si los hay. */
 function pintarVersionesRapida() {
   const cont = $("#versiones-rapida");
   if (!cont) return;
   const rv = estado.rapidaVariante;
-  if (!rv?.q || !versionesDe(rv.q) || !estado.rapidaUsadaId) {
+  const titulo = rv?.q?.title || "";
+  if (!estado.rapidaUsadaId || !titulo) {
     cont.style.display = "none";
     cont.innerHTML = "";
     return;
   }
+  const vs = versionesDe(rv.q);
   cont.style.display = "flex";
-  cont.innerHTML = `<span class="sub">${escapar(rv.q.title)} · versión</span>${botonesVersiones(rv.q, rv.indice)}`;
+  cont.innerHTML = `<span class="sub" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapar(titulo)}${vs ? " · versión" : ""}</span>${vs ? botonesVersiones(rv.q, rv.indice) : ""}<button type="button" id="btn-deseleccionar-rapida" title="Quitar respuesta rápida">${icon("close")}</button>`;
+  $("#btn-deseleccionar-rapida")?.addEventListener("click", deseleccionarRapida);
 }
 
 function pintarChipSecuencia(q) {
@@ -6908,6 +6938,7 @@ function abrirModalRapidaNueva() {
   ponerCamposBotones($("#rapida-botones"), "rapida-boton", []);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  if ($("#rapida-categoria")) $("#rapida-categoria").value = "";
   pintarCatalogoRapida(null);
   $("#rapida-catalogo-orden").value = "0";
   llenarSelectPlantillaPrincipal();
@@ -7099,6 +7130,7 @@ function abrirModalRapidaEdicion(q) {
   estado.editandoRapidaId = q.id;
   $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
   $("#rapida-titulo").value = q.title;
+  if ($("#rapida-categoria")) $("#rapida-categoria").value = q.categoria || "";
   $("#rapida-texto").value = q.body || "";
   ponerCamposBotones($("#rapida-botones"), "rapida-boton", q.botones || []);
   $("#rapida-archivo").value = "";
@@ -7163,18 +7195,19 @@ $("#rapida-crear").addEventListener("click", async () => {
     }
     // Solo leer pasos del DOM si el usuario los editó (evita borrar pasos por bug de carga del modal).
     const pasosDom = estado.rapidaPasosEditados ? await leerPasosRapida() : undefined;
+    const categoriaModal = $("#rapida-categoria")?.value || null;
     if (editandoId) {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     } else {
       const followup_pasos = await leerPasosRapida();
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     }
     await cargarQuickReplies();

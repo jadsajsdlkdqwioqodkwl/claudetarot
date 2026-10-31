@@ -121,7 +121,7 @@ async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -176,11 +176,12 @@ async function post({ request, env }) {
   const { grupo, orden } = leerGrupo(payload);
   const productoId = Number(payload?.producto_id) || null;
   const botones = limpiarBotones(payload?.botones);
+  const categoriaPost = ["ventas", "atencion"].includes(payload?.categoria) ? payload.categoria : null;
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order, plantilla_principal)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)), ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order, plantilla_principal, categoria)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)), ?, ?) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal, categoriaPost)
     .first();
   await guardarCatalogoDespues(env, creada.id, payload);
 
@@ -257,8 +258,11 @@ async function patch({ request, env, agent }) {
   const productoId = "producto_id" in (payload || {}) ? Number(payload.producto_id) || null : existente.producto_id || null;
   // Sin el campo `botones` se dejan como estaban.
   const botones = "botones" in (payload || {}) ? limpiarBotones(payload.botones) : botonesDe(existente.botones);
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order), plantilla_principal = ? WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, plantillaPrincipalPatch, id)
+  const categoriaPatch = "categoria" in (payload || {})
+    ? (["ventas", "atencion"].includes(payload.categoria) ? payload.categoria : null)
+    : existente.categoria || null;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order), plantilla_principal = ?, categoria = ? WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, plantillaPrincipalPatch, categoriaPatch, id)
     .run();
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));

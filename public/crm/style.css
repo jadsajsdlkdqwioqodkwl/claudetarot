@@ -914,7 +914,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .versiones .version { width: 24px; height: 24px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); color: var(--gris); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .versiones .version:hover { border-color: var(--verde-osc); color: var(--verde-osc); }
 .versiones .version.activa { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
-#versiones-rapida { align-items: center; gap: 8px; padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#versiones-rapida { align-items: center; gap: 6px; padding: 4px 8px 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); min-width: 0; }
+#btn-deseleccionar-rapida { flex-shrink: 0; border: 0; background: transparent; color: var(--gris); cursor: pointer; padding: 2px 4px; font-size: 16px; line-height: 1; }
 #chip-secuencia { padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
 #chip-secuencia #btn-enviar-secuencia { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--verde-osc); color: #fff; border: none; border-radius: var(--radio-full); font: inherit; font-size: 13px; cursor: pointer; }
 #versiones-rapida .versiones { margin-top: 0; }
@@ -1029,6 +1030,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .badge-producto, .badge-linea { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; margin-right: 3px; background: #fff3e0; border: 1px solid #ffd59e; color: #8a4b00; font-weight: 500; }
 .badge-linea { background: #e8f4fd; border-color: #b6dcf7; color: #0b5a8a; }
 .rapidas-producto { padding: 4px 10px 6px; font-size: 12px; }
+.rapidas-cats { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; }
+.rapida-cat-btn { padding: 3px 10px; border: 1px solid var(--borde); border-radius: 12px; background: transparent; font-size: 12px; cursor: pointer; color: var(--gris); white-space: nowrap; }
+.rapida-cat-btn.activa { background: var(--acento, #0b5a8a); color: #fff; border-color: transparent; }
 .fila-seguimiento.apagado { opacity: .55; }
 #detalle-producto { padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font: inherit; font-size: 13px; background: var(--panel); }
 
