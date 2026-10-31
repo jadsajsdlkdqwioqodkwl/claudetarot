@@ -1228,7 +1228,7 @@ Magda (su ventana se acababa de abrir). Queda anotado: las pruebas de envío NUN
   Si el dueño quiere que la Routine lea el Sheet directamente, se agrega en claude.ai → Routines → Editar.
 
 ### Registro visual
-Pestaña **«Boletas auto»** del libro «TAROT CHATS - VENTAS CRM» (`GOOGLE_SHEET_ID`): una fila por despacho
+Pestaña **«Boletas auto»** del libro «Pedidos Tarot Kit» (`GOOGLE_SHEET_ID` = `1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc`): una fila por despacho
 (Fecha Lima, Nombre, WA, Courier, NRO Orden, Saldo, Staging IDs, Ventana = abierta | plantilla | pendiente).
 «plantilla» = se mandó el aviso y se espera al cliente; «pendiente» = el webhook ya mandó todo tras el botón.
 
