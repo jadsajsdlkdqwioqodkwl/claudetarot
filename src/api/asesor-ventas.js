@@ -76,7 +76,7 @@ async function leerFilas(env) {
   return getValues(env, `${hojaVentas(env)}!${RANGO_DATOS_VENTA}`);
 }
 
-async function crear(env, p) {
+export async function crear(env, p) {
   const dni = soloDigitos(p.dni).slice(0, 12);
   const celular = soloDigitos(p.celular).slice(-9);
   if (!dni && !celular) return json({ error: "Falta DNI o celular." }, 400);
@@ -112,7 +112,7 @@ async function crear(env, p) {
   return json({ codigo, link: `${SITIO}/${codigo}`, clave: claveShalom, nuevo: true });
 }
 
-async function actualizar(env, p, conImagen) {
+export async function actualizar(env, p, conImagen) {
   const filas = await leerFilas(env);
   const hallada = buscarFila(filas, { codigo: p.codigo, dni: p.dni });
   if (!hallada) return json({ error: "No encontré esa venta (ni por código ni por DNI)." }, 404);

@@ -150,7 +150,8 @@ export async function registrarMensajeSaliente(db, conversationId, { waMessageId
 }
 
 /** Si el texto que salió lleva la clave de Shalom del cliente (su perfil), se cancelan TODOS los
- * seguimientos no-batch y no-mandar_siempre del chat: si le damos su código es porque ya pagó. */
+ * seguimientos no-batch y no-mandar_siempre del chat, el cobro (recojo Shalom/Olva) incluido:
+ * el código de retiro solo se le da cuando ya pagó el saldo (dueño, 2026-10-31). */
 async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
   const c = await db
     .prepare("SELECT c.shalom_code FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?")
@@ -158,10 +159,14 @@ async function terminarCobroSiLlevaCodigo(db, conversationId, texto) {
     .first();
   if (!contieneCodigo(texto, c?.shalom_code)) return;
   await db
-    // Los planes de recojo (cobro Shalom/Olva) se conservan: el cliente todavía tiene que pagar el saldo.
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND batch_id IS NULL AND created_by NOT LIKE 'Plan con plantilla · Recojo%'")
+    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND batch_id IS NULL")
     .bind(conversationId)
     .run();
+  await db
+    .prepare("UPDATE conversations SET meta_tags = trim(replace(' ' || COALESCE(meta_tags, '') || ' ', ' shalom_codigo_pendiente ', ' ')) WHERE id = ?")
+    .bind(conversationId)
+    .run();
+  await agregarEtiquetaMeta(db, conversationId, "saldo_pagado");
 }
 
 export async function actualizarEstadoMensaje(db, waMessageId, status, errorDetail) {

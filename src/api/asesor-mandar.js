@@ -7,12 +7,13 @@
  * por enviar.py con aprobación humana.
  *
  *   { tipo: "despachar", conversation_id?, wa_id?, staging_ids: [boleta, caja], texto,
- *     courier: "Shalom"|"Olva", saldo, nro_orden, nombre_boleta?, dni_boleta?, forzar? }
+ *     courier: "Shalom"|"Olva", saldo, nro_orden, nombre_boleta?, dni_boleta?, adelanto?, forzar? }
  *     → EL despacho completo en una llamada (2026-10-31): comprueba que no se haya mandado ya
  *       (nro_orden y chat), mira la ventana de 24 h en D1 y:
  *       · abierta  → foto boleta, foto caja, texto; etiquetas; plan de cobro; staging 'enviado'; log en «Boletas auto».
  *       · cerrada  → staging 'pendiente_ventana' con el texto guardado + plantilla aviso_envio_shalom;
  *                    el webhook manda fotos+texto solo cuando el cliente responde.
+ *       En los dos casos registra la venta en la pestaña Ventas (fila nueva si no existía) con la foto de la boleta.
  *   { tipo: "texto", conversation_id?, wa_id?, texto }            (se rechaza si la ventana está cerrada)
  *   { tipo: "foto-staging", conversation_id?, wa_id?, staging_id } (se rechaza si la ventana está cerrada)
  *   { tipo: "cobro", conversation_id?, wa_id?, courier: "shalom"|"olva" }
@@ -29,12 +30,42 @@ import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { mandarTexto, mandarMediaPorId, pausaEnvio, mandarConEscribiendo } from "../lib/crm-send.js";
 import { agregarEtiquetaMeta, registrarMensajeSaliente } from "../lib/crm-db.js";
 import { programarPlan, aplicarOlva } from "../lib/planes-plantilla.js";
-import { enviarTemplate } from "../lib/whatsapp.js";
+import { enviarTemplate, descargarMedia } from "../lib/whatsapp.js";
 import { fueraDeVentana } from "./crm/scheduled.js";
 import { stagingActualizar, stagingVerificarNroOrden } from "../lib/boletas-staging.js";
 import { registrarBoletaLog } from "./asesor-boletas-log.js";
+import { crear as crearVenta, actualizar as actualizarVenta } from "./asesor-ventas.js";
 
 const PLANTILLA_AVISO = "aviso_envio_shalom";
+const PRECIO_KIT = 89;
+
+/**
+ * La venta de provincia en la pestaña Ventas: si no hay fila con ese DNI la crea, y le cuelga la
+ * foto de la boleta (R2) con el saldo y el nro de orden. Nunca frena el despacho: devuelve lo que pasó.
+ */
+async function registrarVenta(env, conv, datos, foto) {
+  if (!datos.dni_boleta) return { omitido: "la boleta no trae DNI" };
+  const saldoNum = parseFloat(String(datos.saldo).replace(/[^\d.]/g, "")) || 0;
+  const adelanto = datos.adelanto || (saldoNum === 0 ? String(PRECIO_KIT) : saldoNum < PRECIO_KIT ? String(PRECIO_KIT - saldoNum) : "");
+  const creada = await (await crearVenta(env, {
+    dni: datos.dni_boleta, celular: conv.waId.slice(-9), envio: datos.courier, adelanto, saldo: datos.saldo
+  })).json();
+  if (creada.error) return creada;
+  let imagen_base64 = null;
+  try {
+    const { blob } = await descargarMedia(env, foto.media_id);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    imagen_base64 = btoa(bin);
+  } catch (err) {
+    console.error("registrarVenta foto:", err.message);
+  }
+  const r = await (await actualizarVenta(env, {
+    dni: datos.dni_boleta, imagen_base64, mime: foto.media_mime || "image/jpeg", saldo: datos.saldo, orden: datos.nro_orden
+  }, Boolean(imagen_base64))).json();
+  return { codigo: creada.codigo, fila_nueva: Boolean(creada.nuevo), foto: Boolean(imagen_base64), ...(r.error ? { error: r.error } : {}) };
+}
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -107,8 +138,9 @@ async function despachar(env, conv, p) {
   const datos = {
     conversation_id: conv.convId, courier, nro_orden: nroOrden, saldo, mensaje_texto: texto,
     nombre_boleta: p.nombre_boleta ? String(p.nombre_boleta) : null,
-    dni_boleta: p.dni_boleta ? String(p.dni_boleta) : null
+    dni_boleta: p.dni_boleta ? String(p.dni_boleta).replace(/\D/g, "") : null
   };
+  const ventaDatos = { ...datos, adelanto: p.adelanto ? String(p.adelanto) : "" };
   const esOlva = courier.toLowerCase() === "olva";
   const log = {
     nombre: datos.nombre_boleta || "", wa_id: conv.waId, courier, nro_orden: nroOrden, saldo, staging_ids: ids
@@ -122,7 +154,8 @@ async function despachar(env, conv, p) {
     await agregarEtiquetaMeta(db, conv.convId, "bot_boleta").catch(() => {});
     if (esOlva) await aplicarOlva(env, conv.convId, true, "asesor-boletas").catch(() => {});
     registrarBoletaLog(env, { ...log, ventana: "plantilla" }).catch((err) => console.error("boletas log:", err.message));
-    return json({ ok: true, ventana: "cerrada", motivo: cerrada, plantilla: PLANTILLA_AVISO, wa_message_id: waMessageId });
+    const ventas = await registrarVenta(env, conv, ventaDatos, ordenadas[0]).catch((err) => ({ error: err.message }));
+    return json({ ok: true, ventana: "cerrada", motivo: cerrada, plantilla: PLANTILLA_AVISO, wa_message_id: waMessageId, ventas });
   }
 
   const enviados = [];
@@ -147,7 +180,8 @@ async function despachar(env, conv, p) {
   if (esOlva) await db.prepare("UPDATE contacts SET olva = 1 WHERE id = (SELECT contact_id FROM conversations WHERE id = ?)").bind(conv.convId).run().catch(() => {});
   else await agregarEtiquetaMeta(db, conv.convId, "shalom_codigo_pendiente").catch(() => {});
   registrarBoletaLog(env, { ...log, ventana: "abierta" }).catch((err) => console.error("boletas log:", err.message));
-  return json({ ok: true, ventana: "abierta", wa_message_ids: enviados, cobro });
+  const ventas = await registrarVenta(env, conv, ventaDatos, ordenadas[0]).catch((err) => ({ error: err.message }));
+  return json({ ok: true, ventana: "abierta", wa_message_ids: enviados, cobro, ventas });
 }
 
 export async function onRequestPost({ request, env }) {

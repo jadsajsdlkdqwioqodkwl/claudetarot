@@ -32,7 +32,7 @@
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { servirMensaje } from "./crm/media.js";
-import { descargarMedia } from "../lib/whatsapp.js";
+import { descargarMedia, subirMedia } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -432,6 +432,76 @@ export async function onRequestGetBuscarDni({ request, env }) {
     nombre: mejor.nombre,
     coincidencias: results.length
   });
+}
+
+const SQL_CHAT = `SELECT conv.id, conv.last_inbound_at, conv.meta_tags, c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre, c.saldo
+  FROM conversations conv JOIN contacts c ON c.id = conv.contact_id`;
+
+/**
+ * GET /api/asesor/chat?conversation_id=N | wa_id=51XXXXXXXXX | telefono=XXXXXXXXX
+ * Lo que la Routine de boletas confirma antes de despachar: quién es, ventana de 24 h, etiquetas,
+ * últimos mensajes (`mensajes`, 30 por defecto) y si ya recibió su comprobante. No devuelve el
+ * código de retiro (shalom_code): ese nunca sale al cliente.
+ */
+export async function onRequestGetChat({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const convId = Number(url.searchParams.get("conversation_id")) || 0;
+  let wa = (url.searchParams.get("wa_id") || url.searchParams.get("telefono") || "").replace(/\D/g, "");
+  if (wa.length === 9) wa = "51" + wa;
+  if (!convId && !wa) return json({ error: "Falta conversation_id, wa_id o telefono." }, 400);
+  const conv = convId
+    ? await env.CRM_DB.prepare(`${SQL_CHAT} WHERE conv.id = ?`).bind(convId).first()
+    : await env.CRM_DB.prepare(`${SQL_CHAT} WHERE c.wa_id = ? ORDER BY conv.id DESC LIMIT 1`).bind(wa).first();
+  if (!conv) return json({ encontrado: false });
+  const limite = conv.last_inbound_at ? new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 86400000 : 0;
+  const n = Math.min(Number(url.searchParams.get("mensajes")) || 30, 100);
+  const { results: mensajes } = await env.CRM_DB.prepare(
+    "SELECT id, direction, type, substr(body, 1, 300) AS body, sent_by, status, created_at FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ?"
+  ).bind(conv.id, n).all();
+  const boleta = await env.CRM_DB.prepare(
+    "SELECT id, created_at FROM messages WHERE conversation_id = ? AND direction = 'out' AND status <> 'failed' AND " +
+    "(instr(COALESCE(body, ''), 'Nro de orden') > 0 OR instr(COALESCE(body, ''), 'Código de seguimiento') > 0) ORDER BY id DESC LIMIT 1"
+  ).bind(conv.id).first();
+  const { results: staging } = await env.CRM_DB.prepare(
+    "SELECT id, status, nro_orden, created_at FROM boletas_staging WHERE conversation_id = ? ORDER BY id"
+  ).bind(conv.id).all();
+  return json({
+    encontrado: true,
+    conversation_id: conv.id,
+    wa_id: conv.wa_id,
+    nombre: conv.nombre,
+    saldo_crm: conv.saldo,
+    etiquetas: conv.meta_tags,
+    last_inbound_at: conv.last_inbound_at,
+    ventana: limite > Date.now() ? "abierta" : "cerrada",
+    boleta_ya_enviada: boleta || null,
+    staging: staging || [],
+    mensajes: (mensajes || []).reverse()
+  });
+}
+
+/**
+ * POST /api/asesor/imagen { staging_id, imagen_base64, mime? }
+ * Reemplaza la foto de una boleta en staging (por ejemplo, ya rotada) subiéndola a WhatsApp
+ * como media nuevo. Solo mientras la foto no se haya mandado.
+ */
+export async function onRequestPostImagen({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const p = await request.json().catch(() => null);
+  const stagingId = Number(p?.staging_id);
+  if (!stagingId || !p?.imagen_base64) return json({ error: "Falta staging_id o imagen_base64." }, 400);
+  const item = await env.CRM_DB.prepare("SELECT id, status FROM boletas_staging WHERE id = ?").bind(stagingId).first();
+  if (!item) return json({ error: "No encontré esa foto en staging." }, 404);
+  if (!["listo", "pendiente"].includes(item.status)) return json({ error: `La foto ${stagingId} ya está ${item.status}: no se reemplaza.` }, 409);
+  const bytes = Uint8Array.from(atob(String(p.imagen_base64)), (c) => c.charCodeAt(0));
+  if (!bytes.length || bytes.length > 6 * 1024 * 1024) return json({ error: "Imagen vacía o demasiado grande." }, 400);
+  const mime = /^image\/(jpeg|png|webp)$/.test(p.mime) ? p.mime : "image/jpeg";
+  const mediaId = await subirMedia(env, new Blob([bytes], { type: mime }), mime, `boleta-${stagingId}.${mime.split("/")[1]}`);
+  await env.CRM_DB.prepare("UPDATE boletas_staging SET media_id = ?, media_mime = ? WHERE id = ?").bind(mediaId, mime, stagingId).run();
+  return json({ ok: true, media_id: mediaId });
 }
 
 /**
