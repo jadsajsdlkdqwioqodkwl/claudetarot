@@ -197,9 +197,8 @@ async function conPlantilla(env, s, quien) {
     "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
   ).bind(s.conversation_id).first();
   if (!conv) return "No encontré el chat.";
-  const nombre = (s.nombre || "").split(/\s+/)[0] || "estimad@";
   try {
-    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, (e) => enviarTemplate(e, conv.wa_id, PLANTILLA_AVISO_ENVIO, "es", [nombre]));
+    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, (e) => enviarTemplate(e, conv.wa_id, PLANTILLA_AVISO_ENVIO, "es_PE", []));
     await registrarMensajeSaliente(env.CRM_DB, s.conversation_id, {
       waMessageId, type: "template", body: `Plantilla: ${PLANTILLA_AVISO_ENVIO}`, sentBy: quien
     });

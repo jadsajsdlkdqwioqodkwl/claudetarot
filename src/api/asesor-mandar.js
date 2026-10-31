@@ -10,15 +10,18 @@
  *   { tipo: "foto-staging", conversation_id?, wa_id?, staging_id }
  *   { tipo: "cobro", conversation_id?, wa_id?, courier: "shalom"|"olva" }
  *     → programa el plan de recojo (3 seguimientos) y aplica el tag cobro_3x
+ *   { tipo: "plantilla", conversation_id?, wa_id?, plantilla, params? }
+ *     → envía una plantilla WhatsApp (ej. aviso_envio_shalom) cuando la ventana está cerrada
  *
  * Se acepta conversation_id O wa_id; si solo viene wa_id, se busca la
  * conversación más reciente de ese contacto.
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
-import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
-import { agregarEtiquetaMeta } from "../lib/crm-db.js";
+import { mandarTexto, mandarMediaPorId, pausaEnvio, mandarConEscribiendo } from "../lib/crm-send.js";
+import { agregarEtiquetaMeta, registrarMensajeSaliente } from "../lib/crm-db.js";
 import { programarPlan } from "../lib/planes-plantilla.js";
+import { enviarTemplate } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -88,6 +91,18 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
+    if (p.tipo === "plantilla") {
+      const plantilla = String(p.plantilla || "").trim();
+      const params = Array.isArray(p.params) ? p.params.map((v) => String(v)) : [];
+      const idioma = String(p.idioma || "es_PE").slice(0, 10);
+      if (!plantilla) return json({ error: "Falta plantilla." }, 400);
+      const waMessageId = await mandarConEscribiendo(env, conv.convId, (e) => enviarTemplate(e, conv.waId, plantilla, idioma, params));
+      await registrarMensajeSaliente(env.CRM_DB, conv.convId, {
+        waMessageId, type: "template", body: `Plantilla: ${plantilla}`, sentBy: "asesor-boletas"
+      });
+      return json({ ok: true, wa_message_id: waMessageId });
+    }
+
     if (p.tipo === "cobro") {
       const courier = String(p.courier || "").toLowerCase();
       if (courier !== "shalom" && courier !== "olva") return json({ error: "courier debe ser 'shalom' u 'olva'." }, 400);
@@ -97,7 +112,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true, pasos: resultado.pasos?.length || 0 });
     }
 
-    return json({ error: "tipo inválido (texto | foto-staging | etiqueta | cobro)." }, 400);
+    return json({ error: "tipo inválido (texto | foto-staging | etiqueta | cobro | plantilla)." }, 400);
   } catch (err) {
     console.error("asesor-mandar:", err.message);
     return json({ error: err.message }, 502);
