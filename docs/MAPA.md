@@ -1292,3 +1292,46 @@ entrantes sin archivo: 0, tipo `unsupported`: 1. Lo que sí estaba mal (commit `
 
 Sin cambios (revisado y sano): entrantes de imagen/audio/documento con su `media_id` al 100 %, CAPI 502
 eventos sin fallos, catálogo/producto salen, `quick_replies.categoria` sí existe en D1.
+
+## 2026-11-01 — Seguimientos: solo el cliente corta la cadena, plan universal, barra «Seguimiento» en el chat
+
+Pedido del dueño (urgente): el paso 2 (20 h, collar) de «Provincia Msj. 3» casi nunca salía; quiere más
+seguimientos en la semana (día 3, día 5 y el día 6 para todos los de anuncio), que la cadena salga sí o sí
+salvo que el cliente escriba, un «dos pasos universal» editable en un solo lugar y un control grande para
+reactivar. **El estado actual completo está en `docs/seguimientos.md`.**
+
+### Diagnóstico con datos (7 días, «Provincia Msj. 3»)
+Paso 1 programado 201 veces (106 salieron); paso 2 programado 162 (61 salieron, 95 cancelados). De 84
+cancelaciones del paso 2 en 5 días: 74 porque el cliente escribió (correcto, pero nadie reactivaba), 9 porque
+nosotros mandamos otro mensaje (`cancelarSeguimientosDeLead` en cada envío), 1 por el tope de 2 automáticos
+(la secuencia de anuncio ya había mandado uno). Además el paso 2 se saltaba al programar si la rápida salía
+más de 2 h después del último mensaje del cliente (tope de 23 h con `continue`). 187 de 202 envíos de la
+rápida fueron < 1 h después del cliente.
+
+### Cambios (commit de esta entrada; Worker desplegado)
+- `src/lib/crm-db.js`: `programarPasosEnChat` (tope de 23 h con adelanto o salto, plantilla «día N del chat»
+  con `desde: "inicio"`, reemplazo de la cadena anterior, nada a quien compró); `normalizarPasosSeguimiento`
+  (hasta 6 pasos, misma forma para rápidas y plan universal); `pasosUniversales`; `pasosDeSeguimientoRapida`
+  devuelve el plan universal si la rápida lo usa; `MAX_AUTOMATICOS_SIN_RESPUESTA` 2 → 6.
+- Quitado `cancelarSeguimientosDeLead` de `messages.js`, `catalog.js`, `templates.js`, `sugerencias.js` y
+  `scheduled.js` (nuestros envíos y programaciones no cortan la cadena). Sigue en `followup-apply.js`
+  (aplicar una secuencia reemplaza) y dentro de `programarPasosEnChat`.
+- `migrations/0071_quick_replies_followup_universal.sql` (aplicada a mano en D1): `quick_replies.followup_universal`.
+- `settings.js`: `seguimiento_universal` (pasos) y `aplicar_universal_a_rapidas`; `quick-replies.js`: `followup_universal`
+  en GET/POST/PATCH; `followup-rapida.js`: devuelve `universal` y `desde`.
+- **Nuevo `GET/POST /api/crm/seguimiento`** (`src/api/crm/seguimiento.js`): estado de la cadena del chat, plan a
+  reactivar (última rápida con seguimiento o el universal), `reactivar` / `apagar`.
+- `conversations.js`: el badge «Seguimiento · hora» de la lista cubre cualquier cadena automática (antes solo la de anuncio).
+- CRM: barra `#barra-seguimiento` bajo la cabecera del chat (verde activa / naranja reactivar; `pintarBarraSeguimiento`,
+  `abrirReactivarDesdeBarra`, `pintarPasosReactivar` en `app.js`); en el editor de rápidas, selector
+  «Plan universal / Pasos propios / Sin seguimiento», edición del plan (admin) y botón «Usar el plan universal en
+  todas»; en los pasos de plantilla, «los días se cuentan desde el primer mensaje del cliente (día N del chat)»;
+  hasta 6 pasos; textos de ayuda nuevos. CSS: `.seg-barra`, `.seg-modo`, `.aviso-universal`.
+- `scripts/test-seguimientos-cadena.mjs` (nuevo, en `npm run check`) y reglas nuevas en `check.mjs`
+  («solo el cliente corta la cadena», tope 6, adelanto al tope).
+- Semilla del plan universal en D1 (`crm_settings.seguimiento_universal`): los 2 pasos de «Provincia Msj. 3».
+  Ninguna rápida se cambió a universal todavía: lo decide el dueño con el botón «Usar en todas».
+
+### Verificado y sin cambios
+El día 6 de anuncio ya era «sin excepción»: `rescate7Dias` agendó y mandó el rescate a 140 de 140 chats
+creados hace 8–10 días que no compraron.

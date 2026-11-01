@@ -36,7 +36,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo, sincronizarSeguimientosPendientes, obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
+import { HORAS_SEGUIMIENTO_RAPIDA, leerCatalogo, sincronizarSeguimientosPendientes, obtenerAjuste, guardarAjuste, normalizarPasosSeguimiento } from "../../lib/crm-db.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
 
@@ -46,30 +46,9 @@ import { versionesEnPrueba, guardarAnterior } from "../../lib/crm-variantes.js";
  * paso como body/hours.
  */
 function leerSeguimiento(payload) {
-  let pasos = Array.isArray(payload?.followup_pasos)
+  const pasos = normalizarPasosSeguimiento(Array.isArray(payload?.followup_pasos)
     ? payload.followup_pasos
-    : payload?.followup_body ? [{ horas: payload.followup_hours, body: payload.followup_body }] : [];
-  pasos = pasos
-    .map((p) => {
-      const horas = Number(p?.horas);
-      // Un paso puede ser una plantilla (sale fuera de la ventana de 24 h, hasta 60 días después).
-      const plantilla = /^[a-z0-9_]{1,100}$/.test(String(p?.plantilla || "")) ? String(p.plantilla) : null;
-      const paso = {
-        horas: horas >= 0.25 && horas <= (plantilla ? 1440 : 168) ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
-        body: plantilla ? null : String(p?.body || "").trim().slice(0, 4096) || null
-      };
-      if (p?.activo === false) paso.activo = false; // apagado: se guarda pero no se programa
-      if (plantilla) paso.plantilla = plantilla;
-      else if (limpiarBotones(p?.botones).length && paso.body) paso.botones = limpiarBotones(p.botones);
-      if (!plantilla && p?.media_key) Object.assign(paso, {
-        media_key: String(p.media_key).slice(0, 200),
-        media_type: ["image", "video", "document", "audio", "sticker"].includes(p.media_type) ? p.media_type : "document",
-        media_mime: p.media_mime ? String(p.media_mime).slice(0, 100) : null
-      });
-      return paso;
-    })
-    .filter((p) => p.body || p.media_key || p.plantilla)
-    .slice(0, 4);
+    : payload?.followup_body ? [{ horas: payload.followup_hours, body: payload.followup_body }] : []);
   return {
     pasos: pasos.length ? JSON.stringify(pasos) : null,
     body: pasos[0]?.body || (pasos[0]?.plantilla ? `Plantilla: ${pasos[0].plantilla}` : pasos.length ? "(archivo)" : null),
@@ -121,7 +100,7 @@ async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -178,10 +157,10 @@ async function post({ request, env }) {
   const botones = limpiarBotones(payload?.botones);
   const categoriaPost = ["ventas", "atencion"].includes(payload?.categoria) ? payload.categoria : null;
   const creada = await env.CRM_DB.prepare(
-    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order, plantilla_principal, categoria)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)), ?, ?) RETURNING *`
+    `INSERT INTO quick_replies (title, body, followup_body, followup_hours, followup_pasos, grupo, catalogo, catalogo_nombre, producto_id, botones, sort_order, plantilla_principal, categoria, followup_universal)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM quick_replies)), ?, ?, ?) RETURNING *`
   )
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal, categoriaPost)
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal, categoriaPost, payload?.followup_universal ? 1 : 0)
     .first();
   await guardarCatalogoDespues(env, creada.id, payload);
 
@@ -220,7 +199,7 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
-  const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos, plantilla_principal FROM quick_replies WHERE id = ?").bind(id).first();
+  const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos, plantilla_principal, categoria, followup_universal FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
   const title = String(payload?.title || "").trim().slice(0, 80);
@@ -261,8 +240,9 @@ async function patch({ request, env, agent }) {
   const categoriaPatch = "categoria" in (payload || {})
     ? (["ventas", "atencion"].includes(payload.categoria) ? payload.categoria : null)
     : existente.categoria || null;
-  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order), plantilla_principal = ?, categoria = ? WHERE id = ?")
-    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, plantillaPrincipalPatch, categoriaPatch, id)
+  const followupUniversal = "followup_universal" in (payload || {}) ? (payload.followup_universal ? 1 : 0) : (existente.followup_universal ? 1 : 0);
+  await env.CRM_DB.prepare("UPDATE quick_replies SET title = ?, body = ?, followup_body = ?, followup_hours = ?, followup_pasos = ?, catalogo = ?, catalogo_nombre = ?, producto_id = ?, botones = ?, grupo = COALESCE(?, grupo), sort_order = COALESCE(?, sort_order), plantilla_principal = ?, categoria = ?, followup_universal = ? WHERE id = ?")
+    .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, grupo, orden, plantillaPrincipalPatch, categoriaPatch, followupUniversal, id)
     .run();
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
@@ -288,7 +268,7 @@ async function patch({ request, env, agent }) {
     .bind(id)
     .all();
 
-  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, botones, plantilla_principal: plantillaPrincipalPatch, media: media.results } });
+  return json({ ok: true, quick_reply: { id, title, body, grupo, followup_body: seguimiento.body, followup_hours: seguimiento.hours, followup_pasos: pasosDe({ followup_pasos: seguimiento.pasos }), catalogo, catalogo_nombre: catalogoNombre, producto_id: productoId, botones, plantilla_principal: plantillaPrincipalPatch, followup_universal: followupUniversal, media: media.results } });
 }
 
 async function del({ request, env }) {

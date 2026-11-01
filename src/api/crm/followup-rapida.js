@@ -30,7 +30,8 @@ async function get({ request, env }) {
   if (!q) return json({ error: "Esa respuesta rápida ya no existe." }, 404);
   return json({
     titulo: q.titulo,
-    pasos: q.pasos.map((p) => ({ horas: Number(p.horas) || 20, body: p.body || "", plantilla: p.plantilla || null, media_type: p.media_key ? p.media_type || "image" : null }))
+    universal: Boolean(q.universal),
+    pasos: q.pasos.map((p) => ({ horas: Number(p.horas) || 20, body: p.body || "", plantilla: p.plantilla || null, desde: p.desde || null, media_type: p.media_key ? p.media_type || "image" : null }))
   });
 }
 

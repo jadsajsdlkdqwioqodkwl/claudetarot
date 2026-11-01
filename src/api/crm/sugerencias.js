@@ -45,7 +45,6 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
-import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos, limpiarPlantilla } from "../asesor.js";
@@ -244,7 +243,6 @@ async function post({ request, env, agent }) {
     if (!texto) return json({ error: "El mensaje está vacío." }, 400);
     const destino = (await destinosDeChats(env.CRM_DB, [convId]))[convId];
     if (!textoSirvePara(texto, destino)) return json({ error: `Este chat es de ${destino}: el mensaje es para el otro destino.` }, 422);
-    await cancelarSeguimientosDeLead(env.CRM_DB, convId);
     const error = await programar(env, convId, texto, quien, "ahora");
     if (error) return json({ error }, 422);
     d.enviado = new Date().toISOString();
@@ -319,8 +317,6 @@ async function post({ request, env, agent }) {
 
   if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
-    // Una sola cadena por chat: lo que se aprueba reemplaza a los automáticos pendientes.
-    await cancelarSeguimientosDeLead(env.CRM_DB, s.conversation_id);
     let error = await programar(env, s.conversation_id, texto, quien, cuando, { plantilla: plantilla1, botones: payload.botones });
     // Envío con la ventana cerrada: sale con la plantilla.
     if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {

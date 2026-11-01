@@ -223,7 +223,7 @@ async function handler({ request, env, agent }) {
            AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
            AND COALESCE(created_by, '') NOT LIKE ?
          THEN send_at END) AS proximo,
-         MIN(CASE WHEN created_by = ? THEN send_at END) AS auto_proximo
+         MIN(CASE WHEN created_by = ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ? THEN send_at END) AS auto_proximo
        FROM scheduled_messages
        WHERE status = 'pendiente' AND batch_id IS NULL
        GROUP BY conversation_id
@@ -235,7 +235,7 @@ async function handler({ request, env, agent }) {
      ORDER BY conv.last_message_at DESC NULLS LAST, conv.id DESC
      LIMIT ? OFFSET ?`
   )
-    .bind(...(clave ? [`%${clave}%`] : []), ...SEG_EXCL, ...SEG_EXCL, ORIGEN_SEGUIMIENTO_AUTO, ...params, limite + 1, offset)
+    .bind(...(clave ? [`%${clave}%`] : []), ...SEG_EXCL, ...SEG_EXCL, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`, ...params, limite + 1, offset)
     .all();
 
   // Cuántos hay en la cola (con las restricciones de la cuenta, sin los filtros de la lista).

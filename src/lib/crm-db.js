@@ -4,6 +4,7 @@
  */
 
 import { contieneCodigo } from "./ventas.js";
+import { limpiarBotones } from "./whatsapp.js";
 
 // created_by del recojo en Shalom (planes-plantilla.js: PREFIJO_PLAN + título del plan).
 const ORIGEN_COBRO_SHALOM = "Plan con plantilla · Recojo en Shalom";
@@ -235,13 +236,13 @@ export const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
 export const origenSugerencia = (quien) => `${PREFIJO_SUGERENCIA} · ${quien || "CRM"}`;
 
 /**
- * Tope de insistencia (docs/negocio.md: "hasta 3–4 mensajes por cliente"):
- * con este número de seguimientos automáticos ya enviados sin que el cliente
- * responda, el cron no manda más texto libre. Bajado de 4 a 2 porque se
- * estaban mandando demasiados mensajes seguidos sin respuesta. Se suman todas las fuentes (secuencia
- * de leads, respuesta rápida, sugerencias, carrito), que antes podían apilarse.
+ * Tope de insistencia: con este número de seguimientos automáticos ya enviados sin que el cliente
+ * responda, el cron no manda más texto libre. Es una red de seguridad, no el ritmo: el ritmo lo
+ * pone la cadena (plan universal o pasos de la rápida: 2 textos el primer día y plantillas los días
+ * siguientes, hasta el rescate del día 6). Estuvo en 2 y cortaba el segundo paso cuando la
+ * secuencia de anuncio ya había mandado uno (dueño, 2026-11-01).
  */
-export const MAX_AUTOMATICOS_SIN_RESPUESTA = 2;
+export const MAX_AUTOMATICOS_SIN_RESPUESTA = 6;
 
 /**
  * El link de seguimiento del pedido (página /TS-…), que sale solo 23 h
@@ -267,15 +268,75 @@ export const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 export const PREFIJO_PLAN_PLANTILLA = "Plan con plantilla";
 export const HORAS_SEGUIMIENTO_RAPIDA = 20;
 
-/** Los pasos activos del seguimiento de una respuesta rápida: { titulo, pasos } (null si ya no existe). */
+/** Hasta cuántos pasos lleva una cadena (plan universal o pasos de una rápida). */
+export const MAX_PASOS_SEGUIMIENTO = 6;
+
+/**
+ * Un paso de seguimiento validado; misma forma para los pasos de una respuesta rápida y para el plan
+ * universal (ajuste `seguimiento_universal`): { horas, body?, botones?, media_*?, plantilla?, desde?, activo? }.
+ * Una plantilla con `desde: "inicio"` cuenta sus días desde el primer mensaje del cliente (día N del
+ * chat), no desde el paso anterior: así "día 3" es día 3 aunque la cadena se reactive el día 2.
+ */
+export function normalizarPasosSeguimiento(lista) {
+  return (Array.isArray(lista) ? lista : [])
+    .map((p) => {
+      const horas = Number(p?.horas);
+      const plantilla = /^[a-z0-9_]{1,100}$/.test(String(p?.plantilla || "")) ? String(p.plantilla) : null;
+      const paso = {
+        horas: horas >= 0.25 && horas <= (plantilla ? 1440 : 168) ? Math.round(horas * 4) / 4 : HORAS_SEGUIMIENTO_RAPIDA,
+        body: plantilla ? null : String(p?.body || "").trim().slice(0, 4096) || null
+      };
+      if (p?.activo === false) paso.activo = false;
+      if (plantilla) {
+        paso.plantilla = plantilla;
+        if (p?.desde === "inicio") paso.desde = "inicio";
+      } else if (limpiarBotones(p?.botones).length && paso.body) paso.botones = limpiarBotones(p.botones);
+      if (!plantilla && p?.media_key) Object.assign(paso, {
+        media_key: String(p.media_key).slice(0, 200),
+        media_type: ["image", "video", "document", "audio", "sticker"].includes(p.media_type) ? p.media_type : "document",
+        media_mime: p.media_mime ? String(p.media_mime).slice(0, 100) : null
+      });
+      return paso;
+    })
+    .filter((p) => p.body || p.media_key || p.plantilla)
+    .slice(0, MAX_PASOS_SEGUIMIENTO);
+}
+
+/** El plan universal de seguimiento (ajuste `seguimiento_universal`), con los pasos apagados incluidos. */
+export async function pasosUniversales(db) {
+  try { return normalizarPasosSeguimiento(JSON.parse((await obtenerAjuste(db, "seguimiento_universal")) || "[]")); } catch { return []; }
+}
+
+/**
+ * Los pasos activos del seguimiento de una respuesta rápida: { titulo, universal, pasos } (null si ya
+ * no existe). Si la rápida usa el plan universal (`followup_universal`), son los de ese plan.
+ */
 export async function pasosDeSeguimientoRapida(db, quickReplyId) {
-  const q = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
+  const q = await db.prepare("SELECT title, followup_body, followup_hours, followup_pasos, followup_universal FROM quick_replies WHERE id = ?").bind(quickReplyId).first();
   if (!q) return null;
-  // La secuencia (hasta 4 pasos) o, en respuestas viejas, un solo seguimiento.
-  let pasos = [];
-  try { pasos = JSON.parse(q.followup_pasos || "[]") || []; } catch { pasos = []; }
-  if (!pasos.length && q.followup_body) pasos = [{ horas: q.followup_hours || HORAS_SEGUIMIENTO_RAPIDA, body: q.followup_body }];
-  return { titulo: q.title, pasos: pasos.filter((p) => p.activo !== false) }; // los pasos apagados no se programan
+  let pasos = pasosGuardados(q);
+  let universal = false;
+  if (q.followup_universal) {
+    const u = await pasosUniversales(db);
+    if (u.length) { pasos = u; universal = true; }
+  }
+  return { titulo: q.title, universal, pasos: pasos.filter((p) => p.activo !== false) }; // los pasos apagados no se programan
+}
+
+/** Cambios de una persona para este chat ([{ horas, body, activo }] por posición) sobre los pasos activos. */
+export function aplicarEdicionesDePasos(pasos, editados) {
+  if (!Array.isArray(editados)) return pasos;
+  return pasos.map((p, i) => {
+    const e = editados[i];
+    if (!e) return p;
+    if (e.activo === false) return null;
+    const horas = Number(e.horas);
+    return {
+      ...p,
+      ...(horas > 0 && horas <= (p.plantilla ? 1440 : 168) ? { horas } : {}),
+      ...(!p.plantilla && typeof e.body === "string" && (e.body.trim() || p.media_key) ? { body: e.body.trim().slice(0, 4096) } : {})
+    };
+  }).filter(Boolean);
 }
 
 /** Los pasos de seguimiento tal como están guardados en la respuesta rápida (con los apagados). */
@@ -343,71 +404,62 @@ export async function programarSeguimientoDeRapida(db, conversationId, quickRepl
   if ((await obtenerAjuste(db, "quick_followup_auto")) === "0") return "El seguimiento de respuestas rápidas está apagado para todas (ajuste del admin).";
   const q = await pasosDeSeguimientoRapida(db, quickReplyId);
   if (!q) return "Esa respuesta rápida ya no existe.";
-  let pasos = q.pasos;
-  if (Array.isArray(editados)) {
-    pasos = pasos.map((p, i) => {
-      const e = editados[i];
-      if (!e) return p;
-      if (e.activo === false) return null;
-      const horas = Number(e.horas);
-      return {
-        ...p,
-        ...(horas > 0 && horas <= (p.plantilla ? 1440 : 168) ? { horas } : {}),
-        ...(!p.plantilla && typeof e.body === "string" && (e.body.trim() || p.media_key) ? { body: e.body.trim().slice(0, 4096) } : {})
-      };
-    }).filter(Boolean);
-  }
+  const pasos = aplicarEdicionesDePasos(q.pasos, editados);
   if (!pasos.length) return "Esa respuesta rápida no tiene seguimiento (o sus pasos están apagados).";
-  // Nunca pasadas las 23 h desde el último mensaje del cliente: después de
-  // 24 h WhatsApp ya no acepta texto libre y el seguimiento no llegaría. Un
-  // paso que caería más tarde no se programa (ni los que siguen).
-  const conv = await db.prepare(
-    `SELECT conv.last_inbound_at, conv.etapa,
-       (SELECT COUNT(*) FROM scheduled_messages s WHERE s.conversation_id = conv.id AND s.status = 'pendiente' AND s.batch_id IS NULL
-          AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ? AND COALESCE(s.created_by, '') NOT LIKE ?
-          AND COALESCE(s.created_by, '') <> ? AND s.template_name IS NULL) AS manuales
-     FROM conversations conv WHERE conv.id = ?`
-  ).bind(`${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, ORIGEN_SEGUIMIENTO_AUTO, conversationId).first();
-  if (!conv?.last_inbound_at) return "El cliente todavía no escribió.";
-  // Una sola cadena de TEXTO por chat: si una persona ya dejó un seguimiento programado
-  // a mano, manda el suyo y la respuesta rápida no agrega otra cadena encima.
-  // Las plantillas (rescate del día 7, planes) no cuentan: se apilan con la de texto.
-  // Y a quien ya compró (etapa 5) no le sale un "si no responde".
-  if (conv.etapa >= 5) return "Ya compró: no se le manda un «si no responde».";
-  if (conv.manuales > 0) return "Ya hay un seguimiento programado a mano en este chat: cancélalo desde el panel derecho si quieres este.";
-  const tope = new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 23 * 3600 * 1000;
-  const origen = `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.titulo}`;
+  return programarPasosEnChat(db, conversationId, pasos, `${PREFIJO_SEGUIMIENTO_RAPIDA} · ${q.titulo}`);
+}
+
+/**
+ * Programa una cadena de pasos (texto, archivo o plantilla) en un chat. Reglas (dueño, 2026-11-01):
+ * · solo el CLIENTE corta la cadena (webhook, cancelarSeguimientosPendientes); lo que nosotros
+ *   escribamos o programemos no la toca;
+ * · una sola cadena automática por chat: la nueva reemplaza a la que hubiera (rápida, anuncio, sugerencia);
+ * · un texto nunca sale pasadas 23 h del último mensaje del cliente (WhatsApp lo rechaza): si cae
+ *   después se adelanta a esa hora, siempre que queden 2 h con el paso anterior; si no, se salta.
+ *   Una plantilla no tiene tope;
+ * · plantilla con `desde: "inicio"`: sus días se cuentan desde que empezó el chat (día N) y, si ese
+ *   momento ya pasó, se salta;
+ * · a quien ya compró no se le programa.
+ * Devuelve null si quedó programado, o el motivo (texto) por el que no.
+ */
+export async function programarPasosEnChat(db, conversationId, pasos, origen) {
+  if (!pasos?.length) return "No hay pasos de seguimiento prendidos.";
+  const conv = await db.prepare("SELECT last_inbound_at, created_at, etapa, meta_tags FROM conversations WHERE id = ?").bind(conversationId).first();
+  if (!conv) return "Conversación no encontrada.";
+  if (!conv.last_inbound_at) return "El cliente todavía no escribió.";
+  if (conv.etapa >= 5 || /\bpurchase\b/.test(conv.meta_tags || "")) return "Ya compró: no se le manda un «si no responde».";
+  const aMs = (t) => new Date(String(t).replace(" ", "T") + "Z").getTime();
+  const ahora = Date.now();
+  const tope = aMs(conv.last_inbound_at) + 23 * 3600 * 1000;
+  const inicio = aMs(conv.created_at);
   const inserts = [];
-  let envio = Date.now();
-  for (const [i, p] of pasos.entries()) {
-    envio += (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
-    // El primero se recorta al tope (como antes); los demás, si no entran, se omiten. Una plantilla
-    // (p.plantilla) no tiene tope: sale aunque la ventana ya haya cerrado.
-    // Un texto que ya no entra en la ventana se salta (antes cortaba toda la secuencia con `break`
-    // y tampoco salía la plantilla de los pasos siguientes, que no tiene tope).
-    const cuando = i === 0 && !p.plantilla ? Math.min(envio, tope) : envio;
-    if (cuando <= Date.now() + 60 * 1000) continue;
-    if (!p.plantilla && cuando > tope) continue;
-    envio = cuando;
+  let previo = ahora;
+  for (const p of pasos) {
+    const esperaMs = (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
+    let cuando = p.plantilla && p.desde === "inicio" ? inicio + esperaMs : previo + esperaMs;
+    if (!p.plantilla && cuando > tope) {
+      // El primer texto se adelanta al tope siempre; los siguientes solo si quedan 2 h con el anterior.
+      if (previo !== ahora && tope - previo < 2 * 3600 * 1000) continue;
+      cuando = tope;
+    }
+    if (cuando <= ahora + 60 * 1000) continue;
+    previo = cuando;
     if (p.plantilla) {
       inserts.push(
-        db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre) VALUES (?, ?, ?, ?, ?, 'es_PE', ?)")
-          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla, 0)
+        db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre) VALUES (?, ?, ?, ?, ?, 'es_PE', 0)")
+          .bind(conversationId, `Plantilla: ${p.plantilla}`, new Date(cuando).toISOString(), origen, p.plantilla)
       );
       continue;
     }
     inserts.push(
-      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones, mandar_siempre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      db.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, media_key, media_type, media_mime, botones, mandar_siempre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)")
         .bind(conversationId, p.body || null, new Date(cuando).toISOString(), origen, p.media_key || null, p.media_key ? p.media_type || "image" : null, p.media_mime || null,
-          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, 0)
+          !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null)
     );
   }
-  if (!inserts.length) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle el seguimiento.";
-  await db.batch([
-    db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by LIKE ?")
-      .bind(conversationId, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`),
-    ...inserts
-  ]);
+  if (!inserts.length) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle texto (solo una plantilla).";
+  await cancelarSeguimientosDeLead(db, conversationId);
+  await db.batch(inserts);
   return null;
 }
 
@@ -423,11 +475,10 @@ export function esOrigenAutomatico(createdBy) {
 }
 
 /**
- * Cancela los automáticos pendientes (secuencia de leads, sugerencias del
- * asesor y el seguimiento de respuesta rápida) — lo que corresponde cuando
- * nosotros le escribimos: la conversación siguió y ese texto quedó viejo.
- * (Antes el de respuesta rápida no se cancelaba y se juntaba con lo que la
- * vendedora seguía escribiendo o programando: mensajes de más.)
+ * Cancela los automáticos pendientes (secuencia de leads, sugerencias del asesor y el seguimiento de
+ * respuesta rápida). Desde 2026-11-01 NO se llama cuando nosotros le escribimos (la cadena sale sí o
+ * sí; solo el cliente la corta): se usa para reemplazar una cadena por otra (programarPasosEnChat,
+ * aplicar una secuencia) y para el control «Seguimiento» del chat (apagarlo a mano).
  */
 export async function cancelarSeguimientosDeLead(db, conversationId) {
   await db

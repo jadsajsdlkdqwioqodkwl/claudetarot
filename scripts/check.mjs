@@ -812,15 +812,19 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("se distingue lo automático de lo que programa una persona",
     esOrigenAutomatico("Seguimiento automático (anuncio)") && esOrigenAutomatico("Seguimiento de respuesta rápida · Precio") &&
     esOrigenAutomatico("Sugerencia del asesor · Moi") && !esOrigenAutomatico("Moi") && !esOrigenAutomatico(null));
-  check("como mucho 2 automáticos seguidos sin respuesta", MAX_AUTOMATICOS_SIN_RESPUESTA === 2);
+  check("la red de seguridad de automáticos seguidos deja pasar la cadena de la semana (6)", MAX_AUTOMATICOS_SIN_RESPUESTA === 6);
   const cron = readFileSync(new URL("../src/lib/crm-cron.js", import.meta.url), "utf8");
   check("el cron no repite textos, no escribe a quien compró ni se cruza con una conversación viva",
     cron.includes("ya_enviado") && cron.includes("s.etapa >= 5") && cron.includes("30 * 60 * 1000"));
   const db = readFileSync(new URL("../src/lib/crm-db.js", import.meta.url), "utf8");
-  check("escribirle cancela también el seguimiento de respuesta rápida pendiente",
-    /cancelarSeguimientosDeLead[\s\S]{0,900}PREFIJO_SEGUIMIENTO_RAPIDA/.test(db));
+  // Dueño (2026-11-01): solo el CLIENTE corta la cadena de seguimiento; nada de lo que mandamos o programamos la cancela.
+  const sinCorte = ["messages", "catalog", "templates", "sugerencias", "scheduled"].filter((f) => readFileSync(new URL(`../src/api/crm/${f}.js`, import.meta.url), "utf8").includes("cancelarSeguimientosDeLead("));
+  check("solo el cliente corta la cadena: ningún envío ni programación nuestra llama a cancelarSeguimientosDeLead", !sinCorte.length, sinCorte.join(", "));
+  check("una cadena nueva reemplaza a la anterior (programarPasosEnChat) y el webhook corta con el cliente",
+    /programarPasosEnChat[\s\S]{0,3000}cancelarSeguimientosDeLead\(db, conversationId\)/.test(db) && readFileSync(new URL("../src/api/whatsapp-webhook.js", import.meta.url), "utf8").includes("cancelarSeguimientosPendientes(db, conversacion.id)"));
+  check("un texto fuera de la ventana se adelanta al tope o se salta, nunca se intenta", /tope - previo < 2 \* 3600 \* 1000/.test(db));
   const prog = readFileSync(new URL("../src/api/crm/scheduled.js", import.meta.url), "utf8");
-  check("programar a mano reemplaza a los automáticos y no duplica", prog.includes("cancelarSeguimientosDeLead(env.CRM_DB, conversationId)") && prog.includes("ya está programado"));
+  check("programar a mano no duplica el mismo texto", prog.includes("ya está programado"));
   const masivo = readFileSync(new URL("../src/api/crm/bulk-send.js", import.meta.url), "utf8");
   check("sin envíos masivos", masivo.includes("onRequestPost = conAdmin(apagado)"));
   const sugs = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");

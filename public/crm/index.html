@@ -205,10 +205,16 @@
     <div class="rp-titulo">Plantilla principal (opcional)</div>
     <select id="rapida-plantilla-principal"><option value="">Sin plantilla (usa el texto de arriba)</option></select>
     <div class="ayuda-modal">Si eliges una plantilla, se manda esa en vez del texto — sirve para mandar fuera de la ventana de 24 h. El seguimiento de abajo sigue siendo el de esta respuesta rápida.</div>
-    <div class="rp-titulo">Seguimiento si el cliente no responde (opcional)</div>
+    <div class="rp-titulo">Seguimiento si el cliente no responde</div>
+    <div id="rapida-seg-modo" class="seg-modo">
+      <label><input type="radio" name="rapida-seg-modo" value="universal" /> Plan universal</label>
+      <label><input type="radio" name="rapida-seg-modo" value="propio" /> Pasos propios de esta respuesta</label>
+      <label><input type="radio" name="rapida-seg-modo" value="ninguno" /> Sin seguimiento</label>
+    </div>
+    <div id="rapida-universal-aviso" class="ayuda-modal aviso-universal" style="display:none"></div>
     <div id="rapida-pasos"></div>
     <button type="button" class="sug-agregar-paso" id="rapida-agregar-paso"></button>
-    <div class="ayuda-modal">Hasta 4 pasos, cada uno las horas (o, si es una plantilla, los días) indicadas después del anterior. Un paso de texto puede llevar un archivo y nunca sale pasadas 23 h desde el último mensaje del cliente; una plantilla sí sale después, porque es de pago. Toda la secuencia se cancela si el cliente responde o si la quitas desde el panel derecho del chat.</div>
+    <div class="ayuda-modal" id="rapida-pasos-ayuda">Hasta 6 pasos. Un texto sale las horas indicadas después del paso anterior y nunca pasadas 23 h desde el último mensaje del cliente (si no entra, se adelanta a esa hora o se salta). Una plantilla aprobada sí sale después: cuenta sus días desde el paso anterior o desde el primer mensaje del cliente («día N del chat»). La cadena se corta SOLO si el cliente escribe; lo que tú mandes no la toca, y desde la barra «Seguimiento» del chat la apagas o la reactivas.</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>

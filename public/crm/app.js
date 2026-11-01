@@ -1774,7 +1774,8 @@ function etiquetaTipoSeguimiento(s) {
 /** Recalcula la etiqueta de la lista para un chat a partir de sus pendientes. */
 function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
   const manuales = scheduled.filter(esSeguimientoManual);
-  const bienvenida = scheduled.filter((x) => x.created_by === ORIGEN_SEGUIMIENTO_AUTO && !x.batch_id);
+  // Cualquier cadena automática (anuncio, leads, rápida, sugerencia): la etiqueta de la lista.
+  const bienvenida = scheduled.filter((x) => !x.batch_id && (x.created_by === ORIGEN_SEGUIMIENTO_AUTO || [PREFIJO_SEGUIMIENTO_LEAD, PREFIJO_SUGERENCIA, PREFIJO_SEGUIMIENTO_RAPIDA].some((p) => (x.created_by || "").startsWith(p))));
   const seg = {
     seg_pendientes: manuales.length || null,
     seg_proximo: manuales.length ? manuales.map((x) => x.send_at).sort()[0] : null,
@@ -2051,7 +2052,7 @@ function pintarLista() {
         ${c.falta_respuesta ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-falta" title="Compra registrada; falta agendar el seguimiento. Márcalo cuando ya lo programaste (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} falta agendar seguimiento <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
         ${c.con_recomendacion ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. Márcalo cuando ya lo programaste y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
-        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
+        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Cadena de seguimiento automática en marcha (se corta solo si el cliente escribe)">${icon("clock")} Seguimiento · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3221,6 +3222,7 @@ function pintarChatBase(c) {
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
     </header>
+    <div id="barra-seguimiento"></div>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="banner-recomendacion" style="display:none"></div>
@@ -3942,14 +3944,73 @@ function textoSeguimiento(s) {
   return "";
 }
 
+/**
+ * La barra grande «Seguimiento» debajo de la cabecera del chat: prendida (cadena automática pendiente,
+ * con su próximo paso) o apagada (se cortó porque el cliente escribió, o se apagó) con el botón para
+ * reactivar el plan. Se apaga y se reactiva desde aquí; lo que mandemos no la toca.
+ */
+function pintarBarraSeguimiento(d) {
+  const barra = $("#barra-seguimiento");
+  if (!barra) return;
+  if (!d || d.compro) { barra.innerHTML = ""; barra.style.display = "none"; return; }
+  barra.style.display = "";
+  const n = d.pendientes?.length || 0;
+  if (d.activo) {
+    barra.innerHTML = `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
+      ${icon("checkBox")} <span>Seguimiento activo · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))}</span><span class="seg-barra-accion">apagar</span></button>`;
+    $("#seg-barra-btn").addEventListener("click", async () => {
+      if (!confirm(`¿Apagar el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca).`)) return;
+      try {
+        await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, accion: "apagar" }) });
+        await actualizarSeguimientosDetalle();
+      } catch (err) { alert(err.message); }
+    });
+    return;
+  }
+  if (!d.plan) {
+    barra.innerHTML = `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
+    return;
+  }
+  const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
+  const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
+  barra.innerHTML = `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
+    ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
+  $("#seg-barra-btn").addEventListener("click", () => abrirReactivarDesdeBarra(d));
+}
+
+/** El modal de reactivar (el mismo de la burbuja), con los pasos del plan del chat. */
+function abrirReactivarDesdeBarra(d) {
+  reactivando = { barra: true, pasos: d.plan.pasos };
+  $("#ra-titulo").innerHTML = `${icon("clock")} Reactivar seguimiento · ${escapar(d.plan.titulo)}`;
+  $("#ra-pasos").innerHTML = pintarPasosReactivar(d.plan.pasos, d.dia_chat);
+  $("#ra-programar").disabled = !d.plan.pasos.length;
+  $("#ra-programar").style.display = "";
+  $("#modal-reactivar-fondo").classList.add("abierto");
+}
+
+/** Las filas editables del modal de reactivar (burbuja y barra usan la misma). */
+function pintarPasosReactivar(pasos, diaChat = null) {
+  return pasos.map((p, i) => `
+      <div class="ra-paso" data-i="${i}"${p.plantilla ? ` data-plantilla="${escapar(p.plantilla)}"` : ""}>
+        <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después ${p.plantilla && p.desde === "inicio" ? `del primer mensaje del cliente (día ${Math.round(p.horas / 24)} del chat${diaChat ? `; hoy es el día ${diaChat}` : ""})` : "del paso anterior"}</label>
+        ${p.plantilla ? `<div class="ayuda-modal" style="font-size:11px;padding:4px 0">Plantilla aprobada · no editable aquí</div>` : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
+      </div>`).join("") || `<p class="ayuda-modal">Este plan no tiene pasos prendidos.</p>`;
+}
+
 async function actualizarSeguimientosDetalle() {
   const cont = $("#detalle-seguimientos");
   const conversationId = estado.conversacionActivaId;
   if (!cont || !conversationId) return;
   try {
-    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${conversationId}`);
+    const [{ scheduled }, estadoSeg] = await Promise.all([
+      pedir(`/api/crm/scheduled?conversation_id=${conversationId}`),
+      pedir(`/api/crm/seguimiento?conversation_id=${conversationId}`).catch(() => null)
+    ]);
     actualizarEtiquetaSeguimiento(conversationId, scheduled);
     if (estado.conversacionActivaId !== conversationId) return;
+    pintarBarraSeguimiento(estadoSeg);
     estado.seguimientosDelChat = { conversationId, scheduled };
     pintarEstadoLead();
     const html = (scheduled.length ? scheduled.map((s) => `
@@ -3962,7 +4023,7 @@ async function actualizarSeguimientosDetalle() {
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">"Tras no respuesta" se cancela si el cliente escribe o si le escribes. "Manual" se cancela solo si el cliente escribe. Programar uno a mano reemplaza a los automáticos.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
+      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">La cadena automática ("tras no respuesta") se corta SOLO si el cliente escribe; lo que tú mandes o programes no la toca. La apagas o la reactivas desde la barra «Seguimiento» de arriba del chat.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
       + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
@@ -4204,7 +4265,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
           ? (m.seg_activo
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
-            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
+            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se cortó (el cliente escribió o se apagó): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
         ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
@@ -4241,14 +4302,8 @@ async function reactivarSeguimientoRapida(chip) {
     const quickReplyId = Number(chip.dataset.q);
     const d = await pedir(`/api/crm/followup-rapida?conversation_id=${estado.conversacionActivaId}&quick_reply_id=${quickReplyId}`);
     reactivando = { chip, quickReplyId, pasos: d.pasos || [] };
-    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»`;
-    $("#ra-pasos").innerHTML = reactivando.pasos.map((p, i) => `
-      <div class="ra-paso" data-i="${i}"${p.plantilla ? ` data-plantilla="${escapar(p.plantilla)}"` : ""}>
-        <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
-        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después del paso anterior</label>
-        ${p.plantilla ? `<div class="ayuda-modal" style="font-size:11px;padding:4px 0">Plantilla aprobada · no editable aquí</div>` : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
-        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
-      </div>`).join("") || `<p class="ayuda-modal">Esta respuesta rápida ya no tiene pasos de seguimiento prendidos.</p>`;
+    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»${d.universal ? " · plan universal" : ""}`;
+    $("#ra-pasos").innerHTML = pintarPasosReactivar(reactivando.pasos);
     $("#ra-programar").disabled = !reactivando.pasos.length;
     $("#ra-programar").style.display = "";
     $("#modal-reactivar-fondo").classList.add("abierto");
@@ -4301,8 +4356,12 @@ $("#ra-programar").addEventListener("click", async () => {
   if (!pasos.some((p) => p.activo)) { alert("Deja al menos un paso para mandar."); return; }
   boton.disabled = true;
   try {
-    await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: reactivando.quickReplyId, pasos }) });
-    reactivando.chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    if (reactivando.barra) {
+      await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, accion: "reactivar", pasos }) });
+    } else {
+      await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: reactivando.quickReplyId, pasos }) });
+      reactivando.chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    }
     $("#modal-reactivar-fondo").classList.remove("abierto");
     reactivando = null;
     await actualizarSeguimientosDetalle();
@@ -6970,7 +7029,8 @@ function pasoRapidaHtml(p, n) {
       </div>
       <div class="rp-bloque-plantilla" ${esPlantilla ? "" : "hidden"}>
         <select class="rp-plantilla" style="width:100%" data-actual="${escapar(p.plantilla || "")}"><option value="${escapar(p.plantilla || "")}">${escapar(p.plantilla || "Elige una plantilla aprobada")}</option></select>
-        <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque ya se haya cerrado la ventana de 24 h (es una plantilla pagada). Tiene que estar aprobada en Meta.</div>
+        <select class="rp-desde" style="width:100%;margin-top:4px" title="Desde cuándo se cuentan los días"><option value="anterior"${p.desde === "inicio" ? "" : " selected"}>Los días se cuentan desde el paso anterior</option><option value="inicio"${p.desde === "inicio" ? " selected" : ""}>Los días se cuentan desde el primer mensaje del cliente (día N del chat)</option></select>
+        <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque ya se haya cerrado la ventana de 24 h (es una plantilla pagada). Tiene que estar aprobada en Meta. «Día N del chat» sirve para el día 3 o el día 5: si ese día ya pasó cuando se reactiva, se salta.</div>
       </div>
       <div class="rp-bloque-texto" ${esPlantilla ? "hidden" : ""}>
       <textarea class="rp-texto" rows="3" placeholder="Texto del seguimiento (opcional si adjuntas un archivo)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
@@ -7025,7 +7085,12 @@ function renumerarPasosRapida() {
   $("#rapida-pasos").querySelectorAll(".rp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
   const filas = [...$("#rapida-pasos").children];
   filas.forEach((f, i) => { f.querySelector(".rp-subir").disabled = i === 0; f.querySelector(".rp-bajar").disabled = i === filas.length - 1; });
-  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 4 ? "none" : "";
+  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 6 || modoSeguimientoRapida() === "ninguno" ? "none" : "";
+}
+
+/** Qué seguimiento usa la respuesta rápida del editor: "universal" | "propio" | "ninguno". */
+function modoSeguimientoRapida() {
+  return document.querySelector('input[name="rapida-seg-modo"]:checked')?.value || "propio";
 }
 
 function agregarPasoRapida(p = { horas: 20 }, marcaEdicion = false) {
@@ -7077,7 +7142,7 @@ async function leerPasosRapida() {
   for (const el of $("#rapida-pasos").children) {
     if (el.querySelector(".rp-tipo").value === "plantilla") {
       const nombre = el.querySelector(".rp-plantilla").value;
-      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
+      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-desde")?.value === "inicio" ? { desde: "inicio" } : {}), ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
       continue;
     }
     const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
@@ -7095,23 +7160,94 @@ async function leerPasosRapida() {
   return pasos;
 }
 
-/** La secuencia de seguimiento en el modal, y el interruptor global (solo admin). */
-function pintarSeguimientoRapida(q) {
-  estado.rapidaPasosEditados = false;
+/** Pinta una lista de pasos en el editor (propios o del plan universal). */
+function pintarPasosEnEditor(pasos, { soloLectura = false } = {}) {
   $("#rapida-pasos").innerHTML = "";
-  const pasos = q?.followup_pasos?.length ? q.followup_pasos
-    : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
   pasos.forEach((p) => agregarPasoRapida(p));
   renumerarPasosRapida();
   if (pasos.some((p) => p.plantilla)) llenarPlantillasDePasos();
+  if (soloLectura) $("#rapida-pasos").querySelectorAll("input, textarea, select, button").forEach((el) => { el.disabled = true; });
+}
+
+/**
+ * El seguimiento de la respuesta rápida en el modal: plan universal (los mismos pasos para todas las
+ * rápidas que lo usan; cambiarlos aquí los cambia para todas), pasos propios, o ninguno. Más el
+ * interruptor global (solo admin).
+ */
+function pintarSeguimientoRapida(q) {
+  estado.rapidaPasosEditados = false;
+  estado.rapidaUniversalEditado = false;
+  const propios = q?.followup_pasos?.length ? q.followup_pasos
+    : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
+  estado.rapidaPasosPropios = propios;
+  estado.rapidaPlanUniversal = estado.rapidaPlanUniversal || [];
+  const modo = q ? (q.followup_universal ? "universal" : propios.length ? "propio" : "ninguno") : "universal";
+  estado.rapidaSegModoAnterior = modo;
+  const radio = document.querySelector(`input[name="rapida-seg-modo"][value="${modo}"]`);
+  if (radio) radio.checked = true;
   const fila = $("#rapida-seg-global-fila");
   fila.style.display = "none";
-  if (estado.miRol !== "admin") return;
   pedir("/api/crm/settings").then((s) => {
+    estado.rapidaPlanUniversal = s.seguimiento_universal || [];
+    estado.rapidasConUniversal = s.rapidas_con_universal || 0;
+    estado.rapidasConPropio = s.rapidas_con_propio || 0;
+    if (!q && !estado.rapidaPlanUniversal.length) {
+      // Sin plan universal todavía: una rápida nueva arranca sin seguimiento.
+      document.querySelector('input[name="rapida-seg-modo"][value="ninguno"]').checked = true;
+    }
+    aplicarModoSeguimientoRapida();
+    if (estado.miRol !== "admin") return;
     $("#rapida-seg-global").checked = s.quick_followup_auto;
     fila.style.display = "flex";
-  }).catch(() => {});
+  }).catch(() => aplicarModoSeguimientoRapida());
 }
+
+/** Muestra en el editor los pasos del modo elegido (universal, propios o ninguno). */
+function aplicarModoSeguimientoRapida() {
+  const modo = modoSeguimientoRapida();
+  const aviso = $("#rapida-universal-aviso");
+  const esAdmin = estado.miRol === "admin";
+  if (modo === "universal") {
+    pintarPasosEnEditor(estado.rapidaPlanUniversal || [], { soloLectura: !esAdmin });
+    const n = estado.rapidasConUniversal || 0;
+    aviso.style.display = "";
+    aviso.innerHTML = `${icon("bolt")} <b>Plan universal</b>: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}. ${esAdmin ? "Si cambias estos pasos aquí, cambian para todas las que lo usan (al guardar)." : "Solo el admin lo edita."}`
+      + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-universal-todas" style="font-size:12px;margin-top:6px;width:100%">${icon("check")} Usar el plan universal en todas las respuestas con seguimiento (${estado.rapidasConPropio || 0} con pasos propios)</button>` : "");
+    $("#rapida-universal-todas")?.addEventListener("click", async (e) => {
+      if (!confirm("¿Todas las respuestas rápidas que hoy tienen seguimiento propio pasan a usar el plan universal? Sus pasos propios quedan guardados por si vuelves a elegirlos.")) return;
+      e.target.disabled = true;
+      try {
+        await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aplicar_universal_a_rapidas: true }) });
+        await cargarQuickReplies();
+        const s = await pedir("/api/crm/settings");
+        estado.rapidasConUniversal = s.rapidas_con_universal || 0;
+        estado.rapidasConPropio = s.rapidas_con_propio || 0;
+        aplicarModoSeguimientoRapida();
+      } catch (err) { alert(err.message); } finally { e.target.disabled = false; }
+    });
+  } else if (modo === "propio") {
+    aviso.style.display = "none";
+    pintarPasosEnEditor(estado.rapidaPasosPropios || []);
+  } else {
+    aviso.style.display = "none";
+    $("#rapida-pasos").innerHTML = "";
+  }
+  renumerarPasosRapida();
+}
+
+document.querySelectorAll('input[name="rapida-seg-modo"]').forEach((r) => r.addEventListener("change", async () => {
+  // Al salir de "propios" se guardan en memoria los pasos tal como quedaron en el editor.
+  const anterior = estado.rapidaSegModoAnterior || (r.value === "propio" ? "universal" : "propio");
+  if (anterior === "propio" && $("#rapida-pasos").children.length && estado.rapidaPasosEditados) {
+    try { estado.rapidaPasosPropios = await leerPasosRapida(); } catch { /* se queda con lo que había */ }
+  }
+  if (anterior === "universal" && estado.rapidaPasosEditados && estado.miRol === "admin") {
+    try { estado.rapidaPlanUniversal = await leerPasosRapida(); estado.rapidaUniversalEditado = true; } catch { /* idem */ }
+  }
+  estado.rapidaSegModoAnterior = r.value;
+  estado.rapidaPasosEditados = true;
+  aplicarModoSeguimientoRapida();
+}));
 
 $("#rapida-seg-global").addEventListener("change", async (e) => {
   try {
@@ -7193,21 +7329,35 @@ $("#rapida-crear").addEventListener("click", async () => {
         media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
       }
     }
-    // Solo leer pasos del DOM si el usuario los editó (evita borrar pasos por bug de carga del modal).
-    const pasosDom = estado.rapidaPasosEditados ? await leerPasosRapida() : undefined;
+    // Qué seguimiento lleva: el plan universal (sus pasos se guardan en los ajustes, una sola vez para
+    // todas), pasos propios (solo se releen del editor si se tocaron) o ninguno.
+    const modo = modoSeguimientoRapida();
+    const seguimiento = {};
+    if (modo === "universal") {
+      seguimiento.followup_universal = true;
+      if (estado.miRol === "admin" && (estado.rapidaPasosEditados || estado.rapidaUniversalEditado)) {
+        const universal = estado.rapidaUniversalEditado && !estado.rapidaPasosEditados ? estado.rapidaPlanUniversal : await leerPasosRapida();
+        await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seguimiento_universal: universal }) });
+      }
+    } else if (modo === "propio") {
+      seguimiento.followup_universal = false;
+      if (estado.rapidaPasosEditados || !editandoId) seguimiento.followup_pasos = await leerPasosRapida();
+    } else {
+      seguimiento.followup_universal = false;
+      seguimiento.followup_pasos = [];
+    }
     const categoriaModal = $("#rapida-categoria")?.value || null;
     if (editandoId) {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...(pasosDom !== undefined ? { followup_pasos: pasosDom } : {}), botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     } else {
-      const followup_pasos = await leerPasosRapida();
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos: [], ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     }
     await cargarQuickReplies();

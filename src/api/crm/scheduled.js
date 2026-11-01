@@ -24,7 +24,7 @@
 
 import { textoPorDefectoSql } from "../../lib/crm-variantes.js";
 import { conAuth } from "../../lib/crm-auth.js";
-import { leerCatalogo, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { leerCatalogo } from "../../lib/crm-db.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";
 import { textoParaChat, parametrosDePlantilla } from "../../lib/plantillas-propuestas.js";
 import { envDeConversacion } from "../../lib/lineas.js";
@@ -122,10 +122,8 @@ async function post({ request, env, agent }) {
     ).bind(conversationId, body).first();
     if (igual) return json({ error: "Ese mismo mensaje ya está programado para este chat." }, 409);
   }
-  // Una sola cadena por chat: lo que programa una persona reemplaza a los
-  // automáticos pendientes (bienvenida, respuesta rápida, sugerencias), que
-  // si no se sumaban y el cliente recibía mensajes de más.
-  await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+  // Programar algo a mano no corta la cadena automática (solo el cliente la corta; se apaga desde el
+  // control «Seguimiento» del chat).
 
   const creado = await env.CRM_DB.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, quick_reply_id, send_at, created_by, media_key, media_type, media_mime, catalogo, catalogo_nombre, mandar_siempre, botones, template_name, template_language, template_params)

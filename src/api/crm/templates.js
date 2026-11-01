@@ -19,7 +19,7 @@ import { textoParaChat, parametrosDePlantilla } from "../../lib/plantillas-propu
 import { obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 import { conAuth } from "../../lib/crm-auth.js";
 import { listarTemplates, enviarTemplate } from "../../lib/whatsapp.js";
-import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { registrarMensajeSaliente } from "../../lib/crm-db.js";
 import { pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { envDeConversacion, envDeLinea, lineaPorId } from "../../lib/lineas.js";
 
@@ -81,7 +81,6 @@ async function post({ request, env, agent }) {
       body: await textoParaChat(env, name, parametros),
       sentBy: agent?.displayName || agent?.username || null
     });
-    await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     // Su seguimiento (lo que el admin dejó con el lápiz de la plantilla; de fábrica, el aviso de envío de
     // Shalom deja los 3 recordatorios de recojo). Si el cliente responde, el recojo se vuelve a contar desde ahí.
     const pasosSeguimiento = await programarSeguimientoDePlantilla(env, conversationId, name, agent?.displayName || agent?.username || null)
