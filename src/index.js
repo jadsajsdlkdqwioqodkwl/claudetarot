@@ -130,6 +130,7 @@ import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
 import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
 import { onRequestPost as asesorBoletasLogPost } from "./api/asesor-boletas-log.js";
+import { onRequestGet as asesorPedidosSheetGet, onRequestPost as asesorPedidosSheetPost } from "./api/asesor-pedidos-sheet.js";
 import { onRequestPost as asesorMandarPost } from "./api/asesor-mandar.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
@@ -159,6 +160,7 @@ const ROUTES = {
   "/api/asesor/buscar-dni": { GET: asesorBuscarDniGet },
   "/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet },
   "/api/asesor/boletas-log": { POST: asesorBoletasLogPost },
+  "/api/asesor/pedidos-sheet": { GET: asesorPedidosSheetGet, POST: asesorPedidosSheetPost },
   "/api/asesor/control-ventas": { GET: asesorControlVentasGet },
   "/api/asesor/imagen": { GET: asesorImagenGet, POST: asesorImagenPost },
   "/api/asesor/chat": { GET: asesorChatGet },

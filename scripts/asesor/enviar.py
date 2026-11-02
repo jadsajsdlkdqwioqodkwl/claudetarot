@@ -63,6 +63,10 @@ TITULOS = {
     ("CONFIRMADO", "LIMA"): "✅ Lima — confirmados", ("CONFIRMADO", "PROVINCIA"): "✅ Provincia — confirmados",
     ("POR_CONFIRMAR", None): "🟡 Por confirmar", ("OTRO_DIA", None): "📅 Otros días", ("INTENCION", None): "🔥 Intención de compra",
 }
+# Reporte unificado «Pedidos y ventas» (2026-11-02): criterio liberal, lo dudoso sale como POR VERIFICAR y nada se descarta en silencio.
+TITULOS_UNIFICADO = {**TITULOS, ("POR_CONFIRMAR", None): "🟡 POR VERIFICAR — huele a venta: confírmalo en el chat antes de empacar"}
+ESTADOS_SINONIMOS = {"POR_VERIFICAR": "POR_CONFIRMAR", "VERIFICAR": "POR_CONFIRMAR", "CONFIRMADA": "CONFIRMADO", "AGENDADO": "OTRO_DIA",
+                     "OTRO_DÍA": "OTRO_DIA", "INTENCIÓN": "INTENCION", "DESCARTADO": "DESCARTADO"}
 # Lo que sale el día del despacho sin ser venta nueva: cambio, reposición o un
 # pedido de un día pasado agendado para esta fecha. Va en su propia sección,
 # después de los confirmados y ANTES de los por confirmar, para que no se pierda.
@@ -138,8 +142,41 @@ def validar_ventas(datos):
         sys.exit("Reporte de ventas incompleto (cada pedido lleva vendedora, destino y estado; y fecha_objetivo):\n" + "\n".join(malos))
 
 
+def normalizar_unificado(datos):
+    """Deja el salida.json del reporte unificado en el formato de siempre: estados sinónimos, DESCARTADO → `descartados`,
+    Lima CONFIRMADO con entrega en otro día → OTRO_DIA (se avisa, no se frena). Devuelve los avisos."""
+    avisos = []
+    import pedidos_estado as _pe
+    ref = datos.get("fecha_objetivo", "")
+    pedidos, descartados = [], list(datos.get("descartados") or [])
+    for p in datos.get("pedidos", []):
+        est = ESTADOS_SINONIMOS.get(str(p.get("estado") or "").strip().upper().replace(" ", "_"), str(p.get("estado") or "").strip().upper())
+        p = dict(p, estado=est)
+        if est == "DESCARTADO":
+            descartados.append({"nombre": p.get("nombre"), "whatsapp": p.get("whatsapp"), "motivo": p.get("motivo") or p.get("nota") or "sin motivo"})
+            continue
+        if (p.get("nombre") or "").upper() != "INCIDENCIA":
+            if not p.get("vendedora"):
+                p["vendedora"] = "(sin vendedora)"
+            if p.get("destino") not in ("LIMA", "PROVINCIA"):
+                # Sin destino no se sabe en qué sección va: sale como POR VERIFICAR, nunca se pierde.
+                avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: destino {p.get('destino')!r} (debe ser LIMA o PROVINCIA) → sale como POR VERIFICAR.")
+                p["estado"], p["destino"] = ("POR_CONFIRMAR" if est in ("CONFIRMADO", "POR_CONFIRMAR") else est), p.get("destino") or "?"
+                p["nota"] = ("⚠️ sin destino claro · " + str(p.get("nota") or "")).strip(" ·")
+        if est == "CONFIRMADO" and p.get("destino") == "LIMA" and not p.get("tipo"):
+            f = _pe.fecha_iso(p.get("fecha_entrega"), ref)
+            if f and f > ref:
+                p["estado"], p["fecha_entrega"] = "OTRO_DIA", f
+                avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: Lima con entrega el {f} (no el {ref}) → pasó a OTRO_DIA y queda agendado.")
+        if est == "OTRO_DIA" and not _pe.fecha_iso(p.get("fecha_entrega"), ref):
+            avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: OTRO_DIA sin fecha entendible ({p.get('fecha_entrega')!r}); ponle fecha_entrega AAAA-MM-DD para que quede agendado.")
+        pedidos.append(p)
+    datos["pedidos"], datos["descartados"] = pedidos, descartados
+    return avisos
+
+
 def armar_pdf(datos, carpeta):
-    if datos.get("tipo_reporte") == "ventas":
+    if datos.get("tipo_reporte") in ("ventas", "unificado"):
         validar_ventas(datos)
     fecha = datos.get("fecha_objetivo", "")
     todos = datos.get("pedidos", [])
@@ -175,7 +212,8 @@ def armar_pdf(datos, carpeta):
                       + tabla(inc_filas, [("Qué pasa / qué hacer", "texto"), ("¿Requiere envío?", "envio"),
                                           ("WhatsApp", "whatsapp")]) + "</div>")
     esp = [dict(p, tipo=ESPECIALES[str(p.get("tipo")).upper().replace("Ó", "O")]) for p in pedidos if especial(p)]
-    for (estado, destino), titulo in TITULOS.items():
+    unificado = datos.get("tipo_reporte") == "unificado"
+    for (estado, destino), titulo in (TITULOS_UNIFICADO if unificado else TITULOS).items():
         if estado == "POR_CONFIRMAR" and esp:
             partes.append(f"<h2 class=esp>🚨 SALEN EN ESTE DESPACHO: cambios, reposiciones y agendados de otros días ({len(esp)})</h2>"
                           + "<div class=esp>" + tabla(esp, [("Tipo", "tipo"), ("Destino", "destino"), ("Cliente", "nombre"),
@@ -184,6 +222,32 @@ def armar_pdf(datos, carpeta):
         filas = [p for p in pedidos if not especial(p) and p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
             partes.append(f"<h2>{titulo} ({len(filas)})</h2>" + tabla(filas, cols))
+        if estado == "OTRO_DIA" and unificado:
+            # Agenda pendiente: TODO pedido de la pestaña «Pedidos auto» sin marcar «Enviado» (atrasados, futuros y los de
+            # fechas pasadas), aunque ninguna corrida de hoy lo haya vuelto a ver. Así un pedido para dentro de un mes no
+            # desaparece de los reportes hasta que alguien lo marque como enviado (caso Katia Reyes, 2026-10-30).
+            en_reporte = {prom.nueve(p.get("whatsapp")) for p in pedidos if prom.nueve(p.get("whatsapp"))}
+            ag = datos.get("agenda_pendiente") or {}
+            filas_ag = []
+            for grupo, etiqueta in (("atrasados", "⚠️ ATRASADO (su fecha ya pasó y nadie lo marcó enviado)"), ("hoy", "HOY"),
+                                    ("futuros", "futuro"), ("sin_fecha", "sin fecha")):
+                for r in ag.get(grupo) or []:
+                    if prom.nueve(r.get("whatsapp")) in en_reporte and grupo != "atrasados":
+                        continue
+                    filas_ag.append(dict(r, _cuando=etiqueta, nota=("🚨 " if grupo == "atrasados" else "") + str(r.get("nota") or "")))
+            if filas_ag or ag:
+                partes.append(f"<h2 class=esp>📌 AGENDA PENDIENTE — pedidos de otros días sin marcar «Enviado» en la hoja «Pedidos auto» ({len(filas_ag)})</h2>"
+                              + ("<div class=esp>" + tabla(filas_ag, [("Cuándo", "_cuando"), ("Entrega", "fecha_entrega"), ("Cliente", "nombre"),
+                                                                       ("WhatsApp", "whatsapp"), ("Destino", "destino"), ("Estado", "estado"),
+                                                                       ("Dirección / Agencia", "direccion_o_agencia"), ("Kits", "kits"),
+                                                                       ("📦 Empaque", "empaque"), ("Nota", "nota"), ("Fila", "fila")]) + "</div>"
+                                 if filas_ag else "<p class=emp>No hay pedidos agendados pendientes.</p>")
+                              + "<p class=emp>Cuando un pedido de esta lista sale, escribe «sí» (o la fecha) en la columna <b>Enviado</b> de esa fila: deja de aparecer.</p>")
+    if unificado:
+        desc = [d for d in (datos.get("descartados") or []) if isinstance(d, dict)]
+        if desc:
+            partes.append(f"<h2>🗂️ Descartados con motivo — lo que parecía venta y NO lo es ({len(desc)}; si alguno sí es venta, avísale a Moi)</h2>"
+                          + tabla(desc, [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Por qué no cuenta", "motivo")]))
     # Todos los formularios de la página de las últimas 24 h, hayan terminado o no
     # en venta (GET /api/asesor/pedidos-web; main() los trae y los deja en datos).
     web = datos.get("pedidos_web") or []
@@ -209,9 +273,12 @@ def armar_pdf(datos, carpeta):
              ("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
-    es_ventas = datos.get("tipo_reporte") == "ventas"
+    es_ventas = datos.get("tipo_reporte") in ("ventas", "unificado")
     if es_ventas:
         titulo = f"Reporte de ventas · {e(datos.get('hora') or '')} {e(fecha)}".replace("  ", " ")
+        if unificado:
+            titulo = (f"Pedidos y ventas · {e(datos.get('hora') or '')} · ventas del {e(datos.get('fecha_venta') or fecha)} · "
+                      f"despacho del {e(fecha)}").replace("  ", " ")
         # Ventas por vendedora: toda venta (confirmada para el despacho o agendada para otro día).
         por = {}
         for p in pedidos:
@@ -239,6 +306,11 @@ def armar_pdf(datos, carpeta):
             for x in sin:
                 por_asesor[x.get("vendedora") or "(sin vendedora)"] = por_asesor.get(x.get("vendedora") or "(sin vendedora)", 0) + 1
             print("OLVIDARON MARCAR COMPRA (Meta): " + ", ".join(f"{k} ({v})" for k, v in por_asesor.items()))
+        sin_exp = datos.get("sin_explicar") or [] if unificado else []
+        if sin_exp:
+            # Lo que el CRM tiene como venta y el reporte no explica: arriba del todo, en rojo (antes el reporte no salía).
+            partes.insert(0, f"<h2 class=inc>🚨 EL CRM TIENE COMO VENTA Y EL REPORTE NO LO EXPLICA ({len(sin_exp)}) — revisar a mano</h2><div class=inc>"
+                          + tabla([{"texto": str(x).lstrip("- ")} for x in sin_exp], [("Qué dice el sistema", "texto")]) + "</div>")
     else:
         titulo = f"Reporte de ventas · despacho del {e(fecha)}"
     doc = f"""<!doctype html><meta charset=utf-8><style>
@@ -259,10 +331,14 @@ h2.esp{{color:#9a3412;border-color:#ea580c;font-size:19px}} div.esp th{{backgrou
 h2.web{{color:#1d4ed8;border-color:#2563eb}} div.web th{{background:#2563eb}}</style>
 <h1>{titulo}</h1>
 <p class=sub>Tarot Store Perú · generado por {e(origen)}</p>{resumen}{''.join(partes)}"""
-    ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, (f"ventas-{fecha}-{re.sub(r'[^0-9]', '', str(datos.get('hora') or ''))}".rstrip("-") if es_ventas else f"pedidos-{fecha}") + ".pdf")
+    nombre_pdf = (f"{'pedidos-y-ventas' if unificado else 'ventas'}-{fecha}-{re.sub(r'[^0-9]', '', str(datos.get('hora') or ''))}".rstrip("-")
+                  if es_ventas else f"pedidos-{fecha}")
+    ruta_html, ruta_pdf = os.path.join(carpeta, "pedidos.html"), os.path.join(carpeta, nombre_pdf + ".pdf")
     with open(ruta_html, "w") as fh:
         fh.write(doc)
-    chrome = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") or ["chromium"])[0]
+    import shutil
+    chrome = next((c for c in glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome") + ["/opt/pw-browsers/chromium"]
+                   if os.path.exists(c)), None) or shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome") or "chromium"
     subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer",
                     f"--print-to-pdf={ruta_pdf}", ruta_html], check=True, capture_output=True)
     return ruta_pdf, kits
@@ -306,6 +382,39 @@ def subir_reporte(clave, pdf_base64, nombre, titulo):
     """Guarda el PDF en el servidor (CRM → Reportes) y devuelve su link."""
     r = al_worker(clave, {"pdf_base64": pdf_base64, "nombre": nombre, "titulo": titulo}, AVISOS.replace("/avisos", "/reporte"))
     return r["url"]
+
+
+PEDIDOS_SHEET = AVISOS.replace("/avisos", "/pedidos-sheet")
+
+
+def agenda_sheet(clave, hoy):
+    """Pedidos de la pestaña «Pedidos auto» sin marcar «Enviado» (atrasados, de hoy, futuros, sin fecha). Un fallo no frena el reporte."""
+    req = urllib.request.Request(f"{PEDIDOS_SHEET}?hoy={hoy}", headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.load(r)
+    except Exception as err:  # noqa: BLE001
+        print(f"⚠️ No se pudo leer la agenda de la hoja «Pedidos auto»: {err}", flush=True)
+        return {"error": str(err)}
+
+
+def guardar_en_sheet(clave, datos):
+    """Deja en «Pedidos auto» todo pedido que sale o que podría salir (confirmados, por verificar, otros días, cambios,
+    reposiciones, agendados). Clave: WhatsApp entre las filas sin «Enviado». La columna «Enviado» la marca una persona."""
+    ped = [p for p in datos.get("pedidos", []) if (p.get("nombre") or "").upper() != "INCIDENCIA"
+           and (p.get("estado") in ("CONFIRMADO", "POR_CONFIRMAR", "OTRO_DIA") or especial(p))]
+    if not ped:
+        return {"nuevas": 0, "actualizadas": 0}
+    cuerpo = {"fecha_objetivo": datos.get("fecha_objetivo"), "origen": f"{datos.get('origen', 'asesor')} {datos.get('hora') or ''}".strip(),
+              "pedidos": [dict(p, fecha_venta=p.get("fecha_venta") or datos.get("fecha_venta") or "") for p in ped]}
+    req = urllib.request.Request(PEDIDOS_SHEET, data=json.dumps(cuerpo, ensure_ascii=False).encode(),
+                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r)
+    except Exception as err:  # noqa: BLE001
+        print(f"⚠️ No se pudo escribir en la hoja «Pedidos auto»: {err}", flush=True)
+        return {"error": str(err)}
 
 
 # Lo que delata a un bot (ver .claude/skills/voz-tarot-store). Las vendedoras
@@ -384,6 +493,29 @@ def main():
               "y vuelve a mandarlas en otro salida.json):\n" + "\n".join(fuera), flush=True)
     carpeta = os.path.dirname(os.path.abspath(ruta))
     estado_nuevo = None
+    unificado = datos.get("tipo_reporte") == "unificado"
+    if unificado:
+        # Reporte «Pedidos y ventas» (2026-11-02): ventas de fecha_venta (hoy) + despacho de fecha_objetivo (mañana), una sola
+        # memoria (registro por fecha de despacho + hoja «Pedidos auto»), criterio liberal y nada frena el envío: lo que no
+        # cuadra sale en el PDF, en rojo, para que una persona lo revise.
+        import datetime as _dt
+        datos.setdefault("fecha_venta", (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=5)).date().isoformat())
+        datos.setdefault("fecha_objetivo", (_dt.date.fromisoformat(datos["fecha_venta"]) + _dt.timedelta(days=1)).isoformat())
+        for a in normalizar_unificado(datos):
+            print("ℹ️ " + a.lstrip("- "), flush=True)
+        if clave and not solo_mensajes and "--sin-control" not in args:
+            import control_ventas
+            try:
+                datos["sin_explicar"] = control_ventas.cuadrar(control_ventas.traer(clave, datos["fecha_venta"]), datos)
+            except RuntimeError as err:
+                datos["sin_explicar"] = [f"No se pudo consultar el control de ventas del {datos['fecha_venta']}: {err}"]
+            if datos["sin_explicar"]:
+                print("⚠️ EL CRM CONOCE VENTAS QUE EL REPORTE NO EXPLICA (salen en rojo en el PDF; si puedes, corrige salida.json y vuelve a mandar):\n"
+                      + "\n".join(datos["sin_explicar"]), flush=True)
+            else:
+                print("Cuadre con el CRM: OK (todo candidato del sistema está explicado en el reporte)", flush=True)
+        if clave and not solo_mensajes:
+            datos["agenda_pendiente"] = agenda_sheet(clave, datos["fecha_venta"])
     if datos.get("tipo_reporte") == "ventas" and not prueba and not solo_mensajes:
         import control_ventas, ventas_estado
         try:
@@ -423,6 +555,10 @@ def main():
         try:
             # Registro de pedidos por fecha de despacho: esta corrida se SUMA a lo ya reportado y deja su diferencia escrita.
             previo = pedidos_estado.traer(clave, datos["fecha_objetivo"])
+            if unificado:
+                ctx_ruta = os.path.join(carpeta, "ctx.json")
+                datos["corte"] = (json.load(open(ctx_ruta)).get("corte_nuevo") if os.path.exists(ctx_ruta) else None) \
+                    or _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
             datos, dif = pedidos_estado.combinar(previo, datos)
             registro = dif
             print(f"Registro de pedidos {datos['fecha_objetivo']}: {len((previo or {}).get('pedidos', []))} ya reportados "
@@ -449,7 +585,7 @@ def main():
         if clave:
             with open(pdf, "rb") as fh:
                 link = subir_reporte(clave, base64.b64encode(fh.read()).decode(), os.path.basename(pdf),
-                                     f"Pedidos {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
+                                     f"{'Pedidos y ventas' if unificado else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             print(f"REPORTE PDF: {link}")
         return
     ped = datos.get("pedidos", [])
@@ -460,10 +596,17 @@ def main():
         ventas = datos.get("tipo_reporte") == "ventas"
         if ventas:
             cuerpo["solo_dueno"] = True  # el reporte de ventas de la noche es solo para el dueño
-        cuerpo["resumen"] = (f"🧭 Asesor — {'ventas' if ventas else 'pedidos para'} {datos.get('fecha_objetivo', '')}\n"
-                             f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
+        ag = datos.get("agenda_pendiente") or {}
+        pendientes_ag = sum(len(ag.get(k) or []) for k in ("atrasados", "hoy", "futuros", "sin_fecha"))
+        cuerpo["resumen"] = ((f"🧭 Pedidos y ventas {datos.get('hora') or ''} — ventas del {datos.get('fecha_venta', '')} · despacho del {datos.get('fecha_objetivo', '')}\n"
+                              if unificado else f"🧭 Asesor — {'ventas' if ventas else 'pedidos para'} {datos.get('fecha_objetivo', '')}\n")
+                             + f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
                              + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) else "")
-                             + f"🟡 Por confirmar: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
+                             + f"🟡 Por {'verificar' if unificado else 'confirmar'}: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
+                             + ((f"📌 Agenda pendiente (hoja «Pedidos auto»): {pendientes_ag}" + (f" · ⚠️ atrasados: {len(ag['atrasados'])}" if ag.get("atrasados") else "") + "\n"
+                                 + (f"🗂️ Descartados con motivo: {len(datos.get('descartados') or [])}\n" if datos.get("descartados") else "")
+                                 + (f"🚨 El CRM tiene como venta y el reporte no explica: {len(datos['sin_explicar'])}\n" if datos.get("sin_explicar") else ""))
+                                if unificado else "")
                              + (f"🌐 Pedidos de la web (24 h): {len(datos['pedidos_web'])} · compraron "
                                 f"{sum(1 for w in datos['pedidos_web'] if w.get('resultado') == 'COMPRÓ')}\n" if datos.get("pedidos_web") else "")
                              + f"✍️ Mensajes sugeridos a las vendedoras: {len(cuerpo['mensajes'])}")
@@ -473,14 +616,20 @@ def main():
         print(f"PDF: {pdf}")
         if not prueba:
             link = subir_reporte(clave, cuerpo["pdf_base64"], cuerpo["pdf_nombre"],
-                                 f"{'Ventas' if ventas else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
+                                 f"{'Pedidos y ventas' if unificado else 'Ventas' if ventas else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             cuerpo["resumen"] += f"\n📄 Reporte: {link}"
             print(f"REPORTE PDF: {link}", flush=True)
             if registro is not None:
                 import pedidos_estado
-                futuros, _ = pedidos_estado.registrar(clave, datos, registro, datos.get("origen", "asesor"))
+                # Lo que no es memoria del día (agenda leída de la hoja, formularios web, cuadre) no se guarda en el registro.
+                guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar")}
+                futuros, _ = pedidos_estado.registrar(clave, guardable, registro, f"{datos.get('origen', 'asesor')} {datos.get('hora') or ''}".strip())
                 print(f"Registro de pedidos guardado ({len(datos['pedidos'])} pedidos)."
                       + "".join(f" Agendados: {len(v)} para {f}." for f, v in futuros.items()), flush=True)
+                if unificado:
+                    r = guardar_en_sheet(clave, datos)
+                    print(f"Hoja «Pedidos auto»: {r.get('nuevas', 0)} filas nuevas, {r.get('actualizadas', 0)} actualizadas"
+                          + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
             if estado_nuevo:
                 import ventas_estado
                 ventas_estado.guardar(clave, estado_nuevo.get("fecha_objetivo", ""), estado_nuevo)

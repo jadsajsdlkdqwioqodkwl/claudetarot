@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import control_ventas as cv
 
 API = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/ventas-estado"
-CLAVES_LISTA = ("incidencias", "no_cuentan", "sin_marcar_compra", "lineas_revisadas")
+CLAVES_LISTA = ("incidencias", "no_cuentan", "sin_marcar_compra", "lineas_revisadas", "descartados")
 
 
 def _pedir(clave, fecha, cuerpo=None):
