@@ -1337,3 +1337,41 @@ rápida fueron < 1 h después del cliente.
 ### Verificado y sin cambios
 El día 6 de anuncio ya era «sin excepción»: `rescate7Dias` agendó y mandó el rescate a 140 de 140 chats
 creados hace 8–10 días que no compraron.
+
+## 2026-11-02 — Reporte unificado «Pedidos y ventas»: una Routine, una sesión fija, memoria en la hoja «Pedidos auto»
+
+Pedido del dueño: reestructurar el reporte de ventas como se hizo con las boletas: un solo reporte completo para él y
+Danitza (ventas del día + pedidos de mañana), criterio liberal (lo verifica una persona; nada se descarta en silencio),
+una sola sesión y un solo cron (21:45 · 22:30 · 23:45), leer solo hoy y ayer, y que los pedidos para otro día no
+desaparezcan (Katia Reyes, venta del 30/10 para el 2/11, no salía en los reportes del 31/10 ni del 1/11 porque
+el registro solo la mostraba el día de su entrega). Estado actual: `docs/reporte.md`; prompts: `docs/routines.md`.
+
+### Qué se agregó
+- `src/api/asesor-pedidos-sheet.js` + ruta `/api/asesor/pedidos-sheet` (GET/POST) en `src/index.js`: pestaña **«Pedidos
+  auto»** del libro «Pedidos Tarot Kit» (`GOOGLE_SHEET_ID`), creada sola con `asegurarPestana`. Columnas: Fecha venta,
+  Entrega, Nombre, WhatsApp, Destino, Estado, Vendedora, Dirección / Agencia, Kits, Empaque, Pago, Nota, Reporte,
+  Actualizado (Lima), **Enviado** (solo la escribe una persona). POST = upsert por WhatsApp entre filas sin «Enviado»;
+  GET = pendientes por fecha (atrasados / hoy / futuros / sin fecha). La hoja convierte «2026-11-02» a número de
+  serie: se vuelve a ISO al leer (`serieAFecha`). Sembrada 2026-11-02 con los dos agendados reales del 2/11 (Katia
+  Reyes y Graciela Hernández).
+- `scripts/asesor/reporte.py` (preparar · enviar · ver · chat · aviso): la Routine no hace curl. `preparar` decide las
+  fechas (ventas de hoy en Lima, despacho de mañana; antes de las 3:00 sigue siendo la noche anterior), trae el
+  registro previo de mañana (con su `corte`), la agenda de la hoja, los chats (`preparar.py api --dias 2`, o
+  `--activos-horas` desde el corte), las capturas (`imagenes.py`) y el control del CRM (`control_ventas.py`).
+- `scripts/asesor/enviar.py`: `tipo_reporte: "unificado"` → `normalizar_unificado` (POR_VERIFICAR = POR_CONFIRMAR,
+  DESCARTADO → `descartados` con motivo, Lima CONFIRMADO con entrega otro día → OTRO_DIA, sin destino → por verificar,
+  vendedora vacía → «(sin vendedora)»), cuadre con el CRM que **no frena** (sección roja «EL CRM TIENE COMO VENTA Y EL
+  REPORTE NO LO EXPLICA»), `agenda_sheet` (sección «📌 AGENDA PENDIENTE», atrasados con 🚨) y `guardar_en_sheet`
+  tras registrar, PDF `pedidos-y-ventas-FECHA-HHMM.pdf`, Telegram a dueño + Danitza (sin `solo_dueno`), registro con
+  `pedidos_estado.registrar` + `corte`. `ventas_estado.CLAVES_LISTA` suma `descartados`. Chromium: también
+  `/opt/pw-browsers/chromium` y `shutil.which`.
+- Prueba nueva `scripts/asesor/pruebas/test_pdf_unificado.py` (los PDF de ventas y de pedidos siguen iguales).
+- Routines: sesión fija `session_017wTF8ZruCb5hT61H2LkhRX` (Sonnet) con `trig_016KfxjJWbHhxrEehCxH9Mri` (21:45 · 23:45)
+  y `trig_017dC3qg4T65tGRG7JXcq2hE` (22:30). Apagadas (no borradas) `trig_01XkT6T8HZstc4YDvVwZHyXP` y
+  `trig_011ZpgQqhVKEnzhDG89RJqjq`. `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` → «Asesor — mensajes (11:30 · 16:30)», sin cierre.
+  La API no deja cambiar el prompt de una Routine con sesión fija desde otra sesión: se edita desde esa sesión.
+
+### Qué se conserva
+- `ventas_estado.py`, `control_ventas.py`, el formato `tipo_reporte: "ventas"` y el reporte de pedidos de las 10:30
+  (`trig_01MZW3PRpqhkUoeDh89qkGFC`) siguen igual; `pedidos_estado.py` es la misma memoria por fecha de despacho.
+- La corrida de las 21:45 del 2026-11-01 (Lima) todavía salió con la Routine vieja (se apagó a las 21:56).

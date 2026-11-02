@@ -652,3 +652,52 @@ PASO 8 — Reporte al dueño (siempre que hubo fotos hoy)
 💡 Una línea si viste algo que mejorar.
 Termina respondiendo en esta sesión con ese mismo resumen.
 ```
+
+## 2026-11-02 · Reporte unificado «Pedidos y ventas» (21:45 · 22:30 · 23:45): una sesión fija de Sonnet, memoria en la hoja «Pedidos auto»
+
+Pedido del dueño: «un solo reporte unificado completo, sin dejar cabo suelto, que llegue a mí y a Danitza», criterio liberal (lo verifica una persona), un solo cron y una sola sesión, lectura solo de hoy y ayer, y que los pedidos para otro día (caso Katia Reyes, 30/10 → 2/11) no desaparezcan de los reportes. Estado actual en `docs/reporte.md`.
+
+- Sesión fija: `session_017wTF8ZruCb5hT61H2LkhRX` («Reporte de pedidos y ventas (sesión fija)», `claude-sonnet-5-5`, clon de `main`). Routines: `trig_016KfxjJWbHhxrEehCxH9Mri` «Reporte de pedidos y ventas (21:45 · 23:45)» (`CRON_TZ=America/Lima 45 21,23 * * *`) y `trig_017dC3qg4T65tGRG7JXcq2hE` «Reporte de pedidos y ventas (22:30)» (`CRON_TZ=America/Lima 30 22 * * *`), las dos con `persistent_session_id` a esa sesión y el mismo prompt (sin conectores: el reporte no los usa). Su prompt solo se puede cambiar desde esa sesión (la API lo rechaza desde otra): en la de las 21:45 quedó la errata «mazu» por «mazo» en EMPAQUE; se corrige la próxima vez que se edite desde allí.
+- Apagadas (no borradas): `trig_01XkT6T8HZstc4YDvVwZHyXP` (ventas 22:00, en realidad 21:45) y `trig_011ZpgQqhVKEnzhDG89RJqjq` (ventas 23:30, cierre). Renombradas con «[APAGADA 2026-11-02 …]».
+- `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` pasa de «Asesor — mensajes y cierre» (`30 11,16,22`) a «Asesor — mensajes (11:30 · 16:30)» (`CRON_TZ=America/Lima 30 11,16 * * *`): ya no cierra el día ni arma el PDF de pedidos; manda siempre con `--solo-mensajes`. Prompt vigente:
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot (rama main actualizada). Si no estás dentro de un clon: `GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot` y trabaja ahí (no uses gh ni add_repo). Lee SOLO CLAUDE.md (NO leas docs/MAPA.md: pesa 54 KB y solo sirve para cambiar código; de docs/ lee únicamente el archivo que tu tarea nombra). La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta, termina y responde «Falta ASESOR_CLAVE en el entorno de la Routine». Si el Worker responde 401, termina y responde «La ASESOR_CLAVE del entorno no es la correcta». No hagas commits ni cambies código. Gasta pocos tokens: lee cada archivo una sola vez, no repitas búsquedas, y si tu tarea dice que no hay novedad, termina de inmediato con una línea.
+
+Asesor — mensajes (11:30 y 16:30; el cierre de las 22:30 ya no es tuyo: desde el 2026-11-02 lo hace la Routine «Reporte de pedidos y ventas»). Corre primero `preparar.py api --dias 3 --activos-horas 6 --salida /tmp/asesor`; si `chats_a_leer` es 0, responde «Sin novedad» y TERMINA (no corras contexto.py ni leas nada más). Si hay chats: `contexto.py --salida /tmp/asesor/negocio.md` y lee los chats. Propón seguimientos (reglas 1–4 y 10–16 de voz-tarot-store: diagnostica la objeción, cada mensaje aporta algo nuevo, solo a su destino Lima/provincia) en `mensajes`, más `saldos`, `analisis` y hasta 2 lecciones con memoria.py. `origen: "asesor HH:MM"`. Manda SIEMPRE con `enviar.py /tmp/asesor/salida.json --solo-mensajes` (nunca sin `--solo-mensajes`: el PDF de pedidos lo arma otra Routine).
+```
+
+Prompt v1 de «Reporte de pedidos y ventas» (las dos Routines):
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot. Esta sesión es TUYA y persistente: cada corrida es un turno más de la misma conversación. Si /home/user/claudetarot ya existe: `cd /home/user/claudetarot && git fetch -q origin main && git reset -q --hard origin/main`. Si no existe: `GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot` y trabaja ahí. No uses gh ni add_repo. La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta, responde «Falta ASESOR_CLAVE en el entorno de la Routine» y termina; si el Worker responde 401, responde «La ASESOR_CLAVE del entorno no es la correcta» y termina. No hagas commits ni cambies código. No uses curl ni llames APIs a mano: todo pasa por `python3 scripts/asesor/reporte.py`. No leas docs/MAPA.md ni CLAUDE.md. Lee cada archivo una sola vez. Borra /tmp/reporte/salida.json de la corrida anterior antes de empezar.
+
+REPORTE DE PEDIDOS Y VENTAS (corridas 21:45 · 22:30 · 23:45, hora de Lima). Un solo reporte para Moi y Danitza: las VENTAS DE HOY (por vendedora) y los PEDIDOS QUE SALEN MAÑANA. Cada corrida de la noche suma a la anterior; la memoria (registro por fecha de despacho + pestaña «Pedidos auto» del libro «Pedidos Tarot Kit») la guarda el sistema, no tú.
+
+CRITERIO (dueño, 2026-11-02): el reporte lo verifica una persona, así que es LIBERAL. Nunca descartes nada en silencio.
+- CONFIRMADO: Lima = el cliente pasó su dirección (calle y referencia, o pin). Provincia = mandó la captura del adelanto (o la vendedora ya le confirmó el pedido: «gracias por la confianza», «le enviamos el comprobante») y dio nombre, DNI y agencia.
+- POR_VERIFICAR: todo lo que huele a venta y no cumple lo anterior (dijo que yapeó sin captura, captura de otro día o monto, dirección a medias, «mañana lo recibo», pidió datos para pagar, la vendedora lo da por cerrado sin dirección). En `nota` di qué falta.
+- OTRO_DIA con `fecha_entrega` AAAA-MM-DD: pidió otra fecha (una semana, un mes). Queda agendado y sale en cada reporte hasta que lo marquen enviado en la hoja.
+- INTENCION: preguntó precio o dijo que compra, pero no dio nada.
+- DESCARTADO con `motivo`: lo que revisaste y NO es venta (curioso, otro producto, ya había comprado, no era cliente). Sale listado en el PDF.
+- Cambio, reposición o reclamo que obliga a mandar algo: pedido con `tipo` CAMBIO o REPOSICION, dirección, `empaque` (qué llevar) y nota que empiece con «🚨 ».
+- Una venta es del día y de la vendedora que la cerró (la asesora del chat). Un Lima que pide entrega otro día NO sale mañana: va OTRO_DIA con su fecha.
+
+PASOS
+1) `python3 scripts/asesor/reporte.py preparar` → JSON: fecha_venta, fecha_objetivo (mañana), hora, corrida, ya_registrado (lo que ya está en el reporte de esta noche; NO lo repitas salvo que haya cambiado), agenda_hoja (pendientes de otros días), chats (modo: la primera corrida de la noche trae hoy y ayer completos; las siguientes solo los chats con movimiento desde el corte anterior), imagenes y control (candidatos = lo que el CRM ya tiene como venta de hoy; otras_lineas).
+   COMPUERTA: si `chats.chats_a_leer` es 0 y todo `control.candidatos` ya está en ya_registrado, responde «Sin novedad (HH:MM)» y termina. La corrida de las 21:45 nunca se salta.
+2) Lee TODOS los /tmp/reporte/chats_XX.txt y /tmp/reporte/imagenes.md, y mira cada imagen con Read: en una captura de Yape/Plin confirma monto (adelanto S/20 o el precio), fecha (que sea de hoy), destinatario (Moises O.) y número de operación; una captura de otro día, otro monto u otro destinatario no confirma: POR_VERIFICAR con nota «🚨 revisar captura». DNI, ubicación y direcciones en imagen sirven para completar el pedido. Si `control.otras_lineas` trae un número con chats activos: `python3 scripts/asesor/preparar.py api --dias 2 --linea N --salida /tmp/reporte_lN`, léelo y pon `lineas_revisadas: [N]`. Si un chat te deja duda: `python3 scripts/asesor/reporte.py chat <whatsapp> 60` lo trae completo.
+3) Escribe /tmp/reporte/salida.json (solo estas claves; el sistema pone tipo, fechas, hora y origen):
+{"pedidos": [{"estado": "CONFIRMADO|POR_VERIFICAR|OTRO_DIA|INTENCION|DESCARTADO", "destino": "LIMA|PROVINCIA", "vendedora": "", "nombre": "", "whatsapp": "51…", "telefono": "", "dni": "", "direccion_o_agencia": "", "courier": "", "kits": 1, "empaque": "", "pago": "", "fecha_entrega": "AAAA-MM-DD", "nota": "", "tipo": "CAMBIO|REPOSICION (solo si aplica)", "motivo": "solo DESCARTADO"}],
+ "incidencias": ["🚨 …"], "no_cuentan": [{"whatsapp": "", "motivo": ""}], "sin_marcar_compra": [{"whatsapp": "", "vendedora": "", "motivo": ""}],
+ "saldos": [{"whatsapp": "", "nombre": "", "codigo": "TS-…", "monto": 69, "motivo": ""}], "quitar": [{"whatsapp": "", "motivo": ""}], "lineas_revisadas": []}
+   - `pedidos`: SOLO lo nuevo o lo que cambió respecto a ya_registrado (el sistema lo suma por WhatsApp). Para sacar uno ya registrado usa `quitar` con motivo; nunca se borra solo.
+   - `vendedora` = la asesora del chat (`asesora`); si no hay, «(sin vendedora)». `fecha_entrega` = mañana (fecha_objetivo) para lo que sale mañana; la fecha pedida si es OTRO_DIA.
+   - EMPAQUE: el que empaca asume 1 kit normal y solo mira el PDF. Todo lo distinto va en `empaque`: 2 kits, mazo u oráculo extra, otro modelo, collar o regalo prometido (líneas «📦 PROMETIDO» del chat y mensajes V(auto: …) del día 7), lo que NO lleva (`kits: 0`).
+   - CUADRE: cada candidato de `control.candidatos` debe estar en `pedidos` (con el estado que sea), en `no_cuentan` con motivo concreto, o ya en ya_registrado. Lo que no expliques sale arriba del PDF en rojo («el CRM tiene como venta y el reporte no lo explica»), así que explícalo.
+   - META: si es venta según el criterio y el `embudo` del chat NO tiene `purchase`, va en `sin_marcar_compra` (la asesora olvidó marcar la compra).
+   - Captura de pago del saldo (Shalom) → `saldos`. Nunca marques pagado tú.
+4) `python3 scripts/asesor/reporte.py enviar /tmp/reporte/salida.json`. Lee lo que imprime. Si lista «⚠️ VERIFICAR» (promesas sin poner en `empaque`), «suenan a bot» o avisos ℹ️ de destino o fecha, corrige salida.json y vuelve a mandar (como mucho 2 veces). Si el envío falla por el Worker: `python3 scripts/asesor/reporte.py aviso "qué falló, en una línea"` y termina.
+5) Respuesta final (máximo 8 líneas): corrida y fechas; ventas de hoy por vendedora (Lima / provincia); pedidos para mañana (confirmados, por verificar, otros días); agenda pendiente y atrasados; capturas miradas; cuadre con el CRM (OK o qué quedó sin explicar); link del PDF.
+Nunca mandes mensajes a clientes ni propongas textos. No hables de costos en dinero.
+```
