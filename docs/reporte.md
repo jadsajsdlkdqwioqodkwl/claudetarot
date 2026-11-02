@@ -62,3 +62,9 @@ día desaparecía hasta su fecha. Ahora:
 - Un reporte que no sale porque «no cuadra con el CRM»: sale igual y lo que falta va en rojo.
 - Un pedido para dentro de una semana o un mes que desaparece de los reportes intermedios.
 - `sys.exit` por un pedido sin vendedora o sin destino: se completa o se manda a verificar.
+
+## Primera corrida real (2026-11-01 22:30 Lima) y lo que se ajustó
+Salió bien: PDF a los dos, 25 pedidos, hoja con 22 filas, 2 agendados. Ajustes: el cuadre con el CRM se hace después de
+sumar lo registrado (lo explicado en una corrida vale para las siguientes), el origen no repite la hora, y una fila con
+nota de relleno («ya registrada…») no pisa lo registrado. Cada reenvío de `reporte.py enviar` manda otro PDF por
+Telegram: la Routine solo reenvía si corrigió algo (máximo 2 veces).

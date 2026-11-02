@@ -16,6 +16,8 @@ datos["pedidos"] = json.loads(json.dumps(base["pedidos"])) + [
     {"nombre": "Lunes Lima Demo", "whatsapp": "51900000008", "estado": "CONFIRMADO", "destino": "LIMA", "vendedora": "Danitza",
      "direccion_o_agencia": "Av. Demo 1", "fecha_entrega": "2026-10-20", "nota": "pide para el lunes"},
     {"nombre": "No Es Demo", "whatsapp": "51900000009", "estado": "DESCARTADO", "destino": "LIMA", "motivo": "preguntó precio y no siguió"},
+    {"nombre": "Relleno Demo", "whatsapp": "51900000010", "estado": "CONFIRMADO", "destino": "LIMA", "vendedora": "Mayra",
+     "nota": "Ya registrada en corridas anteriores; no la leí en esta corrida."},
 ]
 # fecha_entrega del CONFIRMADO Lima de la muestra es la fecha objetivo (2026-10-15): se queda confirmado.
 avisos = enviar.normalizar_unificado(datos)
@@ -25,7 +27,8 @@ assert est["51900000007"]["estado"] == "POR_CONFIRMAR" and est["51900000007"]["v
 assert est["51900000008"]["estado"] == "OTRO_DIA" and est["51900000008"]["fecha_entrega"] == "2026-10-20", "Lima con entrega otro día pasa a OTRO_DIA"
 assert "51900000009" not in est and datos["descartados"][0]["motivo"] == "preguntó precio y no siguió", "DESCARTADO va a descartados con motivo"
 assert est["51900000001"]["estado"] == "CONFIRMADO"
-assert len(avisos) == 2, avisos
+assert "51900000010" not in est, "una fila de relleno no pisa lo registrado"
+assert len(avisos) == 3, avisos
 
 datos["agenda_pendiente"] = {"atrasados": [{"fila": 7, "fecha_entrega": "2026-10-12", "nombre": "Katia Demo", "whatsapp": "51942000000",
                                             "destino": "LIMA", "estado": "CONFIRMADO / AGENDADO", "kits": "1", "nota": "paga con tarjeta"}],

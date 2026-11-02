@@ -155,6 +155,11 @@ def normalizar_unificado(datos):
         if est == "DESCARTADO":
             descartados.append({"nombre": p.get("nombre"), "whatsapp": p.get("whatsapp"), "motivo": p.get("motivo") or p.get("nota") or "sin motivo"})
             continue
+        if re.search(r"ya registrad|no (lo|la) le[ií] en esta corrida|corridas? anterior", str(p.get("nota") or ""), re.I):
+            # 2026-11-02: la Routine repitió un pedido ya registrado con una nota de relleno y pisó la nota real. Se ignora:
+            # lo registrado se conserva solo (regla 17); para cambiarlo hay que mandar los datos de verdad.
+            avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: nota de relleno («{str(p.get('nota'))[:50]}»); se ignora esta fila y queda lo ya registrado.")
+            continue
         if (p.get("nombre") or "").upper() != "INCIDENCIA":
             if not p.get("vendedora"):
                 p["vendedora"] = "(sin vendedora)"
@@ -503,19 +508,24 @@ def main():
         datos.setdefault("fecha_objetivo", (_dt.date.fromisoformat(datos["fecha_venta"]) + _dt.timedelta(days=1)).isoformat())
         for a in normalizar_unificado(datos):
             print("ℹ️ " + a.lstrip("- "), flush=True)
-        if clave and not solo_mensajes and "--sin-control" not in args:
-            import control_ventas
-            try:
-                datos["sin_explicar"] = control_ventas.cuadrar(control_ventas.traer(clave, datos["fecha_venta"]), datos)
-            except RuntimeError as err:
-                datos["sin_explicar"] = [f"No se pudo consultar el control de ventas del {datos['fecha_venta']}: {err}"]
-            if datos["sin_explicar"]:
-                print("⚠️ EL CRM CONOCE VENTAS QUE EL REPORTE NO EXPLICA (salen en rojo en el PDF; si puedes, corrige salida.json y vuelve a mandar):\n"
-                      + "\n".join(datos["sin_explicar"]), flush=True)
-            else:
-                print("Cuadre con el CRM: OK (todo candidato del sistema está explicado en el reporte)", flush=True)
         if clave and not solo_mensajes:
             datos["agenda_pendiente"] = agenda_sheet(clave, datos["fecha_venta"])
+
+    def cuadre_unificado(d):
+        """Cuadre con el CRM DESPUÉS de sumar lo registrado (así lo explicado en corridas anteriores cuenta; 2026-11-02:
+        la 2.ª corrida volvía a marcar en rojo lo que la 1.ª ya había puesto en `no_cuentan`)."""
+        if not (unificado and clave and not solo_mensajes) or "--sin-control" in args:
+            return
+        import control_ventas
+        try:
+            d["sin_explicar"] = control_ventas.cuadrar(control_ventas.traer(clave, d["fecha_venta"]), d)
+        except RuntimeError as err:
+            d["sin_explicar"] = [f"No se pudo consultar el control de ventas del {d['fecha_venta']}: {err}"]
+        if d["sin_explicar"]:
+            print("⚠️ EL CRM CONOCE VENTAS QUE EL REPORTE NO EXPLICA (salen en rojo en el PDF; si puedes, corrige salida.json y vuelve a mandar):\n"
+                  + "\n".join(d["sin_explicar"]), flush=True)
+        else:
+            print("Cuadre con el CRM: OK (todo candidato del sistema está explicado en el reporte)", flush=True)
     if datos.get("tipo_reporte") == "ventas" and not prueba and not solo_mensajes:
         import control_ventas, ventas_estado
         try:
@@ -573,6 +583,8 @@ def main():
                       + " | ".join(sin_fecha), flush=True)
         except RuntimeError as err:
             sys.exit(f"NO SE ENVIÓ EL REPORTE: {err}. Reintenta; solo si el Worker está caído usa --sin-estado y dilo en la respuesta.")
+    if unificado:
+        cuadre_unificado(datos)
     faltan = revisar_promesas(datos, carpeta, clave)
     if faltan:
         print("📦 PROMESAS DEL CHAT QUE NO ESTABAN EN `empaque` (se agregaron con ⚠️ al PDF; revisa cada chat y "
@@ -623,7 +635,10 @@ def main():
                 import pedidos_estado
                 # Lo que no es memoria del día (agenda leída de la hoja, formularios web, cuadre) no se guarda en el registro.
                 guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar")}
-                futuros, _ = pedidos_estado.registrar(clave, guardable, registro, f"{datos.get('origen', 'asesor')} {datos.get('hora') or ''}".strip())
+                origen_reg = str(datos.get("origen", "asesor"))
+                if datos.get("hora") and str(datos["hora"]) not in origen_reg:
+                    origen_reg += f" {datos['hora']}"
+                futuros, _ = pedidos_estado.registrar(clave, guardable, registro, origen_reg)
                 print(f"Registro de pedidos guardado ({len(datos['pedidos'])} pedidos)."
                       + "".join(f" Agendados: {len(v)} para {f}." for f, v in futuros.items()), flush=True)
                 if unificado:
