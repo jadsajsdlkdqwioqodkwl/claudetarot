@@ -3955,8 +3955,12 @@ function pintarBarraSeguimiento(d) {
   if (!d || d.compro) { barra.innerHTML = ""; barra.style.display = "none"; return; }
   barra.style.display = "";
   const n = d.pendientes?.length || 0;
+  // El rescate del día 7 (sale al día 6 + 18 h) va aparte de la cadena: «apagar» no lo toca, pero tiene que verse.
+  const r7 = d.rescate7
+    ? `<div class="seg-barra activa seg-barra-r7" title="Rescate del día 7: sale solo dentro de la ventana gratis de 7 días del anuncio. Se cancela si compra; para quitarlo, la X en «Seguimientos activos» del panel derecho">${icon("clock")} <span>Rescate del día 7 programado · sale ${escapar(fechaCorta(d.rescate7.send_at))}${d.rescate7.plantilla ? ` · ${escapar(d.rescate7.plantilla)}` : ""}</span></div>`
+    : "";
   if (d.activo) {
-    barra.innerHTML = `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
+    barra.innerHTML = r7 + `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
       ${icon("checkBox")} <span>Seguimiento activo · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))}</span><span class="seg-barra-accion">apagar</span></button>`;
     $("#seg-barra-btn").addEventListener("click", async () => {
       if (!confirm(`¿Apagar el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca).`)) return;
@@ -3968,12 +3972,12 @@ function pintarBarraSeguimiento(d) {
     return;
   }
   if (!d.plan) {
-    barra.innerHTML = `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
+    barra.innerHTML = r7 + `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
     return;
   }
   const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
   const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
-  barra.innerHTML = `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
+  barra.innerHTML = r7 + `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
     ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
   $("#seg-barra-btn").addEventListener("click", () => abrirReactivarDesdeBarra(d));
 }
@@ -7359,13 +7363,19 @@ function agregarFilaSecuencia(id = "", segundos = 2) {
 
 /** [{ id, segundos }] de las filas con una respuesta elegida. */
 function leerSecuenciaEditor() {
+  if (!$("#rapida-secuencia")) return undefined; // HTML viejo sin la sección: no se toca la guardada
   return [...document.querySelectorAll("#rapida-secuencia .rapida-secuencia-fila")]
     .map((f) => ({ id: Number(f.querySelector(".rs-rapida").value) || 0, segundos: Math.min(60, Math.max(0, Number(f.querySelector(".rs-segundos").value) || 0)) }))
     .filter((p) => p.id);
 }
 
-$("#rapida-agregar-secuencia").innerHTML = `${icon("plus")} Agregar a la secuencia`;
-$("#rapida-agregar-secuencia").addEventListener("click", () => agregarFilaSecuencia());
+// Con «?.»: si el teléfono tiene el index.html viejo (sin esta sección), un null acá cortaba
+// TODO lo que sigue en este archivo (el «Guardar» del editor y las pruebas A/B quedaban muertos).
+const _btnSecuencia = $("#rapida-agregar-secuencia");
+if (_btnSecuencia) {
+  _btnSecuencia.innerHTML = `${icon("plus")} Agregar a la secuencia`;
+  _btnSecuencia.addEventListener("click", () => agregarFilaSecuencia());
+}
 
 /** "Se manda con": sus fotos/videos (vacío), el catálogo completo o un producto. */
 function pintarCatalogoRapida(q) {
@@ -9235,10 +9245,13 @@ function pintarEstadoLead() {
   const datos = estado.seguimientosDelChat;
   if (!el || !datos || datos.conversationId !== estado.conversacionActivaId) return;
   const activos = datos.scheduled.filter(esSeguimientoLead).sort((a, b) => a.send_at.localeCompare(b.send_at));
-  el.classList.toggle("activo", activos.length > 0);
+  // El rescate del día 7 también es un seguimiento de interesado: si está programado, se dice.
+  const dia7 = datos.scheduled.find((s) => (s.created_by || "").endsWith(ORIGEN_DIA7));
+  const textoDia7 = dia7 ? `Rescate del día 7: sale el ${escapar(fechaCorta(dia7.send_at))}${dia7.template_name ? ` (${escapar(dia7.template_name)})` : ""}.` : "";
+  el.classList.toggle("activo", activos.length > 0 || Boolean(dia7));
   el.innerHTML = activos.length
-    ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}`
-    : "No activo en este chat.";
+    ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}${textoDia7 ? `<br>${icon("check")} ${textoDia7}` : ""}`
+    : dia7 ? `${icon("check")} ${textoDia7} La secuencia de interesados no está programada.` : "No activo en este chat.";
   const btn = $("#btn-aplicar-leads");
   if (btn) btn.innerHTML = `${icon("bolt")} ${activos.length ? "Reprogramar seguimiento de interesados" : "Programar seguimiento de interesados"}`;
 }

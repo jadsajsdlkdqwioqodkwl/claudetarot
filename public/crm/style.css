@@ -1209,3 +1209,5 @@ body.solo-lectura #form-envio { display: none; }
 .rapida-secuencia-fila select { flex: 1; min-width: 0; margin: 0; }
 .rapida-secuencia-fila input { width: 64px; margin: 0; }
 .rapida-secuencia-fila button { background: none; border: none; color: var(--gris); cursor: pointer; padding: 4px; display: inline-flex; }
+/* Rescate del día 7 en la barra «Seguimiento»: solo informa (no es botón) */
+.seg-barra.seg-barra-r7 { cursor: default; font-weight: 500; font-size: 13px; padding: 6px 16px; }
