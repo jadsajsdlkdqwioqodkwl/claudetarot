@@ -9,6 +9,7 @@ texto y `despachar`; el Worker decide ventana, duplicados, cobro, etiquetas y re
   python3 scripts/asesor/boletas.py buscar --dni 12345678 --apellido PEREZ --telefono 987654321
                                                                 → Sheets + CRM (DNI, apellido, teléfono) y el chat de cada candidato
   python3 scripts/asesor/boletas.py chat <conversation_id|wa_id>  → últimos mensajes, ventana, etiquetas, si ya recibió boleta
+  python3 scripts/asesor/boletas.py capturas <conversation_id|wa_id> [n]  → baja las imágenes del cliente (capturas de Yape/Plin) para mirarlas con Read y calcular el saldo
   python3 scripts/asesor/boletas.py reportes [n]                → baja los últimos n PDF «Ventas» (para leerlos con Read)
   python3 scripts/asesor/boletas.py rotar <staging_id> <90|180|270>  → gira la foto (sentido horario) y la sube de nuevo
   python3 scripts/asesor/boletas.py despachar <archivo.json>    → UNA llamada por cliente (ver despachar en asesor-mandar.js)
@@ -196,7 +197,7 @@ def recortar_chat(c, n=20):
     if not c.get("encontrado"):
         return c
     c = dict(c)
-    c["mensajes"] = [{"q": m["direction"], "t": m["type"], "txt": (m.get("body") or "")[:160], "de": m.get("sent_by"), "cuando": m["created_at"]}
+    c["mensajes"] = [{"id": m["id"], "q": m["direction"], "t": m["type"], "txt": (m.get("body") or "")[:160], "de": m.get("sent_by"), "cuando": m["created_at"]}
                      for m in c.get("mensajes", [])[-n:]]
     return c
 
@@ -251,6 +252,33 @@ def cmd_chat(ref, n="30"):
     q = {"conversation_id": ref} if ref.isdigit() and len(ref) < 9 else {"wa_id": ref}
     q["mensajes"] = n
     salida(recortar_chat(chat_de(**q), int(n)))
+
+
+def cmd_capturas(ref, n="100"):
+    """Baja las imágenes que mandó el cliente (capturas de Yape/Plin) de ese chat, para mirarlas con Read.
+    El saldo se calcula con lo que SE VE en la captura (monto, fecha, destinatario): el cliente a veces paga más o menos."""
+    ref = str(ref).strip()
+    q = {"conversation_id": ref} if ref.isdigit() and len(ref) < 9 else {"wa_id": ref}
+    q["mensajes"] = n
+    chat = chat_de(**q)
+    if not chat.get("encontrado"):
+        salida(chat); sys.exit(1)
+    directorio = os.path.join(CARPETA, "capturas")
+    os.makedirs(directorio, exist_ok=True)
+    out, previo = [], ""
+    for m in chat.get("mensajes", []):
+        if m["direction"] == "out" and m.get("body"):
+            previo = m["body"][:120]
+        if m["direction"] != "in" or m["type"] != "image":
+            continue
+        st, datos, mime = pedir(f"/imagen?id={m['id']}", crudo=True)
+        if st != 200:
+            out.append({"mensaje": m["id"], "cuando": m["created_at"], "error": f"HTTP {st}"}); continue
+        ruta = os.path.join(directorio, f"{chat['conversation_id']}_{m['id']}.{EXT.get(mime, 'jpg')}")
+        open(ruta, "wb").write(datos)
+        out.append({"ruta": ruta, "cuando": m["created_at"], "equipo_habia_dicho": previo})
+    salida({"conversation_id": chat["conversation_id"], "saldo_crm": chat.get("saldo_crm"), "capturas": out,
+            "aviso": "Mira cada ruta con Read: monto, fecha y destinatario (Moises O.). Suma los adelantos válidos; no confíes solo en el texto del chat."})
 
 
 def cmd_reportes(n="2"):
@@ -333,6 +361,8 @@ def main():
         cmd_historial(*resto[:1])
     elif cmd == "buscar":
         cmd_buscar(resto)
+    elif cmd == "capturas":
+        cmd_capturas(*resto[:2])
     elif cmd == "chat":
         cmd_chat(*resto[:2])
     elif cmd == "reportes":

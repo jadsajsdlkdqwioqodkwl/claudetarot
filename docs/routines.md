@@ -701,3 +701,18 @@ PASOS
 5) Respuesta final (máximo 8 líneas): corrida y fechas; ventas de hoy por vendedora (Lima / provincia); pedidos para mañana (confirmados, por verificar, otros días); agenda pendiente y atrasados; capturas miradas; cuadre con el CRM (OK o qué quedó sin explicar); link del PDF.
 Nunca mandes mensajes a clientes ni propongas textos. No hables de costos en dinero.
 ```
+
+## 2026-11-02 · Routine boletas — versión 14 (pendiente de pegar en el trigger)
+
+Pedido del dueño tras el lote del 2026-11-02 (≈10 boletas bien; Omar Valdivia quedó fuera porque no se pudo calcular su saldo: 3 kits + cuencos, adelanto S/100 que estaba en una captura que la Routine no miró). Trigger: `trig_01M97ha817PbZ8gKXZeBE95g` (su prompt solo se edita desde su sesión `session_017wTF8bgtkfTRHM2difyptU`). Cambios frente a la v13:
+
+- **Nuevo comando** `python3 scripts/asesor/boletas.py capturas <conversation_id|wa_id>`: baja las imágenes del cliente en ese chat (capturas de Yape/Plin) para mirarlas con Read. `chat` ahora muestra el `id` de cada mensaje.
+- **PASO 3 — Saldo (reemplaza el de la v13).** El saldo SIEMPRE va en el mensaje. Se calcula así: (1) corre `boletas.py capturas <chat>` y mira con Read cada captura: monto, fecha y destinatario (Moises O.); suma los adelantos válidos (el cliente a veces paga más o menos de S/20). (2) Precio = S/89 por kit (2 kits S/149, 3 kits S/199) + extras que el chat haya acordado. (3) saldo = precio − adelantos. Pago completo → saldo 0.
+  **Casos especiales NO se despachan** (los reporta en el PASO 8 con sus datos y el dueño autoriza después): otro artículo de catálogo, descuento o precio negociado, o cualquier cuenta que no cuadre con certeza.
+- **PASO 5 — Cuatro plantillas cerradas e independientes** (cada una con su propio link; nunca se mezclan):
+  - SHALOM con saldo: la del PASO 5 de la v13 (link `https://shalom.com.pe/rastrea`, *Nro de orden:*, *Código:*).
+  - SHALOM sin saldo (saldo 0): primera línea «Buenas [estimado/estimada] [PRIMER NOMBRE] le envío su comprobante ✨ muchas gracias por su pago completo, le agradecemos la confianza depositada!»; sin la frase ni la línea del saldo; link `https://shalom.com.pe/rastrea`, retención, *Nro de orden:* y *Código:*. NUNCA lleva el link ni el código de Olva.
+  - OLVA con saldo: como Shalom con saldo, pero link `https://tracking.olvaexpress.pe/` y «*Código de seguimiento:* [TRACKING SIN EL 26]» en vez de Nro de orden/Código.
+  - OLVA sin saldo: como Shalom sin saldo, con el link y el código de seguimiento de Olva.
+  - **Solo en Olva** (con o sin saldo) se agrega: «Ya cubrimos el costo de su envío, lo puede ver en la boleta adjunta ✨».
+  - Etiqueta GR de Shalom (sin código de letras): se quita la línea *Código:* en las dos plantillas de Shalom.
