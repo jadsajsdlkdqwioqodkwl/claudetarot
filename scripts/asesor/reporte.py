@@ -13,6 +13,9 @@ del libro «Pedidos Tarot Kit». La Routine solo corre estos subcomandos (nada d
     python3 scripts/asesor/reporte.py ver [AAAA-MM-DD]      -> lo registrado para esa fecha de despacho + la agenda de la hoja.
     python3 scripts/asesor/reporte.py chat <whatsapp|id> [N] -> los últimos N mensajes de un chat (para verificar una duda).
     python3 scripts/asesor/reporte.py aviso "texto"           -> aviso corto al dueño (Telegram) cuando el reporte no pudo salir.
+    python3 scripts/asesor/reporte.py enviado <whatsapp> ["sí 2026-11-02 Shalom"]
+        -> marca «Enviado» en la fila abierta de ese cliente en «Pedidos auto» (deja de salir en la agenda). Lo usará la
+           Routine de estados de envío (docs/estados-envio.md); una persona puede escribirlo a mano en la hoja.
 
 Criterio LIBERAL (dueño): el reporte lo verifica una persona. Todo lo que huela a venta entra: CONFIRMADO solo con dirección
 (Lima) o adelanto + datos (provincia); POR_VERIFICAR para lo demás que parezca venta; DESCARTADO con motivo para lo que se
@@ -182,6 +185,15 @@ def cmd_chat(ref, n="40"):
               f"{(m.get('body') or '[' + str(m.get('type') or 'media') + ']')[:300]}")
 
 
+def cmd_enviado(args):
+    """reporte.py enviado <whatsapp> ["sí 2026-11-02 Shalom"]: marca la columna «Enviado» de la fila abierta de ese cliente."""
+    wa = "".join(c for c in str(args[0]) if c.isdigit())
+    st, r = pedir("/pedidos-sheet", "POST", {"marcar": [{"whatsapp": wa, "enviado": " ".join(args[1:]) or ""}]})
+    print(json.dumps(r, ensure_ascii=False))
+    if st != 200 or r.get("sin_fila"):
+        sys.exit(1)
+
+
 def cmd_aviso(texto):
     st, r = pedir("/avisos", "POST", {"informe": f"Ventas — aviso del reporte de pedidos y ventas\n\n{texto}", "origen": "reporte de ventas (aviso)"})
     print(json.dumps(r, ensure_ascii=False))
@@ -198,6 +210,8 @@ def main():
         cmd_ver(resto)
     elif cmd == "chat" and resto:
         cmd_chat(*resto[:2])
+    elif cmd == "enviado" and resto:
+        cmd_enviado(resto)
     elif cmd == "aviso" and resto:
         cmd_aviso(" ".join(resto))
     else:

@@ -1375,3 +1375,8 @@ el registro solo la mostraba el día de su entrega). Estado actual: `docs/report
 - `ventas_estado.py`, `control_ventas.py`, el formato `tipo_reporte: "ventas"` y el reporte de pedidos de las 10:30
   (`trig_01MZW3PRpqhkUoeDh89qkGFC`) siguen igual; `pedidos_estado.py` es la misma memoria por fecha de despacho.
 - La corrida de las 21:45 del 2026-11-01 (Lima) todavía salió con la Routine vieja (se apagó a las 21:56).
+
+## 2026-11-02 (noche 2) — Migración 0062 aplicada, `marcar` en «Pedidos auto» y notas del proyecto de estados de envío
+- Migración `0062_baja_gissele.sql` (otra sesión la subió a `main`; Gissele ya estaba inactiva, id 8) re-aplicada en D1 por pedido del dueño: idempotente.
+- `POST /api/asesor/pedidos-sheet` acepta `{ marcar: [{ whatsapp, enviado }] }`: escribe la columna «Enviado» (O) de la fila abierta de ese WhatsApp (devuelve `marcados` y `sin_fila`). Nuevo `reporte.py enviado <whatsapp> ["texto"]`.
+- `docs/estados-envio.md`: arquitectura y notas del proyecto pendiente (Routine manual con Cowork en la computadora del dueño que lee Shalom Pro y el panel del courier de Lima y actualiza Ventas, «Pedidos auto» y etiquetas del CRM; sin contraseñas, solo lectura en los paneles, nunca escribe al cliente). La Routine NO se creó todavía.

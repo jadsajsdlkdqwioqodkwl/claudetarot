@@ -71,13 +71,29 @@ export async function onRequestPost({ request, env }) {
   if (!env.GOOGLE_SHEET_ID) return json({ error: "Falta GOOGLE_SHEET_ID." }, 503);
   const p = await request.json().catch(() => null);
   const pedidos = Array.isArray(p?.pedidos) ? p.pedidos : [];
+  const marcar = Array.isArray(p?.marcar) ? p.marcar : [];
   const fechaObjetivo = esIso(p?.fecha_objetivo) ? p.fecha_objetivo : "";
-  if (!pedidos.length || !fechaObjetivo) return json({ error: "Faltan pedidos o fecha_objetivo (AAAA-MM-DD)." }, 400);
+  if (!marcar.length && (!pedidos.length || !fechaObjetivo)) return json({ error: "Faltan pedidos + fecha_objetivo (AAAA-MM-DD), o marcar." }, 400);
   try {
     const filas = await leerFilas(env);
     // La fila abierta (sin «Enviado») de cada WhatsApp: la última, por si hubiera dos.
     const abiertas = new Map();
     filas.forEach((f, i) => { const k = n9(f[3]); if (k && !String(f[14] || "").trim()) abiertas.set(k, i); });
+    if (marcar.length) {
+      // { marcar: [{ whatsapp, enviado: "sí 2026-11-02 Shalom" }] }: cierra la fila abierta de ese WhatsApp (columna «Enviado»).
+      // Lo usa la futura Routine de estados de envío (Shalom Pro / panel de Lima) y reporte.py enviado; una persona puede
+      // hacer lo mismo escribiendo en la hoja.
+      const hechos = [], sinFila = [];
+      for (const m of marcar) {
+        const k = n9(m.whatsapp);
+        if (!k || !abiertas.has(k)) { sinFila.push(m.whatsapp); continue; }
+        const i = abiertas.get(k);
+        await updateValues(env, `${PESTAÑA}!O${i + 2}`, [[String(m.enviado || `sí ${fechaLima()}`)]]);
+        hechos.push({ whatsapp: m.whatsapp, fila: i + 2, nombre: filas[i][2] });
+        abiertas.delete(k);
+      }
+      if (!pedidos.length) return json({ ok: true, marcados: hechos, sin_fila: sinFila });
+    }
     let nuevas = 0, actualizadas = 0;
     const nuevasFilas = [];
     for (const ped of pedidos) {
