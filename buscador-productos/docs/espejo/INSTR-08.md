@@ -1,72 +1,39 @@
-# INSTR 08 — BUSCA AÉREO de punta a punta y Laboratorio
+# INSTR 08 — INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio
 
-Versión 1.1 · 2026-10-16 (v1.1: tras la primera corrida real, que cerró parcial con una sola carga: el principal ya no lee INSTR 06, Recetas ni Log BUSCA y las cargas van en un subagente cargador por lotes; Crudo!P del carril aéreo lee Config B92 y B93)
-
-(Espejo del documento de Drive `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM`. Manda el de Drive.)
+Versión 3.0 · 2026-11-02. Reescritura: sin orquestador ni subagentes; un chat recorre las fases en orden hasta llenarse y el siguiente chat con INICIA AEREO retoma desde la hoja. Copia v2.1 archivada (ID 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4); el historial v1.x está en la copia v1.19 (ID 1cmKaS_F1CGLXyQF3bNW1xr_vXx2YnWOZby1AbBPnzfQ). Evidencia: D-038 del repo.
 
 ## 1. Qué es
 
-- **BUSCA AÉREO** hace ahora todo el flujo aéreo en una sola corrida: cargas en PiPiAds, RANKEA AÉREO, FILTRA AÉREO y ALIBABA AÉREO, y mide y mejora su propio rendimiento con el Laboratorio (secciones 4 a 6).
-- **BUSCA AÉREO SOLO** hace únicamente las cargas, como antes (INSTR 06, sección 2.8).
-- Este documento manda sobre INSTR 06 en el orden de las fases. INSTR 06 sección 2.8 sigue mandando en cómo se hace cada carga.
-- Un comando por chat y sin preguntas (INSTR 00, sección 6). Si el chat se llena: «Escribe BUSCA AÉREO en un chat nuevo»; todo el estado está en la hoja.
+INICIA AEREO (lo mismo que BUSCA AÉREO o INICIA AÉREO) es un solo comando que hace, en este chat y él mismo, las fases del flujo aéreo en orden: cargas, RANKEA, FILTRA, ALIBABA, y EXPLORA y DESCUBRE cuando tocan, más el Juez y el cierre. Cada fase sigue su sección de INSTR 06 v4. No hay subagentes. Cuando el chat se llena, cierra con el estado en Sesiones!H, y el siguiente chat con INICIA AEREO retoma en la fase que corresponda. BUSCA AÉREO SOLO hace únicamente la fase 1.
 
-## 2. Autorizaciones del dueño (2026-10-16)
+## 2. Arranque (sin preguntar)
 
-1. Subagentes en todo el flujo: cargador (uno solo), RANKEA, FILTRA, ALIBABA y Juez.
-2. FILTRA AÉREO y ALIBABA AÉREO sin esperar el ✅ de Revisión mientras Config!B106 sea «Sí». La casilla de Revisión no se escribe nunca. Lista de trabajo: Config!B104; tope por corrida: Config!B105.
-3. El Juez puede mover solo las perillas de la sección 4, punto 5, dentro de sus rangos.
-4. Créditos de PiPiAds: tope por chat Config!B91 (el chat no lo cambia sin autorización del dueño).
+Lee solo: Config!B91:B110; la nota de la sesión anterior, Sesiones!H{B101 menos 1}; Laboratorio!A4:B10; Plan carga Q1:AE40. Registra la sesión (Sesiones!A{B101} con el ID de B102 más «INICIA AEREO») y escribe en H «INICIO: modo, cola B100, créditos 0 de B91». Prueba Chrome una vez: con Chrome, modo COMPLETO; sin Chrome, modo NUBE (solo fases 2, 3, 6 y 7; la corrida se registra Parcial). Lee INSTR 06 v4 completo una sola vez (es corto); no abras INSTR 03, 04 ni 07 salvo en la fase 5.
 
-## 3. Fases de cada corrida
+## 3. Fases, en este orden y en este chat
 
-| Fase | Quién | Dónde corre | Qué hace |
-|---|---|---|---|
-| 0. Arranque ligero | Principal | Cualquiera | El principal lee SOLO esto: Config!B91:B106 (una llamada); Laboratorio!A4:B10 y las filas usadas de A35:N94; Experimentos!A1:K20 (el experimento «En curso» o, si no hay, el «Pendiente» de menor prioridad; nunca uno «Necesita OK del dueño»). NO abre INSTR 06, 03 ni 04 y NO lee Recetas, Log BUSCA ni X2: eso lo leen los subagentes, cada uno su celda de Recetas. Abrir INSTR 06 completo cuesta ~16 mil tokens y Recetas y Log otros ~30 mil: por eso la primera corrida real (2026-10-16) llegó a la primera carga sin contexto para seguir. Anota «cola al inicio» = Config!B100. Registra la sesión (Config!B101:B102). |
-| 1. Cargas | Un subagente cargador por lote (uno solo a la vez, nunca dos), con Recetas!D40 | Chrome (tu computadora) | El principal lanza el cargador con el ID de sesión, el experimento activo, el presupuesto restante (B91 menos lo gastado) y un máximo de 10 cargas por lote. El cargador lee INSTR 06 sección 2.8 y las recetas, arma el plan (ordenado por Recetas fila 38), hace las cargas, escribe Crudo y Log BUSCA (fila de Config!B103) y devuelve una línea por carga. El principal lanza otro lote hasta agotar el presupuesto B91, llegar a B59 filas nuevas o tener 5 lotes seguidos con 0 filas nuevas. Cada fila de Crudo lleva su found_time en la columna L: sin L la fila no pasa Crudo!P y RANKEA nunca la ve. |
-| 2. RANKEA AÉREO | El principal hace el triage; hasta 3 subagentes pre-chequean y puntúan tandas de grupos (Recetas!D39) | Cualquiera | Arranca en cuanto hay 24 filas Preseleccionadas y sigue en paralelo con la fase 1; al terminar la fase 1 vacía el resto de la cola. El principal asigna los IDs y escribe Productos, Excluidos y Crudo R:S en lote. |
-| 3. FILTRA AÉREO | Hasta 3 subagentes en tandas de 4 productos (Recetas!D37) | Cualquiera | Con Config!B106 = Sí, valida la lista de Config!B104 (mayor puntaje primero) hasta el tope B105, sin tocar la casilla de Revisión. Se dispara después de cada tanda de RANKEA que dejó productos nuevos. |
-| 4. ALIBABA AÉREO | Subagentes en tandas de 4, uno tras otro (Recetas!D36) | Chrome | Cuando terminó la fase 1: los Top aéreos sin proveedor (Config!B96), empezando por los Top nuevos de la corrida. |
-| 5. Juez | Un subagente | Cualquiera | Mide la corrida, da el veredicto del experimento y elige el siguiente (sección 4). |
-| 6. Cierre | Principal | Cualquiera | Sesiones!H (qué hizo, cuánto gastó, qué quedó pendiente); una fila en Laboratorio CORRIDAS (primera libre de A35:A94); Mejoras para lo que necesite al dueño; entrega (sección 8). |
+- F1 CARGAS (COMPLETO): INSTR 06 sección 1, hasta Config!B108 cargas (hoy 25) o hasta que Plan carga quede sin filas con Siguiente = Sí. Si la nota anterior dice que las cargas quedaron a medias de B108, retoma ahí.
+- F2 RANKEA AÉREO: INSTR 06 sección 2, hasta que Config!B100 = 0 (incluye los Candidatos de Descubrimiento).
+- F3 FILTRA AÉREO: INSTR 06 sección 3, sobre Config!B104 hasta B105 productos, reparaciones primero.
+- F4 ALIBABA AÉREO (COMPLETO): INSTR 06 sección 4, hasta Config!B110 productos (hoy 6), Recomendado Sí primero.
+- F5 EXPLORA (COMPLETO): solo si al terminar F1 Plan carga no tenía filas con Siguiente = Sí, o si las últimas 10 cargas dieron menos de 1 producto por 50 créditos: INSTR 07, hasta 6 pruebas o 500 créditos; los resultados van a Exploración con la columna K vacía (entran al plan del siguiente chat).
+- F6 DESCUBRE (siempre en NUBE; en COMPLETO solo si F1 no tuvo nada que cargar): INSTR 06 sección 5.
+- F7 JUEZ Y CIERRE: sección 4; una fila en Laboratorio CORRIDAS (la primera libre de A35:A94, columnas A:G e I:N; NUNCA la H, es una fórmula); Experimentos; Mejoras; Sesiones!H final; entrega (sección 6).
 
-**Sin Chrome** (por ejemplo una sesión en la nube): se saltan las fases 1 y 4 y se corren la 2, la 3 y la 5, que vacían la cola. Esa corrida se registra con «Parcial = Sí» y no cuenta para la meta. Corrida mínima: ninguna corrida se cierra con menos de 5 cargas (o el presupuesto B91 agotado), una tanda de RANKEA, una de FILTRA (si la lista de B104 tiene productos) y el Juez. Cerrar «parcial» por contexto solo vale si las respuestas ya salen cortadas; el principal gasta poco contexto (fase 0) y delega el resto, así que una sola carga nunca es una corrida.
+Si el chat se llena en cualquier fase: punto de control en Sesiones!H («quedé en F2, lote 3…») y cierre con «Siguiente paso: abre un chat nuevo y escribe INICIA AEREO». El siguiente chat retoma esa fase y sigue el orden; si no hay nota, empieza en F1.
 
-## 4. Bucle de prueba y error (el Juez)
+## 4. Juez (bucle de prueba y error)
 
-1. **Un experimento por corrida** (pestaña Experimentos). El principal lo pasa a «En curso» en la fase 0 y lo aplica en la fase que corresponde. Con dos cambios a la vez no se sabe cuál funcionó.
-2. **Medición.** El Juez calcula: créditos (suma de Log BUSCA M de la sesión), filas nuevas, productos nuevos (Productos con el ID de la corrida), **Top nuevos** (Recomendado «Sí» de esos productos después de FILTRA), tasa de Producto de las cargas (productos / filas juzgadas), cola al inicio y al final. Escribe la fila en CORRIDAS.
-3. **Veredicto.** *Mantener* si los Top por 100 créditos o los Top nuevos suben, la tasa de Producto no baja de 8% y la cola no crece más de Laboratorio!B8. *Revertir* si la tasa de Producto baja de 8% o los Top por 100 créditos caen más de 30% frente a la mediana de las 3 corridas anteriores (o la línea base). *Seguir midiendo* (máximo 2 corridas más) si no se distingue. Escribe Resultado, Corrida y Notas en Experimentos.
-4. **Revertir** es devolver la perilla a su «Valor anterior» y anotarlo en Mejoras.
-5. **Perillas que el Juez mueve sin pedir permiso:** Config!B92 (250 a 3000) y B93 (3 a 30), que son el piso de las cargas y también el filtro de Crudo!P del carril aéreo (lo que se carga bajo ese piso no llega a RANKEA), B94 (8 a 40), B105 (10 a 80); el orden de regiones y categorías de Recetas fila 38; el tamaño de las tandas (4 a 8; para RANKEA 8 a 10) y los subagentes en paralelo (1 a 3). Todo lo demás (texto de los INSTR, Config!B72 y B91, el puntaje, los estados) queda en Mejoras como «Necesita OK del dueño», con la evidencia.
-6. **Siguiente experimento:** el de menor prioridad numérica en «Pendiente». Si no queda ninguno, el Juez propone 3 nuevos a partir de lo que falló en la corrida, con su evidencia, y los agrega como «Pendiente».
-7. Cada 5 corridas recalcula Recetas fila 38 con las filas juzgadas nuevas (experimento E-013).
-8. **Anti-trampa:** la métrica es «Top nuevos» después de FILTRA, nunca filas ni productos. Un Top no cuenta si luego queda Quemado o Sobreexplotado: el estado lo fija FILTRA.
+Un experimento por corrida (pestaña Experimentos: el «En curso» o, si no hay, el «Pendiente» de menor prioridad). Al cerrar mide: créditos (suma de Log M de la sesión), filas nuevas, productos nuevos (Productos con el ID de la sesión), Top nuevos (Recomendado Sí de esos productos), tasa de Producto (productos entre filas juzgadas), cola inicial y final, y el rendimiento por combinación (Plan carga, columna L). Veredicto: Mantener si Top por 100 créditos o Top nuevos suben y la tasa no baja de 8%; Revertir si la tasa baja de 8% o Top por 100 créditos cae más de 30% frente a la mediana de las 3 corridas anteriores; Seguir midiendo (máximo 2 corridas) si no se distingue; no se revierte mientras haya filas de la corrida sin juzgar. Perillas que el Juez mueve solo, dentro de su rango: Config!B92 (250 a 3000), B93 (3 a 30), B94 (8 a 40), B105 (10 a 80), B108 (10 a 40), B109 (3 a 8), B110 (3 a 12); Plan carga N (Excluida o Pendiente) y Nodos Amazon I (Agotado) con evidencia de 2 visitas con 0 productos; Recetas D38 cada 5 corridas. Todo lo demás va a Mejoras como «Necesita OK del dueño». Anti-trampa: la métrica es Top nuevos después de FILTRA, nunca filas ni productos.
 
-## 5. Escalabilidad (que funcione siempre, no solo la primera vez)
+## 5. Meta y estado (Laboratorio!B4)
 
-- Todo el estado vive en la hoja (Laboratorio, Experimentos, Log BUSCA, Cola RANKEA, Crudo, Productos). Ningún agente depende de la memoria del chat.
-- El principal solo orquesta: lee únicamente lo listado en la fase 0 y los subagentes devuelven una línea por producto. Así una corrida completa cabe en un chat.
-- La ventana de found_time avanza un día por día y el pool se renueva solo; por eso la meta exige corridas en 3 días distintos.
-- Rotación: cada corrida dedica 20% de los créditos a explorar (subcategoría × región nueva, o una prueba de Experimentos) y 80% a lo que rinde (Recetas fila 38).
-- Capacidad: Crudo (si quedan menos de 300 filas libres, agregar 1.000 con appendDimension antes de volcar); Productos (999 filas: si hay más de 850 usadas, avisar al dueño en la entrega y nunca mover filas); Log BUSCA!X2 (partir en X2 y X3 al pasar 40.000 caracteres); Log BUSCA (agregar 500 filas al pasar 900).
-- Un fallo no frena el resto: si un subagente falla, el principal hace esa tanda; si PiPiAds o Alibaba bloquean, sigue con lo demás. Nunca se resuelve ni se esquiva un captcha.
-- Si el rendimiento cae después de cumplir la meta, el Laboratorio vuelve solo a EXPERIMENTANDO (sección 6).
+META CUMPLIDA cuando en las 3 últimas corridas completas la mediana de Top nuevos es al menos B6, la de Top por 100 créditos al menos B7, la cola no creció más de B8, no hubo cierre parcial y fueron al menos B9 días distintos. En META CUMPLIDA no se activan experimentos nuevos salvo 1 de cada 5 corridas; si deja de cumplirse, vuelve sola a EXPERIMENTANDO.
 
-## 6. Meta y parada
+## 6. Entrega
 
-- **Laboratorio!B4** (fórmula) dice META CUMPLIDA cuando, en las 3 últimas corridas completas: la mediana de Top nuevos es al menos B6; la mediana de Top por 100 créditos es al menos B7; la cola no creció más de B8; no hubo intervención manual ni cierre parcial; y fueron al menos B9 días distintos. Los valores los puede cambiar el dueño.
-- **META CUMPLIDA = modo producción:** la corrida usa las mejores perillas, no activa experimentos nuevos salvo 1 de cada 5 corridas (exploración), y el Juez solo vigila.
-- Si después alguna condición de la meta deja de cumplirse en las 3 últimas corridas, B4 vuelve sola a EXPERIMENTANDO y se retoman los experimentos.
-- Antes de la meta el laboratorio no se detiene: solo se corta el chat por presupuesto de créditos o por contexto lleno, dejando todo escrito.
+NECESITA AL DUEÑO en una línea; tabla corta de los Top nuevos (producto, estrellas, precio, anunciantes en Perú, precio proveedor); créditos, filas y productos de la corrida; experimento y veredicto; estado del laboratorio; recomendaciones y cuellos de botella (máximo 5, con evidencia, también en Mejoras). Cierra con «Siguiente paso: abre un chat nuevo y escribe INICIA AEREO».
 
 ## 7. Lo que nunca
 
-- Escribir la casilla de Revisión (columnas A y P) o columnas con fórmula; borrar filas; ordenar o mover filas de Productos.
-- Dos comandos que usan Chrome a la vez, ni dos subagentes cargando PiPiAds a la vez (pagarían los mismos productos dos veces).
-- Estimar un estado de Meta: si no hay búsqueda útil queda «Sin chequear». Ante la duda entre Virgen y Entrando, Entrando.
-- Cambiar Config!B91, usar la API de Claude desde scripts o hablar de costos en dinero (INSTR 00).
-
-## 8. Entrega
-
-Tabla corta de los Top nuevos (producto, estrellas, precio de venta, anunciantes en Perú, precio de proveedor); créditos, filas nuevas y productos de la corrida; el experimento medido y su veredicto; el estado del laboratorio (Laboratorio!B4); y «Recomendaciones y cuellos de botella» de INSTR 00 sección 7 (máximo 5 puntos). Cierra con: «Siguiente paso: abre un chat nuevo y escribe BUSCA AÉREO».
+Escribir la casilla de Revisión o columnas con fórmula; borrar, ordenar o mover filas; dos comandos con Chrome a la vez; estimar un estado de Meta; cambiar Config!B91; usar subagentes; preguntar «¿sigo o corto?».
