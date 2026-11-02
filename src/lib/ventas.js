@@ -176,6 +176,17 @@ export function claveDe(texto) {
   return RE_CLAVE.test(primero) ? primero : "";
 }
 
+/**
+ * ¿El código de Shalom del cliente aparece en este texto como palabra suelta? «3114» sí; «31140» no.
+ * El seguimiento de cobro se termina cuando el código sale en el chat (crm-db.js).
+ */
+export function contieneCodigo(texto, codigo) {
+  const c = String(codigo ?? "").trim();
+  if (!c) return false;
+  const escapado = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapado}($|[^\\p{L}\\p{N}])`, "iu").test(String(texto ?? ""));
+}
+
 /** Índice 0-based de una columna por nombre. Lanza si no existe. */
 export function indiceVenta(nombre) {
   const i = COLUMNAS_VENTA.indexOf(nombre);

@@ -72,13 +72,23 @@ export function propuestasDe(marca, cambios = {}) {
       });
     }
   }
+  // Plantilla con botón COPY_CODE para copiar el número de Yape con un toque (solo Tarot Store).
+  if (marca === "tarot") {
+    const YAPE_TEXTO = "🩷🤗 Le envío algunas referencias (fotos de yape)  El número para el abono del adelanto es a 927633099 (A nombre de Moises O.) Gracias! ✨";
+    lista.push({
+      nombre: "yape_pago", grupo: "Pago Yape", titulo: "Número Yape con botón copiar",
+      cuando: "en un paso de seguimiento de Provincia, cuando el cliente tiene que pagar por Yape",
+      categoria: "MARKETING", texto: YAPE_TEXTO, botones: [], copyCode: true,
+      componentes: [cuerpo(YAPE_TEXTO, []), { type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }]
+    });
+  }
   // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
   for (const c of cambios.propias || []) {
     if (c.marca !== marca) continue;
     lista.push({
       nombre: c.nombre, propia: true, grupo: "Plantillas propias", titulo: c.titulo, cuando: "a mano, desde el botón de plantillas del chat",
-      categoria: c.categoria, texto: c.texto, botones: c.botones,
-      componentes: [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)]
+      categoria: c.categoria, texto: c.texto, botones: c.botones, copyCode: c.copyCode || false,
+      componentes: [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(c.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))]
     });
   }
   // Nombre que el admin les puso (solo en el CRM: el nombre en Meta no se puede cambiar).
@@ -93,10 +103,11 @@ export function propuestasDe(marca, cambios = {}) {
     p.editada = true;
     p.texto = c.texto;
     p.botones = c.botones;
-    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...botones(c.botones)];
+    if (c.copyCode !== undefined) p.copyCode = c.copyCode;
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Plantillas propias"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 
@@ -148,7 +159,7 @@ export async function guardarAlias(env, marca, nombre, titulo) {
 }
 
 /** Agrega una plantilla nueva (queda "Sin enviar" hasta que el admin la mande a Meta). El nombre en Meta se arma solo. */
-export async function crearPropia(env, marca, { titulo, texto, botones: btns, categoria }) {
+export async function crearPropia(env, marca, { titulo, texto, botones: btns, categoria, copyCode }) {
   if (!MARCAS[marca]) throw new Error("Marca inválida.");
   titulo = String(titulo || "").trim().slice(0, 80);
   if (!titulo) throw new Error("Ponle un nombre a la plantilla.");
@@ -156,7 +167,7 @@ export async function crearPropia(env, marca, { titulo, texto, botones: btns, ca
   const cambios = await leerCambios(env.CRM_DB);
   const base = titulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "plantilla";
   const nombre = `${marca === "uro" ? "uro_" : ""}propia_${base}_${Date.now().toString(36).slice(-4)}`;
-  cambios.propias = [...(cambios.propias || []), { marca, nombre, titulo, texto: v.texto, botones: v.btns, categoria }];
+  cambios.propias = [...(cambios.propias || []), { marca, nombre, titulo, texto: v.texto, botones: v.btns, categoria, ...(copyCode ? { copyCode: true } : {}) }];
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
   return nombre;
 }
@@ -172,7 +183,7 @@ export async function borrarPropia(env, marca, nombre) {
 
 export { toquesActivos, guardarToqueActivo };
 
-export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer }) {
+export async function guardarCambio(env, marca, nombre, { texto, botones: btns, categoria, restablecer, copyCode }) {
   const cambios = await leerCambios(env.CRM_DB);
   const original = propuestasDe(marca).find((p) => p.nombre === nombre);
   const propia = (cambios.propias || []).find((c) => c.marca === marca && c.nombre === nombre);
@@ -180,14 +191,14 @@ export async function guardarCambio(env, marca, nombre, { texto, botones: btns, 
   if (propia) {
     if (restablecer) throw new Error("Una plantilla propia no tiene texto original: bórrala si no la quieres.");
     const v = validarPlantilla(texto, btns, categoria);
-    Object.assign(propia, { texto: v.texto, botones: v.btns, categoria });
+    Object.assign(propia, { texto: v.texto, botones: v.btns, categoria, ...(copyCode !== undefined ? { copyCode: !!copyCode } : {}) });
   } else {
     const clave = `${marca}:${nombre}`;
     if (restablecer) {
       delete cambios[clave];
     } else {
       const v = validarPlantilla(texto, btns, categoria, original.texto);
-      cambios[clave] = { texto: v.texto, botones: v.btns, categoria };
+      cambios[clave] = { texto: v.texto, botones: v.btns, categoria, ...(copyCode !== undefined ? { copyCode: !!copyCode } : {}) };
     }
   }
   await guardarAjuste(env.CRM_DB, CLAVE_CAMBIOS, JSON.stringify(cambios));
@@ -328,7 +339,8 @@ export async function vigilarPlantillas(env) {
       const cuerpoTxt = (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "";
       const cache = envM.LINEA_ID ? `plantilla_estado:${envM.WHATSAPP_BUSINESS_ACCOUNT_ID}:${p.nombre}` : `plantilla_estado:${p.nombre}`;
       const variables = Math.max(0, ...(cuerpoTxt.match(/\{\{(\d+)\}\}/g) || []).map((v) => Number(v.slice(2, -2))));
-      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}|${variables}`).catch(() => {});
+      const conCopyCodeV = (t.components || []).some((c) => String(c.type).toUpperCase() === "BUTTONS" && (c.buttons || []).some((b) => String(b.type).toUpperCase() === "COPY_CODE"));
+      await guardarAjuste(db, cache, `${t.status}|${Date.now()}|${t.language || ""}|${cuerpoTxt.includes("{{1}}") ? 1 : 0}|${variables}|${conCopyCodeV ? 1 : 0}`).catch(() => {});
       if (antes && antes[clave] !== t.status && ["APPROVED", "REJECTED", "PAUSED", "DISABLED"].includes(t.status)) {
         const icono = t.status === "APPROVED" ? "✅ aprobó" : "❌ " + (t.status === "REJECTED" ? "rechazó" : "dejó " + t.status.toLowerCase());
         avisos.push(`${icono}: ${nombre} · ${p.titulo} (\`${p.nombre}\`)${t.rejected_reason && t.rejected_reason !== "NONE" ? ` — motivo: \`${t.rejected_reason}\`` : ""}`);

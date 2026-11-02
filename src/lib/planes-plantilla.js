@@ -23,6 +23,7 @@ import { lineaPorId } from "./lineas.js";
 import { obtenerAjuste, esOrigenAutomatico } from "./crm-db.js";
 import { productoPorId } from "./productos.js";
 import { destinosDeChats } from "./crm-destino.js";
+import { contieneCodigo } from "./ventas.js";
 
 export const IDIOMA_PLAN = "es_PE";
 export const PREFIJO_PLAN = "Plan con plantilla";
@@ -202,7 +203,8 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   ).bind(conversationId).first();
   if (!conv) return { error: "Conversación no encontrada." };
   if (!conv.last_inbound_at) return { error: "El cliente nunca escribió: no se le puede mandar un plan." };
-  const yaHay = await db.prepare(
+  // El cobro (recojo en Shalom u Olva) tiene prioridad: no hay que cancelar nada a mano, sale aunque haya otro plan.
+  const yaHay = esPlanDeRecojo(plan) ? null : await db.prepare(
     "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND created_by LIKE ? LIMIT 1"
   ).bind(conversationId, `${PREFIJO_PLAN}%`).first();
   if (yaHay) return { error: "Este chat ya tiene un plan con plantilla programado. Cancélalo primero si quieres cambiarlo." };
@@ -213,10 +215,20 @@ export async function programarPlan(env, conversationId, plan, { estado, quien }
   const dias = await diasDelPlan(db, plan);
   const pasos = pasosDelPlan(plan, { lastInboundAt: conv.last_inbound_at, nombre: conv.nombre, producto: producto?.nombre }, Date.now(), dias, marca, await ordenDelPlan(db, marca, plan));
   const origen = `${PREFIJO_PLAN} · ${planesDe(marca)[plan].titulo} · ${quien || "CRM"}`;
-  await db.batch(pasos.map((p) => db.prepare(
+  const inserts = pasos.map((p) => db.prepare(
     `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, template_params, status, mandar_siempre)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, 0)));
+  ).bind(conversationId, p.body, p.send_at, origen, p.template_name, IDIOMA_PLAN, JSON.stringify(p.params), estado, 0));
+  if (esPlanDeRecojo(plan)) {
+    // Se cancelan los demás planes con plantilla pendientes o por aprobar de este chat (rescate, recojo anterior).
+    await db.batch([
+      db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND created_by LIKE ?")
+        .bind(conversationId, `${PREFIJO_PLAN}%`),
+      ...inserts
+    ]);
+  } else {
+    await db.batch(inserts);
+  }
   return { pasos };
 }
 
@@ -318,6 +330,24 @@ export async function rearmarPlanShalom(env, conversationId, texto) {
     return db.prepare("UPDATE scheduled_messages SET send_at = ? WHERE id = ?").bind(new Date(ahora + (dias[i] ?? 4) * 86400000).toISOString(), r.id);
   });
   if (mover.length) await db.batch(mover);
+}
+
+/** ¿Ya salió en este chat un mensaje nuestro con el código de Shalom del cliente? */
+async function codigoYaEnviado(db, conversationId, codigo) {
+  const { results } = await db.prepare(
+    "SELECT body FROM messages WHERE conversation_id = ? AND direction = 'out' AND instr(lower(body), lower(?)) > 0"
+  ).bind(conversationId, codigo).all();
+  return results.some((m) => contieneCodigo(m.body, codigo));
+}
+
+/**
+ * Se guardó la clave de Shalom en el perfil del cliente: programa el cobro (recojo en Shalom, 4·7·21 días)
+ * del chat, salvo que ese código ya haya salido en el chat. Lo termina el envío del código (crm-db.js).
+ * Devuelve lo que devuelve programarPlan, o { omitido: true } si el código ya se mandó.
+ */
+export async function activarCobroPorCodigo(env, conversationId, codigo, { estado, quien }) {
+  if (!codigo || (await codigoYaEnviado(env.CRM_DB, conversationId, codigo))) return { omitido: true };
+  return programarPlan(env, conversationId, "shalom", { estado, quien });
 }
 
 /**

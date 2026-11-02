@@ -32,6 +32,7 @@
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { servirMensaje } from "./crm/media.js";
+import { descargarMedia, subirMedia } from "../lib/whatsapp.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -193,7 +194,21 @@ export async function onRequestGetControlVentas({ request, env }) {
 export async function onRequestGetImagen({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
-  const id = Number(new URL(request.url).searchParams.get("id"));
+  const url = new URL(request.url);
+  // staging_id: descarga directamente de Meta por media_id del dueño (boletas).
+  const stagingId = Number(url.searchParams.get("staging_id"));
+  if (stagingId) {
+    const item = await env.CRM_DB.prepare("SELECT media_id, media_mime FROM boletas_staging WHERE id = ?").bind(stagingId).first();
+    if (!item?.media_id) return json({ error: "No encontré esa foto en staging." }, 404);
+    let blob, mime;
+    try {
+      ({ blob, mime } = await descargarMedia(env, item.media_id));
+    } catch (err) {
+      return json({ error: "No se pudo descargar la boleta." }, 502);
+    }
+    return new Response(blob, { headers: { "Content-Type": mime || item.media_mime || "image/jpeg", "Cache-Control": "no-store" } });
+  }
+  const id = Number(url.searchParams.get("id"));
   if (!id || !env.CRM_MEDIA) return json({ error: "Falta id o el almacenamiento." }, 400);
   const row = await env.CRM_DB.prepare("SELECT type, direction FROM messages WHERE id = ?").bind(id).first();
   // Solo lo que mandó el cliente y solo imágenes: nada del equipo ni videos.
@@ -374,4 +389,148 @@ export async function onRequestGetPedidosWeb({ request, env }) {
     };
   });
   return json({ horas, pedidos });
+}
+
+/**
+ * GET /api/asesor/buscar-dni?dni=XXXXXXXX
+ * Busca en los mensajes del CRM el número de DNI para identificar al cliente
+ * de una boleta cuando no aparece en Sheets Ventas.
+ * Devuelve: { encontrado, conversation_id, wa_id, nombre }
+ * o { encontrado: false } si ningún mensaje contiene ese DNI.
+ */
+export async function onRequestGetBuscarDni({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const dni = (url.searchParams.get("dni") || "").replace(/\D/g, "");
+  if (!dni || dni.length < 7) return json({ error: "dni inválido (mínimo 7 dígitos)." }, 400);
+
+  // Busca en texto de mensajes (cliente o vendedora) del último año.
+  const hace1ano = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 19).replace("T", " ");
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT conv.id AS conversation_id, c.wa_id,
+            COALESCE(c.name, c.profile_name, '') AS nombre,
+            MAX(m.created_at) AS ultimo_match
+     FROM messages m
+     JOIN conversations conv ON conv.id = m.conversation_id
+     JOIN contacts c ON c.id = conv.contact_id
+     WHERE m.body LIKE ? AND m.type = 'text' AND m.created_at >= ?
+     GROUP BY conv.id
+     ORDER BY ultimo_match DESC
+     LIMIT 5`
+  ).bind(`%${dni}%`, hace1ano).all();
+
+  if (!results.length) return json({ encontrado: false });
+  const mejor = results[0];
+  // Normalizar wa_id (9 dígitos → 51 + 9)
+  const telRaw = String(mejor.wa_id || "").replace(/\D/g, "");
+  const waId = telRaw.length === 9 ? "51" + telRaw : telRaw;
+  return json({
+    encontrado: true,
+    conversation_id: mejor.conversation_id,
+    wa_id: waId || null,
+    nombre: mejor.nombre,
+    coincidencias: results.length
+  });
+}
+
+const SQL_CHAT = `SELECT conv.id, conv.last_inbound_at, conv.meta_tags, c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre, c.saldo
+  FROM conversations conv JOIN contacts c ON c.id = conv.contact_id`;
+
+/**
+ * GET /api/asesor/chat?conversation_id=N | wa_id=51XXXXXXXXX | telefono=XXXXXXXXX
+ * Lo que la Routine de boletas confirma antes de despachar: quién es, ventana de 24 h, etiquetas,
+ * últimos mensajes (`mensajes`, 30 por defecto) y si ya recibió su comprobante. No devuelve el
+ * código de retiro (shalom_code): ese nunca sale al cliente.
+ */
+export async function onRequestGetChat({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const convId = Number(url.searchParams.get("conversation_id")) || 0;
+  let wa = (url.searchParams.get("wa_id") || url.searchParams.get("telefono") || "").replace(/\D/g, "");
+  if (wa.length === 9) wa = "51" + wa;
+  if (!convId && !wa) return json({ error: "Falta conversation_id, wa_id o telefono." }, 400);
+  const conv = convId
+    ? await env.CRM_DB.prepare(`${SQL_CHAT} WHERE conv.id = ?`).bind(convId).first()
+    : await env.CRM_DB.prepare(`${SQL_CHAT} WHERE c.wa_id = ? ORDER BY conv.id DESC LIMIT 1`).bind(wa).first();
+  if (!conv) return json({ encontrado: false });
+  const limite = conv.last_inbound_at ? new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 86400000 : 0;
+  const n = Math.min(Number(url.searchParams.get("mensajes")) || 30, 100);
+  const { results: mensajes } = await env.CRM_DB.prepare(
+    "SELECT id, direction, type, substr(body, 1, 300) AS body, sent_by, status, created_at FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ?"
+  ).bind(conv.id, n).all();
+  const boleta = await env.CRM_DB.prepare(
+    "SELECT id, created_at FROM messages WHERE conversation_id = ? AND direction = 'out' AND status <> 'failed' AND " +
+    "(instr(COALESCE(body, ''), 'Nro de orden') > 0 OR instr(COALESCE(body, ''), 'Código de seguimiento') > 0) ORDER BY id DESC LIMIT 1"
+  ).bind(conv.id).first();
+  const { results: staging } = await env.CRM_DB.prepare(
+    "SELECT id, status, nro_orden, created_at FROM boletas_staging WHERE conversation_id = ? ORDER BY id"
+  ).bind(conv.id).all();
+  return json({
+    encontrado: true,
+    conversation_id: conv.id,
+    wa_id: conv.wa_id,
+    nombre: conv.nombre,
+    saldo_crm: conv.saldo,
+    etiquetas: conv.meta_tags,
+    last_inbound_at: conv.last_inbound_at,
+    ventana: limite > Date.now() ? "abierta" : "cerrada",
+    boleta_ya_enviada: boleta || null,
+    staging: staging || [],
+    mensajes: (mensajes || []).reverse()
+  });
+}
+
+/**
+ * POST /api/asesor/imagen { staging_id, imagen_base64, mime? }
+ * Reemplaza la foto de una boleta en staging (por ejemplo, ya rotada) subiéndola a WhatsApp
+ * como media nuevo. Solo mientras la foto no se haya mandado.
+ */
+export async function onRequestPostImagen({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const p = await request.json().catch(() => null);
+  const stagingId = Number(p?.staging_id);
+  if (!stagingId || !p?.imagen_base64) return json({ error: "Falta staging_id o imagen_base64." }, 400);
+  const item = await env.CRM_DB.prepare("SELECT id, status FROM boletas_staging WHERE id = ?").bind(stagingId).first();
+  if (!item) return json({ error: "No encontré esa foto en staging." }, 404);
+  if (!["listo", "pendiente"].includes(item.status)) return json({ error: `La foto ${stagingId} ya está ${item.status}: no se reemplaza.` }, 409);
+  const bytes = Uint8Array.from(atob(String(p.imagen_base64)), (c) => c.charCodeAt(0));
+  if (!bytes.length || bytes.length > 6 * 1024 * 1024) return json({ error: "Imagen vacía o demasiado grande." }, 400);
+  const mime = /^image\/(jpeg|png|webp)$/.test(p.mime) ? p.mime : "image/jpeg";
+  const mediaId = await subirMedia(env, new Blob([bytes], { type: mime }), mime, `boleta-${stagingId}.${mime.split("/")[1]}`);
+  await env.CRM_DB.prepare("UPDATE boletas_staging SET media_id = ?, media_mime = ? WHERE id = ?").bind(mediaId, mime, stagingId).run();
+  return json({ ok: true, media_id: mediaId });
+}
+
+/**
+ * GET /api/asesor/buscar-nombre?nombre=APELLIDO
+ * Busca en contacts del CRM por nombre/apellido del destinatario de la boleta.
+ * Útil cuando el cliente no aparece en Sheets por DNI.
+ * Devuelve: { encontrado, coincidencias: [{wa_id, nombre, conversation_id, last_inbound_at}] }
+ */
+export async function onRequestGetBuscarNombre({ request, env }) {
+  const cortar = await puerta(request, env);
+  if (cortar) return cortar;
+  const url = new URL(request.url);
+  const nombre = (url.searchParams.get("nombre") || "").trim();
+  if (!nombre || nombre.length < 3) return json({ error: "nombre muy corto (mínimo 3 letras)." }, 400);
+
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre,
+            conv.id AS conversation_id, conv.last_inbound_at
+     FROM contacts c
+     JOIN conversations conv ON conv.contact_id = c.id
+     WHERE c.name LIKE ? OR c.profile_name LIKE ?
+     ORDER BY conv.last_inbound_at DESC
+     LIMIT 8`
+  ).bind(`%${nombre}%`, `%${nombre}%`).all();
+
+  if (!results.length) return json({ encontrado: false });
+  const norm = results.map((r) => {
+    const tel = String(r.wa_id || "").replace(/\D/g, "");
+    return { ...r, wa_id: tel.length === 9 ? "51" + tel : tel };
+  });
+  return json({ encontrado: true, coincidencias: norm });
 }

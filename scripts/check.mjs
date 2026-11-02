@@ -812,15 +812,19 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("se distingue lo automático de lo que programa una persona",
     esOrigenAutomatico("Seguimiento automático (anuncio)") && esOrigenAutomatico("Seguimiento de respuesta rápida · Precio") &&
     esOrigenAutomatico("Sugerencia del asesor · Moi") && !esOrigenAutomatico("Moi") && !esOrigenAutomatico(null));
-  check("como mucho 2 automáticos seguidos sin respuesta", MAX_AUTOMATICOS_SIN_RESPUESTA === 2);
+  check("la red de seguridad de automáticos seguidos deja pasar la cadena de la semana (6)", MAX_AUTOMATICOS_SIN_RESPUESTA === 6);
   const cron = readFileSync(new URL("../src/lib/crm-cron.js", import.meta.url), "utf8");
   check("el cron no repite textos, no escribe a quien compró ni se cruza con una conversación viva",
     cron.includes("ya_enviado") && cron.includes("s.etapa >= 5") && cron.includes("30 * 60 * 1000"));
   const db = readFileSync(new URL("../src/lib/crm-db.js", import.meta.url), "utf8");
-  check("escribirle cancela también el seguimiento de respuesta rápida pendiente",
-    /cancelarSeguimientosDeLead[\s\S]{0,900}PREFIJO_SEGUIMIENTO_RAPIDA/.test(db));
+  // Dueño (2026-11-01): solo el CLIENTE corta la cadena de seguimiento; nada de lo que mandamos o programamos la cancela.
+  const sinCorte = ["messages", "catalog", "templates", "sugerencias", "scheduled"].filter((f) => readFileSync(new URL(`../src/api/crm/${f}.js`, import.meta.url), "utf8").includes("cancelarSeguimientosDeLead("));
+  check("solo el cliente corta la cadena: ningún envío ni programación nuestra llama a cancelarSeguimientosDeLead", !sinCorte.length, sinCorte.join(", "));
+  check("una cadena nueva reemplaza a la anterior (programarPasosEnChat) y el webhook corta con el cliente",
+    /programarPasosEnChat[\s\S]{0,3000}cancelarSeguimientosDeLead\(db, conversationId\)/.test(db) && readFileSync(new URL("../src/api/whatsapp-webhook.js", import.meta.url), "utf8").includes("cancelarSeguimientosPendientes(db, conversacion.id)"));
+  check("un texto fuera de la ventana se adelanta al tope o se salta, nunca se intenta", /tope - previo < 2 \* 3600 \* 1000/.test(db));
   const prog = readFileSync(new URL("../src/api/crm/scheduled.js", import.meta.url), "utf8");
-  check("programar a mano reemplaza a los automáticos y no duplica", prog.includes("cancelarSeguimientosDeLead(env.CRM_DB, conversationId)") && prog.includes("ya está programado"));
+  check("programar a mano no duplica el mismo texto", prog.includes("ya está programado"));
   const masivo = readFileSync(new URL("../src/api/crm/bulk-send.js", import.meta.url), "utf8");
   check("sin envíos masivos", masivo.includes("onRequestPost = conAdmin(apagado)"));
   const sugs = readFileSync(new URL("../src/api/crm/sugerencias.js", import.meta.url), "utf8");
@@ -1089,7 +1093,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     dato(cable, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(cable, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("cable: los datos personales no viajan por la URL de gracias",
     /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(cable) && cable.includes("sessionStorage.setItem('pedidoCable'"));
-  check("cable: gracias dispara Lead y Purchase (una vez por pedido, con eventID) y la página de venta no", /fbq\('track', 'Lead'/.test(gr) && /fbq\('track', 'Purchase'/.test(gr) && gr.includes("eventID: pedido.eventId") && !/track\('(Lead|Purchase)'|fbTrack\('(Lead|Purchase)'/.test(cable) && /fbTrack\('InitiateCheckout'/.test(cable));
+  check("cable: Lead y Purchase salen de la página de venta al confirmarse el pedido (con datos del cliente para el EMQ, mismo eventID) y /gracias no los envía", /function fbCompra/.test(cable) && /fbq\('init', PIXEL_ID, datosUsuario\)/.test(cable) && /fbq\('track', 'Lead', datos, \{ eventID: c\.eventId \}\)/.test(cable) && /fbq\('track', 'Purchase', datos, \{ eventID: c\.eventId \}\)/.test(cable) && !/'(Lead|Purchase)'/.test(gr) && /fbTrack\('InitiateCheckout'/.test(cable));
   check("cable: píxel de Puerto Secreto (no el de Tarot)", dato(cable, "PIXEL_ID") === "1788156381816025");
   const faltan = [];
   const tamanos = [];
@@ -1135,7 +1139,7 @@ check("las letras de columna llegan hasta la última de la hoja",
     dato(ms, "PIXEL_ID") === dato(gr, "PIXEL_ID") && dato(ms, "WA_NUMERO") === dato(gr, "WA_NUMERO"));
   check("masilla: los datos personales no viajan por la URL de gracias",
     /\+ '\/gracias\?v=' \+ encodeURIComponent\(total\)/.test(ms) && ms.includes("sessionStorage.setItem('pedidoMasilla'"));
-  check("masilla: gracias dispara Lead y Purchase (una vez por pedido, con eventID) y la página de venta no", /fbq\('track', 'Lead'/.test(gr) && /fbq\('track', 'Purchase'/.test(gr) && gr.includes("eventID: pedido.eventId") && !/track\('(Lead|Purchase)'|fbTrack\('(Lead|Purchase)'/.test(ms) && /fbTrack\('InitiateCheckout'/.test(ms));
+  check("masilla: Lead y Purchase salen de la página de venta al confirmarse el pedido (con datos del cliente para el EMQ, mismo eventID) y /gracias no los envía", /function fbCompra/.test(ms) && /fbq\('init', PIXEL_ID, datosUsuario\)/.test(ms) && /fbq\('track', 'Lead', datos, \{ eventID: c\.eventId \}\)/.test(ms) && /fbq\('track', 'Purchase', datos, \{ eventID: c\.eventId \}\)/.test(ms) && !/'(Lead|Purchase)'/.test(gr) && /fbTrack\('InitiateCheckout'/.test(ms));
   check("masilla: píxel de Puerto Secreto (no el de Tarot)", dato(ms, "PIXEL_ID") === "1788156381816025");
   const faltan = [];
   const tamanos = [];

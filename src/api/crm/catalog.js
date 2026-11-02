@@ -9,7 +9,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { enviarCatalogoConPortada, enviarProducto, listarProductosCatalogo, catalogosConectados } from "../../lib/whatsapp.js";
-import { registrarMensajeSaliente, cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
+import { registrarMensajeSaliente } from "../../lib/crm-db.js";
 import { nombresDeProductos, guardarProductosEnCache, programarSeguimientoDeRapida } from "../../lib/crm-db.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
 import { mandarAlToque } from "../../lib/crm-send.js";
@@ -99,7 +99,7 @@ async function post({ request, env: envBase, agent }) {
   if (!conv) return json({ error: "Conversación no encontrada." }, 404);
 
   const sentBy = agent?.displayName || agent?.username || null;
-  // Después de cancelarSeguimientosDeLead: si no, se cancelaría el que se acaba de programar.
+  // Mandar el catálogo no corta la cadena de seguimiento (solo el cliente la corta).
   const quickReplyId = Number(payload?.quick_reply_id) || null;
   const programarRapida = async (waMessageId) => {
     if (!quickReplyId) return;
@@ -134,7 +134,6 @@ async function post({ request, env: envBase, agent }) {
         body: nombre || "Producto del catálogo",
         sentBy
       });
-      await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
       await programarRapida(waMessageId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
@@ -155,7 +154,6 @@ async function post({ request, env: envBase, agent }) {
       body: "[Catálogo enviado]",
       sentBy
     });
-    await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida(waMessageId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {

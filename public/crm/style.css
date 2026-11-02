@@ -796,6 +796,13 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 #editor-media.recortando #em-restablecer,
 #editor-media.recortando #em-quitar { display: none; }
 
+/* Placeholders insertables en el editor de respuesta rápida */
+.rapida-placeholders { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.rapida-placeholders button { padding: 2px 8px; font: inherit; font-size: 12px; font-family: monospace; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-full); cursor: pointer; color: var(--texto); }
+.rapida-placeholders button:hover { background: var(--hover); }
+.rapida-placeholders .ayuda-inline { font-size: 12px; color: var(--subtexto); }
+.rapida-placeholders code { background: var(--fondo); padding: 0 3px; border-radius: 3px; font-size: 12px; }
+
 /* Secuencia de seguimiento de una respuesta rápida */
 .rp-titulo { font-weight: 600; font-size: 14px; margin-top: 6px; }
 #rapida-pasos { display: flex; flex-direction: column; gap: 8px; }
@@ -843,6 +850,10 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 /* Sugerencias del asesor */
 #btn-sugerencias { position: relative; }
 .badge-sugerencias { position: absolute; top: -2px; right: -4px; background: #e11d48; color: #fff; border-radius: var(--radio-full); font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center; }
+
+/* Badge de alerta del sistema en el botón admin */
+#btn-admin { position: relative; }
+.badge-error-admin { position: absolute; top: -2px; right: -4px; width: 8px; height: 8px; background: #e11d48; border-radius: 50%; pointer-events: none; }
 .tarjeta-sugerencia { border: 1px solid var(--borde); border-radius: var(--radio-m); padding: var(--espacio-m); margin: 0 0 var(--espacio-m); display: flex; flex-direction: column; gap: var(--espacio-s); background: var(--panel); }
 .tarjeta-sugerencia .sub { font-size: 12px; color: var(--gris); }
 .tarjeta-sugerencia textarea { width: 100%; box-sizing: border-box; font: inherit; }
@@ -903,11 +914,17 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .versiones .version { width: 24px; height: 24px; border-radius: var(--radio-full); border: 1px solid var(--borde); background: var(--panel); color: var(--gris); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .versiones .version:hover { border-color: var(--verde-osc); color: var(--verde-osc); }
 .versiones .version.activa { background: var(--verde-osc); border-color: var(--verde-osc); color: #fff; }
-#versiones-rapida { align-items: center; gap: 8px; padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#versiones-rapida { align-items: center; gap: 6px; padding: 4px 8px 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); min-width: 0; }
+#btn-deseleccionar-rapida { flex-shrink: 0; border: 0; background: transparent; color: var(--gris); cursor: pointer; padding: 2px 4px; font-size: 16px; line-height: 1; }
+#chip-secuencia { padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--borde); }
+#chip-secuencia #btn-enviar-secuencia { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--verde-osc); color: #fff; border: none; border-radius: var(--radio-full); font: inherit; font-size: 13px; cursor: pointer; }
 #versiones-rapida .versiones { margin-top: 0; }
 #versiones-rapida .sub { font-size: 12px; color: var(--gris); }
 
 /* Respuestas rápidas agrupadas por cadena o tipo */
+#panel-rapidas .rapidas-orden-ayuda { margin: 0 8px 6px; font-size: 12px; }
+#panel-rapidas .fijada-icono { color: var(--acento, #c9a227); padding: 6px 6px 6px 0; align-self: center; display: inline-flex; width: 14px; }
+#panel-rapidas .fijada-icono .icono-svg svg { width: 14px; height: 14px; }
 #panel-rapidas .arrastrar { cursor: grab; touch-action: none; user-select: none; color: var(--gris); font-size: 14px; letter-spacing: -3px; padding: 6px 6px 6px 0; align-self: center; }
 #panel-rapidas .item.arrastrando { opacity: .6; background: var(--hover); }
 .versiones-rapida { align-items: center; gap: 8px; margin: -4px 0 8px; }
@@ -1013,6 +1030,9 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .badge-producto, .badge-linea { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; margin-right: 3px; background: #fff3e0; border: 1px solid #ffd59e; color: #8a4b00; font-weight: 500; }
 .badge-linea { background: #e8f4fd; border-color: #b6dcf7; color: #0b5a8a; }
 .rapidas-producto { padding: 4px 10px 6px; font-size: 12px; }
+.rapidas-cats { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; }
+.rapida-cat-btn { padding: 3px 10px; border: 1px solid var(--borde); border-radius: 12px; background: transparent; font-size: 12px; cursor: pointer; color: var(--gris); white-space: nowrap; }
+.rapida-cat-btn.activa { background: var(--acento, #0b5a8a); color: #fff; border-color: transparent; }
 .fila-seguimiento.apagado { opacity: .55; }
 #detalle-producto { padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio-s); font: inherit; font-size: 13px; background: var(--panel); }
 
@@ -1109,6 +1129,8 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 
 /* Chip "Reactivar seguimiento" en la burbuja de una respuesta rápida con «si no responde». */
 .msg .msg-seg { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 4px 8px; border: 1px solid var(--verde-osc); border-radius: var(--radio-full); background: var(--panel); color: var(--verde-osc); font: inherit; font-size: 11px; cursor: pointer; min-height: 28px; }
+@keyframes seg-pulso { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.msg .msg-seg-reactivar { animation: seg-pulso .9s ease-in-out 3; }
 .msg .msg-seg:disabled { opacity: .6; }
 
 /* Rol de solo lectura (Viktoria): ve los chats de Tarot, no puede escribir ni cambiar nada. */
@@ -1151,3 +1173,32 @@ body.solo-lectura #form-envio { display: none; }
 #filtros #btn-filtro-atencion.activo .cola-n { background: #e8a45c; color: #fff; }
 .badge-reco .btn-atendido { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; padding: 0 5px; font-size: 10px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .badge-reco .btn-atendido .icono-svg { width: 11px; height: 11px; }
+
+/* Saldo pendiente de provincia en la lista (2026-10-27) */
+.badge-saldo { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #fef7e0; color: #a05f00; margin-top: 3px; margin-left: 4px; }
+.badge-saldo .btn-pago-saldo-lista { border: none; background: none; padding: 0 2px; cursor: pointer; color: inherit; display: inline-flex; align-items: center; }
+.badge-saldo .btn-pago-saldo-lista .icono-svg { width: 11px; height: 11px; }
+
+/* Filtro por fecha de compra — date input inline con los chips (2026-10-27) */
+#filtro-compra-fecha { font-size: 12px; border: 1px solid var(--borde); border-radius: 14px; padding: 3px 8px; cursor: pointer; color: var(--gris); background: #fff; font-family: inherit; }
+#filtro-compra-fecha.activo { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+
+/* Badge Shalom (automático al tener clave de recojo) y toggle Olva en lista (2026-10-28) */
+.badge-provincia { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #e8f0fe; color: #1a56db; margin-top: 3px; margin-left: 4px; }
+.badge-provincia .icono-svg { width: 11px; height: 11px; }
+.badge-olva-lista { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #f0fdf4; color: #166534; border: none; cursor: pointer; margin-top: 3px; margin-left: 4px; font-family: inherit; }
+.badge-olva-lista .icono-svg { width: 11px; height: 11px; }
+
+/* Barra «Seguimiento» debajo de la cabecera del chat (dueño, 2026-11-01): grande y a la vista. */
+#barra-seguimiento:empty { display: none; }
+.seg-barra { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; border: 0; border-bottom: 1px solid var(--borde); cursor: pointer; text-align: left; }
+.seg-barra .icono-svg { width: 22px; height: 22px; flex-shrink: 0; }
+.seg-barra > span:first-of-type { flex: 1; min-width: 0; }
+.seg-barra .seg-barra-accion { font-size: 12px; font-weight: 500; text-decoration: underline; flex-shrink: 0; }
+.seg-barra.activa { background: #e7f8ee; color: var(--verde-osc); }
+.seg-barra.apagada { background: #fff4e5; color: #8a4b00; animation: seg-pulso .9s ease-in-out 2; }
+.seg-barra.sin-plan { background: var(--panel); color: var(--gris); cursor: default; font-weight: 500; }
+.seg-modo { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 8px; font-size: 13px; }
+.seg-modo label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.aviso-universal { background: #e7f8ee; border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; }
+.aviso-universal .icono-svg { width: 14px; height: 14px; vertical-align: -2px; }

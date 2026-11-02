@@ -114,6 +114,9 @@
     // CRM de WhatsApp — el ID del número de teléfono de la Cloud API (texto,
     // no es secreto). Los secretos van por dashboard/CLI, ver README.
     "WHATSAPP_PHONE_NUMBER_ID": "1395872996931928",
+    // Número personal del dueño (formato internacional sin +) desde el que manda
+    // fotos de boletas al número empresa. El webhook lo intercepta antes del CRM.
+    "NUMERO_DUENO": "51927633099",
     // Para listar y mandar Message Templates (mensajes fuera de la ventana
     // de 24h) desde /api/crm/templates.
     "WHATSAPP_BUSINESS_ACCOUNT_ID": "1685975599621194",
@@ -137,8 +140,9 @@
     // CARRITO_MENSAJE_LIMA / CARRITO_MENSAJE_PROVINCIA (opcionales) cambian
     // el texto; {nombre} = su primer nombre.
     "CARRITO_AUTO_HORAS": "",
-    // Plantilla utility aprobada en Meta para mandar el link de seguimiento
-    // cuando ya pasaron 24 h ({{1}} = nombre, {{2}} = link). Vacío = no hay.
+    // Plantilla utility que se usaba para el link de seguimiento ({{1}}=nombre, {{2}}=link).
+    // Deprecada 2026-10-28: conPlantilla ahora usa aviso_envio_shalom directamente (solo {{1}}=nombre).
+    // Se deja vacía para no romper código que pueda leerla, pero ya no la consume conPlantilla.
     "PLANTILLA_ENVIO": "",
     // Plantilla "recibimos su pedido" + botón CONFIRMA TU PEDIDO (la armó el
     // dueño en WhatsApp Manager, Spanish PER) que le sale al cliente de la web a

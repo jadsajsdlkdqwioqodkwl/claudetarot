@@ -74,10 +74,12 @@ const POR_PASADA = 12;
  */
 const MARGEN_DIA7_MS = 45 * 60 * 1000;
 
-/** Rellena {nombre} y {link} de los mensajes automáticos que los llevan (Link de envío). */
+/** Rellena {nombre}, {link} y {yape} de los mensajes automáticos. */
 export function rellenar(texto, datos) {
-  if (!texto || !datos) return texto;
-  return String(texto)
+  if (!texto) return texto;
+  let s = String(texto).replace(/\{yape\}/gi, datos?.yape || "");
+  if (!datos) return s;
+  return s
     .replace(/\{link\}/gi, datos.link || "")
     .replace(/\{nombre\}/gi, datos.nombre || "estimad@");
 }
@@ -126,7 +128,7 @@ export async function procesarSeguimientosVencidos(env) {
        (SELECT mi.wa_message_id FROM messages mi WHERE mi.conversation_id = conv.id AND mi.direction = 'in'
           AND mi.type <> 'call' AND mi.wa_message_id IS NOT NULL AND mi.created_at >= datetime('now', '-1 day')
           ORDER BY mi.id DESC LIMIT 1) AS ultimo_wa_in,
-       conv.created_at AS conv_creado, conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags,
+       conv.created_at AS conv_creado, conv.etapa AS etapa, conv.pausa_auto AS pausa_auto, conv.meta_tags AS meta_tags, conv.last_inbound_at AS last_inbound_at,
        (SELECT MAX(mo.created_at) FROM messages mo WHERE mo.conversation_id = conv.id AND mo.direction = 'out') AS ultimo_out_at,
        EXISTS (SELECT 1 FROM messages md WHERE md.conversation_id = conv.id AND md.direction = 'out'
           AND md.body = COALESCE(s.body, ${textoPorDefectoSql("rapida")}) AND md.created_at >= datetime('now', '-2 days')) AS ya_enviado
@@ -151,6 +153,18 @@ export async function procesarSeguimientosVencidos(env) {
       if (s.created_by?.endsWith("Automático (día 7)") && s.conv_creado && Date.now() > new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000) { await cancelar(s.id); continue; }
       // Killswitch de este chat: lo automático y las plantillas que venzan se cancelan (lo que programó una persona a mano sale).
       if (s.pausa_auto && (s.template_name || esOrigenAutomatico(s.created_by))) { await cancelar(s.id); continue; }
+      // Sin plantilla y con la ventana de 24 h cerrada WhatsApp lo rechaza (131047): no se intenta, queda anotado.
+      if (!s.template_name) {
+        const ultimoIn = s.last_inbound_at ? new Date(s.last_inbound_at.replace(" ", "T") + "Z").getTime() : 0;
+        if (!ultimoIn || Date.now() - ultimoIn >= 24 * 3600 * 1000) {
+          await env.CRM_DB.batch([
+            env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(s.id),
+            env.CRM_DB.prepare("INSERT INTO envio_errores (scheduled_message_id, conversation_id, wa_id, error) VALUES (?, ?, ?, ?)")
+              .bind(s.id, s.conv_id || null, s.wa_id || null, "No salió: pasaron más de 24 h desde el último mensaje del cliente (solo cabe una plantilla).")
+          ]).catch((e) => console.error("Ventana cerrada:", e.message));
+          continue;
+        }
+      }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);
@@ -211,7 +225,12 @@ export async function procesarSeguimientosVencidos(env) {
           while (parametros.length < aprobada.variables) parametros.push(porDefecto[parametros.length] || "");
         }
         await pausaEnvio(env, s.conv_id, undefined, escribiendo);
-        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros));
+        const botonesParams = [];
+        if (aprobada.conCopyCode) {
+          const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
+          if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
+        }
+        const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros, botonesParams.length ? botonesParams : undefined));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
           type: "template",
@@ -224,6 +243,11 @@ export async function procesarSeguimientosVencidos(env) {
         if (s.media_key_real) {
           await mandarMediaGuardada(env, s.conv_id, s.wa_id, s.media_key_real, s.media_type_real || "image", null, "Seguimiento automático", undefined, undefined, SIN_SUBIR);
         }
+        // Si el paso lleva texto, sale primero como burbuja separada (igual que el envío manual con catálogo).
+        if (texto) {
+          await pausaEnvio(env, s.conv_id, undefined, escribiendo);
+          await mandarTexto(env, s.conv_id, s.wa_id, texto, "Seguimiento automático", undefined, SIN_SUBIR);
+        }
         let waMessageId;
         // El catálogo es el de la línea del chat (el de URO no es el de Tarot Store).
         const catalogoId = (await envDeConversacion(env, s.conv_id)).WHATSAPP_CATALOG_ID;
@@ -234,10 +258,10 @@ export async function procesarSeguimientosVencidos(env) {
           const { results: portadas } = await env.CRM_DB.prepare(
             "SELECT retailer_id FROM catalog_products WHERE catalog_id = ? AND image_url IS NOT NULL ORDER BY cached_at DESC LIMIT 3"
           ).bind(catalogoId || "").all().catch(() => ({ results: [] }));
-          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, texto || undefined, portadas.map((p) => p.retailer_id)));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarCatalogoConPortada(e, s.wa_id, undefined, portadas.map((p) => p.retailer_id)));
         } else {
           if (!catalogoId) throw new Error("Falta el catálogo de esta línea.");
-          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, texto || undefined));
+          waMessageId = await mandarAlToque(env, s.conv_id, (e) => enviarProducto(e, s.wa_id, e.WHATSAPP_CATALOG_ID, s.catalogo, undefined));
         }
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
@@ -263,10 +287,12 @@ export async function procesarSeguimientosVencidos(env) {
       if (!s.template_name) await encadenarRescate(env, s.conv_id, s.created_by, s.etapa).catch((err) => console.error("Encadenar rescate:", err.message));
     } catch (err) {
       console.error("Seguimiento programado:", s.id, err.message);
-      await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?")
-        .bind(s.id)
-        .run()
-        .catch(() => {});
+      const errMsg = String(err.message || "").slice(0, 500);
+      await env.CRM_DB.batch([
+        env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'fallido', sent_at = datetime('now') WHERE id = ?").bind(s.id),
+        env.CRM_DB.prepare("INSERT INTO envio_errores (scheduled_message_id, conversation_id, wa_id, error) VALUES (?, ?, ?, ?)").bind(s.id, s.conv_id || null, s.wa_id || null, errMsg),
+        env.CRM_DB.prepare("INSERT INTO crm_settings (key, value) VALUES ('envio_ultimo_error', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(`${new Date().toISOString().slice(0, 16)} · msg ${s.id}: ${errMsg.slice(0, 200)}`),
+      ]).catch(() => {});
     }
   }
 }

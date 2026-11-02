@@ -37,6 +37,8 @@ const estado = {
   filtroOcultos: false,
   filtroOlva: false,
   filtroAtencion: false,
+  filtroProvincia: false,
+  filtroCompraFecha: "",
   atencionTotal: 0,
   // Varios productos / números (api/crm/productos.js): "" = todos, "0" = sin producto / número principal.
   filtroProducto: "",
@@ -44,6 +46,7 @@ const estado = {
   productos: [],
   lineas: [],
   filtroTexto: "",
+  baseLista: [], // la última lista completa del servidor (sin búsqueda): la búsqueda al instante filtra aquí
   filtroDias: 0,
   buscarEn: "",
   limiteLista: 200,
@@ -53,11 +56,12 @@ const estado = {
   // La respuesta rápida cargada en el escribidor: al mandarla, el servidor
   // programa su seguimiento automático si tiene uno.
   rapidaUsadaId: null,
+  rapidaPlantillaPrincipal: null,
   // Prueba de mensajes: qué versión del texto de la respuesta rápida se puso
   // en el cuadro (0 = la original) y ese texto, para saber si la editaron.
   rapidaVariante: null, // { id, texto }
   segRapidaMedia: null,
-  segModo: "mensaje",
+  segModo: "secuencia",
   editandoRapidaId: null,
   editandoPasoId: null,
   editandoSeguimientoId: null,
@@ -68,6 +72,7 @@ const estado = {
   miRol: null,
   miNombre: null,
   filtroRapidas: "",
+  filtroRapidasCategoria: "",
   rapidasPorSlash: false,
   mensajesCargados: [],
   firmaMensajesPintados: null,
@@ -296,6 +301,7 @@ async function mostrarApp() {
   configurarNotificaciones();
   configurarInstalacion();
   programarSync();
+  if (role === "admin") { cargarSalud(); setInterval(cargarSalud, 5 * 60 * 1000); }
 }
 
 $("#form-login").addEventListener("submit", async (e) => {
@@ -563,6 +569,7 @@ async function pintarPlanesPorAprobar() {
   try { datosPlanes = await pedir("/api/crm/planes"); } catch (err) { cont.textContent = err.message; return; }
   lista = datosPlanes.por_aprobar || [];
   $("#planes-dias").value = (datosPlanes.dias || []).join(",");
+  $("#planes-dias-olva").value = (datosPlanes.dias_olva || []).join(",");
   $("#planes-auto").checked = Boolean(datosPlanes.auto);
   const porChat = new Map();
   for (const s of lista) (porChat.get(s.conversation_id) || porChat.set(s.conversation_id, []).get(s.conversation_id)).push(s);
@@ -600,7 +607,7 @@ async function guardarAjustePlanes(cuerpo) {
   }
   pintarPlanesPorAprobar();
 }
-$("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim() }));
+$("#planes-dias-guardar").addEventListener("click", () => guardarAjustePlanes({ dias: $("#planes-dias").value.trim(), dias_olva: $("#planes-dias-olva").value.trim() }));
 $("#planes-auto").addEventListener("change", (e) => guardarAjustePlanes({ auto: e.target.checked }));
 
 /* ---------- Plantillas para Meta (solo admin): ver el texto y mandarlo a aprobar ---------- */
@@ -679,7 +686,7 @@ async function abrirPlantillasMeta() {
                 ${p.editada ? `<div style="font-size:12px;color:var(--gris)">${icon("pencil")} Texto editado por ti</div>` : ""}
                 ${p.textoMeta && p.textoMeta.trim() !== p.texto.trim() ? `<div style="font-size:12px;margin:4px 0;padding:6px 8px;border-radius:8px;color:#8a6500;background:#fff8e1"><b>Meta todavía tiene otro texto</b> (el que ves arriba es el tuyo, aún sin aprobar). Lo que Meta tiene hoy:<br><i>${escapar(p.textoMeta)}</i><br>Usa «Reenviar a revisión» para cambiarlo.</div>` : ""}
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                  ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
+                  ${p.estado !== "SIN_NUMERO" ? `<button type="button" class="cancelar editar-plantilla" data-nombre="${escapar(p.nombre)}" data-texto="${escapar(p.texto)}" data-botones="${escapar(JSON.stringify(p.botones))}" data-categoria="${escapar(p.categoria)}" data-editada="${p.editada ? 1 : 0}" data-copy-code="${p.copyCode ? 1 : 0}" style="font-size:12px">${icon("pencil")} Editar texto y botones</button>` : ""}
                   <button type="button" class="cancelar renombrar-plantilla" data-nombre="${escapar(p.nombre)}" data-titulo="${escapar(p.titulo)}" style="font-size:12px" title="Cambia el nombre que ves en el CRM (el nombre en Meta no se puede cambiar)">${icon("pencil")} Cambiar nombre</button>
                   ${p.propia && p.estado === "SIN_ENVIAR" ? `<button type="button" class="cancelar quitar-propia" data-nombre="${escapar(p.nombre)}" style="font-size:12px">${icon("trash")} Quitar</button>` : ""}
                   ${p.estado === "SIN_ENVIAR" && m.conectada ? `<button type="button" class="crear mandar-una" data-nombres="${escapar(p.nombre)}" style="font-size:12px">Mandar a Meta</button>` : ""}
@@ -722,12 +729,13 @@ async function abrirPlantillasMeta() {
         <select class="np-categoria" style="width:100%"><option value="MARKETING">Marketing: ofrece, recuerda o intenta vender</option><option value="UTILITY">Utilidad: avisa algo de un pedido que ya hizo</option></select>
         <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, uno por línea, hasta 25 caracteres, sin emojis)</label>
         <textarea class="np-botones" rows="3" style="width:100%"></textarea>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gris);margin-top:8px;cursor:pointer"><input type="checkbox" class="np-copy-code"> Botón "Copiar código de oferta" (número Yape)</label>
         <div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="cancelar np-cancelar" style="font-size:12px">Cancelar</button><button type="button" class="crear np-guardar" style="font-size:12px">Guardar (queda sin enviar a Meta)</button></div>
       </div>`;
       caja.querySelector(".np-cancelar").addEventListener("click", () => { caja.innerHTML = ""; });
       caja.querySelector(".np-guardar").addEventListener("click", async () => {
         try {
-          await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, crear: { titulo: caja.querySelector(".np-titulo").value, texto: caja.querySelector(".np-texto").value, categoria: caja.querySelector(".np-categoria").value, botones: caja.querySelector(".np-botones").value.split("\n").map((x) => x.trim()).filter(Boolean) } }) });
+          await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca, crear: { titulo: caja.querySelector(".np-titulo").value, texto: caja.querySelector(".np-texto").value, categoria: caja.querySelector(".np-categoria").value, botones: caja.querySelector(".np-botones").value.split("\n").map((x) => x.trim()).filter(Boolean), copyCode: caja.querySelector(".np-copy-code")?.checked || false } }) });
           abrirPlantillasMeta();
         } catch (err) { alert(err.message); }
       });
@@ -759,6 +767,7 @@ async function abrirPlantillasMeta() {
         <label style="display:block;font-size:12px;color:var(--gris);margin-top:6px">Botones de respuesta (0 a 3, hasta 25 caracteres, sin emojis)</label>
         <div class="pl-botones"></div>
         <button type="button" class="cancelar pl-agregar-boton" style="font-size:12px;margin-top:4px">${icon("plus")} Agregar botón</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gris);margin-top:8px;cursor:pointer"><input type="checkbox" class="pl-copy-code"${b.dataset.copyCode === "1" ? " checked" : ""}> Botón "Copiar código de oferta" (número Yape)</label>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button type="button" class="cancelar pl-cancelar" style="font-size:12px">Cancelar</button>
           ${b.dataset.editada === "1" ? `<button type="button" class="cancelar pl-restablecer" style="font-size:12px">Volver al texto original</button>` : ""}
@@ -790,7 +799,7 @@ async function abrirPlantillasMeta() {
       };
       card.querySelector(".pl-cancelar").addEventListener("click", abrirPlantillasMeta);
       card.querySelector(".pl-restablecer")?.addEventListener("click", () => guardar({ restablecer: true }));
-      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, categoria: card.querySelector(".pl-categoria").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value) }));
+      card.querySelector(".pl-guardar").addEventListener("click", () => guardar({ texto: card.querySelector(".pl-texto").value, categoria: card.querySelector(".pl-categoria").value, botones: [...card.querySelectorAll(".pl-boton")].map((i) => i.value), copyCode: card.querySelector(".pl-copy-code")?.checked || false }));
     }));
     cont.querySelectorAll(".mandar-una, .mandar-grupo").forEach((b) => b.addEventListener("click", async () => {
       const nombres = b.dataset.nombres.split(",");
@@ -1197,6 +1206,45 @@ $("#sim-enviar").addEventListener("click", async () => {
 
 let bulkTemplateElegida = null;
 
+/* ---------- Estado del sistema (api/crm/salud.js) ---------- */
+async function cargarSalud() {
+  const contenedor = $("#admin-salud-cuerpo");
+  const titulo = $("#admin-salud-titulo");
+  try {
+    const d = await pedir("/api/crm/salud");
+    // Badge rojo en el botón admin si hay alertas
+    const btn = $("#btn-admin");
+    const hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0 || d.errores_envio?.length > 0;
+    const badgeExistente = btn?.querySelector(".badge-error-admin");
+    if (hayProblemas && !badgeExistente) {
+      const b = document.createElement("span");
+      b.className = "badge-error-admin";
+      b.title = "Problemas del sistema";
+      btn?.appendChild(b);
+    } else if (!hayProblemas && badgeExistente) {
+      badgeExistente.remove();
+    }
+    if (!contenedor) return;
+    const ultimoOk = d.webhook_ultimo_ok ? new Date(d.webhook_ultimo_ok.split(" · ")[0]).toLocaleString("es-PE", { timeZone: "America/Lima" }) : "sin datos";
+    if (!hayProblemas) {
+      titulo.style.color = "";
+      contenedor.innerHTML = `${icon("check")} Todo en orden · último webhook recibido: ${escapar(ultimoOk)}`;
+      return;
+    }
+    titulo.style.color = "var(--peligro, #d33)";
+    const lineas = d.alertas.map((a) => `<div style="margin-bottom:8px"><strong>${escapar(a.etiqueta)}:</strong><br><code style="font-size:12px;word-break:break-all">${escapar(a.valor)}</code></div>`).join("");
+    const errLines = d.errores_mensajes?.length ? `<div style="margin-top:8px"><strong>Mensajes no procesados (últimos ${d.errores_mensajes.length}):</strong><ul style="margin:4px 0;padding-left:16px">` +
+      d.errores_mensajes.map((e) => `<li><code>${escapar(e.wa_id || "?")}</code> — ${escapar(e.error)} <small style="opacity:.7">${escapar((e.created_at || "").slice(0, 16).replace("T", " "))}</small></li>`).join("") +
+      `</ul></div>` : "";
+    const errEnvioLines = d.errores_envio?.length ? `<div style="margin-top:8px"><strong>Envíos fallidos (últimos ${d.errores_envio.length}):</strong><ul style="margin:4px 0;padding-left:16px">` +
+      d.errores_envio.map((e) => `<li>msg ${escapar(String(e.scheduled_message_id || "?"))} · <code>${escapar(e.wa_id || "?")}</code> — ${escapar(e.error)} <small style="opacity:.7">${escapar((e.created_at || "").slice(0, 16).replace("T", " "))}</small></li>`).join("") +
+      `</ul></div>` : "";
+    contenedor.innerHTML = `${lineas}${errLines}${errEnvioLines}<div style="margin-top:4px">Último webhook OK: ${escapar(ultimoOk)}</div>`;
+  } catch {
+    if (contenedor) contenedor.innerHTML = "No se pudo cargar el estado.";
+  }
+}
+
 /* ---------- Killswitch y rescate del día 7 (api/crm/pausa.js) ---------- */
 async function cargarPausa() {
   try {
@@ -1238,6 +1286,7 @@ document.querySelectorAll("#rescate7-plantilla-tarot, #rescate7-plantilla-uro").
 
 $("#btn-admin").addEventListener("click", () => {
   $("#modal-admin-fondo").classList.add("abierto");
+  cargarSalud();
   cargarPausa();
   pintarPlanesPorAprobar();
   $("#bulk-numeros").value = "";
@@ -1690,6 +1739,7 @@ const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
+const ORIGEN_DIA7 = "Automático (día 7)"; // rescate-lead.js
 
 function esSeguimientoLead(s) {
   const origen = s.created_by || "";
@@ -1697,14 +1747,23 @@ function esSeguimientoLead(s) {
 }
 
 function esSeguimientoManual(s) {
-  return !s.batch_id && !esSeguimientoLead(s);
+  if (s.batch_id) return false;
+  if (esSeguimientoLead(s)) return false;
+  const origen = s.created_by || "";
+  if (origen.endsWith(ORIGEN_DIA7)) return false;
+  if (origen.startsWith("Plan con plantilla")) return false;
+  if (origen.startsWith("Seguimiento con plantilla")) return false;
+  if (origen.startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return false;
+  return true;
 }
 
 /** Tipo de un seguimiento, para mostrarlo en el panel derecho. */
 function etiquetaTipoSeguimiento(s) {
-  if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · por aprobar</span>`;
-  if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · aprobada</span>`;
-  if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo</span>`;
+  // El día 7 dice qué plantilla va a salir (la misma que se ve en Herramientas, salvo que Meta no la haya aprobado).
+  if ((s.created_by || "").endsWith(ORIGEN_DIA7)) return `<span class="tipo-seg lead">Día 7 · ${escapar(s.template_name || s.body || "")}</span>`;
+  if (s.status === "por_aprobar") return `<span class="tipo-seg masivo">Plantilla · ${escapar(s.template_name || "?")} · por aprobar</span>`;
+  if (s.template_name && (s.created_by || "").startsWith("Plan con plantilla")) return `<span class="tipo-seg lead">Plantilla · ${escapar(s.template_name)} · aprobada</span>`;
+  if (s.batch_id) return `<span class="tipo-seg masivo">Envío masivo${s.template_name ? ` · ${escapar(s.template_name)}` : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SUGERENCIA)) return `<span class="tipo-seg lead">Sugerencia aprobada · ${escapar(s.created_by.slice(PREFIJO_SUGERENCIA.length).replace(/^ · /, ""))}</span>`;
   if (esSeguimientoLead(s)) return `<span class="tipo-seg lead">Tras no respuesta${s.created_by === ORIGEN_SEGUIMIENTO_AUTO ? " · automático" : ""}</span>`;
   if ((s.created_by || "").startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)) return `<span class="tipo-seg lead">Tras no respuesta · ${escapar(s.created_by.slice(PREFIJO_SEGUIMIENTO_RAPIDA.length).replace(/^ · /, ""))}</span>`;
@@ -1715,7 +1774,8 @@ function etiquetaTipoSeguimiento(s) {
 /** Recalcula la etiqueta de la lista para un chat a partir de sus pendientes. */
 function actualizarEtiquetaSeguimiento(conversationId, scheduled) {
   const manuales = scheduled.filter(esSeguimientoManual);
-  const bienvenida = scheduled.filter((x) => x.created_by === ORIGEN_SEGUIMIENTO_AUTO && !x.batch_id);
+  // Cualquier cadena automática (anuncio, leads, rápida, sugerencia): la etiqueta de la lista.
+  const bienvenida = scheduled.filter((x) => !x.batch_id && (x.created_by === ORIGEN_SEGUIMIENTO_AUTO || [PREFIJO_SEGUIMIENTO_LEAD, PREFIJO_SUGERENCIA, PREFIJO_SEGUIMIENTO_RAPIDA].some((p) => (x.created_by || "").startsWith(p))));
   const seg = {
     seg_pendientes: manuales.length || null,
     seg_proximo: manuales.length ? manuales.map((x) => x.send_at).sort()[0] : null,
@@ -1741,6 +1801,8 @@ function sincronizar() {
   if (estado.filtroOcultos) params.set("ocultos", "1");
   if (estado.filtroOlva) params.set("olva", "1");
   if (estado.filtroAtencion) params.set("atencion", "1");
+  if (estado.filtroProvincia) params.set("provincia", "1");
+  if (estado.filtroCompraFecha) params.set("compra_fecha", estado.filtroCompraFecha);
   if (estado.filtroProducto !== "") params.set("producto", estado.filtroProducto);
   if (estado.filtroLinea !== "") params.set("linea", estado.filtroLinea);
   if (estado.filtroTexto) params.set("q", estado.filtroTexto);
@@ -1759,6 +1821,7 @@ function sincronizar() {
   const promesa = (async () => {
     const data = await pedir(`/api/crm/conversations?${clave}`);
     estado.conversaciones = data.conversations;
+    if (!estado.filtroTexto) estado.baseLista = data.conversations;
     estado.hayMasChats = Boolean(data.hay_mas);
     estado.atencionTotal = data.atencion_total || 0;
     estado.busquedaFecha = data.busqueda_fecha || null;
@@ -1981,19 +2044,22 @@ function pintarLista() {
         ${c.ctwa_clid ? `<span class="badge-ad">${icon("megaphone")} ${escapar(c.ad_source_type || "Anuncio")}</span>` : ""}
         ${badgesProducto(c)}
         ${badgeEtapa(c)}
+        ${c.saldo && c.saldo !== "0" ? `<span class="badge-saldo" title="Saldo pendiente de provincia">${icon("bag")} Saldo S/${escapar(c.saldo)} <button type="button" class="btn-pago-saldo-lista" title="Marcar que ya pagó el saldo y quitar seguimiento de recojo">${icon("squareEmpty")}</button></span>` : ""}
+        ${c.shalom_code ? `<span class="badge-provincia">${icon("map")} Shalom · ${escapar(c.shalom_code)}</span>` : ""}
+        ${(c.shalom_code || c.olva) ? `<button type="button" class="badge-olva-lista btn-toggle-olva" title="${c.olva ? "Envío por Olva — clic para quitar" : "Clic para marcar como Olva"}">${icon(c.olva ? "checkBox" : "squareEmpty")} Olva</button>` : ""}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
-        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
-        ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
+        ${c.falta_respuesta ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-falta" title="Compra registrada; falta agendar el seguimiento. Márcalo cuando ya lo programaste (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} falta agendar seguimiento <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
+        ${c.con_recomendacion ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. Márcalo cuando ya lo programaste y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
-        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Seguimiento automático de bienvenida (se cancela si responde)">${icon("clock")} Seguimiento bienvenida · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
+        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Cadena de seguimiento automática en marcha (se corta solo si el cliente escribe)">${icon("clock")} Seguimiento · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -2006,6 +2072,27 @@ function pintarLista() {
       e.stopPropagation();
       marcarAtendido(c);
     }));
+    div.querySelector(".btn-pago-saldo-lista")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`¿Confirmas que ${escapar(c.contact_name || c.profile_name || c.wa_id)} ya pagó el saldo? Se quitará el seguimiento de recojo.`)) return;
+      try {
+        await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
+        await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, saldo: "0" }) });
+        for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.saldo = "0";
+        c.saldo = "0";
+        pintarLista();
+      } catch (err) { alert(err.message); }
+    });
+    div.querySelector(".btn-toggle-olva")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const nuevoOlva = !c.olva;
+      try {
+        await pedir("/api/crm/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contact_id: c.contact_id, olva: nuevoOlva }) });
+        for (const x of estado.conversaciones) if (x.contact_id === c.contact_id) x.olva = nuevoOlva ? 1 : 0;
+        c.olva = nuevoOlva ? 1 : 0;
+        pintarLista();
+      } catch (err) { alert(err.message); }
+    });
     div.querySelector(".btn-conv-menu").addEventListener("click", (e) => {
       e.stopPropagation();
       const r = e.currentTarget.getBoundingClientRect();
@@ -2131,12 +2218,27 @@ function pintarEstrellaHeader(c) {
   btn.title = tituloEstrella(c);
 }
 
-$("#buscar").addEventListener("input", debounce((e) => {
+/** Búsqueda en el navegador (al instante): nombre, teléfono, notas, clave de Shalom, anuncio o asesora. */
+function filtrarLocal(lista, texto) {
+  const norm = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const tokens = norm(texto).split(/\s+/).filter(Boolean);
+  return lista.filter((c) => {
+    const campos = norm([c.contact_name, c.profile_name, c.wa_id, c.notes, c.shalom_code, c.ad_headline, c.assigned_agent].join(" "));
+    return tokens.every((t) => campos.includes(t));
+  });
+}
+
+// El servidor afina con el texto de los mensajes (más lento), así que la lista de al lado se pinta ya.
+const buscarEnServidor = debounce(() => cargarConversaciones(), 150);
+$("#buscar").addEventListener("input", (e) => {
   estado.filtroTexto = e.target.value.trim();
   estado.limiteLista = 200;
   $("#buscador").classList.toggle("buscando", Boolean(estado.filtroTexto));
-  cargarConversaciones();
-}, 300));
+  if (estado.filtroTexto) estado.conversaciones = filtrarLocal(estado.baseLista, estado.filtroTexto);
+  else estado.conversaciones = estado.baseLista;
+  pintarLista();
+  buscarEnServidor();
+});
 $("#buscar-dias").addEventListener("change", (e) => {
   estado.filtroDias = Number(e.target.value) || 0;
   estado.limiteLista = 200;
@@ -2187,7 +2289,7 @@ $("#btn-filtro-atencion")?.addEventListener("click", () => {
 });
 
 function pintarFiltros() {
-  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroAtencion && estado.filtroProducto === "" && estado.filtroLinea === "");
+  $("#filtros button[data-mine='']").classList.toggle("activo", !estado.filtroMias && !estado.filtroAgente && !estado.filtroEtiqueta && !estado.filtroOcultos && !estado.filtroOlva && !estado.filtroAtencion && !estado.filtroProvincia && !estado.filtroCompraFecha && estado.filtroProducto === "" && estado.filtroLinea === "");
   $("#filtro-producto").value = estado.filtroProducto;
   $("#filtro-producto").classList.toggle("activo", estado.filtroProducto !== "");
   $("#filtro-linea").value = estado.filtroLinea;
@@ -2196,6 +2298,9 @@ function pintarFiltros() {
   $("#btn-filtro-ocultos").classList.toggle("activo", estado.filtroOcultos);
   $("#btn-filtro-olva").classList.toggle("activo", estado.filtroOlva);
   $("#btn-filtro-mias").classList.toggle("activo", estado.filtroMias);
+  $("#btn-filtro-provincia").classList.toggle("activo", estado.filtroProvincia);
+  const fcEl = $("#filtro-compra-fecha");
+  if (fcEl) { fcEl.value = estado.filtroCompraFecha; fcEl.classList.toggle("activo", Boolean(estado.filtroCompraFecha)); }
   $("#filtro-agente").value = estado.filtroAgente;
   $("#filtro-agente").classList.toggle("activo", Boolean(estado.filtroAgente));
   document.querySelectorAll("#filtros button[data-etiqueta]").forEach((b) => b.classList.toggle("activo", b.dataset.etiqueta === estado.filtroEtiqueta));
@@ -2216,6 +2321,8 @@ $("#filtros").addEventListener("click", (e) => {
     estado.filtroOcultos = false;
     estado.filtroOlva = false;
     estado.filtroAtencion = false;
+    estado.filtroProvincia = false;
+    estado.filtroCompraFecha = "";
     estado.filtroProducto = "";
     estado.filtroLinea = "";
   }
@@ -2225,6 +2332,18 @@ $("#filtros").addEventListener("click", (e) => {
 
 $("#btn-filtro-olva").addEventListener("click", () => {
   estado.filtroOlva = !estado.filtroOlva;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#btn-filtro-provincia").addEventListener("click", () => {
+  estado.filtroProvincia = !estado.filtroProvincia;
+  pintarFiltros();
+  cargarConversaciones();
+});
+
+$("#filtro-compra-fecha").addEventListener("change", (e) => {
+  estado.filtroCompraFecha = e.target.value || "";
   pintarFiltros();
   cargarConversaciones();
 });
@@ -2729,6 +2848,18 @@ $("#escribiendo-vivo").addEventListener("change", async (e) => {
   }
 });
 
+$("#yape-numero").addEventListener("change", async (e) => {
+  try {
+    await pedir("/api/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ yape_numero: e.target.value.trim() })
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 $("#avisos-canal").addEventListener("change", async (e) => {
   const datos = await accionAvisos({ channel: e.target.value }, e.target);
   if (datos) pintarAvisos(datos);
@@ -3091,6 +3222,7 @@ function pintarChatBase(c) {
         <button class="icono" id="btn-detalle" title="Datos del contacto">${icon("more")}</button>
       </div>
     </header>
+    <div id="barra-seguimiento"></div>
     <div id="mensajes"></div>
     <div id="zona-arrastre">Suelta la foto o el video acá</div>
     <div id="banner-recomendacion" style="display:none"></div>
@@ -3098,6 +3230,7 @@ function pintarChatBase(c) {
     <div id="preview-archivo" style="display:none"></div>
     <div id="preview-botones"></div>
     <div id="versiones-rapida" style="display:none"></div>
+    <div id="chip-secuencia" style="display:none"></div>
     <form id="form-envio">
       <button type="button" class="icono" id="btn-mas" title="Más opciones">${icon("more")}</button>
       <button type="button" class="icono" id="btn-plantillas" title="Mandar plantilla">${icon("doc")}</button>
@@ -3203,7 +3336,7 @@ function pintarChatBase(c) {
     const files = [...(e.dataTransfer.files || [])];
     if (files.length) elegirArchivos(files);
   });
-  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento("mensaje"));
+  $("#btn-seg-rapido").addEventListener("click", () => abrirModalProgramarSeguimiento());
   $("#btn-seguimiento").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-seguimientos"]); toggleSeguimientosPanel(); });
   $("#btn-mas").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-mas"]); toggleMasPanel(); });
   $("#btn-formato").addEventListener("click", (e) => { e.stopPropagation(); cerrarPaneles(["#panel-formato"]); toggleFormatoPanel(); });
@@ -3241,9 +3374,9 @@ function pintarStickersPanel() {
       ${(cacheStickers || []).map((s) => `
         <div class="sticker-item" data-id="${s.id}">
           <img src="/api/crm/media?key=${encodeURIComponent(s.media_key)}" alt="sticker" loading="lazy" />
-          <button type="button" class="sticker-borrar" data-id="${s.id}" title="Borrar sticker">${icon("trash")}</button>
+          ${estado.miRol === "admin" ? `<button type="button" class="sticker-borrar" data-id="${s.id}" title="Borrar sticker">${icon("trash")}</button>` : ""}
         </div>`).join("")}
-      <div class="sticker-item sticker-agregar" id="sticker-agregar" title="Agregar sticker">${icon("plus")}</div>
+      ${estado.miRol === "admin" ? `<div class="sticker-item sticker-agregar" id="sticker-agregar" title="Agregar sticker">${icon("plus")}</div>` : ""}
     </div>`;
   panel.querySelectorAll(".sticker-item:not(.sticker-agregar)").forEach((el) => {
     el.addEventListener("click", (e) => {
@@ -3811,14 +3944,73 @@ function textoSeguimiento(s) {
   return "";
 }
 
+/**
+ * La barra grande «Seguimiento» debajo de la cabecera del chat: prendida (cadena automática pendiente,
+ * con su próximo paso) o apagada (se cortó porque el cliente escribió, o se apagó) con el botón para
+ * reactivar el plan. Se apaga y se reactiva desde aquí; lo que mandemos no la toca.
+ */
+function pintarBarraSeguimiento(d) {
+  const barra = $("#barra-seguimiento");
+  if (!barra) return;
+  if (!d || d.compro) { barra.innerHTML = ""; barra.style.display = "none"; return; }
+  barra.style.display = "";
+  const n = d.pendientes?.length || 0;
+  if (d.activo) {
+    barra.innerHTML = `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
+      ${icon("checkBox")} <span>Seguimiento activo · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))}</span><span class="seg-barra-accion">apagar</span></button>`;
+    $("#seg-barra-btn").addEventListener("click", async () => {
+      if (!confirm(`¿Apagar el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca).`)) return;
+      try {
+        await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, accion: "apagar" }) });
+        await actualizarSeguimientosDetalle();
+      } catch (err) { alert(err.message); }
+    });
+    return;
+  }
+  if (!d.plan) {
+    barra.innerHTML = `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
+    return;
+  }
+  const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
+  const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
+  barra.innerHTML = `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
+    ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
+  $("#seg-barra-btn").addEventListener("click", () => abrirReactivarDesdeBarra(d));
+}
+
+/** El modal de reactivar (el mismo de la burbuja), con los pasos del plan del chat. */
+function abrirReactivarDesdeBarra(d) {
+  reactivando = { barra: true, pasos: d.plan.pasos };
+  $("#ra-titulo").innerHTML = `${icon("clock")} Reactivar seguimiento · ${escapar(d.plan.titulo)}`;
+  $("#ra-pasos").innerHTML = pintarPasosReactivar(d.plan.pasos, d.dia_chat);
+  $("#ra-programar").disabled = !d.plan.pasos.length;
+  $("#ra-programar").style.display = "";
+  $("#modal-reactivar-fondo").classList.add("abierto");
+}
+
+/** Las filas editables del modal de reactivar (burbuja y barra usan la misma). */
+function pintarPasosReactivar(pasos, diaChat = null) {
+  return pasos.map((p, i) => `
+      <div class="ra-paso" data-i="${i}"${p.plantilla ? ` data-plantilla="${escapar(p.plantilla)}"` : ""}>
+        <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después ${p.plantilla && p.desde === "inicio" ? `del primer mensaje del cliente (día ${Math.round(p.horas / 24)} del chat${diaChat ? `; hoy es el día ${diaChat}` : ""})` : "del paso anterior"}</label>
+        ${p.plantilla ? `<div class="ayuda-modal" style="font-size:11px;padding:4px 0">Plantilla aprobada · no editable aquí</div>` : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
+        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
+      </div>`).join("") || `<p class="ayuda-modal">Este plan no tiene pasos prendidos.</p>`;
+}
+
 async function actualizarSeguimientosDetalle() {
   const cont = $("#detalle-seguimientos");
   const conversationId = estado.conversacionActivaId;
   if (!cont || !conversationId) return;
   try {
-    const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${conversationId}`);
+    const [{ scheduled }, estadoSeg] = await Promise.all([
+      pedir(`/api/crm/scheduled?conversation_id=${conversationId}`),
+      pedir(`/api/crm/seguimiento?conversation_id=${conversationId}`).catch(() => null)
+    ]);
     actualizarEtiquetaSeguimiento(conversationId, scheduled);
     if (estado.conversacionActivaId !== conversationId) return;
+    pintarBarraSeguimiento(estadoSeg);
     estado.seguimientosDelChat = { conversationId, scheduled };
     pintarEstadoLead();
     const html = (scheduled.length ? scheduled.map((s) => `
@@ -3831,7 +4023,7 @@ async function actualizarSeguimientosDetalle() {
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">"Tras no respuesta" se cancela si el cliente escribe o si le escribes. "Manual" se cancela solo si el cliente escribe. Programar uno a mano reemplaza a los automáticos.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
+      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">La cadena automática ("tras no respuesta") se corta SOLO si el cliente escribe; lo que tú mandes o programes no la toca. La apagas o la reactivas desde la barra «Seguimiento» de arriba del chat.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
       + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
@@ -4018,15 +4210,17 @@ async function marcarAtendido(c) {
  */
 function chipSeguimientoCobro() {
   const c = chatActivo();
-  if (!c?.shalom_code) return "";
+  if (!c?.shalom_code && !c?.olva) return "";
   const programar = !c.cobro_activo;
-  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" title="${programar ? "Este chat no tiene seguimiento de cobro: tócalo para programarlo" : "El seguimiento de cobro está activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
+  const plan = c.olva && !c.shalom_code ? "olva" : "shalom";
+  const labelCourier = plan === "olva" ? "Olva" : "Shalom";
+  return `<button type="button" class="msg-seg msg-seg-cobro${programar ? "" : " msg-seg-activo"}" data-accion="${programar ? "programar" : "desactivar"}" data-plan="${plan}" title="${programar ? `Sin seguimiento de recojo en agencia (${labelCourier}): tócalo para programarlo` : "Seguimiento de recojo activo: tócalo para desactivarlo cuando pague"}">${icon("clock")} ${programar ? "PROGRAMAR SEGUIMIENTO COBRO" : "DESACTIVAR SEGUIMIENTO COBRO"}</button>`;
 }
 
 async function accionSeguimientoCobro(chip) {
   const c = chatActivo();
   if (!c) return;
-  if (chip.dataset.accion === "programar") return marcarPlan(c, "shalom");
+  if (chip.dataset.accion === "programar") return marcarPlan(c, chip.dataset.plan || "shalom");
   chip.disabled = true;
   try {
     await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "quitar_recojo" }) });
@@ -4071,7 +4265,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
           ? (m.seg_activo
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
-            : `<button type="button" class="msg-seg" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se canceló (el cliente escribió o mandaste otro mensaje): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
+            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se cortó (el cliente escribió o se apagó): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
         ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
@@ -4108,14 +4302,8 @@ async function reactivarSeguimientoRapida(chip) {
     const quickReplyId = Number(chip.dataset.q);
     const d = await pedir(`/api/crm/followup-rapida?conversation_id=${estado.conversacionActivaId}&quick_reply_id=${quickReplyId}`);
     reactivando = { chip, quickReplyId, pasos: d.pasos || [] };
-    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»`;
-    $("#ra-pasos").innerHTML = reactivando.pasos.map((p, i) => `
-      <div class="ra-paso" data-i="${i}">
-        <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
-        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después del paso anterior</label>
-        ${p.plantilla ? "" : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
-        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
-      </div>`).join("") || `<p class="ayuda-modal">Esta respuesta rápida ya no tiene pasos de seguimiento prendidos.</p>`;
+    $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento de «${escapar(d.titulo || "respuesta rápida")}»${d.universal ? " · plan universal" : ""}`;
+    $("#ra-pasos").innerHTML = pintarPasosReactivar(reactivando.pasos);
     $("#ra-programar").disabled = !reactivando.pasos.length;
     $("#ra-programar").style.display = "";
     $("#modal-reactivar-fondo").classList.add("abierto");
@@ -4130,9 +4318,9 @@ async function verSeguimientoActivo(chip) {
   chip.disabled = true;
   try {
     const { scheduled } = await pedir(`/api/crm/scheduled?conversation_id=${estado.conversacionActivaId}`);
-    const q = estado.quickReplies.find((x) => x.id === Number(chip.dataset.q));
-    const origen = q ? `Seguimiento de respuesta rápida · ${q.title}` : null;
-    const pasos = scheduled.filter((s) => s.status === "pendiente" && s.created_by === origen);
+    const qid = Number(chip.dataset.q);
+    const q = estado.quickReplies.find((x) => x.id === qid);
+    const pasos = scheduled.filter((s) => s.status === "pendiente" && Number(s.quick_reply_id) === qid);
     reactivando = null;
     $("#ra-titulo").innerHTML = `${icon("clock")} Seguimiento activo de «${escapar(q?.title || "respuesta rápida")}»`;
     $("#ra-pasos").innerHTML = pasos.map((s, i) => `
@@ -4162,13 +4350,18 @@ $("#ra-programar").addEventListener("click", async () => {
   const pasos = [...document.querySelectorAll("#ra-pasos .ra-paso")].map((el) => ({
     horas: Number(el.querySelector(".ra-horas").value) || undefined,
     body: el.querySelector(".ra-texto")?.value,
+    plantilla: el.dataset.plantilla || undefined,
     activo: el.querySelector(".ra-activo").checked
   }));
   if (!pasos.some((p) => p.activo)) { alert("Deja al menos un paso para mandar."); return; }
   boton.disabled = true;
   try {
-    await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: reactivando.quickReplyId, pasos }) });
-    reactivando.chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    if (reactivando.barra) {
+      await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, accion: "reactivar", pasos }) });
+    } else {
+      await pedir("/api/crm/followup-rapida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, quick_reply_id: reactivando.quickReplyId, pasos }) });
+      reactivando.chip.innerHTML = `${icon("clock")} Seguimiento reactivado`;
+    }
     $("#modal-reactivar-fondo").classList.remove("abierto");
     reactivando = null;
     await actualizarSeguimientosDetalle();
@@ -4200,7 +4393,7 @@ function configurarAccionesMensajes() {
     }
     const chipSeg = e.target.closest(".msg-seg");
     if (chipSeg?.classList.contains("msg-seg-cobro")) accionSeguimientoCobro(chipSeg);
-    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento("mensaje");
+    else if (chipSeg?.classList.contains("msg-seg-manual")) abrirModalProgramarSeguimiento();
     else if (chipSeg) reactivarSeguimientoRapida(chipSeg);
     const fotoChat = e.target.closest("img.foto-chat");
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
@@ -5290,7 +5483,7 @@ async function enviarMensaje(e) {
   const texto = input.value.trim();
   const adjunto = estado.archivoAdjunto;
   const rapida = estado.rapidaPendiente;
-  if (!texto && !adjunto && !rapida) return;
+  if (!texto && !adjunto && !rapida && !estado.rapidaPlantillaPrincipal) return;
   const botones = estado.botonesMensaje.slice();
   if (botones.length && adjunto) return alert("Los botones no se pueden mandar junto con un archivo: quita el archivo o los botones.");
   if (botones.length && !texto && !rapida?.media.length && !rapida?.catalogo) return alert("Los botones van con un texto: escribe el mensaje.");
@@ -5301,16 +5494,20 @@ async function enviarMensaje(e) {
   const replyToId = respondiendoA?.id || undefined;
   const rapidaUsadaId = estado.rapidaUsadaId || undefined;
   estado.rapidaUsadaId = null;
+  const rapidaPlantillaPrincipal = estado.rapidaPlantillaPrincipal;
+  estado.rapidaPlantillaPrincipal = null;
   const enVivo = salioEnVivo(conversationId) && !adjunto && !rapida && !rapidaUsadaId;
   const variante = rapidaUsadaId && estado.rapidaVariante
     ? { variante_id: estado.rapidaVariante.id, editada: texto !== (estado.rapidaVariante.texto || "").trim(), a_mano: estado.rapidaVariante.aMano || undefined }
     : {};
   estado.rapidaVariante = null;
   pintarVersionesRapida();
+  pintarChipSecuencia(null);
 
   // El cuadro queda libre al toque: la pausa con "escribiendo…" la ve el
   // cliente, no la asesora (el mensaje aparece en el chat como "enviando").
   input.value = "";
+  input.placeholder = window.matchMedia("(max-width: 600px)").matches ? "Mensaje…" : "Escribe un mensaje…";
   input.style.height = "auto";
   estado.archivoAdjunto = null; // sin revocar la vista previa: la usa la burbuja "enviando"
   estado.rapidaPendiente = null;
@@ -5392,10 +5589,18 @@ async function enviarMensaje(e) {
       if (fallidas.length) {
         alert(`Se mandaron ${rapida.media.length - fallidas.length} de ${rapida.media.length} — falló: ${fallidas[0].reason.message}`);
       }
-    } else {
+    } else if (rapidaPlantillaPrincipal && rapidaUsadaId) {
       await pedir("/api/crm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId, quick_reply_id: rapidaUsadaId })
+      });
+    } else {
+      // keepalive: true → el navegador termina el request aunque se cierre el tab.
+      await pedir("/api/crm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({ conversation_id: conversationId, body: texto, botones: botones.length ? botones : undefined, reply_to_id: replyToId, quick_reply_id: rapidaUsadaId, escribiendo_vivo: enVivo || undefined, ...variante })
       });
     }
@@ -5634,8 +5839,13 @@ function agregarRapidasA(el) {
 }
 
 agregarRapidasA($("#rapida-texto"));
+$("#rapida-insertar-yape").addEventListener("click", () => {
+  insertarEnCursor($("#rapida-texto"), "{yape}");
+  $("#rapida-texto").dispatchEvent(new Event("input", { bubbles: true }));
+  $("#rapida-texto").focus();
+});
 $("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
-$("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida());
+$("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida({ horas: 20 }, true));
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-formato, #btn-formato, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
@@ -5693,6 +5903,7 @@ function pintarSugerencias(lista) {
     if (s.tipo === "variante") return tarjetaVariante(s);
     if (s.tipo === "prueba_lista") return tarjetaPruebaLista(s);
     if (s.tipo === "saldo") return tarjetaSaldo(s);
+    if (s.tipo === "sin_pregunta") return tarjetaSinPregunta(s);
     if (s.tipo === "pregunta") return tarjetaPregunta(s);
     const esRapida = s.tipo === "respuesta_rapida";
     const esEnvio = s.tipo === "envio";
@@ -5868,6 +6079,19 @@ function pintarSugerencias(lista) {
         abrirConversacion(c);
       }
     });
+    card.querySelector(".sug-programar")?.addEventListener("click", async () => {
+      const convId = Number(card.dataset.conv);
+      let c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      if (!c) {
+        await cargarConversaciones();
+        c = estado.conversaciones.find((x) => x.conversation_id === convId);
+      }
+      if (c) {
+        $("#modal-sugerencias-fondo").classList.remove("abierto");
+        await abrirConversacion(c);
+        abrirModalProgramarSeguimiento();
+      }
+    });
     if (card.classList.contains("sug-variante")) {
       card.querySelector(".sug-descartar").addEventListener("click", (e) => accion("descartar", e.currentTarget));
       return;
@@ -5926,6 +6150,23 @@ function pintarSugerencias(lista) {
 const titulo_es_rapida = (card) => Boolean(card.querySelector(".sug-titulo")) || card.classList.contains("sug-variante");
 
 /** El asesor vio la captura del saldo: quien maneja Shalom lo confirma y la página del cliente muestra la clave. */
+/** Su último mensaje no tenía pregunta ni seguimiento (cron, crm-sugerencias.js): se agenda uno o se le pregunta algo. */
+function tarjetaSinPregunta(s) {
+  return `
+    <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
+      <div class="sug-cabecera"><span class="sug-tipo">${icon("clock")} ${escapar(s.nombre || "Cliente")}</span><span class="sub">+${escapar(s.wa_id || "")}</span></div>
+      <div class="sub">${escapar(s.motivo || "")}</div>
+      <div class="sug-chat"><p class="sub">Cargando conversación…</p></div>
+      <textarea class="sug-texto" hidden>${escapar(s.texto || "-")}</textarea>
+      <div class="sug-acciones">
+        <span class="sub sug-origen">${escapar(s.origen || "")}</span>
+        <button type="button" class="sug-icono sug-abrir" title="Abrir chat">${icon("chat")}</button>
+        <button type="button" class="sug-icono sug-descartar" title="Descartar">${icon("trash")}</button>
+        <div class="sug-enviar-grupo"><button type="button" class="sug-programar">${icon("clock")} Programar seguimiento</button></div>
+      </div>
+    </div>`;
+}
+
 function tarjetaSaldo(s) {
   return `
     <div class="tarjeta-sugerencia sug-variante" data-id="${s.id}" data-conv="${s.conversation_id || ""}">
@@ -6384,8 +6625,9 @@ function buscarRapidas(lista, consulta) {
 }
 
 async function cargarQuickReplies() {
-  const { quick_replies } = await pedir("/api/crm/quick-replies");
+  const { quick_replies, orden } = await pedir("/api/crm/quick-replies");
   estado.quickReplies = quick_replies;
+  estado.rapidasOrden = orden || "uso";
 }
 
 async function toggleQuickPanel() {
@@ -6395,6 +6637,7 @@ async function toggleQuickPanel() {
   panel.classList.toggle("abierto");
   if (seAbre) {
     estado.filtroRapidas = "";
+    estado.filtroRapidasCategoria = "";
     pintarQuickPanel();
     // Se refresca del servidor cada vez que se abre, para ver al toque las
     // que haya creado otra vendedora — no solo lo que se cargó al iniciar sesión.
@@ -6408,25 +6651,30 @@ function pintarQuickPanel() {
   if (!panel) return;
 
   const buscando = Boolean(estado.filtroRapidas.trim());
+  const cat = estado.filtroRapidasCategoria || "";
   // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
   // Las de su producto primero, después las generales (rapidasDelChat).
-  const lista = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  const listaBase = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  const lista = cat ? listaBase.filter((q) => (q.categoria || "") === cat) : listaBase;
   const prodChat = productoDe(chatActivo()?.producto_id);
+  const CATS = [["", "Todas"], ["ventas", "Ventas"], ["atencion", "Atención al cliente"]];
 
   panel.innerHTML = `
     <div class="buscador-rapidas"><input type="text" id="rapidas-buscar" placeholder="Buscar respuesta rápida…" value="${escapar(estado.filtroRapidas)}" /></div>
+    <div class="rapidas-cats">${CATS.map(([v, l]) => `<button type="button" class="rapida-cat-btn${cat === v ? " activa" : ""}" data-cat="${v}">${l}</button>`).join("")}</div>
     ${prodChat ? `<div class="rapidas-producto sub">${icon("box")} Chat de <b>${escapar(prodChat.nombre)}</b>: primero sus respuestas, después las demás.
       <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="rapidas-solo" ${rapidasSoloProducto() ? "checked" : ""} /> Solo las de este producto</label></div>` : ""}
+    ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según el orden del equipo. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
     ${lista.map((q) => {
       const foto = q.media[0];
       return `
-      <div class="item" data-id="${q.id}">
-        ${buscando ? "" : `<span class="arrastrar" title="Arrastra para ordenar">⋮⋮</span>`}
+      <div class="item${q.fijada ? " fijada" : ""}" data-id="${q.id}">
+        ${buscando ? "" : q.fijada ? `<span class="fijada-icono" title="Fijada arriba">${icon("star")}</span>` : `<span class="arrastrar" title="Arrastra para reacomodar">⋮⋮</span>`}
         ${q.catalogo ? `<div class="miniatura">${icon("bag")}</div>`
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}</div>
+          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}${q.plantilla_principal ? ` <span class="badge-producto">${icon("bolt")} Plantilla</span>` : ""}</div>
           ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>
@@ -6439,16 +6687,24 @@ function pintarQuickPanel() {
       <button id="ordenar-rapidas" type="button">${icon("tag")} Ordenar por número</button>
     </footer>`;
 
+  panel.querySelectorAll(".rapida-cat-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      estado.filtroRapidasCategoria = btn.dataset.cat || "";
+      pintarQuickPanel();
+    });
+  });
   $("#rapidas-solo")?.addEventListener("change", (e) => {
     try { localStorage.setItem("crm_rapidas_solo", e.target.checked ? "1" : "0"); } catch {}
     pintarQuickPanel();
   });
+  const _pintarD = debounce(() => {
+    pintarQuickPanel();
+    const inp = $("#rapidas-buscar");
+    if (inp) { inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); }
+  }, 180);
   $("#rapidas-buscar").addEventListener("input", (e) => {
     estado.filtroRapidas = e.target.value;
-    pintarQuickPanel();
-    $("#rapidas-buscar").focus();
-    const v = $("#rapidas-buscar").value;
-    $("#rapidas-buscar").setSelectionRange(v.length, v.length);
+    _pintarD();
   });
 
   if (!buscando) activarArrastreRapidas(panel);
@@ -6541,7 +6797,7 @@ function activarArrastreRapidas(panel) {
       // Escucha en window: al mover el item en la lista el navegador suelta la
       // captura del puntero, y el ⋮⋮ dejaría de recibir los movimientos.
       const mover = (ev) => {
-        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]");
+        const bajo = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#panel-rapidas .item[data-id]:not(.fijada)");
         if (bajo && bajo !== item) {
           const r = bajo.getBoundingClientRect();
           bajo[ev.clientY < r.top + r.height / 2 ? "before" : "after"](item);
@@ -6577,6 +6833,21 @@ function activarArrastreRapidas(panel) {
   });
 }
 
+/** Quita la respuesta rápida del escribidor (equivalente a tocar la X del chip). */
+function deseleccionarRapida() {
+  const inp = $("#texto-envio");
+  if (inp) { inp.value = ""; inp.style.height = ""; inp.placeholder = "Escribe un mensaje…"; }
+  estado.rapidaUsadaId = null;
+  estado.rapidaVariante = null;
+  estado.rapidaPlantillaPrincipal = null;
+  estado.rapidaPendiente = null;
+  estado.botonesMensaje = [];
+  pintarBotonesMensaje();
+  pintarPreviewArchivo();
+  pintarVersionesRapida();
+  pintarChipSecuencia(null);
+}
+
 /** Elegir una respuesta rápida ya no la manda al toque — la pone en el escribidor (texto y/o adjunto pendiente) para que el vendedor la revise/edite y mande con Enter o el botón, como cualquier otro mensaje. */
 /**
  * Pone la respuesta rápida en el cuadro. Si tiene versiones en prueba:
@@ -6601,7 +6872,13 @@ function usarQuickReply(q, indice = null) {
   const i = aMano ? indice : versiones && !q.orden_fijo ? sortearVersion(q) : 0;
   const version = versiones ? versiones[i] : { id: 0, texto: q.body || "" };
   estado.rapidaVariante = { id: version.id, texto: version.texto, aMano: Boolean(aMano), indice: i, q };
-  ponerTextoRapida(version.texto);
+  estado.rapidaPlantillaPrincipal = q.plantilla_principal || null;
+  if (!q.plantilla_principal) {
+    ponerTextoRapida(version.texto);
+  } else {
+    const _inp = $("#texto-envio");
+    if (_inp) { _inp.placeholder = "Plantilla lista → pulsa Enviar para mandarla"; _inp.focus(); }
+  }
 
   // "Con catálogo": sale el catálogo o el producto en vez de sus fotos/videos.
   estado.rapidaPendiente = q.catalogo ? { media: [], catalogo: q.catalogo, catalogo_nombre: q.catalogo_nombre || null, despues: Boolean(q.catalogo_despues) }
@@ -6611,6 +6888,7 @@ function usarQuickReply(q, indice = null) {
   pintarBotonesMensaje();
   pintarPreviewArchivo();
   pintarVersionesRapida();
+  pintarChipSecuencia(q);
 }
 
 function ponerTextoRapida(texto) {
@@ -6648,18 +6926,57 @@ function botonesVersiones(q, activa = null) {
     `<button type="button" class="version${i === activa ? " activa" : ""}" data-q="${q.id}" data-i="${i}" title="${escapar(v.texto)}">${i + 1}${q.orden_fijo && i === 0 ? icon("star") : ""}</button>`).join("")}</div>`;
 }
 
-/** La barrita encima del cuadro para cambiar de versión con un toque. */
+/** La barrita encima del cuadro: nombre de la rápida activa + X para deseleccionar + botones de versión si los hay. */
 function pintarVersionesRapida() {
   const cont = $("#versiones-rapida");
   if (!cont) return;
   const rv = estado.rapidaVariante;
-  if (!rv?.q || !versionesDe(rv.q) || !estado.rapidaUsadaId) {
+  const titulo = rv?.q?.title || "";
+  if (!estado.rapidaUsadaId || !titulo) {
     cont.style.display = "none";
     cont.innerHTML = "";
     return;
   }
+  const vs = versionesDe(rv.q);
   cont.style.display = "flex";
-  cont.innerHTML = `<span class="sub">${escapar(rv.q.title)} · versión</span>${botonesVersiones(rv.q, rv.indice)}`;
+  cont.innerHTML = `<span class="sub" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapar(titulo)}${vs ? " · versión" : ""}</span>${vs ? botonesVersiones(rv.q, rv.indice) : ""}<button type="button" id="btn-deseleccionar-rapida" title="Quitar respuesta rápida">${icon("close")}</button>`;
+  $("#btn-deseleccionar-rapida")?.addEventListener("click", deseleccionarRapida);
+}
+
+function pintarChipSecuencia(q) {
+  const cont = $("#chip-secuencia");
+  if (!cont) return;
+  const m = q && /^(provincia|lima)\s*(?:mensaje\s*)?1$/i.exec((q.title || "").trim());
+  if (!m) { cont.style.display = "none"; cont.innerHTML = ""; return; }
+  const grupo = m[1].toLowerCase();
+  const label = grupo === "provincia" ? "Provincia" : "Lima";
+  cont.style.display = "";
+  cont.innerHTML = `<button type="button" id="btn-enviar-secuencia" title="Envía ${label} 1, 2 y 3 con pausas entre ellos">${icon("send")} Enviar ${label} 1·2·3</button>`;
+  $("#btn-enviar-secuencia").addEventListener("click", () => {
+    const convId = estado.conversacionActivaId;
+    cont.style.display = "none"; cont.innerHTML = "";
+    $("#form-envio")?.requestSubmit();
+    for (const n of [2, 3]) {
+      const sq = (estado.quickReplies || []).find(x =>
+        new RegExp(`^${grupo}\\s*(?:mensaje\\s*)?${n}$`, "i").test((x.title || "").trim())
+      );
+      if (!sq) continue;
+      const versiones = versionesDe(sq);
+      const i = versiones && !sq.orden_fijo ? sortearVersion(sq) : 0;
+      const version = versiones ? versiones[i] : { id: 0, texto: sq.body || "" };
+      const body = version.texto || sq.body || "";
+      if (!body) continue;
+      const qId = sq.id; const vId = version.id || undefined;
+      encolarEnvio(convId, [], async () => {
+        await new Promise(r => setTimeout(r, 2000));
+        return pedir("/api/crm/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: convId, body, quick_reply_id: qId, variante_id: vId })
+        });
+      }, (err) => alert(`Error al mandar ${sq.title}: ${err.message}`));
+    }
+  });
 }
 
 document.addEventListener("click", (e) => {
@@ -6680,8 +6997,10 @@ function abrirModalRapidaNueva() {
   ponerCamposBotones($("#rapida-botones"), "rapida-boton", []);
   $("#rapida-archivo").value = "";
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
+  if ($("#rapida-categoria")) $("#rapida-categoria").value = "";
   pintarCatalogoRapida(null);
   $("#rapida-catalogo-orden").value = "0";
+  llenarSelectPlantillaPrincipal();
   pintarSeguimientoRapida(null);
   // Nueva desde un chat de un producto: ya sale de ese producto.
   $("#rapida-producto").innerHTML = opcionesProducto(chatActivo()?.producto_id || "");
@@ -6710,7 +7029,8 @@ function pasoRapidaHtml(p, n) {
       </div>
       <div class="rp-bloque-plantilla" ${esPlantilla ? "" : "hidden"}>
         <select class="rp-plantilla" style="width:100%" data-actual="${escapar(p.plantilla || "")}"><option value="${escapar(p.plantilla || "")}">${escapar(p.plantilla || "Elige una plantilla aprobada")}</option></select>
-        <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque ya se haya cerrado la ventana de 24 h (es una plantilla pagada). Tiene que estar aprobada en Meta.</div>
+        <select class="rp-desde" style="width:100%;margin-top:4px" title="Desde cuándo se cuentan los días"><option value="anterior"${p.desde === "inicio" ? "" : " selected"}>Los días se cuentan desde el paso anterior</option><option value="inicio"${p.desde === "inicio" ? " selected" : ""}>Los días se cuentan desde el primer mensaje del cliente (día N del chat)</option></select>
+        <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque ya se haya cerrado la ventana de 24 h (es una plantilla pagada). Tiene que estar aprobada en Meta. «Día N del chat» sirve para el día 3 o el día 5: si ese día ya pasó cuando se reactiva, se salta.</div>
       </div>
       <div class="rp-bloque-texto" ${esPlantilla ? "hidden" : ""}>
       <textarea class="rp-texto" rows="3" placeholder="Texto del seguimiento (opcional si adjuntas un archivo)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
@@ -6736,6 +7056,16 @@ $("#rapida-producto").addEventListener("change", () => {
   if (document.querySelector("#rapida-pasos .rp-plantilla")) llenarPlantillasDePasos();
 });
 
+async function llenarSelectPlantillaPrincipal(actual = "") {
+  const sel = $("#rapida-plantilla-principal");
+  if (!sel) return;
+  const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
+  let nombres = [];
+  try { nombres = (await pedir(`/api/crm/templates${lineaId ? `?linea_id=${lineaId}` : ""}`)).templates.filter((t) => t.status === "APPROVED").map((t) => t.name); } catch { /* sin Meta */ }
+  const lista = [...new Set([...(actual ? [actual] : []), ...nombres])];
+  sel.innerHTML = `<option value="">Sin plantilla (usa el texto de arriba)</option>` + lista.map((n) => `<option value="${escapar(n)}"${n === actual ? " selected" : ""}>${escapar(n)}</option>`).join("");
+}
+
 async function llenarPlantillasDePasos() {
   const lineaId = productoDe(Number($("#rapida-producto")?.value) || null)?.linea_id || null;
   let nombres = [];
@@ -6755,19 +7085,29 @@ function renumerarPasosRapida() {
   $("#rapida-pasos").querySelectorAll(".rp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
   const filas = [...$("#rapida-pasos").children];
   filas.forEach((f, i) => { f.querySelector(".rp-subir").disabled = i === 0; f.querySelector(".rp-bajar").disabled = i === filas.length - 1; });
-  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 4 ? "none" : "";
+  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 6 || modoSeguimientoRapida() === "ninguno" ? "none" : "";
 }
 
-function agregarPasoRapida(p = { horas: 20 }) {
+/** Qué seguimiento usa la respuesta rápida del editor: "universal" | "propio" | "ninguno". */
+function modoSeguimientoRapida() {
+  return document.querySelector('input[name="rapida-seg-modo"]:checked')?.value || "propio";
+}
+
+function agregarPasoRapida(p = { horas: 20 }, marcaEdicion = false) {
   const cont = $("#rapida-pasos");
   cont.insertAdjacentHTML("beforeend", pasoRapidaHtml(p, cont.children.length + 1));
   const el = cont.lastElementChild;
   agregarRapidasA(el.querySelector(".rp-texto"));
-  el.querySelector(".rp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosRapida(); });
-  el.querySelector(".rp-activo").addEventListener("change", (e) => el.classList.toggle("paso-apagado", !e.target.checked));
-  el.querySelector(".rp-subir").addEventListener("click", () => { el.previousElementSibling?.before(el); renumerarPasosRapida(); });
-  el.querySelector(".rp-bajar").addEventListener("click", () => { el.nextElementSibling?.after(el); renumerarPasosRapida(); });
+  el.querySelector(".rp-texto").addEventListener("input", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  el.querySelector(".rp-horas").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  el.querySelector(".rp-dias").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  if (marcaEdicion) estado.rapidaPasosEditados = true;
+  el.querySelector(".rp-quitar").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.remove(); renumerarPasosRapida(); });
+  el.querySelector(".rp-activo").addEventListener("change", (e) => { estado.rapidaPasosEditados = true; el.classList.toggle("paso-apagado", !e.target.checked); });
+  el.querySelector(".rp-subir").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.previousElementSibling?.before(el); renumerarPasosRapida(); });
+  el.querySelector(".rp-bajar").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.nextElementSibling?.after(el); renumerarPasosRapida(); });
   el.querySelector(".rp-tipo").addEventListener("change", (e) => {
+    estado.rapidaPasosEditados = true;
     const pl = e.target.value === "plantilla";
     el.querySelector(".rp-bloque-plantilla").hidden = !pl;
     el.querySelector(".rp-bloque-texto").hidden = pl;
@@ -6780,11 +7120,13 @@ function agregarPasoRapida(p = { horas: 20 }) {
   input.addEventListener("change", () => {
     const f = input.files[0];
     if (!f) return;
+    estado.rapidaPasosEditados = true;
     el._archivo = f;
     el.querySelector(".rp-nombre").textContent = f.name;
     el.querySelector(".rp-quitar-archivo").hidden = false;
   });
   el.querySelector(".rp-quitar-archivo").addEventListener("click", () => {
+    estado.rapidaPasosEditados = true;
     el._archivo = null;
     input.value = "";
     el.dataset.mediaKey = "";
@@ -6800,7 +7142,7 @@ async function leerPasosRapida() {
   for (const el of $("#rapida-pasos").children) {
     if (el.querySelector(".rp-tipo").value === "plantilla") {
       const nombre = el.querySelector(".rp-plantilla").value;
-      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
+      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-desde")?.value === "inicio" ? { desde: "inicio" } : {}), ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
       continue;
     }
     const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
@@ -6818,22 +7160,94 @@ async function leerPasosRapida() {
   return pasos;
 }
 
-/** La secuencia de seguimiento en el modal, y el interruptor global (solo admin). */
-function pintarSeguimientoRapida(q) {
+/** Pinta una lista de pasos en el editor (propios o del plan universal). */
+function pintarPasosEnEditor(pasos, { soloLectura = false } = {}) {
   $("#rapida-pasos").innerHTML = "";
-  const pasos = q?.followup_pasos?.length ? q.followup_pasos
-    : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
   pasos.forEach((p) => agregarPasoRapida(p));
   renumerarPasosRapida();
   if (pasos.some((p) => p.plantilla)) llenarPlantillasDePasos();
+  if (soloLectura) $("#rapida-pasos").querySelectorAll("input, textarea, select, button").forEach((el) => { el.disabled = true; });
+}
+
+/**
+ * El seguimiento de la respuesta rápida en el modal: plan universal (los mismos pasos para todas las
+ * rápidas que lo usan; cambiarlos aquí los cambia para todas), pasos propios, o ninguno. Más el
+ * interruptor global (solo admin).
+ */
+function pintarSeguimientoRapida(q) {
+  estado.rapidaPasosEditados = false;
+  estado.rapidaUniversalEditado = false;
+  const propios = q?.followup_pasos?.length ? q.followup_pasos
+    : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
+  estado.rapidaPasosPropios = propios;
+  estado.rapidaPlanUniversal = estado.rapidaPlanUniversal || [];
+  const modo = q ? (q.followup_universal ? "universal" : propios.length ? "propio" : "ninguno") : "universal";
+  estado.rapidaSegModoAnterior = modo;
+  const radio = document.querySelector(`input[name="rapida-seg-modo"][value="${modo}"]`);
+  if (radio) radio.checked = true;
   const fila = $("#rapida-seg-global-fila");
   fila.style.display = "none";
-  if (estado.miRol !== "admin") return;
   pedir("/api/crm/settings").then((s) => {
+    estado.rapidaPlanUniversal = s.seguimiento_universal || [];
+    estado.rapidasConUniversal = s.rapidas_con_universal || 0;
+    estado.rapidasConPropio = s.rapidas_con_propio || 0;
+    if (!q && !estado.rapidaPlanUniversal.length) {
+      // Sin plan universal todavía: una rápida nueva arranca sin seguimiento.
+      document.querySelector('input[name="rapida-seg-modo"][value="ninguno"]').checked = true;
+    }
+    aplicarModoSeguimientoRapida();
+    if (estado.miRol !== "admin") return;
     $("#rapida-seg-global").checked = s.quick_followup_auto;
     fila.style.display = "flex";
-  }).catch(() => {});
+  }).catch(() => aplicarModoSeguimientoRapida());
 }
+
+/** Muestra en el editor los pasos del modo elegido (universal, propios o ninguno). */
+function aplicarModoSeguimientoRapida() {
+  const modo = modoSeguimientoRapida();
+  const aviso = $("#rapida-universal-aviso");
+  const esAdmin = estado.miRol === "admin";
+  if (modo === "universal") {
+    pintarPasosEnEditor(estado.rapidaPlanUniversal || [], { soloLectura: !esAdmin });
+    const n = estado.rapidasConUniversal || 0;
+    aviso.style.display = "";
+    aviso.innerHTML = `${icon("bolt")} <b>Plan universal</b>: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}. ${esAdmin ? "Si cambias estos pasos aquí, cambian para todas las que lo usan (al guardar)." : "Solo el admin lo edita."}`
+      + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-universal-todas" style="font-size:12px;margin-top:6px;width:100%">${icon("check")} Usar el plan universal en todas las respuestas con seguimiento (${estado.rapidasConPropio || 0} con pasos propios)</button>` : "");
+    $("#rapida-universal-todas")?.addEventListener("click", async (e) => {
+      if (!confirm("¿Todas las respuestas rápidas que hoy tienen seguimiento propio pasan a usar el plan universal? Sus pasos propios quedan guardados por si vuelves a elegirlos.")) return;
+      e.target.disabled = true;
+      try {
+        await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aplicar_universal_a_rapidas: true }) });
+        await cargarQuickReplies();
+        const s = await pedir("/api/crm/settings");
+        estado.rapidasConUniversal = s.rapidas_con_universal || 0;
+        estado.rapidasConPropio = s.rapidas_con_propio || 0;
+        aplicarModoSeguimientoRapida();
+      } catch (err) { alert(err.message); } finally { e.target.disabled = false; }
+    });
+  } else if (modo === "propio") {
+    aviso.style.display = "none";
+    pintarPasosEnEditor(estado.rapidaPasosPropios || []);
+  } else {
+    aviso.style.display = "none";
+    $("#rapida-pasos").innerHTML = "";
+  }
+  renumerarPasosRapida();
+}
+
+document.querySelectorAll('input[name="rapida-seg-modo"]').forEach((r) => r.addEventListener("change", async () => {
+  // Al salir de "propios" se guardan en memoria los pasos tal como quedaron en el editor.
+  const anterior = estado.rapidaSegModoAnterior || (r.value === "propio" ? "universal" : "propio");
+  if (anterior === "propio" && $("#rapida-pasos").children.length && estado.rapidaPasosEditados) {
+    try { estado.rapidaPasosPropios = await leerPasosRapida(); } catch { /* se queda con lo que había */ }
+  }
+  if (anterior === "universal" && estado.rapidaPasosEditados && estado.miRol === "admin") {
+    try { estado.rapidaPlanUniversal = await leerPasosRapida(); estado.rapidaUniversalEditado = true; } catch { /* idem */ }
+  }
+  estado.rapidaSegModoAnterior = r.value;
+  estado.rapidaPasosEditados = true;
+  aplicarModoSeguimientoRapida();
+}));
 
 $("#rapida-seg-global").addEventListener("change", async (e) => {
   try {
@@ -6852,6 +7266,7 @@ function abrirModalRapidaEdicion(q) {
   estado.editandoRapidaId = q.id;
   $("#rapida-modal-titulo").textContent = "Editar respuesta rápida";
   $("#rapida-titulo").value = q.title;
+  if ($("#rapida-categoria")) $("#rapida-categoria").value = q.categoria || "";
   $("#rapida-texto").value = q.body || "";
   ponerCamposBotones($("#rapida-botones"), "rapida-boton", q.botones || []);
   $("#rapida-archivo").value = "";
@@ -6860,6 +7275,7 @@ function abrirModalRapidaEdicion(q) {
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
   $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
+  llenarSelectPlantillaPrincipal(q.plantilla_principal || "");
   pintarSeguimientoRapida(q);
   $("#rapida-producto").innerHTML = opcionesProducto(q.producto_id || "");
   $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
@@ -6896,9 +7312,10 @@ $("#rapida-crear").addEventListener("click", async () => {
   const cat = catalogoDeSelect($("#rapida-catalogo"));
   // Con catálogo no se suben fotos nuevas: las que tenía se conservan.
   const files = cat.catalogo ? [] : [...$("#rapida-archivo").files];
+  const plantillaPrincipal = ($("#rapida-plantilla-principal")?.value || "").trim() || null;
   const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
-  if (!body && !files.length && !cat.catalogo && !editandoId) return alert("Necesita texto, al menos un archivo o el catálogo.");
+  if (!body && !files.length && !cat.catalogo && !plantillaPrincipal && !editandoId) return alert("Necesita texto, al menos un archivo, el catálogo o una plantilla principal.");
 
   const btn = $("#rapida-crear");
   btn.disabled = true;
@@ -6912,18 +7329,35 @@ $("#rapida-crear").addEventListener("click", async () => {
         media_keys.push({ media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
       }
     }
-    const followup_pasos = await leerPasosRapida();
+    // Qué seguimiento lleva: el plan universal (sus pasos se guardan en los ajustes, una sola vez para
+    // todas), pasos propios (solo se releen del editor si se tocaron) o ninguno.
+    const modo = modoSeguimientoRapida();
+    const seguimiento = {};
+    if (modo === "universal") {
+      seguimiento.followup_universal = true;
+      if (estado.miRol === "admin" && (estado.rapidaPasosEditados || estado.rapidaUniversalEditado)) {
+        const universal = estado.rapidaUniversalEditado && !estado.rapidaPasosEditados ? estado.rapidaPlanUniversal : await leerPasosRapida();
+        await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seguimiento_universal: universal }) });
+      }
+    } else if (modo === "propio") {
+      seguimiento.followup_universal = false;
+      if (estado.rapidaPasosEditados || !editandoId) seguimiento.followup_pasos = await leerPasosRapida();
+    } else {
+      seguimiento.followup_universal = false;
+      seguimiento.followup_pasos = [];
+    }
+    const categoriaModal = $("#rapida-categoria")?.value || null;
     if (editandoId) {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos: [], ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
       });
     }
     await cargarQuickReplies();
@@ -7238,7 +7672,7 @@ function abrirModalProgramarSeguimiento(modo) {
     estado.quickReplies.filter((q) => !/\{link\}/i.test(q.body || "")).map((q) => `<option value="${q.id}">${escapar(q.title)}${textoRapida(q) ? ` — ${escapar(recortarTexto(textoRapida(q).replace(/\s+/g, " "), 70))}` : ""}</option>`).join("");
   prepararChipsVentana();
   elegirCuando($("#seg-chips button[data-ventana]:not(:disabled)") || $("#seg-chips button:not(:disabled)"));
-  ponerModoSeguimiento(typeof modo === "string" ? modo : "mensaje");
+  ponerModoSeguimiento(["secuencia", "rapido", "libre"].includes(modo) ? modo : "secuencia");
   $("#modal-seguimiento-fondo").classList.add("abierto");
 }
 
@@ -7347,19 +7781,38 @@ function pintarReglaSeguimiento() {
   if (!el) return;
   const leadId = datosLead?.settings?.ad_followup_sequence_id;
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
-  $("#seg-siempre-fila").style.display = estado.segModo === "mensaje" ? "flex" : "none";
+  $("#seg-siempre-fila").style.display = estado.segModo !== "secuencia" ? "flex" : "none";
   el.textContent = esLead
     ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
-    : estado.segModo === "mensaje" && $("#seg-siempre").checked
+    : estado.segModo !== "secuencia" && $("#seg-siempre").checked
       ? "Se manda sí o sí a esa hora, aunque el cliente o tú escriban antes. Solo lo cancelas tú desde el panel derecho."
       : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";
+}
+
+/**
+ * Qué se ve según la pestaña. «Mensaje rápido»: el buscador de respuestas rápidas y plantillas, con el texto
+ * editable. «Mensaje libre»: texto, botones, foto/video y catálogo. Con plantilla elegida, solo queda su bloque.
+ */
+function aplicarModoSeg() {
+  const modo = estado.segModo;
+  const plantilla = Boolean(estado.segPlantilla);
+  const editando = Boolean(estado.editandoSeguimientoId);
+  const libre = modo === "libre" && !plantilla;
+  const mostrar = (el, si) => { if (el) el.style.display = si ? "" : "none"; };
+  mostrar($("#seg-modo-mensaje"), modo !== "secuencia");
+  mostrar($("#seg-modo-secuencia"), modo === "secuencia");
+  mostrar($("#seg-elegir"), modo === "rapido" && !editando);
+  mostrar($("#seg-texto"), modo !== "secuencia" && !plantilla);
+  mostrar($("#seg-botones"), libre);
+  mostrar($("#seg-botones").previousElementSibling, libre);
+  mostrar($("#seg-archivo"), libre && !editando);
+  mostrar($("#seg-catalogo"), libre && !editando);
 }
 
 function ponerModoSeguimiento(modo) {
   estado.segModo = modo;
   document.querySelectorAll("#seg-tabs button").forEach((b) => b.classList.toggle("activo", b.dataset.modo === modo));
-  $("#seg-modo-mensaje").style.display = modo === "mensaje" ? "" : "none";
-  $("#seg-modo-secuencia").style.display = modo === "secuencia" ? "" : "none";
+  aplicarModoSeg();
   $("#seg-crear").textContent = modo === "secuencia" ? "Programar secuencia" : (estado.editandoSeguimientoId ? "Guardar cambios" : "Programar");
   if (modo === "secuencia") cargarSecuenciasSeguimiento();
   pintarReglaSeguimiento();
@@ -7392,6 +7845,7 @@ async function cargarSecuenciasSeguimiento() {
   cargarDatosLead().then(pintarReglaSeguimiento).catch(() => {});
 }
 
+/** Cada mensaje activo de la secuencia con su hora de salida (por defecto, su espera contada desde ahora). Se pueden cambiar. */
 function pintarPreviewSecuenciaSeg() {
   const cont = $("#seg-secuencia-preview");
   const seq = secuenciasSeguimiento.find((x) => String(x.id) === $("#seg-secuencia").value);
@@ -7399,12 +7853,12 @@ function pintarPreviewSecuenciaSeg() {
     cont.innerHTML = `<p class="ayuda-modal">Crea una con el botón de abajo: varios mensajes, cada uno con su espera en horas o días.</p>`;
     return;
   }
-  const ahora = Date.now();
+  const activos = seq.steps.filter((p) => p.activo !== 0);
   let acum = 0;
-  cont.innerHTML = `<ol class="lead-timeline seg-timeline">${seq.steps.map((p) => {
+  cont.innerHTML = `<ol class="lead-timeline seg-timeline">${activos.map((p, i) => {
     acum += p.delay_minutes;
-    const cuando = new Date(ahora + acum * 60000).toLocaleString("es-PE", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    return `<li><strong>En ${formatearMomento(acum)}</strong> <span class="sub">(${cuando})</span>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} — ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
+    const hora = aInputLocal(new Date(Date.now() + acum * 60000));
+    return `<li><div class="seg-hora-fila"><span class="sub">Mensaje ${i + 1}</span><input type="datetime-local" class="seg-hora-paso" value="${hora}" min="${aInputLocal(new Date())}" /></div>${p.media_key ? " " + icon(p.media_type === "video" ? "video" : "image") : ""} ${escapar(recortarTexto(resumenPaso(p), 240))}</li>`;
   }).join("")}</ol>`;
 }
 
@@ -7419,8 +7873,6 @@ $("#seg-gestionar-secuencias").addEventListener("click", () => abrirModalSecuenc
 function ponerPlantillaSeg(t) {
   estado.segPlantilla = t || null;
   if (t) bloquePlantilla($("#seg-plantilla"), t); else quitarBloquePlantilla($("#seg-plantilla"));
-  const oculto = t ? "none" : "";
-  [$("#seg-texto"), $("#seg-botones"), $("#seg-botones").previousElementSibling, $("#seg-archivo"), $("#seg-catalogo")].forEach((el) => { el.style.display = oculto; });
   if (t) {
     $("#seg-rapida").value = "";
     estado.segRapidaMedia = null;
@@ -7429,6 +7881,7 @@ function ponerPlantillaSeg(t) {
     pintarVersionesSeg(null);
     pintarPreviewSegRapida();
   }
+  aplicarModoSeg();
   $("#seg-elegir").innerHTML = `${icon("search")} ${t ? `Plantilla: ${escapar(t.name)}` : "Buscar respuesta rápida o plantilla"}`;
   if (!$("#modal-seguimiento-fondo").classList.contains("abierto")) return;
   prepararChipsVentana();
@@ -7524,7 +7977,7 @@ function abrirModalEditarSeguimiento(s) {
   estado.editandoSeguimientoId = s.id;
   $("#seg-modal-titulo").textContent = "Editar seguimiento";
   $("#seg-tabs").style.display = "none";
-  ponerModoSeguimiento("mensaje");
+  ponerModoSeguimiento("libre");
   $("#seg-archivo").style.display = "none";
   $("#seg-catalogo").style.display = "none";
   $("#seg-elegir").style.display = "none";
@@ -7604,13 +8057,17 @@ $("#seg-cancelar").addEventListener("click", () => {
 async function programarSecuenciaDesdeModal() {
   const sequenceId = Number($("#seg-secuencia").value);
   if (!sequenceId) return alert("Elige una secuencia (o créala con \"Crear / editar secuencias\").");
+  const horas = [...document.querySelectorAll("#seg-secuencia-preview .seg-hora-paso")].map((i) => new Date(i.value).getTime());
+  if (!horas.length || horas.some((t) => !t)) return alert("Pon la hora de cada mensaje.");
+  if (horas.some((t) => t <= Date.now())) return alert("Hay un mensaje con una hora que ya pasó: ponle una futura.");
+  if (horas.some((t, i) => i && t <= horas[i - 1])) return alert("Cada mensaje tiene que salir después del anterior.");
   const btn = $("#seg-crear");
   btn.disabled = true;
   try {
     await pedir("/api/crm/followup-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: estado.segConversacionId, sequence_id: sequenceId })
+      body: JSON.stringify({ conversation_id: estado.segConversacionId, sequence_id: sequenceId, horas: horas.map((t) => new Date(t).toISOString()) })
     });
     $("#modal-seguimiento-fondo").classList.remove("abierto");
     limpiarFormSeguimiento();
@@ -8026,6 +8483,8 @@ async function pintarEquipo() {
       $("#sin-visto-fila").style.display = "flex";
       $("#escribiendo-vivo").checked = s.escribiendo_vivo;
       $("#escribiendo-vivo-fila").style.display = "flex";
+      $("#yape-numero").value = s.yape_numero || "";
+      $("#yape-numero-fila").style.display = "block";
     }).catch(() => {});
   }
   const { agents } = await pedir("/api/crm/agents");
@@ -8480,7 +8939,7 @@ function pintarShalom(c, editando = false) {
     const btn = $("#shalom-guardar");
     btn.disabled = true;
     try {
-      await pedir("/api/crm/contacts", {
+      const r = await pedir("/api/crm/contacts", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contact_id: c.contact_id, shalom_code: valor })
@@ -8493,6 +8952,8 @@ function pintarShalom(c, editando = false) {
     if (otro) abrirConversacion(otro);
   }));
   pintarShalom(c);
+  // El servidor programó el cobro al guardar la clave: se refresca el chip de cada chat.
+  if (r.seguimiento?.cobro_programado) { await sincronizar(); pintarMensajes(); }
     } catch (err) {
       $("#shalom-estado").textContent = `No se guardó: ${err.message}`;
       btn.disabled = false;

@@ -10,7 +10,7 @@
  * llamada de red antes de responder.
  */
 
-import { activarPlanTrasAviso, rearmarPlanShalom } from "../lib/planes-plantilla.js";
+import { activarPlanTrasAviso, rearmarPlanShalom, programarPlan } from "../lib/planes-plantilla.js";
 import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
 import {
   obtenerOCrearContacto,
@@ -35,8 +35,12 @@ import { firmaValida, listarProductosCatalogo } from "../lib/whatsapp.js";
 import { programarSeguimientoDeInteresados } from "../lib/crm-interesados.js";
 import { mandarSecuenciaBienvenida } from "../lib/crm-welcome-sequence.js";
 import { notificarMensajeNuevo } from "../lib/crm-push.js";
+import { notificarTelegram } from "../lib/telegram.js";
 import { lineaDePhoneId, envDeLinea } from "../lib/lineas.js";
 import { asignarProductoSiAplica, productoPorId } from "../lib/productos.js";
+import { esDueno, stagingGuardar, stagingActivarLote } from "../lib/boletas-staging.js";
+import { registrarBoletaLog } from "./asesor-boletas-log.js";
+import { mandarTexto, mandarMediaPorId, pausaEnvio } from "../lib/crm-send.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -129,8 +133,16 @@ async function resolverNombresPedido(env, order) {
  * del anuncio (antes: contacto nuevo con ctwa_clid, que es lo mismo con un
  * solo número).
  */
-const chatNuevoDeAnuncio = (contacto, conversacion, referral) =>
-  Boolean(conversacion._isNew && (referral?.ctwa_clid || (contacto._isNew && contacto.ctwa_clid)));
+const chatNuevoDeAnuncio = (contacto, conversacion, referral, texto) =>
+  Boolean(conversacion._isNew && (referral?.ctwa_clid || (contacto._isNew && (contacto.ctwa_clid || esSaludoDeAnuncio(texto)))));
+
+/**
+ * Meta no siempre adjunta el `referral` del anuncio (2026-10-31: 33 de 436 chats nuevos en 4 días
+ * llegaron sin él y se quedaron sin bienvenida). El texto prellenado del botón del anuncio delata
+ * de dónde viene: un contacto nuevo que abre con él se trata como llegado de un anuncio.
+ */
+const esSaludoDeAnuncio = (texto) =>
+  /^¡?\s*hola!?[\s,.]*(me gustar[ií]a (conseguir )?m[aá]s informaci[oó]n|quiero m[aá]s informaci[oó]n)/i.test(String(texto || "").trim());
 
 /**
  * El producto del chat apaga la bienvenida si el admin lo pidió
@@ -144,8 +156,8 @@ async function bienvenidaPermitida(env, conversacion) {
 }
 
 /** Si el contacto es nuevo y vino de un anuncio, manda la respuesta rápida configurada como bienvenida. */
-async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId, referral) {
-  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
+async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId, referral, texto) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral, texto)) return;
   try {
     if (!(await bienvenidaPermitida(env, conversacion))) return;
     const mandados = await mandarSecuenciaBienvenida(env, conversacion.id, contacto.wa_id, "Bienvenida automática", null, { pruebas: true, ultimoWaId: waMessageId });
@@ -153,6 +165,7 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
     if (mandados) await programarSeguimientoDeInteresados(env, conversacion.id);
   } catch (err) {
     console.error("Bienvenida automática:", err.message);
+    notificarTelegram(env, `⚠️ *Bienvenida automática fallida*\n\nChat: ${contacto.wa_id}\nError: ${String(err.message).replace(/[_*`[]/g, "")}`).catch(() => {});
   }
 }
 
@@ -165,8 +178,8 @@ async function mandarBienvenidaSiAplica(env, contacto, conversacion, waMessageId
  * "tras no respuesta", se cancela sola en cuanto el cliente escribe o alguien le
  * manda algo a mano (ver cancelarSeguimientosPendientes).
  */
-async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral) {
-  if (!chatNuevoDeAnuncio(contacto, conversacion, referral)) return;
+async function programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, referral, texto) {
+  if (!chatNuevoDeAnuncio(contacto, conversacion, referral, texto)) return;
   try {
     if ((await obtenerAjuste(env.CRM_DB, "ad_followup_auto")) === "0") return;
     // La misma secuencia que sale tras la bienvenida; reemplaza la ya programada, no se duplica.
@@ -206,6 +219,102 @@ async function reportarConversacionSiAplica(env, contacto, conversacion, referra
   }
 }
 
+/**
+ * Foto → guarda media_id en staging.
+ * "ENVIAR" → activa el lote y avisa por Telegram.
+ * Cualquier otro texto → ignora silenciosamente.
+ */
+async function manejarMensajeDueno(env, db, msg) {
+  const { type, body, mediaId, mediaMime } = tipoYCuerpo(msg);
+  if (type === "image" && mediaId) {
+    await stagingGuardar(db, msg.id, mediaId, mediaMime || "image/jpeg");
+    return;
+  }
+  if (type === "text" && body?.trim() === "ENVIAR") {
+    const { cantidad, loteId } = await stagingActivarLote(db);
+    if (cantidad === 0) {
+      await notificarTelegram(env, "Boletas staging: el dueño mandó ENVIAR pero no hay fotos pendientes.").catch(() => {});
+    } else {
+      await notificarTelegram(env, `Boletas staging: lote ${loteId} activado — ${cantidad} foto${cantidad !== 1 ? "s" : ""} listas para la Routine.`).catch(() => {});
+    }
+  }
+}
+
+/**
+ * Cuando el cliente responde al botón de la plantilla, su ventana de 24 h se abre.
+ * Si tenía boletas en staging con status='pendiente_ventana' y su mensaje pre-calculado,
+ * las despachamos automáticamente sin que el dueño tenga que hacer nada.
+ */
+async function despacharBoletasPendientesVentana(env, db, conversationId, waId) {
+  // Reclamo atómico: mueve pendiente_ventana → en_proceso para esta conversación.
+  // Evita doble envío si llegan dos mensajes entrantes simultáneos.
+  const claimed = await db
+    .prepare("UPDATE boletas_staging SET status = 'en_proceso' WHERE conversation_id = ? AND status = 'pendiente_ventana'")
+    .bind(conversationId)
+    .run();
+  if (!claimed.meta?.changes) return;
+
+  const { results: items } = await db
+    .prepare(
+      "SELECT id, media_id, media_mime, mensaje_texto, courier, saldo, nombre_boleta, nro_orden FROM boletas_staging " +
+      "WHERE conversation_id = ? AND status = 'en_proceso' ORDER BY id"
+    )
+    .bind(conversationId)
+    .all();
+  if (!items?.length) return;
+
+  // La boleta es la que lleva el mensaje pre-calculado; el dueño no siempre manda primero la boleta.
+  const boleta = items.find((i) => i.mensaje_texto) || items[0];
+  const caja = items.find((i) => i.id !== boleta.id) || null;
+
+  if (!boleta?.mensaje_texto) {
+    // Pre-migración 0065: revertir para no bloquear el item
+    await db
+      .prepare("UPDATE boletas_staging SET status = 'pendiente_ventana' WHERE conversation_id = ? AND status = 'en_proceso'")
+      .bind(conversationId)
+      .run();
+    return;
+  }
+
+  await mandarMediaPorId(env, conversationId, waId, boleta.media_id, boleta.media_mime || "image/jpeg", "asesor-boletas-auto");
+  if (caja?.media_id) {
+    await mandarMediaPorId(env, conversationId, waId, caja.media_id, caja.media_mime || "image/jpeg", "asesor-boletas-auto");
+  }
+  await pausaEnvio(env, conversationId);
+  await mandarTexto(env, conversationId, waId, boleta.mensaje_texto, "asesor-boletas-auto");
+  for (const item of items) {
+    await db.prepare("UPDATE boletas_staging SET status = 'enviado' WHERE id = ?").bind(item.id).run();
+  }
+
+  // Aplicar cobro y etiquetas (igual que la Routine en ventana abierta)
+  const courier = (boleta.courier || "").toLowerCase();
+  const saldoNum = parseFloat(String(boleta.saldo || "0").replace(/[^\d.]/g, "")) || 0;
+  try {
+    if (saldoNum > 0) {
+      await programarPlan(env, conversationId, courier || "shalom", { estado: "pendiente", quien: "asesor-boletas-auto" });
+      await agregarEtiquetaMeta(db, conversationId, "cobro_3x").catch(() => {});
+    } else {
+      await agregarEtiquetaMeta(db, conversationId, "saldo_pagado").catch(() => {});
+    }
+    if (courier === "shalom" || !courier) {
+      await agregarEtiquetaMeta(db, conversationId, "shalom_codigo_pendiente").catch(() => {});
+    }
+  } catch (err) {
+    console.error("boletas-auto cobro/etiquetas:", err.message);
+  }
+
+  // Registrar en "Boletas auto" (pestaña del libro de ventas)
+  registrarBoletaLog(env, {
+    nombre: boleta.nombre_boleta || "",
+    wa_id: waId,
+    courier: boleta.courier || "",
+    nro_orden: boleta.nro_orden || "",
+    saldo: boleta.saldo || "",
+    staging_ids: items.map((i) => i.id),
+    ventana: "pendiente"
+  }).catch((err) => console.error("boletas-auto log:", err.message));
+}
+
 async function procesarCambio(envBase, db, value, origen) {
   const contactoMeta = value.contacts?.[0];
   // A qué número de WhatsApp escribió (Tarot Store = principal, o una línea
@@ -213,12 +322,25 @@ async function procesarCambio(envBase, db, value, origen) {
   const linea = await lineaDePhoneId(db, envBase, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
   const env = envDeLinea(envBase, linea);
 
-  for (const msg of value.messages || []) {
+  // Si el dueño manda fotos y "ENVIAR" en el mismo batch, las fotos van primero.
+  const _msgs = [...(value.messages || [])].sort((a, b) => {
+    if (!esDueno(env, a.from) || !esDueno(env, b.from)) return 0;
+    return (a.type === "image" ? 0 : 1) - (b.type === "image" ? 0 : 1);
+  });
+  for (const msg of _msgs) {
+    const waId = msg.from;
+    // Fotos de boleta y comandos que manda el dueño desde su número personal
+    // al número empresa → staging; no se procesan como chat de cliente.
+    if (esDueno(env, waId)) {
+      if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
+      await manejarMensajeDueno(env, db, msg).catch((err) => console.error("Mensaje dueño:", err.message));
+      continue;
+    }
+    try {
     // Meta reintenta el webhook si no recibe el 200 a tiempo: el mismo mensaje
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
-    const waId = msg.from;
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).
@@ -255,6 +377,9 @@ async function procesarCambio(envBase, db, value, origen) {
     }
     // Bloqueado (si se coló igual): queda guardado, sin bienvenida ni avisos.
     if (conversacion.blocked) continue;
+    // Boleta con ventana pendiente: el cliente acaba de abrir la ventana → despachar automáticamente.
+    await despacharBoletasPendientesVentana(env, db, conversacion.id, contacto.wa_id)
+      .catch((err) => console.error("Boletas pendiente_ventana:", err.message));
     // Respondió al "aviso de envío": se abrió su ventana y arranca el plan de recojo (4, 7 y 21 días).
     await rearmarPlanShalom(env, conversacion.id, bodyFinal).catch((err) => console.error("Re-armar recojo:", err.message));
     // Killswitch del chat: sin bienvenida ni seguimiento automático.
@@ -263,11 +388,20 @@ async function procesarCambio(envBase, db, value, origen) {
       if (type === "text" && esBotonVerCatalogo(bodyFinal)) {
         await mandarCatalogoPorBoton(env, conversacion.id, contacto.wa_id).catch((err) => console.error("Botón Ver catálogo:", err.message));
       }
-      await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral);
-      await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral);
+      const textoEntrante = type === "text" ? bodyFinal : "";
+      await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral, textoEntrante);
+      await programarSeguimientoAutomaticoSiAplica(env, contacto, conversacion, msg.referral, textoEntrante);
     }
     await reportarConversacionSiAplica(env, contacto, conversacion, msg.referral);
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
+    } catch (err) {
+      console.error(`Webhook msg ${msg.id || "?"} de ${waId}: ${err.message}`);
+      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
+        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500))
+        .run()
+        .catch((e) => console.error("webhook_errores:", e.message));
+      notificarTelegram(env, `⚠️ *Mensaje entrante no procesado*\n\nChat: ${waId || "?"}\nError: ${String(err.message).slice(0, 300).replace(/[_*`[]/g, "")}`).catch(() => {});
+    }
   }
 
   for (const st of value.statuses || []) {
@@ -353,7 +487,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   // Se procesa en segundo plano pero sin perder errores: Meta solo necesita
   // el 200 rápido, no el resultado.
   waitUntil(
-    Promise.all(tareas).catch((err) => console.error("Webhook WhatsApp:", err.message))
+    Promise.all(tareas).catch(async (err) => {
+      console.error("Webhook WhatsApp:", err.message);
+      if (env.CRM_DB) await guardarAjuste(env.CRM_DB, "webhook_ultimo_error", `${new Date().toISOString()}: ${err.message.slice(0, 300)}`).catch(() => {});
+    })
   );
 
   return json({ ok: true });

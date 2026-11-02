@@ -10,7 +10,7 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import { obtenerOCrearContacto, obtenerOCrearConversacion } from "../../lib/crm-db.js";
-import { aplicarOlva, cancelarPlanRecojo } from "../../lib/planes-plantilla.js";
+import { aplicarOlva, cancelarPlanRecojo, activarCobroPorCodigo } from "../../lib/planes-plantilla.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -105,7 +105,7 @@ async function patch({ request, env, agent }) {
 
   // Seguimiento de recojo: «Envío por Olva» lo programa (3 · 7 · 13 días) y reemplaza el de Shalom; si se
   // desmarca, se cancela. Si el saldo queda en 0 o vacío (ya pagó todo), termina el seguimiento de recojo.
-  const { results: chats } = payload.olva !== undefined || typeof payload.saldo === "string"
+  const { results: chats } = payload.olva !== undefined || typeof payload.saldo === "string" || typeof payload.shalom_code === "string"
     ? await env.CRM_DB.prepare("SELECT id FROM conversations WHERE contact_id = ?").bind(contactId).all()
     : { results: [] };
   let seguimiento = null;
@@ -115,6 +115,17 @@ async function patch({ request, env, agent }) {
   if (typeof payload.saldo === "string" && /^(s\/\.?\s*)?0([.,]0+)?$/i.test(payload.saldo.trim()) || payload.saldo === "") {
     for (const c of chats) await cancelarPlanRecojo(env.CRM_DB, c.id).catch(() => {});
     seguimiento = { ...(seguimiento || {}), recojo_cancelado: true };
+  }
+  // Clave de Shalom en el perfil: su cobro (recojo en Shalom) se programa solo en cada chat, salvo que esa clave ya
+  // haya salido en el chat. Mismo estado que el botón del chat: el admin lo manda solo; la vendedora lo deja por aprobar.
+  if (typeof payload.shalom_code === "string" && contacto.shalom_code) {
+    const estadoCobro = agent?.role === "admin" ? "pendiente" : "por_aprobar";
+    let programados = 0;
+    for (const c of chats) {
+      const r = await activarCobroPorCodigo(env, c.id, contacto.shalom_code, { estado: estadoCobro, quien: agent?.displayName || agent?.username }).catch(() => ({}));
+      if (r.pasos) programados++;
+    }
+    seguimiento = { ...(seguimiento || {}), cobro_programado: programados };
   }
   return json({ ok: true, contact: contacto, seguimiento });
 }

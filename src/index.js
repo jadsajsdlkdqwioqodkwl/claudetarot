@@ -83,6 +83,7 @@ import {
 import { onRequestPost as crmFollowupApplyPost } from "./api/crm/followup-apply.js";
 import { onRequestGet as crmTranscribirGet } from "./api/crm/transcribir.js";
 import { onRequestGet as crmFollowupRapidaGet, onRequestPost as crmFollowupRapidaPost } from "./api/crm/followup-rapida.js";
+import { onRequestGet as crmSeguimientoGet, onRequestPost as crmSeguimientoPost } from "./api/crm/seguimiento.js";
 import { onRequestPost as crmEscribiendoPost } from "./api/crm/escribiendo.js";
 import {
   onRequestGet as crmTotpGet,
@@ -100,6 +101,7 @@ import {
 } from "./api/crm/stickers.js";
 import { onRequestGet as crmComisionesGet, onRequestPatch as crmComisionesPatch } from "./api/crm/comisiones.js";
 import { onRequestGet as crmPausaGet, onRequestPost as crmPausaPost } from "./api/crm/pausa.js";
+import { onRequestGet as crmSaludGet } from "./api/crm/salud.js";
 import {
   onRequestGet as crmPushSubscribeGet,
   onRequestPost as crmPushSubscribePost,
@@ -111,8 +113,8 @@ import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-passwor
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
-import { onRequestPost as asesorVentasPost } from "./api/asesor-ventas.js";
-import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet } from "./api/asesor-datos.js";
+import { onRequestPost as asesorVentasPost, onRequestGetVentasLista as asesorVentasListaGet } from "./api/asesor-ventas.js";
+import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet, onRequestGetBuscarDni as asesorBuscarDniGet, onRequestGetBuscarNombre as asesorBuscarNombreGet, onRequestGetChat as asesorChatGet, onRequestPostImagen as asesorImagenPost } from "./api/asesor-datos.js";
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
 import { onRequestGet as crmShalomGet, onRequestPost as crmShalomPost } from "./api/crm/shalom.js";
@@ -126,6 +128,9 @@ import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
+import { onRequestPost as asesorBoletasLogPost } from "./api/asesor-boletas-log.js";
+import { onRequestPost as asesorMandarPost } from "./api/asesor-mandar.js";
 import { onRequestGet as crmPropuestasGet, onRequestPost as crmPropuestasPost, onRequestPatch as crmPropuestasPatch, onRequestDelete as crmPropuestasDelete } from "./api/crm/plantillas-propuestas.js";
 import { actualizarEtapas } from "./lib/crm-embudo.js";
 import { onRequestPostAnalisis as asesorAnalisisPost, onRequestGetResumen as asesorResumenGet, enviarResumenSiToca } from "./api/asesor-resumen.js";
@@ -151,19 +156,26 @@ const ROUTES = {
   "/api/asesor/sugerencias": { POST: asesorSugerenciasPost },
   "/api/asesor/contexto": { GET: asesorContextoGet },
   "/api/asesor/chats": { GET: asesorChatsGet },
+  "/api/asesor/buscar-dni": { GET: asesorBuscarDniGet },
+  "/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet },
+  "/api/asesor/boletas-log": { POST: asesorBoletasLogPost },
   "/api/asesor/control-ventas": { GET: asesorControlVentasGet },
-  "/api/asesor/imagen": { GET: asesorImagenGet },
+  "/api/asesor/imagen": { GET: asesorImagenGet, POST: asesorImagenPost },
+  "/api/asesor/chat": { GET: asesorChatGet },
   "/api/asesor/ventas-estado": { GET: asesorVentasEstado, PUT: asesorVentasEstado },
   "/api/asesor/pedidos-web": { GET: asesorPedidosWebGet },
   "/api/asesor/memoria": { POST: asesorMemoriaPost },
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/rescates": { POST: asesorRescatesPost },
+  "/api/asesor/boletas_staging": { GET: asesorBoletasGet, PATCH: asesorBoletasPatch },
+  "/api/asesor/mandar": { POST: asesorMandarPost },
   "/api/asesor/resumen": { GET: asesorResumenGet },
   "/api/asesor/reporte": { POST: asesorReportePost },
   "/api/asesor/reportes": { GET: asesorReportesGet },
   "/api/crm/reportes": { GET: crmReportesGet },
   "/api/asesor/ventas": { POST: asesorVentasPost },
+  "/api/asesor/ventas-lista": { GET: asesorVentasListaGet },
   "/api/crm/sugerencias": { GET: crmSugerenciasGet, POST: crmSugerenciasPost },
   "/api/crm/shalom": { GET: crmShalomGet, POST: crmShalomPost },
   "/api/crm/variantes": { GET: crmVariantesGet, POST: crmVariantesPost, PATCH: crmVariantesPatch, DELETE: crmVariantesDelete },
@@ -191,6 +203,7 @@ const ROUTES = {
   "/api/crm/followup-apply": { POST: crmFollowupApplyPost },
   "/api/crm/transcribir": { GET: crmTranscribirGet },
   "/api/crm/followup-rapida": { GET: crmFollowupRapidaGet, POST: crmFollowupRapidaPost },
+  "/api/crm/seguimiento": { GET: crmSeguimientoGet, POST: crmSeguimientoPost },
   "/api/crm/escribiendo": { POST: crmEscribiendoPost },
   "/api/crm/templates": { GET: crmTemplatesGet, POST: crmTemplatesPost, PATCH: crmTemplatesPatch },
   "/api/crm/catalog": { GET: crmCatalogGet, POST: crmCatalogPost },
@@ -205,6 +218,7 @@ const ROUTES = {
   "/api/crm/react": { POST: crmReactPost },
   "/api/crm/comisiones": { GET: crmComisionesGet, PATCH: crmComisionesPatch },
   "/api/crm/pausa": { GET: crmPausaGet, POST: crmPausaPost },
+  "/api/crm/salud": { GET: crmSaludGet },
   "/api/crm/stickers": { GET: crmStickersGet, POST: crmStickersPost, DELETE: crmStickersDelete },
   "/api/crm/push-subscribe": { GET: crmPushSubscribeGet, POST: crmPushSubscribePost, DELETE: crmPushSubscribeDelete },
   "/api/crm/notify-settings": { GET: crmNotifySettingsGet, POST: crmNotifySettingsPost },

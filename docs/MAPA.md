@@ -23,6 +23,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Pestaña **Avatares** | en la hoja de creativos | Project de conceptos (reparto de cada lote), Routine de voz del cliente (suma chats y avatares nuevos), REVISA COMENTARIOS (Estado). Las fórmulas de Cobertura leen Prompts col. D, J y L |
 | Hoja de chats del CRM (TAROT CHATS - VENTAS CRM) | la escribe el Worker cada 10 min | `apps-script/ASESOR.gs`, `preparar.py` (modo xlsx) |
 | Reglas del negocio | `docs/negocio.md` | Todo lo que escribe a clientes o anuncios (precios y regalos mandan aquí) |
+| **Diagnóstico de errores** | `docs/diagnóstico.md` | Queries D1, claves crm_settings y checklist para cualquier sesión que investigue mensajes perdidos o envíos fallidos |
 | Scripts del asesor | `scripts/asesor/*.py` | Todas las Routines del asesor y del director (rutas fijas en sus prompts) |
 | API del asesor | `https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/*` + clave `ASESOR_CLAVE` | Scripts del asesor |
 | Skills | `.claude/skills/*` (ver su README) | Routines y sesiones de Claude Code |
@@ -49,6 +50,7 @@ al workflow actualiza este mapa en el mismo commit** y suma una línea al
 | Asesor — reporte de ventas | 21:00 | Ventas del día, mensajes de seguimiento | Telegram + Drive |
 | Asesor — reporte A PEDIDO | a mano | Igual que el de 10:30, cuando el dueño lo pide | Telegram |
 | Asesor — rescate de lead 1 | 9:47 | Decide a quién de los chats pasados (fuera de su ventana de 7 días) mandarle el rescate 1 (regla 10 de `CLAUDE.md`) | Sale solo por `POST /api/asesor/rescates` |
+| **Despacho automático de boletas** | cada hora a los :23 min Lima (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, creada 2026-10-29) | Revisa `boletas_staging` con `GET /api/asesor/boletas_staging`; si hay items listos: descarga fotos con `boletas.py`, lee cada boleta con visión, extrae nombre/DNI/courier/código, busca el cliente y el saldo, y envía fotos + mensaje de tracking directo al cliente vía `POST /api/asesor/mandar` (excepción autorizada por el dueño). Si la ventana está cerrada, manda plantilla `aviso_envio_shalom`. Luego activa plan de cobro, registra boleta en Sheets y marca staging `enviado`. Si no hay items → noop | Sale directo al cliente por `POST /api/asesor/mandar` (sin ✨ Sugerencias); excepciones de error a staging `error` |
 | **URO — lista de llamadas** | cada hora, 7:07–22:07 | Chats nuevos de URO (línea 1) con interés mínimo → resumen, speech de venta por teléfono y teléfono en la hoja de llamadas; solo lee lo nuevo (`scripts/uro/llamadas.py`, memoria en la pestaña Estado). Sin API de IA | Google Sheet «URO - Lista de llamadas». Conector: Google Sheets (agregarlo en claude.ai → Routines → Editar) |
 | Coaching y voz del cliente (semanal) | lunes 7:37 | Análisis por chat, coaching por vendedora, variantes | CRM → Reportes y ✨ Sugerencias |
 | **Asesor — reporte de ventas (22:00 · 23:00 · 00:00)** (desde 2026-10-15 solo **22:00 y 23:30**, dos Routines: `trig_01XkT6T8…` y `trig_011ZpgQq…`) | 22:00, 23:30 (antes 22:00, 23:00, 00:00) | Ventas del día (a las 00:00, del día que cerró), por vendedora, Lima/provincia, kits, adelantos y saldos; qué cambió desde la hora anterior. No propone mensajes | CRM → Reportes (`enviar.py --informe`). Agregada 2026-10-13 a pedido del dueño |
@@ -122,7 +124,7 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - **Worker:** `claudetarot`. **Se despliega solo:** cada merge a `main` dispara Workers Builds (`npx wrangler deploy`) y el despliegue queda a los ~40 s (comprobado con el PR 49: merge 20:24:58 UTC, despliegue 20:25:40). No hace falta desplegar a mano.
 - **Comprobar un despliegue (solo lectura):** `curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts/d0c6550b43c7a966eb8e93a69a653993/workers/scripts/claudetarot/deployments` y comparar `created_on` con la hora del merge.
 - **Si el despliegue automático falla o falta:** `CLOUDFLARE_ACCOUNT_ID=d0c6550b43c7a966eb8e93a69a653993 npx wrangler deploy` (hay que correr antes `npm install`: el repo no tiene lockfile y `npm ci` falla).
-- **Migraciones de D1:** las aplica Claude (no el deploy): con este mismo token, por `wrangler d1 execute` o la API de Cloudflare, nunca pidiéndole al dueño que abra el panel. (Aún no probado con este token; al usarlo la primera vez, anotar aquí cómo quedó.)
+- **Migraciones de D1:** las aplica Claude (no el deploy): `CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN npx wrangler d1 execute claudetarot-crm --remote --command "ALTER TABLE …"`. Probado el 2026-10-27: `migrations/0063_plantilla_principal.sql` aplicada sin problemas con este token. Si hay una migración pendiente en el repo, Claude la aplica sin pedírselo al dueño.
 - Si algo de Cloudflare falla por permisos del token, decirlo con el error exacto; no pedirle al dueño que lo haga a mano sin antes agotar esto.
 
 ## Dónde ver cada cosa
@@ -137,6 +139,16 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 - 2026-11-02 · **Baja de Gissele:** su cuenta (`gissele`, id 8) se desactiva con `migrations/0062_baja_gissele.sql` (ya aplicada en D1 el 2026-11-02, con el `SELECT` previo; única cuenta que coincidía). No se borra: chats, ventas y comisiones quedan con su nombre; sus chats abiertos siguen asignados a ella hasta reasignarlos. Mismo procedimiento que Priscila (`0061`).
 
+- 2026-10-27 · **Fixes de la sesión de botón COPY_CODE:**
+  1. **Texto del botón COPY_CODE:** Meta exige exactamente `"Copiar código de oferta"` (localizado, no se puede cambiar). El texto anterior era `"COPIAR YAPE"` → corregido en `src/lib/plantillas-propuestas.js`.
+  2. **Checkbox COPY_CODE por plantilla:** ahora cualquier plantilla puede tener o no el botón, controlado por un checkbox en CRM → Herramientas → Plantillas (no solo `yape_pago`). Se almacena como `copyCode: true/false` en los cambios de la plantilla. Archivos: `src/lib/plantillas-propuestas.js`, `public/crm/app.js`.
+  3. **Error claro si `yape_numero` no está configurado:** al intentar mandar una plantilla con COPY_CODE sin `yape_numero` en `crm_settings`, el backend devuelve `400` con mensaje "Falta el número Yape. Ponlo en CRM → Equipo → Ajustes → "Número Yape"" en vez de fallar en silencio. Archivo: `src/api/crm/messages.js`.
+  4. **Plantillas mandadas como respuesta rápida no aparecían en el CRM:** `mandarConEscribiendo` no llama `registrarMensajeSaliente`; había que llamarlo explícitamente. Se añade justo después del `await mandarConEscribiendo(…)` en el bloque `plantilla_principal` de `src/api/crm/messages.js`. El mensaje ahora aparece en el chat del CRM con `type: "template"` y el texto de la plantilla.
+  5. **Respuesta rápida «Provincia Msj. 3» (id=38, Tarot)** usa `plantilla_principal = "propia_yape2mejorado_4s6l"` (la plantilla con botón COPY_CODE del número Yape). Al seleccionarla, el CRM la manda directamente como plantilla aprobada de Meta, sin mostrar texto en el compositor.
+
+- 2026-10-27 · **Plantilla principal en respuestas rápidas (`plantilla_principal`) + plantilla `yape_pago` con botón COPY_CODE.** Nueva columna `plantilla_principal TEXT` en `quick_replies` (migración `0063`, ya aplicada). Cuando una respuesta rápida tiene `plantilla_principal`, al usarla el CRM manda esa plantilla aprobada de Meta en vez del texto; si la plantilla tiene botón `COPY_CODE`, inyecta automáticamente el número Yape (`yape_numero` en `crm_settings`). El seguimiento de pasos de la respuesta rápida se conserva igual. En el modal de crear/editar rápidas hay un nuevo select «Plantilla principal» que se llena con las plantillas aprobadas del número correcto. En el panel de rápidas el chip muestra un badge «Plantilla». Plantilla propuesta `yape_pago` (grupo «Pago Yape»): texto de referencia de pago + botón «COPIAR YAPE» (COPY_CODE con el número de Yape). Para usarla: crear/aprobar la plantilla `yape_pago` en Meta desde CRM → Herramientas → Plantillas; luego crear una respuesta rápida y elegirla como plantilla principal. Archivos: `migrations/0063_plantilla_principal.sql`, `src/api/crm/quick-replies.js`, `src/api/crm/messages.js`, `src/lib/plantillas-propuestas.js`, `public/crm/index.html`, `public/crm/app.js`.
+
+- 2026-10-20 · Lead y Purchase de las 4 landings de Puerto Secreto (Cable y Masilla, v1 y v2) pasan de `/gracias` a la **página de venta** (`index.html`): salen apenas el servidor confirma el pedido, con los datos del cliente (teléfono, nombre, ciudad, país `pe` y `external_id`) vía un `fbq('init', PIXEL_ID, {…})` con coincidencia avanzada (el píxel los hashea solo) para subir el EMQ, y con el mismo `eventID` en Lead y Purchase; la redirección a `/gracias` espera 600 ms para que salgan. `/gracias` conserva su PageView pero ya no envía Lead ni Purchase (lo escrito antes sobre Lead y Purchase desde `/gracias`, del 2026-10-19, queda como historia). `scripts/check.mjs` ajustado. Verificado en producción el 2026-10-20: las páginas solo hablan con el píxel `1788156381816025`; los pedidos de Cable y Masilla **nunca** disparan el WhatsApp automático de «recibimos su pedido» (eso es solo del Kit de Tarot, `registrarPedidoWeb` en `src/api/order.js`); su único aviso es el de Telegram al dueño. Pruebas internas dejaron filas «PRUEBA Claude NO ATENDER» (tel. 900000000) en las pestañas Masilla y Cable de la hoja de pedidos. Pendiente sin explicar: 6 eventos del dominio de la masilla aparecen en el píxel de Tarot (`1598655637922566`); ni el código ni Cloudflare los mandan.
 - 2026-10-20 · **Login del CRM: «Reenviar código» y aviso «escríbele primero a Tarot Store» (wa.me).** Si Meta no deja mandar el código por WhatsApp (ventana de 24 h cerrada), `POST /api/crm/login` responde 502 con `no_llego: true` y `wa_tienda` (`WA_TIENDA` en `src/api/crm/login.js`, el mismo número de `public/index.html`); el formulario (`public/crm/app.js`, `pedirCodigo()` / `mostrarAyudaWa()`) muestra el link `https://wa.me/51927066862?text=…` y el botón «Reenviar código» (espera de 30 s entre códigos). Reenviar = volver a llamar `/api/crm/login` con el mismo usuario y contraseña; el login ahora marca como usados los códigos anteriores del vendedor (`login_challenges.used = 1`). Sin migraciones. Priscila dejó de trabajar con la tienda (2026-10-20): su cuenta se desactiva con `migrations/0061_baja_priscila.sql` (se aplica a mano, con el `SELECT` de antes para confirmar el usuario); no se borra (chats, ventas y comisiones quedan con su nombre); se quitó su nombre del ejemplo de la skill `voz-tarot-store` y se anotó en `docs/vendedoras.md`. Sus chats abiertos siguen asignados a ella hasta reasignarlos.
 
 - 2026-10-18 · Versión 2, corrección del dueño (el GIF cuadrado se cortaba feo): la galería de `/cable-v2/` y `/masilla-v2/` pasa a 4:5 y su primera imagen es un video que se reproduce solo, sin recorte. Cable: hero = video 3 de «Míralo en acción»; en su lugar abajo va el clip del celular + bolsita de regalo (`cable-v2/video/bolsa-regalo.mp4`). Masilla: hero = video largo (17 s) en mejor calidad desde el original (`masilla-v2/video/hero-masilla.mp4`). Se borraron los GIF. Los links largos no cambian.
@@ -368,3 +380,960 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 ## 2026-10-20 — Chip «PROGRAMAR / DESACTIVAR SEGUIMIENTO COBRO» en los mensajes enviados
 - Pedido del dueño: en el chat, junto al chip «Programar seguimiento» de los mensajes que enviamos, sale un chip nuevo según la **clave de Shalom del chat** (`shalom_code` del contacto): con clave → **PROGRAMAR SEGUIMIENTO COBRO** (abre `marcarPlan(c, "shalom")`, el plan de recojo en Shalom de `api/crm/planes.js`); sin clave → **DESACTIVAR SEGUIMIENTO COBRO** (`chat-estado` `quitar_recojo`, igual que «Ya pagó su saldo»). Sale en el último mensaje nuestro y en los de respuestas rápidas con seguimiento (`chipSeguimientoCobro` / `accionSeguimientoCobro` en `public/crm/app.js`). Solo frontend; no cambia los chips que ya existían ni hay migraciones.
 - 2026-10-20 · **Corrección del chip de cobro (aclaración del dueño):** el envío es de Shalom cuando el chat tiene su **clave de retiro** (`shalom_code`); solo esos chats muestran el chip, en **cada** mensaje nuestro. Estado según `cobro_activo` (nuevo campo de `GET /api/crm/conversations`: hay un paso pendiente o por aprobar de «Plan con plantilla · Recojo en…»): sin seguimiento → **PROGRAMAR SEGUIMIENTO COBRO**; con seguimiento → **DESACTIVAR SEGUIMIENTO COBRO** (para cuando pague). Sin clave no sale. Lo escrito arriba (sin clave → desactivar; solo último mensaje) queda como historia.
+
+## 2026-10-23 — Cobro de Shalom automático por la clave del perfil; el día 7 dice su plantilla
+- Pedido del dueño: el seguimiento de cobro (recojo en Shalom, 4·7·21 días) **se activa solo** en tres casos y **se desactiva solo** cuando el código sale en el chat.
+  - **Al poner la clave en el perfil** (panel del chat, `PATCH /api/crm/contacts` con `shalom_code`): `activarCobroPorCodigo` (`src/lib/planes-plantilla.js`) programa el plan en cada chat del contacto, salvo que ese código ya haya salido en un mensaje nuestro de ese chat. El admin lo deja pendiente; la vendedora, por aprobar (igual que el botón del chat). La respuesta trae `seguimiento.cobro_programado` y el panel refresca el chip.
+  - **Al mandar la plantilla «pedir boleta»** (`aviso_envio_shalom` / `uro_aviso_envio_shalom`): ya funcionaba (`programarSeguimientoDePlantilla` en `api/crm/templates.js`, con los pasos `recojo_shalom_1..3` de fábrica). Sin cambio.
+  - **Al responder el cliente tras el aviso**: ya funcionaba (`activarPlanTrasAviso`). Sin cambio.
+  - **Desactivación automática:** cada mensaje nuestro (texto, plantilla, cron, asesor) que trae la clave del perfil como palabra suelta (`contieneCodigo`, `src/lib/ventas.js`; «3114» sí, «31140» no) cancela los pasos pendientes o por aprobar de «Plan con plantilla · Recojo en Shalom» de ese chat. Se hace en `registrarMensajeSaliente` (`src/lib/crm-db.js`, `terminarCobroSiLlevaCodigo`). El recojo de Olva no se toca. Solo cuenta lo que sale **de nosotros** (no lo que escribe el cliente).
+  - Sigue igual: «Ya pagó su saldo», «Ya lo recogí» y el chip manual PROGRAMAR / DESACTIVAR SEGUIMIENTO COBRO.
+- **Día 7 (rescate del día 7, `created_by` «Automático (día 7)»):** la etiqueta de la lista de seguimientos ahora dice la plantilla exacta que se va a mandar: `Día 7 · rescate_lead_1` o `Día 7 · rescate_lead_catalogo_1` (`etiquetaTipoSeguimiento` en `public/crm/app.js`; antes salía solo «Se manda sí o sí» o «Manual»). El nombre que se ve es el que tiene la fila en D1, la misma que el cron manda. Por qué puede no coincidir con el selector de Herramientas: el cron cambia `rescate_lead_catalogo_1` por `rescate_lead_1` cuando Meta todavía no aprobó el catálogo (`crm-cron.js`, respaldo), y las filas ya agendadas cambian solo al elegir otra plantilla en Herramientas.
+- Sin migraciones, sin plantillas nuevas, sin cambios de horario.
+
+## 2026-10-23 (tarde) — Cobro con prioridad, Olva editable, «Programar seguimiento» con 3 opciones y recomendación «sin pregunta»
+- **Cobro con prioridad:** `programarPlan` (`src/lib/planes-plantilla.js`) para Shalom u Olva cancela antes los demás planes con plantilla pendientes o por aprobar del chat (rescate, recojo anterior) y programa el cobro; ya no devuelve «ya tiene un plan». Los planes que no son de recojo siguen con la regla de siempre. Lo dispara también la clave de Shalom del perfil (`activarCobroPorCodigo`).
+- **Olva, días editables (Herramientas → Planes con plantilla):** Olva sale 3, 7 y 13 días desde el despacho por defecto (el último dentro de 14 días). Campo nuevo «Olva (desde el despacho, máx. 14)» (`planes-dias-olva`) que guarda el ajuste `plan_dias_olva`; el servidor rechaza un último día mayor de 14 (`api/crm/planes.js`, GET/PATCH). Shalom sigue con 4, 7 y 21 (`plan_dias`), ahora con la etiqueta «desde el despacho».
+- **«Programar seguimiento» (modal, `public/crm/index.html` y `public/crm/app.js`):** abre siempre en **Mandar secuencia** (la pestaña por defecto). Tres pestañas: **Mandar secuencia** (elige la secuencia y puede cambiar la hora de cada mensaje; por defecto, la espera de cada paso desde ahora), **Mensaje rápido** (buscador de respuestas rápidas y plantillas, como antes, con la hora de siempre) y **Mensaje libre** (texto, botones, foto/video y catálogo). Se quitaron «Un mensaje» y «Una secuencia» (reemplazadas por estas tres; nada se borró de lo que se puede programar). `aplicarModoSeg()` decide qué campos se ven según la pestaña.
+- **Secuencias con hora por mensaje:** `POST /api/crm/followup-apply` acepta `horas` (una por paso activo, en orden, futuras y crecientes); sin `horas` sigue igual. `programarSecuenciaSeguimiento` (`src/lib/crm-db.js`) las usa.
+- **Recomendación «sin pregunta» (asesor, cron):** cada corrida del cron de sugerencias (`reflotarSugerencia`, `src/lib/crm-sugerencias.js`) revisa el **último mensaje nuestro** de cada chat activo (últimas 24 h, cliente que no compró). Si no tiene «?» ni «¿» y el chat no tiene nada programado, crea una sugerencia tipo `sin_pregunta` con el motivo «agéndale seguimiento o hazle una pregunta». Esa sugerencia **sube a la bandeja** igual que las de seguimiento (`reflotada_at`). Se vuelve obsoleta sola cuando se le escribe al cliente o cuando el chat ya tiene un seguimiento programado. Tarjeta propia en «Sugerencias» (`tarjetaSinPregunta`): Abrir chat, Programar seguimiento (abre el modal en ese chat), Descartar.
+- Sin migraciones: `asesor_sugerencias.tipo` es texto libre.
+
+## 2026-10-23 (noche) — «Sin pregunta» ignora el rescate universal; respuestas rápidas fijadas y por uso
+- **«Sin pregunta» (`src/lib/crm-sugerencias.js`, `SEGUIMIENTO_PROPIO`):** el seguimiento programado que cuenta como «tiene seguimiento» ya **no** incluye el rescate universal de lead (`created_by` con «Automático (día 7)» o «Rescate de interesado»). Esos se agendan a casi todos los leads, así que tapaban la recomendación. Sí cuentan los seguimientos propios (los de la vendedora, las secuencias, el recojo y el resto de planes).
+- **Respuestas rápidas (`src/api/crm/quick-replies.js`, `public/crm/app.js`):** el orden que ve el equipo es: **fijadas** («Provincia mensaje 1·2·3», luego «Lima 1·2·3»; reconoce también «Provincia 1» y «Lima 1»), y el resto **por uso** (`usos`: cuántas veces se mandó la respuesta desde el chat). Cualquier asesor puede reacomodar arrastrando ⋮⋮ (las fijadas no se mueven; la leyenda queda arriba del panel). Al arrastrar se guarda el orden del equipo (`sort_order`, ajuste `rapidas_orden` = «manual») y el resto sigue ese orden; el botón «Volver a ordenar por uso» (`PATCH { modo: "uso" }`) lo quita. Las respuestas pasan a contar uso en `POST /api/crm/messages` (`programarRapida`), en el mismo viaje a D1.
+- **Migración nueva: `migrations/0062_rapidas_usos.sql`** (`ALTER TABLE quick_replies ADD COLUMN usos`). **Se aplica a mano en D1.** Mientras no esté, el CRM sigue funcionando: fijadas arriba y el resto por número, sin contar uso.
+- **Optimización de requests (estado, sin cambios de horario):** el cron de Cloudflare corre cada minuto (envío de lo vencido), cada 10 min (sugerencias y reflote) y cada 15 min (rescate del día 7). La rutina de Claude más cara es «URO — lista de llamadas»: 16 corridas al día (cada hora de 7 a 22) y casi todas terminan en «Sin novedad». Pendiente de decisión del dueño, no tocado: bajarla a 3 corridas al día. La rutina «Voz del cliente → brief» dice lunes, miércoles y viernes en el prompt, pero su horario es solo los lunes.
+
+## 2026-10-23 (madrugada) — Migración 0062 aplicada en D1; búsqueda del CRM al instante
+- **Migración `0062_rapidas_usos.sql` aplicada en la base remota `claudetarot-crm`** (ALTER TABLE quick_replies ADD COLUMN usos). Ya no hace falta aplicarla a mano.
+- **Búsqueda (`public/crm/app.js`):** al escribir, la lista se filtra en el navegador al instante (`filtrarLocal`: nombre, teléfono, notas, clave de Shalom, anuncio y asesora, sin tildes) con la última lista completa del servidor (`estado.baseLista`). El servidor sigue afinando con el texto de los mensajes unos 150 ms después (antes eran 300 ms antes de pedir nada). La búsqueda por texto de mensajes sigue en el servidor: medido, un `LIKE` sobre los ~44 600 mensajes tarda ~224 ms solo en D1, antes de la consulta de la lista.
+- **Cron de 1 minuto (`src/index.js`, `scheduled`):** cada minuto manda los pedidos web de hace 3 min (WhatsApp «recibimos su pedido»); cada 5 min, los seguimientos vencidos y el carrito abandonado; en minuto % 5 = 2, los toques. Es el que hace que los mensajes salgan a su hora. Gasta requests de Cloudflare, no tokens de Claude.
+
+## 2026-10-27 — Alertas de error para bienvenida fallida; nombre de plantilla en seguimientos; UI de plantilla en modal
+- **Alerta Telegram para bienvenida automática fallida (`src/api/whatsapp-webhook.js`):** cuando `mandarBienvenidaSiAplica` falla (un lead de anuncio llega y la secuencia de bienvenida no sale), ahora se manda un aviso por Telegram al dueño con el WhatsApp del contacto y el mensaje de error. Antes el error se tragaba en silencio (`console.error` solo). Usa `notificarTelegram` de `src/lib/telegram.js`. El fallo de Telegram no interrumpe nada.
+- **Nombre de plantilla visible en "Seguimientos activos" (`public/crm/app.js`, `etiquetaTipoSeguimiento`):** las etiquetas que antes no mostraban qué plantilla estaba programada ahora la incluyen: "Plantilla · {nombre} · por aprobar" (antes "Plantilla · por aprobar"), "Plantilla · {nombre} · aprobada" (antes "Plantilla · aprobada"), "Envío masivo · {nombre}" cuando el masivo lleva plantilla (antes solo "Envío masivo"). Así el dueño puede verificar qué plantilla está realmente agendada y detectar discrepancias con lo que configuró.
+- **UI de plantilla en modal "Reactivar seguimiento" (`public/crm/app.js`):** los pasos de plantilla en el modal ya guardan `data-plantilla` en su nodo y se pasan al POST al programar. Antes el campo `plantilla` se perdía al reactivar (el backend ya lo soportaba desde `programarSeguimientoDeRapida` en `crm-db.js`). Los pasos de plantilla muestran "Plantilla aprobada · no editable aquí" en lugar del textarea vacío.
+- Sin migraciones. Sin cambios de horario. Sin rutas nuevas.
+
+## 2026-10-27 (tarde) — Filtro Provincia, filtro por fecha de compra y badge de saldo en lista
+- **Filtro "Provincia" (`public/crm/index.html`, `public/crm/app.js`, `src/api/crm/conversations.js`):** nuevo chip de filtro en la barra de la bandeja que muestra los chats con envío por Olva (`c.olva = 1`), código de Shalom (`c.shalom_code IS NOT NULL`) o saldo pendiente (`c.saldo <> ''`). Estado: `estado.filtroProvincia` (bool). Parámetro de API: `?provincia=1`. El botón «Todos» lo limpia junto con el resto de filtros. La condición en el backend agrega una cláusula OR a `condiciones[]` en `conversations.js`.
+- **Filtro por fecha de compra (`#filtro-compra-fecha`, tipo `date`):** input de fecha inline con los chips de la bandeja. Llena `estado.filtroCompraFecha` (cadena AAAA-MM-DD). El backend lo convierte a subconsulta sobre `capi_events` (`event_name = 'Purchase' AND date(e.created_at) = ?`). La búsqueda por texto "venta del 15/10" ya funcionaba antes (via `busqueda-fechas.js`); este input es la forma directa de llegar al mismo filtro. Cuando está activo, el input toma clase `.activo` (azul). El botón «Todos» también lo limpia.
+- **Badge de saldo con botón "Pagó" en la tarjeta de la lista (`public/crm/app.js`, `public/crm/style.css`):** cuando `c.saldo` tiene valor distinto de "0", la tarjeta de la lista muestra `.badge-saldo` con el monto y un botón inline para marcar el pago rápido. Al pulsar: confirma, llama `POST /api/crm/chat-estado { accion: "quitar_recojo" }` (cancela el seguimiento de recojo) y `PATCH /api/crm/contacts { saldo: "0" }`. Actualiza la lista en memoria sin recargar. Nunca marca la venta como pagada directamente: eso lo hace una persona en D1 o en el CRM. CSS nuevo en `public/crm/style.css`: `.badge-saldo`, `.badge-saldo .btn-pago-saldo-lista`, `#filtro-compra-fecha`, `#filtro-compra-fecha.activo`.
+- Sin migraciones. Sin plantillas nuevas. Sin cambios de horario.
+
+## 2026-10-28 — Clave de retiro cancela TODOS los seguimientos; keepalive en envío de texto
+- **Clave Shalom cancela todos los seguimientos (`src/lib/crm-db.js`, `terminarCobroSiLlevaCodigo`):** antes solo cancelaba los pasos de «Plan con plantilla · Recojo en Shalom». Ahora cancela TODOS los `scheduled_messages` con `status IN ('pendiente', 'por_aprobar')`, `mandar_siempre = 0` y `batch_id IS NULL` del chat. Motivo: si el mensaje lleva el código de retiro es porque el cliente ya pagó; no tiene sentido seguir enviando seguimientos de venta ni de cobro.
+- **keepalive en envío de texto (`public/crm/app.js`, `encolarEnvio`):** la rama que manda texto plano (el caso más común, sin adjunto, sin rapida-media, sin plantilla) usa `fetch` con `keepalive: true`. Esto garantiza que el request HTTP llega al Worker aunque el usuario cierre el tab o salga del navegador mientras el mensaje estaba cargando. Las demás ramas (media, catálogo, sticker) no lo necesitan porque el contenido ya subió en `subirArchivo` y el request POST a `/api/crm/messages` es solo la referencia.
+- Sin migraciones. Sin rutas nuevas.
+
+## 2026-10-28 (noche) — Badges Shalom y Olva en la lista; ícono de saldo corregido
+- **Ícono de saldo corregido (`public/crm/app.js`, línea del `badge-saldo`):** el botón de «Pagó saldo» en la tarjeta de lista usaba `icon("check")` (palomita sola, sugería que ya estaba pagado). Ahora usa `icon("squareEmpty")` (caja vacía, igual que el botón «Atendido»), indicando que el pago está *pendiente* y puede marcarse.
+- **Badge automático «Shalom · {código}» (`public/crm/app.js`, `public/crm/style.css`):** cuando `c.shalom_code` tiene valor, la tarjeta de la lista muestra `.badge-provincia` con el ícono de mapa y el código de retiro (`Shalom · {código}`). Se genera automáticamente al rellenar el campo de clave de recojo. Azul claro (`#e8f0fe`/`#1a56db`).
+- **Badge/checkbox Olva interactivo en lista (`public/crm/app.js`, `public/crm/style.css`):** cuando `c.shalom_code` o `c.olva` tienen valor, la tarjeta muestra un botón `.badge-olva-lista.btn-toggle-olva` con `icon("checkBox")` (si `c.olva = 1`) o `icon("squareEmpty")` (si no). Al pulsarlo se llama `PATCH /api/crm/contacts { contact_id, olva: bool }` (mismo endpoint que el panel de detalle), se actualiza `estado.conversaciones` en memoria y se repinta la lista. El clic no abre la conversación (excluido en el guard del `.conv-info`). CSS nuevo: `.badge-provincia`, `.badge-provincia .icono-svg`, `.badge-olva-lista`, `.badge-olva-lista .icono-svg`.
+- Sin migraciones. Sin rutas nuevas. Sin cambios de horario.
+
+## 2026-10-28 (noche, corrección) — `terminarCobroSiLlevaCodigo` preserva planes de cobro de recojo
+- **Corrección de la entrada anterior («Clave de retiro cancela TODOS los seguimientos»):** el dueño aclaró (mensaje 4 de la sesión) que cuando el código de retiro sale en el chat, los seguimientos de VENTA se cancelan, pero los de COBRO (el cliente aún debe el saldo) deben seguir. El código de `terminarCobroSiLlevaCodigo` (`src/lib/crm-db.js`, línea 148) tiene actualmente `AND created_by NOT LIKE 'Plan con plantilla · Recojo%'`: preserva exactamente los planes de recojo/cobro (Shalom y Olva). La entrada anterior («Ahora cancela TODOS») describía un estado intermedio del diseño, no el código final.
+
+## 2026-10-28 (noche) — Staging de boletas: el dueño manda fotos al número empresa y dice «ENVIAR»
+El dueño manda las fotos de boleta de Shalom/Olva desde su número personal (`NUMERO_DUENO = 51927633099`) al número empresa de WhatsApp. El Worker las intercepta antes del CRM y las guarda en staging. Cuando manda «ENVIAR» en mayúsculas, se activa el lote y la Routine analiza y despacha.
+
+### Archivos nuevos
+- **`migrations/0064_boletas_staging.sql`** — tabla `boletas_staging` (id, wa_message_id UNIQUE, media_id, media_mime, lote_id, status, conversation_id, courier, nombre_boleta, dni_boleta, orden, error, created_at). **Se aplica a mano en D1.** Índices en `status` y `lote_id`.
+- **`src/lib/boletas-staging.js`** — módulo de staging. Funciones: `esDueno(env, waId)` (compara contra `NUMERO_DUENO`), `stagingGuardar(db, waMessageId, mediaId, mediaMime)`, `stagingActivarLote(db)` (marca `pendiente → listo`, asigna `lote_id = ISO timestamp sin segundos`), `stagingListarListos(db)`, `stagingActualizar(db, id, {...})`.
+- **`src/api/asesor-boletas.js`** — endpoint `GET /api/asesor/boletas_staging` (lista items con `status='listo'`) y `PATCH /api/asesor/boletas_staging` (actualiza status/conversation_id/courier/etc. después del despacho). Misma clave `x-asesor-clave`.
+- **`scripts/asesor/boletas.py`** — descarga las fotos del staging vía `GET /api/asesor/boletas_staging` + `GET /api/asesor/imagen?id={media_id}`, las guarda en `{carpeta}/boletas/<id>.<ext>` y genera `{carpeta}/boletas.md` con instrucciones de análisis para la Routine. `ASESOR_CLAVE=... python3 scripts/asesor/boletas.py /tmp/ventas`.
+
+### Archivos modificados
+- **`src/api/whatsapp-webhook.js`**: importa `esDueno, stagingGuardar, stagingActivarLote` desde `boletas-staging.js`. En el loop de mensajes, ANTES de `obtenerOCrearContacto`, si `esDueno(env, waId)` → llama `manejarMensajeDueno` y hace `continue` (no toca el CRM). `manejarMensajeDueno`: imagen → `stagingGuardar`; texto «ENVIAR» → `stagingActivarLote` + avisa por Telegram; cualquier otro texto → silencio.
+- **`src/index.js`**: importa `asesorBoletasGet, asesorBoletasPatch` de `asesor-boletas.js`; ruta `"/api/asesor/boletas_staging": { GET, PATCH }`.
+- **`wrangler.jsonc`**: nueva var en texto plano `NUMERO_DUENO = "51927633099"` (número personal del dueño, sin `+`). No es secreto.
+
+### Flujo completo del despacho (Routine)
+1. `python3 scripts/asesor/boletas.py /tmp/ventas` → descarga fotos y genera `boletas.md`.
+2. Leer `boletas.md` + cada imagen con `Read` → extraer nombre, DNI, courier (Shalom o Olva, del logo o del encabezado de la boleta).
+3. Buscar contacto por DNI en `/api/asesor/chats` o CRM.
+4. Si la ventana de 24 h está abierta: mandar foto directamente. Si no: usar plantilla `PLANTILLA_ENVIO` (el cliente aprieta botón → se le manda la boleta).
+5. Registrar boleta en Sheets con `POST /api/asesor/ventas { accion: "boleta", dni, imagen_base64, mime, courier }`.
+6. Activar plan de cobro según courier: Shalom → `activarCobroPorCodigo` (días 4/7/21); Olva → `aplicarOlva` (días 3/7/13). Solo si el cliente tiene saldo pendiente.
+7. `PATCH /api/asesor/boletas_staging { id, status: "enviado", conversation_id, courier, nombre_boleta, dni_boleta }`.
+
+### Pendiente
+- Migración 0064 aplicada a mano en D1 (el Worker falla si la tabla no existe en el momento en que llega la primera foto del dueño).
+- `PLANTILLA_ENVIO` tiene actualmente `{{1}} = nombre` y `{{2}} = link` (link deprecado). Cuando el dueño actualice la plantilla en Meta, hay que ajustar los params en `conPlantilla` (`src/api/crm/sugerencias.js`, línea 203).
+
+---
+
+## 2026-10-28 (noche) — aviso_envio_shalom y grupos de 2 fotos por cliente
+
+### conPlantilla ya no usa PLANTILLA_ENVIO
+`src/api/crm/sugerencias.js` — `conPlantilla` ahora usa `"aviso_envio_shalom"` directamente
+(constante `PLANTILLA_AVISO_ENVIO`). La plantilla tiene un solo param: `{{1}} = nombre` (sin link).
+`PLANTILLA_ENVIO` queda vacía y deprecada en `wrangler.jsonc` (se conserva para no romper código
+que la lea; ya no la consume `conPlantilla`).
+
+### boletas.py: grupos de 2 fotos por cliente (boleta + caja)
+`scripts/asesor/boletas.py` actualizado. Las fotos llegan en pares consecutivos (orden de ID):
+- Foto impar (1, 3, 5…) = boleta/guía de remisión (orden 1).
+- Foto par (2, 4, 6…) = foto del paquete/caja (orden 2).
+
+Si el total es impar, la última foto queda sin par: `boletas.md` la señala con `⚠️ FALTA` y
+la lista en un bloque de alertas al inicio. La Routine notifica al dueño **en la sesión** (sin
+llamada a la API de WhatsApp) y espera; si el dueño no puede mandar la segunda foto, se procede
+con solo la boleta.
+
+Flujo actualizado para cada cliente:
+1. Leer boleta con Read → extraer NOMBRE, DNI, COURIER.
+2. Leer caja (si existe) → confirmar que el paquete es el correcto.
+3. Buscar contacto en CRM por DNI.
+4. Si ventana abierta → mandar boleta + caja directamente como media.
+5. Si ventana cerrada → mandar `aviso_envio_shalom` ({{1}} = nombre); cliente aprieta botón →
+   ventana abre → se mandan las fotos.
+6. Activar plan de cobro: Shalom → `activarCobroPorCodigo`; Olva → `aplicarOlva`.
+7. `PATCH /api/asesor/boletas_staging` × 2 (una por foto).
+
+### Pendiente (actualizado)
+- ~~`PLANTILLA_ENVIO` params por ajustar~~ — resuelto: ahora usa `aviso_envio_shalom` directamente.
+- Migración 0064 aplicada a mano en D1 (sigue pendiente).
+
+---
+
+## Entorno Claude Code (cloud) — acceso Cloudflare ya configurado
+
+El token `CLOUDFLARE_API_TOKEN` está inyectado en el entorno del contenedor de Claude Code.
+En esta sesión no hay que pedir permiso para deploys (`npx wrangler deploy`), consultas D1
+(`npx wrangler d1 execute …`), R2, etc. Cualquier cambio en producción se hace directamente
+sin confirmación extra — el dueño ya dio esta autorización para este entorno.
+Si en una sesión futura el token no está, revisar los secretos del entorno en claude.ai/code.
+
+---
+
+## 2026-10-28 (noche) — saldo automático desde capturas Yape en la Routine de boletas
+
+### POST /api/asesor/ventas ahora acepta saldo en accion "boleta" y "estado"
+`src/api/asesor-ventas.js` — `actualizar` acepta campo `saldo` (opcional):
+- Actualiza columna "Saldo" en Sheets.
+- Si la fila tiene WhatsApp (formato 51XXXXXXXXX en columna "DNI / WSP"), actualiza
+  `contacts.saldo` en D1 también — en el mismo call, sin endpoint extra.
+- Formato del call: `POST /api/asesor/ventas { accion: "boleta", dni, imagen_base64, mime, saldo: "59" }`
+
+### Cálculo de saldo (Routine, visión)
+1. Extraer adelanto de la columna "Adelanto" en Sheets (ya estaba al crear la venta).
+2. Confirmar o corregir con la captura Yape del chat (GET /api/asesor/imagenes).
+3. Precio total = S/89 base × kits + extras (leer del chat o notas de la fila).
+4. Saldo = precio_total − adelanto.
+5. Mandar el saldo en el mismo call de `accion: "boleta"`.
+
+### Cuándo corre la Routine de boletas (OBSOLETO — ver sección 2026-10-29)
+~~La Routine NO corre automáticamente.~~ (Quitado 2026-10-29: ahora hay una Routine programada cada hora, `trig_01VqGRf1KXr5WJ8rHcPyjoaT`. Ver la sección «2026-10-29 — Despacho automático de boletas» más adelante.)
+
+## 2026-10-29 — Despacho automático de boletas: Routine + POST /api/asesor/mandar
+
+### Arquitectura de envío automático (autorizado por el dueño, 2026-10-29)
+El flujo de boletas ahora es completamente automático. No requiere sesión manual ni correr comandos.
+
+**Nuevo endpoint: POST /api/asesor/mandar** (`src/api/asesor-mandar.js`, desplegado en versión `ac0e0ddf`)
+- `{ tipo: "texto", wa_id, texto }` → manda texto al cliente (1,5 s escribiendo… vía `pausaEnvio` + `mandarTexto`)
+- `{ tipo: "foto-staging", wa_id, staging_id }` → manda foto por su `media_id` de staging (sin pausa, fotos van al toque)
+- Misma clave `x-asesor-clave`. Acepta también `conversation_id` en lugar de `wa_id`.
+
+**Nueva función: `mandarMediaPorId`** (`src/lib/crm-send.js`, línea 355)
+Envía imagen/video por su `media_id` de WhatsApp (staging), sin pasar por R2. Registra el mensaje saliente en D1.
+
+**Routine: «Despacho automático de boletas»** (`trig_01VqGRf1KXr5WJ8rHcPyjoaT`, creada 2026-10-29)
+- Dispara cada hora a los :23 minutos, hora Lima, en una sesión nueva.
+- Paso 0: GET `/api/asesor/boletas_staging` → si vacío, termina (noop).
+- Paso 1: corre `boletas.py` → descarga fotos → genera `boletas.md`.
+- Paso 2: lee cada imagen con visión, extrae nombre/DNI/courier/código/saldo.
+- Paso 3: verifica ventana de 24 h.
+- Paso 4a (abierta): POST `/api/asesor/mandar` × 3 (foto boleta, foto caja, texto).
+- Paso 4b (cerrada): plantilla `aviso_envio_shalom`; queda en `pendiente_ventana`.
+- Paso 5: activa plan de cobro (shalom_code / olva).
+- Paso 6: registra boleta en Sheets (`POST /api/asesor/ventas accion:boleta`).
+- Paso 7: PATCH staging → `enviado`.
+
+### Cuándo corre la Routine de boletas (actualizado 2026-10-29)
+La Routine SIGUE corriendo automáticamente cada hora. Flujo:
+1. Dueño manda fotos al número empresa → manda "ENVIAR" → Worker activa el lote.
+2. Routine siguiente (hasta 59 min después) detecta los items y los procesa.
+3. El cliente recibe fotos + mensaje de tracking sin intervención humana.
+~~El dueño abre una sesión de Claude Code y corre `boletas.py` manualmente~~ (ya no necesario).
+
+### Excepción de envío directo (CLAUDE.md regla 3, actualizada 2026-10-29)
+Esta Routine usa `POST /api/asesor/mandar` que envía DIRECTAMENTE al cliente (sin ✨ Sugerencias). Esta excepción está aprobada por el dueño (al igual que rescate lead 1 en la regla 10). Ver CLAUDE.md.
+
+---
+
+## 2026-10-29 — Mensajes de envío provincia (Shalom y Olva) y calidad de foto
+
+### Mensajes raw de provincia (NO son plantillas de Meta)
+Los mensajes que Claude compone y manda al cliente son texto libre (no templates de WhatsApp). Antes iban vía `enviar.py` (aprobación manual); desde 2026-10-29 la Routine los envía automáticamente vía `POST /api/asesor/mandar`. `boletas.md` incluye el texto exacto para que la Routine lo complete.
+
+**Shalom** (parámetros a extraer de la boleta):
+- Primer nombre del cliente (de la boleta o de contacts)
+- Saldo = precio_total − adelanto
+- Número de orden (campo orden/pedido de la boleta Shalom)
+- Código de recojo (campo clave/código de la boleta Shalom; es el que va en `contacts.shalom_code`)
+
+Texto: "Buenas estimad@ [NOMBRE] le envío su comprobante ✨ … saldo restante de [S/SALDO] … *Nro de orden:* [ORDEN] *Código:* [CODIGO]"
+Link de rastreo: https://shalom.com.pe/rastrea
+
+**Olva** (parámetros a extraer de la boleta):
+- Mismo encabezado con nombre + saldo
+- Código de seguimiento: Olva imprime el número con prefijo "26" en la boleta. La web https://tracking.olvaexpress.pe/ ya lo pre-pone, así que Claude EXTRAE el número SIN el prefijo "26" para el mensaje.
+
+Texto: "… *Código de seguimiento:* [TRACKING SIN '26']"
+Link de rastreo: https://tracking.olvaexpress.pe/
+
+### Calidad de foto en boletas.py
+Si la foto de la boleta es borrosa o ilegible → notificar al dueño en la sesión y pedir reenvío antes de continuar. Si está parcialmente legible → extraer lo posible y marcar "(ilegible)" en los campos faltantes. Si es duplicada → preguntar al dueño cuál usar. El batch NO se detiene por un cliente; los demás siguen.
+
+### boletas.py actualizado (2026-10-29)
+`scripts/asesor/boletas.py`: instrucciones en `boletas.md` ahora incluyen templates de mensajes Shalom y Olva, lógica de calidad de foto (borrosa/duplicada/parcial), y nota de strip del prefijo "26" para Olva.
+
+---
+
+## 2026-10-29 (noche) — Routine de boletas: manual, auto-despacho pendiente_ventana, y corrección de bugs
+
+### Trigger reemplazado: `trig_01VqGRf1KXr5WJ8rHcPyjoaT` → `trig_019Vp1ZCNwXE7tzgY2oZxhpA`
+`trig_01VqGRf1KXr5WJ8rHcPyjoaT` (cron cada hora) **eliminado** el 2026-10-29.
+Motivo: la espera de hasta 59 min era innecesaria; el dueño confirma que es igual de fácil hacer «Run now» cuando cargó las boletas. Sin cron no hay sesiones vacías desperdiciando tokens.
+
+Nuevo: `trig_019Vp1ZCNwXE7tzgY2oZxhpA` («Despacho automático de boletas»)
+- **Sin cron, fire-only**: el dueño lo dispara manualmente desde claude.ai → Routines → «Run now».
+- Sesión persistente (mantiene contexto entre disparos del dueño).
+- Todo lo demás igual (Paso 0 noop si staging vacío, etc.).
+
+CLAUDE.md actualizado: refleja el nuevo ID y «sin cron, manual».
+
+### Auto-despacho de `pendiente_ventana` vía webhook
+Cuando la ventana del cliente estaba cerrada al procesar la boleta, la Routine:
+1. Guarda el mensaje completo en `boletas_staging.mensaje_texto` (migración 0065).
+2. Marca los ítems como `pendiente_ventana` y manda la plantilla `aviso_envio_shalom`.
+
+Cuando el cliente responde (cualquier mensaje), el webhook (`src/api/whatsapp-webhook.js`)
+llama a `despacharBoletasPendientesVentana`:
+1. **Reclamo atómico**: `UPDATE SET status='en_proceso' WHERE status='pendiente_ventana'`.
+   Previene doble envío si dos mensajes llegan simultáneamente.
+2. Busca los ítems reclamados (`en_proceso`) ordenados por `id`.
+3. `items[0]` = boleta, `items[1]` = caja (por orden de inserción; columna `orden` es NULL).
+4. Manda fotos + texto.
+5. Marca todo `enviado`.
+Si `mensaje_texto` es NULL (procesado antes de la migración 0065), revierte a `pendiente_ventana` sin enviar.
+
+### Bugs corregidos en esta sesión
+- **boletas.py — pairing cross-lote (blindspot)**: antes se emparejaban fotos globalmente. Ahora se agrupa por `lote_id`; cada `ENVIAR` del dueño genera su propio grupo de pares. Ejemplo: 10 fotos → ENVIAR, luego 2 fotos → ENVIAR → dos lotes separados, sin mezcla.
+- **boletas.py — saldo = 0 (blindspot)**: se agregaron los templates de Shalom y Olva para pago completo (sin mención de saldo) en `boletas.md`.
+- **boletas.py — syntax error (IndentationError)**: `if c:` estaba indentado 4 espacios de más; el archivo no se podía parsear. Corregido.
+- **`stagingActualizar` sobreescribía campos (blindspot)**: un PATCH con solo `{id, status}` ponía a NULL `conversation_id`, `courier`, etc. Corregido con `COALESCE(?, campo)` para todos los campos opcionales.
+- **`despacharBoletasPendientesVentana` — `orden` siempre NULL**: usaba `items.find(r => r.orden === 1/2)` pero `orden` nunca se seteó. La caja nunca se enviaba. Corregido: ahora usa `items[0]` y `items[1]` (orden de inserción).
+- **`despacharBoletasPendientesVentana` — race condition**: dos mensajes simultáneos podían despachar la boleta dos veces. Corregido con reclamo atómico (`UPDATE WHERE status='pendiente_ventana'`).
+
+### Pendiente del dueño
+- ~~Aplicar migración 0065 a mano en D1~~ **APLICADA** el 2026-10-29 vía `npx wrangler d1 execute claudetarot-crm --remote`.
+
+## 2026-10-29 (madrugada) — Matching de cliente y normalización de wa_id
+
+### Nuevo endpoint: GET /api/asesor/ventas-lista?dni=XXXXXXXX
+`src/api/asesor-ventas.js` — `onRequestGetVentasLista`.
+La Routine llamaba a `/api/asesor/ventas-lista` (que no existía). Ahora existe.
+Acepta `?dni=XXXXXXXX` (mínimo 7 dígitos), busca en Sheets Ventas por la columna "DNI / WSP"
+usando `buscarFila` (regex `(^|\D)${dni}(\D|$)`), y devuelve:
+`{encontrado, wa_id (normalizado con prefijo 51), adelanto, saldo, codigo, courier, clave, estado}`.
+
+### Normalización de wa_id (9 dígitos → 51 + 9)
+La Sheets guarda números como "987654321" (9 dígitos, sin código de país).
+El CRM guarda `wa_id` como "51987654321" (11 dígitos).
+Tres lugares corregidos:
+- `GET /api/asesor/ventas-lista` normaliza la respuesta antes de devolverla.
+- `POST /api/asesor/mandar` (`asesor-mandar.js`): si `wa_id` llega con 9 dígitos, agrega "51".
+- `actualizar()` en `asesor-ventas.js` (accion:"boleta"): el regex `/\b51\d{9}\b/` se reemplazó
+  por `/\b(51\d{9}|\d{9})\b/` + normalización, para que el saldo se pueda escribir en D1
+  aunque el número en Sheets no tenga prefijo de país.
+
+### boletas.py: instrucción corregida
+El paso 1 (antes: "GET /api/asesor/ventas-lista o leerFilas") ahora documenta el endpoint real
+con su formato exacto y la nota de que `wa_id` ya viene normalizado.
+
+## 2026-10-29 — CRM: badges de motivo en compras, Jennifer admin
+
+### Jennifer (agent) → admin
+Ejecutado: `UPDATE agents SET role='admin' WHERE username='jennifer'` en D1 remoto.
+
+### Badges de motivo en la lista de conversaciones (app.js líneas ~2002-2003)
+Para conversaciones que tienen la etiqueta `purchase` (compra registrada):
+- `falta_respuesta=1`: badge muestra **"falta agendar seguimiento"** (antes: "Falta respuesta")
+  y el botón de acción dice **"agendé seguimiento"** (antes: "Atendido").
+- `con_recomendacion=1`: badge mantiene "Recomendación", el botón dice **"agendé seguimiento"**.
+Para conversaciones sin `purchase`, los badges no cambian.
+Ambos botones siguen llamando a `marcarAtendido()` → `POST /api/crm/chat-estado {accion:"atendido"}`.
+
+### Respuestas rápidas — ya accesibles a todos los roles
+Confirmado: `onRequestPost = conAuth(post)` en `src/api/crm/quick-replies.js` (no `conAuthAdmin`).
+El botón "Nueva respuesta rápida" en el panel de rápidas tampoco tiene check de admin.
+No se requirió ningún cambio.
+
+## 2026-10-29 — Boletas: fallback CRM para cliente sin Sheets + saldo por imágenes
+
+### Nuevo endpoint: GET /api/asesor/buscar-dni?dni=XXXXXXXX
+Busca el DNI en los mensajes de texto del CRM (D1 `messages.body LIKE '%{dni}%'`, último año).
+Respuesta: `{encontrado, conversation_id, wa_id (51XXXXXXXXX normalizado), nombre, coincidencias}`.
+Implementado en `src/api/asesor-datos.js` (`onRequestGetBuscarDni`).
+Ruta registrada en `src/index.js`: `"/api/asesor/buscar-dni": { GET: asesorBuscarDniGet }`.
+
+### boletas.py — paso 1: tres pasos en orden (Sheets → CRM → preguntar)
+Antes: si DNI no estaba en Sheets, se preguntaba al dueño.
+Ahora:
+1. Buscar en Sheets: `GET /api/asesor/ventas-lista?dni=<DNI>`
+2. Si `encontrado=false`: buscar en CRM: `GET /api/asesor/buscar-dni?dni=<DNI>`
+   - Si encontrado en CRM: crear entrada en Sheets: `POST /api/asesor/ventas {accion:'crear', dni, celular:'<9 dígitos>'}`
+3. Si no está en ninguno: preguntar al dueño.
+
+### boletas.py — paso 2: saldo verificado por imágenes siempre
+Antes: solo leía imágenes si el adelanto de Sheets "parecía incorrecto".
+Ahora: SIEMPRE leer `GET /api/asesor/imagenes?wa_id=<wa_id>` para extraer el monto Yape/Plin.
+- Si Sheets tiene adelanto y cuadra con la imagen → usar Sheets.
+- Si no cuadran → usar el monto de la imagen y anotar la discrepancia.
+- Si solo CRM (sin Sheets) → adelanto = monto visto en la imagen.
+- Si no hay capturas Yape → usar adelanto de Sheets si existe, si no preguntar al dueño.
+
+## 2026-10-29 — Alertas del sistema en el CRM
+
+### Por qué 927633099 no aparece en el CRM
+El número `51927633099` (NUMERO_DUENO_DEFAULT) es interceptado por `esDueno()` en `src/lib/boletas-staging.js`.
+Todo mensaje entrante de ese número va a `manejarMensajeDueno()` (flujo de staging de boletas), no al CRM.
+Solo procesa imágenes (→ tabla `boletas_staging`) y texto "ENVIAR". Es por diseño, no es un error.
+
+### Nuevo endpoint: GET /api/crm/salud (solo admin)
+Devuelve el estado del sistema para el panel admin del CRM.
+Archivo: `src/api/crm/salud.js`. Ruta en `src/index.js`: `"/api/crm/salud": { GET: crmSaludGet }`.
+Campos devueltos:
+- `webhook_ultimo_ok`: ISO timestamp del último webhook recibido con firma válida.
+- `alertas[]`: lista de alertas activas: `tipo`, `etiqueta`, `valor` (timestamp + descripción del error).
+- `hay_alertas`: boolean.
+Tipos de alertas guardados en D1 (`crm_settings`):
+- `webhook_ultimo_rechazo`: firma inválida rechazada (ya existía).
+- `webhook_ultimo_error`: error al procesar el webhook (`src/api/whatsapp-webhook.js`, catch del waitUntil). **NUEVO**.
+- `ultimo_error_escribiendo`: error al enviar «escribiendo…» (ya existía, ahora visible).
+
+### Badge rojo en el botón admin (panel CRM)
+Si `hay_alertas=true`, aparece un punto rojo (`.badge-error-admin`) en el botón admin.
+Se actualiza: al abrir el modal admin (`#btn-admin` click) y cada 5 minutos automáticamente (admin).
+CSS en `public/crm/style.css`. Lógica en `public/crm/app.js` (`cargarSalud()`, `mostrarApp()`).
+
+### Sección "Estado del sistema" en el modal admin
+Encima de "Plantillas para Meta" en `public/crm/index.html`.
+Muestra "Todo en orden · último webhook: …" o lista las alertas con su timestamp y mensaje.
+Título en rojo (`var(--peligro)`) cuando hay alertas.
+
+## 2026-10-29 — Chip de cobro para Olva + auto-activación plan recojo + boletas.py ajustes
+
+### app.js — chipSeguimientoCobro() extendido a Olva
+Antes: `chipSeguimientoCobro()` solo aparecía si `c.shalom_code` estaba seteado (clientes Shalom).
+Ahora: aparece si `c.shalom_code || c.olva`. Incluye atributo `data-plan` ("shalom" o "olva").
+`accionSeguimientoCobro()` usa `chip.dataset.plan || "shalom"` en lugar de "shalom" hardcodeado.
+Resultado: clientes Olva ahora ven el botón PROGRAMAR / DESACTIVAR SEGUIMIENTO COBRO.
+
+### asesor-boletas.js — Olva auto-activa plan recojo
+En el PATCH handler, cuando `courier === "Olva"` y `conversation_id` y `status` es `"enviado"` o `"pendiente_ventana"`,
+se llama `aplicarOlva(env, conversationId, true, "boleta-auto")` automáticamente.
+Plan activado: `recojo_agencia_1/2/3` (días 3, 7, 13). No requiere intervención del dueño.
+Import añadido: `import { aplicarOlva } from "../lib/planes-plantilla.js"`.
+
+### boletas.py — ajustes (2026-10-29 sesión 2)
+1. **Lista de géneros ampliada**: femeninos ahora incluyen Pepita/Fiorella/Janet/Jennifer/Milagros/Flor/Karen/Diana/Claudia/Carla/Rocío/Nelly/Susana/Elizabeth/Verónica/Vanessa/Paola/Laura/Andrea/Alejandra/Grecia/Stefany/Ingrid/Marisol/Yolanda/Consuelo/Gladys/Soledad/Maritza/Mariela/Giuliana/Evelyn/Gisela/Jimena.
+2. **Línea de retención añadida**: las 4 plantillas de mensaje (Shalom+saldo, Olva+saldo, Shalom+completo, Olva+completo) incluyen ahora "Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️" después del link de rastreo.
+3. **Paso 2 simplificado**: quitada la instrucción de `GET /api/asesor/imagenes?wa_id=` (endpoint no existe). Ahora: usar el `adelanto` de Sheets si está disponible; si solo hay CRM sin Sheets, preguntar al dueño.
+4. **Paso 5 corregido**: shalom_code es MANUAL (lo pone el dueño en el CRM, NUNCA la Routine). Olva se activa automáticamente via el PATCH del paso 7 (`asesor-boletas.js`). No se hace ninguna llamada a `/api/crm/contacts` desde la Routine para estos campos.
+
+## 2026-10-29 — Fix: mensajes perdidos + log webhook_errores
+
+### Problema confirmado
+Mensajes de clientes nuevos que llegan desde anuncios Meta (CTWA) o links wa.me
+a veces no aparecían en el CRM. Tres causas raíz identificadas en el código.
+
+### migrations/0066_webhook_errores.sql (NUEVO — aplicar a mano en D1)
+Tabla `webhook_errores (id, wa_id, wa_message_id, error, created_at)` para registrar
+mensajes que el webhook recibió pero no pudo guardar. Índice en `created_at DESC`.
+Comando: `wrangler d1 execute CRM --file=migrations/0066_webhook_errores.sql`
+
+### src/lib/crm-db.js — dos fixes
+1. **`obtenerOCrearContacto`**: INSERT del contacto nuevo ahora envuelto en try/catch.
+   Si lanza UNIQUE constraint (race condition: dos webhooks paralelos para el mismo número nuevo),
+   se reintenta un SELECT para obtener el contacto que ganó la carrera. Antes: el segundo webhook moría.
+2. **`registrarMensajeEntrante`**: `INSERT INTO messages` → `INSERT OR IGNORE INTO messages`.
+   Si Meta reintenta el webhook antes del 200, el mismo wa_message_id ya está en la BD.
+   Con `OR IGNORE` se descarta silenciosamente; el UPDATE de `unread_count` también se salta
+   (guarda por el `if (!msgMeta?.changes) return`).
+
+### src/api/whatsapp-webhook.js — per-message try/catch
+El for loop sobre `_msgs` no tenía aislamiento: un error en el mensaje N mataba los mensajes N+1, N+2, etc.
+Ahora:
+- Mensajes del dueño: dedup + `.catch()` en `manejarMensajeDueno`.
+- Mensajes de clientes: todo el procesamiento (dedup, INSERT contacto, INSERT mensaje, seguimientos,
+  bienvenida) está dentro de `try { ... } catch (err)`. En el catch: log en consola + INSERT en
+  `webhook_errores`. El error no se propaga; el siguiente mensaje del mismo batch se procesa igual.
+
+### src/api/crm/salud.js — incluye errores recientes
+`GET /api/crm/salud` ahora también devuelve `errores_mensajes` (últimos 10 de `webhook_errores`),
+consultado en paralelo con los 4 ajustes existentes.
+
+### public/crm/app.js — cargarSalud() muestra errores
+`cargarSalud()` ahora considera `hayProblemas = d.hay_alertas || d.errores_mensajes?.length > 0`:
+- Badge rojo en botón admin aparece también si hay `errores_mensajes`.
+- Si hay errores: lista `<ul>` con wa_id, mensaje de error y timestamp.
+- Si todo OK y sin errores: sigue mostrando "Todo en orden".
+
+## 2026-10-29 — Log de envíos fallidos + fix barra lateral seguimientos
+
+### migrations/0067_envio_errores.sql (NUEVO — aplicar a mano en D1)
+Tabla `envio_errores (id, scheduled_message_id, conversation_id, wa_id, error, created_at)` para
+registrar cada vez que el cron no pudo enviar un seguimiento programado.
+Comando: `wrangler d1 execute CRM --file=migrations/0067_envio_errores.sql`
+
+### src/lib/crm-cron.js — catch de procesarSeguimientosVencidos
+Al fallar un envío, además de marcar `status = 'fallido'` en `scheduled_messages`, ahora:
+1. INSERT en `envio_errores` con scheduled_message_id, conversation_id, wa_id y error.
+2. Actualiza `crm_settings.envio_ultimo_error` con timestamp + id + primer tramo del error.
+Los tres UPDATEs van en un `batch` para atomicidad; si falla, no propaga el error.
+
+### src/api/crm/salud.js — envio_ultimo_error y errores_envio
+`GET /api/crm/salud` ahora:
+- Lee `crm_settings.envio_ultimo_error` en paralelo con los otros ajustes.
+- Si existe, lo agrega a `alertas` con tipo `"error_envio"`.
+- Devuelve `errores_envio` (últimos 10 de `envio_errores`).
+
+### public/crm/app.js — cargarSalud() muestra envíos fallidos
+`hayProblemas` ahora incluye `d.errores_envio?.length > 0`.
+Se agrega sección "Envíos fallidos" en el panel de Estado del sistema.
+
+### public/crm/app.js — fix esSeguimientoManual (barra lateral)
+`esSeguimientoManual` excluye ahora también:
+- Día 7 (`created_by` termina en `"Automático (día 7)"`).
+- Plan con plantilla (Shalom/Olva): `startsWith("Plan con plantilla")`.
+- Seguimiento con plantilla: `startsWith("Seguimiento con plantilla")`.
+- Seguimiento de respuesta rápida: `startsWith(PREFIJO_SEGUIMIENTO_RAPIDA)`.
+Estos tipos nunca deberían contar en el badge "Seguimiento ×N" de la lista de chats.
+
+### public/crm/app.js — fix verSeguimientoActivo (seguimiento rápida renombrada)
+`verSeguimientoActivo` filtraba los pasos pendientes por `s.created_by === origen`
+donde `origen` incluía el título actual de la respuesta rápida. Si el título se renombraba,
+los seguimientos ya programados (con el título viejo en `created_by`) dejaban de aparecer.
+Solución: ahora filtra por `Number(s.quick_reply_id) === qid` (el ID no cambia).
+
+## 2026-10-29 — Fix: seg_pendientes del servidor desincronizado con esSeguimientoManual
+
+### Problema
+`seg_pendientes` que devuelve `GET /api/crm/conversations` se calculaba excluyendo solo
+`ORIGEN_SEGUIMIENTO_AUTO` y `PREFIJO_SEGUIMIENTO_LEAD`. La función `esSeguimientoManual`
+del frontend excluye además: Sugerencias del asesor, Seguimiento de respuesta rápida,
+Plan con plantilla, Seguimiento con plantilla, y Automático (día 7).
+
+Esto causaba que al enviar la clave Shalom al cliente (cancelando los seguimientos normales),
+el servidor devolvía `seg_pendientes > 0` por los recojo-planes que quedan (Plan con plantilla
+· Recojo en...). El badge mostraba ×N y parpadeaba hasta que `actualizarSeguimientosDetalle`
+completaba la corrección local — y en cada nuevo `sincronizar()` volvía a parpadear.
+
+### Solución
+- `src/lib/crm-db.js`: exporta `PREFIJO_PLAN_PLANTILLA = "Plan con plantilla"`.
+- `src/api/crm/conversations.js`: importa `PREFIJO_SUGERENCIA`, `PREFIJO_SEGUIMIENTO_RAPIDA`,
+  `PREFIJO_PLAN_PLANTILLA` (crm-db.js), `ORIGEN_DIA7` (rescate-lead.js) y
+  `PREFIJO_SEGUIMIENTO_PLANTILLA` (plantillas-seguimiento.js). Define `SEG_EXCL` (7 valores)
+  y lo usa en el subquery de `pendientes` y `proximo`. Ahora el servidor devuelve el mismo
+  conteo que mostraría el frontend sin el paso de corrección local.
+
+## 2026-10-29 (noche, sesión de boletas) — Etiqueta bot_boleta + filtro CRM
+
+### Etiqueta `bot_boleta` en conversaciones
+Cuando la Routine de boletas envía (con éxito) una foto-staging o un texto a un cliente,
+`POST /api/asesor/mandar` llama ahora a `agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta")`
+para marcar la conversación.
+
+- **`src/api/asesor-mandar.js`**: importa `agregarEtiquetaMeta` de `../lib/crm-db.js`;
+  la llama (con `.catch(() => {})`) tras cada `mandarTexto` o `mandarMediaPorId` exitoso.
+  También agrega `tipo: "etiqueta"` para tagging retroactivo sin enviar mensajes:
+  `{ tipo:"etiqueta", wa_id|conversation_id, etiqueta:"bot_boleta" }`.
+- **`src/api/crm/conversations.js`**: `"bot_boleta"` agregado a la lista blanca del filtro
+  `&etiqueta=` (antes solo aceptaba `contact|lead|purchase`).
+- **`public/crm/index.html`**: botón `<button data-etiqueta="bot_boleta">Bot Boleta</button>`
+  en la barra de filtros (`#filtros`), entre «Compra» y «Olva».
+
+El tag tiene la forma espaciada `bot_boleta` (sin espacio, con guión bajo) para evitar
+conflictos con el separador de espacio de `meta_tags`. La función `tieneEtiqueta` del frontend
+busca ` bot_boleta ` rodeado de espacios, lo que funciona correctamente.
+
+### Lote procesado 2026-10-29_20:32 — resumen
+- Staging 3: CAJA de PAREDES GOICOCHEA ILIANA (GR 101724452, LA LIBERTAD-TRUJILLO). Sin boleta ticket en este lote → pendiente que el dueño envíe el ticket Shalom de esta cliente.
+- Staging 4: descartado (era etiqueta GR de Cliente 2 - REAÑO PLASENCIA HAYDEE MARINA, duplicado). Error registrado en staging.
+- Staging 5+6: REAÑO PLASENCIA HAYDEE MARINA (DNI 10139090, conv 3183) — boleta + caja + texto enviados. Sheets actualizado. Tag bot_boleta puesto.
+- Staging 7+8: CHUCNAS CHOMBA LUIS GERMAN (DNI 71883864, conv 739) — boleta + caja + texto enviados. Sheets actualizado. Tag bot_boleta puesto. (Nota: Sheets tenía wa_id 51977452471 pero el CRM tiene 51967452471 — posible error de captura en Sheets; boleta enviada al número del CRM).
+- Staging 9+10: descartados (duplicados de staging 5+6 — el dueño mandó doble la boleta de Cliente 2).
+- Staging 11: ESCALANTE CURE ABIGAIL (DNI 29600375, conv 3390) — boleta ticket + texto enviados (sin foto caja en este lote). Sheets actualizado (orden 101724519, cód K3MW, saldo 69). Tag bot_boleta puesto.
+
+## 2026-10-29 (noche 2, correcciones lote boletas) — Reglas aprendidas y fixes
+
+### Corrección de errores del lote 2026-10-29_20:32
+
+El resumen anterior del lote era INCORRECTO. La Routine anterior confundió los pares.
+Historial real corregido en esta sesión (2026-10-29 21:00+):
+
+- **Staging 3**: CAJA de ILIANA (PAREDES GOICOCHEA ILIANA, GR 101724452, TRUJILLO-CALLE LIVERPOOL).
+  Enviado en esta sesión a conv 3335 (wa_id 51968746573). PATCH status=enviado. ✓
+- **Staging 4**: CAJA de HAYDEE (REAÑO PLASENCIA HAYDEE MARINA, GR 101724501, TRUJILLO-LA ESPERANZA).
+  La sesión anterior lo descartó por error ("etiqueta GR de Cliente 2, duplicado") — era legítimo.
+  Enviado en esta sesión a conv 3183 (wa_id 51914548217). PATCH status=enviado. ✓
+- **Staging 5**: TICKET de HAYDEE (NRO ORDEN 101724501, CÓDIGO J7P9, DNI 17925472).
+  Enviado por sesión anterior a conv 3183. ✓
+- **Staging 6**: TICKET de ILIANA (NRO ORDEN 101724452, CÓDIGO JJDN, DNI 17864931).
+  La sesión anterior lo mandó por ERROR a conv 3183 (Haydee) como su "caja".
+  Enviado correctamente en esta sesión a conv 3335 (Iliana). ✓
+- **Staging 7+8**: CHUCNAS CHOMBA LUIS GERMAN (DNI 71883864, conv 739) — boleta+caja+texto. ✓
+- **Staging 9**: DUPLICADO del ticket de Haydee (mismo NRO ORDEN 101724501). Descartado correctamente.
+- **Staging 10**: CAJA de ABIGAIL (ESCALANTE CURE ABIGAIL, GR 101724519, AREQUIPA-MIRAFLORES).
+  La sesión anterior lo descartó por error ("duplicado de staging 5+6").
+  Enviado en esta sesión a conv 3390 (wa_id 51977598352). PATCH status=enviado. ✓
+- **Staging 11**: TICKET de ABIGAIL (NRO ORDEN 101724519, CÓDIGO K3MW, DNI 29600375).
+  Enviado por sesión anterior + esta sesión completó la caja. ✓
+
+Haydee recibió el ticket de Iliana (staging 6) como su segunda foto — error de la sesión anterior.
+El dueño debe saberlo: Haydee vio staging 6 (ticket de Iliana JJDN/101724452) en su chat.
+Su caja (staging 4) se envió después. No se puede retirar el mensaje erróneo de WhatsApp.
+
+### Reglas nuevas agregadas al sistema (2026-10-29 noche 2)
+
+**Routine prompt (trig_019Vp1ZCNwXE7tzgY2oZxhpA)** — versión 2026-10-29 21:41 UTC:
+- NUNCA despachar boleta sola ni caja sola: siempre AMBAS fotos verificadas del mismo cliente.
+- Las fotos ya no se llaman "BOLETA" y "CAJA" en boletas.md — son FOTO-1 y FOTO-2 porque el dueño
+  NO siempre las manda en orden. La Routine debe leer AMBAS y clasificarlas antes de parear.
+- Verificación de par: el APELLIDO del ticket debe coincidir con el DESTINATARIO de la caja.
+  Si no coinciden → reparear entre todos los stagings del lote.
+- Triangulación (≥2 datos): al identificar al cliente, confirmar DNI + NOMBRE (al menos apellido).
+  Un solo dato coincidente pero el otro no → sospechoso, preguntar al dueño.
+- Duplicados: mismo NRO ORDEN = misma guía. Descartar el duplicado SOLO después de verificar
+  que el NRO ORDEN sea el mismo — nunca por posición en el lote.
+- Paso 5 Shalom: el shalom_code (código de retiro 3114/3143/3144) lo ingresa el dueño a mano.
+  La Routine NO lo asigna (corrige error de versión anterior del prompt).
+
+**scripts/asesor/boletas.py** — actualizado:
+- El md generado ya no llama "BOLETA" y "CAJA" a las fotos: ahora son FOTO-1 y FOTO-2.
+- Encabezado del md dice explícitamente: regla crítica boleta+caja, verificar par, no asumir orden.
+- Instrucciones por cliente incluyen pasos de verificación de par, duplicados y triangulación.
+
+**Etiqueta bot_boleta** (ya documentada arriba): se aplica retroactivamente a los 5 clientes
+del lote. Conv 739 (Luis German), conv 3183 (Haydee), conv 3335 (Iliana), conv 3390 (Abigail),
+y el quinto (conv ya etiquetada en sesión anterior).
+
+**Pegar imágenes en el CRM**: la función `pegarImagenDelPortapapeles()` en `public/crm/app.js`
+y el item "Pegar imagen copiada" en el menú "⋯" (panel-mas) ya existían antes de esta sesión.
+En Chrome móvil la única forma de pegar imágenes es via ese botón (usa `navigator.clipboard.read()`),
+ya que Chrome bloquea el paste nativo de imágenes en textarea.
+
+## 2026-10-29 (noche 3) — Seguimiento de cobro automático, fix imagen en CRM, Routine v5
+
+### Nuevas funcionalidades
+
+**`tipo: "cobro"` en `POST /api/asesor/mandar` (`src/api/asesor-mandar.js`)**
+- Body: `{ "tipo": "cobro", "wa_id": "<wa_id>", "courier": "shalom"|"olva" }`
+- Llama `programarPlan(env, convId, courier, { estado: "pendiente", quien: "asesor-boletas" })`.
+- Si el cliente ya tiene plan, lo cancela y crea el nuevo (ya incorporado en `programarPlan`).
+- Aplica etiqueta `cobro_3x` automáticamente al terminar.
+- Importa: `{ programarPlan }` de `src/lib/planes-plantilla.js`.
+
+**Etiqueta `cobro_3x`**
+- Se asigna automáticamente cuando la Routine llama `tipo: "cobro"`.
+- Whitelist en `src/api/crm/conversations.js`: `["contact", "lead", "purchase", "bot_boleta", "shalom_codigo_pendiente", "cobro_3x"]`.
+- Botón de filtro en CRM (`public/crm/index.html`): «Seguimiento Cobro 3X» (data-etiqueta="cobro_3x").
+
+**Fix: imágenes de bot visibles en CRM (`src/lib/crm-db.js` + `src/lib/crm-send.js`)**
+- Causa: `mandarMediaPorId` no pasaba `mediaId` a `registrarMensajeSaliente` → INSERT guardaba `media_id=NULL`.
+  El CRM solo renderiza imagen si `m.media_key || m.media_id`, así que la imagen quedaba oculta.
+- Fix en `registrarMensajeSaliente` (`crm-db.js`): agregado `mediaId` al destructuring y al INSERT.
+- Fix en `mandarMediaPorId` (`crm-send.js`): pasa `mediaId` en la llamada a `registrarMensajeSaliente`.
+- `/api/crm/media?message_id=X` ya sabía descargar por `media_id` desde el CDN de WhatsApp; solo faltaba guardarlo.
+
+**Routine prompt v5 (`trig_019Vp1ZCNwXE7tzgY2oZxhpA`), actualizado 2026-10-29 ~22:00 UTC**
+- Nuevo Paso 5a: si saldo > 0 → `POST /api/asesor/mandar { tipo: "cobro", wa_id, courier }`.
+- Paso 5b: si saldo = 0 → no agendar cobro.
+- Regla crítica añadida: SIEMPRE usar `wa_id` en todos los POST (nunca `conversation_id`) para evitar
+  el error de María Córdova Julca (2026-10-29: conv 3183 pertenecía a ella, no a Haydee; el `wa_id`
+  de Sheets siempre da la conversación correcta).
+- El shalom_code NO se manda al cliente ni en el mensaje (corregido desde v4).
+- Ver docs/routines.md para el prompt completo.
+
+## 2026-10-29 (noche 4) — Tag saldo_pagado + auto-mejora en Routine boletas (v6)
+
+### Corrección de la entrada anterior (noche 3)
+La regla "NUNCA uses conversation_id" agregada en v5 implicaba incorrectamente que la Routine cometió
+el error de María Córdova. Aclaración del dueño: la Routine siempre usó `wa_id` correctamente y despachó
+a Haydee bien. El error fue un envío manual de esta sesión usando un `conversation_id` incorrecto.
+La v6 quita esa advertencia redundante del prompt.
+
+### Nueva etiqueta: saldo_pagado
+- Se aplica automáticamente por la Routine cuando saldo = 0 (cliente pagó completo).
+  `POST /api/asesor/mandar { tipo: "etiqueta", wa_id, etiqueta: "saldo_pagado" }`
+- Mutuamente excluyente con `cobro_3x`: saldo > 0 → cobro_3x; saldo = 0 → saldo_pagado.
+- Whitelist: `src/api/crm/conversations.js` — agregado `"saldo_pagado"`.
+- Botón de filtro CRM: `public/crm/index.html` — «Ya pagó saldo» (data-etiqueta="saldo_pagado").
+
+### Paso 8 — Auto-mejora (nuevo en v6)
+Al terminar cada lote, la Routine envía un resumen al dueño por Telegram con:
+- ✅ Clientes despachados (nombre, courier, saldo).
+- ⏳ Pendiente_ventana.
+- ❌ Errores con motivo.
+- 💡 Sugerencias de mejora del lote.
+Usa `$TELEGRAM_BOT_TOKEN` y `$TELEGRAM_CHAT_ID` del entorno.
+
+### Sesión separada para envío de boletas
+La Routine usa sesión PERSISTENTE (`persist_session: true`, `session_0173yPdM1ph4oTtfowxkUSmJ`).
+La idea de sesión separada/aislada se descartó: la sesión persistente es suficiente porque
+la Routine siempre parte de `boletas.md` (generado en Paso 1) y no acumula contexto entre lotes.
+
+## 2026-10-29 (noche 5) — Routine boletas v7: prohibición absoluta de mensajes libres al cliente
+
+### Incidente documentado (2026-10-29)
+La Routine (v6) mandó un texto no autorizado a Abigail: una disculpa/corrección de saldo
+("Estimada Abigail, le escribimos para comunicarle que su pago ya está completo...").
+Esto NO estaba autorizado. La regla del dueño es clara: la Routine SOLO puede mandar
+boleta + caja + mensaje del Paso 3.
+
+### Corrección — Routine boletas v7 (2026-10-29 ~22:49 UTC)
+Añadida al inicio del prompt (antes del Paso 0) la REGLA ABSOLUTA de envíos:
+> La Routine SOLO puede mandarle al cliente TRES cosas (Paso 4):
+>   1. foto-staging de la boleta
+>   2. foto-staging de la caja
+>   3. El texto exacto del Paso 3, sin modificar
+> NADA MÁS. Los errores y observaciones van SIEMPRE al dueño por Telegram en el Paso 8.
+
+También reforzado en el Paso 4 con: "⛔ SOLO estos 3 POST. Ningún otro texto al cliente."
+Y en el Paso 2g: "NUNCA mandas un mensaje de corrección al cliente" (inconsistencia de saldo).
+
+### Estado del fix de imágenes en CRM
+Commit `ef48b35` (rama `claude/zen-johnson-4li7zj`):
+
+## 2026-10-30 — Boletas: búsqueda por apellido + dedup por NRO ORDEN (Routine v8)
+
+### Nuevo endpoint: GET /api/asesor/buscar-nombre?nombre=<apellido>
+Busca contactos en el CRM por nombre o apellido (D1 `contacts.name LIKE '%…%' OR contacts.profile_name LIKE '%…%'`).
+Devuelve `{ encontrado, coincidencias: [{ wa_id (51XXXXXXXXX), nombre, conversation_id, last_inbound_at }] }`.
+Implementado en `src/api/asesor-datos.js` (`onRequestGetBuscarNombre`).
+Ruta registrada en `src/index.js`: `"/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet }`.
+Uso: cuando la boleta no se encuentra por DNI en Sheets ni en mensajes del CRM, la Routine busca
+al cliente por APELLIDO de la boleta. Devuelve hasta 8 coincidencias ordenadas por actividad reciente.
+
+### Nuevo endpoint: GET /api/asesor/boletas_staging?nro_orden=<NRO_ORDEN>
+Verifica si un NRO ORDEN ya fue procesado (status `enviado` o `pendiente_ventana`).
+Devuelve `{ ya_procesado: true|false, id, status, nombre_boleta, created_at }`.
+Implementado en `src/api/asesor-boletas.js` (handler GET extendido con `if (nroOrden)`) y
+`stagingVerificarNroOrden` en `src/lib/boletas-staging.js`.
+
+### migrations/0068_boletas_staging_nro_orden.sql (NUEVO — aplicar a mano en D1)
+`ALTER TABLE boletas_staging ADD COLUMN nro_orden TEXT` + índice en esa columna.
+Propósito: guardar el NRO ORDEN de la boleta en la tabla para poder detectar duplicados históricos.
+La Routine guarda `nro_orden` en el PATCH de enviado (Paso 7) y en el PATCH de pendiente_ventana (Paso 4).
+Comando: `wrangler d1 execute CRM --file=migrations/0068_boletas_staging_nro_orden.sql`
+
+### Routine v8 (trig_019Vp1ZCNwXE7tzgY2oZxhpA), 2026-10-30
+Tres cambios respecto a v7:
+1. **Paso 2d — dedup histórico**: después de extraer el NRO ORDEN de la boleta Shalom,
+   `GET /api/asesor/boletas_staging?nro_orden=<NRO_ORDEN>` → si `ya_procesado: true` → PATCH error
+   "duplicado ya procesado" en boleta y caja → SALTAR este cliente. Evita reenviar si el dueño
+   sube la misma foto dos veces en lotes distintos.
+2. **Paso 2e.3 — búsqueda por apellido**: si DNI no aparece en Sheets ni en CRM,
+   `GET /api/asesor/buscar-nombre?nombre=<APELLIDO>` → elegir la coincidencia con el mismo apellido.
+3. **nro_orden en PATCH**: Paso 4 (pendiente_ventana) y Paso 7 (enviado) incluyen `nro_orden`.
+Ver `docs/routines.md` para el prompt completo.
+- `src/lib/crm-db.js`: `registrarMensajeSaliente` ahora acepta y guarda `mediaId` en la columna `media_id`.
+- `src/lib/crm-send.js`: `mandarMediaPorId` pasa `mediaId` a `registrarMensajeSaliente`.
+- `public/crm/app.js` línea 4010: ya verificaba `m.media_key || m.media_id` → renderiza `<img>`.
+- `src/api/crm/messages.js` línea 56: ya devolvía `media_id` en el SELECT.
+- Resultado: imágenes enviadas por el bot serán visibles en el CRM tras el deploy.
+- Mensajes anteriores al fix tienen `media_id=NULL` en D1 y seguirán mostrando `[image]`; no se pueden recuperar sin una migración manual.
+
+## 2026-10-30 (noche 2) — Routine boletas v9: GR Shalom, anti-duplicado histórico por chat, triangulación
+
+### Incidente documentado (2026-10-30)
+En el lote de las 20:48 UTC se cometieron tres errores:
+1. **Staging 20 (TICLIA) mal clasificado**: etiqueta GR Shalom ("TICIA" = typo de "TICLIA")
+   fue declarada "caja sin ticket" y se dijo que no había boleta. Es un documento completo.
+2. **TORRES LASTRA duplicado**: staging 23 fue despachado sin verificar el chat; el cliente
+   ya había recibido su comprobante a las 20:19 UTC desde el lote anterior (stagings 1-18).
+   La dedup por nro_orden en D1 no lo detectó porque stagings anteriores tenían nro_orden=NULL.
+3. **Triangulación insuficiente**: TICLIA identificada solo por apellido, sin verificar
+   ciudad/agencia destino en la etiqueta contra lo que dijo en el chat.
+
+### Correcciones — Routine boletas v9 (2026-10-30 ~21:18 UTC)
+1. **Reconocimiento de GR Shalom como documento completo** (Paso 2a):
+   Tercer tipo de documento definido: "GR SHALOM" (etiqueta con logo Shalom grande, "GR: XXXXXXX"
+   arriba a la derecha, DESTINATARIO, ciudad destino). ES SUFICIENTE para despachar solo.
+   GR = NRO ORDEN; no hay CÓDIGO compartible (omitir línea *Código:* en Paso 3).
+2. **REGLA CRÍTICA 2 — excepción para GR Shalom**: "NUNCA boleta sola ni caja sola —
+   EXCEPCIÓN: etiqueta GR Shalom SÍ es documento completo; se despacha sola."
+3. **Paso 2h — anti-duplicado histórico por chat** (NUEVO):
+   Antes de despachar, query D1 en bash:
+   `SELECT body, created_at FROM messages WHERE conversation_id=<CONV_ID> AND direction='out'
+   AND body LIKE '%Nro de orden:%' ORDER BY created_at DESC LIMIT 1`
+   Si results no vacío → ya_despachado_previo → PATCH error + reportar en Paso 8 → NO despachar.
+   Cubre el caso en que stagings anteriores tienen nro_orden=NULL y la dedup por nro_orden falla.
+4. **Triangulación por ciudad/agencia para GR** (Paso 2e.3):
+   Para documentos GR: verificar que ciudad destino de la etiqueta coincida con lo que el
+   cliente mencionó en su chat. Ciudad + apellido = identificado con alta confianza.
+5. **Variante de mensaje sin *Código:* para GR** (Paso 3):
+   "Con saldo > 0 (SHALOM GR)" y "Con saldo = 0 (SHALOM GR)": igual a ticket pero sin
+   línea *Código:*, usando *Nro de orden:* [GR_NUMERO].
+
+### Saldo de TICLIA (pendiente registro manual)
+Cliente: TICLIA, wa_id 51971946030, DNI 18161420, Trujillo.
+No registrada en Sheets. Saldo derivado del chat: S/69 (adelanto S/20, resto al llegue).
+GR 101867705 = NRO ORDEN, staging 20 = despachado.
+El dueño debe agregarla manualmente a la hoja de ventas si es necesario.
+
+## 2026-10-30 (noche 3) — Routine boletas v10: 2 fotos siempre, cobro auto en pendiente_ventana, log visual
+
+### Correcciones sobre v9
+
+1. **REGLA CRÍTICA 2 — sin excepción para GR Shalom**:
+   v9 tenía una excepción "GR Shalom SÍ es documento completo; se despacha sola."
+   El dueño confirmó: **siempre van 2 fotos**. Una etiqueta GR Shalom requiere 2 stagings:
+   (1) foto de la etiqueta GR, (2) foto del paquete/caja empacado. Si solo llega 1 staging
+   para ese cliente = par incompleto = error, igual que TICKET sin CAJA.
+   REGLA CRÍTICA 2 sin excepciones: "1 foto = error, siempre. Nunca despachar 1 foto sola."
+
+2. **`saldo` en PATCH de pendiente_ventana y enviado** (Paso 4 y Paso 7):
+   La columna `saldo` (migración 0069) ahora se guarda en ambos caminos.
+   Requiere migración `0069_boletas_staging_saldo.sql` (`ALTER TABLE boletas_staging ADD COLUMN saldo TEXT`).
+   Aplicada en D1 vía REST API el 2026-10-30.
+
+3. **Cobro automático en pendiente_ventana** (webhook `despacharBoletasPendientesVentana`):
+   Cuando el cliente con ventana cerrada responde y el webhook auto-despacha sus fotos+texto,
+   ahora también aplica `programarPlan(cobro_3x)` + etiqueta `cobro_3x` si saldo > 0,
+   o etiqueta `saldo_pagado` si saldo = 0. Fuente: `src/api/whatsapp-webhook.js`.
+   Importa `programarPlan` de `src/lib/planes-plantilla.js`.
+
+4. **Paso 6b — log en "Boletas auto"** (NUEVO):
+   Después de despachar (ventana abierta), la Routine llama
+   `POST /api/asesor/boletas-log` con `{ nombre, wa_id, courier, nro_orden, saldo, staging_ids, ventana: "abierta" }`.
+   Nuevo endpoint `src/api/asesor-boletas-log.js`; escribe una fila en la pestaña **"Boletas auto"**
+   del libro de ventas (`GOOGLE_SHEET_ID`). Ruta registrada en `src/index.js`.
+   Headers: Fecha Lima, Nombre, WA, Courier, NRO Orden, Saldo, Staging IDs, Ventana.
+   El log de pendiente_ventana sale cuando el webhook ejecuta el despacho automático.
+
+### Migrations aplicadas
+- `migrations/0069_boletas_staging_saldo.sql` — `ALTER TABLE boletas_staging ADD COLUMN saldo TEXT`
+
+### Archivos modificados
+- `src/api/asesor-boletas-log.js` (NUEVO)
+- `src/api/whatsapp-webhook.js` — cobro/etiquetas en `despacharBoletasPendientesVentana`
+- `src/lib/boletas-staging.js` — `stagingActualizar` + `stagingListarPendientesVentana` incluyen `saldo`
+- `src/index.js` — ruta `/api/asesor/boletas-log`
+
+Worker desplegado: versión `7a3fbac0-fd77-458d-a39e-911c201967cd`
+
+## 2026-10-31 — Routine boletas v11: plantilla ventana cerrada + filtro por fecha de HOY + fallback teléfono
+
+### Correcciones sobre v10
+
+1. **`tipo: "plantilla"` en `POST /api/asesor/mandar`** (NUEVO — `src/api/asesor-mandar.js`, commit `859f047`):
+   Body: `{ "tipo": "plantilla", "conversation_id": <id>, "plantilla": "<nombre>", "params": [] }`
+   → Envía una plantilla WhatsApp al cliente (ej. `aviso_envio_shalom` cuando la ventana está cerrada).
+   Usa `mandarConEscribiendo + enviarTemplate`. NO usar `/api/crm/sugerencias` (requiere sesión browser).
+   La plantilla `aviso_envio_shalom` está registrada en Meta como `es_PE` y tiene **0 variables** (params siempre `[]`).
+
+2. **Fix en `conPlantilla` (`src/api/crm/sugerencias.js`)**:
+   - Corregido idioma `"es"` → `"es_PE"` (Meta registra la plantilla como `es_PE`).
+   - Corregido params `[nombre]` → `[]` (la plantilla no tiene variables `{{1}}`).
+
+3. **Routine v11 — filtro de fecha** (Paso 0):
+   La Routine obtiene `$HOY` (Lima, UTC-5) y filtra SOLO los stagings cuyo `lote_id` empieza con esa fecha.
+   Evita reprocesar boletas de días anteriores.
+
+4. **Routine v11 — fallback por teléfono** (Paso 2e.4):
+   Si el cliente no se encuentra por DNI en Sheets, DNI en CRM, ni apellido en CRM,
+   probar con el TELÉFONO impreso en la boleta: `wa_id = "51" + <telefono_9_digitos>`.
+   Query: `GET /api/asesor/buscar-dni?wa_id=51<telefono>` o consulta D1 directa.
+
+5. **Routine v11 — ventana check via D1** (Paso 4):
+   La verificación de ventana de 24h usa query D1 DIRECTA (no la API del CRM que requiere sesión browser):
+   ```sql
+   SELECT last_inbound_at,
+     CASE WHEN datetime(last_inbound_at) < datetime('now','-24 hours') THEN 'cerrada' ELSE 'abierta' END as ventana
+   FROM conversations WHERE id=<CONV_ID>
+   ```
+
+6. **Routine v11 — revisión del reporte de ventas de ayer** (Paso 0b):
+   Antes de procesar staging, la Routine consulta D1 (`asesor_informes` tabla) para leer el último
+   reporte de ventas y conocer qué clientes de provincia ya están registrados.
+   Evita desconcierto con clientes que compraron ayer pero cuya boleta aparece hoy.
+
+7. **Caso CORTAVARRIA (2026-10-31) — incidente documentado**:
+   - Boleta tenía teléfono "961919732" pero el número real del chat era "961617326" (diferente).
+   - Solución: buscar por DNI 22414481 → `GET /api/asesor/buscar-dni?dni=22414481` → encontrado (conv 3607).
+   - Cliente NO estaba en Sheets (ventas-lista devolvió `encontrado: false`). No se pudo actualizar boleta imagen en Sheets.
+   - **Nota para el dueño**: CORTAVARRIA (DNI 22414481) NO está en Sheets. La venta debe registrarse manualmente.
+
+8. **Caso TICLIA (staging 25, 2026-10-31)**:
+   La boleta ya había sido despachada manualmente el 2026-10-30. Staging marcado como `error: "ya despachado manualmente el 2026-10-30"`.
+
+### Worker desplegado (2026-10-31)
+Versión: `3e2feeaf-b89c-49ee-be82-571940fdeb35`
+Commit: `859f047` — `feat(boletas): agregar tipo 'plantilla' a POST /api/asesor/mandar`
+
+## 2026-10-31 (noche) — Routine boletas v12: sesión aparte, `tipo: "despachar"` y auditoría del flujo
+
+### Qué pasó hoy (incidentes, con datos de D1)
+Lote `2026-10-31_21:44`, 8 fotos (stagings 27–34, 4 clientes). La corrida v11:
+1. **Solo vio 6 de las 8 fotos**: 33 y 34 (Armando Siles) llegaron 1–2 s después del «ENVIAR» y quedaron
+   `pendiente` sin `lote_id`; `GET /boletas_staging` solo listaba `listo`.
+2. **Mandó boleta, caja y texto a Magda Auccaille (conv 1531) con la ventana cerrada** (último mensaje de
+   ella 2026-10-30 21:36): WhatsApp los rechazó (131047, `status='failed'`) y la Routine igual marcó
+   `enviado`. No mandó la plantilla.
+3. **Mandó la plantilla aviso_envio_shalom a Leudys (conv 3601), que SÍ había recibido su comprobante**
+   (leído a las 21:53) y dejó 29/30 en `pendiente_ventana`: si Leudys escribía, el webhook le repetía todo.
+4. **Revisó fotos de ayer** (25/26, Ticlia, ya despachada a mano el 30).
+Arreglado a mano en esta sesión: 29/30 → `enviado`; 31/32 (Magda) y 33/34 (Armando) → `pendiente_ventana`
+con su texto + plantilla; Magda tocó el botón a las 23:04 y el webhook le mandó todo; Armando quedó esperando.
+Carmen Cortavarria (27/28) sí salió bien por el camino plantilla→botón→webhook.
+**Error propio de Claude (2026-10-31 23:07):** al probar la guardia de ventana se mandó el texto «prueba» a
+Magda (su ventana se acababa de abrir). Queda anotado: las pruebas de envío NUNCA van contra un chat real.
+
+### Cambios de código (commit `ef0286f`, Worker `7476855e-c8ed-4725-8409-2886e4c5bc5a`)
+- **`POST /api/asesor/mandar { tipo: "despachar" }`** (`src/api/asesor-mandar.js`): UNA llamada por cliente con
+  `staging_ids:[boleta, caja], texto, courier, saldo, nro_orden, nombre_boleta, dni_boleta`. El Worker:
+  (1) rechaza 400 si faltan datos, si el texto no lleva el nro_orden o si lleva el `shalom_code` del contacto;
+  (2) rechaza 409 `ya_procesado` (foto ya usada o nro_orden ya despachado) o `ya_despachado_en_chat`
+  (mensaje saliente no fallido con ese nro_orden, o texto del bot de boletas en los últimos 10 días) salvo `forzar:true`;
+  (3) mira la ventana con `fueraDeVentana` (D1 `last_inbound_at`): **abierta** → foto, foto, texto (con su
+  pausa), etiquetas `bot_boleta` + `cobro_3x`/`saldo_pagado` + `shalom_codigo_pendiente` (u `olva=1`), plan de
+  cobro, staging `enviado`, fila en «Boletas auto» (`ventana: abierta`); **cerrada** → staging
+  `pendiente_ventana` con el texto, plantilla `aviso_envio_shalom`, fila «Boletas auto» (`ventana: plantilla`);
+  el webhook manda todo cuando el cliente toca el botón.
+- `tipo: "texto"` y `"foto-staging"` ahora responden **409 `ventana_cerrada`** si pasaron 24 h (antes
+  WhatsApp los descartaba en silencio y la Routine creía que habían salido).
+- **Webhook** `despacharBoletasPendientesVentana`: la boleta es la foto con `mensaje_texto`, no `items[0]`
+  (la caja puede tener id menor: caso 33/34). Antes revertía a `pendiente_ventana` y no mandaba nada.
+- **`GET /api/asesor/boletas_staging`** lista también los `pendiente` (fotos que llegaron después del ENVIAR o
+  sin ENVIAR: el «Run now» del dueño vale como ENVIAR) y acepta `?historial=1&dias=N` (registro de lo procesado).
+- **`scripts/asesor/boletas.py`**: solo fotos de HOY (hora Lima); las de otros días salen como «vencidas»
+  (la Routine las marca error, nunca las manda); pares por lote + fotos sueltas; se quitó el procedimiento
+  duplicado del `boletas.md` (vivía ahí y en el prompt y se contradecían: ahora manda el prompt + `despachar`).
+  Manda `User-Agent: tarot-asesor/1.0` (sin él Cloudflare responde 403 «error 1010», también a `curl`/python).
+
+### Routine v12 — sesión aparte (pedido del dueño: historial propio, sin mezclar con el chat de desarrollo)
+- Sesión dedicada: `session_017wTF8ZRjd1WRhycyR6M3Uc` («Boletas — despacho automático (historial de la
+  Routine)»), clon de la rama `claude/zen-johnson-4li7zj`, modelo heredado `claude-fable-5-1`.
+- Routine nueva: **`trig_01UMZRmWB3zFxF7gPTA7Pewm`** («Despacho automático de boletas (v12 — sesión aparte)»),
+  **manual (sin cron)**, `persistent_session_id` = la sesión de arriba. Prompt completo en `docs/routines.md`.
+- Routine vieja `trig_019Vp1ZCNwXE7tzgY2oZxhpA` (v11) **apagada** (`enabled: false`, renombrada «APAGADA
+  2026-10-31»). No se borró: borrarla borraría las sesiones que creó. Ya no corre en esta sesión.
+- El conector de Google Sheets no se pudo adjuntar a la Routine desde la API (la organización no lo permite
+  por `create_trigger`); no hace falta: la fila en «Boletas auto» la escribe el Worker (`registrarBoletaLog`).
+  Si el dueño quiere que la Routine lea el Sheet directamente, se agrega en claude.ai → Routines → Editar.
+
+### Registro visual
+Pestaña **«Boletas auto»** del libro «Pedidos Tarot Kit» (`GOOGLE_SHEET_ID` = `1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc`): una fila por despacho
+(Fecha Lima, Nombre, WA, Courier, NRO Orden, Saldo, Staging IDs, Ventana = abierta | plantilla | pendiente).
+«plantilla» = se mandó el aviso y se espera al cliente; «pendiente» = el webhook ya mandó todo tras el botón.
+
+### Pendiente / ideas que el dueño pidió y siguen abiertas
+- Rotar fotos que llegan de lado antes de mandarlas (pedido 2026-10-29): no implementado; mandamos el
+  `media_id` tal cual (rotar exige bajar, girar y resubir el archivo).
+- Carmen Cortavarria (DNI 22414481) sigue sin fila en el libro de ventas (`ventas-lista` → no encontrado).
+
+## 2026-10-31 (noche 2) — Routine boletas v13: Sonnet, `boletas.py` con subcomandos, venta en Sheets desde el Worker
+
+Pedido del dueño (misma noche): registro práctico del estado actual, prompt «para la IA más básica» y que la
+Routine pueda correr en Sonnet; rotar fotos de lado; que la venta quede registrada aunque el cron de ventas
+no la haya puesto; que mandar el código de retiro apague el cobro. Todo lo que sigue está en el commit
+`3d4a864` (Worker `d9c37c55-c8d1-47e0-a311-fd1c4735776c`). **El estado actual completo está en `docs/boletas.md`**
+(se reescribe cuando cambia algo; aquí solo queda la historia).
+
+- **Routine v13 `trig_01M97ha817PbZ8gKXZeBE95g`** («Despacho automático de boletas», manual) en la sesión
+  `session_017wTF8bgtkfTRHM2difyptU` (modelo `claude-sonnet-5-5`). La v12 (`trig_01UMZR…`, sesión Fable
+  `session_017wTF8ZRjd…`) se borró y su sesión se archivó sin haber corrido nunca. Prompt en `docs/routines.md`.
+- **`scripts/asesor/boletas.py` con subcomandos** (`bajar · historial · buscar · chat · reportes · rotar ·
+  despachar · error · telegram`): el modelo no arma curl, no conoce la clave ni toca D1. `bajar` además
+  endereza solo las fotos con orientación EXIF y las resube; `rotar <id> <90|180|270>` gira a pedido del modelo.
+- **`GET /api/asesor/chat`** (`asesor-datos.js`): contacto, ventana de 24 h, etiquetas, últimos mensajes,
+  `boleta_ya_enviada` y sus fotos en staging; busca por `conversation_id`, `wa_id` o `telefono`. No devuelve
+  el `shalom_code`.
+- **`POST /api/asesor/imagen`**: reemplaza la foto de un staging `listo|pendiente` (la rotada) subiéndola a
+  WhatsApp como media nuevo (`subirMedia`).
+- **`despachar` registra la venta** (`asesor-mandar.js` → `crear`/`actualizar` de `asesor-ventas.js`, ahora
+  exportadas): fila nueva en Ventas si no existe por DNI (celular, Shalom, adelanto, saldo, código TS-…) y
+  la foto de la boleta en R2 con «En camino». Caso Cortavarria (sin fila) ya no se repite.
+- **Código de retiro apaga el cobro** (`terminarCobroSiLlevaCodigo`, `crm-db.js`): antes conservaba los
+  planes «Recojo en Shalom/Olva»; desde hoy los cancela, quita `shalom_codigo_pendiente` y pone
+  `saldo_pagado`. Aplicado a mano a Carmen Cortavarria (recibió «3144» a las 22:30).
+- Estado de hoy al cierre: Carmen ✅ (código dado, cobro cancelado), Leudys ✅ (cobro 3 pasos pendiente),
+  Magda ✅ por botón 23:04 (cobro pendiente), Armando: tocó el botón 23:05–23:06 ANTES del deploy del arreglo
+  del webhook (23:09), no salió nada y el dueño lo mandó a mano 23:18; stagings 33/34 marcados `enviado`
+  y etiquetas puestas a mano (cobro «Tras el aviso de envío», 3 pasos pendiente).
+
+## 2026-10-31 (noche 3) — Rastreo de bugs del CRM: mensajes que no entran / no salen
+
+Pedido del dueño: un paseo por el CRM de lo más crítico a lo menos. Datos de D1, últimos 4 días:
+5 578 mensajes salientes, 7 fallidos (3 boletas con ventana cerrada —ya corregido—, 1 seguimiento fuera
+de ventana, 3 a un cliente bloqueado), 85 en `sent` sin entrega (leads que no volvieron a conectarse),
+entrantes sin archivo: 0, tipo `unsupported`: 1. Lo que sí estaba mal (commit `bc9444a`, Worker
+`d89f1e78-2e3e-4ba9-9878-6eb946679ad1`, también en `main`):
+
+1. **Las tablas `webhook_errores` (migración 0066) y `envio_errores` (0067) no existían en producción.**
+   El webhook y el cron insertaban ahí con `.catch(() => {})`: todo error de entrada o de envío programado
+   se perdía en silencio, y en el cron el `batch` fallido tampoco marcaba `fallido` ni `envio_ultimo_error`
+   (lo rescataba el barrido de 15 min). Aplicadas a mano por la API de D1 y anotadas en `d1_migrations`.
+   CRM → Salud ya las lee.
+2. **Bienvenida que no salía**: 33 de 436 chats nuevos (4 días) llegaron sin `referral.ctwa_clid` aunque
+   abrían con el texto prellenado del anuncio («¡Hola! Me gustaría más información.», «¡Hola! Quiero más
+   información», «…conseguir más información»). `chatNuevoDeAnuncio` ahora también acepta a un contacto
+   nuevo cuyo primer texto es ese saludo (`esSaludoDeAnuncio`): recibe bienvenida y seguimiento de
+   interesados. CAPI no cambia (sin `ctwa_clid` sigue siendo `Contact`).
+3. **Webhook**: un mensaje entrante que no se pudo procesar avisa por Telegram («Mensaje entrante no
+   procesado») además de quedar en `webhook_errores`.
+4. **Cron**: un programado sin plantilla con la ventana de 24 h cerrada se cancela y queda en
+   `envio_errores` («pasaron más de 24 h…») en vez de intentarse y fallar en WhatsApp (131047).
+
+Sin cambios (revisado y sano): entrantes de imagen/audio/documento con su `media_id` al 100 %, CAPI 502
+eventos sin fallos, catálogo/producto salen, `quick_replies.categoria` sí existe en D1.
+
+## 2026-11-01 — Seguimientos: solo el cliente corta la cadena, plan universal, barra «Seguimiento» en el chat
+
+Pedido del dueño (urgente): el paso 2 (20 h, collar) de «Provincia Msj. 3» casi nunca salía; quiere más
+seguimientos en la semana (día 3, día 5 y el día 6 para todos los de anuncio), que la cadena salga sí o sí
+salvo que el cliente escriba, un «dos pasos universal» editable en un solo lugar y un control grande para
+reactivar. **El estado actual completo está en `docs/seguimientos.md`.**
+
+### Diagnóstico con datos (7 días, «Provincia Msj. 3»)
+Paso 1 programado 201 veces (106 salieron); paso 2 programado 162 (61 salieron, 95 cancelados). De 84
+cancelaciones del paso 2 en 5 días: 74 porque el cliente escribió (correcto, pero nadie reactivaba), 9 porque
+nosotros mandamos otro mensaje (`cancelarSeguimientosDeLead` en cada envío), 1 por el tope de 2 automáticos
+(la secuencia de anuncio ya había mandado uno). Además el paso 2 se saltaba al programar si la rápida salía
+más de 2 h después del último mensaje del cliente (tope de 23 h con `continue`). 187 de 202 envíos de la
+rápida fueron < 1 h después del cliente.
+
+### Cambios (commit de esta entrada; Worker desplegado)
+- `src/lib/crm-db.js`: `programarPasosEnChat` (tope de 23 h con adelanto o salto, plantilla «día N del chat»
+  con `desde: "inicio"`, reemplazo de la cadena anterior, nada a quien compró); `normalizarPasosSeguimiento`
+  (hasta 6 pasos, misma forma para rápidas y plan universal); `pasosUniversales`; `pasosDeSeguimientoRapida`
+  devuelve el plan universal si la rápida lo usa; `MAX_AUTOMATICOS_SIN_RESPUESTA` 2 → 6.
+- Quitado `cancelarSeguimientosDeLead` de `messages.js`, `catalog.js`, `templates.js`, `sugerencias.js` y
+  `scheduled.js` (nuestros envíos y programaciones no cortan la cadena). Sigue en `followup-apply.js`
+  (aplicar una secuencia reemplaza) y dentro de `programarPasosEnChat`.
+- `migrations/0071_quick_replies_followup_universal.sql` (aplicada a mano en D1): `quick_replies.followup_universal`.
+- `settings.js`: `seguimiento_universal` (pasos) y `aplicar_universal_a_rapidas`; `quick-replies.js`: `followup_universal`
+  en GET/POST/PATCH; `followup-rapida.js`: devuelve `universal` y `desde`.
+- **Nuevo `GET/POST /api/crm/seguimiento`** (`src/api/crm/seguimiento.js`): estado de la cadena del chat, plan a
+  reactivar (última rápida con seguimiento o el universal), `reactivar` / `apagar`.
+- `conversations.js`: el badge «Seguimiento · hora» de la lista cubre cualquier cadena automática (antes solo la de anuncio).
+- CRM: barra `#barra-seguimiento` bajo la cabecera del chat (verde activa / naranja reactivar; `pintarBarraSeguimiento`,
+  `abrirReactivarDesdeBarra`, `pintarPasosReactivar` en `app.js`); en el editor de rápidas, selector
+  «Plan universal / Pasos propios / Sin seguimiento», edición del plan (admin) y botón «Usar el plan universal en
+  todas»; en los pasos de plantilla, «los días se cuentan desde el primer mensaje del cliente (día N del chat)»;
+  hasta 6 pasos; textos de ayuda nuevos. CSS: `.seg-barra`, `.seg-modo`, `.aviso-universal`.
+- `scripts/test-seguimientos-cadena.mjs` (nuevo, en `npm run check`) y reglas nuevas en `check.mjs`
+  («solo el cliente corta la cadena», tope 6, adelanto al tope).
+- Semilla del plan universal en D1 (`crm_settings.seguimiento_universal`): los 2 pasos de «Provincia Msj. 3».
+  Ninguna rápida se cambió a universal todavía: lo decide el dueño con el botón «Usar en todas».
+
+### Verificado y sin cambios
+El día 6 de anuncio ya era «sin excepción»: `rescate7Dias` agendó y mandó el rescate a 140 de 140 chats
+creados hace 8–10 días que no compraron.

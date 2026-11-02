@@ -11,7 +11,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { PLANES, programarPlan, leerDias } from "../../lib/planes-plantilla.js";
+import { PLANES, programarPlan, leerDias, diasDelPlan } from "../../lib/planes-plantilla.js";
 import { obtenerAjuste, guardarAjuste } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -47,19 +47,21 @@ async function get({ env, agent }) {
      WHERE s.status = 'por_aprobar'
      ORDER BY s.conversation_id, s.send_at`
   ).all();
-  const [dias, auto] = await Promise.all([obtenerAjuste(env.CRM_DB, "plan_dias"), obtenerAjuste(env.CRM_DB, "plan_auto")]);
-  return json({ por_aprobar: results, dias: leerDias(dias), auto: auto !== "0" });
+  const [dias, diasOlva, auto] = await Promise.all([diasDelPlan(env.CRM_DB, "shalom"), diasDelPlan(env.CRM_DB, "olva"), obtenerAjuste(env.CRM_DB, "plan_auto")]);
+  return json({ por_aprobar: results, dias, dias_olva: diasOlva, auto: auto !== "0" });
 }
 
 async function patch({ request, env, agent }) {
   if (!esAdmin(agent)) return json({ error: "Solo el administrador aprueba los planes." }, 403);
   const payload = await request.json().catch(() => null);
-  if (payload?.dias !== undefined || payload?.auto !== undefined) {
-    if (payload.dias !== undefined) {
-      const dias = leerDias(payload.dias);
-      if (dias.join(",") !== String(payload.dias).replace(/\s/g, "")) return json({ error: "Pon 3 días de menor a mayor, entre 1 y 60 (ej. 4,7,21)." }, 400);
-      await guardarAjuste(env.CRM_DB, "plan_dias", dias.join(","));
-    }
+  if (payload?.dias !== undefined || payload?.dias_olva !== undefined || payload?.auto !== undefined) {
+    // Olva (recojo en agencia) sale dentro de 14 días como mucho desde el despacho (regla del dueño, 2026-10-23).
+    const dias = payload.dias !== undefined ? leerDias(payload.dias) : null;
+    const diasOlva = payload.dias_olva !== undefined ? leerDias(payload.dias_olva) : null;
+    if (dias && dias.join(",") !== String(payload.dias).replace(/\s/g, "")) return json({ error: "Pon 3 días de menor a mayor, entre 1 y 60 (ej. 4,7,21)." }, 400);
+    if (diasOlva && (diasOlva.join(",") !== String(payload.dias_olva).replace(/\s/g, "") || diasOlva[2] > 14)) return json({ error: "Olva: pon 3 días de menor a mayor, y el último como mucho a 14 (ej. 3,7,13)." }, 400);
+    if (dias) await guardarAjuste(env.CRM_DB, "plan_dias", dias.join(","));
+    if (diasOlva) await guardarAjuste(env.CRM_DB, "plan_dias_olva", diasOlva.join(","));
     if (payload.auto !== undefined) await guardarAjuste(env.CRM_DB, "plan_auto", payload.auto ? "1" : "0");
     return json({ ok: true });
   }

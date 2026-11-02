@@ -16,11 +16,13 @@
  *              (POST /api/crm/escribiendo): sale sin repetir la pausa (ver crm-send.js)
  */
 
-import { limpiarBotones } from "../../lib/whatsapp.js";
+import { limpiarBotones, enviarTemplate } from "../../lib/whatsapp.js";
 import { conAuth, chatSoloLectura } from "../../lib/crm-auth.js";
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido } from "../../lib/crm-send.js";
-import { cancelarSeguimientosDeLead, programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA } from "../../lib/crm-db.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, PAUSA_RAPIDA_MS, escribiendoVivoPrendido, mandarConEscribiendo } from "../../lib/crm-send.js";
+import { programarSeguimientoDeRapida, PREFIJO_SEGUIMIENTO_RAPIDA, obtenerAjuste, registrarMensajeSaliente } from "../../lib/crm-db.js";
+import { textoParaChat } from "../../lib/plantillas-propuestas.js";
 import { registrarUso } from "../../lib/crm-variantes.js";
+import { plantillaAprobada } from "../../lib/plantillas.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -55,7 +57,8 @@ export async function leerMensajes(env, conversationId, beforeId = null, { marca
        m.reply_to_message_id, m.client_reaction, m.agent_reaction, m.quick_reply_id,
        r.body AS reply_body, r.type AS reply_type, r.direction AS reply_direction, r.sent_by AS reply_sent_by,
        -- Solo si tiene algún paso de seguimiento prendido (el botón «Reactivar seguimiento» de la burbuja).
-       CASE WHEN json_valid(q.followup_pasos) AND json_array_length(q.followup_pasos) > 0
+       CASE WHEN q.followup_universal = 1 THEN 1
+         WHEN json_valid(q.followup_pasos) AND json_array_length(q.followup_pasos) > 0
          THEN EXISTS (SELECT 1 FROM json_each(q.followup_pasos) j WHERE COALESCE(json_extract(j.value, '$.activo'), 1) <> 0)
          ELSE NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL END AS con_seguimiento,
        -- ¿Ese seguimiento sigue programado en este chat? Si sí, la burbuja dice «Seguimiento activo»; si se rompió, «Reactivar».
@@ -108,6 +111,8 @@ async function post({ request, env, agent }) {
   const sentBy = agent?.displayName || agent?.username || null;
   const programarRapida = async (waMessageId) => {
     if (!quickReplyId) return;
+    // Cuenta el uso para ordenar «según uso» (mismo viaje a D1, sin pedir nada más).
+    await env.CRM_DB.prepare("UPDATE quick_replies SET usos = usos + 1 WHERE id = ?").bind(quickReplyId).run().catch(() => {});
     // Queda en la burbuja: desde ahí se reactiva el seguimiento si otro mensaje lo canceló.
     if (waMessageId) await env.CRM_DB.prepare("UPDATE messages SET quick_reply_id = ? WHERE wa_message_id = ?").bind(quickReplyId, waMessageId).run().catch(() => {});
     await programarSeguimientoDeRapida(env.CRM_DB, conversationId, quickReplyId).catch((err) => console.error("Seguimiento de rápida:", err.message));
@@ -138,13 +143,37 @@ async function post({ request, env, agent }) {
       const caption = type !== "sticker" ? String(payload?.caption || "").slice(0, 1024) || undefined : undefined;
       const fileName = String(payload?.file_name || "").slice(0, 200) || undefined;
       const waMessageId = await mandarMediaGuardada(env, conversationId, conv.wa_id, mediaKey, type, caption, sentBy, fileName, replyTo);
-      await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
+      // Lo que mandamos no corta la cadena de seguimiento (solo el cliente): la rápida con seguimiento la reemplaza.
       await programarRapida(waMessageId);
       return json({ ok: true, wa_message_id: waMessageId });
     }
 
-    const texto = String(payload?.body || "").trim();
+    // Si la respuesta rápida tiene plantilla_principal, se manda como template (fuera de ventana).
+    if (quickReplyId) {
+      const qr = await env.CRM_DB.prepare("SELECT plantilla_principal FROM quick_replies WHERE id = ?").bind(quickReplyId).first().catch(() => null);
+      if (qr?.plantilla_principal) {
+        const aprobada = await plantillaAprobada(env, qr.plantilla_principal);
+        if (!aprobada) return json({ error: `La plantilla "${qr.plantilla_principal}" no está aprobada en Meta.` }, 400);
+        const botonesParams = [];
+        if (aprobada.conCopyCode) {
+          const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
+          if (!yapeNum) return json({ error: 'Falta el número Yape. Ponlo en CRM → Equipo → Ajustes → "Número Yape".' }, 400);
+          botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
+        }
+        await pausaEnvio(env, conversationId, PAUSA_RAPIDA_MS);
+        const waMessageId = await mandarConEscribiendo(env, conversationId, (e) => enviarTemplate(e, conv.wa_id, qr.plantilla_principal, aprobada.idioma || "es", undefined, botonesParams.length ? botonesParams : undefined));
+        await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "template", body: await textoParaChat(env, qr.plantilla_principal, []).catch(() => `Plantilla: ${qr.plantilla_principal}`), sentBy });
+        await programarRapida(waMessageId);
+        return json({ ok: true, wa_message_id: waMessageId });
+      }
+    }
+
+    let texto = String(payload?.body || "").trim();
     if (!texto) return json({ error: "Falta body o media_key." }, 400);
+    if (/\{yape\}/i.test(texto)) {
+      const yn = await obtenerAjuste(env.CRM_DB, "yape_numero");
+      texto = texto.replace(/\{yape\}/gi, yn || "");
+    }
     const botones = limpiarBotones(payload?.botones);
     if (botones.length && texto.length > 1024) return json({ error: "Con botones el mensaje puede tener hasta 1024 caracteres." }, 413);
     if (texto.length > 4096) return json({ error: "El mensaje es demasiado largo." }, 413);
@@ -152,7 +181,6 @@ async function post({ request, env, agent }) {
     const vivo = payload?.escribiendo_vivo === true && !quickReplyId && (await escribiendoVivoPrendido(env));
     await pausaEnvio(env, conversationId, quickReplyId ? PAUSA_RAPIDA_MS : undefined, { vivo });
     const waMessageId = await mandarTexto(env, conversationId, conv.wa_id, texto, sentBy, replyTo, undefined, botones);
-    await cancelarSeguimientosDeLead(env.CRM_DB, conversationId);
     await programarRapida(waMessageId);
     return json({ ok: true, wa_message_id: waMessageId });
   } catch (err) {

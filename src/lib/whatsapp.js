@@ -142,17 +142,20 @@ export async function editarTemplate(env, id, componentes) {
   return llamar(env, String(id), { components: componentes });
 }
 
-/** Manda un template ya aprobado — el único tipo de mensaje válido fuera de la ventana de 24h. */
-export async function enviarTemplate(env, waId, nombre, idioma, parametros) {
-  const components = parametros?.length
-    ? [{ type: "body", parameters: parametros.map((texto) => ({ type: "text", text: texto })) }]
-    : undefined;
+/** Manda un template ya aprobado — el único tipo de mensaje válido fuera de la ventana de 24h.
+ * `botonesParams`: componentes de botón para el momento del envío (ej. copy_code). */
+export async function enviarTemplate(env, waId, nombre, idioma, parametros, botonesParams) {
+  const components = [];
+  if (parametros?.length)
+    components.push({ type: "body", parameters: parametros.map((texto) => ({ type: "text", text: texto })) });
+  if (Array.isArray(botonesParams) && botonesParams.length)
+    components.push(...botonesParams);
 
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
     to: waId,
     type: "template",
-    template: { name: nombre, language: { code: idioma || "es" }, ...(components ? { components } : {}) }
+    template: { name: nombre, language: { code: idioma || "es" }, ...(components.length ? { components } : {}) }
   });
   return datos.messages?.[0]?.id || null;
 }

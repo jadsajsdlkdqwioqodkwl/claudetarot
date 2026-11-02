@@ -45,7 +45,6 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
-import { cancelarSeguimientosDeLead } from "../../lib/crm-db.js";
 import { enviarTemplate } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos, limpiarPlantilla } from "../asesor.js";
@@ -189,20 +188,18 @@ async function programar(env, conversationId, texto, quien, cuando, extra = {}) 
   return null;
 }
 
-/** Ventana cerrada: el link sale con la plantilla utility aprobada en Meta. */
+const PLANTILLA_AVISO_ENVIO = "aviso_envio_shalom";
+
+/** Ventana cerrada: se envía aviso_envio_shalom para que el cliente abra la ventana y reciba su boleta. */
 async function conPlantilla(env, s, quien) {
-  if (!env.PLANTILLA_ENVIO) {
-    return "Pasaron más de 24 h y todavía no hay plantilla de envío aprobada (PLANTILLA_ENVIO): no se le puede escribir gratis.";
-  }
   const conv = await env.CRM_DB.prepare(
     "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?"
   ).bind(s.conversation_id).first();
   if (!conv) return "No encontré el chat.";
-  const nombre = (s.nombre || "").split(/\s+/)[0] || "estimad@";
   try {
-    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, (e) => enviarTemplate(e, conv.wa_id, env.PLANTILLA_ENVIO, "es", [nombre, s.titulo]));
+    const waMessageId = await mandarConEscribiendo(env, s.conversation_id, (e) => enviarTemplate(e, conv.wa_id, PLANTILLA_AVISO_ENVIO, "es_PE", []));
     await registrarMensajeSaliente(env.CRM_DB, s.conversation_id, {
-      waMessageId, type: "template", body: `Plantilla: ${env.PLANTILLA_ENVIO} · ${s.titulo}`, sentBy: quien
+      waMessageId, type: "template", body: `Plantilla: ${PLANTILLA_AVISO_ENVIO}`, sentBy: quien
     });
     return null;
   } catch (err) {
@@ -246,7 +243,6 @@ async function post({ request, env, agent }) {
     if (!texto) return json({ error: "El mensaje está vacío." }, 400);
     const destino = (await destinosDeChats(env.CRM_DB, [convId]))[convId];
     if (!textoSirvePara(texto, destino)) return json({ error: `Este chat es de ${destino}: el mensaje es para el otro destino.` }, 422);
-    await cancelarSeguimientosDeLead(env.CRM_DB, convId);
     const error = await programar(env, convId, texto, quien, "ahora");
     if (error) return json({ error }, 422);
     d.enviado = new Date().toISOString();
@@ -321,8 +317,6 @@ async function post({ request, env, agent }) {
 
   if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
-    // Una sola cadena por chat: lo que se aprueba reemplaza a los automáticos pendientes.
-    await cancelarSeguimientosDeLead(env.CRM_DB, s.conversation_id);
     let error = await programar(env, s.conversation_id, texto, quien, cuando, { plantilla: plantilla1, botones: payload.botones });
     // Envío con la ventana cerrada: sale con la plantilla.
     if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {

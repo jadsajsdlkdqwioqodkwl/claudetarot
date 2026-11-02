@@ -6,6 +6,7 @@
  * lista): el primer paso se manda `delay_minutes` después de ahora, el
  * segundo `delay_minutes` después del primero, y así, POR CADA chat — se
  * acumulan para sacar el send_at real de cada uno.
+ * `horas` (opcional, un solo chat): la hora de salida de cada paso activo, en orden, como las puso el CRM.
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
@@ -43,6 +44,16 @@ async function post({ request, env, agent }) {
   const pasoUno = await env.CRM_DB.prepare("SELECT id FROM followup_sequence_steps WHERE sequence_id = ? LIMIT 1").bind(sequenceId).first();
   if (!pasoUno) return json({ error: "Esa secuencia todavía no tiene pasos." }, 400);
 
+  // Horas de salida elegidas en el CRM (una por paso activo, en orden). Sin ellas, sale la espera de cada paso.
+  let horas = null;
+  if (Array.isArray(payload?.horas)) {
+    horas = payload.horas.map((h) => new Date(h).getTime());
+    const { n } = await env.CRM_DB.prepare("SELECT COUNT(*) AS n FROM followup_sequence_steps WHERE sequence_id = ? AND COALESCE(activo, 1) <> 0").bind(sequenceId).first();
+    if (horas.length !== n) return json({ error: "Las horas no cuadran con los mensajes de la secuencia." }, 422);
+    if (horas.some((t, i) => !t || t <= Date.now() || (i && t <= horas[i - 1]))) return json({ error: "Cada mensaje tiene que salir en una hora futura y después del anterior." }, 422);
+    horas = horas.map((t) => new Date(t).toISOString());
+  }
+
   const nombre = agent?.displayName || agent?.username || null;
   // La secuencia de leads (la de "tras no respuesta") se marca como tal —
   // así nuestros mensajes la cancelan — y reemplaza a la que ya hubiera
@@ -60,7 +71,7 @@ async function post({ request, env, agent }) {
       await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status = 'pendiente' AND created_by = ?")
         .bind(conv.id, createdBy).run();
     }
-    pasosProgramados += await programarSecuenciaSeguimiento(env.CRM_DB, conv.id, sequenceId, createdBy);
+    pasosProgramados += await programarSecuenciaSeguimiento(env.CRM_DB, conv.id, sequenceId, createdBy, horas);
   }
 
   return json({ ok: true, chats_aplicados: existentes.length, pasos_programados: pasosProgramados });
