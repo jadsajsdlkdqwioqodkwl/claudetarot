@@ -137,6 +137,8 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 
 ## Registro de cambios (lo más nuevo arriba)
 
+- 2026-11-02 · **Baja de Gissele:** su cuenta (`gissele`, id 8) se desactiva con `migrations/0062_baja_gissele.sql` (ya aplicada en D1 el 2026-11-02, con el `SELECT` previo; única cuenta que coincidía). No se borra: chats, ventas y comisiones quedan con su nombre; sus chats abiertos siguen asignados a ella hasta reasignarlos. Mismo procedimiento que Priscila (`0061`).
+
 - 2026-10-27 · **Fixes de la sesión de botón COPY_CODE:**
   1. **Texto del botón COPY_CODE:** Meta exige exactamente `"Copiar código de oferta"` (localizado, no se puede cambiar). El texto anterior era `"COPIAR YAPE"` → corregido en `src/lib/plantillas-propuestas.js`.
   2. **Checkbox COPY_CODE por plantilla:** ahora cualquier plantilla puede tener o no el botón, controlado por un checkbox en CRM → Herramientas → Plantillas (no solo `yape_pago`). Se almacena como `copyCode: true/false` en los cambios de la plantilla. Archivos: `src/lib/plantillas-propuestas.js`, `public/crm/app.js`.
