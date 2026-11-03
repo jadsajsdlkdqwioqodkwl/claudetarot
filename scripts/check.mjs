@@ -1041,6 +1041,16 @@ check("las letras de columna llegan hasta la última de la hoja",
     !/reflotarSinRespuesta/.test(readFileSync(join(root, "src/index.js"), "utf8")) &&
     !/reflotarSinRespuesta/.test(readFileSync(join(root, "src/lib/crm-sugerencias.js"), "utf8")) &&
     /atencion/.test(readFileSync(join(root, "src/api/crm/conversations.js"), "utf8")));
+  // 2026-11-03: una exclusión más en SEG_EXCL sin su «NOT LIKE ?» en el SQL dejó la lista de chats vacía media hora
+  // (D1 rechaza la consulta por el número de parámetros). Los marcadores del subquery `seg` tienen que ser 2 × SEG_EXCL.
+  {
+    const conv = readFileSync(join(root, "src/api/crm/conversations.js"), "utf8");
+    const excl = (conv.match(/const SEG_EXCL = \[([\s\S]*?)\];/) || [])[1] || "";
+    const n = excl.split("\n").filter((l) => /^\s*(`|ORIGEN_)/.test(l)).length;
+    const seg = conv.slice(conv.indexOf("LEFT JOIN ("), conv.indexOf(") seg ON"));
+    const marcadores = (seg.match(/<> \?/g) || []).length + (seg.match(/NOT LIKE \?/g) || []).length;
+    check("la lista de chats: cada exclusión de SEG_EXCL tiene su marcador en el SQL (pendientes y proximo)", n > 0 && marcadores === 2 * n, `${n} exclusiones, ${marcadores} marcadores`);
+  }
   {
     const { extraerFechas } = await import(join(root, "src/lib/busqueda-fechas.js"));
     const ahora = Date.UTC(2026, 9, 18, 15); // 18/10/2026 10:00 Lima

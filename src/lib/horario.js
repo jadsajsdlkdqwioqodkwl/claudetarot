@@ -1,15 +1,16 @@
 /**
  * Horario permitido para los mensajes programados: nada sale entre las 23:30
- * y las 06:00 (hora de Lima). Configurable con HORARIO_ENVIO="06:00-23:30".
+ * y las 06:30 (hora de Lima; era 06:00 hasta el 2026-11-03, dueño). Configurable
+ * con HORARIO_ENVIO="06:30-23:30" en wrangler.jsonc (sin valor: 06:00-23:30).
  *
  * Si un mensaje cae en ese hueco:
- *   1. se corre a las 06:00 siguientes, si a esa hora la ventana de 24 h del
- *      cliente sigue abierta;
+ *   1. se corre a la apertura siguiente (06:30), si a esa hora la ventana de 24 h
+ *      del cliente sigue abierta;
  *   2. si no, se adelanta a las 23:29 de esa noche (lo último permitido antes
  *      del corte), si todavía no pasó;
  *   3. si tampoco, ya no hay hora posible: se cancela.
- * Las plantillas (envío masivo) no dependen de la ventana: solo se corren a
- * las 06:00.
+ * Las plantillas (envío masivo y pasos de plantilla de un plan) no dependen de
+ * la ventana: solo se corren a la apertura.
  */
 
 const LIMA_MS = 5 * 3600 * 1000;

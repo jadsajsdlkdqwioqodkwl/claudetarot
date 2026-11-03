@@ -13,6 +13,7 @@
  */
 
 import { appendRowsTo, asegurarPestana } from "./google-sheets.js";
+import { textoLegible } from "./mensajes-especiales.js";
 
 const ENCABEZADOS = ["Fecha (Lima)", "WhatsApp", "Contacto", "Quién", "Vendedor", "Tipo", "Mensaje", "Origen anuncio", "Título anuncio", "ctwa_clid", "Notas", "Asesora asignada", "Comisión compartida con", "Embudo"];
 
@@ -69,7 +70,7 @@ export async function exportarChatsASheets(env) {
       m.direction === "in" ? "Cliente" : "Vendedor",
       m.sent_by || "",
       m.type || "text",
-      (m.body || m.file_name || "").slice(0, 2000),
+      (textoLegible(m.type, m.body) || m.body || m.file_name || "").slice(0, 2000),
       m.ad_source_type || "",
       m.ad_headline || "",
       m.ctwa_clid || "",

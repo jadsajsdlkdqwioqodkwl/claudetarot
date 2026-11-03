@@ -60,9 +60,12 @@ Cualquier otra promoción (2x1, más descuento, envío express) = decisión del 
 ## Reglas de WhatsApp
 - Texto libre solo dentro de las 24 h desde el último mensaje del cliente.
   Fuera de eso, solo plantillas aprobadas (se pagan).
-- Seguimiento: como mucho 2 mensajes automáticos seguidos sin respuesta, una
-  sola cadena por chat (se cancela sola si responde o si le escribimos); nada
-  de mensajes masivos: cada chat se lee antes de escribirle.
+- Seguimiento (actualizado 2026-11-03): una sola cadena por chat, que corta SOLO
+  el cliente al escribir (lo que mandemos nosotros no la corta). Los textos
+  salen solo dentro de las 24 h del cliente y como mucho 6 automáticos seguidos
+  sin respuesta; los días 2 a 6 van como plantillas aprobadas con botones
+  (gratis dentro de los 7 días del anuncio; desde el día 7 se pagan). Nada de
+  mensajes masivos: cada chat se lee antes de escribirle.
 - Estilo de las vendedoras: cálido, "estimad@", ☺️✨🫶, 2–3 líneas, una sola
   acción clara al final ("¿Para dónde lo desea? 📍").
 

@@ -24,9 +24,10 @@ const productoTarot = (env) =>
   env.CRM_DB.prepare("SELECT id FROM productos WHERE nombre = 'Tarot' ORDER BY id DESC LIMIT 1").first();
 
 async function get({ env }) {
+  // `tester` (migración 0074): vendedora que prueba flujos nuevos (experimentos). Sin la migración, sale sin la columna.
   const { results } = await env.CRM_DB.prepare(
-    "SELECT id, username, display_name, wa_id, role, active, created_at FROM agents ORDER BY id ASC"
-  ).all();
+    "SELECT id, username, display_name, wa_id, role, active, created_at, tester FROM agents ORDER BY id ASC"
+  ).all().catch(() => env.CRM_DB.prepare("SELECT id, username, display_name, wa_id, role, active, created_at FROM agents ORDER BY id ASC").all());
   return json({ agents: results });
 }
 
@@ -78,6 +79,11 @@ async function patch({ request, env }) {
 
   if (typeof payload?.active === "boolean") {
     await env.CRM_DB.prepare("UPDATE agents SET active = ? WHERE id = ?").bind(payload.active ? 1 : 0, id).run();
+  }
+  // Tester de pruebas (no cambia el rol): sus chats del segmento entran a los experimentos activos.
+  if (typeof payload?.tester === "boolean") {
+    await env.CRM_DB.prepare("UPDATE agents SET tester = ? WHERE id = ?").bind(payload.tester ? 1 : 0, id).run()
+      .catch((err) => console.error("Tester (¿falta la migración 0074?):", err.message));
   }
 
   if (ROLES.has(payload?.role)) {

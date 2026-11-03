@@ -12,6 +12,7 @@
 
 import { activarPlanTrasAviso, rearmarPlanShalom, programarPlan } from "../lib/planes-plantilla.js";
 import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
+import { contactosDesdeWebhook, unsupportedDesdeWebhook, systemDesdeWebhook } from "../lib/mensajes-especiales.js";
 import {
   obtenerOCrearContacto,
   obtenerOCrearConversacion,
@@ -102,6 +103,16 @@ function tipoYCuerpo(msg) {
       const r = msg.interactive?.button_reply || msg.interactive?.list_reply;
       return { type: "text", body: r?.title || "" };
     }
+    // Tarjeta de contacto reenviada (uno o varios): se guarda todo lo que el cliente compartió (nombre, teléfonos,
+    // correos, empresa, direcciones) y el CRM la pinta como WhatsApp. Antes se perdía: solo quedaba "[contacts]".
+    case "contacts":
+      return { type: "contacts", body: contactosDesdeWebhook(msg.contacts) };
+    // Tipo que la Cloud API no entrega (encuesta, edición, GIF, invitación a grupo…): se guarda qué fue y por qué.
+    case "unsupported":
+      return { type: "unsupported", body: unsupportedDesdeWebhook(msg) };
+    // Aviso de Meta: el cliente cambió de número (o de id).
+    case "system":
+      return { type: "system", body: systemDesdeWebhook(msg) };
     default:
       return { type: msg.type || "unknown", body: "" };
   }
@@ -341,6 +352,9 @@ async function procesarCambio(envBase, db, value, origen) {
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
+    // 2026-11-03: llegan mensajes sin `from` (ids «wamid.HBgTUEUu…» = usuario con nombre de usuario de WhatsApp o id de
+    // negocio, sin número compartido). Sin número no hay chat que abrir: queda en webhook_errores con el motivo claro.
+    if (!waId) throw new Error("El mensaje llegó sin número de WhatsApp (usuario con nombre de usuario o id de negocio, no comparte su número): el CRM no puede abrir el chat.");
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).

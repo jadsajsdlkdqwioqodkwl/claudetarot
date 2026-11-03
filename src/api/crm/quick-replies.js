@@ -107,6 +107,22 @@ function leerSecuencia(payload, propioId) {
     .slice(0, 6));
 }
 
+/** ¿Otra rápida (o la bienvenida) sigue usando esta foto en R2? Entonces no se borra el archivo (2026-11-03: «Provincia 2T · 1»
+ *  comparte las 7 fotos de «Provincia msj. 2»). */
+async function mediaCompartida(env, mediaKey) {
+  const r = await env.CRM_DB.prepare(
+    "SELECT (SELECT COUNT(*) FROM quick_reply_media WHERE media_key = ?) + (SELECT COUNT(*) FROM welcome_step_media WHERE media_key = ?) AS n"
+  ).bind(mediaKey, mediaKey).first().catch(() => ({ n: 1 }));
+  return (r?.n || 0) > 0;
+}
+
+/** Plan de seguimiento con nombre de la rápida (followup_plan_id, migración 0073); null = sin plan con nombre. */
+async function guardarPlan(env, id, payload) {
+  if (!payload || !("followup_plan_id" in payload)) return;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET followup_plan_id = ? WHERE id = ?").bind(Number(payload.followup_plan_id) || null, id).run()
+    .catch((err) => console.error("Plan de la rápida (¿falta la migración 0073?):", err.message));
+}
+
 /** Sin la migración 0072 no hace nada (la secuencia queda la de siempre). */
 async function guardarSecuencia(env, id, payload) {
   const secuencia = leerSecuencia(payload, id);
@@ -130,7 +146,7 @@ async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia, followup_plan_id", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -209,6 +225,7 @@ async function post({ request, env }) {
     .bind(creada.id)
     .all();
 
+  await guardarPlan(env, creada.id, payload);
   return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), botones, media: media.results } });
 }
 
@@ -230,6 +247,20 @@ async function patch({ request, env, agent }) {
 
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
+
+  // Orden de las fotos/videos de la respuesta (dueño, 2026-11-03), igual que en la bienvenida: { id, orden_media: [ids] }.
+  // Solo cambia sort_order; no se sube nada. El envío ya respeta sort_order (GET ordena por sort_order, id).
+  if (Array.isArray(payload?.orden_media)) {
+    const { results } = await env.CRM_DB.prepare("SELECT id FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();
+    const suyos = new Set(results.map((r) => r.id));
+    const orden = [...new Set(payload.orden_media.map(Number))].filter((x) => suyos.has(x));
+    for (const x of suyos) if (!orden.includes(x)) orden.push(x);
+    if (orden.length) {
+      await env.CRM_DB.batch(orden.map((mid, i) =>
+        env.CRM_DB.prepare("UPDATE quick_reply_media SET sort_order = ? WHERE id = ? AND quick_reply_id = ?").bind(i, mid, id)));
+    }
+    return json({ ok: true });
+  }
 
   const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos, plantilla_principal, categoria, followup_universal FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
@@ -278,6 +309,7 @@ async function patch({ request, env, agent }) {
     .run();
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
+  await guardarPlan(env, id, payload);
   await guardarCatalogoDespues(env, id, payload);
   await guardarSecuencia(env, id, payload);
 
@@ -293,7 +325,7 @@ async function patch({ request, env, agent }) {
         .run();
     }
     if (env.CRM_MEDIA) {
-      for (const m of vieja) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+      for (const m of vieja) if (!(await mediaCompartida(env, m.media_key))) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
     }
   }
 
@@ -329,7 +361,7 @@ async function del({ request, env }) {
   ]);
 
   if (env.CRM_MEDIA) {
-    for (const m of media) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+    for (const m of media) if (!(await mediaCompartida(env, m.media_key))) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
   }
 
   return json({ ok: true });

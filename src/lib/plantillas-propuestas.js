@@ -25,6 +25,30 @@ const botones = (lista) => (lista.length ? [{ type: "BUTTONS", buttons: lista.ma
 const EJEMPLOS = ["María", "el kit de tarot"];
 const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/g) || []).length);
 
+/** Plantillas de los planes de seguimiento de 7 días (ver docs/seguimientos.md). Botones de hasta 20 caracteres. */
+export const SEGUIMIENTO_7D = [
+  {
+    nombre: "seg7_clases", titulo: "Día 2 · clases grabadas de cero a lector", cuando: "día 2 del chat (plan Interesado)",
+    texto: "Hola estimad@ 🩷 le cuento que con el kit se lleva más de 30 clases grabadas para aprender de cero a lector, paso a paso y a su ritmo ✨ ¿Para qué distrito o ciudad sería?",
+    botones: ["Lima", "Provincia", "Tengo una duda"]
+  },
+  {
+    nombre: "seg7_libros", titulo: "Día 3 · 50 libros digitales", cuando: "día 3 del chat (planes Interesado y Cierre)",
+    texto: "Hola estimad@ ☺️ además de las clases, el kit incluye acceso a más de 50 libros digitales de tarot para seguir aprendiendo cuando quiera 📚 ¿Desea que le cuente cómo le llega?",
+    botones: ["Sí, cuénteme", "Ahora no"]
+  },
+  {
+    nombre: "seg7_primera_lectura", titulo: "Día 2 · primera lectura el mismo día (cierre)", cuando: "día 2 del chat (plan Cierre)",
+    texto: "Hola estimad@ ☺️ muchas clientas empezaron sin saber nada: cada carta trae su significado impreso y con las clases hace su primera lectura el mismo día que le llega ✨ ¿Se lo separamos para que salga mañana?",
+    botones: ["Sí, separar", "Tengo una duda"]
+  },
+  {
+    nombre: "seg7_collar_extra", titulo: "Día 5 · collar amuleto extra esta semana", cuando: "día 5 del chat (los dos planes)",
+    texto: "Hola estimad@ 🩷 si separa su kit esta semana le regalamos un collar amuleto extra, además de las clases y los libros ✨ ¿Se lo separamos?",
+    botones: ["Sí, quiero", "Ahora no"]
+  }
+];
+
 /** Todas las propuestas de una marca: { nombre, grupo, titulo, cuando, categoria, texto, botones, componentes }. */
 export function propuestasDe(marca, cambios = {}) {
   const lista = [];
@@ -82,6 +106,18 @@ export function propuestasDe(marca, cambios = {}) {
       componentes: [cuerpo(YAPE_TEXTO, []), { type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }]
     });
   }
+  // Seguimiento de 7 días (dueño, 2026-11-03): las plantillas de los días 2 a 5 de los planes «Interesado · semana gratis» y
+  // «Cierre». Sin nombre del cliente y sin precio (el precio va a cambiar y una plantilla aprobada no se edita). Cada una
+  // aporta algo nuevo: las clases grabadas, los libros digitales, el significado impreso, el collar extra. Solo Tarot.
+  // Nada sale solo: el admin toca «Mandar a Meta»; mientras no estén aprobadas, el plan salta esos pasos.
+  if (marca === "tarot") {
+    for (const t of SEGUIMIENTO_7D) {
+      lista.push({
+        nombre: t.nombre, grupo: "Seguimiento 7 días (planes con nombre)", titulo: t.titulo, cuando: t.cuando,
+        categoria: "MARKETING", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, []), ...botones(t.botones)]
+      });
+    }
+  }
   // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
   for (const c of cambios.propias || []) {
     if (c.marca !== marca) continue;
@@ -107,7 +143,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Seguimiento 7 días (planes con nombre)", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 

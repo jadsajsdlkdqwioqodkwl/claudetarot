@@ -329,6 +329,18 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .tarjeta-catalogo { color: var(--ad); font-weight: 600; }
 .tarjeta-pedido { flex-direction: column; align-items: flex-start; background: #f6f4ff; border: 1px solid #e0d9ff; border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: #4a3d99; }
 .tarjeta-pedido strong { color: var(--ad); }
+/* Contacto compartido (como la tarjeta de WhatsApp) y avisos del sistema / no compatibles. */
+.tarjeta-contacto { align-items: flex-start; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: var(--texto); flex-wrap: nowrap; }
+.tarjeta-contacto + .tarjeta-contacto { margin-top: 6px; }
+.tarjeta-contacto .contacto-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--verde-osc); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tarjeta-contacto .contacto-datos { min-width: 0; }
+.tarjeta-contacto .sub { font-size: 12px; color: var(--gris); }
+.tarjeta-contacto .contacto-tel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 3px 0; }
+.tarjeta-contacto .contacto-tel em { font-style: normal; font-size: 11px; color: var(--gris); }
+.tarjeta-contacto .btn-mini { font-size: 11px; padding: 2px 6px; border: 1px solid var(--borde); border-radius: 999px; background: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.tarjeta-contacto .btn-mini:hover { background: var(--hover); }
+.tarjeta-sistema { color: var(--gris); font-style: italic; font-size: 12.5px; }
+.tarjeta-sistema .icono-svg { flex-shrink: 0; }
 .tarjeta-llamada { color: var(--peligro); font-weight: 600; }
 .tarjeta-documento { color: var(--texto); text-decoration: none; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; }
 .tarjeta-documento:hover { background: var(--hover); }
@@ -1211,3 +1223,31 @@ body.solo-lectura #form-envio { display: none; }
 .rapida-secuencia-fila button { background: none; border: none; color: var(--gris); cursor: pointer; padding: 4px; display: inline-flex; }
 /* Rescate del día 7 en la barra «Seguimiento»: solo informa (no es botón) */
 .seg-barra.seg-barra-r7 { cursor: default; font-weight: 500; font-size: 13px; padding: 6px 16px; }
+
+/* Planes de seguimiento con nombre (2026-11-03). */
+.modal.modal-planes { width: 520px; }
+.plan-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); margin-bottom: 6px; cursor: pointer; background: var(--fondo); }
+.plan-item:hover { background: var(--hover); }
+.plan-item.activo { border-color: var(--verde-osc); }
+.plan-item.apagado { opacity: .6; }
+.plan-item b { flex: 1; min-width: 0; }
+.plan-item .sub { font-size: 12px; color: var(--gris); }
+.plan-seg { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--borde); color: var(--gris); }
+.plan-cal { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.plan-cal span { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: #e7f8ee; color: var(--verde-osc); border: 1px solid #bfe8cd; }
+.plan-cal span.pagado { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.plan-cal span.salta { background: var(--fondo); color: var(--gris); text-decoration: line-through; }
+.pp-cuando { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; color: var(--gris); margin: 4px 0; }
+.pp-cuando input[type="number"], .pp-cuando input[type="time"] { width: 72px; padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
+.pp-cuando select { width: auto; margin: 0; padding: 3px 6px; }
+
+/* Experimentos de flujo (testers), 2026-11-03. */
+.chip-experimento { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; margin-left: 6px; cursor: default; }
+.chip-experimento .icono-svg { width: 12px; height: 12px; }
+.chip-experimento.b { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.rapidas-prueba { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #5b21b6; padding: 6px 12px 2px; display: flex; align-items: center; gap: 6px; }
+.rapidas-prueba.b { color: #92400e; }
+.exp-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; font-size: 12px; }
+.exp-fila > div { background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; min-width: 0; }
+.exp-fila b { display: block; font-size: 13px; }
+.eq-tester.si { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }

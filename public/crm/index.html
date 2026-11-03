@@ -33,7 +33,7 @@
         <input type="text" id="username" placeholder="Usuario" autocomplete="username" style="display:none" />
         <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
         <input type="text" id="code" placeholder="Código de 6 dígitos" inputmode="numeric" maxlength="6" style="display:none" />
-        <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp</div>
+        <div class="ayuda" id="ayuda-2fa" style="display:none">Te llegó un código de 6 dígitos por WhatsApp. ¿No llega? <a href="https://wa.me/51927066862?text=Hola%2C%20no%20me%20llega%20el%20c%C3%B3digo%20del%20CRM%2C%20%C2%BFme%20lo%20reenv%C3%ADan%3F" target="_blank" rel="noopener">Manda un mensaje aquí</a> y pide reenviar el código.</div>
       </div>
 
       <button type="submit" id="btn-login">Entrar</button>
@@ -193,6 +193,8 @@
     <div id="rapida-pruebas" class="pruebas"></div>
     <input type="file" id="rapida-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="rapida-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.</div>
+    <div id="rapida-archivo-preview"></div>
+    <div id="rapida-medias"></div>
     <div id="rapida-producto-fila" style="display:none">
       <div class="rp-titulo">Producto</div>
       <select id="rapida-producto"></select>
@@ -211,14 +213,14 @@
     <div class="ayuda-modal">Respuestas rápidas que salen detrás de esta cuando la vendedora toca «Enviar secuencia» (junto a las versiones 1·2·3). Cada una sale a los segundos que pongas después de la anterior, con sus fotos, botones y su propio seguimiento. Ej.: Lima 1 → Lima 2 → Lima 3.</div>
     <div class="rp-titulo">Seguimiento si el cliente no responde</div>
     <div id="rapida-seg-modo" class="seg-modo">
-      <label><input type="radio" name="rapida-seg-modo" value="universal" /> Plan universal</label>
+      <label><input type="radio" name="rapida-seg-modo" value="universal" /> Plan <select id="rapida-plan" title="Qué plan de seguimiento se programa al mandar esta respuesta" style="width:auto;margin:0 0 0 2px;padding:3px 6px"></select></label>
       <label><input type="radio" name="rapida-seg-modo" value="propio" /> Pasos propios de esta respuesta</label>
       <label><input type="radio" name="rapida-seg-modo" value="ninguno" /> Sin seguimiento</label>
     </div>
     <div id="rapida-universal-aviso" class="ayuda-modal aviso-universal" style="display:none"></div>
     <div id="rapida-pasos"></div>
     <button type="button" class="sug-agregar-paso" id="rapida-agregar-paso"></button>
-    <div class="ayuda-modal" id="rapida-pasos-ayuda">Hasta 6 pasos. Un texto sale las horas indicadas después del paso anterior y nunca pasadas 23 h desde el último mensaje del cliente (si no entra, se adelanta a esa hora o se salta). Una plantilla aprobada sí sale después: cuenta sus días desde el paso anterior o desde el primer mensaje del cliente («día N del chat»). La cadena se corta SOLO si el cliente escribe; lo que tú mandes no la toca, y desde la barra «Seguimiento» del chat la apagas o la reactivas.</div>
+    <div class="ayuda-modal" id="rapida-pasos-ayuda">Hasta 10 pasos. Un texto sale las horas indicadas después del paso anterior (o el día N del chat a una hora) y nunca pasadas 23 h desde el último mensaje del cliente (si no entra, se adelanta a esa hora o se salta). Una plantilla aprobada sí sale después: cuenta sus días desde el paso anterior o desde el primer mensaje del cliente («día N del chat»). La cadena se corta SOLO si el cliente escribe; lo que tú mandes no la toca, y desde la barra «Seguimiento» del chat la apagas o la reactivas.</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>
@@ -585,6 +587,7 @@
     <div id="seq-pruebas" class="pruebas"></div>
     <input type="file" id="seq-archivo" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple />
     <div class="ayuda-modal" id="seq-archivo-ayuda">Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.</div>
+    <div id="seq-archivo-preview"></div>
     <div id="seq-medias" class="seq-medias"></div>
     <label class="seq-texto-primero"><input type="checkbox" id="seq-texto-primero" /> Mandar el texto antes que las fotos/videos</label>
     <div class="rp-titulo">Bienvenida de</div>
@@ -742,6 +745,17 @@
     <button class="cancelar" id="btn-abrir-leads" type="button" style="width:100%">Configurar seguimiento para interesados</button>
 
     <hr />
+    <h2>Planes de seguimiento (7 días)</h2>
+    <p class="ayuda-modal">Los planes con nombre (INT, LIMA, PROV…): qué sale cada día de la semana gratis del anuncio, a qué hora, con qué texto o plantilla. Una respuesta rápida elige su plan en su editor; la bienvenida de anuncios puede usar uno en vez de la secuencia de interesados. Cada plan puede tener una versión B para probarla con un % de los chats.</p>
+    <div class="ad-card" id="admin-planes-resumen" style="margin-bottom:8px">Cargando…</div>
+    <button class="cancelar" id="btn-abrir-planes" type="button" style="width:100%">Planes de seguimiento</button>
+
+    <hr />
+    <h2>Experimentos de flujo (testers)</h2>
+    <p class="ayuda-modal">Una prueba compara dos cadenas de respuestas rápidas (control vs nueva) solo en los chats de las vendedoras marcadas como tester en Equipo. A cada chat le toca un brazo fijo; en el panel de rápidas de ese chat salen arriba las del brazo y se esconden las del otro. Aquí se ve cuántos chats lleva cada brazo y cuántos faltan para leer el resultado.</p>
+    <div id="admin-experimentos" class="ad-card">Cargando…</div>
+
+    <hr />
     <h2>Costos de WhatsApp</h2>
     <p class="ayuda-modal">
       <strong>Gratis siempre:</strong> recibir mensajes, responder dentro de las 24h desde que el cliente escribió (texto, fotos, catálogo, producto), y los códigos de acceso (2FA / recuperar contraseña) — se mandan como texto libre, no como plantilla.<br /><br />
@@ -755,6 +769,50 @@
 
     <div class="acciones">
       <button class="cancelar" id="admin-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-planes-fondo">
+  <div class="modal modal-ancho modal-planes">
+    <h2>Planes de seguimiento</h2>
+    <p class="ayuda-modal">Un plan es la cadena que sale sola si el cliente no responde: textos el primer día (dentro de las 24 h), plantillas aprobadas los días siguientes («día N a las HH:MM», hora de Lima, contado desde el primer mensaje del cliente). Solo el cliente corta la cadena. Una plantilla del día 7 en adelante ya no entra en la semana gratis del anuncio: se paga.</p>
+    <div id="planes-lista"></div>
+    <div class="leads-fila" style="margin-top:8px">
+      <input type="text" id="planes-nuevo-nombre" placeholder="Nombre del plan nuevo (ej. LIMA · Sin ubicación)" style="flex:1;margin:0" />
+      <button class="crear" id="planes-nuevo" type="button">Crear</button>
+    </div>
+    <div id="planes-editor" hidden>
+      <hr />
+      <div class="leads-fila"><input type="text" id="plan-nombre" placeholder="Nombre" style="flex:1;margin:0" />
+        <select id="plan-segmento" style="width:auto;margin:0"><option value="general">General</option><option value="lima">Solo Lima</option><option value="provincia">Solo provincia</option></select></div>
+      <div class="ayuda-modal" id="plan-usos"></div>
+      <div class="rp-titulo">Plantillas de este plan en Meta</div>
+      <div id="plan-plantillas" class="ayuda-modal">Cargando…</div>
+      <div class="rp-titulo">Pasos (versión A)</div>
+      <div id="plan-cal-a" class="plan-cal"></div>
+      <div id="plan-pasos"></div>
+      <button type="button" class="sug-agregar-paso" id="plan-agregar-paso"></button>
+      <div class="rp-titulo" style="margin-top:12px">Versión B (prueba)</div>
+      <div class="leads-fila leads-fila-delay">
+        <label class="interruptor" title="Con la versión B prendida, una parte de los chats recibe estos pasos en vez de los de la versión A"><input type="checkbox" id="plan-b-activa" /><span></span></label>
+        <span>Le toca al</span><input type="number" id="plan-b-reparto" min="0" max="100" step="5" value="50" /><span>% de los chats (fijo por chat)</span>
+      </div>
+      <div id="plan-b-bloque" hidden>
+        <div id="plan-cal-b" class="plan-cal"></div>
+        <div id="plan-pasos-b"></div>
+        <button type="button" class="sug-agregar-paso" id="plan-agregar-paso-b"></button>
+      </div>
+      <div class="rp-titulo" style="margin-top:12px">Bienvenida de anuncios</div>
+      <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="plan-interesados" /> Este plan se programa solo al salir la bienvenida (en vez de la secuencia de interesados)</label>
+      <div class="acciones">
+        <button class="cancelar" id="plan-duplicar" type="button">Duplicar</button>
+        <button class="cancelar" id="plan-apagar" type="button">Apagar</button>
+        <button class="crear" id="plan-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+    <div class="acciones">
+      <button class="cancelar" id="planes-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
