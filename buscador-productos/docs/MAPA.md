@@ -16,9 +16,9 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 Comandos del buscador: BUSCA AÉREO, RANKEA, FILTRA, ALIBABA, DESCUBRE y MEJORA (v4.2, 2026-11-03; antes «BUSCA, RANKEA, FILTRA y ALIBABA» v3.35, copia archivada 1JnemgdN05s1BUUZdooAMgUo3AswKYtjmYv-L0WSKU1c) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 Comandos del buscador: BUSCA AÉREO, RANKEA, FILTRA, ALIBABA, DESCUBRE y MEJORA (v4.3, 2026-11-03; antes «BUSCA, RANKEA, FILTRA y ALIBABA» v3.35, copia archivada 1JnemgdN05s1BUUZdooAMgUo3AswKYtjmYv-L0WSKU1c) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.9, 2026-11-02) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
-| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.5, 2026-11-03; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
+| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.6, 2026-11-03; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas guardadas en la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`): se ignoran. El 2026-10-16 un chat leyó INSTR 00 v4.16 e INSTR 06 v3.26 de esa carpeta por error; las vigentes son las de la tabla de arriba. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
@@ -74,7 +74,8 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 | 39 | RANKEA: instrucciones del subagente (D39), creada 2026-10-16; v3 el mismo día tras dos pilotos |
 | 41 | RANKEA AÉREO: triage por rangos de Crudo (D41, 2026-10-18) |
 | 42 | DESCUBRE: Amazon Best Sellers con Firecrawl (D42, 2026-10-19) |
-| 43 | CARGA: script de una carga de TikTok Shop, TSV compacto con prefiltro (E43, 2026-11-03, D-040) |
+| 43 | CARGA: script de una carga de TikTok Shop, TSV compacto con prefiltro (E43, 2026-11-03, D-040; rechazado por el filtro de Chrome el 2026-11-03 en el chat -i, queda de reserva) |
+| 44 | CARGA MÍNIMA: script de una carga calcado del extractor D34, 7 campos, sin prefiltro; D44 trae la alternativa read_page (E44, 2026-11-03, D-041) |
 | 40 | BUSCA AÉREO: instrucciones del cargador (D40; desde 2026-11-02 las ejecuta el propio chat, prefijo SIN SUBAGENTES, igual que D37 y D39), creada 2026-10-16 tras la primera corrida real | (v2 2026-10-16: dedupe posterior en la hoja, sin X2 en el navegador)
 
 ## Lo que se agregó desde esta carpeta (2026-10-15)
@@ -92,7 +93,7 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 | `Config!B107` | Créditos de Firecrawl por chat para DESCUBRE (2026-10-19) |
 | `Config!B108` | Cargas de PiPiAds por chat en INICIA AEREO antes de pasar a RANKEA (2026-11-02, hoy 25) |
 | `Config!B109` | Grupos por lote en RANKEA sin subagentes (2026-11-02, hoy 5) |
-| `Config!B110` | Productos de ALIBABA por chat dentro de INICIA AEREO (2026-11-02, hoy 6) |
+| `Config!B110` | Productos de ALIBABA por chat dentro de INICIA AEREO (2026-11-02, hoy 6; 2026-11-03: 4 y luego 10 por la regla del dueño de 10 productos de punta a punta, D-041) |
 | `Config!B106` | Interruptor: validar y buscar proveedor sin esperar el ✅ (Sí/No) |
 
 
@@ -107,3 +108,5 @@ Agregado 2026-11-03 (M-119): pestaña Aéreo ordenada por llegada (Y4 por fila d
 Agregado 2026-11-03 (segunda vuelta, chat -f cerró tras el arranque): INSTR 08 v3.4 (arranque mínimo: solo INSTR 08, INSTR 06 y celdas D34/E31; regla de trabajo mínimo: 10 cargas o 20 productos de FILTRA antes de cerrar; 3 reintentos de pestaña). ARRANQUE: en INICIA AEREO no se abren INSTR 00, 05 ni MAPA. Laboratorio!B4 tolera «s/d» en la cola (IFERROR).
 
 Agregado 2026-11-03 (tercera vuelta, PURGA D-040): Recetas fila 43 = script CARGA (E43). INSTR 06 v4.2 (carga = navegar + E43 + 2 escrituras; URL fija; Plan carga Q:AH con unix; hallazgos en AJ:AS). Plan carga H sin negativos. Config B108 = 15. INSTR 08 v3.5. Exploración fila 20 (varias cargas sin navegar) prioridad 1.
+
+Agregado 2026-11-03 (cuarta vuelta, D-041): el filtro de Claude in Chrome rechazó el script E43 en el chat -i («Cookie/query string data») y el chat paró pidiendo una decisión. Recetas fila 44 = script CARGA MÍNIMA (E44, calcado de D34, sin prefiltro; alternativa read_page escrita en D44; E43 no se borra, queda de reserva). Plan carga F = MIN(E+1, G) (AF nunca pasa de AG; AF >= AG = ventana completa por subbanda). Config B110 = 10. INSTR 06 v4.3 e INSTR 08 v3.6: mínimo por chat de 10 productos de punta a punta (regla del dueño) y prohibición de preguntar por un método. Sesiones fila 913, Mejoras M-121.
