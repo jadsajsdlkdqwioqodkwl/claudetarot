@@ -43,8 +43,10 @@ async function get({ env }) {
     obtenerAjuste(env.CRM_DB, "yape_numero")
   ]);
   // El plan universal de seguimiento y cuántas respuestas rápidas lo usan / tienen seguimiento propio.
-  const [seguimientoUniversal, rapidas] = await Promise.all([
+  const [seguimientoUniversal, rapidas, planes, planInteresados] = await Promise.all([
     pasosUniversales(env.CRM_DB),
+    env.CRM_DB.prepare("SELECT id, nombre, segmento, activo FROM planes_seguimiento ORDER BY activo DESC, id").all().then((r) => r.results || []).catch(() => []),
+    obtenerAjuste(env.CRM_DB, "plan_interesados_id"),
     env.CRM_DB.prepare(
       "SELECT SUM(followup_universal = 1) AS universal, SUM(followup_universal = 0 AND (followup_pasos IS NOT NULL OR NULLIF(TRIM(COALESCE(followup_body, '')), '') IS NOT NULL)) AS propio FROM quick_replies"
     ).first().catch(() => ({ universal: 0, propio: 0 }))
@@ -58,6 +60,9 @@ async function get({ env }) {
     escribiendo_vivo: escribiendoVivo !== "0",
     yape_numero: yapeNumero || "",
     seguimiento_universal: seguimientoUniversal,
+    // Planes con nombre (migración 0073) para el selector del editor de rápidas, y el plan que programa la bienvenida.
+    planes,
+    plan_interesados_id: Number(planInteresados) || null,
     rapidas_con_universal: Number(rapidas?.universal) || 0,
     rapidas_con_propio: Number(rapidas?.propio) || 0
   });
@@ -97,7 +102,14 @@ async function patch({ request, env }) {
   // Plan universal de seguimiento: los mismos pasos que una respuesta rápida ({ horas, body, botones,
   // plantilla, desde, activo }), guardados una sola vez para todas las rápidas que lo usan.
   if ("seguimiento_universal" in payload) {
-    await guardarAjuste(env.CRM_DB, "seguimiento_universal", JSON.stringify(normalizarPasosSeguimiento(payload.seguimiento_universal)));
+    const pasos = JSON.stringify(normalizarPasosSeguimiento(payload.seguimiento_universal));
+    await guardarAjuste(env.CRM_DB, "seguimiento_universal", pasos);
+    // Y el plan 1 «Universal» (planes_seguimiento), que es lo que de verdad se programa desde la migración 0073.
+    await env.CRM_DB.prepare("UPDATE planes_seguimiento SET pasos = ?, updated_at = datetime('now') WHERE id = 1").bind(pasos).run().catch(() => {});
+  }
+  // Plan con nombre que programa la bienvenida de anuncios en vez de la secuencia de interesados vieja (null = la vieja).
+  if ("plan_interesados_id" in payload) {
+    await guardarAjuste(env.CRM_DB, "plan_interesados_id", payload.plan_interesados_id ? String(Number(payload.plan_interesados_id)) : "");
   }
   // true: todas las rápidas que tienen seguimiento pasan a usar el plan universal; false: vuelven a sus pasos propios.
   if ("aplicar_universal_a_rapidas" in payload) {

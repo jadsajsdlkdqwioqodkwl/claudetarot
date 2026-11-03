@@ -1223,3 +1223,20 @@ body.solo-lectura #form-envio { display: none; }
 .rapida-secuencia-fila button { background: none; border: none; color: var(--gris); cursor: pointer; padding: 4px; display: inline-flex; }
 /* Rescate del día 7 en la barra «Seguimiento»: solo informa (no es botón) */
 .seg-barra.seg-barra-r7 { cursor: default; font-weight: 500; font-size: 13px; padding: 6px 16px; }
+
+/* Planes de seguimiento con nombre (2026-11-03). */
+.modal.modal-planes { width: 520px; }
+.plan-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: var(--radio-s); margin-bottom: 6px; cursor: pointer; background: var(--fondo); }
+.plan-item:hover { background: var(--hover); }
+.plan-item.activo { border-color: var(--verde-osc); }
+.plan-item.apagado { opacity: .6; }
+.plan-item b { flex: 1; min-width: 0; }
+.plan-item .sub { font-size: 12px; color: var(--gris); }
+.plan-seg { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--borde); color: var(--gris); }
+.plan-cal { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.plan-cal span { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: #e7f8ee; color: var(--verde-osc); border: 1px solid #bfe8cd; }
+.plan-cal span.pagado { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.plan-cal span.salta { background: var(--fondo); color: var(--gris); text-decoration: line-through; }
+.pp-cuando { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; color: var(--gris); margin: 4px 0; }
+.pp-cuando input[type="number"], .pp-cuando input[type="time"] { width: 72px; padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
+.pp-cuando select { width: auto; margin: 0; padding: 3px 6px; }

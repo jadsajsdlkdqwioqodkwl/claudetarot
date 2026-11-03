@@ -18,8 +18,8 @@
 
 import { conAuth } from "../../lib/crm-auth.js";
 import {
-  esOrigenAutomatico, pasosDeSeguimientoRapida, pasosUniversales, programarSeguimientoDeRapida,
-  programarPasosEnChat, aplicarEdicionesDePasos, cancelarSeguimientosDeLead, origenSeguimientoLead
+  esOrigenAutomatico, pasosDeSeguimientoRapida, pasosUniversales, programarSeguimientoDeRapida, programarPlanEnChat,
+  programarPasosEnChat, aplicarEdicionesDePasos, cancelarSeguimientosDeLead, origenSeguimientoLead, pasosDePlan, obtenerAjuste
 } from "../../lib/crm-db.js";
 import { ORIGEN_DIA7 } from "../../lib/rescate-lead.js";
 
@@ -33,12 +33,19 @@ async function planDelChat(db, conversationId) {
   const m = await db.prepare(
     `SELECT m.quick_reply_id FROM messages m JOIN quick_replies q ON q.id = m.quick_reply_id
      WHERE m.conversation_id = ? AND m.direction = 'out'
-       AND (q.followup_universal = 1 OR q.followup_pasos IS NOT NULL OR NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL)
+       AND (q.followup_universal = 1 OR q.followup_plan_id IS NOT NULL OR q.followup_pasos IS NOT NULL OR NULLIF(TRIM(COALESCE(q.followup_body, '')), '') IS NOT NULL)
      ORDER BY m.id DESC LIMIT 1`
-  ).bind(conversationId).first();
+  ).bind(conversationId).first().catch(() => null);
   if (m?.quick_reply_id) {
-    const q = await pasosDeSeguimientoRapida(db, m.quick_reply_id);
-    if (q?.pasos.length) return { plan: { titulo: q.titulo, universal: q.universal, pasos: q.pasos }, fuente: { tipo: "rapida", quick_reply_id: m.quick_reply_id } };
+    const q = await pasosDeSeguimientoRapida(db, m.quick_reply_id, conversationId);
+    // Con un plan con nombre, la barra muestra el nombre del plan (y el brazo si tiene versión B).
+    if (q?.pasos.length) return { plan: { titulo: q.plan ? q.plan.nombre : q.titulo, universal: q.universal, plan_id: q.plan?.id || null, brazo: q.plan?.brazo || null, pasos: q.pasos }, fuente: { tipo: "rapida", quick_reply_id: m.quick_reply_id } };
+  }
+  // Sin rápida: el plan que la bienvenida programa (plan_interesados_id), si está puesto.
+  const planInteresados = Number(await obtenerAjuste(db, "plan_interesados_id")) || 0;
+  if (planInteresados) {
+    const p = await pasosDePlan(db, planInteresados, conversationId).catch(() => null);
+    if (p?.pasos.length) return { plan: { titulo: p.nombre, universal: true, plan_id: p.id, brazo: p.brazo, pasos: p.pasos }, fuente: { tipo: "plan", plan_id: p.id } };
   }
   const u = (await pasosUniversales(db)).filter((p) => p.activo !== false);
   if (u.length) return { plan: { titulo: "Plan universal", universal: true, pasos: u }, fuente: { tipo: "universal" } };
@@ -46,7 +53,7 @@ async function planDelChat(db, conversationId) {
 }
 
 const resumenPaso = (p) => ({
-  horas: Number(p.horas) || 20, body: p.body || "", plantilla: p.plantilla || null, desde: p.desde || null,
+  horas: Number(p.horas) || 20, dia: Number.isInteger(p.dia) ? p.dia : null, hora: p.hora || null, body: p.body || "", plantilla: p.plantilla || null, desde: p.desde || null,
   media_type: p.media_key ? p.media_type || "image" : null
 });
 
@@ -73,7 +80,7 @@ async function get({ request, env }) {
     activo: auto.length > 0,
     proximo: auto[0]?.send_at || null,
     pendientes: auto.map((s) => ({ id: s.id, send_at: s.send_at, resumen: s.template_name ? `Plantilla: ${s.template_name}` : String(s.body || "").slice(0, 120) })),
-    plan: plan ? { titulo: plan.titulo, universal: plan.universal, pasos: plan.pasos.map(resumenPaso) } : null,
+    plan: plan ? { titulo: plan.titulo, universal: plan.universal, plan_id: plan.plan_id || null, brazo: plan.brazo || null, pasos: plan.pasos.map(resumenPaso) } : null,
     fuente,
     motivo,
     ventana_abierta: aMs(conv.last_inbound_at) + 24 * 3600 * 1000 > Date.now(),
@@ -93,12 +100,14 @@ async function post({ request, env, agent }) {
     return json({ ok: true });
   }
   if (payload?.accion !== "reactivar") return json({ error: "accion debe ser reactivar o apagar." }, 400);
-  const editados = Array.isArray(payload?.pasos) ? payload.pasos.slice(0, 6) : null;
+  const editados = Array.isArray(payload?.pasos) ? payload.pasos.slice(0, 10) : null;
   const { plan, fuente } = await planDelChat(db, conversationId);
   if (!plan) return json({ error: "Este chat no tiene ningún plan de seguimiento que reactivar (ninguna respuesta rápida con seguimiento y no hay plan universal)." }, 422);
   const motivo = fuente.tipo === "rapida"
     ? await programarSeguimientoDeRapida(db, conversationId, fuente.quick_reply_id, editados)
-    : await programarPasosEnChat(db, conversationId, aplicarEdicionesDePasos(plan.pasos, editados), origenSeguimientoLead(agent?.displayName || agent?.username || null));
+    : fuente.tipo === "plan"
+      ? await programarPlanEnChat(db, conversationId, fuente.plan_id, editados)
+      : await programarPasosEnChat(db, conversationId, aplicarEdicionesDePasos(plan.pasos, editados), origenSeguimientoLead(agent?.displayName || agent?.username || null));
   if (motivo) return json({ error: motivo }, 422);
   return json({ ok: true });
 }

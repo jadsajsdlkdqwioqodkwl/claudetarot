@@ -107,6 +107,13 @@ function leerSecuencia(payload, propioId) {
     .slice(0, 6));
 }
 
+/** Plan de seguimiento con nombre de la rápida (followup_plan_id, migración 0073); null = sin plan con nombre. */
+async function guardarPlan(env, id, payload) {
+  if (!payload || !("followup_plan_id" in payload)) return;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET followup_plan_id = ? WHERE id = ?").bind(Number(payload.followup_plan_id) || null, id).run()
+    .catch((err) => console.error("Plan de la rápida (¿falta la migración 0073?):", err.message));
+}
+
 /** Sin la migración 0072 no hace nada (la secuencia queda la de siempre). */
 async function guardarSecuencia(env, id, payload) {
   const secuencia = leerSecuencia(payload, id);
@@ -130,7 +137,7 @@ async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia, followup_plan_id", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -209,6 +216,7 @@ async function post({ request, env }) {
     .bind(creada.id)
     .all();
 
+  await guardarPlan(env, creada.id, payload);
   return json({ ok: true, quick_reply: { ...creada, followup_pasos: pasosDe(creada), botones, media: media.results } });
 }
 
@@ -278,6 +286,7 @@ async function patch({ request, env, agent }) {
     .run();
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
+  await guardarPlan(env, id, payload);
   await guardarCatalogoDespues(env, id, payload);
   await guardarSecuencia(env, id, payload);
 

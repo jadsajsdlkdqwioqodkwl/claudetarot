@@ -1353,7 +1353,21 @@ function refrescarVistasLead() {
   if (c && $("#detalle-bienvenida")) pintarLeadDetalle(c);
 }
 
+async function pintarResumenPlanesAdmin() {
+  const cont = $("#admin-planes-resumen");
+  if (!cont) return;
+  try {
+    const d = await pedir("/api/crm/planes-seguimiento");
+    estado.planes = d.planes;
+    const activos = d.planes.filter((p) => p.activo);
+    cont.innerHTML = activos.length
+      ? activos.map((p) => `<div>${icon("clock")} <b>${escapar(p.nombre)}</b> · ${p.segmento === "general" ? "general" : "solo " + p.segmento} · ${p.pasos.length} paso${p.pasos.length === 1 ? "" : "s"}${p.version_b ? ` · versión B al ${Math.round(p.reparto_b * 100)} %` : ""}${p.interesados ? " · lo manda la bienvenida" : ""}${p.rapidas.length ? ` · ${p.rapidas.length} rápida${p.rapidas.length === 1 ? "" : "s"}` : ""}</div>`).join("")
+      : `<div class="sin-ad">Sin planes todavía (aplica la migración 0073).</div>`;
+  } catch (err) { cont.textContent = err.message; }
+}
+
 async function pintarResumenLeadsAdmin() {
+  pintarResumenPlanesAdmin();
   const cont = $("#admin-leads-resumen");
   try {
     const d = await cargarDatosLead(true);
@@ -1370,6 +1384,240 @@ async function pintarResumenLeadsAdmin() {
     cont.textContent = err.message;
   }
 }
+
+/* ---------- Planes de seguimiento con nombre (admin, 2026-11-03) ---------- */
+
+let planEditando = null;
+$("#btn-abrir-planes")?.addEventListener("click", abrirPlanes);
+$("#planes-cerrar")?.addEventListener("click", () => { $("#modal-planes-fondo").classList.remove("abierto"); pintarResumenPlanesAdmin(); });
+$("#plan-agregar-paso")?.addEventListener("click", () => agregarPasoPlan($("#plan-pasos"), { horas: 1, body: "" }));
+$("#plan-agregar-paso-b")?.addEventListener("click", () => agregarPasoPlan($("#plan-pasos-b"), { horas: 1, body: "" }));
+for (const id of ["plan-agregar-paso", "plan-agregar-paso-b"]) { const b = $("#" + id); if (b) b.innerHTML = `${icon("plus")} Agregar paso`; }
+$("#plan-b-activa")?.addEventListener("change", (e) => { $("#plan-b-bloque").hidden = !e.target.checked; if (e.target.checked && !$("#plan-pasos-b").children.length) agregarPasoPlan($("#plan-pasos-b"), { horas: 1, body: "" }); });
+
+async function abrirPlanes(planId = null) {
+  $("#modal-planes-fondo").classList.add("abierto");
+  $("#planes-editor").hidden = true;
+  await pintarListaPlanes();
+  if (planId) editarPlan(planId);
+}
+
+async function pintarListaPlanes() {
+  const cont = $("#planes-lista");
+  cont.innerHTML = "Cargando…";
+  try {
+    const d = await pedir("/api/crm/planes-seguimiento");
+    estado.planes = d.planes;
+    cont.innerHTML = d.planes.length ? d.planes.map((p) => `<div class="plan-item ${p.activo ? "" : "apagado"}${planEditando?.id === p.id ? " activo" : ""}" data-id="${p.id}">
+        ${icon(p.activo ? "clock" : "bellOff")} <b>${escapar(p.nombre)}<div class="sub">${p.pasos.length} paso${p.pasos.length === 1 ? "" : "s"}${p.version_b ? ` · B al ${Math.round(p.reparto_b * 100)} %` : ""}${p.interesados ? " · bienvenida" : ""}${p.rapidas.length ? " · " + p.rapidas.map((r) => r.title).join(", ") : ""}</div></b>
+        <span class="plan-seg">${p.segmento === "general" ? "general" : p.segmento}</span></div>`).join("")
+      : `<div class="sin-ad">Sin planes todavía.</div>`;
+    cont.querySelectorAll(".plan-item").forEach((el) => el.addEventListener("click", () => editarPlan(Number(el.dataset.id))));
+  } catch (err) { cont.textContent = err.message; }
+}
+
+$("#planes-nuevo")?.addEventListener("click", async () => {
+  const nombre = $("#planes-nuevo-nombre").value.trim();
+  if (!nombre) return alert("Ponle un nombre al plan.");
+  try {
+    const d = await pedir("/api/crm/planes-seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) });
+    $("#planes-nuevo-nombre").value = "";
+    await pintarListaPlanes();
+    editarPlan(d.plan.id);
+  } catch (err) { alert(err.message); }
+});
+
+function editarPlan(id) {
+  const p = (estado.planes || []).find((x) => x.id === id);
+  if (!p) return;
+  planEditando = p;
+  $("#planes-lista").querySelectorAll(".plan-item").forEach((el) => el.classList.toggle("activo", Number(el.dataset.id) === id));
+  $("#planes-editor").hidden = false;
+  $("#plan-nombre").value = p.nombre;
+  $("#plan-segmento").value = p.segmento || "general";
+  $("#plan-usos").innerHTML = (p.rapidas.length ? `Lo usan: ${p.rapidas.map((r) => escapar(r.title)).join(", ")}. ` : "Ninguna respuesta rápida lo usa todavía (se elige en el editor de cada rápida). ")
+    + (p.activo ? "" : `${icon("bellOff")} Apagado: no se programa aunque una rápida lo elija.`);
+  $("#plan-pasos").innerHTML = "";
+  (p.pasos || []).forEach((paso) => agregarPasoPlan($("#plan-pasos"), paso));
+  $("#plan-pasos-b").innerHTML = "";
+  (p.version_b || []).forEach((paso) => agregarPasoPlan($("#plan-pasos-b"), paso));
+  $("#plan-b-activa").checked = Boolean(p.version_b);
+  $("#plan-b-reparto").value = Math.round((p.reparto_b || 0.5) * 100) || 50;
+  $("#plan-b-bloque").hidden = !p.version_b;
+  $("#plan-interesados").checked = Boolean(p.interesados);
+  $("#plan-apagar").textContent = p.activo ? "Apagar" : "Prender";
+  pintarCalendarioPlan($("#plan-cal-a"), p.calendario);
+  pintarCalendarioPlan($("#plan-cal-b"), p.calendario_b);
+  llenarPlantillasDePlan();
+}
+
+/** La línea de tiempo del plan: un chip por paso (día y hora; rojo si se paga; tachado si no saldría). */
+function pintarCalendarioPlan(cont, cal) {
+  if (!cont) return;
+  cont.innerHTML = (cal || []).map((c, i) => `<span class="${c.pagado ? "pagado" : ""}${c.salta ? " salta" : ""}" title="${c.pagado ? "Día 7 o más: esta plantilla ya se paga" : c.salta ? "No saldría: " + escapar(c.motivo || "") : "Dentro de la semana gratis"}">${i + 1}· día ${c.dia} ${escapar(c.hora)}${c.pagado ? " · se paga" : ""}</span>`).join("")
+    + (cal?.length ? `<span class="sub" style="background:none;border:none;color:var(--gris)">(ejemplo: chat que empezó hoy a las 10:00)</span>` : "");
+}
+
+function pasoPlanHtml(p, n) {
+  const esPlantilla = Boolean(p.plantilla);
+  const porDia = Number.isInteger(p.dia) && p.hora;
+  return `<div class="rp-paso pp-paso${p.activo === false ? " paso-apagado" : ""}" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
+    <div class="sug-paso-cab">
+      ${interruptorHtml(p.activo !== false, "pp-activo")}
+      <button type="button" class="sug-icono pp-subir" title="Subir">${icon("arrowLeft")}</button>
+      <button type="button" class="sug-icono pp-bajar" title="Bajar">${icon("arrowLeft")}</button>
+      <b class="rp-num">Paso ${n}</b>
+      <select class="pp-tipo" title="Qué manda este paso"><option value="texto"${esPlantilla ? "" : " selected"}>Texto</option><option value="plantilla"${esPlantilla ? " selected" : ""}>Plantilla</option></select>
+      <button type="button" class="sug-icono pp-quitar" title="Quitar paso">${icon("trash")}</button>
+    </div>
+    <div class="pp-cuando">
+      <select class="pp-modo"><option value="relativo"${porDia ? "" : " selected"}>Después del paso anterior</option><option value="dia"${porDia ? " selected" : ""}>Día N del chat a una hora</option></select>
+      <span class="pp-rel" ${porDia ? "hidden" : ""}><input type="number" class="pp-horas" min="0.25" max="168" step="0.25" value="${porDia ? "" : Number(p.horas) || 1}" /> h</span>
+      <span class="pp-dia-bloque" ${porDia ? "" : "hidden"}>día <input type="number" class="pp-dia" min="0" max="30" step="1" value="${porDia ? p.dia : 2}" /> a las <input type="time" class="pp-hora" value="${porDia ? p.hora : "19:30"}" /> (Lima)</span>
+    </div>
+    <div class="rp-bloque-plantilla" ${esPlantilla ? "" : "hidden"}>
+      <select class="pp-plantilla" style="width:100%" data-actual="${escapar(p.plantilla || "")}"><option value="${escapar(p.plantilla || "")}">${escapar(p.plantilla || "Elige una plantilla aprobada")}</option></select>
+      <div class="ayuda-modal" style="margin:2px 0 0">Sale aunque la ventana de 24 h esté cerrada. Dentro de los 7 días del anuncio es gratis; desde el día 7 se paga.</div>
+    </div>
+    <div class="rp-bloque-texto" ${esPlantilla ? "hidden" : ""}>
+      <textarea class="pp-texto" rows="3" placeholder="Texto del paso (opcional si adjuntas una foto)">${escapar(p.body && p.body !== "(archivo)" ? p.body : "")}</textarea>
+      ${camposBotonesHtml("pp-boton", p.botones || [])}
+      <div class="rp-archivo">
+        <label class="shalom-boton">${icon("paperclip")} Adjuntar foto o archivo<input type="file" accept="image/*,video/*,.pdf" style="display:none" /></label>
+        <span class="sub pp-nombre">${p.media_key ? `Con ${p.media_type === "video" ? "video" : p.media_type === "image" ? "foto" : "archivo"} adjunto` : ""}</span>
+        <button type="button" class="sug-icono pp-quitar-archivo" title="Quitar archivo" ${p.media_key ? "" : "hidden"}>${icon("close")}</button>
+      </div>
+      <div class="ayuda-modal" style="margin:2px 0 0">Un texto solo sale dentro de las 24 h desde el último mensaje del cliente (si no entra, se salta).</div>
+    </div>
+  </div>`;
+}
+
+function renumerarPasosPlan(cont) {
+  [...cont.children].forEach((f, i, arr) => {
+    f.querySelector(".rp-num").textContent = `Paso ${i + 1}`;
+    f.querySelector(".pp-subir").disabled = i === 0;
+    f.querySelector(".pp-bajar").disabled = i === arr.length - 1;
+  });
+  cont.querySelectorAll(".pp-subir .icono-svg svg").forEach((x) => { x.style.transform = "rotate(90deg)"; });
+  cont.querySelectorAll(".pp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
+}
+
+function agregarPasoPlan(cont, p) {
+  cont.insertAdjacentHTML("beforeend", pasoPlanHtml(p, cont.children.length + 1));
+  const el = cont.lastElementChild;
+  agregarRapidasA(el.querySelector(".pp-texto"));
+  el.querySelector(".pp-quitar").addEventListener("click", () => { el.remove(); renumerarPasosPlan(cont); });
+  el.querySelector(".pp-activo").addEventListener("change", (e) => el.classList.toggle("paso-apagado", !e.target.checked));
+  el.querySelector(".pp-subir").addEventListener("click", () => { el.previousElementSibling?.before(el); renumerarPasosPlan(cont); });
+  el.querySelector(".pp-bajar").addEventListener("click", () => { el.nextElementSibling?.after(el); renumerarPasosPlan(cont); });
+  el.querySelector(".pp-tipo").addEventListener("change", (e) => {
+    const pl = e.target.value === "plantilla";
+    el.querySelector(".rp-bloque-plantilla").hidden = !pl;
+    el.querySelector(".rp-bloque-texto").hidden = pl;
+    if (pl) { el.querySelector(".pp-modo").value = "dia"; el.querySelector(".pp-modo").dispatchEvent(new Event("change")); llenarPlantillasDePlan(); }
+  });
+  el.querySelector(".pp-modo").addEventListener("change", (e) => {
+    const porDia = e.target.value === "dia";
+    el.querySelector(".pp-rel").hidden = porDia;
+    el.querySelector(".pp-dia-bloque").hidden = !porDia;
+  });
+  const input = el.querySelector('input[type="file"]');
+  input.addEventListener("change", () => {
+    const f = input.files[0];
+    if (!f) return;
+    el._archivo = f;
+    el.querySelector(".pp-nombre").textContent = f.name;
+    el.querySelector(".pp-quitar-archivo").hidden = false;
+  });
+  el.querySelector(".pp-quitar-archivo").addEventListener("click", () => {
+    el._archivo = null; input.value = ""; el.dataset.mediaKey = "";
+    el.querySelector(".pp-nombre").textContent = ""; el.querySelector(".pp-quitar-archivo").hidden = true;
+  });
+  renumerarPasosPlan(cont);
+}
+
+async function llenarPlantillasDePlan() {
+  let nombres = [];
+  try { nombres = (await pedir("/api/crm/templates")).templates.filter((t) => t.status === "APPROVED").map((t) => t.name); } catch { /* sin Meta: solo la elegida */ }
+  document.querySelectorAll("#planes-editor .pp-plantilla").forEach((sel) => {
+    const actual = sel.value || sel.dataset.actual;
+    const lista = [...new Set([...(actual ? [actual] : []), ...nombres])];
+    sel.innerHTML = (lista.length ? "" : `<option value="">No hay plantillas aprobadas</option>`) + lista.map((n) => `<option value="${escapar(n)}"${n === actual ? " selected" : ""}>${escapar(n)}${n === actual && !nombres.includes(n) ? " (esperando a Meta)" : ""}</option>`).join("");
+  });
+}
+
+/** Lee los pasos de un contenedor del editor (sube los archivos nuevos). */
+async function leerPasosPlan(cont) {
+  const pasos = [];
+  for (const el of cont.children) {
+    const paso = {};
+    if (el.querySelector(".pp-modo").value === "dia") { paso.dia = Number(el.querySelector(".pp-dia").value); paso.hora = el.querySelector(".pp-hora").value; }
+    else paso.horas = Number(el.querySelector(".pp-horas").value) || 1;
+    if (!el.querySelector(".pp-activo").checked) paso.activo = false;
+    if (el.querySelector(".pp-tipo").value === "plantilla") {
+      const nombre = el.querySelector(".pp-plantilla").value;
+      if (!nombre) continue;
+      pasos.push({ ...paso, plantilla: nombre, desde: "inicio", horas: paso.horas || 48 });
+      continue;
+    }
+    paso.body = el.querySelector(".pp-texto").value.trim();
+    if (el._archivo) {
+      const subida = await subirArchivo(el._archivo);
+      Object.assign(paso, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
+    } else if (el.dataset.mediaKey) {
+      Object.assign(paso, { media_key: el.dataset.mediaKey, media_type: el.dataset.mediaType, media_mime: el.dataset.mediaMime || null });
+    }
+    const botones = leerCamposBotones(el, "pp-boton");
+    if (botones.length && paso.body && !paso.media_key) paso.botones = botones;
+    if (paso.body || paso.media_key) pasos.push(paso);
+  }
+  return pasos;
+}
+
+$("#plan-guardar")?.addEventListener("click", async () => {
+  if (!planEditando) return;
+  const btn = $("#plan-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  try {
+    const pasos = await leerPasosPlan($("#plan-pasos"));
+    const conB = $("#plan-b-activa").checked;
+    const versionB = conB ? await leerPasosPlan($("#plan-pasos-b")) : null;
+    const d = await pedir("/api/crm/planes-seguimiento", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      id: planEditando.id, nombre: $("#plan-nombre").value.trim(), segmento: $("#plan-segmento").value, pasos,
+      version_b: conB && versionB.length ? versionB : null, reparto_b: conB ? (Number($("#plan-b-reparto").value) || 0) / 100 : 0
+    }) });
+    const quiereInteresados = $("#plan-interesados").checked;
+    if (quiereInteresados !== Boolean(planEditando.interesados)) {
+      await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan_interesados_id: quiereInteresados ? planEditando.id : null }) });
+    }
+    await pintarListaPlanes();
+    editarPlan(d.plan.id);
+    btn.textContent = "Guardado";
+    setTimeout(() => { btn.textContent = "Guardar"; }, 1500);
+  } catch (err) { alert(err.message); btn.textContent = "Guardar"; } finally { btn.disabled = false; }
+});
+
+$("#plan-duplicar")?.addEventListener("click", async () => {
+  if (!planEditando) return;
+  const nombre = prompt("Nombre del plan nuevo (copia de «" + planEditando.nombre + "»):", planEditando.nombre + " (copia)");
+  if (!nombre) return;
+  try {
+    const d = await pedir("/api/crm/planes-seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre, duplicar_de: planEditando.id }) });
+    await pintarListaPlanes();
+    editarPlan(d.plan.id);
+  } catch (err) { alert(err.message); }
+});
+
+$("#plan-apagar")?.addEventListener("click", async () => {
+  if (!planEditando) return;
+  const activo = !planEditando.activo;
+  if (!activo && !confirm("¿Apagar este plan? Las rápidas que lo usan dejan de programar seguimiento hasta que lo prendas de nuevo (nada se borra).")) return;
+  try {
+    await pedir("/api/crm/planes-seguimiento", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: planEditando.id, activo }) });
+    await pintarListaPlanes();
+    editarPlan(planEditando.id);
+  } catch (err) { alert(err.message); }
+});
 
 /* ---------- Modal "Seguimiento para leads" (admin) ---------- */
 
@@ -1739,11 +1987,12 @@ const ORIGEN_SEGUIMIENTO_AUTO = "Seguimiento automático (anuncio)";
 const PREFIJO_SEGUIMIENTO_LEAD = "Seguimiento de leads";
 const PREFIJO_SEGUIMIENTO_RAPIDA = "Seguimiento de respuesta rápida";
 const PREFIJO_SUGERENCIA = "Sugerencia del asesor";
+const PREFIJO_PLAN = "Plan de seguimiento"; // planes con nombre (crm-db.js, 2026-11-03)
 const ORIGEN_DIA7 = "Automático (día 7)"; // rescate-lead.js
 
 function esSeguimientoLead(s) {
   const origen = s.created_by || "";
-  return origen === ORIGEN_SEGUIMIENTO_AUTO || origen.startsWith(PREFIJO_SEGUIMIENTO_LEAD) || origen.startsWith(PREFIJO_SUGERENCIA);
+  return origen === ORIGEN_SEGUIMIENTO_AUTO || origen.startsWith(PREFIJO_SEGUIMIENTO_LEAD) || origen.startsWith(PREFIJO_SUGERENCIA) || origen.startsWith(PREFIJO_PLAN);
 }
 
 function esSeguimientoManual(s) {
@@ -3979,7 +4228,7 @@ function pintarBarraSeguimiento(d) {
   const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
   const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
   barra.innerHTML = r7 + `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
-    ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
+    ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)}${d.plan.brazo === "B" ? " · versión B" : ""} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
   $("#seg-barra-btn").addEventListener("click", () => abrirReactivarDesdeBarra(d));
 }
 
@@ -3998,7 +4247,9 @@ function pintarPasosReactivar(pasos, diaChat = null) {
   return pasos.map((p, i) => `
       <div class="ra-paso" data-i="${i}"${p.plantilla ? ` data-plantilla="${escapar(p.plantilla)}"` : ""}>
         <div class="seg-label">Paso ${i + 1} · ${p.plantilla ? `${icon("doc")} Plantilla ${escapar(p.plantilla)}` : p.media_type ? `${icon(p.media_type === "video" ? "video" : "image")} Con archivo` : `${icon("chat")} Texto`}</div>
-        <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después ${p.plantilla && p.desde === "inicio" ? `del primer mensaje del cliente (día ${Math.round(p.horas / 24)} del chat${diaChat ? `; hoy es el día ${diaChat}` : ""})` : "del paso anterior"}</label>
+        ${Number.isInteger(p.dia) && p.hora
+          ? `<div class="ayuda-modal">Sale el día ${p.dia} del chat a las ${escapar(p.hora)} (Lima)${diaChat ? `; hoy es el día ${diaChat}` : ""}${p.dia >= 7 && p.plantilla ? " · se paga" : ""}</div>`
+          : `<label class="ayuda-modal" style="display:flex;align-items:center;gap:6px">Sale <input type="number" class="ra-horas" min="1" max="${p.plantilla ? 1440 : 168}" step="1" value="${p.horas}" style="width:80px" /> h después ${p.plantilla && p.desde === "inicio" ? `del primer mensaje del cliente (día ${Math.round(p.horas / 24)} del chat${diaChat ? `; hoy es el día ${diaChat}` : ""})` : "del paso anterior"}</label>`}
         ${p.plantilla ? `<div class="ayuda-modal" style="font-size:11px;padding:4px 0">Plantilla aprobada · no editable aquí</div>` : `<textarea class="ra-texto" placeholder="Texto del mensaje">${escapar(p.body)}</textarea>`}
         <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ra-activo" checked /> Mandar este paso</label>
       </div>`).join("") || `<p class="ayuda-modal">Este plan no tiene pasos prendidos.</p>`;
@@ -4419,7 +4670,7 @@ $("#ra-programar").addEventListener("click", async () => {
   if (!reactivando) return;
   const boton = $("#ra-programar");
   const pasos = [...document.querySelectorAll("#ra-pasos .ra-paso")].map((el) => ({
-    horas: Number(el.querySelector(".ra-horas").value) || undefined,
+    horas: Number(el.querySelector(".ra-horas")?.value) || undefined,
     body: el.querySelector(".ra-texto")?.value,
     plantilla: el.dataset.plantilla || undefined,
     activo: el.querySelector(".ra-activo").checked
@@ -7314,16 +7565,24 @@ function pintarSeguimientoRapida(q) {
     : q?.followup_body ? [{ horas: q.followup_hours || 20, body: q.followup_body }] : [];
   estado.rapidaPasosPropios = propios;
   estado.rapidaPlanUniversal = estado.rapidaPlanUniversal || [];
-  const modo = q ? (q.followup_universal ? "universal" : propios.length ? "propio" : "ninguno") : "universal";
+  const modo = q ? (q.followup_plan_id || q.followup_universal ? "universal" : propios.length ? "propio" : "ninguno") : "universal";
   estado.rapidaSegModoAnterior = modo;
   const radio = document.querySelector(`input[name="rapida-seg-modo"][value="${modo}"]`);
   if (radio) radio.checked = true;
   const fila = $("#rapida-seg-global-fila");
   fila.style.display = "none";
+  const selPlan = $("#rapida-plan");
+  if (selPlan) selPlan.innerHTML = `<option value="${q?.followup_plan_id || 1}">${q?.followup_plan_id ? "Plan " + q.followup_plan_id : "Universal"}</option>`;
   pedir("/api/crm/settings").then((s) => {
     estado.rapidaPlanUniversal = s.seguimiento_universal || [];
     estado.rapidasConUniversal = s.rapidas_con_universal || 0;
     estado.rapidasConPropio = s.rapidas_con_propio || 0;
+    // Planes con nombre (migración 0073): el selector; el plan 1 es el «Universal» de siempre.
+    estado.planesLista = s.planes || [];
+    if (selPlan && estado.planesLista.length) {
+      const actual = Number(q?.followup_plan_id) || 1;
+      selPlan.innerHTML = estado.planesLista.map((p) => `<option value="${p.id}"${p.id === actual ? " selected" : ""}>${escapar(p.nombre)}${p.activo ? "" : " (apagado)"}</option>`).join("");
+    }
     if (!q && !estado.rapidaPlanUniversal.length) {
       // Sin plan universal todavía: una rápida nueva arranca sin seguimiento.
       document.querySelector('input[name="rapida-seg-modo"][value="ninguno"]').checked = true;
@@ -7341,11 +7600,20 @@ function aplicarModoSeguimientoRapida() {
   const aviso = $("#rapida-universal-aviso");
   const esAdmin = estado.miRol === "admin";
   if (modo === "universal") {
-    pintarPasosEnEditor(estado.rapidaPlanUniversal || [], { soloLectura: !esAdmin });
+    const planId = Number($("#rapida-plan")?.value) || 1;
+    const plan = (estado.planes || []).find((p) => p.id === planId);
+    // Con un plan con nombre, los pasos se ven aquí solo para leer; se editan en Herramientas → Planes de seguimiento.
+    const pasosPlan = plan ? plan.pasos : planId === 1 ? (estado.rapidaPlanUniversal || []) : [];
+    if (plan) {
+      // Solo lectura: una lista corta de los pasos (día y hora, texto o plantilla, gratis o se paga).
+      $("#rapida-pasos").innerHTML = pasosPlan.length ? `<div class="ayuda-modal">${pasosPlan.map((p, i) => `<div>${i + 1}. ${Number.isInteger(p.dia) && p.hora ? `día ${p.dia} · ${escapar(p.hora)}` : `+${p.horas} h`} · ${p.plantilla ? `plantilla ${escapar(p.plantilla)}${p.dia >= 7 ? " (se paga)" : ""}` : escapar(recortarTexto(p.body || "(archivo)", 70))}${p.activo === false ? " · apagado" : ""}</div>`).join("")}</div>` : `<div class="ayuda-modal">Este plan no tiene pasos todavía.</div>`;
+    } else pintarPasosEnEditor(pasosPlan, { soloLectura: !esAdmin || planId !== 1 });
     const n = estado.rapidasConUniversal || 0;
     aviso.style.display = "";
-    aviso.innerHTML = `${icon("bolt")} <b>Plan universal</b>: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}. ${esAdmin ? "Si cambias estos pasos aquí, cambian para todas las que lo usan (al guardar)." : "Solo el admin lo edita."}`
+    aviso.innerHTML = `${icon("bolt")} <b>${escapar(plan?.nombre || "Plan universal")}</b>${plan ? ` (${plan.segmento === "general" ? "general" : "solo " + plan.segmento})` : `: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}`}. ${esAdmin ? "Los pasos se editan en Herramientas → Planes de seguimiento y cambian para todas las rápidas que usan el plan." : "Solo el admin lo edita."}`
+      + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-abrir-planes" style="font-size:12px;margin-top:6px;width:100%">${icon("pencil")} Editar los planes</button>` : "")
       + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-universal-todas" style="font-size:12px;margin-top:6px;width:100%">${icon("check")} Usar el plan universal en todas las respuestas con seguimiento (${estado.rapidasConPropio || 0} con pasos propios)</button>` : "");
+    $("#rapida-abrir-planes")?.addEventListener("click", () => abrirPlanes(planId));
     $("#rapida-universal-todas")?.addEventListener("click", async (e) => {
       if (!confirm("¿Todas las respuestas rápidas que hoy tienen seguimiento propio pasan a usar el plan universal? Sus pasos propios quedan guardados por si vuelves a elegirlos.")) return;
       e.target.disabled = true;
@@ -7367,6 +7635,15 @@ function aplicarModoSeguimientoRapida() {
   }
   renumerarPasosRapida();
 }
+
+$("#rapida-plan")?.addEventListener("change", async () => {
+  if (!(estado.planes || []).length) { try { estado.planes = (await pedir("/api/crm/planes-seguimiento")).planes; } catch { /* sin permiso: sin vista previa */ } }
+  const u = document.querySelector('input[name="rapida-seg-modo"][value="universal"]');
+  if (u) u.checked = true;
+  estado.rapidaPasosEditados = true;
+  aplicarModoSeguimientoRapida();
+});
+$("#rapida-plan")?.addEventListener("click", (e) => e.stopPropagation());
 
 document.querySelectorAll('input[name="rapida-seg-modo"]').forEach((r) => r.addEventListener("change", async () => {
   // Al salir de "propios" se guardan en memoria los pasos tal como quedaron en el editor.
@@ -7509,15 +7786,19 @@ $("#rapida-crear").addEventListener("click", async () => {
     const seguimiento = {};
     if (modo === "universal") {
       seguimiento.followup_universal = true;
-      if (estado.miRol === "admin" && (estado.rapidaPasosEditados || estado.rapidaUniversalEditado)) {
+      seguimiento.followup_plan_id = Number($("#rapida-plan")?.value) || 1;
+      // El plan 1 (Universal) todavía se puede retocar desde aquí; los demás, en Planes de seguimiento.
+      if (seguimiento.followup_plan_id === 1 && estado.miRol === "admin" && (estado.rapidaPasosEditados || estado.rapidaUniversalEditado) && !(estado.planes || []).find((p) => p.id === 1)) {
         const universal = estado.rapidaUniversalEditado && !estado.rapidaPasosEditados ? estado.rapidaPlanUniversal : await leerPasosRapida();
         await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seguimiento_universal: universal }) });
       }
     } else if (modo === "propio") {
       seguimiento.followup_universal = false;
+      seguimiento.followup_plan_id = null;
       if (estado.rapidaPasosEditados || !editandoId) seguimiento.followup_pasos = await leerPasosRapida();
     } else {
       seguimiento.followup_universal = false;
+      seguimiento.followup_plan_id = null;
       seguimiento.followup_pasos = [];
     }
     const categoriaModal = $("#rapida-categoria")?.value || null;

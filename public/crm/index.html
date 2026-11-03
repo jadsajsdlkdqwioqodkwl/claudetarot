@@ -211,7 +211,7 @@
     <div class="ayuda-modal">Respuestas rápidas que salen detrás de esta cuando la vendedora toca «Enviar secuencia» (junto a las versiones 1·2·3). Cada una sale a los segundos que pongas después de la anterior, con sus fotos, botones y su propio seguimiento. Ej.: Lima 1 → Lima 2 → Lima 3.</div>
     <div class="rp-titulo">Seguimiento si el cliente no responde</div>
     <div id="rapida-seg-modo" class="seg-modo">
-      <label><input type="radio" name="rapida-seg-modo" value="universal" /> Plan universal</label>
+      <label><input type="radio" name="rapida-seg-modo" value="universal" /> Plan <select id="rapida-plan" title="Qué plan de seguimiento se programa al mandar esta respuesta" style="width:auto;margin:0 0 0 2px;padding:3px 6px"></select></label>
       <label><input type="radio" name="rapida-seg-modo" value="propio" /> Pasos propios de esta respuesta</label>
       <label><input type="radio" name="rapida-seg-modo" value="ninguno" /> Sin seguimiento</label>
     </div>
@@ -742,6 +742,12 @@
     <button class="cancelar" id="btn-abrir-leads" type="button" style="width:100%">Configurar seguimiento para interesados</button>
 
     <hr />
+    <h2>Planes de seguimiento (7 días)</h2>
+    <p class="ayuda-modal">Los planes con nombre (INT, LIMA, PROV…): qué sale cada día de la semana gratis del anuncio, a qué hora, con qué texto o plantilla. Una respuesta rápida elige su plan en su editor; la bienvenida de anuncios puede usar uno en vez de la secuencia de interesados. Cada plan puede tener una versión B para probarla con un % de los chats.</p>
+    <div class="ad-card" id="admin-planes-resumen" style="margin-bottom:8px">Cargando…</div>
+    <button class="cancelar" id="btn-abrir-planes" type="button" style="width:100%">Planes de seguimiento</button>
+
+    <hr />
     <h2>Costos de WhatsApp</h2>
     <p class="ayuda-modal">
       <strong>Gratis siempre:</strong> recibir mensajes, responder dentro de las 24h desde que el cliente escribió (texto, fotos, catálogo, producto), y los códigos de acceso (2FA / recuperar contraseña) — se mandan como texto libre, no como plantilla.<br /><br />
@@ -755,6 +761,48 @@
 
     <div class="acciones">
       <button class="cancelar" id="admin-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-planes-fondo">
+  <div class="modal modal-ancho modal-planes">
+    <h2>Planes de seguimiento</h2>
+    <p class="ayuda-modal">Un plan es la cadena que sale sola si el cliente no responde: textos el primer día (dentro de las 24 h), plantillas aprobadas los días siguientes («día N a las HH:MM», hora de Lima, contado desde el primer mensaje del cliente). Solo el cliente corta la cadena. Una plantilla del día 7 en adelante ya no entra en la semana gratis del anuncio: se paga.</p>
+    <div id="planes-lista"></div>
+    <div class="leads-fila" style="margin-top:8px">
+      <input type="text" id="planes-nuevo-nombre" placeholder="Nombre del plan nuevo (ej. LIMA · Sin ubicación)" style="flex:1;margin:0" />
+      <button class="crear" id="planes-nuevo" type="button">Crear</button>
+    </div>
+    <div id="planes-editor" hidden>
+      <hr />
+      <div class="leads-fila"><input type="text" id="plan-nombre" placeholder="Nombre" style="flex:1;margin:0" />
+        <select id="plan-segmento" style="width:auto;margin:0"><option value="general">General</option><option value="lima">Solo Lima</option><option value="provincia">Solo provincia</option></select></div>
+      <div class="ayuda-modal" id="plan-usos"></div>
+      <div class="rp-titulo">Pasos (versión A)</div>
+      <div id="plan-cal-a" class="plan-cal"></div>
+      <div id="plan-pasos"></div>
+      <button type="button" class="sug-agregar-paso" id="plan-agregar-paso"></button>
+      <div class="rp-titulo" style="margin-top:12px">Versión B (prueba)</div>
+      <div class="leads-fila leads-fila-delay">
+        <label class="interruptor" title="Con la versión B prendida, una parte de los chats recibe estos pasos en vez de los de la versión A"><input type="checkbox" id="plan-b-activa" /><span></span></label>
+        <span>Le toca al</span><input type="number" id="plan-b-reparto" min="0" max="100" step="5" value="50" /><span>% de los chats (fijo por chat)</span>
+      </div>
+      <div id="plan-b-bloque" hidden>
+        <div id="plan-cal-b" class="plan-cal"></div>
+        <div id="plan-pasos-b"></div>
+        <button type="button" class="sug-agregar-paso" id="plan-agregar-paso-b"></button>
+      </div>
+      <div class="rp-titulo" style="margin-top:12px">Bienvenida de anuncios</div>
+      <label class="ayuda-modal" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="plan-interesados" /> Este plan se programa solo al salir la bienvenida (en vez de la secuencia de interesados)</label>
+      <div class="acciones">
+        <button class="cancelar" id="plan-duplicar" type="button">Duplicar</button>
+        <button class="cancelar" id="plan-apagar" type="button">Apagar</button>
+        <button class="crear" id="plan-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+    <div class="acciones">
+      <button class="cancelar" id="planes-cerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>

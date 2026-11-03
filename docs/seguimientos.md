@@ -1,7 +1,7 @@
 # Seguimientos («si no responde») — cómo funcionan HOY (registro práctico)
 
 > Estado ACTUAL. Se reescribe cuando cambia algo; la historia está en `docs/MAPA.md`.
-> Última revisión: 2026-11-01 (dueño: reglas nuevas de cadena, plan universal, barra en el chat).
+> Última revisión: 2026-11-03 (planes con nombre, «día N a las HH:MM», versión B, horario 06:30–23:30).
 
 ## Las reglas (del dueño, 2026-11-01)
 1. **Solo el cliente corta la cadena.** Cuando el cliente escribe, el webhook cancela los seguimientos
@@ -19,13 +19,30 @@
    la plantilla del rescate al día 6 + 18 h del inicio del chat a todo chat que escribió y no compró
    (verificado 2026-11-01: 140 de 140 chats de hace 8–10 días la recibieron). Se apaga con
    `rescate7_auto = 0` (Herramientas).
-6. Red de seguridad del cron: como mucho 6 automáticos seguidos sin respuesta
-   (`MAX_AUTOMATICOS_SIN_RESPUESTA`); el ritmo real lo pone la cadena.
+6. Red de seguridad del cron: como mucho 6 textos automáticos seguidos sin respuesta
+   (`MAX_AUTOMATICOS_SIN_RESPUESTA`; las plantillas no cuentan); el ritmo real lo pone la cadena.
+8. Horario de envío 06:30–23:30 (Lima; `HORARIO_ENVIO`). Lo que cae de noche se corre a las 06:30
+   si la ventana sigue abierta; si no, a las 23:29; las plantillas siempre a las 06:30.
 7. A quien ya compró (etapa 5 / etiqueta purchase) no se le programa ni se le manda.
 
-## El plan universal
+## Los planes con nombre (desde el 2026-11-03)
+- Tabla `planes_seguimiento`: cada plan tiene nombre, segmento (general, Lima o provincia), hasta 10 pasos
+  ({ horas | dia + hora, body, botones, media, plantilla, desde, activo }), una versión B opcional con su
+  % de reparto (brazo fijo por chat en `plan_asignaciones`) y un interruptor de apagado. El plan 1
+  «Universal» es el antiguo plan universal (el ajuste `seguimiento_universal` queda como respaldo y espejo).
+- Un paso puede ser «después del paso anterior» (+N h) o «día N del chat a las HH:MM» (hora de Lima,
+  contado desde el primer mensaje del cliente). Un texto solo sale dentro de las 24 h; una plantilla
+  del día 7 en adelante se marca «se paga» (ya no entra en la semana gratis del anuncio).
+- Dónde se editan: CRM → Herramientas → **Planes de seguimiento** (solo admin): lista, línea de tiempo,
+  pasos, versión B, duplicar, apagar, y «este plan lo manda la bienvenida» (ajuste `plan_interesados_id`:
+  reemplaza a la secuencia de interesados vieja solo cuando está puesto).
+- Cada respuesta rápida elige en su editor: **Plan: [selector]** · Pasos propios · Sin seguimiento
+  (`quick_replies.followup_plan_id`; `followup_universal` = plan 1 por compatibilidad).
+- Cada mensaje programado por un plan guarda `plan_id`, `plan_brazo` y `plan_paso` (para medir por brazo).
+
+## El plan universal (plan 1)
 - Son pasos iguales a los de una respuesta rápida ({ horas, body, botones, plantilla, desde, activo },
-  hasta 6), guardados UNA vez en el ajuste `seguimiento_universal` (crm_settings).
+  hasta 10), guardados en `planes_seguimiento` (id 1) y espejados en el ajuste `seguimiento_universal`.
 - Cada respuesta rápida elige en su editor: **Plan universal** · **Pasos propios** · **Sin seguimiento**
   (columna `quick_replies.followup_universal`). Con «Plan universal», al mandarla se programa el plan.
 - Dónde se edita: CRM → Respuestas rápidas → editar cualquiera → «Plan universal»: ahí se ven y se
@@ -53,7 +70,8 @@ Debajo de la cabecera de cada chat (`#barra-seguimiento`, `GET/POST /api/crm/seg
   cadena automática en marcha.
 
 ## Dónde está cada cosa
-- `src/lib/crm-db.js`: `normalizarPasosSeguimiento`, `pasosUniversales`, `pasosDeSeguimientoRapida`,
+- `src/api/crm/planes-seguimiento.js`: los planes con nombre (`/api/crm/planes` es otra cosa: los planes con plantilla de Shalom). `scripts/test-planes.mjs`: su prueba.
+- `src/lib/crm-db.js`: `normalizarPasosSeguimiento`, `calendarioDePasos`, `leerPlan`, `pasosDePlan`, `programarPlanEnChat`, `pasosUniversales`, `pasosDeSeguimientoRapida`,
   `programarSeguimientoDeRapida` → `programarPasosEnChat` (las reglas 2–4 y 7), `cancelarSeguimientosDeLead`
   (solo para reemplazar o apagar), `cancelarSeguimientosPendientes` (el cliente escribió).
 - `src/api/crm/seguimiento.js`: estado y acciones de la barra. `followup-rapida.js`: el chip de la burbuja.
