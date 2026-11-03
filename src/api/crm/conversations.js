@@ -216,13 +216,13 @@ async function handler({ request, env, agent }) {
            COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
            AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
            AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
-           AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
          ) AS pendientes,
          MIN(CASE WHEN
            COALESCE(created_by, '') <> ? AND COALESCE(created_by, '') NOT LIKE ?
            AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
            AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
-           AND COALESCE(created_by, '') NOT LIKE ?
+           AND COALESCE(created_by, '') NOT LIKE ? AND COALESCE(created_by, '') NOT LIKE ?
          THEN send_at END) AS proximo,
          MIN(CASE WHEN created_by = ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ? THEN send_at END) AS auto_proximo
        FROM scheduled_messages
