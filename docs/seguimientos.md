@@ -49,8 +49,9 @@
   editan los pasos (solo admin); al guardar cambian para todas las rápidas que lo usan. El botón
   «Usar el plan universal en todas las respuestas con seguimiento» cambia todas de un toque (los pasos
   propios quedan guardados por si se vuelve a «Pasos propios»).
-- Planes en uso (2026-11-03): **2 «Interesado · semana gratis»** (bienvenida y 2T·1) y **3 «Cierre · le pidieron
-  ubicación o adelanto»** (Lima msj. 3, Provincia Msj. 3, 2T·2). Textos con los bonos (30+ clases grabadas, 50+
+- Planes en uso (2026-11-03): **2 «Interesado · semana gratis»** (2T·1) y **3 «Cierre · le pidieron ubicación o
+  adelanto»** (2T·2): solo el experimento «Yape en 2 tiempos» los usa hasta que el dueño apruebe los textos; Lima
+  msj. 3, Provincia Msj. 3 y la bienvenida siguen con sus seguimientos de siempre. Textos con los bonos (30+ clases grabadas, 50+
   libros digitales) y plantillas `seg7_*` (banco «Seguimiento 7 días» en Plantillas para Meta; se saltan hasta
   que Meta las apruebe). Detalle en `docs/MAPA.md` (2026-11-03 madrugada).
 - Semilla del plan 1 (2026-11-01): los dos pasos de «Provincia Msj. 3»: 1 h «Solo quería recordarte…» y 20 h

@@ -45,7 +45,8 @@ async function get({ env }) {
   // El plan universal de seguimiento y cuántas respuestas rápidas lo usan / tienen seguimiento propio.
   const [seguimientoUniversal, rapidas, planes, planInteresados] = await Promise.all([
     pasosUniversales(env.CRM_DB),
-    env.CRM_DB.prepare("SELECT id, nombre, segmento, activo FROM planes_seguimiento ORDER BY activo DESC, id").all().then((r) => r.results || []).catch(() => []),
+    env.CRM_DB.prepare("SELECT id, nombre, segmento, activo, pasos, (SELECT json_group_array(title) FROM quick_replies q WHERE q.followup_plan_id = p.id OR (p.id = 1 AND q.followup_universal = 1 AND q.followup_plan_id IS NULL)) AS rapidas FROM planes_seguimiento p ORDER BY activo DESC, id").all()
+      .then((r) => (r.results || []).map((p) => { let pasos = [], rapidas = []; try { pasos = normalizarPasosSeguimiento(JSON.parse(p.pasos || "[]")); } catch { pasos = []; } try { rapidas = JSON.parse(p.rapidas || "[]"); } catch { rapidas = []; } return { id: p.id, nombre: p.nombre, segmento: p.segmento, activo: p.activo !== 0, pasos, rapidas, interesados: false }; })).catch(() => []),
     obtenerAjuste(env.CRM_DB, "plan_interesados_id"),
     env.CRM_DB.prepare(
       "SELECT SUM(followup_universal = 1) AS universal, SUM(followup_universal = 0 AND (followup_pasos IS NOT NULL OR NULLIF(TRIM(COALESCE(followup_body, '')), '') IS NOT NULL)) AS propio FROM quick_replies"
@@ -61,7 +62,7 @@ async function get({ env }) {
     yape_numero: yapeNumero || "",
     seguimiento_universal: seguimientoUniversal,
     // Planes con nombre (migración 0073) para el selector del editor de rápidas, y el plan que programa la bienvenida.
-    planes,
+    planes: planes.map((p) => ({ ...p, interesados: p.id === (Number(planInteresados) || 0) })),
     plan_interesados_id: Number(planInteresados) || null,
     rapidas_con_universal: Number(rapidas?.universal) || 0,
     rapidas_con_propio: Number(rapidas?.propio) || 0

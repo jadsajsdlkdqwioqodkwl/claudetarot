@@ -6020,15 +6020,16 @@ async function enviarMensaje(e) {
         if (texto) await mandarTextoRapida();
       }
     } else if (rapida) {
-      // Todas a la vez: la API las procesa en paralelo y llegan casi juntas.
+      // Una tras otra, en el orden de la rápida (dueño, 2026-11-03: en paralelo llegaban desordenadas).
       // El seguimiento se programa con un solo envío: el texto si hay, si no la primera foto/video.
-      const resultados = await Promise.allSettled(rapida.media.map((m, i) =>
-        pedir("/api/crm/messages", {
+      const resultados = [];
+      for (const [i, m] of rapida.media.entries()) {
+        resultados.push(await pedir("/api/crm/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ conversation_id: conversationId, media_key: m.media_key, media_type: m.media_type, quick_reply_id: !texto && i === 0 ? rapidaUsadaId : undefined, ...(!texto && i === 0 ? variante : {}) })
-        })
-      ));
+        }).then((v) => ({ status: "fulfilled", value: v }), (reason) => ({ status: "rejected", reason })));
+      }
       const fallidas = resultados.filter((r) => r.status === "rejected");
       if (fallidas.length === rapida.media.length && rapida.media.length) throw fallidas[0].reason;
       if (texto) {
@@ -7529,6 +7530,7 @@ function abrirModalRapidaNueva() {
 /** Un paso de la secuencia de seguimiento de la respuesta rápida (texto, horas y archivo opcional). */
 function pasoRapidaHtml(p, n) {
   const esPlantilla = Boolean(p.plantilla);
+  const porDia = Number.isInteger(p.dia) && Boolean(p.hora);
   return `
     <div class="rp-paso${p.activo === false ? " paso-apagado" : ""}" data-media-key="${escapar(p.media_key || "")}" data-media-type="${escapar(p.media_type || "")}" data-media-mime="${escapar(p.media_mime || "")}">
       <div class="sug-paso-cab">
@@ -7537,12 +7539,12 @@ function pasoRapidaHtml(p, n) {
         <button type="button" class="sug-icono rp-bajar" title="Bajar">${icon("arrowLeft")}</button>
         <b class="rp-num">Paso ${n}</b>
         <select class="rp-tipo" title="Qué manda este paso"><option value="texto"${esPlantilla ? "" : " selected"}>Texto</option><option value="plantilla"${esPlantilla ? " selected" : ""}>Plantilla</option></select>
-        <span class="sub">si no responde, a las</span>
-        <input type="number" class="sug-paso-horas rp-horas" min="0.25" max="168" step="0.5" value="${esPlantilla ? "" : Number(p.horas) || 20}" ${esPlantilla ? "hidden" : ""} />
-        <span class="sub rp-u-horas" ${esPlantilla ? "hidden" : ""}>h</span>
-        <input type="number" class="sug-paso-horas rp-dias" min="0.25" max="60" step="0.25" value="${esPlantilla ? Math.round((Number(p.horas) || 96) / 24 * 4) / 4 : ""}" ${esPlantilla ? "" : "hidden"} />
-        <span class="sub rp-u-dias" ${esPlantilla ? "" : "hidden"}>días</span>
         <button type="button" class="sug-icono rp-quitar" title="Quitar paso">${icon("trash")}</button>
+      </div>
+      <div class="pp-cuando">
+        <select class="rp-modo" title="Cuándo sale"><option value="relativo"${porDia ? "" : " selected"}>Si no responde, después del paso anterior</option><option value="dia"${porDia ? " selected" : ""}>Día N del chat a una hora</option></select>
+        <span class="rp-rel" ${porDia ? "hidden" : ""}><input type="number" class="sug-paso-horas rp-horas" min="0.25" max="168" step="0.5" value="${esPlantilla || porDia ? "" : Number(p.horas) || 20}" ${esPlantilla ? "hidden" : ""} /><span class="sub rp-u-horas" ${esPlantilla ? "hidden" : ""}> h</span><input type="number" class="sug-paso-horas rp-dias" min="0.25" max="60" step="0.25" value="${esPlantilla && !porDia ? Math.round((Number(p.horas) || 96) / 24 * 4) / 4 : ""}" ${esPlantilla ? "" : "hidden"} /><span class="sub rp-u-dias" ${esPlantilla ? "" : "hidden"}> días</span></span>
+        <span class="rp-dia-bloque" ${porDia ? "" : "hidden"}>día <input type="number" class="rp-dia" min="0" max="30" step="1" value="${porDia ? p.dia : 2}" /> a las <input type="time" class="rp-hora" value="${porDia ? p.hora : "19:30"}" /> (Lima)${esPlantilla ? "" : ' <span class="sub">· un texto solo sale dentro de las 24 h del cliente</span>'}</span>
       </div>
       <div class="rp-bloque-plantilla" ${esPlantilla ? "" : "hidden"}>
         <select class="rp-plantilla" style="width:100%" data-actual="${escapar(p.plantilla || "")}"><option value="${escapar(p.plantilla || "")}">${escapar(p.plantilla || "Elige una plantilla aprobada")}</option></select>
@@ -7602,7 +7604,7 @@ function renumerarPasosRapida() {
   $("#rapida-pasos").querySelectorAll(".rp-bajar .icono-svg svg").forEach((x) => { x.style.transform = "rotate(-90deg)"; });
   const filas = [...$("#rapida-pasos").children];
   filas.forEach((f, i) => { f.querySelector(".rp-subir").disabled = i === 0; f.querySelector(".rp-bajar").disabled = i === filas.length - 1; });
-  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 6 || modoSeguimientoRapida() === "ninguno" ? "none" : "";
+  $("#rapida-agregar-paso").style.display = $("#rapida-pasos").children.length >= 10 || modoSeguimientoRapida() === "ninguno" ? "none" : "";
 }
 
 /** Qué seguimiento usa la respuesta rápida del editor: "universal" | "propio" | "ninguno". */
@@ -7618,6 +7620,13 @@ function agregarPasoRapida(p = { horas: 20 }, marcaEdicion = false) {
   el.querySelector(".rp-texto").addEventListener("input", () => { estado.rapidaPasosEditados = true; }, { once: true });
   el.querySelector(".rp-horas").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
   el.querySelector(".rp-dias").addEventListener("change", () => { estado.rapidaPasosEditados = true; }, { once: true });
+  el.querySelectorAll(".rp-dia, .rp-hora").forEach((x) => x.addEventListener("change", () => { estado.rapidaPasosEditados = true; }));
+  el.querySelector(".rp-modo").addEventListener("change", (e) => {
+    estado.rapidaPasosEditados = true;
+    const porDia = e.target.value === "dia";
+    el.querySelector(".rp-rel").hidden = porDia;
+    el.querySelector(".rp-dia-bloque").hidden = !porDia;
+  });
   if (marcaEdicion) estado.rapidaPasosEditados = true;
   el.querySelector(".rp-quitar").addEventListener("click", () => { estado.rapidaPasosEditados = true; el.remove(); renumerarPasosRapida(); });
   el.querySelector(".rp-activo").addEventListener("change", (e) => { estado.rapidaPasosEditados = true; el.classList.toggle("paso-apagado", !e.target.checked); });
@@ -7657,12 +7666,15 @@ function agregarPasoRapida(p = { horas: 20 }, marcaEdicion = false) {
 async function leerPasosRapida() {
   const pasos = [];
   for (const el of $("#rapida-pasos").children) {
+    // «Día N del chat a una hora» (Lima) vale para textos y plantillas; si no, horas después del paso anterior.
+    const porDia = el.querySelector(".rp-modo")?.value === "dia";
+    const cuando = porDia ? { dia: Number(el.querySelector(".rp-dia").value), hora: el.querySelector(".rp-hora").value, desde: "inicio" } : {};
     if (el.querySelector(".rp-tipo").value === "plantilla") {
       const nombre = el.querySelector(".rp-plantilla").value;
-      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-desde")?.value === "inicio" ? { desde: "inicio" } : {}), ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
+      if (nombre) pasos.push({ plantilla: nombre, horas: (Number(el.querySelector(".rp-dias").value) || 4) * 24, ...(el.querySelector(".rp-desde")?.value === "inicio" ? { desde: "inicio" } : {}), ...cuando, ...(el.querySelector(".rp-activo").checked ? {} : { activo: false }) });
       continue;
     }
-    const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, body: el.querySelector(".rp-texto").value.trim() };
+    const paso = { horas: Number(el.querySelector(".rp-horas").value) || 20, ...cuando, body: el.querySelector(".rp-texto").value.trim() };
     if (el._archivo) {
       const subida = await subirArchivo(el._archivo);
       Object.assign(paso, { media_key: subida.media_key, media_type: subida.type, media_mime: subida.mime });
@@ -7716,6 +7728,8 @@ function pintarSeguimientoRapida(q) {
       const actual = Number(q?.followup_plan_id) || 1;
       selPlan.innerHTML = estado.planesLista.map((p) => `<option value="${p.id}"${p.id === actual ? " selected" : ""}>${escapar(p.nombre)}${p.activo ? "" : " (apagado)"}</option>`).join("");
     }
+    // Los pasos de cada plan (settings los trae para todos; el admin además los puede editar aquí).
+    estado.planes = (s.planes || []).map((p) => ({ ...p, pasos: p.pasos || [], rapidas: p.rapidas || [] }));
     if (!q && !estado.rapidaPlanUniversal.length) {
       // Sin plan universal todavía: una rápida nueva arranca sin seguimiento.
       document.querySelector('input[name="rapida-seg-modo"][value="ninguno"]').checked = true;
@@ -7737,13 +7751,11 @@ function aplicarModoSeguimientoRapida() {
     const plan = (estado.planes || []).find((p) => p.id === planId);
     // Con un plan con nombre, los pasos se ven aquí solo para leer; se editan en Herramientas → Planes de seguimiento.
     const pasosPlan = plan ? plan.pasos : planId === 1 ? (estado.rapidaPlanUniversal || []) : [];
-    if (plan) {
-      // Solo lectura: una lista corta de los pasos (día y hora, texto o plantilla, gratis o se paga).
-      $("#rapida-pasos").innerHTML = pasosPlan.length ? `<div class="ayuda-modal">${pasosPlan.map((p, i) => `<div>${i + 1}. ${Number.isInteger(p.dia) && p.hora ? `día ${p.dia} · ${escapar(p.hora)}` : `+${p.horas} h`} · ${p.plantilla ? `plantilla ${escapar(p.plantilla)}${p.dia >= 7 ? " (se paga)" : ""}` : escapar(recortarTexto(p.body || "(archivo)", 70))}${p.activo === false ? " · apagado" : ""}</div>`).join("")}</div>` : `<div class="ayuda-modal">Este plan no tiene pasos todavía.</div>`;
-    } else pintarPasosEnEditor(pasosPlan, { soloLectura: !esAdmin || planId !== 1 });
-    const n = estado.rapidasConUniversal || 0;
+    // Los pasos del plan elegido se ven y editan aquí mismo, como el universal: al guardar cambian para todas las rápidas que lo usan.
+    pintarPasosEnEditor(pasosPlan, { soloLectura: !esAdmin });
+    const n = plan ? plan.rapidas?.length || 0 : estado.rapidasConUniversal || 0;
     aviso.style.display = "";
-    aviso.innerHTML = `${icon("bolt")} <b>${escapar(plan?.nombre || "Plan universal")}</b>${plan ? ` (${plan.segmento === "general" ? "general" : "solo " + plan.segmento})` : `: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}`}. ${esAdmin ? "Los pasos se editan en Herramientas → Planes de seguimiento y cambian para todas las rápidas que usan el plan." : "Solo el admin lo edita."}`
+    aviso.innerHTML = `${icon("bolt")} <b>${escapar(plan?.nombre || "Plan universal")}</b>${plan && plan.segmento !== "general" ? ` (solo ${plan.segmento})` : ""}: lo usan ${n} respuesta${n === 1 ? "" : "s"} rápida${n === 1 ? "" : "s"}${plan?.interesados ? " y la bienvenida de anuncios" : ""}. ${esAdmin ? "Si cambias estos pasos aquí, cambian para todas las que usan este plan (al guardar). Un paso puede salir horas después del anterior o el «día N del chat a una hora»." : "Solo el admin lo edita."}`
       + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-abrir-planes" style="font-size:12px;margin-top:6px;width:100%">${icon("pencil")} Editar los planes</button>` : "")
       + (esAdmin ? ` <button type="button" class="cancelar" id="rapida-universal-todas" style="font-size:12px;margin-top:6px;width:100%">${icon("check")} Usar el plan universal en todas las respuestas con seguimiento (${estado.rapidasConPropio || 0} con pasos propios)</button>` : "");
     $("#rapida-abrir-planes")?.addEventListener("click", () => abrirPlanes(planId));
@@ -7980,10 +7992,14 @@ $("#rapida-crear").addEventListener("click", async () => {
     if (modo === "universal") {
       seguimiento.followup_universal = true;
       seguimiento.followup_plan_id = Number($("#rapida-plan")?.value) || 1;
-      // El plan 1 (Universal) todavía se puede retocar desde aquí; los demás, en Planes de seguimiento.
-      if (seguimiento.followup_plan_id === 1 && estado.miRol === "admin" && (estado.rapidaPasosEditados || estado.rapidaUniversalEditado) && !(estado.planes || []).find((p) => p.id === 1)) {
-        const universal = estado.rapidaUniversalEditado && !estado.rapidaPasosEditados ? estado.rapidaPlanUniversal : await leerPasosRapida();
-        await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seguimiento_universal: universal }) });
+      // Los pasos del plan elegido se guardan en el plan (cambian para todas las rápidas que lo usan), como el universal.
+      if (estado.miRol === "admin" && estado.rapidaPasosEditados) {
+        const pasos = await leerPasosRapida();
+        if ((estado.planes || []).find((p) => p.id === seguimiento.followup_plan_id)) {
+          await pedir("/api/crm/planes-seguimiento", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: seguimiento.followup_plan_id, pasos }) });
+        } else if (seguimiento.followup_plan_id === 1) {
+          await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seguimiento_universal: pasos }) });
+        }
       }
     } else if (modo === "propio") {
       seguimiento.followup_universal = false;
