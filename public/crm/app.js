@@ -1994,7 +1994,7 @@ function avisarLocalmente() {
   for (const c of estado.conversaciones) {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
     if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
-    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : ({ image: "Foto", video: "Video", audio: "Audio", document: "Documento", sticker: "Sticker" }[c.last_type] || "Mensaje nuevo");
+    const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : extractoMensaje(c.last_type, c.last_type === "location" || c.last_type === "contacts" ? c.last_body : "");
     navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
       body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
       tag: `chat-${c.conversation_id}`,
@@ -2020,7 +2020,8 @@ function pintarLista() {
     div.dataset.marca = marcaDeChat(c);
     div.className = "conv-item" + (c.conversation_id === estado.conversacionActivaId ? " activo" : "") + (seleccionado ? " seleccionado" : "") + (noLeidos ? " no-leido" : "");
 
-    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : `[${c.last_type}]`;
+    // Como WhatsApp: «Foto», «Contacto: Juan», «Ubicación»… en vez de «[image]».
+    const previewTexto = c.last_type === "text" || !c.last_type ? (c.last_body || "") : extractoMensaje(c.last_type, c.last_type === "location" || c.last_type === "contacts" || c.last_type === "unsupported" || c.last_type === "system" ? c.last_body : "");
     const prefijoYo = c.last_direction === "out" ? "Tú: " : "";
     // Buscando: en vez del último mensaje, el mensaje donde coincidió, resaltado.
     const previewHtml = estado.filtroTexto && c.coincidencia
@@ -4094,7 +4095,65 @@ function contenidoMensaje(m) {
   if (m.type === "catalog") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("bag")} Catálogo enviado</div>`;
   if (m.type === "product") return `<div class="tarjeta-especial tarjeta-catalogo">${icon("tag")} ${escapar(m.body || "Producto enviado")}</div>`;
   if (m.type === "location") return ubicacionHtml(m.body);
-  return `<span class="tipo">[${escapar(m.type)}]${m.body ? " " + escapar(m.body) : ""}</span>`;
+  if (m.type === "contacts") return contactosHtml(m.body);
+  if (m.type === "unsupported") return noCompatibleHtml(m.body);
+  if (m.type === "system") return `<div class="tarjeta-especial tarjeta-sistema">${icon("alertCircle")} ${escapar(avisoSistema(m.body))}</div>`;
+  if (m.type === "request_welcome") return `<div class="tarjeta-especial tarjeta-sistema">${icon("megaphone")} El cliente abrió el chat desde el anuncio (sin escribir todavía)</div>`;
+  // Cualquier otro tipo: en lenguaje normal, nunca «[tipo]» pelado.
+  return `<div class="tarjeta-especial tarjeta-sistema">${icon("help")} Mensaje de tipo «${escapar(m.type)}» que el CRM aún no sabe mostrar${m.body ? ": " + escapar(m.body) : ""}</div>`;
+}
+
+/** Tarjeta de contacto compartido, como WhatsApp: nombre, números (con copiar y abrir chat si es cliente), correo, empresa. */
+function contactosHtml(body) {
+  let lista = [];
+  try { lista = JSON.parse(body || "").contactos || []; } catch { lista = []; }
+  if (!lista.length) {
+    return `<div class="tarjeta-especial tarjeta-contacto"><div class="contacto-avatar">${icon("users")}</div><div><strong>Contacto compartido</strong><div class="sub">El detalle no se guardó (mensaje anterior al 3/11/2026): pídele al cliente que lo vuelva a mandar.</div></div></div>`;
+  }
+  return lista.map((c) => {
+    const telefonos = (c.telefonos || []).map((t) => {
+      const num = t.numero || (t.wa_id ? "+" + t.wa_id : "");
+      const digitos = (t.wa_id || num).replace(/\D/g, "");
+      return `<div class="contacto-tel"><span>${escapar(num)}${t.tipo ? ` <em>${escapar(t.tipo.toLowerCase())}</em>` : ""}${t.wa_id ? ` <em>WhatsApp</em>` : ""}</span>
+        <button type="button" class="btn-mini copiar-numero" data-numero="${escapar(num)}" title="Copiar el número">${icon("doc")} Copiar</button>
+        ${digitos ? `<button type="button" class="btn-mini abrir-chat-contacto" data-wa="${escapar(digitos)}" title="Abrir el chat de este número en el CRM (si ya escribió)">${icon("chat")} Chat</button>` : ""}</div>`;
+    }).join("");
+    return `<div class="tarjeta-especial tarjeta-contacto">
+      <div class="contacto-avatar">${icon("users")}</div>
+      <div class="contacto-datos">
+        <strong>${escapar(c.nombre || "(sin nombre)")}</strong>
+        ${c.org ? `<div class="sub">${escapar(c.org)}</div>` : ""}
+        ${telefonos || `<div class="sub">Sin número</div>`}
+        ${(c.emails || []).map((e) => `<div class="sub">${escapar(e)}</div>`).join("")}
+        ${(c.direcciones || []).map((d) => `<div class="sub">${escapar(d)}</div>`).join("")}
+        ${c.cumple ? `<div class="sub">Cumpleaños: ${escapar(c.cumple)}</div>` : ""}
+      </div></div>`;
+  }).join("");
+}
+
+/** Mensaje que la Cloud API de WhatsApp no entrega (encuesta, edición, GIF, invitación a grupo…): se dice qué fue y qué pedir. */
+const NO_COMPATIBLE_ES = {
+  edit: "editó un mensaje", poll_creation: "una encuesta", poll_update: "un voto en una encuesta", gif: "un GIF",
+  group_invite: "una invitación a un grupo", pin: "fijó un mensaje", keep_in_chat: "«conservar en el chat»",
+  link_preview: "un enlace con vista previa", media_placeholder: "un archivo que WhatsApp no entregó", hsm: "una plantilla",
+  list: "una lista", button: "un botón", interactive: "un mensaje interactivo", order: "un pedido", product: "un producto",
+  location: "una ubicación", reaction: "una reacción", image: "una imagen", errors: "un mensaje con error",
+  event: "un evento", call_log: "un registro de llamada", payment: "un pago"
+};
+function noCompatibleHtml(body) {
+  const [subtipo = "", codigo = ""] = String(body || "").split("|");
+  const que = NO_COMPATIBLE_ES[subtipo] || (subtipo ? `un mensaje de tipo «${subtipo}»` : "un mensaje de un tipo que la API no entrega");
+  const texto = codigo === "131060"
+    ? "Mensaje no disponible todavía: WhatsApp no lo entregó a la API (pasa con el primer mensaje de algunos clientes). Si no llega, pídele que lo vuelva a mandar."
+    : `El cliente mandó ${que}. WhatsApp no lo entrega a la API: pídele que lo mande como texto, foto o audio.`;
+  return `<div class="tarjeta-especial tarjeta-sistema">${icon("alertCircle")} ${escapar(texto)}</div>`;
+}
+
+function avisoSistema(body) {
+  const [texto = "", tipo = ""] = String(body || "").split("|");
+  const m = texto.match(/changed from (\S+) to (\S+)/);
+  if (tipo === "user_changed_number" && m) return `El cliente cambió de número: ahora es +${m[2]} (antes +${m[1]}).`;
+  return texto || "Aviso de WhatsApp";
 }
 
 /** Tarjeta de ubicación — body es "lat|lng|nombre|dirección" (nombre/dirección solo si el cliente compartió un lugar guardado). */
@@ -4118,8 +4177,16 @@ function extractoMensaje(tipo, body) {
     const nombre = (body || "").split("|")[2];
     return nombre || "Ubicación";
   }
+  if (tipo === "contacts") {
+    let lista = [];
+    try { lista = JSON.parse(body || "").contactos || []; } catch { lista = []; }
+    return "Contacto: " + (lista.map((c) => c.nombre || (c.telefonos || [])[0]?.numero || "sin nombre").join(", ") || "compartido");
+  }
+  if (tipo === "unsupported") return "Mensaje no compatible (pídelo como texto o foto)";
+  if (tipo === "system") return avisoSistema(body);
+  if (tipo === "request_welcome") return "Abrió el chat desde el anuncio";
   if (body) return body.length > 80 ? body.slice(0, 80) + "…" : body;
-  const nombres = { image: "Foto", video: "Video", sticker: "Sticker", document: "Documento", audio: "Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "Llamada" };
+  const nombres = { image: "Foto", video: "Video", sticker: "Sticker", document: "Documento", audio: "Audio", catalog: "Catálogo", product: "Producto", order: "Pedido", call: "Llamada", location: "Ubicación" };
   return nombres[tipo] || "Mensaje";
 }
 
@@ -4399,6 +4466,19 @@ function configurarAccionesMensajes() {
     if (fotoChat) { abrirVisorFoto(Number(fotoChat.dataset.id)); return; }
     const btnTrans = e.target.closest(".audio-transcribir");
     if (btnTrans) transcribirAudio(btnTrans);
+    // Tarjeta de contacto: copiar el número o abrir su chat (si ese número ya escribió al negocio).
+    const copiar = e.target.closest(".copiar-numero");
+    if (copiar) {
+      navigator.clipboard?.writeText(copiar.dataset.numero).then(() => { copiar.innerHTML = `${icon("check")} Copiado`; setTimeout(() => { copiar.innerHTML = `${icon("doc")} Copiar`; }, 1500); });
+      return;
+    }
+    const abrirChat = e.target.closest(".abrir-chat-contacto");
+    if (abrirChat) {
+      const wa = abrirChat.dataset.wa.replace(/^0+/, "");
+      const c = estado.conversaciones.find((x) => String(x.wa_id).replace(/\D/g, "").endsWith(wa.slice(-9)));
+      if (c) abrirConversacion(c);
+      else { abrirChat.innerHTML = `${icon("alertCircle")} Ese número aún no tiene chat`; abrirChat.disabled = true; }
+    }
   });
 
   // Deslizar a la derecha para responder, igual que WhatsApp — solo en touch.

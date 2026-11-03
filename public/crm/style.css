@@ -329,6 +329,18 @@ body.modo-seleccion .conv-item.seleccionado { background: #e7f7ee; }
 .tarjeta-catalogo { color: var(--ad); font-weight: 600; }
 .tarjeta-pedido { flex-direction: column; align-items: flex-start; background: #f6f4ff; border: 1px solid #e0d9ff; border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: #4a3d99; }
 .tarjeta-pedido strong { color: var(--ad); }
+/* Contacto compartido (como la tarjeta de WhatsApp) y avisos del sistema / no compatibles. */
+.tarjeta-contacto { align-items: flex-start; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; color: var(--texto); flex-wrap: nowrap; }
+.tarjeta-contacto + .tarjeta-contacto { margin-top: 6px; }
+.tarjeta-contacto .contacto-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--verde-osc); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tarjeta-contacto .contacto-datos { min-width: 0; }
+.tarjeta-contacto .sub { font-size: 12px; color: var(--gris); }
+.tarjeta-contacto .contacto-tel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 3px 0; }
+.tarjeta-contacto .contacto-tel em { font-style: normal; font-size: 11px; color: var(--gris); }
+.tarjeta-contacto .btn-mini { font-size: 11px; padding: 2px 6px; border: 1px solid var(--borde); border-radius: 999px; background: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.tarjeta-contacto .btn-mini:hover { background: var(--hover); }
+.tarjeta-sistema { color: var(--gris); font-style: italic; font-size: 12.5px; }
+.tarjeta-sistema .icono-svg { flex-shrink: 0; }
 .tarjeta-llamada { color: var(--peligro); font-weight: 600; }
 .tarjeta-documento { color: var(--texto); text-decoration: none; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px 10px; margin: -3px -4px; }
 .tarjeta-documento:hover { background: var(--hover); }

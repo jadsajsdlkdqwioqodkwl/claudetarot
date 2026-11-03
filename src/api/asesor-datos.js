@@ -33,6 +33,7 @@
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { servirMensaje } from "./crm/media.js";
 import { descargarMedia, subirMedia } from "../lib/whatsapp.js";
+import { textoLegible } from "../lib/mensajes-especiales.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -97,7 +98,7 @@ export async function onRequestGetChats({ request, env }) {
     tipo: m.type || "text",
     // En fotos, videos y archivos el cuerpo es el pie de foto; el nombre del
     // archivo ("WhatsApp Image 2026-…jpeg") solo mete ruido: se lee como [image].
-    msg: (m.body || (m.type === "document" ? m.file_name : "") || "").slice(0, 2000),
+    msg: (textoLegible(m.type, m.body) || m.body || (m.type === "document" ? m.file_name : "") || "").slice(0, 2000),
     anuncio: m.ad_headline || "",
     producto: m.producto || "",
     asesora: m.assigned_agent || "",

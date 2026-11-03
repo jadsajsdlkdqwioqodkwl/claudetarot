@@ -12,6 +12,7 @@
 
 import { activarPlanTrasAviso, rearmarPlanShalom, programarPlan } from "../lib/planes-plantilla.js";
 import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
+import { contactosDesdeWebhook, unsupportedDesdeWebhook, systemDesdeWebhook } from "../lib/mensajes-especiales.js";
 import {
   obtenerOCrearContacto,
   obtenerOCrearConversacion,
@@ -102,6 +103,16 @@ function tipoYCuerpo(msg) {
       const r = msg.interactive?.button_reply || msg.interactive?.list_reply;
       return { type: "text", body: r?.title || "" };
     }
+    // Tarjeta de contacto reenviada (uno o varios): se guarda todo lo que el cliente compartió (nombre, teléfonos,
+    // correos, empresa, direcciones) y el CRM la pinta como WhatsApp. Antes se perdía: solo quedaba "[contacts]".
+    case "contacts":
+      return { type: "contacts", body: contactosDesdeWebhook(msg.contacts) };
+    // Tipo que la Cloud API no entrega (encuesta, edición, GIF, invitación a grupo…): se guarda qué fue y por qué.
+    case "unsupported":
+      return { type: "unsupported", body: unsupportedDesdeWebhook(msg) };
+    // Aviso de Meta: el cliente cambió de número (o de id).
+    case "system":
+      return { type: "system", body: systemDesdeWebhook(msg) };
     default:
       return { type: msg.type || "unknown", body: "" };
   }
