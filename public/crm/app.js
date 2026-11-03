@@ -1073,6 +1073,7 @@ function editarPasoBienvenida(s) {
   $("#seq-texto").value = s.body || "";
   ponerCamposBotones($("#seq-botones"), "seq-boton", s.botones || []);
   $("#seq-archivo").value = "";
+  if ($("#seq-archivo-preview")) $("#seq-archivo-preview").innerHTML = "";
   $("#seq-archivo-ayuda").textContent = s.media.length
     ? `Ya tiene ${s.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
@@ -1092,6 +1093,7 @@ function cancelarEdicionPaso() {
   $("#seq-texto").value = "";
   ponerCamposBotones($("#seq-botones"), "seq-boton", []);
   $("#seq-archivo").value = "";
+  if ($("#seq-archivo-preview")) $("#seq-archivo-preview").innerHTML = "";
   $("#seq-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro. Este contenido es solo para la bienvenida — no aparece en las respuestas rápidas del chat.";
   $("#seq-agregar-btn").textContent = "Agregar paso";
   $("#seq-cancelar-edicion").style.display = "none";
@@ -1362,9 +1364,16 @@ async function pintarResumenPlanesAdmin() {
     const d = await pedir("/api/crm/planes-seguimiento");
     estado.planes = d.planes;
     const activos = d.planes.filter((p) => p.activo);
-    cont.innerHTML = activos.length
+    let pendientesMeta = null;
+    try {
+      const marca = (await pedir("/api/crm/plantillas-propuestas")).marcas.find((m) => m.marca === "tarot");
+      const usadas = new Set(activos.flatMap((p) => [...(p.pasos || []), ...(p.version_b || [])].filter((x) => x.plantilla && x.activo !== false).map((x) => x.plantilla)));
+      pendientesMeta = (marca?.propuestas || []).filter((x) => usadas.has(x.nombre) && x.estado !== "APPROVED").map((x) => x.nombre);
+    } catch { /* sin estado de Meta */ }
+    cont.innerHTML = (pendientesMeta?.length ? `<div style="color:#8a6500">${icon("alertCircle")} ${pendientesMeta.length} plantilla${pendientesMeta.length === 1 ? "" : "s"} de los planes sin aprobar en Meta (${pendientesMeta.map(escapar).join(", ")}): abre el plan y toca «Mandar a Meta».</div>` : "")
+      + (activos.length
       ? activos.map((p) => `<div>${icon("clock")} <b>${escapar(p.nombre)}</b> · ${p.segmento === "general" ? "general" : "solo " + p.segmento} · ${p.pasos.length} paso${p.pasos.length === 1 ? "" : "s"}${p.version_b ? ` · versión B al ${Math.round(p.reparto_b * 100)} %` : ""}${p.interesados ? " · lo manda la bienvenida" : ""}${p.rapidas.length ? ` · ${p.rapidas.length} rápida${p.rapidas.length === 1 ? "" : "s"}` : ""}</div>`).join("")
-      : `<div class="sin-ad">Sin planes todavía (aplica la migración 0073).</div>`;
+      : `<div class="sin-ad">Sin planes todavía (aplica la migración 0073).</div>`);
   } catch (err) { cont.textContent = err.message; }
 }
 
@@ -1478,6 +1487,49 @@ function editarPlan(id) {
   pintarCalendarioPlan($("#plan-cal-a"), p.calendario);
   pintarCalendarioPlan($("#plan-cal-b"), p.calendario_b);
   llenarPlantillasDePlan();
+  pintarPlantillasDelPlan(p);
+}
+
+/** Las plantillas que usa el plan (A y B), con su estado en Meta y un solo botón para mandar las que faltan.
+ *  Antes había que ir a Herramientas → Plantillas para Meta y buscarlas entre todas (dueño, 2026-11-03). */
+async function pintarPlantillasDelPlan(p) {
+  const cont = $("#plan-plantillas");
+  if (!cont) return;
+  const nombres = [...new Set([...(p.pasos || []), ...(p.version_b || [])].filter((x) => x.plantilla && x.activo !== false).map((x) => x.plantilla))];
+  if (!nombres.length) { cont.innerHTML = "Este plan no usa plantillas (solo textos dentro de las 24 h)."; return; }
+  cont.innerHTML = "Consultando el estado en Meta…";
+  let marca;
+  try { marca = (await pedir("/api/crm/plantillas-propuestas")).marcas.find((m) => m.marca === "tarot"); } catch (err) { cont.textContent = err.message; return; }
+  const porNombre = Object.fromEntries((marca?.propuestas || []).map((x) => [x.nombre, x]));
+  const filas = nombres.map((n) => ({ nombre: n, prop: porNombre[n] || null }));
+  const sinEnviar = filas.filter((f) => f.prop?.estado === "SIN_ENVIAR").map((f) => f.nombre);
+  const rechazadas = filas.filter((f) => ["REJECTED", "PAUSED"].includes(f.prop?.estado)).map((f) => f.nombre);
+  cont.innerHTML = filas.map((f) => {
+    const est = f.prop ? f.prop.estado : "DESCONOCIDO";
+    const [etq, color, fondo] = ESTADO_META[est] || ESTADO_META.DESCONOCIDO;
+    return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:3px 0">
+      <code>${escapar(f.nombre)}</code>${f.prop ? ` <span>${escapar(f.prop.titulo)}</span>` : ` <span>(no está en el banco del CRM: solo sale si ya existe aprobada en Meta)</span>`}
+      <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;color:${color};background:${fondo}">${est === "APPROVED" ? "Aprobada" : etq}</span>
+    </div>`;
+  }).join("")
+    + `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${sinEnviar.length && marca?.conectada ? `<button type="button" class="crear plan-mandar-meta" data-nombres="${escapar(sinEnviar.join(","))}" style="font-size:12px">${icon("send")} Mandar a Meta las ${sinEnviar.length} que faltan</button>` : ""}
+        ${rechazadas.length && marca?.conectada ? `<button type="button" class="cancelar plan-mandar-meta" data-reenviar="1" data-nombres="${escapar(rechazadas.join(","))}" style="font-size:12px">${icon("rotate")} Reenviar a revisión las ${rechazadas.length} rechazadas</button>` : ""}
+        <button type="button" class="cancelar" id="plan-ver-meta" style="font-size:12px">${icon("doc")} Ver y editar textos en Plantillas para Meta</button>
+      </div>
+      <div class="sub" style="margin-top:4px">Mientras una plantilla no esté aprobada, ese paso se salta y salen solo los textos. Meta suele aprobar en minutos; el CRM te avisa por Telegram.</div>`;
+  cont.querySelectorAll(".plan-mandar-meta").forEach((b) => b.addEventListener("click", async () => {
+    const nombres = b.dataset.nombres.split(",");
+    if (!confirm(`¿Mandar a revisión de Meta ${nombres.length} plantilla${nombres.length === 1 ? "" : "s"} (${nombres.join(", ")})? Cada envío a un cliente con una plantilla aprobada fuera de los 7 días del anuncio se paga.`)) return;
+    b.disabled = true;
+    try {
+      const { resultados } = await pedir("/api/crm/plantillas-propuestas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ marca: "tarot", nombres, reenviar: b.dataset.reenviar === "1" }) });
+      const malas = resultados.filter((r) => !r.ok);
+      if (malas.length) alert("Meta rechazó el envío de: " + malas.map((r) => `${r.nombre} (${r.error})`).join("; "));
+    } catch (err) { alert(err.message); }
+    pintarPlantillasDelPlan(p);
+  }));
+  $("#plan-ver-meta")?.addEventListener("click", abrirPlantillasMeta);
 }
 
 /** La línea de tiempo del plan: un chip por paso (día y hora; rojo si se paga; tachado si no saldría). */
@@ -7461,6 +7513,8 @@ function abrirModalRapidaNueva() {
   $("#rapida-archivo-ayuda").textContent = "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   if ($("#rapida-categoria")) $("#rapida-categoria").value = "";
   pintarCatalogoRapida(null);
+  $("#rapida-archivo-preview").innerHTML = "";
+  $("#rapida-medias").innerHTML = "";
   $("#rapida-catalogo-orden").value = "0";
   llenarSelectPlantillaPrincipal();
   pintarSeguimientoRapida(null);
@@ -7764,6 +7818,7 @@ function abrirModalRapidaEdicion(q) {
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
   pintarMediasRapida(q);
+  $("#rapida-archivo-preview").innerHTML = "";
   $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
   llenarSelectPlantillaPrincipal(q.plantilla_principal || "");
   pintarSeguimientoRapida(q);
@@ -7773,6 +7828,29 @@ function abrirModalRapidaEdicion(q) {
   pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
 }
+
+/** Al elegir archivos en el editor (rápida o bienvenida) se ven al toque, con el aviso de que reemplazan a los actuales al guardar
+ *  (dueño, 2026-11-03: «al seleccionar nuevos archivos no se actualiza la previa»). */
+function previsualizarArchivos(input, cont) {
+  if (!input || !cont) return;
+  const files = [...(input.files || [])];
+  if (!files.length) { cont.innerHTML = ""; return; }
+  cont.innerHTML = `<div class="sub" style="color:#8a6500">${icon("alertCircle")} ${files.length} archivo${files.length === 1 ? "" : "s"} nuevo${files.length === 1 ? "" : "s"}: al guardar reemplazan a todos los actuales.</div>
+    <div class="seq-medias-fila">${files.map((f, i) => {
+      const url = URL.createObjectURL(f);
+      return `<div class="seq-media"><b>${i + 1}</b>${f.type.startsWith("video/") ? `<video src="${url}" muted></video>` : f.type.startsWith("image/") ? `<img src="${url}" alt="" />` : `<div class="seq-media-doc">${icon("doc")}</div>`}</div>`;
+    }).join("")}</div>`;
+}
+$("#rapida-archivo")?.addEventListener("change", () => {
+  previsualizarArchivos($("#rapida-archivo"), $("#rapida-archivo-preview"));
+  // Fotos nuevas y catálogo no van juntos: las fotos mandan y el catálogo se quita (antes las fotos se ignoraban sin avisar).
+  if ($("#rapida-archivo").files.length && $("#rapida-catalogo")?.value) {
+    $("#rapida-catalogo").value = "";
+    mostrarCatalogoRapida();
+    $("#rapida-archivo-ayuda").textContent = "Elegiste fotos: esta respuesta deja de mandar el catálogo y manda las fotos nuevas (reemplazan a las anteriores).";
+  }
+});
+$("#seq-archivo")?.addEventListener("change", () => previsualizarArchivos($("#seq-archivo"), $("#seq-archivo-preview")));
 
 /** Las fotos/videos de la respuesta rápida en el orden en que salen, con flechas para cambiarlo (se guarda al toque,
  *  sin volver a subir nada): el mismo control que tiene la bienvenida (dueño, 2026-11-03). */
@@ -7874,9 +7952,10 @@ $("#rapida-cancelar").addEventListener("click", () => {
 $("#rapida-crear").addEventListener("click", async () => {
   const title = $("#rapida-titulo").value.trim();
   const body = $("#rapida-texto").value.trim();
+  // Si eligió fotos nuevas, mandan ellas: el catálogo se quita (antes, con catálogo, las fotos se ignoraban sin avisar).
+  const files = [...$("#rapida-archivo").files];
+  if (files.length && $("#rapida-catalogo").value) { $("#rapida-catalogo").value = ""; mostrarCatalogoRapida(); }
   const cat = catalogoDeSelect($("#rapida-catalogo"));
-  // Con catálogo no se suben fotos nuevas: las que tenía se conservan.
-  const files = cat.catalogo ? [] : [...$("#rapida-archivo").files];
   const plantillaPrincipal = ($("#rapida-plantilla-principal")?.value || "").trim() || null;
   const editandoId = estado.editandoRapidaId;
   if (!title) return alert("Ponle un título.");
@@ -7935,6 +8014,8 @@ $("#rapida-crear").addEventListener("click", async () => {
     $("#rapida-titulo").value = "";
     $("#rapida-texto").value = "";
     $("#rapida-archivo").value = "";
+    $("#rapida-archivo-preview").innerHTML = "";
+    if ($("#panel-rapidas")?.classList.contains("abierto")) pintarQuickPanel();
   } catch (err) {
     alert(err.message);
   } finally {
