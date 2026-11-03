@@ -19,7 +19,7 @@ Versión 4.1 · 2026-11-03 (v4.1: login de PiPiAds con clic en «Iniciar sesión
 
 Qué es: pagar créditos solo donde hay producto nuevo y guardarlo todo en Crudo. Chrome es obligatorio: como primera acción prueba Claude in Chrome; si no responde, anota «Sin Chrome» en Sesiones!H y pasa a lo que no lo necesita (dentro de INICIA AEREO: RANKEA, FILTRA, DESCUBRE).
 
-Lee, y nada más: Config!B59, B71:B72, B91:B94, B103, B108; Recetas D34 (URL y extractor), E31 (prefiltro) y D31 punto 1 (contador de créditos); pestaña Plan carga: Q1:AE40 (próximas cargas ya ordenadas) y AG1:AP15 (hallazgos de Exploración sin integrar).
+Lee, y nada más: Config!B59, B71:B72, B91:B94, B103, B108; de Recetas SOLO las celdas D34 (URL y extractor Vue) y E31 (prefiltro); pestaña Plan carga: Q1:AE40 y AG1:AP15. No leas las filas 31 a 33 ni 40 de Recetas (versiones viejas: window.name, localStorage y X2 ya no se usan). Contador de créditos (gratis, en la página): (document.body.innerText.match(/Cr[eé]ditos:?\s*([\d.,]+)/i)||[])[1]. SECUENCIA DE UNA CARGA: (1) siguiente fila del plan; (2) URL de D34 con sus datos; (3) extractor de D34: pageData.data[] y total_count; (4) fila del Log; (5) filas en Crudo; (6) contador cada 5 cargas. Simple y repetitivo: no lo reinterpretes ni lo pospongas.
 
 El plan lo da la hoja, no tu memoria. Orden de cargas:
  a) Hallazgos de Exploración con veredicto Confirmada o Parcial y columna K vacía: una carga por hallazgo con su receta (columna F de Exploración). Al usarlo escribe en Exploración K «Integrada AAAA-MM-DD <sesión>»; si no da filas nuevas en dos cargas, «Agotada».

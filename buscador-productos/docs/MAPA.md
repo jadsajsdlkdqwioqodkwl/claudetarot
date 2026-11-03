@@ -18,7 +18,7 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
 | INSTR 06 Comandos del buscador: BUSCA AÉREO, RANKEA, FILTRA, ALIBABA, DESCUBRE y MEJORA (v4.1, 2026-11-03; antes «BUSCA, RANKEA, FILTRA y ALIBABA» v3.35, copia archivada 1JnemgdN05s1BUUZdooAMgUo3AswKYtjmYv-L0WSKU1c) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.9, 2026-11-02) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
-| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.3, 2026-11-03; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
+| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.4, 2026-11-03; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas guardadas en la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`): se ignoran. El 2026-10-16 un chat leyó INSTR 00 v4.16 e INSTR 06 v3.26 de esa carpeta por error; las vigentes son las de la tabla de arriba. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
@@ -102,3 +102,5 @@ Ninguna corrida con orquestador y subagentes llegó al cierre (Sesiones 2026-10-
 Agregado 2026-11-02 (segunda vuelta): INSTR 08 v3.1, fase F0 (cada INICIA AEREO cierra el Juez de la sesión anterior y aplica hasta 3 Mejoras de riesgo Bajo). INICIA AEREO es el único comando que el dueño necesita escribir.
 
 Agregado 2026-11-03 (M-119): pestaña Aéreo ordenada por llegada (Y4 por fila descendente); Config B105 = 80; Recetas D37 v3.6 (validación ligera aérea, 6 búsquedas); Productos!AR acepta 'Si' sin tilde; INSTR 08 v3.3 e INSTR 06 v4.1 (clic en «Iniciar sesión» con cuenta guardada, pestaña propia si Chrome está en uso, un chat a la vez, ventanas de menos de 14 días no se pagan).
+
+Agregado 2026-11-03 (segunda vuelta, chat -f cerró tras el arranque): INSTR 08 v3.4 (arranque mínimo: solo INSTR 08, INSTR 06 y celdas D34/E31; regla de trabajo mínimo: 10 cargas o 20 productos de FILTRA antes de cerrar; 3 reintentos de pestaña). ARRANQUE: en INICIA AEREO no se abren INSTR 00, 05 ni MAPA. Laboratorio!B4 tolera «s/d» en la cola (IFERROR).
