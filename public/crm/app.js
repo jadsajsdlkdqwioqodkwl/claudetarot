@@ -263,9 +263,11 @@ function mostrarPasoCodigo(metodo2FA) {
   $("#username").style.display = "none";
   $("#password").style.display = "none";
   $("#code").style.display = "block";
-  $("#ayuda-2fa").textContent = metodo2FA === "totp"
+  // Con código por WhatsApp: si no llega, el vendedor le escribe a Tarot Store (eso abre la ventana de 24 h) y pide el reenvío (dueño, 2026-11-03).
+  const waTienda = "51927066862";
+  $("#ayuda-2fa").innerHTML = metodo2FA === "totp"
     ? "Escribe el código de tu app authenticator"
-    : "Te llegó un código de 6 dígitos por WhatsApp";
+    : `Te llegó un código de 6 dígitos por WhatsApp. ¿No llega? <a href="https://wa.me/${waTienda}?text=${encodeURIComponent("Hola, no me llega el código del CRM, ¿me lo reenvían?")}" target="_blank" rel="noopener">Manda un mensaje aquí</a> y pide reenviar el código.`;
   $("#ayuda-2fa").style.display = "block";
   $("#btn-login").textContent = "Verificar código";
   // El reenvío solo sirve con código por WhatsApp (con app de códigos no hay nada que reenviar).

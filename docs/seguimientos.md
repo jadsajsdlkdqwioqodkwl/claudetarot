@@ -49,7 +49,11 @@
   editan los pasos (solo admin); al guardar cambian para todas las rápidas que lo usan. El botón
   «Usar el plan universal en todas las respuestas con seguimiento» cambia todas de un toque (los pasos
   propios quedan guardados por si se vuelve a «Pasos propios»).
-- Semilla (2026-11-01): los dos pasos de «Provincia Msj. 3»: 1 h «Solo quería recordarte…» y 20 h
+- Planes en uso (2026-11-03): **2 «Interesado · semana gratis»** (bienvenida y 2T·1) y **3 «Cierre · le pidieron
+  ubicación o adelanto»** (Lima msj. 3, Provincia Msj. 3, 2T·2). Textos con los bonos (30+ clases grabadas, 50+
+  libros digitales) y plantillas `seg7_*` (banco «Seguimiento 7 días» en Plantillas para Meta; se saltan hasta
+  que Meta las apruebe). Detalle en `docs/MAPA.md` (2026-11-03 madrugada).
+- Semilla del plan 1 (2026-11-01): los dos pasos de «Provincia Msj. 3»: 1 h «Solo quería recordarte…» y 20 h
   «Si aún desea aprovechar la promoción… COLLAR AMULETO». Los días 3 y 5 se agregan como pasos de
   plantilla «desde el primer mensaje del cliente» eligiendo una plantilla aprobada en Meta
   (hoy la única de rescate aprobada es `rescate_lead_1`, la misma del día 6; para otro texto hay que

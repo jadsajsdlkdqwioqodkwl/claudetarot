@@ -352,6 +352,9 @@ async function procesarCambio(envBase, db, value, origen) {
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
+    // 2026-11-03: llegan mensajes sin `from` (ids «wamid.HBgTUEUu…» = usuario con nombre de usuario de WhatsApp o id de
+    // negocio, sin número compartido). Sin número no hay chat que abrir: queda en webhook_errores con el motivo claro.
+    if (!waId) throw new Error("El mensaje llegó sin número de WhatsApp (usuario con nombre de usuario o id de negocio, no comparte su número): el CRM no puede abrir el chat.");
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).
