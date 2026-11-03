@@ -269,3 +269,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Revertir:** restaurar las copias v3.35 y v2.1 de la carpeta de versiones sobre los documentos vigentes; borrar el prefijo SIN SUBAGENTES de D37/D39/D40; Plan carga puede quedar (solo lectura).
 
 - **Complemento (misma fecha):** INSTR 08 v3.1 agrega F0: cada INICIA AEREO hace el Juez de la sesión anterior si faltó y aplica hasta 3 Mejoras de riesgo Bajo; así el ciclo se automejora aunque un chat se corte. INICIA AEREO es el único comando necesario.
+
+## D-039 (2026-11-03) Aéreo por llegada, FILTRA ligera para todos, clic en «Iniciar sesión»
+
+- **Pedidos del dueño:** Aéreo con lo nuevo arriba; revisar los anuncios activos de todos los aéreos; averiguar por qué «Claude no quiere chambear como antes» y hacerle clic al login de PiPiAds usando la sesión guardada.
+- **Diagnóstico (Sesiones 2026-11-01-b a 2026-11-02-k, Laboratorio C-011 a C-016):** el ciclo sin subagentes sí corre (C-016: 16 cargas, 23 productos, 11 Top con 67 créditos). Lo que frenó: PiPiAds sin sesión en 5 chats seguidos (el chat no hacía clic en «Iniciar sesión»), Chrome «en uso por otra sesión» en 3 chats (dos chats abiertos a la vez) que cayeron a modo NUBE, y FILTRA de 3 rondas por producto que rendía 1 a 5 productos por chat.
+- **Cambios:** Aéreo!Y4 ordena por fila de Productos descendente; Config B105 = 80; Recetas D37 v3.6 (6 búsquedas por producto, AV «Sí» con tilde); Productos!AR1 acepta «Si» sin tilde; INSTR 08 v3.3 e INSTR 06 v4.1 (clic en «Iniciar sesión» y cuenta guardada, pestaña propia si Chrome está en uso, un solo chat a la vez, ventanas < 14 días no se pagan); Plan carga O exige 14 días o restante; ARRANQUE; Mejoras M-107 y M-109 Aplicadas, M-119.
+- **Revertir:** Aéreo!Y4 anterior = SORT por grupo (Top 0, pendiente 1, saturado 2) y puntaje AN descendente; B105 = 40; quitar el prefijo v3.6 de D37.

@@ -1,6 +1,6 @@
 # INSTR 08 — INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio
 
-Versión 3.1 · 2026-11-02 (v3.1: fase F0 «cierre de la sesión anterior»: cada INICIA AEREO hace el Juez de la sesión previa si quedó sin hacer y aplica las Mejoras de riesgo Bajo pendientes; INICIA AEREO es el único comando que el dueño necesita escribir). v3.0: Reescritura: sin orquestador ni subagentes; un chat recorre las fases en orden hasta llenarse y el siguiente chat con INICIA AEREO retoma desde la hoja. Copia v2.1 archivada (ID 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4); el historial v1.x está en la copia v1.19 (ID 1cmKaS_F1CGLXyQF3bNW1xr_vXx2YnWOZby1AbBPnzfQ). Evidencia: D-038 del repo.
+Versión 3.3 · 2026-11-03 (v3.3: clic en «Iniciar sesión» de PiPiAds con la cuenta guardada, sin tipear credenciales; Chrome «en uso» se reintenta con pestaña propia; un solo chat a la vez; FILTRA aérea ligera D37 v3.6 con B105 = 80; Aéreo ordenado por llegada. v3.2 (M-103, aplicada por una sesión el 2026-11-02): el arranque prueba la sesión de PiPiAds con una carga mínima. v3.1: fase F0 «cierre de la sesión anterior»: cada INICIA AEREO hace el Juez de la sesión previa si quedó sin hacer y aplica las Mejoras de riesgo Bajo pendientes; INICIA AEREO es el único comando que el dueño necesita escribir). v3.0: Reescritura: sin orquestador ni subagentes; un chat recorre las fases en orden hasta llenarse y el siguiente chat con INICIA AEREO retoma desde la hoja. Copia v2.1 archivada (ID 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4); el historial v1.x está en la copia v1.19 (ID 1cmKaS_F1CGLXyQF3bNW1xr_vXx2YnWOZby1AbBPnzfQ). Evidencia: D-038 del repo.
 
 ## 1. Qué es
 
@@ -8,14 +8,14 @@ INICIA AEREO (lo mismo que BUSCA AÉREO o INICIA AÉREO) es un solo comando que 
 
 ## 2. Arranque (sin preguntar)
 
-Lee solo: Config!B91:B110; la nota de la sesión anterior, Sesiones!H{B101 menos 1}; Laboratorio!A4:B10; Plan carga Q1:AE40. Registra la sesión (Sesiones!A{B101} con el ID de B102 más «INICIA AEREO») y escribe en H «INICIO: modo, cola B100, créditos 0 de B91». Prueba Chrome una vez: con Chrome, modo COMPLETO; sin Chrome, modo NUBE (solo fases 2, 3, 6 y 7; la corrida se registra Parcial). Lee INSTR 06 v4 completo una sola vez (es corto); no abras INSTR 03, 04 ni 07 salvo en la fase 5.
+Lee solo: Config!B91:B110; la nota de la sesión anterior, Sesiones!H{B101 menos 1}; Laboratorio!A4:B10; Plan carga Q1:AE40. Registra la sesión (Sesiones!A{B101} con el ID de B102 más «INICIA AEREO») y escribe en H «INICIO: modo, cola B100, créditos 0 de B91». Prueba Chrome una vez: con Chrome, modo COMPLETO; sin Chrome, modo NUBE (solo fases 2, 3, 6 y 7; la corrida se registra Parcial). En modo COMPLETO, antes de armar el plan, prueba la sesión de PiPiAds con una carga mínima: si muestra «Iniciar sesión», HAZ CLIC en ese botón y acepta la cuenta guardada del navegador (nunca escribas usuario ni contraseña); solo si tras el clic sigue sin sesión, anótalo en NECESITA AL DUEÑO y salta F1. Chrome «en uso por otra sesión»: intenta una pestaña propia antes de pasar a NUBE. El dueño corre un solo chat de INICIA AEREO a la vez. Lee INSTR 06 v4 completo una sola vez (es corto); no abras INSTR 03, 04 ni 07 salvo en la fase 5.
 
 ## 3. Fases, en este orden y en este chat
 
 - F0 CIERRE DE LA SESIÓN ANTERIOR (siempre): (a) si la nota anterior no dice «JUEZ hecho», haz su Juez (sección 4): fila en Laboratorio CORRIDAS, veredicto en Experimentos, perillas; escribe «JUEZ hecho por <tu sesión>» al final de esa nota. (b) Aplica hasta 3 filas de Mejoras con K = Propuesta y riesgo Bajo (INSTR 06 §6). (c) Marca Agotado en Nodos Amazon y Excluida en Plan carga N lo que tenga 2 visitas seguidas con 0 productos. Sin créditos.
 - F1 CARGAS (COMPLETO): INSTR 06 sección 1, hasta Config!B108 cargas (hoy 25) o hasta que Plan carga quede sin filas con Siguiente = Sí. Si la nota anterior dice que las cargas quedaron a medias de B108, retoma ahí.
 - F2 RANKEA AÉREO: INSTR 06 sección 2, hasta que Config!B100 = 0 (incluye los Candidatos de Descubrimiento).
-- F3 FILTRA AÉREO: INSTR 06 sección 3, sobre Config!B104 hasta B105 productos, reparaciones primero.
+- F3 FILTRA AÉREO: INSTR 06 sección 3 con la validación ligera aérea de Recetas D37 v3.6 (máximo 6 búsquedas por producto), sobre Config!B104 hasta B105 productos (hoy 80), reparaciones primero. Meta: ningún producto de la pestaña Aéreo «Sin chequear».
 - F4 ALIBABA AÉREO (COMPLETO): INSTR 06 sección 4, hasta Config!B110 productos (hoy 6), Recomendado Sí primero.
 - F5 EXPLORA (COMPLETO): solo si al terminar F1 Plan carga no tenía filas con Siguiente = Sí, o si las últimas 10 cargas dieron menos de 1 producto por 50 créditos: INSTR 07, hasta 6 pruebas o 500 créditos; los resultados van a Exploración con la columna K vacía (entran al plan del siguiente chat).
 - F6 DESCUBRE (siempre en NUBE; en COMPLETO solo si F1 no tuvo nada que cargar): INSTR 06 sección 5.

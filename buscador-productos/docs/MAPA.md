@@ -16,9 +16,9 @@ Regla de esta carpeta: **en el MAPA no se quita nada, solo se agrega o se corrig
 | INSTR 03 Filtro, puntaje y ranking (v3.2) | `1YVz1WgkhKyDHW0mS36fI5GDHqV62sBxQ7KNXTzEStGg` |
 | INSTR 04 Validación Meta, modo detective (v3.9) | `10EvbqMsHVONqQNkxBgBs3Ut99ojAOZA-gCi3J-h3plk` |
 | INSTR 05 Recetas técnicas (v3.4) | `1Iwo-v-tqHJYddyq7wKRiT9xVYmun-AoD_ojtYJICmVI` |
-| INSTR 06 Comandos del buscador: BUSCA AÉREO, RANKEA, FILTRA, ALIBABA, DESCUBRE y MEJORA (v4.0, 2026-11-02; antes «BUSCA, RANKEA, FILTRA y ALIBABA» v3.35, copia archivada 1JnemgdN05s1BUUZdooAMgUo3AswKYtjmYv-L0WSKU1c) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
+| INSTR 06 Comandos del buscador: BUSCA AÉREO, RANKEA, FILTRA, ALIBABA, DESCUBRE y MEJORA (v4.1, 2026-11-03; antes «BUSCA, RANKEA, FILTRA y ALIBABA» v3.35, copia archivada 1JnemgdN05s1BUUZdooAMgUo3AswKYtjmYv-L0WSKU1c) | `1POkxb0Gb7OhhN_LCzab5HPi4PnLJE8AOwApetWNPpB8` |
 | INSTR 07 EXPLORA (v1.9, 2026-11-02) | `1GYNtUCA8i7ZCSjh_K1pyynPxUOPmTrbrpAl9QJ4dgD0` |
-| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.1, 2026-11-02; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
+| INSTR 08 INICIA AEREO (BUSCA AÉREO de punta a punta) y Laboratorio (v3.3, 2026-11-03; v1.19, v2.0 y v2.1 archivadas, la v2.1 en 15Bw73MXFz-aVbBYECre6hT00hsk0eFaiReSm9F3DJe4) | `1QCt6LLHP4mB9LCRaPNxO-1lP1LqhwNiPB4KAtjYBwbM` |
 
 Los Drive de INSTR con título terminado en «(v…)» son copias viejas guardadas en la carpeta de versiones (ID `1HtyOttQaEvvfh07Jm-DF9altfXcuWZNM`): se ignoran. El 2026-10-16 un chat leyó INSTR 00 v4.16 e INSTR 06 v3.26 de esa carpeta por error; las vigentes son las de la tabla de arriba. Si aparece un INSTR con un número que no está aquí, se agrega a esta tabla.
 
@@ -100,3 +100,5 @@ El encabezado es la fila 1. Los INSTR citan el **número de fila de la hoja**; l
 Ninguna corrida con orquestador y subagentes llegó al cierre (Sesiones 2026-10-15 a 2026-10-24). Desde el 2026-11-02 ningún comando usa subagentes: el chat hace el trabajo en lotes y escribe al cerrar cada lote. INSTR 06 v4.0 e INSTR 08 v3.0 reescritos desde cero (copias v3.35 y v2.1 en la carpeta de versiones); INSTR 00 v4.22; INSTR 07 v1.9; ARRANQUE actualizado (la autorización de subagentes queda retirada). Pestaña «Plan carga»: el plan de cargas lo da la hoja (ventana pendiente por combinación, rendimiento, restante sin leer, hallazgos de Exploración sin integrar). La tarea programada «Buscador aéreo — RANKEA y FILTRA (diario)» (trig_01VbaVTzd8zuHHtD5ChyTjSC) se apagó: sin conectores no podía correr; se reactiva cuando el dueño los agregue en claude.ai. Nada se quitó de este mapa: lo retirado queda anotado.
 
 Agregado 2026-11-02 (segunda vuelta): INSTR 08 v3.1, fase F0 (cada INICIA AEREO cierra el Juez de la sesión anterior y aplica hasta 3 Mejoras de riesgo Bajo). INICIA AEREO es el único comando que el dueño necesita escribir.
+
+Agregado 2026-11-03 (M-119): pestaña Aéreo ordenada por llegada (Y4 por fila descendente); Config B105 = 80; Recetas D37 v3.6 (validación ligera aérea, 6 búsquedas); Productos!AR acepta 'Si' sin tilde; INSTR 08 v3.3 e INSTR 06 v4.1 (clic en «Iniciar sesión» con cuenta guardada, pestaña propia si Chrome está en uso, un chat a la vez, ventanas de menos de 14 días no se pagan).
