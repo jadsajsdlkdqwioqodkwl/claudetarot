@@ -34,6 +34,7 @@ import { RANGO_DATOS_VENTA, indiceVenta } from "../lib/ventas.js";
 import { buscarFila } from "./asesor-ventas.js";
 import { destinosDeChats, textoSirvePara } from "../lib/crm-destino.js";
 import { limpiarSugerenciasViejas } from "../lib/crm-sugerencias.js";
+import { parsearExperimento, metricasExperimento } from "../lib/experimentos.js";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
@@ -438,8 +439,20 @@ export async function onRequestGetContexto({ request, env }) {
     pruebas: pruebas,
     sugerencias_pendientes: pendientes.results,
     no_cierran: noCierran,
-    aprendizaje: await aprendizaje(env)
+    aprendizaje: await aprendizaje(env),
+    // Experimentos de flujo con testers (2026-11-03): métricas por brazo, para que el director CRO las lea.
+    experimentos: await experimentosConMetricas(env).catch((err) => ({ error: err.message }))
   });
+}
+
+async function experimentosConMetricas(env) {
+  const { results } = await env.CRM_DB.prepare("SELECT * FROM experimentos WHERE estado <> 'terminado' OR cerrado_at >= datetime('now', '-30 days') ORDER BY id").all();
+  const salida = [];
+  for (const r of results || []) {
+    const ex = parsearExperimento(r);
+    salida.push({ id: ex.id, nombre: ex.nombre, estado: ex.estado, segmento: ex.segmento, reparto: ex.reparto, brazo_a: ex.brazo_a, brazo_b: ex.brazo_b, ...(await metricasExperimento(env.CRM_DB, ex)) });
+  }
+  return salida;
 }
 
 /**

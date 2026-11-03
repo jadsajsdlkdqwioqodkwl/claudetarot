@@ -69,6 +69,10 @@ Debajo de la cabecera de cada chat (`#barra-seguimiento`, `GET/POST /api/crm/seg
   «Seguimiento activo / Reactivar» y la lista de chats muestra «Seguimiento · hora» para cualquier
   cadena automática en marcha.
 
+## Fotos de una respuesta rápida
+- En el editor de la rápida, las fotos/videos se ordenan con flechas (igual que en la bienvenida); se guarda al toque
+  (`PATCH /api/crm/quick-replies { id, orden_media }`). Los experimentos de flujo están en `docs/experimentos.md`.
+
 ## Dónde está cada cosa
 - `src/api/crm/planes-seguimiento.js`: los planes con nombre (`/api/crm/planes` es otra cosa: los planes con plantilla de Shalom). `scripts/test-planes.mjs`: su prueba.
 - `src/lib/crm-db.js`: `normalizarPasosSeguimiento`, `calendarioDePasos`, `leerPlan`, `pasosDePlan`, `programarPlanEnChat`, `pasosUniversales`, `pasosDeSeguimientoRapida`,

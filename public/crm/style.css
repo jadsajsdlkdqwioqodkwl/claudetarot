@@ -1240,3 +1240,14 @@ body.solo-lectura #form-envio { display: none; }
 .pp-cuando { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; color: var(--gris); margin: 4px 0; }
 .pp-cuando input[type="number"], .pp-cuando input[type="time"] { width: 72px; padding: 4px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); font-size: 13px; }
 .pp-cuando select { width: auto; margin: 0; padding: 3px 6px; }
+
+/* Experimentos de flujo (testers), 2026-11-03. */
+.chip-experimento { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; margin-left: 6px; cursor: default; }
+.chip-experimento .icono-svg { width: 12px; height: 12px; }
+.chip-experimento.b { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.rapidas-prueba { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #5b21b6; padding: 6px 12px 2px; display: flex; align-items: center; gap: 6px; }
+.rapidas-prueba.b { color: #92400e; }
+.exp-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; font-size: 12px; }
+.exp-fila > div { background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px 8px; min-width: 0; }
+.exp-fila b { display: block; font-size: 13px; }
+.eq-tester.si { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }

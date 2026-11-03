@@ -1441,3 +1441,15 @@ Pedido del dueño (prompt «Implementar los experimentos CRO», 3/11): seguimien
 
 ### Pendiente (siguientes fases, con el dueño)
 Textos finales de los planes y plantillas (los aprueba uno por uno), planes INT/LIMA/PROV/PROV-2T sembrados, testers y experimento «Yape en 2 tiempos» (Fase 2), orden de fotos en rápidas (Fase 3), banco de plantillas en `plantillas-propuestas.js` (Fase 5), inventario del precio S/99 y bono (Fase 6).
+
+## 2026-11-03 (noche 2) — Fases 2 y 3 del plan CRO: testers y experimento «Yape en 2 tiempos», orden de fotos en rápidas
+### Fase 3 · Orden de fotos
+- `PATCH /api/crm/quick-replies { id, orden_media: [ids] }` cambia `quick_reply_media.sort_order` sin volver a subir nada (mismo patrón que la bienvenida). En el editor de la rápida: miniaturas con flechas (`pintarMediasRapida`). El envío ya respetaba `sort_order`.
+### Fase 2 · Testers y experimentos de flujo
+- Migración `0074_experimentos.sql` (aplicada en D1 el 3/11): `agents.tester`, tablas `experimentos` (nombre, estado activo|pausado|terminado, segmento, solo_testers, reparto, brazo_a/brazo_b = ids de rápidas, etiqueta_a/b, minimo_chats) y `experimento_chats` (brazo fijo por chat, agente, manual).
+- `src/lib/experimentos.js`: `brazoDeChat` (asigna por hash solo a testers en chats del segmento, o al tocar la primera rápida de un brazo; respeta lo guardado aunque otra vendedora tome el chat), `metricasExperimento` (chats, respondieron, compraron en 72 h y 7 días por etapa 5 o Purchase en `capi_events`, horas hasta comprar, «faltan N chats» contra el mínimo; los cambiados a mano salen de la cuenta).
+- `src/api/crm/experimentos.js`: GET por chat (asigna), GET admin con métricas, POST, PATCH (estado, reparto, brazos; `{ id, conversation_id, brazo }` cambia a mano). `agents.js`: `tester` en GET/PATCH. `/api/asesor/contexto` suma `experimentos` (métricas por brazo) para el director CRO.
+- CRM: Equipo → botón «Hacer tester / Tester» (admin). En un chat con brazo: chip «Prueba · control / 2 tiempos» junto al teléfono (el admin lo toca para cambiar el brazo), y en el panel de rápidas las del brazo arriba con la franja «Prueba · …» y las del otro brazo escondidas. Modal admin → «Experimentos de flujo (testers)»: métricas por brazo, faltan N, Pausar / Activar / Terminar.
+- `quick-replies.js`: una foto de R2 que comparten dos rápidas (o la bienvenida) ya no se borra al borrar una de ellas (`mediaCompartida`).
+- Datos sembrados el 3/11: Jennifer (id 4) tester; rápidas **«Provincia 2T · 1»** (id 118, con las 7 fotos de «Provincia msj. 2», mismas claves de R2) y **«Provincia 2T · 2»** (id 119) con los textos del plan CRO (el dueño los edita en el CRM); experimento **«Yape en 2 tiempos»** (id 1) **en pausa**: brazo A [4,5,38] (control), brazo B [118,119], 50 %, mínimo 150 chats por brazo. Se activa desde el modal admin cuando el dueño apruebe los textos y los planes PROV-2T / PROV estén conectados a 118 y 119.
+- Prueba `scripts/test-experimentos.mjs` (en `npm run check`): no-tester no entra, brazo fijo, primera rápida asigna, Lima no entra, reparto, métricas, cambio a mano fuera de la cuenta, pausado no asigna.

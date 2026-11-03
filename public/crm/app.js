@@ -1366,8 +1366,35 @@ async function pintarResumenPlanesAdmin() {
   } catch (err) { cont.textContent = err.message; }
 }
 
+async function pintarExperimentosAdmin() {
+  const cont = $("#admin-experimentos");
+  if (!cont) return;
+  try {
+    const d = await pedir("/api/crm/experimentos");
+    const testers = (d.testers || []).map((t) => t.display_name).join(", ");
+    cont.innerHTML = (d.experimentos.length ? d.experimentos.map((ex) => {
+      const m = ex.metricas;
+      const brazo = (b, k) => `<div><b>${escapar(b.etiqueta)} (${k})</b>${b.chats} chats · respondieron ${b.respondieron} · compraron ${b.compraron_7d} en 7 días (${b.tasa_7d === null ? "–" : b.tasa_7d + " %"}) · ${b.compraron_72h} en 72 h${b.horas_promedio !== null ? ` · ${b.horas_promedio} h hasta comprar` : ""}${b.manuales ? ` · ${b.manuales} cambiados a mano` : ""}</div>`;
+      return `<div class="titulo">${icon("flask")} ${escapar(ex.nombre)} · ${ex.estado}${ex.segmento !== "general" ? " · " + ex.segmento : ""} · ${Math.round(ex.reparto * 100)} % al brazo B</div>
+        ${m ? `<div class="exp-fila">${brazo(m.brazos.A, "A")}${brazo(m.brazos.B, "B")}</div>
+        <div class="sub">${m.faltan ? `Faltan ${m.faltan} chats por brazo para leer el resultado (mínimo ${m.minimo}).` : "Ya hay chats suficientes para leer el resultado."}</div>` : ""}
+        <div style="display:flex;gap:4px;margin:4px 0 10px;flex-wrap:wrap">
+          ${ex.estado === "activo" ? `<button class="exp-estado" data-id="${ex.id}" data-estado="pausado">${icon("power")} Pausar</button>` : ex.estado === "pausado" ? `<button class="exp-estado" data-id="${ex.id}" data-estado="activo">${icon("bolt")} Activar</button>` : ""}
+          ${ex.estado !== "terminado" ? `<button class="exp-estado" data-id="${ex.id}" data-estado="terminado">${icon("check")} Terminar</button>` : ""}
+        </div>`;
+    }).join("") : `<div class="sin-ad">Sin experimentos todavía.</div>`)
+      + `<div class="sub">Testers: ${testers || "ninguna (márcalas en Equipo)"}.</div>`;
+    cont.querySelectorAll(".exp-estado").forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.estado === "terminado" && !confirm("¿Terminar la prueba? Los chats ya asignados siguen con su brazo, pero no entran más.")) return;
+      try { await pedir("/api/crm/experimentos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: Number(b.dataset.id), estado: b.dataset.estado }) }); } catch (err) { alert(err.message); }
+      pintarExperimentosAdmin();
+    }));
+  } catch (err) { cont.textContent = err.message; }
+}
+
 async function pintarResumenLeadsAdmin() {
   pintarResumenPlanesAdmin();
+  pintarExperimentosAdmin();
   const cont = $("#admin-leads-resumen");
   try {
     const d = await cargarDatosLead(true);
@@ -2895,8 +2922,44 @@ async function abrirConversacion(c) {
   pintarChatBase(c);
   restaurarBorrador(c.conversation_id);
   pintarDetalle(c);
+  cargarExperimentoChat(c.conversation_id);
   await cargarMensajes();
   programarSync();
+}
+
+/** El brazo de este chat en un experimento de flujo (solo testers): chip en la cabecera y filtro del panel de rápidas. */
+async function cargarExperimentoChat(conversationId, rapidaId = null) {
+  estado.experimentoChat = null;
+  try {
+    const d = await pedir(`/api/crm/experimentos?conversation_id=${conversationId}${rapidaId ? `&rapida=${rapidaId}` : ""}`);
+    if (estado.conversacionActivaId !== conversationId) return;
+    estado.experimentoChat = d.experimento || null;
+  } catch { estado.experimentoChat = null; }
+  pintarChipExperimento();
+  if ($("#panel-rapidas")?.classList.contains("abierto")) pintarQuickPanel();
+}
+
+function pintarChipExperimento() {
+  document.querySelector("#chat .chip-experimento")?.remove();
+  const ex = estado.experimentoChat;
+  const tel = document.querySelector("#chat header .tel");
+  if (!ex || !tel) return;
+  const chip = document.createElement("span");
+  chip.className = `chip-experimento${ex.brazo === "B" ? " b" : ""}`;
+  chip.title = `Prueba «${ex.nombre}»: este chat va por el brazo ${ex.brazo} (${ex.etiqueta}). En el panel de rápidas salen arriba las de este brazo.` + (estado.miRol === "admin" ? " Toca para cambiarlo a mano (ese chat sale de la cuenta)." : "");
+  chip.innerHTML = `${icon("flask")} Prueba · ${escapar(ex.etiqueta)}`;
+  if (estado.miRol === "admin") {
+    chip.style.cursor = "pointer";
+    chip.addEventListener("click", async () => {
+      const otro = ex.brazo === "A" ? "B" : "A";
+      if (!confirm(`¿Pasar este chat al brazo ${otro} de la prueba «${ex.nombre}»? Queda anotado como cambio a mano y sale de las estadísticas.`)) return;
+      try {
+        await pedir("/api/crm/experimentos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ex.experimento_id, conversation_id: estado.conversacionActivaId, brazo: otro }) });
+        cargarExperimentoChat(estado.conversacionActivaId);
+      } catch (err) { alert(err.message); }
+    });
+  }
+  tel.appendChild(chip);
 }
 
 function volverALaLista() {
@@ -6992,8 +7055,18 @@ function pintarQuickPanel() {
   const cat = estado.filtroRapidasCategoria || "";
   // Sin búsqueda: en el orden del equipo (se arrastran con ⋮⋮). Buscando: por relevancia.
   // Las de su producto primero, después las generales (rapidasDelChat).
-  const listaBase = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  let listaBase = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
+  // Experimento de flujo (testers): en este chat salen arriba las rápidas del brazo y se esconden las del otro.
+  const ex = estado.experimentoChat;
+  if (ex && !buscando) {
+    const ocultar = new Set(ex.ocultar || []);
+    const destacar = ex.destacar || [];
+    const arriba = destacar.map((id) => listaBase.find((q) => q.id === id)).filter(Boolean);
+    listaBase = [...arriba, ...listaBase.filter((q) => !ocultar.has(q.id) && !destacar.includes(q.id))];
+  }
   const lista = cat ? listaBase.filter((q) => (q.categoria || "") === cat) : listaBase;
+  const enPrueba = ex && !buscando ? new Set(ex.destacar || []) : new Set();
+  let etiquetaPuesta = false;
   const prodChat = productoDe(chatActivo()?.producto_id);
   const CATS = [["", "Todas"], ["ventas", "Ventas"], ["atencion", "Atención al cliente"]];
 
@@ -7005,7 +7078,9 @@ function pintarQuickPanel() {
     ${buscando ? "" : `<p class="sub rapidas-orden-ayuda">Provincia 1·2·3 y Lima 1·2·3 van arriba. Las demás, según el orden del equipo. Arrastra ⋮⋮ para reacomodarlas: lo guarda el equipo.</p>`}
     ${lista.map((q) => {
       const foto = q.media[0];
-      return `
+      let cabecera = "";
+      if (enPrueba.has(q.id) && !etiquetaPuesta) { etiquetaPuesta = true; cabecera = `<div class="rapidas-prueba${ex.brazo === "B" ? " b" : ""}">${icon("flask")} Prueba · ${escapar(ex.etiqueta)} (este chat)</div>`; }
+      return cabecera + `
       <div class="item${q.fijada ? " fijada" : ""}" data-id="${q.id}">
         ${buscando ? "" : q.fijada ? `<span class="fijada-icono" title="Fijada arriba">${icon("star")}</span>` : `<span class="arrastrar" title="Arrastra para reacomodar">⋮⋮</span>`}
         ${q.catalogo ? `<div class="miniatura">${icon("bag")}</div>`
@@ -7197,6 +7272,8 @@ function deseleccionarRapida() {
 function usarQuickReply(q, indice = null) {
   $("#panel-rapidas").classList.remove("abierto");
   estado.rapidasPorSlash = false;
+  // Primera rápida de un brazo en un chat sin brazo: se asigna ahí mismo (si la vendedora es tester).
+  if (!estado.experimentoChat && estado.conversacionActivaId) cargarExperimentoChat(estado.conversacionActivaId, q.id);
   // "Link de envío (sale solo)": la manda el sistema con el link de cada
   // cliente en {link}; a mano saldría con el {link} literal.
   if (/\{link\}/i.test(q.body || "")) {
@@ -7684,6 +7761,7 @@ function abrirModalRapidaEdicion(q) {
     ? `Ya tiene ${q.media.length} archivo(s) — déjalo vacío para conservarlos, o elige nuevos para reemplazarlos todos.`
     : "Puedes elegir varias fotos/videos a la vez — se mandan uno tras otro.";
   pintarCatalogoRapida(q);
+  pintarMediasRapida(q);
   $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
   llenarSelectPlantillaPrincipal(q.plantilla_principal || "");
   pintarSeguimientoRapida(q);
@@ -7692,6 +7770,40 @@ function abrirModalRapidaEdicion(q) {
   $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
   pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
+}
+
+/** Las fotos/videos de la respuesta rápida en el orden en que salen, con flechas para cambiarlo (se guarda al toque,
+ *  sin volver a subir nada): el mismo control que tiene la bienvenida (dueño, 2026-11-03). */
+function pintarMediasRapida(q) {
+  const cont = $("#rapida-medias");
+  if (!cont) return;
+  const ms = q?.media || [];
+  if (ms.length < 1) { cont.innerHTML = ""; return; }
+  cont.innerHTML = `<div class="sub">Orden en que se mandan${ms.length > 1 ? " (usa las flechas)" : ""}:</div>
+    <div class="seq-medias-fila">${ms.map((m, i) => `
+      <div class="seq-media" data-id="${m.id}">
+        <b>${i + 1}</b>
+        ${m.media_type === "video" ? `<video src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" muted></video>`
+          : m.media_type === "image" ? `<img src="/api/crm/media?key=${encodeURIComponent(m.media_key)}" alt="" />`
+          : `<div class="seq-media-doc">${icon("doc")}</div>`}
+        <div class="seq-media-flechas">
+          <button type="button" class="seq-media-antes" title="Antes" ${i === 0 ? "disabled" : ""}>◀</button>
+          <button type="button" class="seq-media-despues" title="Después" ${i === ms.length - 1 ? "disabled" : ""}>▶</button>
+        </div>
+      </div>`).join("")}</div>`;
+  cont.querySelectorAll(".seq-media").forEach((el, i) => {
+    const mover = async (j) => {
+      const orden = ms.map((m) => m.id);
+      [orden[i], orden[j]] = [orden[j], orden[i]];
+      try {
+        await pedir("/api/crm/quick-replies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: q.id, orden_media: orden }) });
+        q.media = orden.map((id) => ms.find((m) => m.id === id));
+        pintarMediasRapida(q);
+      } catch (err) { alert(err.message); }
+    };
+    el.querySelector(".seq-media-antes").addEventListener("click", () => mover(i - 1));
+    el.querySelector(".seq-media-despues").addEventListener("click", () => mover(i + 1));
+  });
 }
 
 /** «Enviar en secuencia» del editor: una fila por respuesta que sale detrás (cuál y a cuántos segundos). */
@@ -8955,6 +9067,7 @@ async function pintarEquipo() {
         <button class="eq-reset-password" data-id="${a.id}" title="Poner una contraseña temporal">Restablecer contraseña</button>
         <button class="eq-reset-totp" data-id="${a.id}" title="Apagar su 2FA con app si perdió el celular">Apagar 2FA</button>
         <button class="eq-toggle-active" data-id="${a.id}" data-active="${a.active ? 0 : 1}" class="${a.active ? "" : "inactiva"}">${a.active ? "Desactivar" : "Activar"}</button>
+        <button class="eq-tester${a.tester ? " si" : ""}" data-id="${a.id}" data-tester="${a.tester ? 0 : 1}" title="Tester de pruebas: sus chats de provincia entran a los experimentos activos (no cambia su rol)">${icon("flask")} ${a.tester ? "Tester" : "Hacer tester"}</button>
       </div>` : ""}
     </div>`).join("") || `<p class="ayuda-modal">${esAdmin ? "Todavía no hay vendedores — usa el formulario de abajo para crear el primero (puedes crear tu propia cuenta)." : "Todavía no hay vendedores."}</p>`;
 
@@ -8965,6 +9078,14 @@ async function pintarEquipo() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: Number(btn.dataset.id), active: btn.dataset.active === "1" })
       });
+      await pintarEquipo();
+    });
+  });
+  cont.querySelectorAll(".eq-tester").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await pedir("/api/crm/agents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: Number(btn.dataset.id), tester: btn.dataset.tester === "1" }) });
+      } catch (err) { alert(err.message); }
       await pintarEquipo();
     });
   });

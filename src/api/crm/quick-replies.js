@@ -107,6 +107,15 @@ function leerSecuencia(payload, propioId) {
     .slice(0, 6));
 }
 
+/** ¿Otra rápida (o la bienvenida) sigue usando esta foto en R2? Entonces no se borra el archivo (2026-11-03: «Provincia 2T · 1»
+ *  comparte las 7 fotos de «Provincia msj. 2»). */
+async function mediaCompartida(env, mediaKey) {
+  const r = await env.CRM_DB.prepare(
+    "SELECT (SELECT COUNT(*) FROM quick_reply_media WHERE media_key = ?) + (SELECT COUNT(*) FROM welcome_step_media WHERE media_key = ?) AS n"
+  ).bind(mediaKey, mediaKey).first().catch(() => ({ n: 1 }));
+  return (r?.n || 0) > 0;
+}
+
 /** Plan de seguimiento con nombre de la rápida (followup_plan_id, migración 0073); null = sin plan con nombre. */
 async function guardarPlan(env, id, payload) {
   if (!payload || !("followup_plan_id" in payload)) return;
@@ -239,6 +248,20 @@ async function patch({ request, env, agent }) {
   const id = Number(payload?.id);
   if (!id) return json({ error: "Falta id." }, 400);
 
+  // Orden de las fotos/videos de la respuesta (dueño, 2026-11-03), igual que en la bienvenida: { id, orden_media: [ids] }.
+  // Solo cambia sort_order; no se sube nada. El envío ya respeta sort_order (GET ordena por sort_order, id).
+  if (Array.isArray(payload?.orden_media)) {
+    const { results } = await env.CRM_DB.prepare("SELECT id FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();
+    const suyos = new Set(results.map((r) => r.id));
+    const orden = [...new Set(payload.orden_media.map(Number))].filter((x) => suyos.has(x));
+    for (const x of suyos) if (!orden.includes(x)) orden.push(x);
+    if (orden.length) {
+      await env.CRM_DB.batch(orden.map((mid, i) =>
+        env.CRM_DB.prepare("UPDATE quick_reply_media SET sort_order = ? WHERE id = ? AND quick_reply_id = ?").bind(i, mid, id)));
+    }
+    return json({ ok: true });
+  }
+
   const existente = await env.CRM_DB.prepare("SELECT id, title, body, catalogo, catalogo_nombre, producto_id, botones, followup_body, followup_hours, followup_pasos, plantilla_principal, categoria, followup_universal FROM quick_replies WHERE id = ?").bind(id).first();
   if (!existente) return json({ error: "No encontrado." }, 404);
 
@@ -302,7 +325,7 @@ async function patch({ request, env, agent }) {
         .run();
     }
     if (env.CRM_MEDIA) {
-      for (const m of vieja) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+      for (const m of vieja) if (!(await mediaCompartida(env, m.media_key))) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
     }
   }
 
@@ -338,7 +361,7 @@ async function del({ request, env }) {
   ]);
 
   if (env.CRM_MEDIA) {
-    for (const m of media) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
+    for (const m of media) if (!(await mediaCompartida(env, m.media_key))) await env.CRM_MEDIA.delete(m.media_key).catch(() => {});
   }
 
   return json({ ok: true });
