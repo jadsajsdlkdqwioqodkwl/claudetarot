@@ -23,7 +23,7 @@
  */
 
 import { getValues, updateValues } from "../lib/google-sheets.js";
-import { COLUMNAS_VENTA, RANGO_DATOS_VENTA, ESTADOS_ENVIO, ENVIOS, nuevoCodigo, indiceVenta, letraVenta, esCodigo, claveDe, clavesShalom, elegirClaveShalom } from "../lib/ventas.js";
+import { COLUMNAS_VENTA, RANGO_DATOS_VENTA, ESTADOS_ENVIO, ENVIOS, nuevoCodigo, indiceVenta, letraVenta, esCodigo, claveDe, clavesShalom, elegirClaveShalom, contieneCodigo } from "../lib/ventas.js";
 import { hojaVentas, olvidarCache } from "../lib/ventas-hoja.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 
@@ -80,7 +80,9 @@ export async function crear(env, p) {
   const dni = soloDigitos(p.dni).slice(0, 12);
   const celular = soloDigitos(p.celular).slice(-9);
   if (!dni && !celular) return json({ error: "Falta DNI o celular." }, 400);
-  const envio = ENVIOS.includes(p.envio) ? p.envio : "Shalom";
+  // Sin `envio` se asume Shalom (como siempre); uno que no está en la lista es un error, no un Shalom en silencio.
+  if (p.envio && !ENVIOS.includes(p.envio)) return json({ error: `Envío «${p.envio}» no válido (${ENVIOS.join(", ")}).` }, 400);
+  const envio = p.envio || "Shalom";
 
   const filas = await leerFilas(env);
   const existente = dni ? buscarFila(filas, { dni }) : null;
@@ -170,6 +172,63 @@ export async function actualizar(env, p, conImagen) {
 
   olvidarCache();
   return json({ ok: true, codigo, link: `${SITIO}/${codigo}` });
+}
+
+/** «dd/mm» de la columna Fecha → Date (UTC, mediodía) del año más reciente que no quede después de `tope`. */
+function fechaDeFila(texto, tope) {
+  const m = String(texto || "").match(/^(\d{1,2})\/(\d{1,2})/);
+  if (!m) return null;
+  let d = new Date(Date.UTC(tope.getUTCFullYear(), Number(m[2]) - 1, Number(m[1]), 12));
+  if (d.getTime() > tope.getTime() + 86400000) d = new Date(Date.UTC(tope.getUTCFullYear() - 1, Number(m[2]) - 1, Number(m[1]), 12));
+  return d;
+}
+
+/**
+ * Pone Saldo = 0 en la hoja a los clientes de agencia (Shalom u Olva) a quienes ya se les mandó su clave de
+ * retiro (el chat tiene la etiqueta `saldo_pagado` Y existe un mensaje nuestro con su clave). Solo cuenta la
+ * venta abierta más reciente del celular y solo si es anterior al mensaje de la clave: una compra nueva del mismo
+ * cliente no hereda el pago viejo. El Estado NO se toca («Pagado» sigue siendo paquete recogido). Único escritor
+ * de esa celda: el cron; los demás procesos solo marcan el chat en D1, así dos procesos a la vez no se pisan.
+ * Nunca toca filas «Pagado» o «Cancelado». Devuelve cuántas filas marcó.
+ */
+export async function sincronizarSaldosPagados(env) {
+  if (!env.CRM_DB) return { marcadas: 0 };
+  const { results } = await env.CRM_DB.prepare(
+    "SELECT c.wa_id, c.shalom_code, m.created_at, m.body FROM conversations conv JOIN contacts c ON c.id = conv.contact_id " +
+    "JOIN messages m ON m.conversation_id = conv.id AND m.direction = 'out' AND COALESCE(c.shalom_code, '') <> '' AND instr(COALESCE(m.body, ''), c.shalom_code) > 0 " +
+    "WHERE (' ' || COALESCE(conv.meta_tags, '') || ' ') LIKE '% saldo_pagado %' AND conv.last_message_at >= datetime('now', '-30 days') " +
+    "ORDER BY m.id DESC LIMIT 300"
+  ).all();
+  // Por celular, el momento más reciente en que de verdad salió su clave (hora de Lima).
+  const claveEnviada = new Map();
+  for (const r of results || []) {
+    const cel = String(r.wa_id).slice(-9);
+    if (claveEnviada.has(cel) || !contieneCodigo(r.body, r.shalom_code)) continue;
+    claveEnviada.set(cel, new Date(new Date(String(r.created_at).replace(" ", "T") + "Z").getTime() - 5 * 3600 * 1000));
+  }
+  if (!claveEnviada.size) return { marcadas: 0 };
+  const filas = await leerFilas(env);
+  const hoja = hojaVentas(env);
+  const hechos = new Set();
+  let marcadas = 0;
+  for (let i = filas.length - 1; i >= 0; i--) {
+    const f = filas[i];
+    const envio = String(f[indiceVenta("Envío")] || "").trim();
+    const estado = String(f[indiceVenta("Estado")] || "").trim();
+    if (!["Shalom", "Olva"].includes(envio) || CERRADOS.has(estado)) continue;
+    const cel = (String(f[indiceVenta("DNI / WSP")] || "").match(/\b(51\d{9}|\d{9})\b/)?.[1] || "").slice(-9);
+    const cuando = claveEnviada.get(cel);
+    if (!cuando || hechos.has(cel)) continue;
+    hechos.add(cel); // solo la venta abierta más reciente de ese celular
+    const fecha = fechaDeFila(f[indiceVenta("Fecha")], cuando);
+    if (!fecha || fecha.getTime() > cuando.getTime() + 86400000) continue; // compra posterior a la clave: no es de esa clave
+    const saldo = String(f[indiceVenta("Saldo")] ?? "").trim();
+    if (saldo !== "" && Number(saldo.replace(/[^\d.]/g, "")) === 0) continue; // ya está en 0
+    await updateValues(env, `${hoja}!${col("Saldo")}${i + 2}`, [[0]]);
+    marcadas++;
+  }
+  if (marcadas) olvidarCache();
+  return { marcadas };
 }
 
 export async function onRequestPost({ request, env }) {

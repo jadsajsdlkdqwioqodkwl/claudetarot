@@ -10,6 +10,8 @@
 > Nunca se borra ni se acorta lo ya escrito; si algo se quitó del sistema, se anota
 > que se quitó (y cuándo), conservando su historia.
 
+> **Prohibido Apps Script (regla del dueño, 2026-11-03).** Las hojas de Google se cambian SOLO con el conector de Google Sheets (MCP) o desde el Worker por la API; el dueño no toca nada a mano. Detalle en `docs/MAPA.md`.
+
 ## Reglas de interfaz del CRM (del dueño, no se negocian)
 
 - **Sin emojis en la interfaz, siempre iconos.** Todo lo que se ve en el CRM (botones, badges, títulos, avisos, selects, cronómetros) usa los iconos SVG de `public/crm/icons.js` (`icon("nombre")`); si falta uno, se agrega ahí. Los emojis solo valen dentro del texto que se le escribe a un cliente y en el selector de emojis del chat. `npm run check` falla si aparece uno en la interfaz.

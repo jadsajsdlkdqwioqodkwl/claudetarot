@@ -4,7 +4,10 @@
  * GET  /api/crm/seguimiento?conversation_id=N →
  *      { activo, proximo, pendientes: [{ id, send_at, resumen }], plan: { titulo, universal, pasos } | null,
  *        fuente: { tipo: "rapida", quick_reply_id } | { tipo: "universal" } | null,
- *        motivo: "cliente" | "apagado" | null, ventana_abierta, compro, dia_chat }
+ *        motivo: "cliente" | "apagado" | null, ventana_abierta, compro, dia_chat,
+ *        rescate7: { id, send_at, plantilla } | null }
+ *      `rescate7`: el rescate del día 7 pendiente (rescate-lead.js). No es parte de la cadena (sale sí o sí,
+ *      «apagar» no lo toca), pero la barra lo muestra para que el panel diga lo que de verdad está programado.
  *      `activo`: hay una cadena automática pendiente (rápida, plan universal, anuncio, sugerencia).
  *      `plan`: lo que se programaría al reactivar: los pasos de la última respuesta rápida con
  *      seguimiento que salió en el chat (o el plan universal, si esa rápida lo usa o si no hubo rápida).
@@ -18,6 +21,7 @@ import {
   esOrigenAutomatico, pasosDeSeguimientoRapida, pasosUniversales, programarSeguimientoDeRapida,
   programarPasosEnChat, aplicarEdicionesDePasos, cancelarSeguimientosDeLead, origenSeguimientoLead
 } from "../../lib/crm-db.js";
+import { ORIGEN_DIA7 } from "../../lib/rescate-lead.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
@@ -56,6 +60,7 @@ async function get({ request, env }) {
     "SELECT id, created_by, send_at, body, template_name, batch_id FROM scheduled_messages WHERE conversation_id = ? AND status = 'pendiente' ORDER BY send_at"
   ).bind(conversationId).all();
   const auto = (pendientes || []).filter((s) => !s.batch_id && esOrigenAutomatico(s.created_by));
+  const dia7 = (pendientes || []).find((s) => String(s.created_by || "").endsWith(ORIGEN_DIA7));
   const { plan, fuente } = await planDelChat(db, conversationId);
   let motivo = null;
   if (!auto.length) {
@@ -73,7 +78,8 @@ async function get({ request, env }) {
     motivo,
     ventana_abierta: aMs(conv.last_inbound_at) + 24 * 3600 * 1000 > Date.now(),
     compro: (conv.etapa || 0) >= 5 || /\bpurchase\b/.test(conv.meta_tags || ""),
-    dia_chat: Math.floor((Date.now() - aMs(conv.created_at)) / 86400000) + 1
+    dia_chat: Math.floor((Date.now() - aMs(conv.created_at)) / 86400000) + 1,
+    rescate7: dia7 ? { id: dia7.id, send_at: dia7.send_at, plantilla: dia7.template_name || null } : null
   });
 }
 

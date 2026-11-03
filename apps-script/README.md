@@ -148,7 +148,7 @@ un desplegable:
 |---|---|---|
 | **A** | Fecha | sola · con **calendario** para corregirla |
 | **B** | DNI / WSP | ✍️ tú |
-| **C** | Envío | ▾ Lima · Shalom · Dinsides |
+| **C** | Envío | ▾ Lima · Shalom · Olva · Dinsides |
 | **D** | Adelanto | ✍️ tú |
 | **E** | Saldo | ✍️ tú |
 | **F** | Clave Shalom / Notas | ✍️ tú |

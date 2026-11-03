@@ -40,7 +40,7 @@ export const COLUMNAS_QUE_SE_ESCRIBEN = [
  * dice la página al cliente: un envío por agencia necesita DNI y clave de
  * recojo; uno de Lima, ninguno de los dos.
  */
-export const ENVIOS = ["Lima", "Shalom", "Dinsides"];
+export const ENVIOS = ["Lima", "Shalom", "Olva", "Dinsides"];
 export const ENVIO_POR_DEFECTO = "Lima";
 
 /** El único que obliga al cliente a ir a un mostrador con su DNI. */

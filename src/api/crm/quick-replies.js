@@ -23,6 +23,10 @@
  * vuelve a "con fotos"). null = con fotos. En PATCH, sin `catalogo` en el
  * payload se conserva el que tenía.
  *
+ * POST y PATCH aceptan además `secuencia`: [{ id, segundos }] = otras respuestas
+ * rápidas que el chat manda detrás de esta con «Enviar secuencia» (cada una a
+ * los `segundos` de la anterior). GET la trae (null = sin configurar). Migración 0072.
+ *
  * POST y PATCH aceptan además `producto_id` (src/lib/productos.js): la
  * respuesta es de ese producto y sale primero en los chats de ese producto.
  * null = general (las de Tarot Store). En PATCH, sin `producto_id` se conserva.
@@ -90,6 +94,32 @@ async function guardarCatalogoDespues(env, id, payload) {
     .bind(payload.catalogo_despues ? 1 : 0, id).run().catch(() => {});
 }
 
+/**
+ * "secuencia": [{ id, segundos }] — otras respuestas rápidas que salen detrás de esta, cada una a
+ * los `segundos` de la anterior (0–60, hasta 6). null = no viene en el payload (se deja como está).
+ */
+function leerSecuencia(payload, propioId) {
+  if (!payload || !("secuencia" in payload)) return null;
+  const lista = Array.isArray(payload.secuencia) ? payload.secuencia : [];
+  return JSON.stringify(lista
+    .map((p) => ({ id: Number(p?.id) || 0, segundos: Math.min(60, Math.max(0, Math.round(Number(p?.segundos) || 0))) }))
+    .filter((p) => p.id && p.id !== propioId)
+    .slice(0, 6));
+}
+
+/** Sin la migración 0072 no hace nada (la secuencia queda la de siempre). */
+async function guardarSecuencia(env, id, payload) {
+  const secuencia = leerSecuencia(payload, id);
+  if (secuencia === null) return;
+  await env.CRM_DB.prepare("UPDATE quick_replies SET secuencia = ? WHERE id = ?").bind(secuencia, id).run()
+    .catch((err) => console.error("Secuencia de la rápida (¿falta la migración 0072?):", err.message));
+}
+
+function secuenciaDe(texto) {
+  if (texto === null || texto === undefined) return null;
+  try { const v = JSON.parse(texto); return Array.isArray(v) ? v : null; } catch { return null; }
+}
+
 /** Posición fija de una respuesta: «Provincia mensaje 1» (0) … «Lima 3» (5). Las demás, sin posición (99). */
 function posicionFijada(titulo) {
   const m = /^(provincia|lima)\s*(?:mensaje\s*)?([123])$/i.exec(String(titulo || "").trim());
@@ -100,7 +130,7 @@ async function get({ env, agent }) {
   const columnas = "id, title, body, grupo, followup_body, followup_hours, followup_pasos, catalogo, catalogo_nombre, sort_order, created_at, producto_id, botones";
   // Sin las migraciones 0055 (catalogo_despues), 0062 (usos), 0063 (plantilla_principal) aplicadas, se lee sin esas columnas.
   let rapidas = [];
-  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
+  for (const extra of [", catalogo_despues, usos, plantilla_principal, categoria, followup_universal, secuencia", ", catalogo_despues, usos, plantilla_principal, categoria, followup_universal", ", catalogo_despues, usos, plantilla_principal, categoria", ", catalogo_despues, usos, plantilla_principal", ", catalogo_despues, usos", ", catalogo_despues", ""]) {
     try {
       rapidas = (await env.CRM_DB.prepare(`SELECT ${columnas}${extra} FROM quick_replies`).all()).results;
       break;
@@ -127,6 +157,7 @@ async function get({ env, agent }) {
       fijada: posicionFijada(r.title) < 99,
       followup_pasos: pasosDe(r),
       botones: botonesDe(r.botones),
+      secuencia: secuenciaDe(r.secuencia),
       media: porRapida[r.id] || [],
       ...(pruebas[r.id] ? { variantes: pruebas[r.id].map((v) => ({ id: v.id, texto: v.texto, peso: v.peso })), orden_fijo: Boolean(pruebas[r.id][0]?.predeterminada) } : {})
     }))
@@ -163,6 +194,7 @@ async function post({ request, env }) {
     .bind(title, body, seguimiento.body, seguimiento.hours, seguimiento.pasos, grupo, catalogo, catalogoNombre, productoId, botones.length ? JSON.stringify(botones) : null, orden, plantillaPrincipal, categoriaPost, payload?.followup_universal ? 1 : 0)
     .first();
   await guardarCatalogoDespues(env, creada.id, payload);
+  await guardarSecuencia(env, creada.id, payload);
 
   let i = 0;
   for (const m of mediaKeys) {
@@ -247,6 +279,7 @@ async function patch({ request, env, agent }) {
   // Los seguimientos ya programados con esta respuesta toman el texto nuevo (si no, salía el viejo).
   await sincronizarSeguimientosPendientes(env.CRM_DB, id, existente).catch((err) => console.error("Sincronizar seguimientos de la rápida:", err.message));
   await guardarCatalogoDespues(env, id, payload);
+  await guardarSecuencia(env, id, payload);
 
   if (mediaKeys !== null) {
     const { results: vieja } = await env.CRM_DB.prepare("SELECT media_key FROM quick_reply_media WHERE quick_reply_id = ?").bind(id).all();

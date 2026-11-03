@@ -3956,8 +3956,12 @@ function pintarBarraSeguimiento(d) {
   if (!d || d.compro) { barra.innerHTML = ""; barra.style.display = "none"; return; }
   barra.style.display = "";
   const n = d.pendientes?.length || 0;
+  // El rescate del día 7 (sale al día 6 + 18 h) va aparte de la cadena: «apagar» no lo toca, pero tiene que verse.
+  const r7 = d.rescate7
+    ? `<div class="seg-barra activa seg-barra-r7" title="Rescate del día 7: sale solo dentro de la ventana gratis de 7 días del anuncio. Se cancela si compra; para quitarlo, la X en «Seguimientos activos» del panel derecho">${icon("clock")} <span>Rescate del día 7 programado · sale ${escapar(fechaCorta(d.rescate7.send_at))}${d.rescate7.plantilla ? ` · ${escapar(d.rescate7.plantilla)}` : ""}</span></div>`
+    : "";
   if (d.activo) {
-    barra.innerHTML = `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
+    barra.innerHTML = r7 + `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
       ${icon("checkBox")} <span>Seguimiento activo · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))}</span><span class="seg-barra-accion">apagar</span></button>`;
     $("#seg-barra-btn").addEventListener("click", async () => {
       if (!confirm(`¿Apagar el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca).`)) return;
@@ -3969,12 +3973,12 @@ function pintarBarraSeguimiento(d) {
     return;
   }
   if (!d.plan) {
-    barra.innerHTML = `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
+    barra.innerHTML = r7 + `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
     return;
   }
   const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
   const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
-  barra.innerHTML = `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
+  barra.innerHTML = r7 + `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
     ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
   $("#seg-barra-btn").addEventListener("click", () => abrirReactivarDesdeBarra(d));
 }
@@ -5928,6 +5932,9 @@ $("#rapida-agregar-paso").innerHTML = `${icon("plus")} Paso si no responde`;
 $("#rapida-agregar-paso").addEventListener("click", () => agregarPasoRapida({ horas: 20 }, true));
 
 document.addEventListener("click", (e) => {
+  // Si lo tocado ya no está en la página (el panel se volvió a dibujar, como al
+  // elegir «Atención al cliente» en las respuestas rápidas), no fue un toque afuera.
+  if (!e.target.isConnected) return;
   if (!e.target.closest("#panel-rapidas, #btn-rapidas, #panel-seguimientos, #btn-seguimiento, #panel-emojis, #btn-emoji, #panel-formato, #btn-formato, #panel-catalogo, #btn-catalogo, #panel-mas, #btn-mas, #panel-stickers, #btn-stickers, #panel-adjuntar, #btn-adjuntar")) {
     cerrarPaneles();
   }
@@ -7019,44 +7026,89 @@ function pintarVersionesRapida() {
   }
   const vs = versionesDe(rv.q);
   cont.style.display = "flex";
-  cont.innerHTML = `<span class="sub" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapar(titulo)}${vs ? " · versión" : ""}</span>${vs ? botonesVersiones(rv.q, rv.indice) : ""}<button type="button" id="btn-deseleccionar-rapida" title="Quitar respuesta rápida">${icon("close")}</button>`;
+  // «Enviar secuencia»: la opción junto a 1·2·3 que manda esta y las que la siguen (secuenciaDe).
+  const pasos = secuenciaDe(rv.q);
+  const btnSecuencia = pasos.length
+    ? `<button type="button" id="btn-enviar-secuencia" title="Envía ${escapar([titulo, ...pasos.map((p) => `${p.q.title} (${p.segundos} s)`)].join(" → "))}">${icon("send")} Enviar secuencia</button>`
+    : "";
+  cont.innerHTML = `<span class="sub" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapar(titulo)}${vs ? " · versión" : ""}</span>${vs ? botonesVersiones(rv.q, rv.indice) : ""}${btnSecuencia}<button type="button" id="btn-deseleccionar-rapida" title="Quitar respuesta rápida">${icon("close")}</button>`;
   $("#btn-deseleccionar-rapida")?.addEventListener("click", deseleccionarRapida);
+  $("#btn-enviar-secuencia")?.addEventListener("click", enviarSecuenciaRapida);
 }
 
-function pintarChipSecuencia(q) {
+/**
+ * Secuencia de una respuesta rápida: [{ q, segundos }] de las que salen detrás de ella.
+ * La elige el equipo al editarla («Enviar en secuencia»). Sin configurar (null),
+ * «Lima 1» y «Provincia 1» llevan su 2 y su 3 a los 2 s, como siempre.
+ */
+function secuenciaDe(q) {
+  if (!q) return [];
+  const todas = estado.quickReplies || [];
+  let pasos = Array.isArray(q.secuencia) ? q.secuencia : null;
+  if (!pasos) {
+    // Los títulos reales son «Lima msj 1.», «Provincia msj. 1», «URO · Lima msj 1.»…
+    const nombre = (n) => new RegExp(`^(.*?)(provincia|lima)\\s*(?:mensaje|msj)?\\.?\\s*${n}\\.?$`, "i");
+    const m = nombre(1).exec((q.title || "").trim());
+    pasos = !m ? [] : [2, 3].map((n) => {
+      const sq = todas.find((x) => {
+        const mx = nombre(n).exec((x.title || "").trim());
+        return mx && mx[1].toLowerCase() === m[1].toLowerCase() && mx[2].toLowerCase() === m[2].toLowerCase();
+      });
+      return sq ? { id: sq.id, segundos: 2 } : null;
+    }).filter(Boolean);
+  }
+  return pasos.map((p) => ({ q: todas.find((x) => x.id === Number(p.id)), segundos: Math.max(0, Number(p.segundos) || 0) }))
+    .filter((p) => p.q && p.q.id !== q.id);
+}
+
+/** El botón de la secuencia ahora va en la barrita de 1·2·3 (pintarVersionesRapida); esta franja queda vacía. */
+function pintarChipSecuencia() {
   const cont = $("#chip-secuencia");
-  if (!cont) return;
-  const m = q && /^(provincia|lima)\s*(?:mensaje\s*)?1$/i.exec((q.title || "").trim());
-  if (!m) { cont.style.display = "none"; cont.innerHTML = ""; return; }
-  const grupo = m[1].toLowerCase();
-  const label = grupo === "provincia" ? "Provincia" : "Lima";
-  cont.style.display = "";
-  cont.innerHTML = `<button type="button" id="btn-enviar-secuencia" title="Envía ${label} 1, 2 y 3 con pausas entre ellos">${icon("send")} Enviar ${label} 1·2·3</button>`;
-  $("#btn-enviar-secuencia").addEventListener("click", () => {
-    const convId = estado.conversacionActivaId;
-    cont.style.display = "none"; cont.innerHTML = "";
-    $("#form-envio")?.requestSubmit();
-    for (const n of [2, 3]) {
-      const sq = (estado.quickReplies || []).find(x =>
-        new RegExp(`^${grupo}\\s*(?:mensaje\\s*)?${n}$`, "i").test((x.title || "").trim())
-      );
-      if (!sq) continue;
-      const versiones = versionesDe(sq);
-      const i = versiones && !sq.orden_fijo ? sortearVersion(sq) : 0;
-      const version = versiones ? versiones[i] : { id: 0, texto: sq.body || "" };
-      const body = version.texto || sq.body || "";
-      if (!body) continue;
-      const qId = sq.id; const vId = version.id || undefined;
-      encolarEnvio(convId, [], async () => {
-        await new Promise(r => setTimeout(r, 2000));
-        return pedir("/api/crm/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: convId, body, quick_reply_id: qId, variante_id: vId })
-        });
-      }, (err) => alert(`Error al mandar ${sq.title}: ${err.message}`));
-    }
-  });
+  if (cont) { cont.style.display = "none"; cont.innerHTML = ""; }
+}
+
+/** Manda la respuesta rápida actual (lo que está en el cuadro) y detrás su secuencia, en el mismo chat. */
+function enviarSecuenciaRapida() {
+  const q = estado.rapidaVariante?.q;
+  const pasos = secuenciaDe(q);
+  const convId = estado.conversacionActivaId;
+  if (!q || !pasos.length || !convId) return;
+  $("#form-envio")?.requestSubmit();
+  for (const { q: sq, segundos } of pasos) {
+    if (/\{link\}/i.test(sq.body || "")) continue; // esa sale desde «Link de seguimiento del pedido»
+    encolarEnvio(convId, [], async () => {
+      await new Promise((r) => setTimeout(r, segundos * 1000));
+      await mandarRapidaCompleta(convId, sq);
+    }, (err) => alert(`Error al mandar ${sq.title}: ${err.message}`));
+  }
+}
+
+/**
+ * Manda una respuesta rápida entera (fotos/videos o catálogo, texto con sus botones o su plantilla)
+ * con quick_reply_id, para que se programe su seguimiento como si la mandara la vendedora.
+ */
+async function mandarRapidaCompleta(convId, sq) {
+  const post = (url, datos) => pedir(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: convId, ...datos }) });
+  if (sq.plantilla_principal) return post("/api/crm/messages", { quick_reply_id: sq.id });
+  const vs = versionesDe(sq);
+  const version = vs ? vs[!sq.orden_fijo ? sortearVersion(sq) : 0] : { id: 0, texto: sq.body || "" };
+  const texto = (version.texto || "").trim();
+  const conRapida = { quick_reply_id: sq.id, ...(version.id ? { variante_id: version.id } : {}) };
+  const botones = (sq.botones || []).slice(0, 3);
+  const mandarTexto = () => post("/api/crm/messages", { body: texto, botones: botones.length ? botones : undefined, ...conRapida });
+  if (sq.catalogo) {
+    const mandarCatalogo = () => post("/api/crm/catalog", {
+      ...(sq.catalogo !== "*" ? { product_retailer_id: sq.catalogo, product_name: sq.catalogo_nombre || undefined } : {}),
+      ...(!texto ? conRapida : {})
+    });
+    if (sq.catalogo_despues && texto) { await mandarTexto(); await mandarCatalogo(); }
+    else { await mandarCatalogo(); if (texto) await mandarTexto(); }
+    return;
+  }
+  for (const [i, m] of (sq.media || []).entries()) {
+    await post("/api/crm/messages", { media_key: m.media_key, media_type: m.media_type, ...(!texto && i === 0 ? conRapida : {}) });
+  }
+  if (texto) await mandarTexto();
 }
 
 document.addEventListener("click", (e) => {
@@ -7082,6 +7134,7 @@ function abrirModalRapidaNueva() {
   $("#rapida-catalogo-orden").value = "0";
   llenarSelectPlantillaPrincipal();
   pintarSeguimientoRapida(null);
+  pintarSecuenciaEditor(null);
   // Nueva desde un chat de un producto: ya sale de ese producto.
   $("#rapida-producto").innerHTML = opcionesProducto(chatActivo()?.producto_id || "");
   $("#rapida-producto-fila").style.display = estado.productos.length ? "" : "none";
@@ -7357,10 +7410,51 @@ function abrirModalRapidaEdicion(q) {
   $("#rapida-catalogo-orden").value = q.catalogo_despues ? "1" : "0";
   llenarSelectPlantillaPrincipal(q.plantilla_principal || "");
   pintarSeguimientoRapida(q);
+  pintarSecuenciaEditor(q);
   $("#rapida-producto").innerHTML = opcionesProducto(q.producto_id || "");
   $("#rapida-producto-fila").style.display = estado.productos.length || q.producto_id ? "" : "none";
   pintarPruebas($("#rapida-pruebas"), "rapida", q.id);
   $("#modal-rapida-fondo").classList.add("abierto");
+}
+
+/** «Enviar en secuencia» del editor: una fila por respuesta que sale detrás (cuál y a cuántos segundos). */
+function pintarSecuenciaEditor(q) {
+  const cont = $("#rapida-secuencia");
+  if (!cont) return;
+  cont.innerHTML = "";
+  secuenciaDe(q).forEach((p) => agregarFilaSecuencia(p.q.id, p.segundos));
+}
+
+function agregarFilaSecuencia(id = "", segundos = 2) {
+  const cont = $("#rapida-secuencia");
+  if (!cont || cont.children.length >= 6) return;
+  const propio = estado.editandoRapidaId;
+  const fila = document.createElement("div");
+  fila.className = "rapida-secuencia-fila";
+  fila.innerHTML = `
+    <select class="rs-rapida"><option value="">Elige una respuesta rápida…</option>${(estado.quickReplies || []).filter((x) => x.id !== propio)
+      .map((x) => `<option value="${x.id}"${x.id === Number(id) ? " selected" : ""}>${escapar(x.title)}</option>`).join("")}</select>
+    <input type="number" class="rs-segundos" min="0" max="60" step="1" value="${Number(segundos) || 0}" title="Segundos después del mensaje anterior" />
+    <span class="sub">s</span>
+    <button type="button" class="rs-quitar" title="Quitar de la secuencia">${icon("close")}</button>`;
+  fila.querySelector(".rs-quitar").addEventListener("click", () => fila.remove());
+  cont.appendChild(fila);
+}
+
+/** [{ id, segundos }] de las filas con una respuesta elegida. */
+function leerSecuenciaEditor() {
+  if (!$("#rapida-secuencia")) return undefined; // HTML viejo sin la sección: no se toca la guardada
+  return [...document.querySelectorAll("#rapida-secuencia .rapida-secuencia-fila")]
+    .map((f) => ({ id: Number(f.querySelector(".rs-rapida").value) || 0, segundos: Math.min(60, Math.max(0, Number(f.querySelector(".rs-segundos").value) || 0)) }))
+    .filter((p) => p.id);
+}
+
+// Con «?.»: si el teléfono tiene el index.html viejo (sin esta sección), un null acá cortaba
+// TODO lo que sigue en este archivo (el «Guardar» del editor y las pruebas A/B quedaban muertos).
+const _btnSecuencia = $("#rapida-agregar-secuencia");
+if (_btnSecuencia) {
+  _btnSecuencia.innerHTML = `${icon("plus")} Agregar a la secuencia`;
+  _btnSecuencia.addEventListener("click", () => agregarFilaSecuencia());
 }
 
 /** "Se manda con": sus fotos/videos (vacío), el catálogo completo o un producto. */
@@ -7431,13 +7525,13 @@ $("#rapida-crear").addEventListener("click", async () => {
       await pedir("/api/crm/quick-replies", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
+        body: JSON.stringify({ id: editandoId, title, body, media_keys, ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, secuencia: leerSecuenciaEditor(), ...cat })
       });
     } else {
       await pedir("/api/crm/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos: [], ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, ...cat })
+        body: JSON.stringify({ title, body, media_keys: media_keys || [], followup_pasos: [], ...seguimiento, botones: leerCamposBotones($("#rapida-botones"), "rapida-boton"), producto_id: Number($("#rapida-producto").value) || null, catalogo_despues: cat.catalogo && $("#rapida-catalogo-orden").value === "1" ? 1 : 0, plantilla_principal: plantillaPrincipal, categoria: categoriaModal, secuencia: leerSecuenciaEditor(), ...cat })
       });
     }
     await cargarQuickReplies();
@@ -9231,10 +9325,13 @@ function pintarEstadoLead() {
   const datos = estado.seguimientosDelChat;
   if (!el || !datos || datos.conversationId !== estado.conversacionActivaId) return;
   const activos = datos.scheduled.filter(esSeguimientoLead).sort((a, b) => a.send_at.localeCompare(b.send_at));
-  el.classList.toggle("activo", activos.length > 0);
+  // El rescate del día 7 también es un seguimiento de interesado: si está programado, se dice.
+  const dia7 = datos.scheduled.find((s) => (s.created_by || "").endsWith(ORIGEN_DIA7));
+  const textoDia7 = dia7 ? `Rescate del día 7: sale el ${escapar(fechaCorta(dia7.send_at))}${dia7.template_name ? ` (${escapar(dia7.template_name)})` : ""}.` : "";
+  el.classList.toggle("activo", activos.length > 0 || Boolean(dia7));
   el.innerHTML = activos.length
-    ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}`
-    : "No activo en este chat.";
+    ? `${icon("check")} Activo en este chat — ${activos.length === 1 ? "sale" : `${activos.length} mensajes, el próximo sale`} el ${escapar(fechaCorta(activos[0].send_at))}${textoDia7 ? `<br>${icon("check")} ${textoDia7}` : ""}`
+    : dia7 ? `${icon("check")} ${textoDia7} La secuencia de interesados no está programada.` : "No activo en este chat.";
   const btn = $("#btn-aplicar-leads");
   if (btn) btn.innerHTML = `${icon("bolt")} ${activos.length ? "Reprogramar seguimiento de interesados" : "Programar seguimiento de interesados"}`;
 }
