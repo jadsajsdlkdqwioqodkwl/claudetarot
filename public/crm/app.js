@@ -146,6 +146,7 @@ function iconizar() {
   $("#btn-mi-password").innerHTML = icon("key");
   $("#btn-avisos").innerHTML = icon("send");
   $("#btn-admin").innerHTML = icon("broadcast");
+  $("#btn-pruebas").innerHTML = icon("flask");
   $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-galeria").innerHTML = icon("image");
@@ -292,6 +293,7 @@ async function mostrarApp() {
   $("#btn-avisos").style.display = esCuentaDeVendedor ? "" : "none";
   if (esCuentaDeVendedor) pedir("/api/crm/notify-settings").then((d) => { canalAvisos = d.linked ? d.channel : null; }).catch(() => {});
   $("#btn-admin").style.display = role === "admin" ? "" : "none";
+  $("#btn-pruebas").style.display = role === "admin" ? "" : "none";
   $("#btn-reportes").style.display = role === "admin" ? "" : "none";
   $("#btn-shalom").style.display = shalom ? "" : "none";
   if (shalom) actualizarConteoShalom();
@@ -1403,6 +1405,203 @@ async function pintarExperimentosAdmin() {
     }));
   } catch (err) { cont.textContent = err.message; }
 }
+
+/* ---------- Pruebas con testers (experimentos de flujo): ver, editar, testers y vista previa del admin ---------- */
+
+const CLAVE_VISTA_PREVIA = "crm_vista_previa_prueba";
+function vistaPreviaPrueba() {
+  try { const v = JSON.parse(localStorage.getItem(CLAVE_VISTA_PREVIA) || "null"); return v && v.id && (v.brazo === "A" || v.brazo === "B") ? v : null; } catch { return null; }
+}
+function guardarVistaPreviaPrueba(v) {
+  try { if (v) localStorage.setItem(CLAVE_VISTA_PREVIA, JSON.stringify(v)); else localStorage.removeItem(CLAVE_VISTA_PREVIA); } catch { /* sin almacenamiento */ }
+}
+/** El brazo de un experimento armado en el navegador (vista previa): mismas llaves que /api/crm/experimentos?conversation_id. */
+function brazoDeVistaPrevia(ex, brazo) {
+  const a = ex.brazo_a || [], b = ex.brazo_b || [];
+  return {
+    experimento_id: ex.id, nombre: ex.nombre, brazo, vistaPrevia: true,
+    etiqueta: brazo === "B" ? ex.etiqueta_b : ex.etiqueta_a,
+    ocultar: brazo === "B" ? a.filter((id) => !b.includes(id)) : b.filter((id) => !a.includes(id)),
+    destacar: brazo === "B" ? b : a
+  };
+}
+async function experimentosAdmin(recargar = false) {
+  if (!recargar && estado.experimentosAdmin) return estado.experimentosAdmin.experimentos;
+  estado.experimentosAdmin = await pedir("/api/crm/experimentos");
+  return estado.experimentosAdmin.experimentos;
+}
+let pruebaEditando = null;
+
+function refrescarChatPorPrueba() {
+  if (estado.conversacionActivaId) cargarExperimentoChat(estado.conversacionActivaId);
+}
+
+async function abrirPruebas() {
+  $("#modal-pruebas-fondo").classList.add("abierto");
+  $("#pruebas-editor").hidden = true;
+  pruebaEditando = null;
+  if (!estado.quickReplies?.length) await cargarQuickReplies().catch(() => {});
+  await pintarPruebasTesters();
+}
+
+async function pintarPruebasTesters() {
+  const lista = $("#pruebas-lista");
+  lista.innerHTML = "Cargando…";
+  let exps;
+  try { exps = await experimentosAdmin(true); } catch (err) { lista.textContent = err.message; return; }
+  const titulo = (id) => (estado.quickReplies || []).find((q) => q.id === id)?.title || `rápida #${id} (ya no existe)`;
+  lista.innerHTML = exps.length ? exps.map((ex) => {
+    const m = ex.metricas;
+    const brazo = (b, k) => `<div><b>${escapar(b.etiqueta)} (${k})</b>${b.chats} chats · respondieron ${b.respondieron} · compraron ${b.compraron_7d} en 7 días (${b.tasa_7d === null ? "–" : b.tasa_7d + " %"})${b.manuales ? ` · ${b.manuales} cambiados a mano` : ""}</div>`;
+    const ESTADOS = { activo: "Activa", pausado: "En pausa", terminado: "Terminada" };
+    return `<div class="exp-item${pruebaEditando?.id === ex.id ? " activo" : ""}" data-id="${ex.id}">
+      <div class="titulo">${icon("flask")} <b>${escapar(ex.nombre)}</b> <span class="exp-estado-tag ${ex.estado}">${ESTADOS[ex.estado] || ex.estado}</span></div>
+      <div class="sub">${ex.segmento === "general" ? "todos los chats" : "solo " + ex.segmento} · ${Math.round(ex.reparto * 100)} % al brazo B · ${ex.solo_testers ? "solo testers" : "todo el equipo"}</div>
+      <div class="sub">A: ${ex.brazo_a.map((id) => escapar(titulo(id))).join(" → ") || "–"}<br>B: ${ex.brazo_b.map((id) => escapar(titulo(id))).join(" → ") || "–"}</div>
+      ${m ? `<div class="exp-fila">${brazo(m.brazos.A, "A")}${brazo(m.brazos.B, "B")}</div><div class="sub">${m.faltan ? `Faltan ${m.faltan} chats por brazo para leer el resultado (mínimo ${m.minimo}).` : "Ya hay chats suficientes para leer el resultado."}</div>` : ""}
+      <div class="exp-botones">
+        <button type="button" class="exp-editar" data-id="${ex.id}">${icon("pencil")} Ver y editar</button>
+        ${ex.estado === "activo" ? `<button type="button" class="exp-estado" data-id="${ex.id}" data-estado="pausado">${icon("power")} Pausar</button>` : ""}
+        ${ex.estado === "pausado" || ex.estado === "terminado" ? `<button type="button" class="exp-estado" data-id="${ex.id}" data-estado="activo">${icon("bolt")} Activar</button>` : ""}
+        ${ex.estado !== "terminado" ? `<button type="button" class="exp-estado" data-id="${ex.id}" data-estado="terminado">${icon("check")} Terminar</button>` : ""}
+      </div>
+    </div>`;
+  }).join("") : `<div class="sin-ad">Sin pruebas todavía.</div>`;
+  lista.querySelectorAll(".exp-editar").forEach((b) => b.addEventListener("click", () => editarPrueba(Number(b.dataset.id))));
+  lista.querySelectorAll(".exp-estado").forEach((b) => b.addEventListener("click", async () => {
+    const ex = exps.find((x) => x.id === Number(b.dataset.id));
+    const nuevo = b.dataset.estado;
+    if (nuevo === "activo" && !confirm(`¿Activar «${ex.nombre}»? Desde ahora los chats de ${ex.segmento === "general" ? "todos los destinos" : ex.segmento} que atienda una tester entran a la prueba y ven las rápidas de su brazo.`)) return;
+    if (nuevo === "terminado" && !confirm("¿Terminar la prueba? Los chats ya asignados guardan su brazo, pero no entran más.")) return;
+    try { await pedir("/api/crm/experimentos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ex.id, estado: nuevo }) }); } catch (err) { return alert(err.message); }
+    await pintarPruebasTesters();
+    refrescarChatPorPrueba();
+  }));
+  pintarVistaPreviaPruebas(exps);
+  pintarTestersPruebas();
+}
+
+function pintarVistaPreviaPruebas(exps) {
+  const cont = $("#pruebas-vista-previa");
+  const vp = vistaPreviaPrueba();
+  const ex = vp && exps.find((x) => x.id === vp.id);
+  cont.innerHTML = `<p class="ayuda-modal" style="margin-top:0">Mira en cualquier chat cómo lo vería una tester: el chip de la prueba junto al teléfono y, en el panel de rápidas, arriba las del brazo elegido. Solo lo ves tú, en este navegador; no asigna el chat ni cuenta para la prueba, y funciona aunque la prueba esté en pausa. Ojo: si mandas una rápida, sí le llega al cliente (pruébalo en un chat tuyo).</p>
+    <div class="leads-fila">
+      <select id="vp-prueba" style="flex:1;margin:0">${exps.map((x) => `<option value="${x.id}"${ex?.id === x.id ? " selected" : ""}>${escapar(x.nombre)}</option>`).join("")}</select>
+      <select id="vp-brazo" style="width:auto;margin:0"><option value="B"${vp?.brazo !== "A" ? " selected" : ""}>Brazo B (nuevo)</option><option value="A"${vp?.brazo === "A" ? " selected" : ""}>Brazo A (control)</option></select>
+      <button type="button" class="crear" id="vp-activar">${icon("eye")} ${ex ? "Cambiar" : "Probarlo yo"}</button>
+      ${ex ? `<button type="button" class="cancelar" id="vp-salir">${icon("eyeOff")} Salir de la vista previa</button>` : ""}
+    </div>
+    ${ex ? `<div class="sub">${icon("eye")} Vista previa encendida: <b>${escapar(ex.nombre)}</b>, brazo ${vp.brazo}.</div>` : ""}`;
+  if (!exps.length) { cont.querySelector("#vp-activar").disabled = true; }
+  cont.querySelector("#vp-activar").addEventListener("click", () => {
+    guardarVistaPreviaPrueba({ id: Number($("#vp-prueba").value), brazo: $("#vp-brazo").value });
+    pintarVistaPreviaPruebas(exps);
+    refrescarChatPorPrueba();
+  });
+  cont.querySelector("#vp-salir")?.addEventListener("click", () => {
+    guardarVistaPreviaPrueba(null);
+    pintarVistaPreviaPruebas(exps);
+    refrescarChatPorPrueba();
+  });
+}
+
+async function pintarTestersPruebas() {
+  const cont = $("#pruebas-testers");
+  try {
+    const { agents } = await pedir("/api/crm/agents");
+    const activos = agents.filter((a) => a.active);
+    cont.innerHTML = `<p class="ayuda-modal" style="margin-top:0">Con una prueba activa, los chats de su destino que atienda una tester entran a la prueba. Ser tester no cambia el rol ni los permisos.</p>`
+      + activos.map((a) => `<label class="exp-tester"><input type="checkbox" data-id="${a.id}" ${a.tester ? "checked" : ""} /> ${escapar(a.display_name || a.username)}${a.role === "admin" ? ' <span class="sub">admin</span>' : ""}</label>`).join("");
+    cont.querySelectorAll("input[type=checkbox]").forEach((c) => c.addEventListener("change", async () => {
+      try { await pedir("/api/crm/agents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: Number(c.dataset.id), tester: c.checked }) }); }
+      catch (err) { alert(err.message); c.checked = !c.checked; }
+    }));
+  } catch (err) { cont.textContent = err.message; }
+}
+
+function editarPrueba(id) {
+  const ex = (estado.experimentosAdmin?.experimentos || []).find((x) => x.id === id);
+  if (!ex) return;
+  pruebaEditando = { id: ex.id, brazo_a: [...ex.brazo_a], brazo_b: [...ex.brazo_b] };
+  $("#prueba-nombre").value = ex.nombre;
+  $("#prueba-segmento").value = ex.segmento || "provincia";
+  $("#prueba-reparto").value = Math.round(ex.reparto * 100);
+  $("#prueba-minimo").value = ex.minimo_chats || 150;
+  $("#prueba-solo-testers").checked = ex.solo_testers !== false;
+  $("#prueba-etiqueta-a").value = ex.etiqueta_a || "control";
+  $("#prueba-etiqueta-b").value = ex.etiqueta_b || "nuevo";
+  pintarBrazosPrueba();
+  $("#pruebas-editor").hidden = false;
+  $("#pruebas-lista").querySelectorAll(".exp-item").forEach((el) => el.classList.toggle("activo", Number(el.dataset.id) === id));
+  $("#pruebas-editor").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function pintarBrazosPrueba() {
+  const rapidas = estado.quickReplies || [];
+  for (const k of ["a", "b"]) {
+    const ids = pruebaEditando[`brazo_${k}`];
+    const cont = $(`#prueba-brazo-${k}`);
+    cont.innerHTML = ids.length ? ids.map((id, i) => {
+      const q = rapidas.find((x) => x.id === id);
+      return `<div class="exp-rapida" data-i="${i}">
+        <span class="exp-num">${i + 1}</span>
+        <span class="exp-nombre">${escapar(q?.title || `rápida #${id} (ya no existe)`)}${q?.media?.length ? ` <span class="sub">${icon("image")} ×${q.media.length}</span>` : ""}</span>
+        ${q ? `<button type="button" class="exp-texto" title="Editar texto, fotos y seguimiento">${icon("pencil")} Editar texto</button>` : ""}
+        <button type="button" class="exp-subir" title="Subir" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" class="exp-bajar" title="Bajar" ${i === ids.length - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" class="exp-quitar" title="Quitar de este brazo">${icon("close")}</button>
+      </div>`;
+    }).join("") : `<div class="sin-ad">Sin rápidas.</div>`;
+    cont.querySelectorAll(".exp-rapida").forEach((fila) => {
+      const i = Number(fila.dataset.i);
+      fila.querySelector(".exp-texto")?.addEventListener("click", () => {
+        const q = rapidas.find((x) => x.id === ids[i]);
+        if (q) abrirModalRapidaEdicion(q); // se abre encima (Pruebas tiene z-index 99 en style.css)
+      });
+      fila.querySelector(".exp-subir").addEventListener("click", () => { [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; pintarBrazosPrueba(); });
+      fila.querySelector(".exp-bajar").addEventListener("click", () => { [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]]; pintarBrazosPrueba(); });
+      fila.querySelector(".exp-quitar").addEventListener("click", () => { ids.splice(i, 1); pintarBrazosPrueba(); });
+    });
+    const sel = $(`#prueba-agregar-${k}`);
+    sel.innerHTML = `<option value="">+ Agregar una respuesta rápida…</option>` + rapidas.filter((q) => !ids.includes(q.id)).map((q) => `<option value="${q.id}">${escapar(q.title)}</option>`).join("");
+    sel.onchange = () => { const v = Number(sel.value); if (v) { ids.push(v); pintarBrazosPrueba(); } };
+  }
+}
+
+$("#btn-pruebas")?.addEventListener("click", () => abrirPruebas());
+$("#btn-abrir-pruebas")?.addEventListener("click", () => abrirPruebas());
+$("#pruebas-cerrar")?.addEventListener("click", () => { $("#modal-pruebas-fondo").classList.remove("abierto"); pintarExperimentosAdmin(); });
+$("#prueba-guardar")?.addEventListener("click", async () => {
+  if (!pruebaEditando) return;
+  const nombre = $("#prueba-nombre").value.trim();
+  if (!nombre) return alert("Ponle un nombre a la prueba.");
+  const cuerpo = {
+    id: pruebaEditando.id, nombre, segmento: $("#prueba-segmento").value,
+    reparto: Math.min(100, Math.max(0, Number($("#prueba-reparto").value) || 0)) / 100,
+    minimo_chats: Number($("#prueba-minimo").value) || 150,
+    solo_testers: $("#prueba-solo-testers").checked,
+    etiqueta_a: $("#prueba-etiqueta-a").value.trim() || "control",
+    etiqueta_b: $("#prueba-etiqueta-b").value.trim() || "nuevo",
+    brazo_a: pruebaEditando.brazo_a, brazo_b: pruebaEditando.brazo_b
+  };
+  try { await pedir("/api/crm/experimentos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }); }
+  catch (err) { return alert(err.message); }
+  const id = pruebaEditando.id;
+  await pintarPruebasTesters();
+  editarPrueba(id);
+  refrescarChatPorPrueba();
+});
+$("#pruebas-nuevo")?.addEventListener("click", async () => {
+  const nombre = $("#pruebas-nuevo-nombre").value.trim();
+  if (!nombre) return alert("Ponle un nombre a la prueba.");
+  try {
+    const d = await pedir("/api/crm/experimentos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre, brazo_a: [], brazo_b: [] }) });
+    $("#pruebas-nuevo-nombre").value = "";
+    await pintarPruebasTesters();
+    editarPrueba(d.experimento.id);
+  } catch (err) { alert(err.message); }
+});
 
 async function pintarResumenLeadsAdmin() {
   pintarResumenPlanesAdmin();
@@ -3024,11 +3223,22 @@ async function abrirConversacion(c) {
 /** El brazo de este chat en un experimento de flujo (solo testers): chip en la cabecera y filtro del panel de rápidas. */
 async function cargarExperimentoChat(conversationId, rapidaId = null) {
   estado.experimentoChat = null;
+  // Vista previa del admin («Probarlo yo» en Pruebas con testers): solo en su navegador, no asigna ni cuenta.
+  const vp = estado.miRol === "admin" ? vistaPreviaPrueba() : null;
   try {
-    const d = await pedir(`/api/crm/experimentos?conversation_id=${conversationId}${rapidaId ? `&rapida=${rapidaId}` : ""}`);
+    const d = await pedir(`/api/crm/experimentos?conversation_id=${conversationId}${vp ? "&solo_ver=1" : rapidaId ? `&rapida=${rapidaId}` : ""}`);
     if (estado.conversacionActivaId !== conversationId) return;
     estado.experimentoChat = d.experimento || null;
+    estado.rapidasSoloPrueba = d.solo_prueba || d.ocultar_siempre || [];
+    if (vp) {
+      const ex = (await experimentosAdmin()).find((x) => x.id === vp.id);
+      if (estado.conversacionActivaId !== conversationId) return;
+      if (ex) estado.experimentoChat = brazoDeVistaPrevia(ex, vp.brazo);
+      else guardarVistaPreviaPrueba(null);
+    }
   } catch { estado.experimentoChat = null; }
+  const propias = new Set(estado.experimentoChat?.destacar || []);
+  estado.rapidasOcultasPrueba = new Set((estado.rapidasSoloPrueba || []).filter((id) => !propias.has(id)));
   pintarChipExperimento();
   if ($("#panel-rapidas")?.classList.contains("abierto")) pintarQuickPanel();
 }
@@ -3040,6 +3250,14 @@ function pintarChipExperimento() {
   if (!ex || !tel) return;
   const chip = document.createElement("span");
   chip.className = `chip-experimento${ex.brazo === "B" ? " b" : ""}`;
+  if (ex.vistaPrevia) {
+    chip.title = `Vista previa de «${ex.nombre}», brazo ${ex.brazo}: solo la ves tú, no cambia el chat ni cuenta para la prueba. Toca para cambiar de brazo o salir.`;
+    chip.innerHTML = `${icon("eye")} Vista previa · ${escapar(ex.etiqueta)}`;
+    chip.style.cursor = "pointer";
+    chip.addEventListener("click", () => abrirPruebas());
+    tel.appendChild(chip);
+    return;
+  }
   chip.title = `Prueba «${ex.nombre}»: este chat va por el brazo ${ex.brazo} (${ex.etiqueta}). En el panel de rápidas salen arriba las de este brazo.` + (estado.miRol === "admin" ? " Toca para cambiarlo a mano (ese chat sale de la cuenta)." : "");
   chip.innerHTML = `${icon("flask")} Prueba · ${escapar(ex.etiqueta)}`;
   if (estado.miRol === "admin") {
@@ -3335,6 +3553,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-avisos": "Avisos por Telegram",
   "btn-mi-password": "Cambiar mi contraseña",
   "btn-admin": "Mensaje masivo y herramientas",
+  "btn-pruebas": "Pruebas con testers",
   "btn-comisiones": "Comisiones por quincena",
   "btn-colores": "Colores de las tiendas",
   "btn-galeria": "Fotos del catálogo",
@@ -7153,6 +7372,9 @@ function pintarQuickPanel() {
   let listaBase = rapidasDelChat(buscando ? buscarRapidas(estado.quickReplies, estado.filtroRapidas) : estado.quickReplies, buscando);
   // Experimento de flujo (testers): en este chat salen arriba las rápidas del brazo y se esconden las del otro.
   const ex = estado.experimentoChat;
+  // Rápidas que solo son del brazo B de una prueba (en pausa, o de otro brazo): no salen en este chat, ni buscando.
+  const ocultasPrueba = estado.rapidasOcultasPrueba;
+  if (ocultasPrueba?.size) listaBase = listaBase.filter((q) => !ocultasPrueba.has(q.id));
   if (ex && !buscando) {
     const ocultar = new Set(ex.ocultar || []);
     const destacar = ex.destacar || [];

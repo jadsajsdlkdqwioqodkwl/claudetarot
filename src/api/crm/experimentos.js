@@ -2,7 +2,10 @@
  * Experimentos de flujo con testers (src/lib/experimentos.js).
  *
  * GET   /api/crm/experimentos?conversation_id=N[&rapida=ID] → el brazo de ese chat para quien pregunta (asigna si
- *       corresponde): { experimento: { experimento_id, nombre, brazo, etiqueta, ocultar, destacar } | null }
+ *       corresponde): { experimento: { experimento_id, nombre, brazo, etiqueta, ocultar, destacar } | null,
+ *       solo_prueba: [ids de rápidas que solo son del brazo B de alguna prueba],
+ *       ocultar_siempre: [las de solo_prueba que este chat no usa: el panel las esconde] }
+ *       Con &solo_ver=1 (vista previa del admin) no asigna brazo: experimento = null.
  * GET   /api/crm/experimentos → (admin) { experimentos: [{ ..., metricas }] }
  * POST  /api/crm/experimentos (admin) { nombre, segmento?, reparto?, brazo_a: [ids], brazo_b: [ids], etiqueta_a?, etiqueta_b?, minimo_chats? }
  * PATCH /api/crm/experimentos (admin) { id, estado?: activo|pausado|terminado, nombre?, reparto?, brazo_a?, brazo_b?, etiqueta_a?, etiqueta_b?, minimo_chats?, solo_testers? }
@@ -10,7 +13,7 @@
  */
 
 import { conAuth, conAdmin } from "../../lib/crm-auth.js";
-import { brazoDeChat, parsearExperimento, metricasExperimento } from "../../lib/experimentos.js";
+import { brazoDeChat, parsearExperimento, metricasExperimento, rapidasSoloDePrueba } from "../../lib/experimentos.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
@@ -21,8 +24,13 @@ async function get({ request, env, agent }) {
   const url = new URL(request.url);
   const conversationId = Number(url.searchParams.get("conversation_id"));
   if (conversationId) {
-    const ex = await brazoDeChat(env.CRM_DB, { conversationId, agentId: agent?.agentId, agente: agent?.username || null, tocoRapida: Number(url.searchParams.get("rapida")) || null }).catch(() => null);
-    return json({ experimento: ex });
+    // solo_ver=1: vista previa del admin; no asigna brazo (ni cuenta para la prueba).
+    const soloVer = url.searchParams.get("solo_ver") === "1";
+    const ex = soloVer ? null : await brazoDeChat(env.CRM_DB, { conversationId, agentId: agent?.agentId, agente: agent?.username || null, tocoRapida: Number(url.searchParams.get("rapida")) || null }).catch(() => null);
+    // Rápidas de pruebas que este chat no usa: el panel las esconde (una prueba en pausa no se le muestra al equipo).
+    const soloPrueba = await rapidasSoloDePrueba(env.CRM_DB).catch(() => []);
+    const propias = new Set(ex?.destacar || []);
+    return json({ experimento: ex, solo_prueba: soloPrueba, ocultar_siempre: soloPrueba.filter((id) => !propias.has(id)) });
   }
   if (agent && agent.role !== "admin") return json({ error: "Solo el admin ve los experimentos." }, 403);
   const { results } = await env.CRM_DB.prepare("SELECT * FROM experimentos ORDER BY CASE estado WHEN 'activo' THEN 0 WHEN 'pausado' THEN 1 ELSE 2 END, id").all().catch(() => ({ results: [] }));
