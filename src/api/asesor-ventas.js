@@ -80,7 +80,9 @@ export async function crear(env, p) {
   const dni = soloDigitos(p.dni).slice(0, 12);
   const celular = soloDigitos(p.celular).slice(-9);
   if (!dni && !celular) return json({ error: "Falta DNI o celular." }, 400);
-  const envio = ENVIOS.includes(p.envio) ? p.envio : "Shalom";
+  // Sin `envio` se asume Shalom (como siempre); uno que no está en la lista es un error, no un Shalom en silencio.
+  if (p.envio && !ENVIOS.includes(p.envio)) return json({ error: `Envío «${p.envio}» no válido (${ENVIOS.join(", ")}).` }, 400);
+  const envio = p.envio || "Shalom";
 
   const filas = await leerFilas(env);
   const existente = dni ? buscarFila(filas, { dni }) : null;
@@ -170,6 +172,40 @@ export async function actualizar(env, p, conImagen) {
 
   olvidarCache();
   return json({ ok: true, codigo, link: `${SITIO}/${codigo}` });
+}
+
+/**
+ * Pone Saldo = 0 en la hoja a los clientes de agencia (Shalom u Olva) cuyo chat ya tiene la etiqueta
+ * `saldo_pagado` (se les mandó la clave de retiro, o pagaron completo). El Estado NO se toca: «Pagado» sigue
+ * siendo paquete recogido. Único escritor de esa celda: el cron (los demás procesos solo marcan el chat en D1),
+ * así dos procesos a la vez no se pisan. Nunca toca filas «Pagado» o «Cancelado». Devuelve cuántas filas marcó.
+ */
+export async function sincronizarSaldosPagados(env) {
+  if (!env.CRM_DB) return { marcadas: 0 };
+  const { results } = await env.CRM_DB.prepare(
+    "SELECT c.wa_id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id " +
+    "WHERE (' ' || COALESCE(conv.meta_tags, '') || ' ') LIKE '% saldo_pagado %' AND conv.last_message_at >= datetime('now', '-30 days')"
+  ).all();
+  const celulares = new Set((results || []).map((r) => String(r.wa_id).slice(-9)));
+  if (!celulares.size) return { marcadas: 0 };
+  const filas = await leerFilas(env);
+  const hoja = hojaVentas(env);
+  const hechos = new Set();
+  let marcadas = 0;
+  for (let i = filas.length - 1; i >= 0; i--) {
+    const f = filas[i];
+    const envio = String(f[indiceVenta("Envío")] || "").trim();
+    const estado = String(f[indiceVenta("Estado")] || "").trim();
+    if (!["Shalom", "Olva"].includes(envio) || CERRADOS.has(estado)) continue;
+    const cel = (String(f[indiceVenta("DNI / WSP")] || "").match(/\b(51\d{9}|\d{9})\b/)?.[1] || "").slice(-9);
+    if (!cel || !celulares.has(cel) || hechos.has(cel)) continue;
+    hechos.add(cel); // solo la venta abierta más reciente de ese celular
+    if (Number(String(f[indiceVenta("Saldo")] ?? "").replace(/[^\d.]/g, "")) === 0 && String(f[indiceVenta("Saldo")] ?? "").trim() !== "") continue;
+    await updateValues(env, `${hoja}!${col("Saldo")}${i + 2}`, [[0]]);
+    marcadas++;
+  }
+  if (marcadas) olvidarCache();
+  return { marcadas };
 }
 
 export async function onRequestPost({ request, env }) {

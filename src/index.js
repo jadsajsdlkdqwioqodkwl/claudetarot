@@ -113,7 +113,7 @@ import { onRequestPost as crmChangePasswordPost } from "./api/crm/change-passwor
 import { onRequestPost as crmForgotPasswordPost } from "./api/crm/forgot-password.js";
 import { onRequestPost as crmResetPasswordPost } from "./api/crm/reset-password.js";
 import { onRequestPost as asesorAvisosPost, onRequestPostSugerencias as asesorSugerenciasPost, onRequestGetContexto as asesorContextoGet } from "./api/asesor.js";
-import { onRequestPost as asesorVentasPost, onRequestGetVentasLista as asesorVentasListaGet } from "./api/asesor-ventas.js";
+import { onRequestPost as asesorVentasPost, onRequestGetVentasLista as asesorVentasListaGet, sincronizarSaldosPagados } from "./api/asesor-ventas.js";
 import { onRequestGetChats as asesorChatsGet, onRequestGetControlVentas as asesorControlVentasGet, onRequestGetImagen as asesorImagenGet, onRequestVentasEstado as asesorVentasEstado, onRequestPostMemoria as asesorMemoriaPost, onRequestGetAnuncios as asesorAnunciosGet, onRequestGetPedidosWeb as asesorPedidosWebGet, onRequestGetBuscarDni as asesorBuscarDniGet, onRequestGetBuscarNombre as asesorBuscarNombreGet, onRequestGetChat as asesorChatGet, onRequestPostImagen as asesorImagenPost } from "./api/asesor-datos.js";
 import { onRequestPostReporte as asesorReportePost, onRequestGetReportes as crmReportesGet, onRequestGetReportesAsesor as asesorReportesGet, reportePdf } from "./api/reportes.js";
 import { onRequestGet as crmSugerenciasGet, onRequestPost as crmSugerenciasPost } from "./api/crm/sugerencias.js";
@@ -358,6 +358,8 @@ export default {
       await cancelarLinksAutomaticos(env.CRM_DB).catch((err) => console.error("Links de envío:", err.message));
       // El resumen (una vez al día) gasta muchas consultas: esa pasada no
       // hace más; embudo y frases siguen en la de 15 min después.
+      // Saldo = 0 en la hoja Ventas para quien ya recibió su clave de retiro (único escritor: este cron).
+      await sincronizarSaldosPagados(env).catch((err) => console.error("Saldos pagados en Ventas:", err.message));
       await vigilarPlantillas(env).catch((err) => console.error("Vigilar plantillas:", err.message));
       // Rescate de lead a los 7 días del inicio del chat, a todos los que no compraron (rescate-lead.js).
       await rescate7Dias(env).catch((err) => console.error("Rescate día 7:", err.message));

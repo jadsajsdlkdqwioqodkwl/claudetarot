@@ -59,7 +59,7 @@ const ENCABEZADOS_V = [
 ];
 
 /** Cómo sale el paquete. Decide qué pide la hoja y qué le dice la página. */
-const ENVIOS_V = ["Lima", "Shalom", "Dinsides"];
+const ENVIOS_V = ["Lima", "Shalom", "Olva", "Dinsides"];
 const ENVIO_POR_DEFECTO_V = "Lima";
 const ENVIO_AGENCIA_V = "Shalom";
 

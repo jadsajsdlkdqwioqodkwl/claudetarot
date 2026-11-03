@@ -440,7 +440,7 @@ Registrar una venta es **escribir el DNI y el celular en una celda**.
 |---|---|---|
 | A | Fecha | sola · con calendario |
 | B | DNI / WSP | ✍️ |
-| C | Envío | ▾ Lima · Shalom · Dinsides |
+| C | Envío | ▾ Lima · Shalom · Olva · Dinsides |
 | D | Adelanto | ✍️ |
 | E | Saldo | ✍️ |
 | F | Clave Shalom / Notas | ✍️ |
