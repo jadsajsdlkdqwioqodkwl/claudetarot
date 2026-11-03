@@ -278,3 +278,10 @@ INSTR 00 v4.17 -> **v4.18** · INSTR 06 v3.28 -> **v3.29** · Recetas: C36 y D36
 - **Revertir:** Aéreo!Y4 anterior = SORT por grupo (Top 0, pendiente 1, saturado 2) y puntaje AN descendente; B105 = 40; quitar el prefijo v3.6 de D37.
 
 - **Complemento D-039 (2026-11-03, chat -f):** el chat leyó ARRANQUE, INSTR 00, 05, MAPA, 08, 06 y Recetas 31-34 y cerró «por poco contexto» sin una carga. INSTR 08 v3.4: arranque mínimo (solo INSTR 08 + INSTR 06 + D34/E31), regla de trabajo mínimo (10 cargas o 20 productos de FILTRA), 3 reintentos ante pestaña congelada; ARRANQUE cambia el paso 1 para INICIA AEREO; INSTR 06 §1 trae la secuencia de una carga en 6 pasos y el contador en línea. Laboratorio!B4 con IFERROR (daba #VALUE! por «s/d» en C-017).
+
+## D-040 (2026-11-03) Purga de la carga: script CARGA, plan con unix, 15 cargas por chat
+
+- **Pedido del dueño:** purga total, «ya no chambea» (chats -f y -g: 0 y 2 cargas con Chrome, sesión y 89.700 créditos).
+- **Causa:** cada carga costaba demasiado contexto: el extractor D34 devolvía el pageData completo (decenas de campos por producto), el chat armaba a mano 14 filas × 21 columnas y antes había leído 6 documentos y 4 recetas (una de ellas E31, un regex de 5 KB). Plan carga daba días pendientes negativos. El chat -g no escribió en Crudo las filas del prefiltro.
+- **Cambios:** Recetas E43 = script CARGA (7 campos por producto en TSV, prefiltro marcado, reintentos, devuelve KEYS si cambian los campos). INSTR 06 v4.2: carga = navegar + E43 + 2 escrituras; plantilla fija de URL; Plan carga entrega unix de desde/hasta/ventana completa (AF:AH) y los hallazgos pasan a AJ:AS; lecturas acotadas a Q1:AH12; Crudo en una llamada con P y Q null. Plan carga H = MAX(0, …). Config B108 = 15. INSTR 08 v3.5: F0 máximo 3 lecturas; «sigue» en el mismo chat retoma. ARRANQUE. Exploración fila 20: probar el método del componente TkProTable para hacer varias cargas sin navegar (prioridad 1).
+- **Revertir:** INSTR 06 §1 a la v4.1 (D34 como extractor), B108 = 25.
