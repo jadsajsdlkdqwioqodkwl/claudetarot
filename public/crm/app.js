@@ -300,6 +300,7 @@ async function mostrarApp() {
   cargarAsesorasFiltro();
   cargarProductos();
   cargarQuickReplies();
+  programarSyncRapidas();
   configurarNotificaciones();
   configurarInstalacion();
   programarSync();
@@ -2206,6 +2207,45 @@ function programarSync(demora) {
     programarSync();
   }, d);
 }
+
+/* ---------- Lo que editó el admin lo ven todas las vendedoras sin recargar (dueño, 2026-11-03) ----------
+   Rápidas (texto, fotos, orden, seguimiento) y planes se vuelven a pedir cada minuto y al volver a la pestaña; el editor
+   abierto no se pisa. Y si el CRM mismo cambió (app.js nuevo), sale un aviso para actualizar con un toque. */
+let rapidasSyncTimer = null;
+let etagApp = null;
+async function sincronizarRapidas() {
+  if (!estado.miRol) return;
+  if ($("#modal-rapida-fondo")?.classList.contains("abierto")) return; // está editando una: no se le cambia debajo
+  try {
+    const antes = JSON.stringify((estado.quickReplies || []).map((q) => [q.id, q.title, q.body, q.media?.map((m) => m.media_key), q.followup_plan_id, q.followup_universal, q.sort_order, q.variantes?.map((v) => v.id)]));
+    await cargarQuickReplies();
+    const ahora = JSON.stringify((estado.quickReplies || []).map((q) => [q.id, q.title, q.body, q.media?.map((m) => m.media_key), q.followup_plan_id, q.followup_universal, q.sort_order, q.variantes?.map((v) => v.id)]));
+    if (antes !== ahora && $("#panel-rapidas")?.classList.contains("abierto")) pintarQuickPanel();
+  } catch { /* sin red: el próximo ciclo */ }
+}
+async function revisarVersionApp() {
+  try {
+    const r = await fetch("/crm/app.js", { method: "HEAD", cache: "no-store" });
+    const etag = r.headers.get("etag");
+    if (!etag) return;
+    if (etagApp === null) { etagApp = etag; return; }
+    if (etag !== etagApp && !$("#aviso-version")) {
+      const aviso = document.createElement("button");
+      aviso.id = "aviso-version";
+      aviso.type = "button";
+      aviso.className = "aviso-version";
+      aviso.innerHTML = `${icon("rotate")} Hay una versión nueva del CRM: toca para actualizar`;
+      aviso.addEventListener("click", () => { guardarBorrador?.(); location.reload(); });
+      document.body.appendChild(aviso);
+    }
+  } catch { /* sin red */ }
+}
+function programarSyncRapidas() {
+  clearInterval(rapidasSyncTimer);
+  rapidasSyncTimer = setInterval(() => { if (!document.hidden) { sincronizarRapidas(); revisarVersionApp(); } }, 60000);
+  revisarVersionApp();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && estado.miRol) { sincronizarRapidas(); revisarVersionApp(); } });
 
 // Volver a tocar la pantalla después de un rato quieto refresca al toque.
 ["pointerdown", "keydown", "wheel", "touchstart"].forEach((ev) => document.addEventListener(ev, () => {
@@ -7382,8 +7422,13 @@ function versionesDe(q) {
   return q.variantes.map((v) => ({ id: v.id, texto: v.texto ?? q.body ?? "" }));
 }
 
+/** La versión que sale de una rápida en prueba se decide por el CHAT (hash de su id), no al azar por vendedora: así todas
+ *  las vendedoras ven y mandan la misma versión en el mismo chat, y la prueba sigue repartiendo entre chats según los pesos. */
 function sortearVersion(q) {
-  let r = Math.random();
+  const id = Number(estado.conversacionActivaId) || 0;
+  let h = (id * 2654435761 + Number(q.id) * 97) >>> 0;
+  h = (h ^ (h >>> 13)) * 1274126177 >>> 0;
+  let r = (h % 10000) / 10000;
   const i = q.variantes.findIndex((x) => (r -= x.peso) <= 0);
   return i < 0 ? q.variantes.length - 1 : i;
 }
