@@ -1,7 +1,7 @@
 /**
  * Experimentos de flujo con testers (dueño, 2026-11-03): una no-tester nunca entra, el brazo es fijo por chat, la primera
  * rápida de un brazo asigna aunque el destino no se sepa, el cambio a mano sale de la cuenta, y las métricas cuentan por
- * brazo. `node scripts/test-experimentos.mjs` (también la corre `npm run check`).
+ * brazo, y las rápidas que solo son del brazo B se listan para esconderlas. `node scripts/test-experimentos.mjs` (también la corre `npm run check`).
  */
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const { brazoDeChat, metricasExperimento, parsearExperimento, esTester } = await import(join(root, "src/lib/experimentos.js"));
+const { brazoDeChat, metricasExperimento, parsearExperimento, esTester, rapidasSoloDePrueba } = await import(join(root, "src/lib/experimentos.js"));
 let fallas = 0;
 const check = (nombre, ok, detalle = "") => { if (!ok) fallas++; console.log(`${ok ? "✓" : "✗"} ${nombre}${ok || !detalle ? "" : ` — ${detalle}`}`); };
 
@@ -70,6 +70,11 @@ sq.prepare("UPDATE experimentos SET estado = 'pausado' WHERE id = 1").run();
 chat(400);
 check("con la prueba pausada no entran chats nuevos", (await brazoDeChat(db, { conversationId: 400, agentId: 4 })) === null);
 check("pero los ya asignados conservan su brazo (a nivel de datos)", sq.prepare("SELECT brazo FROM experimento_chats WHERE conversation_id = 10").get().brazo === a.brazo);
+
+// Rápidas que solo son del brazo B: el panel las esconde en todo chat que no vaya por B (aunque la prueba esté en pausa).
+sq.exec("INSERT INTO experimentos (id, nombre, estado, segmento, reparto, brazo_a, brazo_b) VALUES (2, 'Otra', 'terminado', 'lima', 0.5, '[7,8]', '[8,903]')");
+const solo = (await rapidasSoloDePrueba(db)).sort((x, y) => x - y);
+check("rapidasSoloDePrueba: solo las del brazo B que no están en A, de todas las pruebas", solo.join() === "901,902,903", solo.join());
 
 console.log(fallas ? `\n${fallas} prueba(s) fallaron.` : "\nTodo en orden.");
 process.exit(fallas ? 1 : 0);

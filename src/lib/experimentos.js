@@ -62,6 +62,22 @@ function respuesta(ex, brazo) {
   };
 }
 
+/**
+ * Rápidas que solo existen para el brazo B de algún experimento (no están en su brazo A), de TODOS los experimentos
+ * (activos, en pausa o terminados). El panel de rápidas las esconde en cualquier chat que no vaya por ese brazo B:
+ * así una prueba en pausa no le muestra al equipo sus mensajes nuevos (dueño, 2026-11-03: «desactiva lo del Yape en 2
+ * tiempos»). Se editan desde CRM → Pruebas con testers.
+ */
+export async function rapidasSoloDePrueba(db) {
+  const { results } = await db.prepare("SELECT * FROM experimentos").all().catch(() => ({ results: [] }));
+  const ids = new Set();
+  for (const r of results || []) {
+    const ex = parsearExperimento(r);
+    for (const id of ex.brazo_b) if (!ex.brazo_a.includes(id)) ids.add(id);
+  }
+  return [...ids];
+}
+
 /** Métricas por brazo: chats, respondieron después de asignados, compraron en 72 h y en 7 días, horas hasta la compra. */
 export async function metricasExperimento(db, ex) {
   const { results } = await db.prepare(
