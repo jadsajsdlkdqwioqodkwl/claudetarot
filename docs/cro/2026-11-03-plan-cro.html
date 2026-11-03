@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plan CRO Tarot Store</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  :root { --ink:#1d1b26; --mut:#5d5870; --acc:#6b3fa0; --acc2:#efe8f7; --ok:#1f7a4d; --okbg:#e6f4ec; --bad:#a3322a; --badbg:#fbe9e7; --warn:#8a5a00; --warnbg:#fff4dc; --line:#ddd8e6; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Arial, "Noto Color Emoji", sans-serif; color: var(--ink); font-size: 9.6pt; line-height: 1.42; margin: 0; background:#fff; }
+  h1 { font-size: 20pt; margin: 0 0 4px; color: var(--acc); }
+  h2 { font-size: 13.5pt; color: var(--acc); border-bottom: 2px solid var(--acc); padding-bottom: 3px; margin: 20px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 5px; page-break-after: avoid; }
+  p { margin: 5px 0; }
+  .sub { color: var(--mut); font-size: 9.5pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 8.7pt; page-break-inside: avoid; }
+  th { background: var(--acc2); text-align: left; padding: 4px 5px; border-bottom: 1px solid var(--line); }
+  td { padding: 4px 5px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  .box { border-radius: 6px; padding: 8px 10px; margin: 8px 0; page-break-inside: avoid; }
+  .key { background: var(--acc2); border-left: 4px solid var(--acc); }
+  .ok { background: var(--okbg); border-left: 4px solid var(--ok); }
+  .bad { background: var(--badbg); border-left: 4px solid var(--bad); }
+  .warn { background: var(--warnbg); border-left: 4px solid var(--warn); }
+  .msg { background: #f4fbf3; border: 1px solid #cfe6cc; border-radius: 8px; padding: 6px 8px; margin: 3px 0; font-family: "DejaVu Sans", "Noto Color Emoji", sans-serif; }
+  .tag { display:inline-block; font-size: 7.8pt; padding: 1px 6px; border-radius: 10px; background: #eee; color:#333; margin-right: 4px; white-space: nowrap; }
+  .t-free { background:#e6f4ec; color:#1f7a4d; } .t-pay { background:#fbe9e7; color:#a3322a; } .t-tpl { background:#efe8f7; color:#6b3fa0; }
+  ul { margin: 4px 0 6px 18px; padding: 0; } li { margin: 2px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pb { page-break-before: always; }
+  .small { font-size: 8.3pt; color: var(--mut); }
+  .big { font-size: 15pt; font-weight: bold; color: var(--acc); }
+  .kpis { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin: 10px 0; }
+  .kpi { border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  .kpi .l { font-size:8pt; color:var(--mut); }
+</style>
+</head>
+<body>
+
+<h1>Plan CRO · Tarot Store Perú</h1>
+<p class="sub">Experimentos de seguimiento, bono digital, precio, provincia y bienvenida · preparado el 03/11/2026 · datos del CRM del 20/10 al 02/11 (14 días), más plantillas y pruebas desde el 22/09</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">Chats nuevos de anuncio (14 días)</div><div class="big">1.286</div></div>
+  <div class="kpi"><div class="l">Compraron (marcado en CRM)</div><div class="big">86 · 6,7 %</div></div>
+  <div class="kpi"><div class="l">Cierre de los atendidos por una persona</div><div class="big">15,4 %</div></div>
+  <div class="kpi"><div class="l">Provincia: Yape enviado "de golpe"</div><div class="big">≈ 90 %</div></div>
+</div>
+
+<h2>1. Resumen en 10 puntos</h2>
+<ol>
+  <li><b>La ventana gratis es de 7 días, y tu cuenta ya la tiene.</b> Meta lo dice en su documentación ("may remain open for up to 7 days"). En octubre se mandaron 1.503 plantillas entre las 72 h y los 7 días del clic; con 72 h te habrían cobrado unas 1.650 y solo te cobraron ~90. <b>Seguir a un cliente por plantilla durante sus primeros 7 días cuesta 0.</b></li>
+  <li>Lo que sí se cobra son los mensajes fuera de esa ventana: avisos de Shalom/recojo días después de la compra, los rescates a chats viejos y algunos catálogos. Fueron ~143 en octubre, que cuadra con los ~90 cobrados.</li>
+  <li><b>El problema más grande de provincia es el proceso, no las vendedoras:</b> en casi todos los chats el cliente toca "PROVINCIA" y en menos de 1 minuto recibe 4 mensajes (envío + catálogo + adelanto + número de Yape). Eso pasa con todas las vendedoras.</li>
+  <li><b>Fotos vs catálogo:</b> cuando se mandaban fotos sueltas (hasta el 01/10), provincia cerraba 35 %; con la tarjeta de catálogo cierra 15 %. Lima, que no cambió de método, cayó menos (de 53 % a 34 %). <b>Es una señal a favor de las fotos, no una prueba</b> (pocos casos y otra época): hay que correr el A/B de verdad.</li>
+  <li><b>Vendedoras, ajustado por mezcla Lima/provincia y horario:</b> nadie está estadísticamente por debajo todavía (muestras chicas). Las señales más bajas son carmen (0 de 15), margiory (2 de 31, esperado ~5) y Bruce (6 de 57, esperado ~8). A margiory le falta marcar al menos una venta de Lima que sí se agendó.</li>
+  <li><b>Madrugada (00–06 h):</b> entra solo el 8,6 % de los chats y cierra 4,5 %, igual que las franjas de 12–15 h y 18–21 h. No es la peor hora: es una de tres horas flojas.</li>
+  <li><b>Plata, con tus supuestos:</b> a US$0,80 por chat y con el cierre marcado en el CRM, cada venta cuesta ~US$12 en anuncios (US$17,6 en la madrugada). <b>Con US$5 de margen se pierde en todas las franjas, no solo de noche.</b> Las palancas son subir el cierre y el ticket.</li>
+  <li><b>Subir a S/95–99 tiene sentido de probar:</b> con US$5 de margen (~S/19), a S/99 podrías perder hasta 35 % de las ventas y ganar lo mismo. El bono digital ayuda a que no se pierdan.</li>
+  <li><b>Seguimientos: más largos sí, pero cada uno distinto y con botones.</b> Hoy son 2 o 3 toques que repiten la misma urgencia ("registramos hasta las 12", "promo solo esta semana"). Respuesta: 13 % al seguimiento y 7 % al rescate del día 7.</li>
+  <li><b>Cinco pruebas en 8 semanas</b>, una por etapa del embudo, con métricas y regla de decisión. Al final del informe están las decisiones que necesito de ti para arrancarlas.</li>
+</ol>
+
+<h2>2. Meta: ventana de 24 h, 72 h o 7 días, y qué te cobró</h2>
+<div class="box key">
+<b>Regla vigente (documentación de Meta, "Pricing on the WhatsApp Business Platform"):</b> si el cliente llega desde un anuncio de clic a WhatsApp y le respondes dentro de las 24 h, se abre el "free entry point", que <b>"may remain open for up to 7 days"</b> (antes eran 72 h; Meta lo está activando cuenta por cuenta). Mientras está abierto, <b>todos los mensajes van gratis, también las plantillas de marketing</b>. Además, desde el 01/10/2026 vuelven a cobrar los mensajes de servicio dentro de la ventana de 24 h, con 1.000 gratis al mes por número. El texto libre solo se puede mandar dentro de las 24 h desde el último mensaje del cliente; después, solo plantillas aprobadas.
+</div>
+<table>
+<tr><th>Plantillas enviadas</th><th class="n">Oct</th><th class="n">1–2 Nov</th><th>¿Cobra?</th></tr>
+<tr><td>Dentro de las 24 h del último mensaje del cliente</td><td class="n">176</td><td class="n">55</td><td>No (servicio, dentro de las 1.000 gratis)</td></tr>
+<tr><td>Cliente de anuncio, antes de las 72 h del clic</td><td class="n">41</td><td class="n">5</td><td>No</td></tr>
+<tr><td><b>Cliente de anuncio, entre 72 h y 7 días</b> (rescate día 7, rescate catálogo)</td><td class="n"><b>1.503</b></td><td class="n">185</td><td><b>No, si tu cuenta tiene los 7 días.</b> Con 72 h te habrían cobrado todo esto.</td></tr>
+<tr><td>Fuera de toda ventana</td><td class="n">143</td><td class="n">22</td><td><b>Sí</b></td></tr>
+<tr><td class="small" colspan="4">De esos 143 de octubre: 74 avisos de envío o recojo de Shalom (utility, días después de la compra) · 49 rescate_lead_1 a chats de más de 7 días (los rescates que manda Claude a chats viejos) · 13 rescate de catálogo · 7 otras.</td></tr>
+</table>
+<p><b>Conclusión:</b> que te cobren ~90 mensajes en un mes solo cuadra con la ventana de 7 días. Con 72 h serían más de 1.600. Para confirmarlo del todo, mándame una captura de WhatsApp Manager → Información (Insights) → Precios / Mensajes, con el detalle por categoría (marketing, utility, servicio) y la columna de "gratis por punto de entrada".</p>
+<div class="box ok"><b>Qué cambia en la práctica:</b> durante los 7 días desde el clic puedes mandar plantillas de seguimiento (con botones) <b>sin costo</b>. Todo seguimiento de los días 2 a 7 debe ir en plantilla con un botón de respuesta rápida: si el cliente lo toca, se abren otras 24 h para escribirle libremente. Después del día 7, cada plantilla de marketing cuesta (en Perú ronda US$0,07; verifícalo en tu tarifa), así que ahí solo se le escribe a quien tiene posibilidades reales.</div>
+
+<h2>3. El embudo por hora y la plata (tu escenario: US$0,80 por chat, US$5 de margen por venta)</h2>
+<table>
+<tr><th>Franja (llegada del chat)</th><th class="n">Chats</th><th class="n">Ventas</th><th class="n">Cierre</th><th class="n">1.ª respuesta (mediana)</th><th class="n">Anuncio por venta</th><th class="n">Resultado c/ US$5</th></tr>
+<tr><td>00–03 h</td><td class="n">66</td><td class="n">3</td><td class="n">4,5 %</td><td class="n">5,6 h</td><td class="n">US$17,6</td><td class="n">–US$38</td></tr>
+<tr><td>03–06 h</td><td class="n">44</td><td class="n">2</td><td class="n">4,5 %</td><td class="n">3,6 h</td><td class="n">US$17,6</td><td class="n">–US$25</td></tr>
+<tr><td>06–09 h</td><td class="n">190</td><td class="n">17</td><td class="n">8,9 %</td><td class="n">10 min</td><td class="n">US$8,9</td><td class="n">–US$67</td></tr>
+<tr><td>09–12 h</td><td class="n">181</td><td class="n">14</td><td class="n">7,7 %</td><td class="n">7 min</td><td class="n">US$10,3</td><td class="n">–US$75</td></tr>
+<tr><td>12–15 h</td><td class="n">167</td><td class="n">7</td><td class="n">4,2 %</td><td class="n">5 min</td><td class="n">US$19,1</td><td class="n">–US$99</td></tr>
+<tr><td>15–18 h</td><td class="n">179</td><td class="n">15</td><td class="n">8,4 %</td><td class="n">5 min</td><td class="n">US$9,5</td><td class="n">–US$68</td></tr>
+<tr><td>18–21 h</td><td class="n">246</td><td class="n">10</td><td class="n">4,1 %</td><td class="n">4 min</td><td class="n">US$19,7</td><td class="n">–US$147</td></tr>
+<tr><td>21–24 h</td><td class="n">213</td><td class="n">18</td><td class="n">8,5 %</td><td class="n">4 min</td><td class="n">US$9,5</td><td class="n">–US$80</td></tr>
+<tr><th>Total 14 días</th><th class="n">1.286</th><th class="n">86</th><th class="n">6,7 %</th><th></th><th class="n">US$12,0</th><th class="n">–US$599</th></tr>
+</table>
+<ul>
+  <li><b>Madrugada:</b> pierde, pero no es la peor. Las de 12–15 h y 18–21 h cierran igual de poco con respuesta en 5 minutos, así que ahí el problema no es la atención: es otra cosa (el tipo de público o cómo se maneja el chat). Vale la pena una prueba de bajar el presupuesto en la madrugada (programación de anuncios) por 2 semanas, mirando el costo por venta.</li>
+  <li><b>Ojo con los números:</b> las vendedoras no marcan todas las compras en el CRM (ver el caso de margiory abajo). Con el cierre que da el embudo por conversación (~10 %), la venta costaría ~US$8. Igual sigue arriba de US$5.</li>
+  <li><b>Punto de equilibrio:</b> para no perder con US$0,80 por chat necesitas que cada venta deje unos US$12 (cierre actual) o US$8 (con 10 % de cierre). Si tu margen real es US$5, la prioridad absoluta es <b>subir el cierre y el ticket</b>: el bono, el precio y la venta extra a quien ya compró, que se ven abajo.</li>
+  <li>Necesito tu margen real por kit (precio menos costo del kit, empaque, envío y comisión) para hacer esta cuenta bien.</li>
+</ul>
+
+<h2>4. Fotos sueltas vs catálogo ("Referencias y fotos de envíos")</h2>
+<p>En el CRM no quedó un A/B de esto: las pruebas de "Provincia msj 2/3" fueron de texto. Lo que pasó fue un cambio de método el <b>02/10</b>: antes se mandaban fotos sueltas (PNG de Yapes y envíos) y desde ese día se manda la tarjeta de catálogo "Referencias y fotos de envíos" (762 veces). Lo reconstruí antes y después, con Lima como grupo de control:</p>
+<table>
+<tr><th>Provincia (recibió "provincia le podemos enviar…")</th><th class="n">Chats</th><th class="n">Compró</th><th class="n">Mandó una imagen</th><th class="n">Respondió</th></tr>
+<tr><td>Fotos sueltas (22/09–01/10)</td><td class="n">51</td><td class="n"><b>35,3 %</b></td><td class="n">35 %</td><td class="n">69 %</td></tr>
+<tr><td>Catálogo (02–19/10)</td><td class="n">287</td><td class="n">16,4 %</td><td class="n">17 %</td><td class="n">51 %</td></tr>
+<tr><td>Catálogo (20/10–02/11)</td><td class="n">266</td><td class="n">13,2 %</td><td class="n">15 %</td><td class="n">48 %</td></tr>
+<tr><th>Lima, control (no cambió)</th><th class="n">Chats</th><th class="n">Compró</th><th colspan="2"></th></tr>
+<tr><td>22/09–01/10</td><td class="n">17</td><td class="n">52,9 %</td><td colspan="2"></td></tr>
+<tr><td>02–19/10 · 20/10–02/11</td><td class="n">161 · 164</td><td class="n">34,2 % · 33,5 %</td><td colspan="2"></td></tr>
+</table>
+<div class="box warn"><b>Lectura:</b> provincia cayó un 58 % y Lima un 36 % en el mismo cambio de época, así que una parte de la caída es la época (más tráfico, otros anuncios) y otra parte puede ser el catálogo. Además, con fotos respondían más (69 % vs 50 %). <b>No lo des por probado:</b> son 51 chats con fotos. Pero es la prueba más barata y con más potencial que tienes: <b>P2 abajo</b>.</div>
+
+<h2>5. Vendedoras: cierre ponderado y qué falla</h2>
+<p>Solo chats nuevos de anuncio que atendió una persona, 20/10–02/11. "Esperado" es lo que cerraría una vendedora promedio con <b>la misma mezcla</b> de Lima/provincia/sin destino y de horario (Lima cierra ~31 %, provincia ~13 %, sin destino 0 %). Índice = real ÷ esperado (1,00 = promedio).</p>
+<table>
+<tr><th>Vendedora</th><th class="n">Chats</th><th class="n">Ventas</th><th class="n">Real</th><th class="n">Esperado</th><th class="n">Índice</th><th class="n">1.ª resp. (med.)</th><th class="n">Resp. &gt;1 h</th><th class="n">"Quedamos atentos" en perdidos</th><th class="n">Cliente habló último, sin respuesta</th></tr>
+<tr><td>Jennifer</td><td class="n">225</td><td class="n">40</td><td class="n">17,8 %</td><td class="n">15,5 %</td><td class="n">1,14</td><td class="n">9 min</td><td class="n">33 %</td><td class="n">7 %</td><td class="n">4 %</td></tr>
+<tr><td>Fandio</td><td class="n">102</td><td class="n">17</td><td class="n">16,7 %</td><td class="n">14,9 %</td><td class="n">1,12</td><td class="n">3 min</td><td class="n">17 %</td><td class="n">20 %</td><td class="n">4 %</td></tr>
+<tr><td>Mayra</td><td class="n">47</td><td class="n">9</td><td class="n">19,1 %</td><td class="n">14,6 %</td><td class="n">1,32</td><td class="n">13 min</td><td class="n">36 %</td><td class="n">8 %</td><td class="n">5 %</td></tr>
+<tr><td>Moi</td><td class="n">22</td><td class="n">4</td><td class="n">18,2 %</td><td class="n">17,9 %</td><td class="n">1,02</td><td class="n">16 min</td><td class="n">27 %</td><td class="n">11 %</td><td class="n">0 %</td></tr>
+<tr><td>Danitza</td><td class="n">53</td><td class="n">8</td><td class="n">15,1 %</td><td class="n">17,8 %</td><td class="n">0,85</td><td class="n">4 min</td><td class="n">17 %</td><td class="n">13 %</td><td class="n">0 %</td></tr>
+<tr><td>Bruce</td><td class="n">57</td><td class="n">6</td><td class="n">10,5 %</td><td class="n">13,8 %</td><td class="n">0,76</td><td class="n">4 min</td><td class="n">18 %</td><td class="n">16 %</td><td class="n">10 %</td></tr>
+<tr><td>margiory</td><td class="n">31</td><td class="n">2</td><td class="n">6,5 %</td><td class="n">15,0 %</td><td class="n">0,43</td><td class="n">4 min</td><td class="n">19 %</td><td class="n">24 %</td><td class="n">10 %</td></tr>
+<tr><td>carmen</td><td class="n">15</td><td class="n">0</td><td class="n">0 %</td><td class="n">16,4 %</td><td class="n">0,00</td><td class="n">2 min</td><td class="n">13 %</td><td class="n">7 %</td><td class="n">13 %</td></tr>
+<tr><th>Promedio ponderado por volumen</th><th class="n">557</th><th class="n">86</th><th class="n">15,4 %</th><th class="n">15,4 %</th><th class="n">1,00</th><th colspan="4"></th></tr>
+</table>
+<p class="small">Significancia: carmen tiene 8 % de probabilidad de sacar 0 de 15 por puro azar; margiory, 16 %; Bruce, 31 %. Ninguna diferencia está probada todavía: hacen falta 4 a 6 semanas más con este mismo corte. (El 27 % de Danitza que salía en el informe anterior incluía chats de clientes que ya habían comprado; aquí solo cuentan chats nuevos.)</p>
+
+<h3>Lo que falla en TODAS (proceso, la palanca más grande)</h3>
+<ul>
+  <li><b>Yape de golpe en provincia:</b> entre el 85 y el 97 % de los chats de cada vendedora reciben el número de Yape sin que el cliente diga nada más que "PROVINCIA". Ejemplo típico: 14:27 el cliente toca PROVINCIA → 14:27 msj 1 + catálogo + adelanto + Yape → silencio.</li>
+  <li><b>Ninguna pregunta qué le interesa ni para qué lo quiere</b> (aprender, regalo, leerse a sí mismo). Sin eso, el seguimiento no tiene de dónde agarrarse.</li>
+  <li><b>Compras sin marcar:</b> el cliente 51…3517 (San Borja) pasó su dirección, quedó agendado y no está marcado como compra. Eso baja el número de la vendedora y ensucia lo que Meta aprende de las conversiones.</li>
+</ul>
+<h3>Lo de cada una (para coaching)</h3>
+<ul>
+  <li><b>carmen y margiory:</b> 80 % y 45 % de sus chats son provincia y siguen la cadena al pie de la letra (4 mensajes en 1 minuto). margiory cierra con "quedamos atentos" en 1 de cada 4 chats perdidos, y ese mensaje cierra 0 %. A una clienta que avisó que volvía a Lima el domingo, carmen le respondió con "promoción solo por esta semana" + 6 fotos + Yape, y la clienta contestó "deseo esperar". Ahí iba "se lo separamos con S/10 para el domingo".</li>
+  <li><b>Bruce:</b> en 1 de cada 10 chats perdidos, el cliente escribió último y nadie le contestó. Abre provincia con "El pago es contraentrega, solo un adelanto de S/20", que se contradice (si hay adelanto no es contraentrega) y genera desconfianza.</li>
+  <li><b>Fandio:</b> es el más rápido (3 min) pero usa "quedamos atentos" en 20 % de los perdidos. Necesita cerrar siempre con una pregunta concreta (ciudad, fecha, agencia).</li>
+  <li><b>Jennifer y Mayra:</b> son las de mejor índice aunque tardan más de 1 h en un tercio de los chats. Sirven de modelo: editan las respuestas rápidas y personalizan.</li>
+</ul>
+
+<h2>6. Provincia: cómo subir del 13–15 % al 20 %+</h2>
+<table>
+<tr><th>Prueba</th><th>A (actual)</th><th>B (nueva)</th><th>Métrica</th></tr>
+<tr><td><b>P1 · Yape en 2 tiempos</b></td><td>msj 1 + catálogo + adelanto + Yape seguidos</td><td>msj 1 + fotos de envíos + <b>una pregunta</b> ("¿para qué ciudad y agencia sería?"). Solo cuando responde, el adelanto y el Yape.</td><td>% que manda el adelanto en 48 h</td></tr>
+<tr><td><b>P2 · Fotos vs catálogo</b></td><td>Tarjeta de catálogo "Referencias y fotos de envíos"</td><td>3 fotos sueltas: paquetes reales del día con boleta de Shalom (datos tapados), un Yape de referencia, el kit abierto</td><td>Respondió y adelanto</td></tr>
+<tr><td><b>P3 · Muestra gratis antes del adelanto</b></td><td>Sin muestra</td><td>PDF corto "Su primera tirada en 5 minutos" (sacado del Drive) antes de pedir el adelanto</td><td>Adelanto</td></tr>
+<tr><td><b>P4 · Adelanto S/10 vs S/20</b> (decide el dueño)</td><td>S/20</td><td>S/10 (saldo S/79 al recoger)</td><td>Adelanto <b>y</b> % que recoge en la agencia</td></tr>
+<tr><td><b>P5 · Silencio después del Yape</b></td><td>"Registramos hasta las 12" + collar</td><td>Secuencia de confianza (sección 7, secuencia P)</td><td>Adelanto en 7 días</td></tr>
+</table>
+<p class="small">P1 y P2 se pueden correr juntas como 2×2 con el reparto de versiones del CRM (cada respuesta rápida ya admite versiones con foto). P4 cambia el riesgo de pedidos que no se recogen: solo si lo apruebas.</p>
+
+<h2>7. Seguimientos propuestos (experimento de secuencias)</h2>
+<p>Reparto al azar por chat: <b>A = actual</b> (control) vs <b>B = "valor cada día"</b>. La secuencia P es para provincia que calló tras el Yape. Todo dentro de los 7 días gratis. Cada mensaje trae algo nuevo, una sola pregunta y, desde el día 2, plantilla con botones. Se cancela sola si el cliente responde o si le escribe una persona.</p>
+<h3>A · Actual (control)</h3><p class="small">Lo que salió del 20/10 al 02/11. Desde el 01/11 el plan puede sumar pasos los días 3 y 5: la prueba compara contra el plan que esté vigente.</p>
+<table>
+<tr><th>Cuándo</th><th>Mensaje</th><th>Respuesta medida</th></tr>
+<tr><td>+1 h</td><td>"Registramos los envíos hasta las 12 am… promoción solo hasta esta semana"</td><td rowspan="3">13 % responde a algún seguimiento · 7 % al rescate del día 7</td></tr>
+<tr><td>+20–24 h</td><td>"Último mensaje de seguimiento… separando HOY le regalamos un collar amuleto EXTRA"</td></tr>
+<tr><td>Día 6 + 18 h</td><td>Plantilla rescate_lead_1: "Quedó pendiente su envío, cualquier consulta quedamos atentos"</td></tr>
+</table>
+
+<h3>B · "Valor cada día" (a quien no respondió después de la bienvenida)</h3>
+<table>
+<tr><th style="width:15%">Cuándo</th><th style="width:15%">Tipo</th><th>Mensaje (voz de las vendedoras)</th></tr>
+<tr><td>+40 min</td><td><span class="tag t-free">texto libre · gratis</span>botones Lima / Provincia / Tengo una duda</td><td><div class="msg">Estimad@, le cuento que el envío es gratis a todo el Perú y en Lima paga recién al recibir ☺️ ¿Para qué distrito o ciudad sería?</div></td></tr>
+<tr><td>+3 h</td><td><span class="tag t-free">texto + foto</span>collage de envíos del día</td><td><div class="msg">Así salieron hoy los kits para Lima y provincia 📦 Cada uno va con su mazo con significados, manual, tapete y collar ✨ ¿Desea que le separemos el suyo?</div></td></tr>
+<tr><td>+20 h (antes de que se cierren las 24 h)</td><td><span class="tag t-free">texto + PDF</span>muestra del bono</td><td><div class="msg">Le dejo de regalo esta guía corta para hacer su primera tirada, así ve lo fácil que es aprender con el kit ☺️ ¿La pudo abrir?</div></td></tr>
+<tr><td>Día 2</td><td><span class="tag t-tpl">plantilla marketing · gratis (7 días)</span>botones "Quiero el mío" / "Tengo una duda"</td><td><div class="msg">Hola estimad@ 🩷 cada carta del kit trae su significado impreso, así puede leer desde el primer día sin memorizar nada ✨ ¿Le separamos el suyo?</div></td></tr>
+<tr><td>Día 4</td><td><span class="tag t-tpl">plantilla · gratis</span>foto de testimonio REAL (con permiso)</td><td><div class="msg">Hola estimad@ ☺️ le comparto lo que nos escribió una clienta que recibió su kit esta semana ✨ ¿Desea que le contemos cómo se lo enviamos a usted?</div></td></tr>
+<tr><td>Día 6</td><td><span class="tag t-tpl">plantilla · gratis</span>botones "Quiero mi regalo" / "Ahora no"</td><td><div class="msg">Hola estimad@ 🩷 si separa su kit hasta el domingo le regalamos las clases grabadas de tarot para que aprenda más rápido ✨ ¿Se lo separamos?</div><span class="small">Variante para B4: el mismo mensaje con el collar extra (la oferta de hoy).</span></td></tr>
+<tr><td>Día 6 + 18 h</td><td><span class="tag t-tpl">plantilla · gratis (último día)</span></td><td><div class="msg">Hola estimad@ ☺️ hoy es el último día que le podemos guardar el regalo de las clases. ¿Desea que le separemos su kit?</div></td></tr>
+<tr><td>Día 14 · 30</td><td><span class="tag t-pay">plantilla · se paga ~US$0,07</span>solo a quien tiene posibilidades (la lista de rescates de Claude)</td><td>La escalera que ya está aprobada: día 14, S/79 o 2 kits S/149; día 30, separar con S/10.</td></tr>
+</table>
+
+<h3>P · Provincia que calló después del Yape</h3>
+<table>
+<tr><th style="width:15%">Cuándo</th><th style="width:15%">Tipo</th><th>Mensaje</th></tr>
+<tr><td>+45 min</td><td><span class="tag t-free">texto</span></td><td><div class="msg">Estimad@, a veces da un poco de desconfianza mandar el adelanto a alguien que no conoce ☺️ Si quiere le paso fotos de los envíos de hoy por Shalom, ¿le quedó alguna duda?</div></td></tr>
+<tr><td>+4 h</td><td><span class="tag t-free">texto + foto</span>boleta Shalom real (datos tapados)</td><td><div class="msg">Así le llega la boleta de Shalom con su clave para recoger 📦 Los S/20 se descuentan del total, al recoger paga solo S/69 ✨ ¿Para qué agencia sería?</div></td></tr>
+<tr><td>+20 h</td><td><span class="tag t-free">texto + link</span></td><td><div class="msg">Si prefiere, puede ver nuestros envíos y comentarios en Instagram antes de separar ☺️ ¿Le separamos el suyo para que salga mañana?</div></td></tr>
+<tr><td>Día 3 · 6</td><td><span class="tag t-tpl">plantillas · gratis</span></td><td>Las mismas de los días 4 y 6 de la secuencia B, solo para provincia.</td></tr>
+</table>
+<p class="small"><b>Para medir:</b> % que responde en 7 días (métrica principal), % que compra en 7 días y bloqueos o reportes (Meta pausa plantillas con muchos bloqueos). <b>Encaja en lo que ya hay:</b> desde el 01/11 el CRM permite planes de hasta 6 pasos (texto o plantilla «día N del chat») y el tope de automáticos seguidos es 6 (MAPA, 01/11). La secuencia B son 6 pasos más el rescate del día 6 + 18 h, que ya existe. <code>docs/negocio.md</code> todavía dice «como mucho 2 automáticos»: hay que actualizarlo si apruebas. Las 4 plantillas nuevas tienen que aprobarse en Meta como marketing, con botones. Lo que falta construir es el reparto al azar A/B entre dos planes.</p>
+
+<h2>8. Cómo usar el bono digital (6 experimentos, de menor a mayor riesgo)</h2>
+<table>
+<tr><th>#</th><th>Uso del bono</th><th>Cómo se prueba</th><th>Métrica</th><th>Riesgo</th></tr>
+<tr><td>B1</td><td><b>Muestra gratis</b> (lead magnet): PDF de la primera tirada o la Clase 1</td><td>Dentro de las secuencias B y P (+20 h) y como respuesta a "¿es un curso? / ¿cómo aprendo?"</td><td>Respondieron · compra</td><td>Bajo</td></tr>
+<tr><td>B2</td><td><b>Rescate</b>: "clases grabadas de regalo si lo separa esta semana" en vez del collar extra</td><td>Seguimiento del día 6: clases vs collar, 50/50</td><td>Compra en 7 días</td><td>Bajo (no cuesta nada)</td></tr>
+<tr><td>B3</td><td><b>Venta extra a quien ya compró</b>: Academia digital a S/19 vs S/29</td><td>Al confirmar el pedido o mientras espera el envío</td><td>% que lo toma · soles extra por venta</td><td>Bajo</td></tr>
+<tr><td>B4</td><td><b>Incluido en el kit</b> a S/89 ("+ clases grabadas de regalo")</td><td>Versión de la bienvenida con el bono vs sin él</td><td>Llegan a destino · compra</td><td>Bajo</td></tr>
+<tr><td>B5</td><td><b>Dos opciones</b>: Opción 1 kit S/89 · Opción 2 kit + Academia S/109–119</td><td>Respuesta rápida "Precio?" en 2 versiones</td><td><b>Soles por chat</b></td><td>Medio</td></tr>
+<tr><td>B6</td><td><b>Precio nuevo</b>: kit + Academia a S/99 vs S/89 sin bono</td><td>Ver la sección 9</td><td><b>Margen por chat</b></td><td>Medio</td></tr>
+</table>
+<div class="box warn">Antes de usar el material del Drive: confirma que tienes derecho a regalarlo o revenderlo (si son cursos de terceros sin licencia, te pueden reclamar o tumbar la cuenta de Meta). Mándalo como link a una carpeta de solo lectura con tu marca, no como archivos sueltos.</div>
+
+<h2>9. Precio S/95 o S/99</h2>
+<p>El precio aparece como objeción pocas veces (12 chats en 14 días, y 7 de ellos compraron con S/79). El CRM empieza el 22/09 y desde entonces siempre fue S/89, así que <b>no tengo datos de la época de S/79</b> para comparar. Si tienes las ventas de esa época (de la hoja de pedidos o de Meta), las cruzo.</p>
+<table>
+<tr><th>Precio</th><th class="n">Margen por venta (con US$5 ≈ S/19 a S/89)</th><th class="n">Cuántas ventas puedes perder y ganar igual</th></tr>
+<tr><td>S/89 (hoy)</td><td class="n">S/19</td><td class="n">—</td></tr>
+<tr><td>S/95</td><td class="n">S/25</td><td class="n">hasta 24 %</td></tr>
+<tr><td>S/99</td><td class="n">S/29</td><td class="n">hasta 35 %</td></tr>
+</table>
+<p><b>Diseño:</b> a S/99 con las clases incluidas (B6) contra S/89 sin bono, alternando por semana (lunes a domingo) para no mostrar dos precios el mismo día. Se repite 2 veces cada brazo (4 semanas). El precio cambia en la bienvenida, en "Precio?" y en el anuncio. <b>Regla de decisión:</b> se queda S/99 si el margen por chat (ventas × margen ÷ chats) sale mayor. S/79 sigue como herramienta de cierre solo para quien dice "caro", ahora con margen de sobra.</p>
+
+<h2>10. Bienvenida: imágenes y textos para probar</h2>
+<h3>Lo que hay hoy (4 imágenes + video)</h3>
+<ol>
+  <li>"Qué trae tu kit" (infografía): <b>buena</b>. Revisa la "bolsa de terciopelo": no está en la lista del kit de negocio.md. Si no va, quítala.</li>
+  <li>"Aprendiendo Tarot" (cómo se lee una carta): <b>buena</b>, responde "cómo aprendo". Debería ir primera o segunda.</li>
+  <li>Foto real sobre el tapete: muestra 3 o 4 diseños de cartas, la marca "Caldero de Bruja" y otra guía. <b>Confunde sobre qué llega.</b></li>
+  <li>Caja + 4 cartas: <b>baja resolución</b> (1280×549) y repite lo de la 3.</li>
+</ol>
+<h3>Set B "confianza primero" (para probar contra el actual)</h3>
+<table>
+<tr><th>#</th><th>Imagen</th><th>Para qué</th></tr>
+<tr><td>1</td><td><b>"Así aprende en 3 pasos"</b>: 1) saque una carta, 2) lea el significado impreso, 3) siga el manual o la clase en video. Foto de manos con una carta + celular con la clase.</td><td>Mata el "¿es un curso? / ¿cómo aprendo?"</td></tr>
+<tr><td>2</td><td><b>Qué trae</b> (la infografía actual, corregida) con una franja "+ de regalo: clases grabadas y guías PDF" (cuando B4 esté activa).</td><td>Valor</td></tr>
+<tr><td>3</td><td><b>Collage de envíos reales</b>: 6 a 9 paquetes con boleta de Shalom/Olva (datos tapados), cajas de distintas ciudades; texto "Envíos a todo el Perú todos los días".</td><td>Confianza de provincia</td></tr>
+<tr><td>4</td><td><b>Testimonios reales</b>: 2 o 3 capturas de clientes contentos (con permiso, nombre y número tapados). Nunca inventados.</td><td>Prueba social</td></tr>
+<tr><td>5</td><td><b>"Cómo paga"</b>: Lima, paga al recibir (Yape, efectivo, tarjeta); provincia, S/20 que se descuentan y S/69 al recoger. Logos de Yape, Shalom y Olva.</td><td>Quita el miedo al adelanto antes de que aparezca</td></tr>
+<tr><td>—</td><td>Video: déjalo, pero que los primeros 3 segundos muestren el kit abierto y una carta leída.</td><td></td></tr>
+</table>
+<h3>Textos de bienvenida (versión W-B, para probar contra la #25 + #37)</h3>
+<div class="msg">🔮 ¿Siempre quiso aprender tarot pero no sabe por dónde empezar? Con nuestro kit cada carta trae su significado impreso y el manual le enseña su primera tirada paso a paso ✨</div>
+<div class="msg">Le incluye el mazo de 78 cartas con significados, manual en español, tapete de lectura y collar amuleto de regalo 🧿 Todo en S/89 con envío gratis a todo el Perú, y en Lima paga al recibir ☺️ ¿Para qué distrito o ciudad sería? 📍</div>
+<p class="small">Con botones Lima / Provincia / Tengo una duda. Cuando B4 esté activa, se suma "y las clases grabadas de regalo". Va de usted, como escriben las vendedoras (la bienvenida actual tutea).</p>
+
+<h2>11. Calendario y cómo medir</h2>
+<table>
+<tr><th>Semanas</th><th>Etapa</th><th>Prueba</th></tr>
+<tr><td>Ya (sin prueba)</td><td>Todas</td><td>Marcar todas las compras en el CRM · prohibir "quedamos atentos" como cierre · contestar siempre al cliente que habló último · revisar la clave de Shalom antes de mandarla</td></tr>
+<tr><td>1–4</td><td>Provincia (de destino a adelanto)</td><td>P1 × P2 (Yape en 2 tiempos × fotos vs catálogo)</td></tr>
+<tr><td>1–3</td><td>Sin respuesta tras la bienvenida</td><td>Secuencia A vs B (con la muestra B1 dentro)</td></tr>
+<tr><td>2–4</td><td>Provincia callada</td><td>Secuencia P vs actual</td></tr>
+<tr><td>3–5</td><td>Rescate día 6</td><td>B2: clases vs collar</td></tr>
+<tr><td>4–6</td><td>Bienvenida</td><td>Set de imágenes B + texto W-B vs actual</td></tr>
+<tr><td>Desde la semana 2, continuo</td><td>Después de la compra</td><td>B3: Academia S/19 vs S/29</td></tr>
+<tr><td>5–8</td><td>Oferta</td><td>Precio: S/99 con bono vs S/89 (semanas alternas)</td></tr>
+<tr><td>5–6</td><td>Anuncios</td><td>Bajar la madrugada (00–06 h) 2 semanas: costo por venta</td></tr>
+</table>
+<p><b>Cuántos casos hacen falta</b> (provincia pasa de 15 % a 20 %): ~330 chats por versión para 80 % de confianza y ~900 para 95 %. Al ritmo actual (~23 chats de provincia atendidos por día), eso es <b>4 semanas para 80 %</b>. Por eso se prueban cambios grandes y no detalles de un emoji. En la secuencia de seguimiento la métrica principal es "respondió" (base 13 %), que se mueve más rápido.</p>
+<p>El CRM ya reparte versiones de respuestas rápidas y de la bienvenida (también con foto) y mide avance, respuesta y cierre. Lo que falta construir es el reparto A/B de <b>secuencias</b> de seguimiento con plantillas: lo hago cuando apruebes.</p>
+
+<h2>12. Decisiones que necesito de ti</h2>
+<ol>
+  <li>¿Armo la secuencia B como plan de 6 pasos y construyo el reparto A/B entre el plan actual y el B (y actualizo la regla de "2 automáticos" en negocio.md)?</li>
+  <li>¿Apruebas mandar a Meta las 4 plantillas nuevas (días 2, 4, 6 y 6 + 18 h)?</li>
+  <li>¿Qué trae exactamente el Drive (n.º de clases, PDFs) y tienes derecho a regalarlo o venderlo?</li>
+  <li>¿La bolsa de terciopelo va en el kit?</li>
+  <li>¿Pruebo S/99 con bono, o empezamos por S/95?</li>
+  <li>¿Pruebo adelanto de S/10 en provincia (P4)?</li>
+  <li>Tu margen real por kit, y la captura de cobros de WhatsApp Manager por categoría.</li>
+  <li>¿Tienes ventas de la época de S/79 para comparar?</li>
+</ol>
+
+<p class="small" style="margin-top:14px"><b>Método y límites.</b> Fuente: CRM (D1) y la API del asesor; 1.286 chats nuevos de anuncio y 557 atendidos por una persona (20/10–02/11); plantillas desde el 01/10; fotos vs catálogo desde el 22/09 (compra = evento Purchase del CRM). "Fuera de ventana" se calcula desde el primer mensaje del chat: si el cliente volvió a hacer clic en un anuncio, se abrió otra ventana y el cobro real es menor. Las compras no marcadas bajan todos los porcentajes por igual. Todo lo que es comparación entre épocas o entre vendedoras es correlación, no causa: para eso están las pruebas A/B.</p>
+</body>
+</html>
