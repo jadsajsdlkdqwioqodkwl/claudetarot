@@ -42,6 +42,11 @@ la prueba en pausa o terminada, el equipo no ve «Provincia 2T · 1/2». Se sigu
 - Falta antes de activar: aprobar los textos, crear los planes PROV-2T · Sin ciudad (para 118) y PROV · Sin adelanto
   (para 119 y 38) y elegirlos en el editor de cada rápida. Se activa en el modal admin → Experimentos → Activar.
 
+## «Precio S/99 con bonos» (experimento 2, en pausa, 3/11)
+- Para todas las vendedoras (no solo testers), 25 % de los chats nuevos. Brazo A: «Precio?» (15) y «Precio? provincia»
+  (19) a S/89. Brazo B: «Precio 99 · con bonos (prueba)» (121) y «Precio 99 provincia · con bonos (prueba)» (122): S/99
+  con más de 30 clases grabadas y más de 50 libros digitales. Se activa en el modal admin → Experimentos.
+
 ## Métricas (modal admin → Experimentos, y `/api/asesor/contexto` → `experimentos`)
 Por brazo: chats, respondieron después de asignados, compraron en 72 h y en 7 días (etapa 5 o evento Purchase),
 horas promedio hasta la compra, cambiados a mano (fuera de la cuenta), y «faltan N chats por brazo».

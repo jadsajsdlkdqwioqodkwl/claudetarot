@@ -4985,7 +4985,9 @@ function pintarMensajes({ alFinal = false } = {}) {
     : "") + filas + pendientes;
 
   $("#cargar-anteriores button")?.addEventListener("click", cargarMensajesAnteriores);
-  if (alFinal || abajo || mensajes.length <= 20) cont.scrollTop = cont.scrollHeight;
+  // Solo baja al final si se pidió o si ya estaba abajo. Antes también bajaba en chats cortos (≤ 20 mensajes) en
+  // cada repintado, y en el celular no dejaba subir: al scrollear arriba, el siguiente refresco lo devolvía abajo (dueño, 2026-11-03).
+  if (alFinal || abajo) cont.scrollTop = cont.scrollHeight;
 }
 
 /**
@@ -7404,7 +7406,7 @@ function pintarQuickPanel() {
           : foto ? `<img class="miniatura" src="/api/crm/media?key=${encodeURIComponent(foto.media_key)}" alt="" />`
                : q.media.length === 0 ? "" : `<div class="miniatura">${icon("image")}</div>`}
         <div style="flex:1">
-          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}${q.plantilla_principal ? ` <span class="badge-producto">${icon("bolt")} Plantilla</span>` : ""}</div>
+          <div class="titulo">${q.catalogo ? icon("bag") + " " : q.media.length ? icon(q.media.length > 1 ? "image" : (q.media[0].media_type === "video" ? "video" : "image")) + (q.media.length > 1 ? ` ×${q.media.length} ` : " ") : ""}${escapar(q.title)}${q.producto_id && productoDe(q.producto_id) ? ` <span class="badge-producto">${icon("box")} ${escapar(productoDe(q.producto_id).nombre)}</span>` : ""}${q.plantilla_principal ? ` <span class="badge-producto">${icon("bolt")} Plantilla</span>` : ""}${q.categoria ? ` <span class="badge-producto badge-cat">${icon(q.categoria === "ventas" ? "tag" : "help")} ${q.categoria === "ventas" ? "Ventas" : "Atención"}</span>` : ""}</div>
           ${textoRapida(q) ? `<div class="cuerpo">${escapar(textoRapida(q))}</div>` : ""}
           ${botonesVersiones(q)}
         </div>

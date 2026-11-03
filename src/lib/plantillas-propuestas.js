@@ -28,6 +28,36 @@ const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/
 /** Plantillas de los planes de seguimiento de 7 días (ver docs/seguimientos.md). Botones de hasta 20 caracteres. */
 export const SEGUIMIENTO_7D = [
   {
+    nombre: "bono_clases_libros", titulo: "Bono: clases grabadas y libros digitales (a los chats de la semana)", cuando: "una vez, a los chats de los últimos días que no compraron (dueño, 3/11)",
+    texto: "Hola estimad@ 🩷 tenemos una novedad: el kit ahora incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ Si separa su kit esta semana se lo enviamos con todo ese bono 🎁 ¿Se lo separamos?",
+    botones: ["Sí, quiero", "Tengo una duda"]
+  },
+  {
+    nombre: "seg_d1_hoy_sale", titulo: "Día 1 · empuje: sale mañana", cuando: "día 1 del chat (plan Interesado)",
+    texto: "Hola estimad@ ☺️ hoy todavía podemos dejar su kit listo para que salga mañana con envío gratis ✨ ¿Lo separamos hoy?",
+    botones: ["Sí, hoy", "Tengo una duda"]
+  },
+  {
+    nombre: "seg_d2_miedo_principiante", titulo: "Día 2 · «¿y si no sé nada de tarot?»", cuando: "día 2 del chat (plan Interesado)",
+    texto: "Hola estimad@ 🩷 muchas personas creen que leer tarot es difícil o que hay que memorizar 78 cartas. Con este kit no: cada carta trae su significado impreso y las clases grabadas le enseñan paso a paso ✨ ¿Le cuento cómo es la primera clase?",
+    botones: ["Sí, cuénteme", "Ahora no"]
+  },
+  {
+    nombre: "seg_d3_todo_lo_que_trae", titulo: "Día 3 · todo lo que llega", cuando: "día 3 del chat (plan Interesado)",
+    texto: "Hola estimad@ ☺️ le resumo todo lo que llega: 78 cartas con su significado, manual, tapete, collar amuleto, más de 30 clases grabadas y más de 50 libros digitales 📚 ¿Para qué distrito o ciudad sería?",
+    botones: ["Lima", "Provincia"]
+  },
+  {
+    nombre: "seg_d4_envios_hoy", titulo: "Día 4 · envíos de hoy y clientas", cuando: "día 4 del chat (plan Interesado)",
+    texto: "Hola estimad@ 🩷 hoy salieron kits a Lima y provincia, y en nuestro Instagram puede ver los envíos y lo que dicen otras clientas ✨ ¿Desea que le mande fotos de cómo llega?",
+    botones: ["Sí, fotos", "Ya quiero el mío"]
+  },
+  {
+    nombre: "seg_d5_ultimo_bono", titulo: "Día 5 · último recordatorio con todos los bonos", cuando: "día 5 del chat (plan Interesado)",
+    texto: "Hola estimad@ ☺️ para no incomodarle, este es nuestro último recordatorio: si separa su kit esta semana se lo enviamos con las clases, los libros y un collar amuleto extra 🫶 ¿Se lo separamos?",
+    botones: ["Sí, quiero", "No, gracias"]
+  },
+  {
     nombre: "seg7_clases", titulo: "Día 2 · clases grabadas de cero a lector", cuando: "día 2 del chat (plan Interesado)",
     texto: "Hola estimad@ 🩷 le cuento que con el kit se lleva más de 30 clases grabadas para aprender de cero a lector, paso a paso y a su ritmo ✨ ¿Para qué distrito o ciudad sería?",
     botones: ["Lima", "Provincia", "Tengo una duda"]
