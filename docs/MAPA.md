@@ -1558,3 +1558,18 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   releen una vez); `parametrosBotonCatalogo` (catalogo-boton.js) arma el botón con la foto de un producto; lo usan `toques.js`
   y el cron de `scheduled_messages`; el banco conserva el botón CATALOG si el admin edita el texto. Con esto cualquier plan o
   envío masivo puede usar una plantilla de catálogo.
+
+
+## 2026-11-04 (madrugada, 3) — Todos los que no compraron llevan el plan «Interesado»; catálogo a los clientes anteriores
+- `POST /api/asesor/programar-plan` gana `desde_hoy: false` (programa como una rápida: día N desde el primer mensaje, tope de
+  168 h, reanuda desde el paso que falta), `saltar_con_cadena` (no toca chats con cualquier cadena automática pendiente) y
+  `desde_id` (paginar). Corridas del 4/11 ~03:00 UTC, plan 2, chats de 0 a 7 días sin compra: 559 en modo normal (reemplazan la
+  cadena que tuvieran, pedido del dueño «todos sin excepción») y 217 «desde hoy» (chats de 5 a 7 días cuyos días del plan ya
+  habían pasado). Con los 2 904 de 7 a 60 días, todo chat sin compra de la línea principal tiene el plan pendiente.
+- Las 16 «intención de compra» del reporte del 3/11 (22:30) quedaron con el plan: 5 ya lo tenían de la campaña de antiguos, el
+  resto entró en estas corridas.
+- **Catálogo a clientes anteriores:** 243 filas en `scheduled_messages` (`batch_id` `catalogo-clientes-2026-11-04`,
+  `created_by` «Toque automático · catálogo a clientes anteriores (dueño 4/11)», plantilla `toque_post7`, `mandar_siempre` 1)
+  para quien compró hace más de 7 días, sin recojo de Shalom pendiente (26 excluidos: aún no recogen el kit) y sin el toque
+  post7 ya enviado; repartidos 5, 6 y 7 de noviembre a las 11:00 Lima. Salen cuando Meta apruebe `toque_post7` (mandada el 4/11).
+  Los que compren de aquí en adelante lo reciben por el toque del día 7 (`toques.js`).

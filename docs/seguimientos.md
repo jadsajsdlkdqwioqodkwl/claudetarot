@@ -61,7 +61,8 @@
     del plan es mañana; se reparte en 3 días de arranque por id) y sin el tope de 168 h (`meta.sinTope7d`). Los textos
     del día 0 no salen (sin ventana); salen las plantillas, que Meta cobra fuera de la semana gratis. La cadena
     resultante es una más: se ve en la barra del chat y la detiene el botón. Hecho el 4/11 con el plan 2 a los
-    chats de 7 a 60 días (2 904 chats).
+    chats de 7 a 60 días (2 904 chats) y, con `desde_hoy: false` / `saltar_con_cadena`, a los de 0 a 7 días (559 + 217): todo
+    chat sin compra lleva el plan.
 
 ## Los planes con nombre (desde el 2026-11-03)
 - Tabla `planes_seguimiento`: cada plan tiene nombre, segmento (general, Lima o provincia), hasta 10 pasos
