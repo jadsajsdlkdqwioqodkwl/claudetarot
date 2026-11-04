@@ -1646,6 +1646,7 @@ async function pintarListaPlanes() {
   try {
     const d = await pedir("/api/crm/planes-seguimiento");
     estado.planes = d.planes;
+    if ($("#planes-espacio") && document.activeElement !== $("#planes-espacio")) $("#planes-espacio").value = d.espacio_min_h ?? 5;
     cont.innerHTML = d.planes.length ? d.planes.map((p) => `<div class="plan-item ${p.activo ? "" : "apagado"}${planEditando?.id === p.id ? " activo" : ""}" data-id="${p.id}">
         ${icon(p.activo ? "clock" : "bellOff")} <b>${escapar(p.nombre)}<div class="sub">${p.pasos.length} paso${p.pasos.length === 1 ? "" : "s"}${p.version_b ? ` · B al ${Math.round(p.reparto_b * 100)} %` : ""}${p.interesados ? " · bienvenida" : ""}${p.rapidas.length ? " · " + p.rapidas.map((r) => r.title).join(", ") : ""}</div></b>
         <span class="plan-seg">${p.segmento === "general" ? "general" : p.segmento}</span></div>`).join("")
@@ -1653,6 +1654,16 @@ async function pintarListaPlanes() {
     cont.querySelectorAll(".plan-item").forEach((el) => el.addEventListener("click", () => editarPlan(Number(el.dataset.id))));
   } catch (err) { cont.textContent = err.message; }
 }
+
+// Mínimo de horas entre seguimientos (regla que se aplica sola a todos los planes y pasos propios; dueño, 2026-11-04).
+$("#planes-espacio")?.addEventListener("change", async (e) => {
+  try {
+    const d = await pedir("/api/crm/planes-seguimiento", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ espacio_min_h: e.target.value.trim() === "" ? null : Number(e.target.value) }) });
+    e.target.value = d.espacio_min_h;
+    await pintarListaPlanes();
+    if (planEditando) editarPlan(planEditando.id);
+  } catch (err) { alert(err.message); }
+});
 
 $("#planes-nuevo")?.addEventListener("click", async () => {
   const nombre = $("#planes-nuevo-nombre").value.trim();
@@ -1735,7 +1746,7 @@ async function pintarPlantillasDelPlan(p) {
 /** La línea de tiempo del plan: un chip por paso (día y hora; rojo si se paga; tachado si no saldría). */
 function pintarCalendarioPlan(cont, cal) {
   if (!cont) return;
-  cont.innerHTML = (cal || []).map((c, i) => `<span class="${c.pagado ? "pagado" : ""}${c.salta ? " salta" : ""}" title="${c.pagado ? "Día 7 o más: esta plantilla ya se paga" : c.salta ? "No saldría: " + escapar(c.motivo || "") : "Dentro de la semana gratis"}">${i + 1}· día ${c.dia} ${escapar(c.hora)}${c.pagado ? " · se paga" : ""}</span>`).join("")
+  cont.innerHTML = (cal || []).map((c, i) => `<span class="${c.pagado ? "pagado" : ""}${c.salta ? " salta" : ""}" title="${c.pagado ? "Pasa los 7 días (168 h) del chat: no sale, Meta ya lo cobraría" : c.salta ? "No saldría: " + escapar(c.motivo || "") : c.espaciado ? "Se corrió para respetar el mínimo entre seguimientos" : "Dentro de la semana gratis"}">${i + 1}· día ${c.dia} ${escapar(c.hora)}${c.pagado ? " · no sale" : c.espaciado ? " · corrido" : ""}</span>`).join("")
     + (cal?.length ? `<span class="sub" style="background:none;border:none;color:var(--gris)">(ejemplo: chat que empezó hoy a las 10:00)</span>` : "");
 }
 

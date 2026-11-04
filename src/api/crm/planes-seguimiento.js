@@ -9,7 +9,7 @@
  */
 
 import { conAdmin } from "../../lib/crm-auth.js";
-import { leerPlan, normalizarPasosSeguimiento, obtenerAjuste, guardarAjuste, calendarioDePasos, medianocheLima } from "../../lib/crm-db.js";
+import { leerPlan, normalizarPasosSeguimiento, obtenerAjuste, guardarAjuste, calendarioDePasos, medianocheLima, espacioMinimoMs, ESPACIO_MINIMO_H } from "../../lib/crm-db.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
@@ -17,11 +17,11 @@ const json = (data, status = 200) =>
 const SEGMENTOS = ["general", "lima", "provincia"];
 
 /** Vista previa del calendario para un chat que empezó hoy a las 10:00 Lima y escribió ahora mismo. */
-function vistaPrevia(pasos) {
+function vistaPrevia(pasos, espacioMs) {
   const ahora = Date.now();
   const inicio = medianocheLima(ahora) + 10 * 3600 * 1000;
-  return calendarioDePasos(pasos, { inicioMs: inicio, ultimoMs: ahora, ahoraMs: ahora }).map((c) => ({
-    dia: c.dia, hora: new Date(c.cuando - 5 * 3600 * 1000).toISOString().slice(11, 16), pagado: c.pagado, salta: c.salta, motivo: c.motivo
+  return calendarioDePasos(pasos, { inicioMs: inicio, ultimoMs: ahora, ahoraMs: ahora, espacioMs }).map((c) => ({
+    dia: c.dia, hora: new Date(c.cuando - 5 * 3600 * 1000).toISOString().slice(11, 16), pagado: c.pagado, salta: c.salta, motivo: c.motivo, espaciado: c.espaciado
   }));
 }
 
@@ -31,14 +31,16 @@ async function completo(db, id) {
   const { results: rapidas } = await db.prepare("SELECT id, title FROM quick_replies WHERE followup_plan_id = ? OR (? = 1 AND followup_universal = 1 AND followup_plan_id IS NULL) ORDER BY title")
     .bind(plan.id, plan.id).all().catch(() => ({ results: [] }));
   const interesados = Number(await obtenerAjuste(db, "plan_interesados_id")) === plan.id;
-  return { ...plan, rapidas: rapidas || [], interesados, calendario: vistaPrevia(plan.pasos), calendario_b: plan.version_b ? vistaPrevia(plan.version_b) : null };
+  const espacioMs = await espacioMinimoMs(db);
+  return { ...plan, rapidas: rapidas || [], interesados, calendario: vistaPrevia(plan.pasos, espacioMs), calendario_b: plan.version_b ? vistaPrevia(plan.version_b, espacioMs) : null };
 }
 
 async function get({ env }) {
   const { results } = await env.CRM_DB.prepare("SELECT id FROM planes_seguimiento ORDER BY activo DESC, id").all();
   const planes = [];
   for (const r of results || []) planes.push(await completo(env.CRM_DB, r.id));
-  return json({ planes: planes.filter(Boolean), plan_interesados_id: Number(await obtenerAjuste(env.CRM_DB, "plan_interesados_id")) || null });
+  return json({ planes: planes.filter(Boolean), plan_interesados_id: Number(await obtenerAjuste(env.CRM_DB, "plan_interesados_id")) || null,
+    espacio_min_h: (await espacioMinimoMs(env.CRM_DB)) / 3600000, espacio_min_h_defecto: ESPACIO_MINIMO_H });
 }
 
 async function post({ request, env }) {
@@ -55,6 +57,13 @@ async function post({ request, env }) {
 
 async function patch({ request, env }) {
   const p = await request.json().catch(() => null);
+  // Ajuste general (no de un plan): mínimo de horas entre seguimientos (dueño, 2026-11-04). 0 lo apaga; vacío vuelve a 5.
+  if (p && "espacio_min_h" in p && !p.id) {
+    const h = p.espacio_min_h === null || p.espacio_min_h === "" ? null : Number(p.espacio_min_h);
+    if (h !== null && !(Number.isFinite(h) && h >= 0 && h <= 48)) return json({ error: "El mínimo entre seguimientos va de 0 a 48 horas." }, 400);
+    await guardarAjuste(env.CRM_DB, "seguimiento_espacio_min_h", h === null ? "" : String(h));
+    return json({ ok: true, espacio_min_h: (await espacioMinimoMs(env.CRM_DB)) / 3600000 });
+  }
   const id = Number(p?.id);
   const plan = id ? await leerPlan(env.CRM_DB, id) : null;
   if (!plan) return json({ error: "Ese plan no existe." }, 404);

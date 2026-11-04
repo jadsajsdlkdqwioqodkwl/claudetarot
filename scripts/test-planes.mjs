@@ -47,18 +47,27 @@ console.log("Planes de seguimiento con nombre");
   const plan = normalizarPasosSeguimiento([
     { horas: 0.75, body: "+45 min" }, { horas: 4, body: "+4 h con foto", media_key: "x.jpg", media_type: "image" },
     { dia: 2, hora: "20:00", plantilla: "r2" }, { dia: 3, hora: "13:00", plantilla: "r3" }, { dia: 5, hora: "10:30", plantilla: "g5" },
-    { dia: 7, hora: "09:00", plantilla: "tarde" }, { dia: 0, hora: "08:00", plantilla: "ya_paso" }
+    { dia: 7, hora: "11:00", plantilla: "tarde" }, { dia: 0, hora: "08:00", plantilla: "ya_paso" }
   ]);
   const cal = calendarioDePasos(plan, { inicioMs: inicio, ultimoMs: ahora - 10 * 60000, ahoraMs: ahora });
   check("el paso del día 2 cae a las 20:00 de Lima del día 2 del chat", horaLima(cal[2].cuando) === "20:00" && cal[2].cuando === medianocheLima(inicio) + 2 * DIA + 20 * H, horaLima(cal[2].cuando));
   check("el del día 5 a las 10:30", horaLima(cal[4].cuando) === "10:30" && cal[4].dia === 5);
-  check("una plantilla del día 7 se marca como pagada", cal[5].pagado === true && cal[4].pagado === false);
+  check("una plantilla pasados los 7 días (168 h) del chat se marca como pagada y no sale", cal[5].pagado === true && cal[5].salta && /7 días/.test(cal[5].motivo) && cal[4].pagado === false && !cal[4].salta, JSON.stringify(cal[5]));
   check("un día que ya pasó se salta", cal[6].salta && cal[6].motivo === "ya pasó");
-  check("los textos relativos siguen igual (+45 min, +4 h)", Math.abs(cal[0].cuando - (ahora + 0.75 * H)) < 1000 && Math.abs(cal[1].cuando - (ahora + 4.75 * H)) < 1000);
+  // Mínimo de 5 h entre seguimientos (dueño, 2026-11-04): el +4 h se corre a 5 h después del +45 min.
+  check("los textos relativos respetan el mínimo de 5 h (+45 min; el +4 h se corre a +5:45)", Math.abs(cal[0].cuando - (ahora + 0.75 * H)) < 1000 && !cal[0].espaciado && Math.abs(cal[1].cuando - (ahora + 5.75 * H)) < 1000 && cal[1].espaciado, JSON.stringify([cal[0], cal[1]]));
+  const calSin = calendarioDePasos(plan.slice(0, 2), { inicioMs: inicio, ultimoMs: ahora - 10 * 60000, ahoraMs: ahora, espacioMs: 0 });
+  check("con el mínimo en 0 los pasos salen como están escritos (+45 min, +4 h)", Math.abs(calSin[1].cuando - (ahora + 4.75 * H)) < 1000 && !calSin[1].espaciado);
+  const calUltimo = calendarioDePasos(plan.slice(0, 1), { inicioMs: inicio, ultimoMs: ahora - 10 * 60000, ahoraMs: ahora, ultimoEnvioMs: ahora - 1 * H });
+  check("si hace 1 h salió un seguimiento, el primero de la cadena nueva espera a cumplir las 5 h", Math.abs(calUltimo[0].cuando - (ahora + 4 * H)) < 1000 && calUltimo[0].espaciado, JSON.stringify(calUltimo));
+  const calDesde = calendarioDePasos(plan.slice(0, 3), { inicioMs: inicio, ultimoMs: ahora - 10 * 60000, ahoraMs: ahora, desdePaso: 1 });
+  check("con desdePaso 1, el primer paso se salta como «ya se mandó» y el segundo sale como primero", calDesde[0].salta && calDesde[0].motivo === "ya se mandó en este chat" && !calDesde[1].salta && Math.abs(calDesde[1].cuando - (ahora + 4 * H)) < 1000, JSON.stringify(calDesde));
   const calTope = calendarioDePasos(plan.slice(0, 2), { inicioMs: inicio, ultimoMs: ahora - 22 * H, ahoraMs: ahora });
   check("un texto que caería pasadas las 23 h del cliente se salta (el primero aún entra)", !calTope[0].salta && Math.abs(calTope[0].cuando - (ahora + 0.75 * H)) < 1000 && calTope[1].salta && calTope[1].motivo === "fuera de las 24 h del cliente", JSON.stringify(calTope));
   const calAdelanto = calendarioDePasos([{ horas: 5, body: "se adelanta" }], { inicioMs: inicio, ultimoMs: ahora - 20 * H, ahoraMs: ahora });
   check("el primer texto se adelanta al tope de 23 h en vez de saltarse", !calAdelanto[0].salta && calAdelanto[0].cuando === ahora - 20 * H + 23 * H);
+  const cal7 = calendarioDePasos([{ horas: 1, body: "texto" }, { horas: 2, body: "otro" }], { inicioMs: ahora - 166.5 * H, ultimoMs: ahora - 10 * 60000, ahoraMs: ahora });
+  check("un texto también se salta si pasa las 168 h del chat", !cal7[0].salta && cal7[1].salta && /7 días/.test(cal7[1].motivo), JSON.stringify(cal7));
 
   // 3. Brazo fijo por chat y reparto.
   const brazos = [...Array(2000)].map((_, i) => brazoPorHash(i + 1, 7, 0.5));
@@ -94,6 +103,19 @@ console.log("Planes de seguimiento con nombre");
   await programarPlanEnChat(db, brazoB.id, 7);
   const otra = pendientes(sq, brazoB.id);
   check("al reactivar, el chat sigue en su brazo y queda una sola cadena pendiente", otra.filter((x) => x.status === "pendiente").every((x) => x.plan_brazo === "B") && otra.filter((x) => x.status === "pendiente").length === 2 && otra.filter((x) => x.status === "cancelado").length === 2);
+  // Reanudar desde el paso que sigue (dueño, 2026-11-04): el paso 0 ya salió, el cliente respondió (cadena cancelada) y la
+  // vendedora manda otra vez una rápida con el mismo plan: la cadena sigue desde el paso 1, y respeta 5 h desde el que salió.
+  chat(sq, 80, { hace: 10 * 60000, creadoHace: 20 * H });
+  sq.prepare("INSERT INTO plan_asignaciones (plan_id, conversation_id, brazo) VALUES (7, 80, 'A')").run();
+  check("la rápida programa el chat 80 (brazo A)", (await programarSeguimientoDeRapida(db, 80, 901)) === null && pendientes(sq, 80)[0].plan_paso === 0);
+  sq.prepare("UPDATE scheduled_messages SET status = 'enviado', sent_at = ? WHERE conversation_id = 80 AND plan_paso = 0").run(sqlFecha(Date.now() - 2 * H));
+  await cancelarSeguimientosPendientes(db, 80);
+  check("el resto quedó cancelado al responder el cliente", pendientes(sq, 80).filter((x) => x.status === "pendiente").length === 0);
+  check("al mandar otra rápida con el mismo plan, sigue desde el paso 1", (await programarSeguimientoDeRapida(db, 80, 901)) === null);
+  const p80 = pendientes(sq, 80).filter((x) => x.status === "pendiente");
+  check("no se repite el paso 0; el primero pendiente es el paso 1 (+4 h, ya pasadas las 5 h del que salió)", p80.length > 0 && p80.every((x) => x.plan_paso >= 1) && p80[0].plan_paso === 1 && Math.abs(new Date(p80[0].send_at).getTime() - (Date.now() + 4 * H)) < 60000, JSON.stringify(p80.map((x) => [x.plan_paso, x.send_at])));
+  sq.prepare("UPDATE scheduled_messages SET status = 'enviado' WHERE conversation_id = 80").run();
+  check("si ya salieron todos los pasos, lo dice y no programa nada", /ya recibió todos/.test(await programarSeguimientoDeRapida(db, 80, 901) || ""));
   // La bienvenida con plan_interesados_id programa el plan y no la secuencia vieja.
   sq.prepare("INSERT INTO crm_settings (key, value) VALUES ('plan_interesados_id', '7')").run();
   chat(sq, 70, { hace: 60000, creadoHace: 60000 });

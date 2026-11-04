@@ -50,7 +50,7 @@ console.log("Cadena de seguimiento (plan universal, tope, día N, una sola caden
   let p = pendientes(sq, 10);
   check("salen 3 pasos (2 textos + plantilla día 3)", p.length === 3, JSON.stringify(p.map((x) => x.body || x.template_name)));
   check("el paso 2 sale ~21 h después (entra en las 23 h)", p[1] && Math.abs(horasDesdeAhora(p[1].send_at) - 21) < 0.2, p[1] && String(horasDesdeAhora(p[1].send_at)));
-  check("la plantilla cae en el día 3 del chat (72 h desde que empezó, +24 h desde ahora)", p[2]?.template_name === "rescate_lead_1" && Math.abs(horasDesdeAhora(p[2].send_at) - 24) < 0.2, p[2] && String(horasDesdeAhora(p[2].send_at)));
+  check("la plantilla del día 3 (72 h desde que empezó = +24 h) se corre a +26 h: mínimo de 5 h tras el paso 2 (dueño, 2026-11-04)", p[2]?.template_name === "rescate_lead_1" && Math.abs(horasDesdeAhora(p[2].send_at) - 26) < 0.2, p[2] && String(horasDesdeAhora(p[2].send_at)));
   check("el origen es el de la rápida (para la burbuja y la lista)", p.every((x) => x.created_by === "Seguimiento de respuesta rápida · Provincia Msj. 3"));
 
   // 2. Cliente que escribió hace 22 h: el paso 1 (+1 h) entra justo; el paso 2 ya no (ni adelantado), la plantilla sí.

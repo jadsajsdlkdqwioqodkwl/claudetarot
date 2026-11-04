@@ -275,8 +275,17 @@ export const PREFIJO_PLAN = "Plan de seguimiento";
 export const origenPlan = (nombre) => `${PREFIJO_PLAN} · ${nombre}`;
 /** Día del chat a partir del cual una plantilla ya no entra en los 7 días gratis del anuncio (se paga). */
 export const DIA_PAGADO = 7;
+/** Mínimo de horas entre un seguimiento y el siguiente (dueño, 2026-11-04); el ajuste `seguimiento_espacio_min_h` lo cambia. */
+export const ESPACIO_MINIMO_H = 5;
 const LIMA_MS = 5 * 3600 * 1000;
 const DIA_MS = 24 * 3600 * 1000;
+
+/** El mínimo entre seguimientos, en ms, según el ajuste (vacío = 5 h; 0 lo apaga). */
+export async function espacioMinimoMs(db) {
+  const v = await obtenerAjuste(db, "seguimiento_espacio_min_h").catch(() => null);
+  const h = v === null || v === "" ? ESPACIO_MINIMO_H : Number(v);
+  return (Number.isFinite(h) && h >= 0 && h <= 48 ? h : ESPACIO_MINIMO_H) * 3600 * 1000;
+}
 /** Medianoche de Lima (en ms UTC) del día en que cae `ms`. */
 export const medianocheLima = (ms) => Math.floor((ms - LIMA_MS) / DIA_MS) * DIA_MS + LIMA_MS;
 
@@ -486,30 +495,57 @@ export async function programarPlanEnChat(db, conversationId, planId, editados =
   return programarPasosEnChat(db, conversationId, pasos, origenPlan(p.nombre), { plan_id: p.id, brazo: p.brazo });
 }
 
-/** Cuándo saldría cada paso (ms UTC) para un chat que empezó en `inicioMs` y cuyo último mensaje del cliente fue `ultimoMs`,
- *  programando ahora. { cuando, salta, motivo, pagado } por paso: lo que usa programarPasosEnChat y la vista previa del plan. */
-export function calendarioDePasos(pasos, { inicioMs, ultimoMs, ahoraMs = Date.now() }) {
+/**
+ * Cuándo saldría cada paso (ms UTC) para un chat que empezó en `inicioMs` y cuyo último mensaje del cliente fue `ultimoMs`,
+ * programando ahora. { cuando, salta, motivo, pagado, espaciado, dia } por paso: lo que usa programarPasosEnChat y la vista
+ * previa del plan. Reglas que se aplican solas (dueño, 2026-11-04):
+ * · entre un seguimiento y el siguiente hay como mínimo `espacioMs` (5 h): un paso que caería antes se corre; cuenta también el
+ *   último seguimiento automático que YA salió en el chat (`ultimoEnvioMs`), para que al reactivar no salga uno al toque;
+ * · nada sale pasados los 7 días (en horas: 168 h) desde el primer mensaje del cliente, que es lo que Meta deja gratis;
+ * · `desdePaso`: los primeros N pasos ya se mandaron en este chat (la cadena se reanuda desde el que sigue, no desde cero).
+ */
+export function calendarioDePasos(pasos, { inicioMs, ultimoMs, ahoraMs = Date.now(), espacioMs = ESPACIO_MINIMO_H * 3600 * 1000, ultimoEnvioMs = null, desdePaso = 0 }) {
   const tope = ultimoMs + 23 * 3600 * 1000;
+  const tope7d = inicioMs + DIA_PAGADO * DIA_MS;
   const base = medianocheLima(inicioMs);
   let previo = ahoraMs;
-  return (pasos || []).map((p) => {
+  const piso = ultimoEnvioMs ? ultimoEnvioMs + espacioMs : 0; // antes de esto no sale el primero de la cadena
+  return (pasos || []).map((p, i) => {
     const esperaMs = (Number(p.horas) || HORAS_SEGUIMIENTO_RAPIDA) * 3600 * 1000;
     let cuando;
     if (Number.isInteger(p.dia) && p.hora) {
       const [hh, mm] = p.hora.split(":").map(Number);
       cuando = base + p.dia * DIA_MS + (hh * 60 + mm) * 60 * 1000;
     } else cuando = p.plantilla && p.desde === "inicio" ? inicioMs + esperaMs : previo + esperaMs;
-    const diaDelChat = Math.floor((cuando - base) / DIA_MS);
-    const out = { cuando, salta: false, motivo: null, pagado: Boolean(p.plantilla) && diaDelChat >= DIA_PAGADO, dia: diaDelChat };
+    const out = { cuando, salta: false, motivo: null, pagado: false, espaciado: false, dia: Math.floor((cuando - base) / DIA_MS) };
+    if (i < desdePaso) return { ...out, salta: true, motivo: "ya se mandó en este chat" };
+    if (cuando <= ahoraMs + 60 * 1000) return { ...out, salta: true, motivo: "ya pasó" }; // un «día N» que ya quedó atrás
+    // Mínimo entre seguimientos: desde el anterior de la cadena o, para el primero, desde el último que ya salió.
+    const minimo = previo === ahoraMs ? piso : previo + espacioMs;
+    if (cuando < minimo) { cuando = out.cuando = minimo; out.espaciado = true; out.dia = Math.floor((cuando - base) / DIA_MS); }
     if (!p.plantilla && cuando > tope) {
-      // El primer texto se adelanta al tope siempre; los siguientes solo si quedan 2 h con el anterior.
-      if (previo !== ahoraMs && tope - previo < 2 * 3600 * 1000) return { ...out, salta: true, motivo: "fuera de las 24 h del cliente" };
+      // Un texto que caería pasadas las 23 h del cliente se adelanta al tope si respeta el mínimo (y 2 h con el anterior); si no, se salta.
+      if (tope < minimo || (previo !== ahoraMs && tope - previo < 2 * 3600 * 1000)) return { ...out, salta: true, motivo: "fuera de las 24 h del cliente" };
       cuando = out.cuando = tope;
     }
+    if (cuando > tope7d) return { ...out, pagado: true, salta: true, motivo: "pasa los 7 días del chat (Meta ya cobraría)" };
     if (cuando <= ahoraMs + 60 * 1000) return { ...out, salta: true, motivo: "ya pasó" };
     previo = cuando;
     return out;
   });
+}
+
+/** Lo que ya salió de seguimientos automáticos en un chat: cuándo fue el último y hasta qué paso de `origen` se mandó. */
+async function historialDeSeguimientos(db, conversationId, origen) {
+  const auto = `(created_by = ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ?)`;
+  const binds = [ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SUGERENCIA}%`, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_PLAN}%`];
+  const r = await db.prepare(
+    `SELECT MAX(COALESCE(sent_at, send_at)) AS ultimo,
+            MAX(CASE WHEN created_by = ? THEN plan_paso END) AS paso
+     FROM scheduled_messages WHERE conversation_id = ? AND status = 'enviado' AND mandar_siempre = 0 AND batch_id IS NULL AND ${auto}`
+  ).bind(origen, conversationId, ...binds).first().catch(() => null);
+  const aMs = (t) => (t ? new Date(String(t).replace(" ", "T").replace(/Z?$/, "Z")).getTime() : null);
+  return { ultimoEnvioMs: aMs(r?.ultimo) || null, desdePaso: Number.isInteger(r?.paso) ? r.paso + 1 : 0 };
 }
 
 /**
@@ -532,11 +568,14 @@ export async function programarPasosEnChat(db, conversationId, pasos, origen, me
   if (!conv.last_inbound_at) return "El cliente todavía no escribió.";
   if (conv.etapa >= 5 || /\bpurchase\b/.test(conv.meta_tags || "")) return "Ya compró: no se le manda un «si no responde».";
   const aMs = (t) => new Date(String(t).replace(" ", "T") + "Z").getTime();
-  const calendario = calendarioDePasos(pasos, { inicioMs: aMs(conv.created_at), ultimoMs: aMs(conv.last_inbound_at), ahoraMs: Date.now() });
+  // Mínimo entre seguimientos y reanudar desde el paso que sigue (dueño, 2026-11-04): ver calendarioDePasos.
+  const [espacioMs, historial] = await Promise.all([espacioMinimoMs(db), historialDeSeguimientos(db, conversationId, origen)]);
+  const calendario = calendarioDePasos(pasos, { inicioMs: aMs(conv.created_at), ultimoMs: aMs(conv.last_inbound_at), ahoraMs: Date.now(), espacioMs, ...historial });
   const inserts = [];
-  // plan_id / plan_brazo / plan_paso (migración 0073): de qué plan, brazo y paso salió cada mensaje, para medir.
-  const planCols = meta.plan_id ? ", plan_id, plan_brazo, plan_paso" : "";
-  const planVals = (i) => meta.plan_id ? [meta.plan_id, meta.brazo || "A", i] : [];
+  // plan_id / plan_brazo / plan_paso (migración 0073): de qué plan, brazo y paso salió cada mensaje, para medir y para
+  // reanudar desde el paso que sigue (plan_paso se guarda siempre, también para los pasos propios de una rápida).
+  const planCols = meta.plan_id ? ", plan_id, plan_brazo, plan_paso" : ", plan_paso";
+  const planVals = (i) => meta.plan_id ? [meta.plan_id, meta.brazo || "A", i] : [i];
   pasos.forEach((p, i) => {
     const c = calendario[i];
     if (c.salta) return;
@@ -554,7 +593,12 @@ export async function programarPasosEnChat(db, conversationId, pasos, origen, me
           !p.media_key && Array.isArray(p.botones) && p.botones.length ? JSON.stringify(p.botones.slice(0, 3)) : null, ...planVals(i))
     );
   });
-  if (!inserts.length) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle texto (solo una plantilla).";
+  if (!inserts.length) {
+    const motivos = [...new Set(calendario.map((c) => c.motivo).filter(Boolean))];
+    if (motivos.length === 1 && motivos[0] === "ya se mandó en este chat") return "Este chat ya recibió todos los pasos de este seguimiento.";
+    if (motivos.every((m) => m === "fuera de las 24 h del cliente" || m === "ya pasó")) return "Pasaron más de 23 h desde el último mensaje del cliente: WhatsApp ya no deja mandarle texto (solo una plantilla).";
+    return `No queda nada por programar: ${motivos.join("; ")}.`;
+  }
   await cancelarSeguimientosDeLead(db, conversationId);
   await db.batch(inserts);
   return null;

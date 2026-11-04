@@ -778,7 +778,10 @@
 <div class="modal-fondo" id="modal-planes-fondo">
   <div class="modal modal-ancho modal-planes">
     <h2>Planes de seguimiento</h2>
-    <p class="ayuda-modal">Un plan es la cadena que sale sola si el cliente no responde: textos el primer día (dentro de las 24 h), plantillas aprobadas los días siguientes («día N a las HH:MM», hora de Lima, contado desde el primer mensaje del cliente). Solo el cliente corta la cadena. Una plantilla del día 7 en adelante ya no entra en la semana gratis del anuncio: se paga.</p>
+    <p class="ayuda-modal">Un plan es la cadena que sale sola si el cliente no responde: textos el primer día (dentro de las 24 h), plantillas aprobadas los días siguientes («día N a las HH:MM», hora de Lima, contado desde el primer mensaje del cliente). Solo el cliente corta la cadena. Reglas que se aplican solas: nada sale pasados los 7 días (168 h) desde el primer mensaje del cliente (Meta ya lo cobraría); entre un seguimiento y el siguiente hay un mínimo de horas (abajo), contando el último que ya salió; y si una rápida vuelve a activar el mismo plan en un chat que ya recibió sus primeros pasos, sigue desde el que falta, no desde cero.</p>
+    <div class="leads-fila leads-fila-delay" style="margin-bottom:8px">
+      <span>Mínimo entre seguimientos:</span><input type="number" id="planes-espacio" min="0" max="48" step="0.5" value="5" title="Un paso que caería antes de este mínimo se corre; 0 lo apaga" /><span>horas (vacío = 5)</span>
+    </div>
     <div id="planes-lista"></div>
     <div class="leads-fila" style="margin-top:8px">
       <input type="text" id="planes-nuevo-nombre" placeholder="Nombre del plan nuevo (ej. LIMA · Sin ubicación)" style="flex:1;margin:0" />

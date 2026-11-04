@@ -1501,3 +1501,22 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **Plan 2 «Interesado · semana gratis»** pasa a 8 pasos: 3 textos del día 0 + plantillas día 1 (19:30), 2 (12:30), 3 (20:00), 4 (10:30), 5 (19:00). Solo lo usa 2T·1; la bienvenida sigue con la secuencia vieja hasta que el dueño apruebe.
 - **Prueba de precio:** rápidas 121 «Precio 99 · con bonos (prueba)» y 122 «Precio 99 provincia · con bonos (prueba)» (copias de 15 y 19 con S/99 y los bonos) y experimento 2 «Precio S/99 con bonos (25 % de los chats)» en pausa, segmento general, `solo_testers` 0, reparto 0,25, brazo A [15,19], brazo B [121,122]. Reusa la arquitectura de experimentos: en los chats del brazo B las vendedoras ven arriba las rápidas de S/99.
 - Documento para el dueño: artefacto «Kit mapeado y ofertas» (kit pieza por pieza, 3 ofertas S/79 · S/89 · S/99, secuencia, recursos que faltan, 5 preguntas).
+
+
+## 2026-11-04 — Reglas automáticas de los seguimientos (5 h mínimo, 168 h tope, reanudar), plan «Interesado» en la bienvenida, selector de planes arreglado
+- **Bug del selector de planes** (editor de rápidas, «Plan: [selector]» solo con «Universal»): `GET /api/crm/settings` fallaba porque el
+  `Promise.all` de `settings.js` destructuraba en otro orden que las promesas (`planes` recibía un texto). Arreglado; el selector
+  vuelve a listar todos los planes.
+- **`calendarioDePasos` (crm-db.js) aplica solo:** (1) mínimo entre seguimientos (`ESPACIO_MINIMO_H` 5; ajuste
+  `seguimiento_espacio_min_h`, editable en Herramientas → Planes de seguimiento; 0 lo apaga), contando el último automático que
+  ya salió en el chat (`historialDeSeguimientos`); (2) tope de 168 h desde `conversations.created_at` (`DIA_PAGADO` × 24): un
+  paso que pase se salta «pasa los 7 días del chat»; (3) `desdePaso`: los pasos ya enviados en ese chat con el mismo origen
+  (`created_by` + `plan_paso`) se saltan «ya se mandó en este chat». `programarPasosEnChat` guarda `plan_paso` siempre
+  (antes solo con plan con nombre). Mensaje nuevo cuando no queda nada: «Este chat ya recibió todos los pasos…».
+- `PATCH /api/crm/planes-seguimiento { espacio_min_h }` (sin id) guarda el ajuste; el GET devuelve `espacio_min_h` y la
+  línea de tiempo marca `espaciado` («corrido») y «no sale» (antes «se paga»).
+- **Datos:** `plan_interesados_id` = 2 («Interesado · semana gratis»: la bienvenida lo programa en vez de la secuencia vieja,
+  pedido del dueño 4/11). El plan 4, copia idéntica del 2 creada con «Duplicar» a las 01:42, se apagó y se renombró
+  «… (copia, apagada 4/11)» (los planes no se borran).
+- Pruebas: `scripts/test-planes.mjs` (espaciado, 0 h, último envío, desdePaso, 168 h, reanudar en base real) y
+  `test-seguimientos-cadena.mjs` (la plantilla del día 3 se corre a 5 h del paso 2). Detalle en `docs/seguimientos.md` (reglas 9–12).

@@ -1,7 +1,7 @@
 # Seguimientos («si no responde») — cómo funcionan HOY (registro práctico)
 
 > Estado ACTUAL. Se reescribe cuando cambia algo; la historia está en `docs/MAPA.md`.
-> Última revisión: 2026-11-03 (planes con nombre, «día N a las HH:MM», versión B, horario 06:30–23:30).
+> Última revisión: 2026-11-04 (mínimo de 5 h entre seguimientos, tope de 7 días en horas, reanudar desde el paso que sigue).
 
 ## Las reglas (del dueño, 2026-11-01)
 1. **Solo el cliente corta la cadena.** Cuando el cliente escribe, el webhook cancela los seguimientos
@@ -24,6 +24,22 @@
 8. Horario de envío 06:30–23:30 (Lima; `HORARIO_ENVIO`). Lo que cae de noche se corre a las 06:30
    si la ventana sigue abierta; si no, a las 23:29; las plantillas siempre a las 06:30.
 7. A quien ya compró (etapa 5 / etiqueta purchase) no se le programa ni se le manda.
+
+## Las reglas que se aplican solas (del dueño, 2026-11-04) — `calendarioDePasos` en `src/lib/crm-db.js`
+9. **Mínimo entre seguimientos: 5 h** (ajuste `seguimiento_espacio_min_h`, se cambia en Herramientas → Planes de
+   seguimiento, «Mínimo entre seguimientos»; vacío = 5, 0 lo apaga). Un paso que caería antes se corre hasta cumplirlo
+   (en la línea de tiempo del plan sale «corrido»). Cuenta también el **último seguimiento automático que ya salió** en
+   ese chat: si hace 1 h salió uno y la vendedora manda una rápida con plan, el primer paso de la cadena nueva espera
+   las 4 h que faltan. Un texto que por el corrimiento se pase de las 23 h del cliente se salta.
+10. **Tope de 7 días en horas (168 h) desde el primer mensaje del cliente:** nada sale después (texto ni plantilla),
+    porque Meta ya lo cobraría. En la línea de tiempo sale «no sale». (`DIA_PAGADO = 7`.)
+11. **Reanudar desde el paso que sigue, no desde cero.** Cada paso programado guarda su número (`plan_paso`, también
+    los pasos propios de una rápida). Si el paso 1 ya salió, el cliente respondió (cadena cancelada) y después la
+    vendedora manda otra rápida con **el mismo plan** (o la misma rápida), la cadena sigue desde el paso 2; si ya
+    salieron todos, lo dice («Este chat ya recibió todos los pasos de este seguimiento»). Otro plan arranca desde su
+    paso 1 (respetando el mínimo de 5 h desde lo último que salió).
+12. La bienvenida de anuncios programa el plan 2 «Interesado · semana gratis» (`plan_interesados_id = 2`, desde el
+    4/11) en vez de la secuencia de interesados vieja.
 
 ## Los planes con nombre (desde el 2026-11-03)
 - Tabla `planes_seguimiento`: cada plan tiene nombre, segmento (general, Lima o provincia), hasta 10 pasos

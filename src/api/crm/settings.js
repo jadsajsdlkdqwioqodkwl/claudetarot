@@ -43,7 +43,9 @@ async function get({ env }) {
     obtenerAjuste(env.CRM_DB, "yape_numero")
   ]);
   // El plan universal de seguimiento y cuántas respuestas rápidas lo usan / tienen seguimiento propio.
-  const [seguimientoUniversal, rapidas, planes, planInteresados] = await Promise.all([
+  // OJO: el orden de esta lista es el de las promesas de abajo (el 3/11 estaba cruzado y el GET fallaba: el selector de
+  // planes del editor de rápidas se quedaba solo con «Universal»).
+  const [seguimientoUniversal, planes, planInteresados, rapidas] = await Promise.all([
     pasosUniversales(env.CRM_DB),
     env.CRM_DB.prepare("SELECT id, nombre, segmento, activo, pasos, (SELECT json_group_array(title) FROM quick_replies q WHERE q.followup_plan_id = p.id OR (p.id = 1 AND q.followup_universal = 1 AND q.followup_plan_id IS NULL)) AS rapidas FROM planes_seguimiento p ORDER BY activo DESC, id").all()
       .then((r) => (r.results || []).map((p) => { let pasos = [], rapidas = []; try { pasos = normalizarPasosSeguimiento(JSON.parse(p.pasos || "[]")); } catch { pasos = []; } try { rapidas = JSON.parse(p.rapidas || "[]"); } catch { rapidas = []; } return { id: p.id, nombre: p.nombre, segmento: p.segmento, activo: p.activo !== 0, pasos, rapidas, interesados: false }; })).catch(() => []),
