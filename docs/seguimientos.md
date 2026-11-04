@@ -46,6 +46,16 @@
     paso 1 (respetando el mínimo de 5 h desde lo último que salió).
 12. La bienvenida de anuncios programa el plan 2 «Interesado · semana gratis» (`plan_interesados_id = 2`, desde el
     4/11) en vez de la secuencia de interesados vieja.
+14. **Al marcar compra muere la cadena de venta** (dueño, 2026-11-04): `agregarEtiquetaMeta(purchase)` (botón de compra /
+    CAPI) y el embudo al detectar etapa 5 llaman `cancelarSeguimientosDeLead`; el cron además cancela cualquier paso
+    automático de venta (texto o plantilla) de quien ya compró. El cobro y el recojo de Shalom (planes con plantilla,
+    saldo) no son automáticos de venta: siguen. En Lima no hay nada más, así que ahí muere todo.
+15. **Toque del día 7 a clientes = venta cruzada con catálogo** (`toques.js` `post7`, plantilla `toque_post7`, mandada a
+    Meta el 4/11): plantilla de catálogo de Meta (botón CATALOG; Meta obliga al texto fijo «View catalog», el cliente lo ve
+    como «Ver catálogo»). Al mandarla va la foto de un producto del catálogo (`parametrosBotonCatalogo`). Sale a todo el
+    que compró (Lima o provincia) 7 días después de la compra, con las reglas de los toques: 1 de cada 5 chats es grupo de
+    control, tope `TOQUES_MAX_DIA` por día, no sale si tiene algo pendiente (por ejemplo el recojo de Shalom) ni si
+    alguien le escribió en las últimas 20 h.
 13. **Campaña a chats antiguos** (`POST /api/asesor/programar-plan`, clave del asesor, solo cuando el dueño lo pide
     por escrito): programa un plan a los chats de entre N y M días sin compra, «desde hoy» (`meta.inicioMs`: el día 1
     del plan es mañana; se reparte en 3 días de arranque por id) y sin el tope de 168 h (`meta.sinTope7d`). Los textos

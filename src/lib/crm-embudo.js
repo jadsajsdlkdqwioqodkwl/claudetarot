@@ -14,6 +14,8 @@
  * después de esta versión?) y para el resumen semanal.
  */
 
+import { cancelarSeguimientosDeLead } from "./crm-db.js";
+
 export const RE_AUTO = /autom[aá]tic|masivo|carrito|prueba de bienvenida/i;
 export const RE_SALUDO = /^¡?hola!? me gustar[ií]a m[aá]s informaci[oó]n\.?$/i;
 const RE_DESTINO = /lima|provincia|para (lima|provincia)|le podemos enviar mediante|para .{3,25} le podemos hacer envio/i;
@@ -65,10 +67,14 @@ export async function actualizarEtapas(env) {
   const porConv = {};
   for (const m of mensajes) (porConv[m.conversation_id] ||= []).push(m);
 
+  const compraron = [];
   await env.CRM_DB.batch(convs.map((c) => {
     const nueva = Math.max(calcularEtapa(porConv[c.id] || [], c.meta_tags), c.etapa || 0);
+    if (nueva >= 5 && (c.etapa || 0) < 5) compraron.push(c.id);
     return nueva > (c.etapa || 0)
       ? env.CRM_DB.prepare("UPDATE conversations SET etapa = ?, etapa_at = datetime('now'), etapa_revisada_at = datetime('now') WHERE id = ?").bind(nueva, c.id)
       : env.CRM_DB.prepare("UPDATE conversations SET etapa_revisada_at = datetime('now') WHERE id = ?").bind(c.id);
   }));
+  // Compra detectada: muere la cadena de seguimiento de venta (dueño, 2026-11-04); el cobro/recojo de Shalom sigue.
+  for (const id of compraron) await cancelarSeguimientosDeLead(env.CRM_DB, id).catch(() => {});
 }

@@ -33,6 +33,7 @@ import { listarLineas, envDeLinea } from "./lineas.js";
 import { marcaDeLinea } from "./planes-plantilla.js";
 import { enSilencio } from "./horario.js";
 import { destinosDeChats } from "./crm-destino.js";
+import { parametrosBotonCatalogo } from "./catalogo-boton.js";
 import { registrarMensajeSaliente, obtenerAjuste, guardarAjuste } from "./crm-db.js";
 
 export const ORIGEN_TOQUE = "Toque automático";
@@ -91,11 +92,14 @@ export const TOQUES = {
       botones("Sí, separarlo", "Cerrar consulta")
     ]
   },
+  // Día 7 tras la compra (dueño, 2026-11-04): venta cruzada con el catálogo. Plantilla de catálogo de Meta: el botón
+  // «Ver catálogo» abre el catálogo del número y la cabecera lleva la foto de un producto (parametrosBotonCatalogo).
+  // Antes era «le mando una tirada de 3 cartas» (toque_post7 nunca se mandó a Meta, así que no hay plantilla aprobada vieja).
   post7: {
-    tipo: "cliente", dias: 7,
+    tipo: "cliente", dias: 7, catalogo: true,
     general: [
-      cuerpo("Hola {{1}} ☺️ ¿qué tal le va con su kit? Si gusta le mando una tirada sencilla de 3 cartas para practicar esta semana ✨"),
-      botones("Sí, mándemela", "Todo bien, gracias")
+      cuerpo("Hola {{1}} ☺️ ¿cómo le va con su kit? Le dejamos nuestro catálogo con los mazos nuevos y los accesorios para seguir practicando ✨ Si algo le gusta, me avisa por aquí y se lo enviamos con envío gratis 🩷"),
+      { type: "BUTTONS", buttons: [{ type: "CATALOG", text: "View catalog" }] } // Meta exige ese texto fijo; el cliente lo ve en su idioma («Ver catálogo»)
     ]
   },
   post14: {
@@ -307,7 +311,9 @@ export async function procesarToques(env) {
       cupo--;
       try {
         const params = aprobada.conNombre ? [primerNombre(c.nombre)] : [];
-        const waMessageId = await mandarConEscribiendo(envM, c.id, (e) => enviarTemplate(e, c.wa_id, nombre, aprobada.idioma, params));
+        // Plantilla de catálogo: el botón lleva la foto de un producto del catálogo de ese número.
+        const botonesParams = aprobada.conCatalogo ? await parametrosBotonCatalogo(envM).catch(() => undefined) : undefined;
+        const waMessageId = await mandarConEscribiendo(envM, c.id, (e) => enviarTemplate(e, c.wa_id, nombre, aprobada.idioma, params, botonesParams));
         const texto = def[variante][0].text.replace("{{1}}", params[0] || "");
         await registrarMensajeSaliente(db, c.id, { waMessageId, type: "template", body: `Plantilla: ${nombre} · ${texto}`, sentBy: ORIGEN_TOQUE }, { subirEnBandeja: false });
         await db.prepare("UPDATE toques SET estado = 'enviada' WHERE conversation_id = ? AND toque = ?").bind(c.id, id).run();

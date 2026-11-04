@@ -170,7 +170,9 @@ export function propuestasDe(marca, cambios = {}) {
     p.texto = c.texto;
     p.botones = c.botones;
     if (c.copyCode !== undefined) p.copyCode = c.copyCode;
-    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
+    // Una plantilla de catálogo (botón CATALOG) conserva ese botón aunque el admin edite el texto.
+    const btnCatalogo = (p.componentes || []).find((x) => String(x.type).toUpperCase() === "BUTTONS" && (x.buttons || []).some((b) => String(b.type).toUpperCase() === "CATALOG"));
+    p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(btnCatalogo ? [btnCatalogo] : p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
   const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Seguimiento 7 días (planes con nombre)", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];

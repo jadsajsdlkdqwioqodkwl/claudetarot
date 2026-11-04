@@ -1540,3 +1540,21 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   «Plan de seguimiento · Interesado · semana gratis», plan_id 2, brazo A. Salen solo las plantillas (seg7_primera_lectura,
   seg_d2_miedo_principiante, seg_d4_envios_hoy, rescate_lead_2, seg_d5_ultimo_bono); las que Meta aún no aprobó esperan
   (reintento 30 min, hasta 3 días). Meta cobra estas plantillas (fuera de la semana gratis): pedido explícito del dueño.
+
+
+## 2026-11-04 (madrugada, 2) — Compra corta la cadena de venta, fuera «agendé seguimiento», toque del día 7 a clientes con catálogo
+- **Las 10 plantillas del 3/11** (`bono_clases_libros`, `seg_d1`…`seg_d5`, `seg7_*`) ya están APPROVED en Meta: el envío del bono
+  a los 583 chats y la campaña a los 2 904 chats antiguos salen solos desde hoy.
+- **«agendé seguimiento» se quitó** (pedido del dueño 4/11): los chats con compra muestran el mismo «Falta respuesta · Atendido»
+  y «Recomendación · Atendido» que los demás (`app.js`, lista de chats). El seguimiento está siempre activo y solo se detiene
+  con el botón.
+- **Marcar compra mata el seguimiento de 7 días:** `agregarEtiquetaMeta("purchase")` (crm-db.js) y `actualizarEtapas` (crm-embudo.js,
+  etapa 5 detectada) llaman `cancelarSeguimientosDeLead`; el cron (crm-cron.js) cancela cualquier automático de venta
+  (también plantillas) de quien ya compró, antes solo los textos. Los planes con plantilla de Shalom (recojo, saldo) siguen.
+  Prueba en `test-planes.mjs`.
+- **Toque `post7` (clientes, día 7 tras la compra) pasa a ser la venta cruzada con catálogo:** plantilla de catálogo de Meta
+  (botón CATALOG, texto obligatorio «View catalog»), texto nuevo en `toques.js`; `toque_post7` enviada a revisión el 4/11
+  (antes nunca se había mandado). Soporte nuevo: `plantillaAprobada` guarda `conCatalogo` (7.º campo del caché, los viejos se
+  releen una vez); `parametrosBotonCatalogo` (catalogo-boton.js) arma el botón con la foto de un producto; lo usan `toques.js`
+  y el cron de `scheduled_messages`; el banco conserva el botón CATALOG si el admin edita el texto. Con esto cualquier plan o
+  envío masivo puede usar una plantilla de catálogo.

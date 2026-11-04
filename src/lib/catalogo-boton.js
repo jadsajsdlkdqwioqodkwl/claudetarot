@@ -25,3 +25,19 @@ export async function mandarCatalogoPorBoton(env, conversationId, waId) {
   await registrarMensajeSaliente(env.CRM_DB, conversationId, { waMessageId, type: "catalog", body: "[Catálogo enviado]", sentBy: "Automático (botón Ver catálogo)" });
   return true;
 }
+
+/**
+ * Componente de botón para MANDAR una plantilla de catálogo de Meta (botón CATALOG): la cabecera del mensaje lleva la
+ * foto del producto indicado; si no se encuentra ninguno, va sin parámetros y Meta usa el primer producto del catálogo.
+ * Docs: developers.facebook.com → WhatsApp → Catalog templates → Sending catalog template messages.
+ */
+export async function parametrosBotonCatalogo(env) {
+  let retailerId = null;
+  if (env.WHATSAPP_CATALOG_ID) {
+    try {
+      const productos = await listarProductosCatalogo(env, env.WHATSAPP_CATALOG_ID);
+      retailerId = (productos.find((p) => p.image_url && (!p.availability || p.availability === "in stock")) || productos[0])?.retailer_id || null;
+    } catch { /* sin portada elegida */ }
+  }
+  return [{ type: "button", sub_type: "CATALOG", index: 0, ...(retailerId ? { parameters: [{ type: "action", action: { thumbnail_product_retailer_id: String(retailerId) } }] } : {}) }];
+}

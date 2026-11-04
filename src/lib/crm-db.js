@@ -788,10 +788,13 @@ export async function registrarEventoCapi(db, { conversationId, orderId = null, 
 
 /** Suma una etiqueta (contact / lead / purchase) al chat, sin repetirla. */
 export async function agregarEtiquetaMeta(db, conversationId, etiqueta) {
-  // Al marcar compra ya no se le rescata: se borra el rescate del día 7 pendiente (y el del asesor).
+  // Al marcar compra ya no se le rescata: se borra el rescate del día 7 pendiente (y el del asesor), y muere la cadena de
+  // seguimiento de venta (plan con nombre, pasos de rápida, secuencia de leads, anuncio; dueño 2026-11-04). El cobro y el
+  // recojo de Shalom (planes con plantilla, saldo) no son automáticos de venta: siguen.
   if (etiqueta === "purchase") {
     await db.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND (template_name LIKE '%rescate_lead_%' OR created_by LIKE '%Automático (día 7)')")
       .bind(conversationId).run();
+    await cancelarSeguimientosDeLead(db, conversationId);
   }
   await db
     .prepare(

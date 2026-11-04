@@ -128,6 +128,13 @@ console.log("Planes de seguimiento con nombre");
   const m90 = await (await import(join(root, "src/lib/crm-db.js"))).programarPasosEnChat(db, 90, plan.slice(0, 5), "Plan de seguimiento · PROV · Sin adelanto", { plan_id: 7, brazo: "A", inicioMs: inicio90, sinTope7d: true });
   const p90 = pendientes(sq, 90);
   check("a un chat de hace 40 días se le programan solo las plantillas, contadas desde mañana", m90 === null && p90.length === 3 && p90.every((x) => x.template_name) && new Date(p90[0].send_at).getTime() === medianocheLima(inicio90) + 2 * DIA + 20 * H, `${m90} ${JSON.stringify(p90.map((x) => [x.template_name, x.send_at]))}`);
+  // Al marcar compra muere la cadena de venta (dueño 4/11); el recojo de Shalom (plan con plantilla) sigue.
+  chat(sq, 95, { hace: 10 * 60000, creadoHace: 2 * H });
+  await programarSeguimientoDeRapida(db, 95, 901);
+  sq.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, status, template_name) VALUES (95, 'Plantilla: shalom', ?, 'Plan con plantilla · Recojo en Shalom', 'pendiente', 'shalom_recojo_1')").run(new Date(Date.now() + 3 * DIA).toISOString());
+  await (await import(join(root, "src/lib/crm-db.js"))).agregarEtiquetaMeta(db, 95, "purchase");
+  const p95 = pendientes(sq, 95);
+  check("marcar compra cancela los pasos del plan y deja el recojo de Shalom", p95.filter((x) => x.plan_paso !== null).every((x) => x.status === "cancelado") && p95.find((x) => x.template_name === "shalom_recojo_1")?.status === "pendiente", JSON.stringify(p95.map((x) => [x.body, x.status])));
   // La bienvenida con plan_interesados_id programa el plan y no la secuencia vieja.
   sq.prepare("INSERT INTO crm_settings (key, value) VALUES ('plan_interesados_id', '7')").run();
   chat(sq, 70, { hace: 60000, creadoHace: 60000 });

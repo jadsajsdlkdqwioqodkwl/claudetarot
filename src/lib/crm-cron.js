@@ -13,6 +13,7 @@
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
 import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
+import { parametrosBotonCatalogo } from "./catalogo-boton.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
 import { ajustarAlHorario } from "./horario.js";
@@ -165,6 +166,9 @@ export async function procesarSeguimientosVencidos(env) {
           continue;
         }
       }
+      // A quien ya compró no le sale ningún paso automático de venta, tampoco una plantilla (dueño, 2026-11-04: al marcar
+      // compra muere el seguimiento de 7 días; el cobro/recojo de Shalom no es automático de venta y sigue).
+      if (!s.batch_id && !s.mandar_siempre && esOrigenAutomatico(s.created_by) && (s.etapa >= 5 || /\bpurchase\b/.test(s.meta_tags || ""))) { await cancelar(s.id); continue; }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);
@@ -230,6 +234,7 @@ export async function procesarSeguimientosVencidos(env) {
           const yapeNum = await obtenerAjuste(env.CRM_DB, "yape_numero").catch(() => null);
           if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
         }
+        if (aprobada.conCatalogo) botonesParams.push(...(await parametrosBotonCatalogo(envChat).catch(() => [])));
         const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros, botonesParams.length ? botonesParams : undefined));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,
