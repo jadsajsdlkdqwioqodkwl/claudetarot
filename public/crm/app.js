@@ -4610,7 +4610,7 @@ function pintarBarraSeguimiento(d) {
   if (d.activo) {
     // Desde el 4/11 (dueño) la cadena sigue aunque el cliente o la vendedora hablen: solo la corta este botón (o el de la lista).
     barra.innerHTML = r7 + `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está en marcha y sigue aunque el cliente o tú escriban. Solo se detiene con este botón (o con el de la lista de chats)">
-      <span class="seg-punto"></span> <span>Seguimiento en marcha · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))} · sigue aunque el cliente escriba</span><span class="seg-barra-accion seg-detener">${icon("close")} Detener</span></button>`;
+      ${icon("checkBox")} <span>Seguimiento en marcha · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))} · sigue aunque el cliente escriba</span><span class="seg-barra-accion seg-detener">${icon("close")} Detener</span></button>`;
     $("#seg-barra-btn").addEventListener("click", async () => {
       if (!confirm(`¿Detener el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca). Lo puedes reactivar después desde esta misma barra.`)) return;
       try {
