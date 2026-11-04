@@ -287,12 +287,12 @@ async function despacharBoletasPendientesVentana(env, db, conversationId, waId) 
     return;
   }
 
-  await mandarMediaPorId(env, conversationId, waId, boleta.media_id, boleta.media_mime || "image/jpeg", "asesor-boletas-auto");
+  await mandarMediaPorId(env, conversationId, waId, boleta.media_id, boleta.media_mime || "image/jpeg", "asesor-boletas-auto", { subirEnBandeja: false });
   if (caja?.media_id) {
-    await mandarMediaPorId(env, conversationId, waId, caja.media_id, caja.media_mime || "image/jpeg", "asesor-boletas-auto");
+    await mandarMediaPorId(env, conversationId, waId, caja.media_id, caja.media_mime || "image/jpeg", "asesor-boletas-auto", { subirEnBandeja: false });
   }
   await pausaEnvio(env, conversationId);
-  await mandarTexto(env, conversationId, waId, boleta.mensaje_texto, "asesor-boletas-auto");
+  await mandarTexto(env, conversationId, waId, boleta.mensaje_texto, "asesor-boletas-auto", undefined, { subirEnBandeja: false });
   for (const item of items) {
     await db.prepare("UPDATE boletas_staging SET status = 'enviado' WHERE id = ?").bind(item.id).run();
   }

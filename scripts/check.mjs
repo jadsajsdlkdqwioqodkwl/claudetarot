@@ -1073,6 +1073,20 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("seguimiento aprobado del asesor y texto de Shalom no reflotan el chat",
     /undefined, \{ subirEnBandeja: false \}, botones\)/.test(readFileSync(join(root, "src/api/crm/sugerencias.js"), "utf8")) &&
     /quien, undefined, \{ subirEnBandeja: false \}\)/.test(readFileSync(join(root, "src/api/crm/shalom.js"), "utf8")));
+  {
+    // Dueño, 2026-11-04: las boletas (Routine y envío automático al abrirse la ventana) no reflotan el chat.
+    const mandar = readFileSync(join(root, "src/api/asesor-mandar.js"), "utf8");
+    const hook = readFileSync(join(root, "src/api/whatsapp-webhook.js"), "utf8");
+    const envios = (src, quien) => src.split("\n").filter((l) => /mandar(Texto|MediaPorId)\(/.test(l) && l.includes(`"${quien}"`));
+    check("boletas y tracking no reflotan el chat (solo sube cuando el cliente escribe)",
+      envios(mandar, "asesor-boletas").length >= 4 && envios(mandar, "asesor-boletas").every((l) => /SIN_SUBIR/.test(l)) &&
+      envios(hook, "asesor-boletas-auto").length >= 3 && envios(hook, "asesor-boletas-auto").every((l) => /subirEnBandeja: false/.test(l)) &&
+      /sentBy, opciones = \{\}\)/.test(readFileSync(join(root, "src/lib/crm-send.js"), "utf8")));
+    // Los automáticos no cierran las recomendaciones del asesor (se cerraban antes de que nadie las viera).
+    const sug = readFileSync(join(root, "src/lib/crm-sugerencias.js"), "utf8");
+    check("solo una persona del equipo cierra una recomendación del asesor (los automáticos no)",
+      (sug.match(/\$\{ESCRITO_POR_PERSONA\("m"\)\}/g) || []).length >= 2);
+  }
 }
 
 /* Landing del Cable con Soporte 2 en 1 (/cable/): precios, archivos y enganches.

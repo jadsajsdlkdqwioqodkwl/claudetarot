@@ -361,3 +361,13 @@ El asesor revisa los chats PASADOS, fuera de esa ventana
 reales de comprar (preguntó precio, dio distrito/ciudad, pidió datos de envío,
 dijo "luego", duda sin resolver); NO a quien quería otra cosa, no era cliente,
 pidió que no lo escriban o ya compró. Tope 15 por envío y 30 por día.
+
+## Posibles ventas del reporte (2026-11-04)
+
+`preparar.py api` lee siempre, y pone primero, los chats que el reporte «Pedidos y ventas» dejó en POR VERIFICAR o
+INTENCIÓN (registro de pedidos de ayer, hoy y mañana) y que no quedaron confirmados, aunque no tengan movimiento en las
+`--activos-horas`. Abren con «⭐ POSIBLE VENTA en el reporte de ventas (…)»: a cada uno proponle su seguimiento en
+`mensajes` (diagnostica qué lo frena en `objecion`; plantilla si su ventana de 24 h ya cerró), salvo que el chat muestre
+que ya compró o que no hay venta posible (dilo en el `motivo`). Las recomendaciones ya no las cierran los envíos
+automáticos: solo una persona del equipo que le escribe al cliente (`crm-sugerencias.js`).
+

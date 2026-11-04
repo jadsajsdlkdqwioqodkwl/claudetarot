@@ -22,6 +22,12 @@ promesas como el collar extra; solo la bienvenida se resume en una línea.
 Ningún mensaje del equipo se corta. Cada chat abre con "📦 PROMETIDO" si en
 los últimos 21 días se le prometió algo más que 1 kit normal (promesas.py),
 aunque haya sido antes de la ventana que se lee.
+
+Posibles ventas (dueño, 2026-11-04): con "api", los chats que el reporte «Pedidos
+y ventas» dejó en POR VERIFICAR o INTENCIÓN (fechas de despacho de ayer, hoy y
+mañana) y que no quedaron confirmados se leen SIEMPRE, aunque no tengan
+movimiento en las últimas --activos-horas, van primero y abren con
+"⭐ POSIBLE VENTA": el asesor les propone su seguimiento en ✨ Sugerencias.
 """
 import argparse, datetime as dt, json, os, re, sys, urllib.error, urllib.request
 from collections import OrderedDict
@@ -41,6 +47,36 @@ RE_BIENVENIDA = re.compile(r"bienvenida", re.I)
 # Nada del equipo se corta: una promesa al final de un mensaje largo es la que
 # más se pierde. (El Worker ya corta a 2000.)
 MAX_CLIENTE, MAX_EQUIPO, MAX_ARCHIVO = 2000, 2000, 60000
+
+
+POSIBLES = ("POR_CONFIRMAR", "INTENCION")
+
+
+def posibles_ventas(hoy):
+    """{9 dígitos: "ESTADO · nota"} de lo que el reporte dejó como posible venta y nadie confirmó todavía."""
+    clave = os.environ.get("ASESOR_CLAVE", "")
+    try:
+        import pedidos_estado as pe
+    except Exception as err:
+        print(f"Posibles ventas: no se pudo cargar pedidos_estado ({err})", file=sys.stderr)
+        return {}
+    posibles, confirmados = {}, set()
+    for d in (hoy - dt.timedelta(days=1), hoy, hoy + dt.timedelta(days=1)):
+        try:
+            estado = pe.traer(clave, d.isoformat()) or {}
+        except Exception as err:
+            print(f"Posibles ventas {d}: {err}", file=sys.stderr)
+            continue
+        for ped in estado.get("pedidos", []):
+            n = prom.nueve(ped.get("whatsapp") or "")
+            if not n:
+                continue
+            est = str(ped.get("estado") or "").upper()
+            if est in POSIBLES:
+                posibles[n] = f"{'POR VERIFICAR' if est == 'POR_CONFIRMAR' else 'INTENCIÓN'} · {str(ped.get('nota') or '').strip()}".strip(" ·")
+            elif est in ("CONFIRMADO", "OTRO_DIA"):
+                confirmados.add(n)
+    return {n: v for n, v in posibles.items() if n not in confirmados}
 
 
 def texto_fecha(v):
@@ -106,6 +142,12 @@ def main():
     hoy = dt.date.fromisoformat(a.hoy)
     desde = hoy - dt.timedelta(days=a.dias - 1)
     filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas, a.linea)
+    posibles = posibles_ventas(hoy) if a.xlsx == "api" else {}
+    if posibles and a.activos_horas:
+        # Las posibles ventas se leen aunque no hayan tenido movimiento en las últimas N horas.
+        ya = {f["wa"] for f in filas}
+        filas += [f for f in leer_api(desde, hoy, 0, a.linea) if f["wa"] not in ya and prom.nueve(f["wa"]) in posibles]
+        filas.sort(key=lambda f: f["t"])
     # Promesas de 21 días (el collar del día 7 suele estar fuera de la ventana).
     promesas = prom.de_filas(filas)
     if a.xlsx == "api":
@@ -116,11 +158,12 @@ def main():
     for f in filas:
         chats.setdefault(f["wa"], []).append(f)
 
-    elegidos, meta = [], {}
+    elegidos, primeros, meta = [], [], {}
     for wa, ms in chats.items():
         cli = [m for m in ms if m["quien"] == "Cliente"]
         humano = any(m["quien"] != "Cliente" and not RE_AUTO.search(m["vend"]) for m in ms)
-        if not cli or (all(RE_SALUDO.match(m["msg"].strip()) for m in cli) and not humano):
+        posible = posibles.get(prom.nueve(wa))
+        if not cli or (all(RE_SALUDO.match(m["msg"].strip()) for m in cli) and not humano and not posible):
             continue
         ult_cli = max(i for i, m in enumerate(ms) if m["quien"] == "Cliente")
         despues = ms[ult_cli + 1:]
@@ -133,6 +176,7 @@ def main():
             "asesora": next((m["asesora"] for m in reversed(ms) if m["asesora"]), ""),
             "embudo": next((m["embudo"] for m in reversed(ms) if m["embudo"]), ""),
             "promesas": promesas.get(prom.nueve(wa), []),
+            "posible_venta": posible or "",
         }
         lineas, anterior, bienvenida = [], "", False
         for m in ms:
@@ -158,7 +202,11 @@ def main():
         if meta[wa]["promesas"]:
             aviso = ("📦 PROMETIDO (va en `empaque` si compra o ya compró; el que empaca no lo ve si no):\n"
                      + "\n".join(f"   📦 {p}" for p in meta[wa]["promesas"]) + "\n")
-        elegidos.append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n{aviso}" + "\n".join(lineas))
+        if posible:
+            aviso = (f"⭐ POSIBLE VENTA en el reporte de ventas ({posible}): proponle su seguimiento en `mensajes` "
+                     "(qué lo frena en `objecion`; plantilla si su ventana de 24 h ya cerró)\n") + aviso
+        (primeros if posible else elegidos).append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n{aviso}" + "\n".join(lineas))
+    elegidos = primeros + elegidos
 
     os.makedirs(a.salida, exist_ok=True)
     for f in os.listdir(a.salida):
@@ -184,6 +232,7 @@ def main():
         "archivos": [f"chats_{i:02d}.txt" for i in range(1, len(partes) + 1)],
         "sin_respuesta": sum(1 for v in meta.values() if v["ultimo"] == "cliente"),
         "con_promesas": [wa for wa, v in meta.items() if v["promesas"]],
+        "posibles_ventas": [wa for wa, v in meta.items() if v["posible_venta"]],
     }, ensure_ascii=False, indent=1))
 
 
