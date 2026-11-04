@@ -1,12 +1,18 @@
 # Seguimientos («si no responde») — cómo funcionan HOY (registro práctico)
 
 > Estado ACTUAL. Se reescribe cuando cambia algo; la historia está en `docs/MAPA.md`.
-> Última revisión: 2026-11-04 (mínimo de 5 h entre seguimientos, tope de 7 días en horas, reanudar desde el paso que sigue).
+> Última revisión: 2026-11-04 (la cadena sigue aunque hablen: solo la corta «Detener»; mínimo de 5 h; tope de 7 días; reanudar; campaña a chats antiguos).
 
 ## Las reglas (del dueño, 2026-11-01)
-1. **Solo el cliente corta la cadena.** Cuando el cliente escribe, el webhook cancela los seguimientos
-   automáticos pendientes (`cancelarSeguimientosPendientes`). Lo que nosotros mandemos o programemos
-   (texto, foto, catálogo, plantilla, sugerencia aprobada, seguimiento a mano) NO la toca.
+1. **Nadie corta la cadena hablando (dueño, 2026-11-04; antes: «solo el cliente la corta»).** La cadena
+   automática sigue aunque el cliente escriba o la vendedora le mande algo. Solo la detiene el botón
+   **«Detener»**: la barra «Seguimiento en marcha» arriba del chat o el aviso parpadeante «Seguimiento en
+   marcha · Detener» en la lista de chats (`POST /api/crm/seguimiento { accion: "apagar" }` →
+   `cancelarSeguimientosDeLead`). Lo que el webhook sí cancela cuando el cliente escribe
+   (`cancelarSeguimientosPendientes`): las **sugerencias del asesor** (ya quedaron desactualizadas), los
+   recordatorios programados a mano por una persona y las plantillas que esperaban aprobación. Un texto
+   sigue sin salir pasadas 24 h del último mensaje del cliente (el cron lo anota); si el cliente escribe,
+   la ventana se renueva y los textos que faltan sí salen.
 2. **Una sola cadena automática por chat.** Mandar una respuesta rápida con seguimiento reemplaza la
    cadena que hubiera (de otra rápida, de la secuencia de anuncio o de una sugerencia).
 3. **Un texto nunca sale pasadas 23 h del último mensaje del cliente** (WhatsApp lo rechaza). Si un
@@ -40,6 +46,12 @@
     paso 1 (respetando el mínimo de 5 h desde lo último que salió).
 12. La bienvenida de anuncios programa el plan 2 «Interesado · semana gratis» (`plan_interesados_id = 2`, desde el
     4/11) en vez de la secuencia de interesados vieja.
+13. **Campaña a chats antiguos** (`POST /api/asesor/programar-plan`, clave del asesor, solo cuando el dueño lo pide
+    por escrito): programa un plan a los chats de entre N y M días sin compra, «desde hoy» (`meta.inicioMs`: el día 1
+    del plan es mañana; se reparte en 3 días de arranque por id) y sin el tope de 168 h (`meta.sinTope7d`). Los textos
+    del día 0 no salen (sin ventana); salen las plantillas, que Meta cobra fuera de la semana gratis. La cadena
+    resultante es una más: se ve en la barra del chat y la detiene el botón. Hecho el 4/11 con el plan 2 a los
+    chats de 7 a 60 días (2 904 chats).
 
 ## Los planes con nombre (desde el 2026-11-03)
 - Tabla `planes_seguimiento`: cada plan tiene nombre, segmento (general, Lima o provincia), hasta 10 pasos

@@ -199,14 +199,23 @@ export async function guardarReaccionPropia(db, messageId, emoji) {
   await db.prepare("UPDATE messages SET agent_reaction = ? WHERE id = ?").bind(emoji || null, messageId).run();
 }
 
-/** Cancela los seguimientos programados pendientes de una conversación — se usa cuando el cliente escribe o cuando nosotros le mandamos algo a mano, para no insistir con un mensaje que ya quedó desactualizado. */
+/**
+ * Lo que se cancela cuando el CLIENTE escribe (webhook). Desde el 2026-11-04 (dueño) las cadenas de seguimiento
+ * (plan con nombre, pasos de una rápida, secuencia de leads, carrito) SIGUEN aunque el cliente o la vendedora hablen:
+ * solo las corta el botón «Detener seguimiento» del chat o de la lista (cancelarSeguimientosDeLead). Lo que sí se
+ * cancela al responder: las sugerencias del asesor («Sugerencia del asesor …», que ya quedaron desactualizadas), lo
+ * programado a mano por una persona (recordatorios) y las plantillas que esperaban aprobación. Los marcados
+ * «mandar siempre» nunca; el recojo en Shalom ya aprobado tampoco (si responde se vuelve a contar: rearmarPlanShalom).
+ */
 export async function cancelarSeguimientosPendientes(db, conversationId) {
   await db
-    // Los marcados "mandar siempre" no se cancelan: salen aunque el cliente escriba.
-    // También los planes con plantilla que esperaban aprobación: ya respondió. El recojo en Shalom ya
-    // aprobado NO se cancela: si responde ("gracias") se vuelve a contar desde ahí (rearmarPlanShalom).
-    .prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0 AND NOT (status = 'pendiente' AND created_by LIKE 'Plan con plantilla · Recojo en%')")
-    .bind(conversationId)
+    .prepare(
+      `UPDATE scheduled_messages SET status = 'cancelado'
+       WHERE conversation_id = ? AND status IN ('pendiente', 'por_aprobar') AND mandar_siempre = 0
+         AND NOT (status = 'pendiente' AND created_by LIKE 'Plan con plantilla · Recojo en%')
+         AND NOT (status = 'pendiente' AND (created_by = ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE ? OR created_by LIKE '%carrito%'))`
+    )
+    .bind(conversationId, ORIGEN_SEGUIMIENTO_AUTO, `${PREFIJO_SEGUIMIENTO_LEAD}%`, `${PREFIJO_SEGUIMIENTO_RAPIDA}%`, `${PREFIJO_PLAN}%`)
     .run();
 }
 
@@ -504,9 +513,10 @@ export async function programarPlanEnChat(db, conversationId, planId, editados =
  * · nada sale pasados los 7 días (en horas: 168 h) desde el primer mensaje del cliente, que es lo que Meta deja gratis;
  * · `desdePaso`: los primeros N pasos ya se mandaron en este chat (la cadena se reanuda desde el que sigue, no desde cero).
  */
-export function calendarioDePasos(pasos, { inicioMs, ultimoMs, ahoraMs = Date.now(), espacioMs = ESPACIO_MINIMO_H * 3600 * 1000, ultimoEnvioMs = null, desdePaso = 0 }) {
+export function calendarioDePasos(pasos, { inicioMs, ultimoMs, ahoraMs = Date.now(), espacioMs = ESPACIO_MINIMO_H * 3600 * 1000, ultimoEnvioMs = null, desdePaso = 0, sinTope7d = false }) {
   const tope = ultimoMs + 23 * 3600 * 1000;
-  const tope7d = inicioMs + DIA_PAGADO * DIA_MS;
+  // `sinTope7d`: campaña a chats antiguos (fuera de la semana gratis a propósito, pedido del dueño): no se aplica el tope.
+  const tope7d = sinTope7d ? Infinity : inicioMs + DIA_PAGADO * DIA_MS;
   const base = medianocheLima(inicioMs);
   let previo = ahoraMs;
   const piso = ultimoEnvioMs ? ultimoEnvioMs + espacioMs : 0; // antes de esto no sale el primero de la cadena
@@ -570,7 +580,9 @@ export async function programarPasosEnChat(db, conversationId, pasos, origen, me
   const aMs = (t) => new Date(String(t).replace(" ", "T") + "Z").getTime();
   // Mínimo entre seguimientos y reanudar desde el paso que sigue (dueño, 2026-11-04): ver calendarioDePasos.
   const [espacioMs, historial] = await Promise.all([espacioMinimoMs(db), historialDeSeguimientos(db, conversationId, origen)]);
-  const calendario = calendarioDePasos(pasos, { inicioMs: aMs(conv.created_at), ultimoMs: aMs(conv.last_inbound_at), ahoraMs: Date.now(), espacioMs, ...historial });
+  // meta.inicioMs: «día N» contado desde esa fecha en vez del primer mensaje del cliente (campaña a chats antiguos, que
+  // arranca hoy o en los próximos días); con meta.sinTope7d no se aplica el tope de 168 h del chat.
+  const calendario = calendarioDePasos(pasos, { inicioMs: meta.inicioMs || aMs(conv.created_at), ultimoMs: aMs(conv.last_inbound_at), ahoraMs: Date.now(), espacioMs, sinTope7d: Boolean(meta.sinTope7d), ...historial });
   const inserts = [];
   // plan_id / plan_brazo / plan_paso (migración 0073): de qué plan, brazo y paso salió cada mensaje, para medir y para
   // reanudar desde el paso que sigue (plan_paso se guarda siempre, también para los pasos propios de una rápida).

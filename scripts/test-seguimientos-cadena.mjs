@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const { programarSeguimientoDeRapida, programarPasosEnChat, cancelarSeguimientosPendientes, normalizarPasosSeguimiento, MAX_PASOS_SEGUIMIENTO } = await import(join(root, "src/lib/crm-db.js"));
+const { programarSeguimientoDeRapida, programarPasosEnChat, cancelarSeguimientosPendientes, cancelarSeguimientosDeLead, normalizarPasosSeguimiento, MAX_PASOS_SEGUIMIENTO } = await import(join(root, "src/lib/crm-db.js"));
 let fallas = 0;
 const check = (nombre, ok, detalle = "") => { if (!ok) fallas++; console.log(`${ok ? "✓" : "✗"} ${nombre}${ok || !detalle ? "" : ` — ${detalle}`}`); };
 
@@ -76,9 +76,11 @@ console.log("Cadena de seguimiento (plan universal, tope, día N, una sola caden
   p = pendientes(sq, 10);
   check("la rápida nueva reemplaza a la cadena anterior (una sola cadena por chat)", p.filter((x) => x.status === "pendiente").length === 1 && p.filter((x) => x.status === "pendiente")[0].body === "propio" && p.filter((x) => x.status === "cancelado").length === 3);
 
-  // 6. Solo el cliente corta: cancelarSeguimientosPendientes (webhook) cancela la cadena.
+  // 6. Dueño 4/11: el cliente ya NO corta la cadena (cancelarSeguimientosPendientes, webhook, la deja); solo el botón «Detener».
   await cancelarSeguimientosPendientes(db, 10);
-  check("cuando el cliente escribe, la cadena se corta", pendientes(sq, 10).every((x) => x.status === "cancelado"));
+  check("cuando el cliente escribe, la cadena sigue", pendientes(sq, 10).filter((x) => x.status === "pendiente").length === 1);
+  await cancelarSeguimientosDeLead(db, 10);
+  check("el botón «Detener» corta la cadena", pendientes(sq, 10).every((x) => x.status === "cancelado"));
 
   // 7. Reactivar sin rápida: el plan universal directo con otro origen.
   check("se puede programar el plan universal directo (reactivar desde la barra)", (await programarPasosEnChat(db, 10, universal, "Seguimiento de leads · Moi")) === null && pendientes(sq, 10).filter((x) => x.status === "pendiente").length === 3);

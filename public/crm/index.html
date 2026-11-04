@@ -221,7 +221,7 @@
     <div id="rapida-universal-aviso" class="ayuda-modal aviso-universal" style="display:none"></div>
     <div id="rapida-pasos"></div>
     <button type="button" class="sug-agregar-paso" id="rapida-agregar-paso"></button>
-    <div class="ayuda-modal" id="rapida-pasos-ayuda">Hasta 10 pasos. Un texto sale las horas indicadas después del paso anterior (o el día N del chat a una hora) y nunca pasadas 23 h desde el último mensaje del cliente (si no entra, se adelanta a esa hora o se salta). Una plantilla aprobada sí sale después: cuenta sus días desde el paso anterior o desde el primer mensaje del cliente («día N del chat»). La cadena se corta SOLO si el cliente escribe; lo que tú mandes no la toca, y desde la barra «Seguimiento» del chat la apagas o la reactivas.</div>
+    <div class="ayuda-modal" id="rapida-pasos-ayuda">Hasta 10 pasos. Un texto sale las horas indicadas después del paso anterior (o el día N del chat a una hora) y nunca pasadas 23 h desde el último mensaje del cliente (si no entra, se adelanta a esa hora o se salta). Una plantilla aprobada sí sale después: cuenta sus días desde el paso anterior o desde el primer mensaje del cliente («día N del chat»). La cadena sigue aunque el cliente o tú escriban: solo la detiene el botón «Detener» (barra «Seguimiento» del chat o aviso de la lista), y desde esa barra se reactiva. Entre pasos hay un mínimo de horas y nada sale pasados los 7 días del chat (Herramientas → Planes).</div>
     <label class="ayuda-modal" id="rapida-seg-global-fila" style="display:none;align-items:center;gap:6px">
       <input type="checkbox" id="rapida-seg-global" /> Seguimientos de respuestas rápidas activados (para todas las respuestas y asesoras)
     </label>
@@ -876,7 +876,7 @@
 <div class="modal-fondo" id="modal-leads-fondo">
   <div class="modal modal-ancho">
     <h2>Seguimiento para interesados</h2>
-    <p class="ayuda-modal">Arma acá los mensajes de insistencia y cuándo sale cada uno. Todos se cancelan solos en cuanto el cliente escribe o alguien le manda algo a mano — nunca le llegan a alguien que ya está conversando.</p>
+    <p class="ayuda-modal">Arma acá los mensajes de insistencia y cuándo sale cada uno. Desde el 4/11 siguen aunque el cliente escriba o alguien le mande algo a mano: solo los detiene el botón «Detener» del chat o de la lista (un texto nunca sale pasadas 24 h del último mensaje del cliente).</p>
 
     <h3 class="leads-paso-titulo"><span>1</span> Secuencia de seguimiento</h3>
     <div class="leads-fila">

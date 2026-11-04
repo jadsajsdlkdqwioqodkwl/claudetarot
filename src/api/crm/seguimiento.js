@@ -74,7 +74,8 @@ async function get({ request, env }) {
     const ultimo = await db.prepare(
       "SELECT created_at FROM scheduled_messages WHERE conversation_id = ? AND status = 'cancelado' AND batch_id IS NULL ORDER BY id DESC LIMIT 1"
     ).bind(conversationId).first();
-    if (ultimo) motivo = aMs(conv.last_inbound_at) > aMs(ultimo.created_at) ? "cliente" : "apagado";
+    // Desde el 4/11 el cliente ya no corta la cadena: si hubo cancelados, fue el botón «Detener» (o se reemplazó por otra cadena).
+    if (ultimo) motivo = "apagado";
   }
   return json({
     activo: auto.length > 0,

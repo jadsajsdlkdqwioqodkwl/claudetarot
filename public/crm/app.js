@@ -2633,14 +2633,14 @@ function pintarLista() {
         ${c.falta_respuesta ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-falta" title="Compra registrada; falta agendar el seguimiento. Márcalo cuando ya lo programaste (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} falta agendar seguimiento <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
         ${c.con_recomendacion ? (tieneEtiqueta(c, "purchase") ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. Márcalo cuando ya lo programaste y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Marcar que ya agendé el seguimiento">${icon("squareEmpty")} agendé seguimiento</button></span>` : `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>`) : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
-        ${c.seg_auto_proximo ? `<span class="badge-seguimiento bienvenida" title="Cadena de seguimiento automática en marcha (se corta solo si el cliente escribe)">${icon("clock")} Seguimiento · ${escapar(fechaCorta(c.seg_auto_proximo))}</span>` : ""}
+        ${c.seg_auto_proximo ? `<span class="badge-seguimiento marcha" title="Cadena de seguimiento en marcha: sigue aunque el cliente escriba. El próximo paso sale el ${escapar(fechaCorta(c.seg_auto_proximo))}. Solo se detiene con este botón (o el de la barra del chat)">${icon("clock")} Seguimiento en marcha · ${escapar(fechaCorta(c.seg_auto_proximo))} <button type="button" class="btn-detener-seg" title="Detener la cadena de seguimiento de este chat">${icon("close")} Detener</button></span>` : ""}
       </div>`;
     div.querySelector(".conv-check").addEventListener("click", (e) => {
       e.stopPropagation();
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva, .btn-detener-seg")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -2653,6 +2653,17 @@ function pintarLista() {
       e.stopPropagation();
       marcarAtendido(c);
     }));
+    div.querySelector(".btn-detener-seg")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`¿Detener el seguimiento de ${c.contact_name || c.profile_name || c.wa_id}? Se cancelan sus pasos automáticos pendientes; se puede reactivar desde la barra del chat.`)) return;
+      e.target.closest("button").disabled = true;
+      try {
+        await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "apagar" }) });
+        c.seg_auto_proximo = null;
+        await cargarConversaciones?.();
+        if (estado.conversacionActivaId === c.conversation_id) actualizarSeguimientosDetalle?.();
+      } catch (err) { alert(err.message); }
+    });
     div.querySelector(".btn-pago-saldo-lista")?.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`¿Confirmas que ${escapar(c.contact_name || c.profile_name || c.wa_id)} ya pagó el saldo? Se quitará el seguimiento de recojo.`)) return;
@@ -4597,10 +4608,11 @@ function pintarBarraSeguimiento(d) {
     ? `<div class="seg-barra activa seg-barra-r7" title="Rescate del día 7: sale solo dentro de la ventana gratis de 7 días del anuncio. Se cancela si compra; para quitarlo, la X en «Seguimientos activos» del panel derecho">${icon("clock")} <span>Rescate del día 7 programado · sale ${escapar(fechaCorta(d.rescate7.send_at))}${d.rescate7.plantilla ? ` · ${escapar(d.rescate7.plantilla)}` : ""}</span></div>`
     : "";
   if (d.activo) {
-    barra.innerHTML = r7 + `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está programada. Solo se corta si el cliente escribe; tócala para apagarla a mano">
-      ${icon("checkBox")} <span>Seguimiento activo · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))}</span><span class="seg-barra-accion">apagar</span></button>`;
+    // Desde el 4/11 (dueño) la cadena sigue aunque el cliente o la vendedora hablen: solo la corta este botón (o el de la lista).
+    barra.innerHTML = r7 + `<button type="button" class="seg-barra activa" id="seg-barra-btn" title="La cadena de seguimiento está en marcha y sigue aunque el cliente o tú escriban. Solo se detiene con este botón (o con el de la lista de chats)">
+      <span class="seg-punto"></span> <span>Seguimiento en marcha · ${n} paso${n === 1 ? "" : "s"} · próximo ${escapar(fechaCorta(d.proximo))} · sigue aunque el cliente escriba</span><span class="seg-barra-accion seg-detener">${icon("close")} Detener</span></button>`;
     $("#seg-barra-btn").addEventListener("click", async () => {
-      if (!confirm(`¿Apagar el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca).`)) return;
+      if (!confirm(`¿Detener el seguimiento de este chat? Se cancelan los ${n} paso(s) automáticos pendientes (lo programado a mano no se toca). Lo puedes reactivar después desde esta misma barra.`)) return;
       try {
         await pedir("/api/crm/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: estado.conversacionActivaId, accion: "apagar" }) });
         await actualizarSeguimientosDetalle();
@@ -4612,7 +4624,7 @@ function pintarBarraSeguimiento(d) {
     barra.innerHTML = r7 + `<div class="seg-barra sin-plan">${icon("squareEmpty")} <span>Sin plan de seguimiento: elige «Plan universal» en una respuesta rápida o configúralo (Respuestas rápidas → editar).</span></div>`;
     return;
   }
-  const motivo = d.motivo === "cliente" ? " · se cortó porque el cliente escribió" : d.motivo === "apagado" ? " · apagado" : "";
+  const motivo = d.motivo === "apagado" ? " · detenido" : "";
   const ventana = d.ventana_abierta ? "" : " · pasaron 24 h: solo saldrían las plantillas";
   barra.innerHTML = r7 + `<button type="button" class="seg-barra apagada" id="seg-barra-btn" title="Tócala para ver los pasos del plan, ajustarlos para este chat y programarlos">
     ${icon("squareEmpty")} <span>Reactivar seguimiento · ${escapar(d.plan.titulo)}${d.plan.brazo === "B" ? " · versión B" : ""} (${d.plan.pasos.length} paso${d.plan.pasos.length === 1 ? "" : "s"})${motivo}${ventana}</span><span class="seg-barra-accion">reactivar</span></button>`;
@@ -4666,7 +4678,7 @@ async function actualizarSeguimientosDetalle() {
           ${seguimientoEditable(s) ? `<button class="editar-seguimiento-detalle" data-id="${s.id}" title="Editar">${icon("pencil")}</button>` : ""}
           <button class="borrar-seguimiento-detalle" data-id="${s.id}" title="Cancelar">${icon("close")}</button>
         </div>
-      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">La cadena automática ("tras no respuesta") se corta SOLO si el cliente escribe; lo que tú mandes o programes no la toca. La apagas o la reactivas desde la barra «Seguimiento» de arriba del chat.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
+      </div>`).join("") + `<div class="ayuda-modal" style="margin:0 0 8px">La cadena automática ("tras no respuesta") sigue aunque el cliente o tú escriban: solo la detiene el botón «Detener» de la barra «Seguimiento» de arriba del chat (o el de la lista). Desde esa barra también se reactiva.</div>` : `<div class="sin-ad">Sin seguimientos activos.</div>`)
       + (scheduled.length > 1 ? `<button class="cancelar" id="detalle-cancelar-todos" type="button" style="width:100%;font-size:12px">${icon("close")} Cancelar los ${scheduled.length}</button>` : "");
     if (cont.innerHTML !== html) {
       cont.innerHTML = html;
@@ -4974,7 +4986,7 @@ function pintarMensajes({ alFinal = false } = {}) {
         ${m.con_seguimiento && ultimaDeRapida.get(m.quick_reply_id) === m.id
           ? (m.seg_activo
             ? `<button type="button" class="msg-seg msg-seg-activo" data-q="${m.quick_reply_id}" data-activo="1" title="El «si no responde» de esta respuesta rápida está programado: tócalo para verlo o editarlo">${icon("clock")} Seguimiento activo · ver / editar</button>`
-            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida se cortó (el cliente escribió o se apagó): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
+            : `<button type="button" class="msg-seg msg-seg-reactivar" data-q="${m.quick_reply_id}" title="El «si no responde» de esta respuesta rápida está detenido (se detuvo con el botón o lo reemplazó otra cadena): tócalo para ver qué seguimiento se le programará, editarlo y volver a programarlo">${icon("clock")} Reactivar seguimiento</button>`)
           : ""}
         ${m.direction === "out" ? chipSeguimientoCobro() : ""}
       </div>
@@ -8729,7 +8741,7 @@ function pintarReglaSeguimiento() {
   const esLead = estado.segModo === "secuencia" && leadId && String(leadId) === $("#seg-secuencia").value;
   $("#seg-siempre-fila").style.display = estado.segModo !== "secuencia" ? "flex" : "none";
   el.textContent = esLead
-    ? "Es la secuencia de seguimiento de interesados (tras no respuesta): se cancela si el cliente escribe o si le escribes, y reemplaza la que ya esté activa en el chat."
+    ? "Es la secuencia de seguimiento de interesados (tras no respuesta): sigue aunque el cliente o tú escriban (solo la detiene el botón «Detener» del chat), y reemplaza la que ya esté activa en el chat."
     : estado.segModo !== "secuencia" && $("#seg-siempre").checked
       ? "Se manda sí o sí a esa hora, aunque el cliente o tú escriban antes. Solo lo cancelas tú desde el panel derecho."
       : "Se cancela solo si el cliente escribe antes — tus propios mensajes no lo borran.";

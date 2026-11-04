@@ -10,7 +10,7 @@ import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const db0 = await import(join(root, "src/lib/crm-db.js"));
-const { normalizarPasosSeguimiento, calendarioDePasos, medianocheLima, pasosDePlan, brazoPorHash, programarSeguimientoDeRapida, programarPlanEnChat, cancelarSeguimientosPendientes, leerPlan, esOrigenAutomatico, MAX_PASOS_SEGUIMIENTO } = db0;
+const { normalizarPasosSeguimiento, calendarioDePasos, medianocheLima, pasosDePlan, brazoPorHash, programarSeguimientoDeRapida, programarPlanEnChat, cancelarSeguimientosPendientes, cancelarSeguimientosDeLead, leerPlan, esOrigenAutomatico, MAX_PASOS_SEGUIMIENTO } = db0;
 const { ajustarAlHorario, enSilencio } = await import(join(root, "src/lib/horario.js"));
 const { programarSeguimientoDeInteresados } = await import(join(root, "src/lib/crm-interesados.js"));
 let fallas = 0;
@@ -109,13 +109,25 @@ console.log("Planes de seguimiento con nombre");
   sq.prepare("INSERT INTO plan_asignaciones (plan_id, conversation_id, brazo) VALUES (7, 80, 'A')").run();
   check("la rápida programa el chat 80 (brazo A)", (await programarSeguimientoDeRapida(db, 80, 901)) === null && pendientes(sq, 80)[0].plan_paso === 0);
   sq.prepare("UPDATE scheduled_messages SET status = 'enviado', sent_at = ? WHERE conversation_id = 80 AND plan_paso = 0").run(sqlFecha(Date.now() - 2 * H));
+  // Dueño 4/11: el cliente ya no corta la cadena; sí se cancela la sugerencia del asesor. Solo el botón la detiene.
+  sq.prepare("INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, status) VALUES (80, 'sugerencia', ?, 'Sugerencia del asesor · x', 'pendiente')").run(new Date(Date.now() + H).toISOString());
   await cancelarSeguimientosPendientes(db, 80);
-  check("el resto quedó cancelado al responder el cliente", pendientes(sq, 80).filter((x) => x.status === "pendiente").length === 0);
+  const tras80 = pendientes(sq, 80);
+  check("cuando el cliente escribe, la cadena del plan sigue y solo se cancela la sugerencia del asesor", tras80.filter((x) => x.status === "pendiente" && x.plan_paso !== null).length === 4 && tras80.find((x) => x.body === "sugerencia")?.status === "cancelado", JSON.stringify(tras80.map((x) => [x.body, x.status])));
+  await cancelarSeguimientosDeLead(db, 80); // el botón «Detener»
+  check("el botón «Detener» sí cancela la cadena", pendientes(sq, 80).filter((x) => x.status === "pendiente").length === 0);
   check("al mandar otra rápida con el mismo plan, sigue desde el paso 1", (await programarSeguimientoDeRapida(db, 80, 901)) === null);
   const p80 = pendientes(sq, 80).filter((x) => x.status === "pendiente");
   check("no se repite el paso 0; el primero pendiente es el paso 1 (+4 h, ya pasadas las 5 h del que salió)", p80.length > 0 && p80.every((x) => x.plan_paso >= 1) && p80[0].plan_paso === 1 && Math.abs(new Date(p80[0].send_at).getTime() - (Date.now() + 4 * H)) < 60000, JSON.stringify(p80.map((x) => [x.plan_paso, x.send_at])));
   sq.prepare("UPDATE scheduled_messages SET status = 'enviado' WHERE conversation_id = 80").run();
   check("si ya salieron todos los pasos, lo dice y no programa nada", /ya recibió todos/.test(await programarSeguimientoDeRapida(db, 80, 901) || ""));
+  // Campaña a chats antiguos (dueño 4/11): el plan arranca «desde hoy» (inicioMs) sin el tope de 168 h; los textos del día 0
+  // no salen (sin ventana) y las plantillas caen en los días 2, 3 y 5 contados desde mañana.
+  chat(sq, 90, { hace: 40 * DIA, creadoHace: 40 * DIA });
+  const inicio90 = Date.now() + DIA;
+  const m90 = await (await import(join(root, "src/lib/crm-db.js"))).programarPasosEnChat(db, 90, plan.slice(0, 5), "Plan de seguimiento · PROV · Sin adelanto", { plan_id: 7, brazo: "A", inicioMs: inicio90, sinTope7d: true });
+  const p90 = pendientes(sq, 90);
+  check("a un chat de hace 40 días se le programan solo las plantillas, contadas desde mañana", m90 === null && p90.length === 3 && p90.every((x) => x.template_name) && new Date(p90[0].send_at).getTime() === medianocheLima(inicio90) + 2 * DIA + 20 * H, `${m90} ${JSON.stringify(p90.map((x) => [x.template_name, x.send_at]))}`);
   // La bienvenida con plan_interesados_id programa el plan y no la secuencia vieja.
   sq.prepare("INSERT INTO crm_settings (key, value) VALUES ('plan_interesados_id', '7')").run();
   chat(sq, 70, { hace: 60000, creadoHace: 60000 });

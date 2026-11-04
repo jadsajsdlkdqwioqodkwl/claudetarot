@@ -1520,3 +1520,23 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   «… (copia, apagada 4/11)» (los planes no se borran).
 - Pruebas: `scripts/test-planes.mjs` (espaciado, 0 h, último envío, desdePaso, 168 h, reanudar en base real) y
   `test-seguimientos-cadena.mjs` (la plantilla del día 3 se corre a 5 h del paso 2). Detalle en `docs/seguimientos.md` (reglas 9–12).
+
+
+## 2026-11-04 (madrugada) — La cadena sigue aunque hablen (solo «Detener»), aviso parpadeante en la lista, campaña del plan «Interesado» a chats antiguos
+- **Regla nueva del dueño:** los seguimientos continúan por más que el cliente o la vendedora hablen; solo los corta el botón
+  «Detener» (barra «Seguimiento en marcha» del chat, o el aviso parpadeante «Seguimiento en marcha · Detener» de la lista,
+  `.btn-detener-seg` → `POST /api/crm/seguimiento apagar`). `cancelarSeguimientosPendientes` (webhook, cliente escribe) ya NO
+  toca las cadenas automáticas (plan con nombre, pasos de rápida, secuencia de leads, carrito): cancela solo las sugerencias
+  del asesor, lo programado a mano y lo `por_aprobar` (Shalom aprobado sigue aparte, como antes). La regla de 2026-11-01
+  «solo el cliente corta la cadena» queda reemplazada. Textos de ayuda del CRM actualizados (barra, lista, editor de rápidas,
+  secuencias, modal de programar). `seguimiento.js` ya no distingue el motivo «cliente».
+- El badge pasivo de la lista «Seguimiento · fecha» (morado) pasa a «Seguimiento en marcha · fecha · Detener» (verde,
+  parpadea). El botón «agendé seguimiento» de los chats con compra (falta respuesta / recomendación) se conserva: es otra
+  función (marca atendido tras la compra); si el dueño confirma que sobra, se quita.
+- **Campaña a chats antiguos:** endpoint nuevo `POST /api/asesor/programar-plan` (`src/api/asesor-programar-plan.js`) y
+  `programarPasosEnChat` acepta `meta.inicioMs` (día 1 = mañana) y `meta.sinTope7d` (`calendarioDePasos` `sinTope7d`).
+  Corrido el 4/11 ~02:10 UTC con el plan 2 «Interesado · semana gratis» a los chats de 7 a 60 días de la línea principal sin
+  compra, no bloqueados ni en pausa: 2 904 chats, repartidos en 3 días de arranque. Origen de las filas:
+  «Plan de seguimiento · Interesado · semana gratis», plan_id 2, brazo A. Salen solo las plantillas (seg7_primera_lectura,
+  seg_d2_miedo_principiante, seg_d4_envios_hoy, rescate_lead_2, seg_d5_ultimo_bono); las que Meta aún no aprobó esperan
+  (reintento 30 min, hasta 3 días). Meta cobra estas plantillas (fuera de la semana gratis): pedido explícito del dueño.
