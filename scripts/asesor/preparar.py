@@ -29,7 +29,7 @@ mañana) y que no quedaron confirmados se leen SIEMPRE, aunque no tengan
 movimiento en las últimas --activos-horas, van primero y abren con
 "⭐ POSIBLE VENTA": el asesor les propone su seguimiento en ✨ Sugerencias.
 """
-import argparse, datetime as dt, json, os, re, sys, urllib.error, urllib.request
+import argparse, datetime as dt, json, os, re, sys, urllib.error, urllib.parse, urllib.request
 from collections import OrderedDict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -77,6 +77,47 @@ def posibles_ventas(hoy):
             elif est in ("CONFIRMADO", "OTRO_DIA"):
                 confirmados.add(n)
     return {n: v for n, v in posibles.items() if n not in confirmados}
+
+
+# Señales de venta en la ventana leída: con --completo, a estos chats se les trae el historial anterior entero (el precio
+# acordado hace una semana, el collar prometido en otro día, el pedido de catálogo de antes) para que el reporte no se
+# quede con la foto de dos días (dueño, 2026-11-05: Miller a S/69 y collares extra que el reporte no vio).
+RE_SENAL_VENTA = re.compile(
+    r"\b(yape|yapeo|yapeé|yape[eé]|plin|adelanto|captura|pag[oóu]|abon|dep[oó]sit|direcci[oó]n|distrito|referencia|agencia|shalom|olva|dni|pin\b|ubicaci[oó]n"
+    r"|separ|agend|confirm|collar|dije|mazo|or[aá]culo|2 kits|dos kits|regal|descuento|oferta|s/\s*\d|\d{2,3}\s*soles|pedido|catálogo|catalogo)",
+    re.I,
+)
+RE_COMPRA_CRM = re.compile(r"\bpurchase\b|cobro_3x|bot_boleta", re.I)
+
+
+def historial_completo(wa, n, desde):
+    """Los mensajes del chat ANTERIORES a `desde` (hasta n en total), en el mismo formato de línea que la ventana leída."""
+    clave = os.environ.get("ASESOR_CLAVE", "")
+    url = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/chat?" + urllib.parse.urlencode({"wa_id": wa, "mensajes": n, "largo": 1})
+    req = urllib.request.Request(url, headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            chat = json.load(r)
+    except Exception:  # noqa: BLE001
+        return []
+    lineas = []
+    for m in chat.get("mensajes") or []:
+        t = str(m.get("created_at") or "")
+        try:
+            fecha_lima = dt.datetime.fromisoformat(t.replace(" ", "T")) - dt.timedelta(hours=5)
+        except ValueError:
+            continue
+        if fecha_lima.date() >= desde:
+            continue  # ya está en la ventana leída
+        es_cli = m.get("direction") == "in"
+        cuerpo = re.sub(r"\s+", " ", str(m.get("body") or "")).strip() or f"[{m.get('type') or 'mensaje'}]"
+        if es_cli and m.get("type") == "image":
+            cuerpo = f"[imagen#{m.get('id')}] " + (cuerpo if m.get("body") else "")
+        quien = "C" if es_cli else (f"V(auto: {m.get('sent_by')})" if RE_AUTO.search(m.get("sent_by") or "") else f"V({m.get('sent_by') or '?'})")
+        if not es_cli and RE_BIENVENIDA.search(m.get("sent_by") or ""):
+            continue
+        lineas.append(f"{fecha_lima.strftime('%m-%d %H:%M')} {quien}: {cuerpo[:1200]}")
+    return lineas
 
 
 def texto_fecha(v):
@@ -138,6 +179,7 @@ def main():
     ap.add_argument("--activos-horas", type=int, default=0)
     ap.add_argument("--linea", type=int, default=0, help="otro número de WhatsApp (id de la línea); por defecto Tarot Store")
     ap.add_argument("--con-reporte", action="store_true", help="compatibilidad: con «api» las posibles ventas del reporte se leen siempre (desde el 2026-11-04)")
+    ap.add_argument("--completo", type=int, default=0, help="N > 0: a los chats con señal de venta (pago, dirección, agencia, DNI, collar, imagen del cliente, compra en el CRM) se les suma el historial anterior completo, hasta N mensajes (reporte de pedidos, dueño 2026-11-05)")
     a = ap.parse_args()
 
     hoy = dt.date.fromisoformat(a.hoy)
@@ -206,6 +248,15 @@ def main():
         if posible:
             aviso = (f"⭐ POSIBLE VENTA en el reporte de ventas ({posible}): proponle su seguimiento en `mensajes` "
                      "(qué lo frena en `objecion`; plantilla si su ventana de 24 h ya cerró)\n") + aviso
+        # --completo: historial anterior entero para los chats con señal de venta (o ya marcados como compra en el CRM).
+        if a.completo and a.xlsx == "api" and (any(RE_SENAL_VENTA.search(m["msg"]) or (m["quien"] == "Cliente" and m["tipo"] == "image") for m in ms)
+                                               or RE_COMPRA_CRM.search(meta[wa]["embudo"] or "") or posible):
+            previas = historial_completo(wa, a.completo, desde)
+            if previas:
+                lineas = ([f"📜 HISTORIAL ANTERIOR ({len(previas)} mensajes de antes del {desde.isoformat()}; léelo entero: el precio acordado, "
+                           "el producto elegido, el collar o regalo prometido y los pedidos de catálogo de otros días cuentan igual)"]
+                          + previas + ["— desde aquí, la ventana de estos días —"] + lineas)
+                meta[wa]["historial_previo"] = len(previas)
         (primeros if posible else elegidos).append(f"=== {wa} | {nombre or 'sin nombre'} | último: {meta[wa]['ultimo']}{extra}\n{aviso}" + "\n".join(lineas))
     elegidos = primeros + elegidos
 

@@ -72,7 +72,7 @@ def cmd_preparar(args):
     import control_ventas as cv
     import pedidos_estado as pe
     carpeta = args[args.index("--dir") + 1] if "--dir" in args else "/tmp/reporte"
-    max_img = int(args[args.index("--max-img") + 1]) if "--max-img" in args else 25
+    max_img = int(args[args.index("--max-img") + 1]) if "--max-img" in args else 60  # 25 → 60 (5/11): una noche con muchas capturas dejaba pagos sin mirar
     os.makedirs(carpeta, exist_ok=True)
     fecha_venta, fecha_objetivo, hora, corrida = fechas()
     out = {"fecha_venta": fecha_venta, "fecha_objetivo": fecha_objetivo, "hora": hora, "corrida": corrida, "dir": carpeta}
@@ -101,7 +101,8 @@ def cmd_preparar(args):
     # 3. Chats: primera corrida de la noche = hoy y ayer completos; las siguientes, solo lo que se movió desde el corte.
     # Hoy y ayer (3 días si la corrida se pasó de medianoche, para no perder la noche de ayer).
     dias = 2 if fecha_venta == ahora_lima().date().isoformat() else 3
-    cmd = [sys.executable, os.path.join(AQUI, "preparar.py"), "api", "--dias", str(dias), "--salida", carpeta]
+    # --completo 80 (dueño, 2026-11-05): a los chats con señal de venta se les suma su historial anterior entero (hasta 80 mensajes).
+    cmd = [sys.executable, os.path.join(AQUI, "preparar.py"), "api", "--dias", str(dias), "--salida", carpeta, "--completo", "80"]
     if horas:
         cmd += ["--activos-horas", str(horas)]
     r = subprocess.run(cmd, capture_output=True, text=True)

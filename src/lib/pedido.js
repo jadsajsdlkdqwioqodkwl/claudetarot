@@ -7,7 +7,7 @@
  */
 
 export const VARIANTES = {
-  "1kit": { etiqueta: "1 Kit de Tarot Completo", cantidad: 1, precio: 89 },
+  "1kit": { etiqueta: "1 Kit de Tarot Completo", cantidad: 1, precio: 95 }, // S/95 desde el 2026-11-05 (dueño); antes S/89
   "2kit": { etiqueta: "2 Kits de Tarot Completo", cantidad: 2, precio: 149 }
 };
 

@@ -29,6 +29,10 @@ RE_PROMESA = re.compile(
     r"(collar|mazo|or[aá]culo|carta|regalo|amuleto|pulsera|bolsita|cristal|piedra|vela|incienso|sahumerio)"
     r"|\bregalo\s+(extra|adicional)|\bde\s+yapa\b|\byapit"
     r"|\bmazo\s+(extra|adicional|de\s+regalo)|\bor[aá]culo\b"
+    # Modelo de collar o dije elegido/prometido (el que empaca tiene que saber cuál) y dijes extra (dueño, 2026-11-05).
+    r"|\b(collar|dije)\w*\s+(de\s+|del\s+)?(sol|luna|estrella|nudo|ojo|protecci[oó]n|amor|enamorad|prosperidad|abundancia|trébol|trebol|cuarzo|al\s+azar)"
+    r"|\bdije\w*\s+(extra|adicional|de\s+regalo)|\b(otro|un\s+segundo|dos|2|tres|3)\s+dijes?\b|\bcollares\b"
+    r"|\b(quiero|quisiera|me\s+gustar[ií]a|puede\s+ser|elijo|prefiero)\s+(el|la|un|una)\s+(collar|dije)"
     r"|\b(dos|2|tres|3)\s+kits?\b"
     r"|\bgratis\b",
     re.I,
@@ -41,7 +45,7 @@ RE_ENVIO_GRATIS = re.compile(
 )
 
 # Para saber si el `empaque` ya cubre la promesa.
-COSAS = ["collar", "mazo", "oráculo", "oraculo", "carta", "pulsera", "bolsita", "tapete", "cristal",
+COSAS = ["collar", "dije", "mazo", "oráculo", "oraculo", "carta", "pulsera", "bolsita", "tapete", "cristal",
          "piedra", "vela", "incienso", "sahumerio", "amuleto"]
 RE_VARIOS_KITS = re.compile(r"\b(dos|2|tres|3)\s+kits?\b", re.I)
 

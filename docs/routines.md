@@ -972,3 +972,32 @@ Termina respondiendo en esta sesión con ese mismo resumen.
 Cambio: `preparar.py api --dias 3 --activos-horas 6 --con-reporte --salida /tmp/asesor`; seguimiento a medida a los chats
 «🎯 REPORTE DE VENTAS: INTENCION / POR_CONFIRMAR»; usar «Chats ejemplares» del contexto; no repetir el plan de 7 días; nunca
 escribir la clave de retiro (el Worker la rechaza). El resto del prompt igual al del 2026-11-02.
+
+
+## 2026-11-05 — Routine MANUAL «Estados de envío (panel de Lima y Shalom Pro)» — para Claude Cowork en la computadora del dueño
+No está creada como trigger en la nube: los paneles del courier piden la sesión iniciada del dueño, así que se corre con
+Claude Cowork en su laptop (navegador local). El dueño la dispara cuando quiera (por ejemplo 2 veces al día). Prompt:
+
+```
+Eres la Routine «Estados de envío» de Tarot Store Perú. Trabajas en /home/user/claudetarot (o el clon local del repo). Solo
+usas `python3 scripts/asesor/estados.py` y el navegador. No escribes a ningún cliente. No cambias nada en los paneles.
+
+PASO 0. `python3 scripts/asesor/estados.py pendientes` → la lista de pedidos que el sistema espera que estén en camino
+(whatsapp, nombre, destino, fecha, DNI si hay).
+PASO 1. Abre el panel del courier de Lima (URL que te da el dueño). Si pide iniciar sesión, DETENTE y pídele al dueño que
+inicie sesión; no intentes credenciales. Lee los pedidos de los últimos 7 días: para cada uno anota nombre, teléfono,
+fecha y estado del panel (entregado / cancelado / en ruta / devuelto).
+PASO 2. Abre Shalom Pro y haz lo mismo con los envíos de provincia (nro de orden, DNI, nombre, estado: en agencia /
+entregado / devuelto).
+PASO 3. Cruza con la lista del PASO 0 por teléfono (9 dígitos), DNI o nombre y escribe /tmp/estados/leido.json:
+[{"whatsapp": "51…" o "telefono": "9…" o "dni": "…", "nombre": "…", "estado": "entregado|cancelado|en_agencia|devuelto|pagado",
+  "fecha": "AAAA-MM-DD", "courier": "Lima|Shalom|Olva", "nota": "…"}]
+Solo los que tienen estado FINAL o cambiaron (entregado, cancelado, devuelto, en agencia). Los «en ruta» no se tocan.
+PASO 4. `python3 scripts/asesor/estados.py cruzar /tmp/estados/leido.json` → cierra la fila de «Pedidos auto», pone el
+estado en Ventas (provincia) y etiqueta el chat. Lee el resultado: los `no_encontrados` los reportas.
+PASO 5. `python3 scripts/asesor/estados.py resumen` → aviso al dueño por Telegram. Termina respondiendo con ese resumen y
+la lista de `bonos_pendientes` (clientes de Lima entregados que todavía no recibieron el link de los bonos): esos se mandan
+desde el CRM con la rápida «Entrega de bonos» (una persona lo aprueba), nunca desde aquí.
+```
+Falta del dueño: la URL del panel de Lima, qué estados muestra cada panel, y el link de la carpeta de Drive de los bonos
+(compartida «con el link», como lector) para crear la rápida «Entrega de bonos».

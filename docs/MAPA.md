@@ -1651,3 +1651,21 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 
 - Aviso «nadie responde» (5/11, 2.ª precisión del dueño): hasta dos por hora (`aviso_sin_respuesta_cada_min`, 30) y le llega al
   dueño y a Jennifer (`aviso_sin_respuesta_agentes`, ids de agents, por defecto «4»).
+
+
+## 2026-11-05 (tarde) — Precio web S/95, reporte que lee el historial entero, estados de envío (script y Routine manual)
+- **Precio del kit en la web:** S/89 → S/95 (dueño). `public/index.html` (precio, tarjeta de la variante 1 kit y `FB.variantes`)
+  y `src/lib/pedido.js` (`VARIANTES["1kit"].precio`, lo que cobra el checkout). 2 kits sigue en S/149 y el «antes» en S/129.
+  Las rápidas de WhatsApp siguen diciendo S/89 (la prueba de S/99 sigue en pausa) y `PRECIO_KIT = 89` en asesor-mandar.js (saldo
+  por defecto de boletas) no se tocó: son precios de WhatsApp, no de la web.
+- **Reporte de pedidos: lee el historial entero.** `preparar.py --completo N` (reporte.py lo llama con 80): a los chats con
+  señal de venta en la ventana (pago, dirección, agencia, DNI, collar, dije, imagen del cliente, compra en el CRM, posible venta)
+  se les antepone «📜 HISTORIAL ANTERIOR (…)» con sus mensajes de antes de la ventana (hasta N, `GET /api/asesor/chat` con
+  `&largo=1`: cuerpo completo y hasta 200 mensajes). Prueba del 5/11: 60 chats de un día, 29 con historial, 120 KB en total.
+  Imágenes por corrida: 25 → 60. Promesas (`promesas.py`): además del collar extra, cuentan el modelo de collar o dije elegido
+  («collar del sol», «dije de protección», «collar al azar»), dijes extra, «collares» en plural y «quiero el collar…» del
+  cliente; «dije» entra en COSAS para el cuadre con `empaque`.
+- **Estados de envío:** `scripts/asesor/estados.py` (`pendientes` · `cruzar leido.json` · `resumen`) y el prompt de la Routine
+  manual para Claude Cowork en la computadora del dueño en `docs/routines.md` (sin trigger en la nube: los paneles piden su
+  sesión). Entrega de bonos: carpeta de Drive compartida con el link + rápida «Entrega de bonos» aprobada por una persona;
+  `cruzar` lista los Lima entregados sin el link (`bonos_pendientes`). Falta del dueño: URL del panel de Lima y link de la carpeta.

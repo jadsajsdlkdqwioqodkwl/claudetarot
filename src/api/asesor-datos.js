@@ -457,9 +457,11 @@ export async function onRequestGetChat({ request, env }) {
     : await env.CRM_DB.prepare(`${SQL_CHAT} WHERE c.wa_id = ? ORDER BY conv.id DESC LIMIT 1`).bind(wa).first();
   if (!conv) return json({ encontrado: false });
   const limite = conv.last_inbound_at ? new Date(conv.last_inbound_at.replace(" ", "T") + "Z").getTime() + 86400000 : 0;
-  const n = Math.min(Number(url.searchParams.get("mensajes")) || 30, 100);
+  // &largo=1 (reporte de pedidos, 2026-11-05): cuerpo completo (hasta 2000) y hasta 200 mensajes, para leer el historial entero.
+  const largo = url.searchParams.get("largo") === "1";
+  const n = Math.min(Number(url.searchParams.get("mensajes")) || 30, largo ? 200 : 100);
   const { results: mensajes } = await env.CRM_DB.prepare(
-    "SELECT id, direction, type, substr(body, 1, 300) AS body, sent_by, status, created_at FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ?"
+    `SELECT id, direction, type, substr(body, 1, ${largo ? 2000 : 300}) AS body, sent_by, status, created_at FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ?`
   ).bind(conv.id, n).all();
   const boleta = await env.CRM_DB.prepare(
     "SELECT id, created_at FROM messages WHERE conversation_id = ? AND direction = 'out' AND status <> 'failed' AND " +
