@@ -105,6 +105,7 @@
     // Para mandarlos a OTRO libro (compartido como Editor con GOOGLE_CLIENT_EMAIL) o con otro nombre de pestaña,
     // agregar aquí GOOGLE_CABLE_SHEET_ID y/o GOOGLE_CABLE_SHEET_NAME. Ver docs/cable.md.
     // Landing de la Masilla (/masilla/): pestaña "Masilla" del mismo libro (se crea sola); GOOGLE_MASILLA_SHEET_ID / GOOGLE_MASILLA_SHEET_NAME la cambian. Ver docs/masilla.md.
+    // Landing de la Espada Voladora (/espada/): pestaña "Espada" del mismo libro (se crea sola); GOOGLE_ESPADA_SHEET_ID / GOOGLE_ESPADA_SHEET_NAME la cambian. Ver docs/espada.md.
     // La pestaña del CRM manual de ventas, la que alimenta el seguimiento.
     // Es otra pestaña del MISMO libro: un solo GOOGLE_SHEET_ID para las dos.
     "GOOGLE_VENTAS_NAME": "Ventas",
