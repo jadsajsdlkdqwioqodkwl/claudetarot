@@ -35,10 +35,16 @@ Cable y la Masilla, con la marca y el logo de **Puerto Secreto** y una paleta pr
 
 ## Dominio largo
 
-> **Pendiente (2026-11-05):** el hostname y las dos reglas todavía NO están creados en Cloudflare (la sesión no
-> tuvo permiso para cambiar dominios). Mientras tanto la landing funciona en
-> `https://kit-tarot-para-principiantes.tarotperu.store/espada/`. Pedidos de prueba hechos ese día: filas 2 y 3 de la
-> pestaña «Espada» («PRUEBA Claude NO ATENDER», `ES-363F82` y `ES-TZ4YMW`); se pueden borrar.
+> **Creado el 2026-11-05** con la API de Cloudflare (permiso del dueño): hostname de Workers → `claudetarot` y las reglas
+> «Espada Voladora: / -> /espada/ (landing)» y «Espada Voladora: /gracias -> /espada/gracias (gracias)» (la de gracias
+> también acepta `/gracias/`). Antes de eso hubo unas horas en que solo funcionaba en
+> `https://kit-tarot-para-principiantes.tarotperu.store/espada/` (sigue funcionando).
+
+**Pedidos de prueba reales (2026-11-05)**, todos «PRUEBA Claude NO ATENDER», filas 2 a 5 de la pestaña «Espada»
+(`ES-363F82`, `ES-TZ4YMW`, `ES-TFMCU3` Lima, `ES-PHZ2WQ` provincia con Pack Dúo); se pueden borrar. En los cuatro, cada
+envío a Meta fue al píxel `1602561284224693` (PageView, ViewContent, AddToCart, InitiateCheckout, Lead, Purchase,
+PageView de gracias y los SubscribedButtonClick automáticos de Meta) y Meta respondió 200. Lead y Purchase con el
+`eventID` del pedido y el total del servidor (159 y 279).
 
 `https://puerto-secreto-espada-voladora-rc-planeador-a-control-remoto.tarotperu.store` (label de 60
 caracteres, sin «tarot»): hostname de Workers → `claudetarot` y dos reglas de reescritura en la zona
@@ -46,12 +52,13 @@ caracteres, sin «tarot»): hostname de Workers → `claudetarot` y dos reglas d
 Masilla, que no se tocan: `/` → `/espada/` y `/gracias` → `/espada/gracias`. El Worker también atiende ese host
 (`HOST_ESPADA` en `src/index.js`) por si una regla falta.
 
-## Lo que el dueño debe confirmar
+## Decisiones del dueño
 
-- **Precios provisorios**: 1 espada S/ 159 (antes 318) · Pack Dúo S/ 279 (antes 636) · Pack Familia S/ 379
-  (antes 954). Se cambian en `src/lib/pedido-espada.js` y en `PACKS` de `public/espada/index.html` a la vez.
-- **Color**: dorado o cobre; se elige al confirmar por WhatsApp (columna Detalle: «Color por confirmar
-  (WhatsApp)»), como el conector del Cable. Si se quiere elegir en el formulario, se agrega.
+- **Precios confirmados por el dueño (2026-11-05)**: 1 espada S/ 159 (antes 318) · Pack Dúo S/ 279 (antes 636) ·
+  Pack Familia S/ 379 (antes 954). Se cambian en `src/lib/pedido-espada.js` y en `PACKS` de `public/espada/index.html` a la vez.
+- **Color**: uno solo, **dorado** (dueño, 2026-11-05). Columna Detalle: «Color dorado». La página no muestra
+  fotos de otro color (`npm run check` falla si aparece «cobre»). Lo escrito antes sobre elegir dorado o cobre por
+  WhatsApp queda como historia.
 - **Qué incluye**: control tipo mando, batería recargable, cable USB y hélices de repuesto (lo que muestran
   las fotos del producto). Sin garantía prometida y sin datos de autonomía de vuelo ni edad.
 - WhatsApp de atención: `51940028332` (Puerto Secreto).
@@ -60,4 +67,5 @@ Masilla, que no se tocan: `/` → `/espada/` y `/gracias` → `/espada/gracias`.
 
 Del producto real (las mismas del anuncio original; su CDN bloquea descargas, se tomaron de las fichas
 públicas del mismo producto). Las infografías venían con textos en inglés: se recortaron para quitarlos.
-Se descartaron las fotos que muestran una mochila y un control de muñeca, que vienen solo en otra versión.
+Se descartaron las fotos que muestran una mochila y un control de muñeca, que vienen solo en otra versión, y
+(2026-11-05, un solo color) todas las de color cobre o rojo. Principal: `mando.webp` (la espada dorada con el control).
