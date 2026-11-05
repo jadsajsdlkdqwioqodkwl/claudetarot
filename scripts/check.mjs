@@ -1239,6 +1239,7 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("espada: _headers no solapa reglas de /espada/ (Cloudflare junta sus encabezados)", !/^\/espada\/\*\s*$/m.test(headers));
   check("espada: no quedan textos de la Masilla ni del Cable copiados",
     !/\b(sachets?|masilla selladora|USB-C|Lightning|90 días)\b/i.test(es + gr));
+  check("espada: un solo color (dorado): sin fotos ni textos de otro color", !/\b(cobre|copper)\b/i.test(es + gr));
   check("espada: no queda texto en inglés quemado en la página",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer|Flying Sword)\b/i.test(es + gr));
 }

@@ -66,8 +66,8 @@ export function validate(payload) {
       adelanto: envio === "agencia" ? ADELANTO_PROVINCIA : 0,
       pack,
       etiqueta,
-      // El color (dorado o cobre) se elige al confirmar por WhatsApp, como el conector del Cable.
-      detalle: "Color por confirmar (WhatsApp)",
+      // Un solo color (dueño, 2026-11-05): dorado.
+      detalle: "Color dorado",
       cantidad,
       total: precio,
 
@@ -92,7 +92,7 @@ export function mensajeEspadaNuevo(order) {
     (order.adelanto ? ` (adelanto S/ ${order.adelanto.toFixed(2)}, resto al recoger)` : "") +
     `\n🚚 *Entrega:* ${order.envio === "casa" ? "Pago en casa (Lima)" : "Agencia (provincia)"}\n` +
     `📍 *${order.envio === "casa" ? "Dirección" : "Agencia"}:* ${l(order.distrito)} — ${l(order.destino)}` +
-    `\n\n🔥 _Escríbele rápido para confirmar el pedido y el color._`
+    `\n\n🔥 _Escríbele rápido para confirmar el pedido._`
   );
 }
 

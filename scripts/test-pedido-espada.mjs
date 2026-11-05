@@ -65,7 +65,7 @@ const base = {
 const v = validate(base);
 check("pedido válido pasa", v.errors.length === 0, v.errors.join(","));
 check("el total sale del servidor (Pack Familia = 3 espadas, S/ 379)", v.order.total === 379 && v.order.cantidad === 3);
-check("el detalle avisa que el color se confirma por WhatsApp", v.order.detalle === "Color por confirmar (WhatsApp)", v.order.detalle);
+check("el detalle dice el único color: dorado", v.order.detalle === "Color dorado", v.order.detalle);
 check("un pack desconocido cae a x1", validate({ ...base, pack: "x99" }).order.cantidad === 1);
 check("el precio del formulario se ignora", validate({ ...base, total: 1, precio: 1 }).order.total === 379);
 for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
