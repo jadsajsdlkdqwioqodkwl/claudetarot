@@ -74,7 +74,7 @@ for (const campo of ["nombre", "telefono", "distrito", "direccion"]) {
 const prov = { ...base, envio: "agencia", distrito: "Arequipa", direccion: "", agencia: "Shalom - Sede Centro" };
 const vp = validate(prov);
 check("pedido de provincia válido pasa", vp.errors.length === 0, vp.errors.join(","));
-check("en provincia el destino es la agencia y hay adelanto", vp.order.destino === "Shalom - Sede Centro" && vp.order.adelanto === ADELANTO_PROVINCIA && ADELANTO_PROVINCIA === 10);
+check("en provincia el destino es la agencia y hay adelanto", vp.order.destino === "Shalom - Sede Centro" && vp.order.adelanto === ADELANTO_PROVINCIA && ADELANTO_PROVINCIA === 20);
 check("en Lima el destino es la dirección y no hay adelanto", v.order.destino === base.direccion && v.order.adelanto === 0);
 check("provincia sin agencia se rechaza", validate({ ...prov, agencia: "" }).errors.includes("agencia"));
 check("provincia no exige dirección", !validate({ ...prov, direccion: "" }).errors.includes("direccion"));
@@ -82,7 +82,7 @@ check("un envío desconocido cae a Lima", validate({ ...base, envio: "otro" }).o
 const filaProv = filaDePedidoEspada({ ...vp.order, fecha: "2026-11-05 10:00:00", eventId: "ES-X" }, new Headers());
 check("la fila de provincia lleva envío, ciudad, agencia y adelanto",
   filaProv[COLUMNAS_CABLE.indexOf("Envío")] === "Agencia (provincia)" && filaProv[COLUMNAS_CABLE.indexOf("Distrito / Ciudad")] === "Arequipa" &&
-  filaProv[COLUMNAS_CABLE.indexOf("Dirección / Agencia")] === "Shalom - Sede Centro" && filaProv[COLUMNAS_CABLE.indexOf("Adelanto")] === 10);
+  filaProv[COLUMNAS_CABLE.indexOf("Dirección / Agencia")] === "Shalom - Sede Centro" && filaProv[COLUMNAS_CABLE.indexOf("Adelanto")] === 20);
 check("la fila encaja con los encabezados",
   filaDePedidoEspada({ ...v.order, fecha: "2026-11-05 10:00:00", eventId: "ES-X" }, new Headers()).length === COLUMNAS_CABLE.length);
 

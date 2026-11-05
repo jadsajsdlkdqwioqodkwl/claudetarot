@@ -69,3 +69,8 @@ Del producto real (las mismas del anuncio original; su CDN bloquea descargas, se
 públicas del mismo producto). Las infografías venían con textos en inglés: se recortaron para quitarlos.
 Se descartaron las fotos que muestran una mochila y un control de muñeca, que vienen solo en otra versión, y
 (2026-11-05, un solo color) todas las de color cobre o rojo. Principal: `mando.webp` (la espada dorada con el control).
+
+## Cambios del 2026-11-05 (noche)
+
+- Se quitó la barra fija de abajo (CTA sticky con precio) a pedido del dueño; quedan los botones «COMPLETAR PEDIDO» de la ficha y del final, y el botón fijo dentro del formulario.
+- Provincia: adelanto de **S/ 20** (antes S/ 10) en la página, la gracias, el servidor (`ADELANTO_PROVINCIA`) y la hoja. Solo la Espada; el Kit, el Cable y la Masilla siguen con S/ 10.
