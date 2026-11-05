@@ -120,6 +120,10 @@ Debajo de la cabecera de cada chat (`#barra-seguimiento`, `GET/POST /api/crm/seg
 - En el editor de la rápida, las fotos/videos se ordenan con flechas (igual que en la bienvenida); se guarda al toque
   (`PATCH /api/crm/quick-replies { id, orden_media }`). Los experimentos de flujo están en `docs/experimentos.md`.
 
+## Flujos de mensajes (Herramientas, desde el 2026-11-05)
+Todo lo que sale solo, en un solo lugar: Herramientas → «Flujos de mensajes». Cada tarjeta muestra el texto exacto, cuándo
+sale y su estado en Meta, con un botón al editor que corresponde (bienvenida, plan, Plantillas para Meta, rápida de cobro).
+
 ## Dónde está cada cosa
 - `src/api/crm/planes-seguimiento.js`: los planes con nombre (`/api/crm/planes` es otra cosa: los planes con plantilla de Shalom). `scripts/test-planes.mjs`: su prueba.
 - `src/lib/crm-db.js`: `normalizarPasosSeguimiento`, `calendarioDePasos`, `leerPlan`, `pasosDePlan`, `programarPlanEnChat`, `pasosUniversales`, `pasosDeSeguimientoRapida`,

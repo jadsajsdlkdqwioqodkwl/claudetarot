@@ -13,7 +13,7 @@ import { listarLineas, envDeLinea } from "./lineas.js";
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { notificarTelegram } from "./telegram.js";
 import { primerNombre } from "./plantillas.js";
-import { listarTemplates, crearTemplate, editarTemplate } from "./whatsapp.js";
+import { listarTemplates, crearTemplate, editarTemplate, subirMuestraPlantilla } from "./whatsapp.js";
 import { planesDe, pasosOrdenados, marcaDeLinea, IDIOMA_PLAN, AVISOS_ENVIO, RESCATE_CATALOGO } from "./planes-plantilla.js";
 import { pasarAgendadosAlCatalogo } from "./rescate-lead.js";
 import { TOQUES, marcaDeToque, toquesActivos, guardarToqueActivo } from "./toques.js";
@@ -26,7 +26,29 @@ const EJEMPLOS = ["María", "el kit de tarot"];
 const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/g) || []).length);
 
 /** Plantillas de los planes de seguimiento de 7 días (ver docs/seguimientos.md). Botones de hasta 20 caracteres. */
+/**
+ * Plantillas con cabecera de imagen (dueño, 2026-11-04): la clave en R2 (CRM_MEDIA) de la foto que va arriba del texto.
+ * Al crearla en Meta se sube como muestra (subirMuestraPlantilla); al mandarla, el cron la sube como media y la pone en el
+ * componente header (crm-cron.js). La foto del bono es la de «le cuento algo que casi nadie espera del kit» (plan 2).
+ */
+export const IMAGENES_PLANTILLA = {
+  bono_clases_libros_img: "chat/1793756360391-d34b1b08.png",
+  bono_saldo_shalom_img: "chat/1793756360391-d34b1b08.png"
+};
+export const imagenDePlantilla = (nombre) => IMAGENES_PLANTILLA[nombre] || null;
+
 export const SEGUIMIENTO_7D = [
+  {
+    nombre: "bono_clases_libros_img", titulo: "Bono (clases y libros) CON la foto de los bonos", cuando: "a los chats de la semana que no compraron; igual que bono_clases_libros pero con la imagen arriba",
+    texto: "Hola estimad@ 🩷 tenemos una novedad: el kit ahora incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ Si separa su kit esta semana se lo enviamos con todo ese bono 🎁 ¿Se lo separamos?",
+    botones: ["Sí, quiero", "Tengo una duda"], imagen: IMAGENES_PLANTILLA.bono_clases_libros_img
+  },
+  {
+    nombre: "bono_saldo_shalom_img", titulo: "Bono a quien tiene saldo pendiente en Shalom, CON la foto de los bonos",
+    cuando: "a los clientes de provincia con la boleta enviada y saldo pendiente; igual que bono_saldo_shalom pero con la imagen arriba",
+    texto: "Hola estimad@ ☺️ su kit sigue esperándolo en su agencia Shalom; en cuanto complete el saldo pendiente le enviamos su clave de recojo 🔑 Y una buena noticia: ahora el kit incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ ¿Le paso el monto de su saldo?",
+    botones: ["Sí, mi saldo", "Ya pagué"], imagen: IMAGENES_PLANTILLA.bono_saldo_shalom_img
+  },
   {
     nombre: "bono_saldo_shalom", titulo: "Bono (clases y libros) a quien tiene saldo pendiente en Shalom",
     cuando: "a mano o por campaña, a los clientes de provincia que ya tienen la boleta y todavía no pagan el saldo",
@@ -150,7 +172,8 @@ export function propuestasDe(marca, cambios = {}) {
     for (const t of SEGUIMIENTO_7D) {
       lista.push({
         nombre: t.nombre, grupo: "Seguimiento 7 días (planes con nombre)", titulo: t.titulo, cuando: t.cuando,
-        categoria: "MARKETING", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, []), ...botones(t.botones)]
+        categoria: "MARKETING", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, []), ...botones(t.botones)],
+        ...(t.imagen ? { imagen: t.imagen } : {})
       });
     }
   }
@@ -345,7 +368,16 @@ export async function mandarPropuestas(env, marca, nombres, reenviar = false) {
         resultados.push({ nombre, ok: true });
         continue;
       }
-      await crearTemplate(envM, { nombre, categoria: p.categoria, idioma: IDIOMA_PLAN, componentes: p.componentes });
+      // Cabecera de imagen: la foto (R2) se sube como muestra y va como HEADER antes del cuerpo.
+      let componentes = p.componentes;
+      if (p.imagen) {
+        const obj = await env.CRM_MEDIA?.get(p.imagen);
+        if (!obj) throw new Error(`La imagen ${p.imagen} ya no está en el CRM.`);
+        const mime = obj.httpMetadata?.contentType || "image/png";
+        const h = await subirMuestraPlantilla(envM, new Blob([await obj.arrayBuffer()], { type: mime }), mime, p.imagen.split("/").pop());
+        componentes = [{ type: "HEADER", format: "IMAGE", example: { header_handle: [h] } }, ...p.componentes];
+      }
+      await crearTemplate(envM, { nombre, categoria: p.categoria, idioma: IDIOMA_PLAN, componentes });
       resultados.push({ nombre, ok: true });
     } catch (err) {
       resultados.push({ nombre, ok: false, error: err.message });

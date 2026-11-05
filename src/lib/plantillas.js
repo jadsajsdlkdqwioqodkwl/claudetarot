@@ -22,10 +22,10 @@ export async function plantillaAprobada(env, nombre) {
   const clave = env.LINEA_ID ? `plantilla_estado:${env.WHATSAPP_BUSINESS_ACCOUNT_ID}:${nombre}` : `plantilla_estado:${nombre}`;
   const guardado = await obtenerAjuste(db, clave).catch(() => null);
   if (guardado) {
-    const [estado, at, idioma, conNombre, variables, conCopyCode, conCatalogo] = String(guardado).split("|");
-    // Las guardadas antes de tener variables, conCopyCode o conCatalogo se vuelven a leer de Meta una vez.
-    if (estado === "APPROVED" && variables !== undefined && conCopyCode !== undefined && conCatalogo !== undefined)
-      return { idioma, conNombre: conNombre === "1", variables: Number(variables) || 0, conCopyCode: conCopyCode === "1", conCatalogo: conCatalogo === "1" };
+    const [estado, at, idioma, conNombre, variables, conCopyCode, conCatalogo, conImagen] = String(guardado).split("|");
+    // Las guardadas antes de tener variables, conCopyCode, conCatalogo o conImagen se vuelven a leer de Meta una vez.
+    if (estado === "APPROVED" && variables !== undefined && conCopyCode !== undefined && conCatalogo !== undefined && conImagen !== undefined)
+      return { idioma, conNombre: conNombre === "1", variables: Number(variables) || 0, conCopyCode: conCopyCode === "1", conCatalogo: conCatalogo === "1", conImagen: conImagen === "1" };
     if (estado !== "APPROVED" && Date.now() - Number(at) < CACHE_MS) return null;
   }
   const lista = (await listarTemplates(env)).filter((t) => t.name === nombre);
@@ -45,8 +45,10 @@ export async function plantillaAprobada(env, nombre) {
     String(c.type).toUpperCase() === "BUTTONS" &&
     (c.buttons || []).some((b) => String(b.type).toUpperCase() === "CATALOG")
   );
-  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}|${conNombre ? 1 : 0}|${variables}|${conCopyCode ? 1 : 0}|${conCatalogo ? 1 : 0}`);
-  return t?.status === "APPROVED" ? { idioma: t.language, conNombre, variables, conCopyCode, conCatalogo } : null;
+  // ¿Cabecera de imagen? Al mandarla hay que pasar la foto (crm-cron.js, imagenDePlantilla).
+  const conImagen = (t?.components || []).some((c) => String(c.type).toUpperCase() === "HEADER" && String(c.format || "").toUpperCase() === "IMAGE");
+  await guardarAjuste(db, clave, `${t?.status || "NO_EXISTE"}|${Date.now()}|${t?.language || ""}|${conNombre ? 1 : 0}|${variables}|${conCopyCode ? 1 : 0}|${conCatalogo ? 1 : 0}|${conImagen ? 1 : 0}`);
+  return t?.status === "APPROVED" ? { idioma: t.language, conNombre, variables, conCopyCode, conCatalogo, conImagen } : null;
 }
 
 export const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "estimad@";

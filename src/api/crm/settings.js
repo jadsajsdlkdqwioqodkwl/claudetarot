@@ -33,14 +33,17 @@ const json = (data, status = 200) =>
   });
 
 async function get({ env }) {
-  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, sinVisto, escribiendoVivo, yapeNumero] = await Promise.all([
+  const [adWelcomeQuickReplyId, adFollowupSequenceId, adFollowupAuto, quickFollowupAuto, sinVisto, escribiendoVivo, yapeNumero, cobroAuto, avisoSinRespuesta, cobroRapidaId] = await Promise.all([
     obtenerAjuste(env.CRM_DB, "ad_welcome_quick_reply_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_sequence_id"),
     obtenerAjuste(env.CRM_DB, "ad_followup_auto"),
     obtenerAjuste(env.CRM_DB, "quick_followup_auto"),
     obtenerAjuste(env.CRM_DB, "sin_visto"),
     obtenerAjuste(env.CRM_DB, "escribiendo_vivo"),
-    obtenerAjuste(env.CRM_DB, "yape_numero")
+    obtenerAjuste(env.CRM_DB, "yape_numero"),
+    obtenerAjuste(env.CRM_DB, "cobro_auto"),
+    obtenerAjuste(env.CRM_DB, "aviso_sin_respuesta"),
+    obtenerAjuste(env.CRM_DB, "cobro_rapida_id")
   ]);
   // El plan universal de seguimiento y cuántas respuestas rápidas lo usan / tienen seguimiento propio.
   // OJO: el orden de esta lista es el de las promesas de abajo (el 3/11 estaba cruzado y el GET fallaba: el selector de
@@ -62,6 +65,10 @@ async function get({ env }) {
     sin_visto: sinVisto === "1",
     escribiendo_vivo: escribiendoVivo !== "0",
     yape_numero: yapeNumero || "",
+    // Cobro automático (cobro-auto.js) y aviso «nadie responde» (crm-avisos.js), dueño 2026-11-04/05.
+    cobro_auto: cobroAuto !== "0",
+    cobro_rapida_id: Number(cobroRapidaId) || 116,
+    aviso_sin_respuesta: avisoSinRespuesta !== "0",
     seguimiento_universal: seguimientoUniversal,
     // Planes con nombre (migración 0073) para el selector del editor de rápidas, y el plan que programa la bienvenida.
     planes: planes.map((p) => ({ ...p, interesados: p.id === (Number(planInteresados) || 0) })),
@@ -99,6 +106,9 @@ async function patch({ request, env }) {
   if ("escribiendo_vivo" in payload) {
     await guardarAjuste(env.CRM_DB, "escribiendo_vivo", payload.escribiendo_vivo ? "1" : "0");
   }
+  if ("cobro_auto" in payload) await guardarAjuste(env.CRM_DB, "cobro_auto", payload.cobro_auto ? "1" : "0");
+  if ("aviso_sin_respuesta" in payload) await guardarAjuste(env.CRM_DB, "aviso_sin_respuesta", payload.aviso_sin_respuesta ? "1" : "0");
+  if ("cobro_rapida_id" in payload) await guardarAjuste(env.CRM_DB, "cobro_rapida_id", String(Number(payload.cobro_rapida_id) || 116));
   if ("yape_numero" in payload) {
     await guardarAjuste(env.CRM_DB, "yape_numero", String(payload.yape_numero || "").trim().slice(0, 20));
   }

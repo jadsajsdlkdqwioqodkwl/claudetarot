@@ -10,7 +10,7 @@
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque, subidaDe } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
 import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
 import { parametrosBotonCatalogo } from "./catalogo-boton.js";
@@ -19,7 +19,7 @@ import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA,
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
 import { plantillaAprobada, primerNombre } from "./plantillas.js";
-import { textoParaChat, parametrosDePlantilla } from "./plantillas-propuestas.js";
+import { textoParaChat, parametrosDePlantilla, imagenDePlantilla } from "./plantillas-propuestas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -213,7 +213,18 @@ export async function procesarSeguimientosVencidos(env) {
         const parametros = s.template_params ? JSON.parse(s.template_params) : await parametrosDePlantilla(envChat, s.template_name, s.contact_nombre).catch(() => []);
         // Solo sale si Meta ya la aprobó en la cuenta de ese número: si el admin todavía no la mandó
         // a revisión (o Meta no responde), espera 30 min y reintenta, hasta 3 días.
-        const aprobada = await plantillaAprobada(envChat, s.template_name).catch(() => null);
+        let aprobada = await plantillaAprobada(envChat, s.template_name).catch(() => null);
+        // Plantilla «_img» (con foto) todavía sin aprobar pasadas 2 h de su hora: sale la versión de texto del mismo nombre si
+        // Meta ya la aprobó (dueño, 2026-11-05: que el bono llegue con foto si se puede, pero que llegue).
+        if (!aprobada && /_img$/.test(s.template_name) && Date.now() - new Date(s.send_at).getTime() > 2 * 3600 * 1000) {
+          const base = s.template_name.replace(/_img$/, "");
+          const aprobadaBase = await plantillaAprobada(envChat, base).catch(() => null);
+          if (aprobadaBase) {
+            s.template_name = base;
+            aprobada = aprobadaBase;
+            await env.CRM_DB.prepare("UPDATE scheduled_messages SET template_name = ?, body = ? WHERE id = ?").bind(base, `Plantilla: ${base}`, s.id).run();
+          }
+        }
         if (!aprobada) {
           if (Date.now() - new Date(s.send_at).getTime() > 3 * 24 * 3600 * 1000) throw new Error(`La plantilla ${s.template_name} no está aprobada en Meta.`);
           await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
@@ -235,6 +246,13 @@ export async function procesarSeguimientosVencidos(env) {
           if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
         }
         if (aprobada.conCatalogo) botonesParams.push(...(await parametrosBotonCatalogo(envChat).catch(() => [])));
+        // Cabecera de imagen: la foto de la fila (media_key) o la de la plantilla (IMAGENES_PLANTILLA), subida y reusada.
+        if (aprobada.conImagen) {
+          const clave = s.media_key || imagenDePlantilla(s.template_name);
+          if (!clave) throw new Error(`La plantilla ${s.template_name} lleva imagen y no sé cuál mandar.`);
+          const { mediaId } = await subidaDe(envChat, clave);
+          botonesParams.unshift({ type: "header", parameters: [{ type: "image", image: { id: mediaId } }] });
+        }
         const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros, botonesParams.length ? botonesParams : undefined));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,

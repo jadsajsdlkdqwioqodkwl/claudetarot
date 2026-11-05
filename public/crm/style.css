@@ -1288,3 +1288,18 @@ body.solo-lectura #form-envio { display: none; }
 .ejemplar-item { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
 .ejemplar-item .sub { color: var(--gris); font-size: 12px; }
 .ejemplar-item .ejemplar-notas { white-space: pre-wrap; margin-top: 4px; font-size: 12px; }
+
+/* Flujos de mensajes (Herramientas; dueño, 2026-11-04). */
+.flujo { border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--panel); }
+.flujo-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.flujo-cab h3 { margin: 0; font-size: 14px; flex: 1; }
+.flujo-cab .flujo-estado { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #e6f4ea; color: #137333; }
+.flujo-cab .flujo-estado.apagado { background: #f1f3f4; color: #5f6368; }
+.flujo-cab .flujo-estado.meta { background: #fff4e5; color: #8a4b00; }
+.flujo-pasos { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.flujo-pasos li { padding: 4px 0; border-top: 1px dashed var(--borde); display: grid; grid-template-columns: 120px 1fr; gap: 8px; }
+.flujo-pasos li .cuando { color: var(--gris); font-weight: 600; }
+.flujo-pasos li .texto { white-space: pre-wrap; }
+.flujo-pasos li .texto .btns { color: var(--gris); font-size: 11px; }
+.flujo-resumen { font-size: 12px; color: var(--gris); margin-top: 2px; }
+.flujo details > summary { cursor: pointer; font-size: 12px; color: var(--azul, #0b5cad); margin-top: 4px; }
