@@ -88,3 +88,15 @@
   Cache-Control: public, max-age=0, must-revalidate
 /masilla-v2/video/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Landing de la Espada Voladora RC (/espada/, tienda de prueba con su propio píxel): mismas reglas, sin solapes.
+/espada/
+  Cache-Control: public, max-age=0, must-revalidate
+/espada/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/espada/gracias
+  Cache-Control: public, max-age=0, must-revalidate
+/espada/gracias.html
+  Cache-Control: public, max-age=0, must-revalidate
+/espada/img/*
+  Cache-Control: public, max-age=31536000, immutable

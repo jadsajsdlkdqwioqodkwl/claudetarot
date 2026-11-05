@@ -1185,6 +1185,64 @@ check("las letras de columna llegan hasta la última de la hoja",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer)\b/i.test(ms + gr));
 }
 
+/* Landing de la Espada Voladora RC (/espada/): tienda de prueba con SU PROPIO píxel. Lo importante: que ningún
+   evento se vaya a otro píxel (el de Puerto Secreto o el de Tarot) y que todos los eventos estén puestos.
+   La prueba del endpoint con Google simulado es scripts/test-pedido-espada.mjs. */
+{
+  const es = readFileSync(join(root, "public/espada/index.html"), "utf8");
+  const gr = readFileSync(join(root, "public/espada/gracias.html"), "utf8");
+  const idx = readFileSync(join(root, "src/index.js"), "utf8");
+  const { PACKS, ADELANTO_PROVINCIA, PIXEL_ESPADA, HOST_ESPADA } = await import(join(root, "src/lib/pedido-espada.js"));
+  for (const [id, p] of Object.entries(PACKS)) {
+    const m = new RegExp(`${id}:\\s*\\{[^}]*?cant:\\s*(\\d+),\\s*precio:\\s*(\\d+),\\s*viejo:\\s*(\\d+)`).exec(es);
+    check(`espada: el pack ${id} de la página (${m ? `${m[1]} u., S/ ${m[2]}, antes ${m[3]}` : "no está"}) coincide con el servidor`,
+      m && Number(m[1]) === p.cantidad && Number(m[2]) === p.precio && Number(m[3]) === p.viejo);
+  }
+  check("espada: la página llama a /api/order-espada y el Worker lo atiende", es.includes("'/api/order-espada'") && idx.includes('"/api/order-espada"'));
+  check("espada: el adelanto de provincia de la página coincide con el servidor", new RegExp(`var ADELANTO = ${ADELANTO_PROVINCIA};`).test(es));
+  check("espada: el logo de Puerto Secreto y el badge de vendedor autorizado están en el formulario", es.includes('class="logo-circle"') && /Vendedor autorizado/.test(es));
+  for (const id of ["fName", "fPhone", "fDistrito", "fDir", "fCiudad", "fSucursal", "shipCasa", "shipAg", "fWebsite", "btnPedido"]) {
+    check(`espada: index.html tiene #${id}`, es.includes(`id="${id}"`));
+  }
+  const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
+  check("espada: el píxel de la página, el de gracias y PIXEL_ESPADA son el mismo (1602561284224693)",
+    dato(es, "PIXEL_ID") === PIXEL_ESPADA && dato(gr, "PIXEL_ID") === PIXEL_ESPADA && PIXEL_ESPADA === "1602561284224693");
+  const otrosIds = [...(es + gr).matchAll(/\b\d{15,16}\b/g)].map((m) => m[0]).filter((n) => n !== PIXEL_ESPADA);
+  check("espada: ningún otro píxel en la página ni en gracias (ni Puerto Secreto ni Tarot)", !otrosIds.length, otrosIds.join(", "));
+  check("espada: fbq('init') usa solo PIXEL_ID (nunca un número escrito a mano)",
+    [...(es + gr).matchAll(/fbq\('init',\s*([^,)]+)/g)].every((m) => m[1].trim() === "PIXEL_ID"));
+  for (const ev of ["PageView", "ViewContent", "AddToCart", "InitiateCheckout"]) {
+    check(`espada: la página envía ${ev}`, new RegExp(`(fbq\\('track',|fbTrack\\()\\s*'${ev}'`).test(es));
+  }
+  check("espada: Lead y Purchase salen al confirmarse el pedido, con el mismo eventID y datos del cliente (EMQ); gracias no los repite",
+    /fbq\('track', 'Lead', datos, \{ eventID: c\.eventId \}\)/.test(es) && /fbq\('track', 'Purchase', datos, \{ eventID: c\.eventId \}\)/.test(es) &&
+    /fbq\('init', PIXEL_ID, datosUsuario\)/.test(es) && !/'(Lead|Purchase)'/.test(gr.replace(/\/\*[\s\S]*?\*\//g, "")));
+  check("espada: gracias es SIEMPRE /espada/gracias (ruta absoluta: nunca cae en la gracias de Tarot, que tiene otro píxel)",
+    es.includes("location.href = '/espada/gracias?v=' + encodeURIComponent(total);"));
+  check("espada: la página y gracias usan la misma clave de sessionStorage y la URL no lleva datos personales",
+    es.includes("sessionStorage.setItem('pedidoEspada'") && gr.includes("sessionStorage.getItem('pedidoEspada')"));
+  check("espada: WA_NUMERO es el de Puerto Secreto y es igual en la página y en gracias",
+    dato(es, "WA_NUMERO") === "51940028332" && dato(gr, "WA_NUMERO") === "51940028332");
+  check("espada: el dominio largo es válido, no dice «tarot» y el Worker lo atiende",
+    HOST_ESPADA.split(".")[0].length <= 63 && !/tarot/i.test(HOST_ESPADA.split(".")[0]) && HOST_ESPADA.endsWith(".tarotperu.store") && idx.includes('hostV2 === HOST_ESPADA ? "/espada"'));
+  const faltan = [];
+  const tamanos = [];
+  for (const [, ruta] of es.matchAll(/(?:src|href|content)="(\/espada\/[^"]+)"/g)) {
+    if (!existsSync(join(root, "public", ruta))) faltan.push(ruta);
+  }
+  for (const f of readdirSync(join(root, "public/espada/img"))) {
+    const kb = statSync(join(root, "public/espada/img", f)).size / 1024;
+    if (kb > 300) tamanos.push(`img/${f} ${kb.toFixed(0)} KB`);
+  }
+  check("espada: todas las fotos que usa la página existen", !faltan.length, faltan.join(", "));
+  check("espada: ninguna foto pasa de 300 KB", !tamanos.length, tamanos.join(", "));
+  check("espada: _headers no solapa reglas de /espada/ (Cloudflare junta sus encabezados)", !/^\/espada\/\*\s*$/m.test(headers));
+  check("espada: no quedan textos de la Masilla ni del Cable copiados",
+    !/\b(sachets?|masilla selladora|USB-C|Lightning|90 días)\b/i.test(es + gr));
+  check("espada: un solo color (dorado): sin fotos ni textos de otro color", !/\b(cobre|copper)\b/i.test(es + gr));
+  check("espada: no queda texto en inglés quemado en la página",
+    !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer|Flying Sword)\b/i.test(es + gr));
+}
 /* Versión 2 de las landings del Cable y de la Masilla (hero en GIF, /cable-v2/ y /masilla-v2/). */
 {
   const idx = readFileSync(join(root, "src/index.js"), "utf8");
