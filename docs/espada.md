@@ -35,6 +35,11 @@ Cable y la Masilla, con la marca y el logo de **Puerto Secreto** y una paleta pr
 
 ## Dominio largo
 
+> **Pendiente (2026-11-05):** el hostname y las dos reglas todavía NO están creados en Cloudflare (la sesión no
+> tuvo permiso para cambiar dominios). Mientras tanto la landing funciona en
+> `https://kit-tarot-para-principiantes.tarotperu.store/espada/`. Pedidos de prueba hechos ese día: filas 2 y 3 de la
+> pestaña «Espada» («PRUEBA Claude NO ATENDER», `ES-363F82` y `ES-TZ4YMW`); se pueden borrar.
+
 `https://puerto-secreto-espada-voladora-rc-planeador-a-control-remoto.tarotperu.store` (label de 60
 caracteres, sin «tarot»): hostname de Workers → `claudetarot` y dos reglas de reescritura en la zona
 `tarotperu.store` (Reglas → Transformar → Reescribir URL, `http_request_transform`), junto a las del Cable y la
