@@ -55,7 +55,9 @@ export async function notificarRecomendaciones(env) {
  * `aviso_sin_respuesta_min`, 10) llegaron mensajes de clientes a la línea principal y NINGUNA persona del equipo escribió nada a
  * mano en ese lapso (en ningún chat), avisa al dueño por Telegram (solo a él). No es «hay chats sin responder» (a un «gracias»
  * de un cliente antiguo nadie tiene por qué contestar): es «el equipo está ausente». Sin falsos positivos: si no escribió
- * ningún cliente, no avisa; de 00:00 a 07:00 (Lima) no avisa. Como mucho uno por hora. `aviso_sin_respuesta` en 0 lo apaga.
+ * ningún cliente, no avisa; de 00:00 a 07:00 (Lima) no avisa. Como mucho dos por hora (ajuste `aviso_sin_respuesta_cada_min`,
+ * 30). Le llega al dueño (TELEGRAM_CHAT_ID) y a las personas del ajuste `aviso_sin_respuesta_agentes` (ids de agents con
+ * Telegram vinculado; por defecto Jennifer, id 4). `aviso_sin_respuesta` en 0 lo apaga.
  */
 export async function avisarSinRespuesta(env) {
   const db = env.CRM_DB;
@@ -65,7 +67,8 @@ export async function avisarSinRespuesta(env) {
   if (horaLima < 7) return { enviados: 0, omitido: "madrugada" };
   const min = Math.max(3, Number(await obtenerAjuste(db, "aviso_sin_respuesta_min").catch(() => null)) || 10);
   const ultimo = Number(await obtenerAjuste(db, "aviso_sin_respuesta_at").catch(() => null)) || 0;
-  if (Date.now() - ultimo < ESPACIO_MIN * 60 * 1000) return { enviados: 0, omitido: "reciente" };
+  const cadaMin = Math.max(10, Number(await obtenerAjuste(db, "aviso_sin_respuesta_cada_min").catch(() => null)) || 30);
+  if (Date.now() - ultimo < cadaMin * 60 * 1000) return { enviados: 0, omitido: "reciente" };
   // ¿Escribió algún cliente en esos minutos? Si no, no hay nada que responder y no se avisa.
   const clientes = await db.prepare(
     `SELECT COUNT(DISTINCT m.conversation_id) AS n FROM messages m JOIN conversations conv ON conv.id = m.conversation_id
@@ -80,11 +83,24 @@ export async function avisarSinRespuesta(env) {
        AND m.sent_by NOT LIKE 'Envío masivo%' AND m.sent_by NOT LIKE 'Toque%' AND m.sent_by NOT LIKE 'asesor%' AND m.sent_by NOT LIKE 'Sugerencia%' LIMIT 1`
   ).bind(`-${min} minutes`).first();
   if (humano) return { enviados: 0, omitido: "alguien responde" };
-  await llamarTelegram(env, "sendMessage", {
-    chat_id: String(env.TELEGRAM_CHAT_ID),
-    text: `⚠️ Nadie del equipo ha escrito en los últimos ${min} min y ${clientes.n} cliente${clientes.n === 1 ? "" : "s"} escribi${clientes.n === 1 ? "ó" : "eron"} en ese lapso.`,
-    reply_markup: { inline_keyboard: [[{ text: "Abrir el CRM", url: `${SITIO}/crm/` }]] }
-  });
+  // A quién: el dueño y las personas del ajuste (por defecto Jennifer, id 4), si tienen Telegram vinculado.
+  const idsAgentes = String((await obtenerAjuste(db, "aviso_sin_respuesta_agentes").catch(() => null)) ?? "4").split(",").map((x) => Number(x.trim())).filter(Boolean);
+  const chats = new Set([String(env.TELEGRAM_CHAT_ID)]);
+  if (idsAgentes.length) {
+    const { results } = await db.prepare(`SELECT telegram_chat_id FROM agents WHERE active = 1 AND telegram_chat_id IS NOT NULL AND id IN (${idsAgentes.map(() => "?").join(",")})`).bind(...idsAgentes).all().catch(() => ({ results: [] }));
+    for (const a of results || []) chats.add(String(a.telegram_chat_id));
+  }
+  let enviados = 0;
+  for (const chatId of chats) {
+    try {
+      await llamarTelegram(env, "sendMessage", {
+        chat_id: chatId,
+        text: `⚠️ Nadie del equipo ha escrito en los últimos ${min} min y ${clientes.n} cliente${clientes.n === 1 ? "" : "s"} escribi${clientes.n === 1 ? "ó" : "eron"} en ese lapso.`,
+        reply_markup: { inline_keyboard: [[{ text: "Abrir el CRM", url: `${SITIO}/crm/` }]] }
+      });
+      enviados++;
+    } catch (err) { console.error("Aviso sin respuesta:", err.message); }
+  }
   await guardarAjuste(db, "aviso_sin_respuesta_at", String(Date.now()));
-  return { enviados: 1, clientes: clientes.n };
+  return { enviados, clientes: clientes.n };
 }

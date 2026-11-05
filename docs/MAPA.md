@@ -1644,3 +1644,5 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - Regla del cron (5/11): una plantilla `<nombre>_img` que siga sin aprobar 2 h después de su hora sale como `<nombre>` (la de
   texto) si esa está aprobada. Las 14 filas del bono a clientes con saldo pendiente (`bono-saldo-shalom-2026-11-04`) se pasaron a
   `bono_saldo_shalom_img` (5/11 11:00 Lima): con foto si Meta la aprueba a tiempo, si no con la de texto (ya aprobada).
+- Aviso «nadie responde» (5/11, 2.ª precisión del dueño): hasta dos por hora (`aviso_sin_respuesta_cada_min`, 30) y le llega al
+  dueño y a Jennifer (`aviso_sin_respuesta_agentes`, ids de agents, por defecto «4»).
