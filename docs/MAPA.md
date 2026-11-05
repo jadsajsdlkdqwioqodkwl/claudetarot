@@ -1590,7 +1590,7 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   nocturno dejó como INTENCION / POR_CONFIRMAR (aunque no estén activos), usa los chats ejemplares como modelo y no repite lo
   que ya manda el plan de 7 días. La otra sesión (3fef1fc, mismo día) implementó lo mismo sin bandera y siempre prendido con «api»
   (`posibles_ventas`, marca «⭐ POSIBLE VENTA», van primero): en el merge se quedó esa versión; `--con-reporte` sigue
-  aceptándose por compatibilidad y el prompt de la Routine habla de «⭐ POSIBLE VENTA». Texto completo en `docs/routines.md`.
+  aceptándose por compatibilidad y el prompt de la Routine habla de «⭐ POSIBLE VENTA» (actualizado el 5/11 00:25 UTC). Texto completo en `docs/routines.md`.
 - **Respuesta automática de cobro** (`src/lib/cobro-auto.js`, hook en el webhook tras «Ver catálogo»): cliente con
   `cobro_3x`, sin `saldo_pagado`, saldo > 0, chat sin pausa, que escribe sobre saldo/Yape/clave/recojo (regex `RE_SALDO`) →
   sale la rápida «Cobro» (ajuste `cobro_rapida_id`, por defecto 116) con `S/<saldo del contacto>` y el `yape_numero`
