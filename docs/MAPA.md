@@ -1596,9 +1596,11 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   sale la rápida «Cobro» (ajuste `cobro_rapida_id`, por defecto 116) con `S/<saldo del contacto>` y el `yape_numero`
   reemplazados. Una por chat cada 6 h; `cobro_auto = 0` la apaga. Origen «Automático (cobro: saldo y Yape)». La clave de
   retiro nunca.
-- **Aviso «nadie está respondiendo»** (`crm-avisos.js` `avisarSinRespuesta`, cron */10): chats de la línea principal cuyo
-  último mensaje es del cliente desde hace > N min (ajuste `aviso_sin_respuesta_min`, 10) y ninguna vendedora escribió a mano
-  en ese lapso → Telegram solo al dueño, uno por hora, dentro del horario. `aviso_sin_respuesta = 0` lo apaga.
+- **Aviso «nadie está respondiendo»** (`crm-avisos.js` `avisarSinRespuesta`, cron */10). Precisado por el dueño el 5/11: NO es
+  «chats sin responder» (a un «gracias» de un cliente antiguo nadie contesta), es «el equipo está ausente»: en los últimos N min
+  (ajuste `aviso_sin_respuesta_min`, 10) escribió algún cliente y ninguna persona del equipo escribió nada a mano en ningún chat
+  → Telegram solo al dueño, uno por hora; nunca de 00:00 a 07:00 Lima ni si ningún cliente escribió. `aviso_sin_respuesta = 0`
+  lo apaga.
 - **Clave de retiro (shalom_code):** ya existía el campo «Código Shalom» del chat (4 dígitos) y el asesor nunca lo recibe
   (ningún endpoint del asesor lo expone). Ahora además NINGÚN texto del asesor puede llevarla: `/api/asesor/mandar` tipo
   `texto` la rechaza (antes solo `despachar`) y `/api/asesor/sugerencias` rechaza toda sugerencia cuyo texto la contenga
