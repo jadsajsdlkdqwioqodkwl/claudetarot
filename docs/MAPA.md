@@ -1641,3 +1641,6 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   Creadas el 5/11 en Meta: `bono_clases_libros_img` y `bono_saldo_shalom_img` (misma letra que las de texto, con la foto
   «Bonos adicionales» `chat/1793756360391-d34b1b08.png`). Los toques y el envío a mano desde el chat todavía no ponen la cabecera
   (solo el cron de `scheduled_messages`): pendiente si se usan desde ahí.
+- Regla del cron (5/11): una plantilla `<nombre>_img` que siga sin aprobar 2 h después de su hora sale como `<nombre>` (la de
+  texto) si esa está aprobada. Las 14 filas del bono a clientes con saldo pendiente (`bono-saldo-shalom-2026-11-04`) se pasaron a
+  `bono_saldo_shalom_img` (5/11 11:00 Lima): con foto si Meta la aprueba a tiempo, si no con la de texto (ya aprobada).

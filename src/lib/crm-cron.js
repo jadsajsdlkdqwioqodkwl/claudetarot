@@ -213,7 +213,18 @@ export async function procesarSeguimientosVencidos(env) {
         const parametros = s.template_params ? JSON.parse(s.template_params) : await parametrosDePlantilla(envChat, s.template_name, s.contact_nombre).catch(() => []);
         // Solo sale si Meta ya la aprobó en la cuenta de ese número: si el admin todavía no la mandó
         // a revisión (o Meta no responde), espera 30 min y reintenta, hasta 3 días.
-        const aprobada = await plantillaAprobada(envChat, s.template_name).catch(() => null);
+        let aprobada = await plantillaAprobada(envChat, s.template_name).catch(() => null);
+        // Plantilla «_img» (con foto) todavía sin aprobar pasadas 2 h de su hora: sale la versión de texto del mismo nombre si
+        // Meta ya la aprobó (dueño, 2026-11-05: que el bono llegue con foto si se puede, pero que llegue).
+        if (!aprobada && /_img$/.test(s.template_name) && Date.now() - new Date(s.send_at).getTime() > 2 * 3600 * 1000) {
+          const base = s.template_name.replace(/_img$/, "");
+          const aprobadaBase = await plantillaAprobada(envChat, base).catch(() => null);
+          if (aprobadaBase) {
+            s.template_name = base;
+            aprobada = aprobadaBase;
+            await env.CRM_DB.prepare("UPDATE scheduled_messages SET template_name = ?, body = ? WHERE id = ?").bind(base, `Plantilla: ${base}`, s.id).run();
+          }
+        }
         if (!aprobada) {
           if (Date.now() - new Date(s.send_at).getTime() > 3 * 24 * 3600 * 1000) throw new Error(`La plantilla ${s.template_name} no está aprobada en Meta.`);
           await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
