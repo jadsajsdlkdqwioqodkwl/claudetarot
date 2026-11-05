@@ -1573,3 +1573,43 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   para quien compró hace más de 7 días, sin recojo de Shalom pendiente (26 excluidos: aún no recogen el kit) y sin el toque
   post7 ya enviado; repartidos 5, 6 y 7 de noviembre a las 11:00 Lima. Salen cuando Meta apruebe `toque_post7` (mandada el 4/11).
   Los que compren de aquí en adelante lo reciben por el toque del día 7 (`toques.js`).
+
+
+## 2026-11-05 (madrugada) — Cobro automático, aviso «nadie responde», clave de retiro blindada, chats ejemplares, asesor con el reporte, caso Miller
+- **Cron del asesor:** la Routine «Asesor — mensajes (11:30 · 16:30)» (`trig_01PN2ZZaL1MzG9AMB8Nj6PoS`) estaba prendida y
+  corriendo (última corrida 4/11 16:38 Lima, OK). Prompt actualizado (sesión no persistente, por eso se pudo): corre
+  `preparar.py api --dias 3 --activos-horas 6 --con-reporte`, propone seguimientos A MEDIDA a los chats que el reporte
+  nocturno dejó como INTENCION / POR_CONFIRMAR (aunque no estén activos), usa los chats ejemplares como modelo y no repite lo
+  que ya manda el plan de 7 días. `preparar.py --con-reporte` (lee el registro con `pedidos_estado.traer` de hoy y mañana,
+  trae esos chats y les pone la línea «🎯 REPORTE DE VENTAS: …» con la nota). Texto completo en `docs/routines.md`.
+- **Respuesta automática de cobro** (`src/lib/cobro-auto.js`, hook en el webhook tras «Ver catálogo»): cliente con
+  `cobro_3x`, sin `saldo_pagado`, saldo > 0, chat sin pausa, que escribe sobre saldo/Yape/clave/recojo (regex `RE_SALDO`) →
+  sale la rápida «Cobro» (ajuste `cobro_rapida_id`, por defecto 116) con `S/<saldo del contacto>` y el `yape_numero`
+  reemplazados. Una por chat cada 6 h; `cobro_auto = 0` la apaga. Origen «Automático (cobro: saldo y Yape)». La clave de
+  retiro nunca.
+- **Aviso «nadie está respondiendo»** (`crm-avisos.js` `avisarSinRespuesta`, cron */10): chats de la línea principal cuyo
+  último mensaje es del cliente desde hace > N min (ajuste `aviso_sin_respuesta_min`, 10) y ninguna vendedora escribió a mano
+  en ese lapso → Telegram solo al dueño, uno por hora, dentro del horario. `aviso_sin_respuesta = 0` lo apaga.
+- **Clave de retiro (shalom_code):** ya existía el campo «Código Shalom» del chat (4 dígitos) y el asesor nunca lo recibe
+  (ningún endpoint del asesor lo expone). Ahora además NINGÚN texto del asesor puede llevarla: `/api/asesor/mandar` tipo
+  `texto` la rechaza (antes solo `despachar`) y `/api/asesor/sugerencias` rechaza toda sugerencia cuyo texto la contenga
+  (`rechazadas`). Opinión dada al dueño: seguro usarlo así.
+- **Chats ejemplares:** migración 0075 `chats_ejemplares` (aplicada), `GET/POST/DELETE /api/crm/ejemplares`
+  (`src/api/crm/ejemplares.js`), menú ⋯ del chat → «Guardar como chat ejemplar» (admin; modal título + notas), lista en
+  Herramientas → «Chats ejemplares» (abre el chat), y `/api/asesor/contexto` → `ejemplares` que `contexto.py` imprime
+  («Chats ejemplares», con el whatsapp para leer el chat con `reporte.py chat`).
+- **Caso Miller (51913830859):** compró el tarot solo a S/69 (así se lo ofreció Danitza el 26/10 y lo confirmó Fandio «A 69
+  verdad? Sí»), pagó S/40; el reporte y la Routine de boletas asumieron 1 kit S/89 y pusieron saldo S/49; Moi lo corrigió en el
+  chat a S/29. Corregido: `contacts.saldo` = 29 y la hoja Ventas (fila TS-W5L439X) = 29. Para que no se repita,
+  `boletas.py buscar` ahora devuelve `reporte_pedidos` (estado, nota, empaque, kits de la hoja «Pedidos auto»),
+  `menciones_precio` (líneas del chat con S/, soles, «a 69», descuento, unitario) y `aviso_precio` cuando aparece un monto
+  distinto del kit (89/149/199 y el adelanto 20): la Routine (PASO 3d) debe reportar sin despachar. El prompt de esa Routine es
+  de sesión persistente y no se pudo editar desde aquí; con el aviso en `buscar` le alcanza.
+- **Bono a clientes con saldo pendiente en Shalom:** plantilla `bono_saldo_shalom` (banco «Seguimiento 7 días»; sin imagen:
+  el banco todavía no crea plantillas con cabecera de imagen, eso exige el Resumable Upload de Meta) mandada a revisión el
+  5/11; programada a los 14 chats con `cobro_3x`, sin `saldo_pagado` y saldo > 0 (`batch_id` `bono-saldo-shalom-2026-11-04`,
+  5/11 11:00 Lima). Si tocan «Sí, mi saldo», la respuesta automática de cobro les contesta con su saldo.
+- Pendiente para otra sesión (dueño, 4/11): (a) unificar en un solo modal bienvenida + planes + recojo Shalom/Olva + cobro
+  con sus textos; (b) plantillas con cabecera de imagen (bono); (c) «Dincides»/panel del courier de Lima: Routine que cada N
+  horas lea los entregados/pagados, actualice la hoja y comparta la carpeta de clases en Drive como lector (por el conector de
+  Drive o el Worker, nunca Apps Script); notas en `docs/estados-envio.md`.

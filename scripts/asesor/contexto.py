@@ -111,6 +111,12 @@ def main():
         quien = s.get("titulo") if s["tipo"] == "respuesta_rapida" else f"{s.get('nombre') or ''} +{s.get('wa_id') or ''}"
         partes.append(f"- [{s['tipo']}] {quien} ({s.get('origen')}, {s.get('created_at')}): {s['texto'][:160]}")
     ap_ = datos.get("aprendizaje") or {}
+    ej = datos.get("ejemplares") or []
+    if ej:
+        partes += ["", f"## Chats ejemplares ({len(ej)}; banco de conocimiento del dueño: cómo se resolvió cada caso)",
+                   "Para ver uno completo: `python3 scripts/asesor/reporte.py chat <whatsapp> 80`. Úsalos como modelo cuando un chat se parezca."]
+        for e in ej:
+            partes += ["", f"### {e.get('titulo')} — {e.get('nombre') or 'sin nombre'} · {e.get('whatsapp')}", (e.get("notas") or "(sin notas)").strip()]
     partes += ["", "## Lo aprendido (se actualiza solo con cada corrida y cada decisión del equipo)"]
     mem = ap_.get("memoria", [])
     partes += ["", f"### Memoria del asesor ({len(mem)} lecciones activas)",

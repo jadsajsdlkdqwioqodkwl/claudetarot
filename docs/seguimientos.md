@@ -56,6 +56,9 @@
     que compró (Lima o provincia) 7 días después de la compra, con las reglas de los toques: 1 de cada 5 chats es grupo de
     control, tope `TOQUES_MAX_DIA` por día, no sale si tiene algo pendiente (por ejemplo el recojo de Shalom) ni si
     alguien le escribió en las últimas 20 h.
+16. **Respuesta automática de cobro** (`src/lib/cobro-auto.js`): tras la boleta, si el cliente con saldo pregunta por su
+    saldo, el Yape o la clave, sale sola la rápida «Cobro» con su saldo y el número de Yape (una cada 6 h; `cobro_auto = 0`
+    la apaga). La clave de retiro nunca sale sola.
 13. **Campaña a chats antiguos** (`POST /api/asesor/programar-plan`, clave del asesor, solo cuando el dueño lo pide
     por escrito): programa un plan a los chats de entre N y M días sin compra, «desde hoy» (`meta.inicioMs`: el día 1
     del plan es mañana; se reparte en 3 días de arranque por id) y sin el tope de 168 h (`meta.sinTope7d`). Los textos

@@ -1283,3 +1283,8 @@ body.solo-lectura #form-envio { display: none; }
 .badge-seguimiento.marcha .btn-detener-seg .icono-svg { width: 10px; height: 10px; }
 .seg-barra .seg-detener { display: inline-flex; align-items: center; gap: 3px; text-decoration: none; padding: 4px 10px; border-radius: 8px; background: #fff; color: #b3261e; border: 1px solid #b3261e; font-weight: 600; }
 .seg-barra .seg-detener .icono-svg { width: 14px; height: 14px; }
+
+/* Chats ejemplares (dueño, 2026-11-04). */
+.ejemplar-item { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
+.ejemplar-item .sub { color: var(--gris); font-size: 12px; }
+.ejemplar-item .ejemplar-notas { white-space: pre-wrap; margin-top: 4px; font-size: 12px; }

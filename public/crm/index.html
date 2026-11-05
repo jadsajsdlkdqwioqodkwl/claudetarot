@@ -719,6 +719,11 @@
     <div id="lista-bulk-batches">Cargando…</div>
 
     <hr />
+    <h2>Chats ejemplares</h2>
+    <p class="ayuda-modal">Banco de conocimiento del equipo: chats que muestran cómo se resolvió un caso (un cliente desconfiado que al final compró, uno que pide el pedido para hoy). Se guardan desde el menú ⋯ de cada chat con un título y notas; el asesor los lee como ejemplo.</p>
+    <div id="lista-ejemplares">Cargando…</div>
+
+    <hr />
     <h2>Rescate de lead del día 7</h2>
     <p class="ayuda-modal">A todo contacto que <b>no compró</b>, sin excepción, se le agenda el rescate de lead 1 (plantilla) para el final de su ventana gratis de 7 días del anuncio, sin importar si respondió o si le escribimos. Los que llegan después se agendan solos. Si compra antes de que salga, se cancela. Un chat con el killswitch puesto o bloqueado no lo recibe.</p>
     <label class="ayuda-modal" style="display:flex;align-items:center;gap:10px">
@@ -771,6 +776,20 @@
 
     <div class="acciones">
       <button class="cancelar" id="admin-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-ejemplar-fondo">
+  <div class="modal">
+    <h2>Guardar como chat ejemplar</h2>
+    <p class="ayuda-modal" id="ejemplar-chat"></p>
+    <input type="text" id="ejemplar-titulo" maxlength="120" placeholder="Título del caso (ej. Desconfiado que al final compró)" />
+    <textarea id="ejemplar-notas" rows="5" placeholder="Qué pasó y qué funcionó: qué dijo el cliente, qué le respondimos, en qué momento cerró."></textarea>
+    <div class="acciones">
+      <button class="cancelar" id="ejemplar-quitar" type="button">Quitar de ejemplares</button>
+      <button class="cancelar" id="ejemplar-cerrar" type="button">Cancelar</button>
+      <button class="crear" id="ejemplar-guardar" type="button">Guardar</button>
     </div>
   </div>
 </div>

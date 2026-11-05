@@ -12,6 +12,7 @@
 
 import { activarPlanTrasAviso, rearmarPlanShalom, programarPlan } from "../lib/planes-plantilla.js";
 import { esBotonVerCatalogo, mandarCatalogoPorBoton } from "../lib/catalogo-boton.js";
+import { respuestaCobroSiAplica } from "../lib/cobro-auto.js";
 import { contactosDesdeWebhook, unsupportedDesdeWebhook, systemDesdeWebhook } from "../lib/mensajes-especiales.js";
 import {
   obtenerOCrearContacto,
@@ -401,6 +402,11 @@ async function procesarCambio(envBase, db, value, origen) {
       await activarPlanTrasAviso(env, conversacion.id).catch((err) => console.error("Plan tras el aviso de envío:", err.message));
       if (type === "text" && esBotonVerCatalogo(bodyFinal)) {
         await mandarCatalogoPorBoton(env, conversacion.id, contacto.wa_id).catch((err) => console.error("Botón Ver catálogo:", err.message));
+      }
+      // Cliente en cobro (boleta enviada, saldo pendiente) que pregunta por su saldo, el Yape o su clave: sale sola la
+      // rápida «Cobro» con su saldo y el número de Yape (cobro-auto.js). La clave de retiro nunca.
+      if (type === "text") {
+        await respuestaCobroSiAplica(env, conversacion.id, contacto.wa_id, bodyFinal).catch((err) => console.error("Cobro automático:", err.message));
       }
       const textoEntrante = type === "text" ? bodyFinal : "";
       await mandarBienvenidaSiAplica(env, contacto, conversacion, msg.id, msg.referral, textoEntrante);

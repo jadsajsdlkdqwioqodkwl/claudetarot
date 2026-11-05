@@ -1296,6 +1296,7 @@ $("#btn-admin").addEventListener("click", () => {
   cargarSalud();
   cargarPausa();
   pintarPlanesPorAprobar();
+  pintarEjemplares();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";
   cargarPlantillasBulk();
@@ -2957,7 +2958,8 @@ function abrirMenuChat(c, x, y) {
   menu.innerHTML = `
     <button type="button" data-accion="ver">${icon("eye")}<span>Ver sin entrar</span></button>
     <button type="button" data-accion="${c.hidden ? "mostrar" : "ocultar"}">${icon(c.hidden ? "eye" : "eyeOff")}<span>${c.hidden ? "Volver a mostrar" : "Ocultar chat"}</span></button>
-    <button type="button" data-accion="${c.blocked ? "desbloquear" : "bloquear"}" class="${c.blocked ? "" : "peligro"}">${icon("slash")}<span>${c.blocked ? "Desbloquear contacto" : "Bloquear contacto"}</span></button>`;
+    <button type="button" data-accion="${c.blocked ? "desbloquear" : "bloquear"}" class="${c.blocked ? "" : "peligro"}">${icon("slash")}<span>${c.blocked ? "Desbloquear contacto" : "Bloquear contacto"}</span></button>
+    ${estado.miRol === "admin" ? `<button type="button" data-accion="ejemplar">${icon("star")}<span>Guardar como chat ejemplar</span></button>` : ""}`;
   menu.classList.add("abierto");
   const { width, height } = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(8, Math.min(x - width, window.innerWidth - width - 8))}px`;
@@ -2966,12 +2968,70 @@ function abrirMenuChat(c, x, y) {
     e.stopPropagation();
     cerrarMenuChat();
     if (b.dataset.accion === "ver") previsualizarChat(c);
+    else if (b.dataset.accion === "ejemplar") abrirEjemplar(c);
     else cambiarEstadoChat(c, b.dataset.accion);
   }));
 }
 document.addEventListener("click", (e) => { if (!e.target.closest("#menu-chat")) cerrarMenuChat(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuChat(); });
 $("#conversaciones").addEventListener("scroll", cerrarMenuChat, { passive: true });
+
+/**
+ * Chats ejemplares (dueño, 2026-11-04): banco de conocimiento chico. El admin guarda un chat con título y notas («desconfiado
+ * que al final compró», «pide el pedido para hoy»); la lista vive en Herramientas → Chats ejemplares y el asesor la recibe
+ * en su contexto. Un chat se guarda una sola vez (volver a guardarlo actualiza título y notas).
+ */
+async function abrirEjemplar(c) {
+  const fondo = $("#modal-ejemplar-fondo");
+  if (!fondo) return;
+  let actual = null;
+  try { actual = (await pedir(`/api/crm/ejemplares?conversation_id=${c.conversation_id}`)).ejemplar; } catch { /* sin red */ }
+  $("#ejemplar-chat").textContent = `${c.contact_name || c.profile_name || ""} · +${c.wa_id}`;
+  $("#ejemplar-titulo").value = actual?.titulo || "";
+  $("#ejemplar-notas").value = actual?.notas || "";
+  $("#ejemplar-quitar").style.display = actual ? "" : "none";
+  fondo.dataset.conversationId = c.conversation_id;
+  fondo.dataset.id = actual?.id || "";
+  fondo.classList.add("abierto");
+  $("#ejemplar-titulo").focus();
+}
+$("#ejemplar-guardar")?.addEventListener("click", async () => {
+  const fondo = $("#modal-ejemplar-fondo");
+  const titulo = $("#ejemplar-titulo").value.trim();
+  if (!titulo) return alert("Ponle un título corto al caso (ej. «Desconfiado que al final compró»).");
+  try {
+    await pedir("/api/crm/ejemplares", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: Number(fondo.dataset.conversationId), titulo, notas: $("#ejemplar-notas").value.trim() }) });
+    fondo.classList.remove("abierto");
+    pintarEjemplares();
+  } catch (err) { alert(err.message); }
+});
+$("#ejemplar-quitar")?.addEventListener("click", async () => {
+  const fondo = $("#modal-ejemplar-fondo");
+  if (!fondo.dataset.id || !confirm("¿Quitar este chat de los ejemplares?")) return;
+  try {
+    await pedir("/api/crm/ejemplares", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: Number(fondo.dataset.id) }) });
+    fondo.classList.remove("abierto");
+    pintarEjemplares();
+  } catch (err) { alert(err.message); }
+});
+$("#ejemplar-cerrar")?.addEventListener("click", () => $("#modal-ejemplar-fondo").classList.remove("abierto"));
+async function pintarEjemplares() {
+  const cont = $("#lista-ejemplares");
+  if (!cont) return;
+  try {
+    const d = await pedir("/api/crm/ejemplares");
+    cont.innerHTML = d.ejemplares.length ? d.ejemplares.map((e) => `<div class="ejemplar-item" data-conv="${e.conversation_id}">
+        <div><b>${escapar(e.titulo)}</b><div class="sub">${escapar(e.nombre || "")} · +${escapar(e.wa_id)}${e.created_by ? ` · ${escapar(e.created_by)}` : ""}</div>${e.notas ? `<div class="ejemplar-notas">${escapar(e.notas)}</div>` : ""}</div>
+        <button type="button" class="cancelar ejemplar-abrir" style="font-size:12px">${icon("chat")} Abrir chat</button>
+      </div>`).join("") : `<div class="sin-ad">Todavía no hay chats ejemplares. En la lista de chats: menú ⋯ de un chat → «Guardar como chat ejemplar».</div>`;
+    cont.querySelectorAll(".ejemplar-abrir").forEach((b) => b.addEventListener("click", () => {
+      const id = Number(b.closest(".ejemplar-item").dataset.conv);
+      const c = (estado.conversaciones || []).find((x) => x.conversation_id === id);
+      $("#modal-admin-fondo").classList.remove("abierto");
+      if (c) abrirConversacion(c); else alert("Ese chat no está en la lista cargada: búscalo por el número.");
+    }));
+  } catch (err) { cont.textContent = err.message; }
+}
 
 async function cambiarEstadoChat(c, accion) {
   const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;

@@ -246,7 +246,7 @@ export function normalizarPasos(lista) {
 async function convDe(env, wa) {
   if (wa.length < 9) return null;
   return env.CRM_DB.prepare(
-    `SELECT conv.id FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
+    `SELECT conv.id, c.shalom_code FROM conversations conv JOIN contacts c ON c.id = conv.contact_id
      WHERE c.wa_id LIKE ? ORDER BY (conv.linea_id IS NULL) DESC, conv.last_message_at DESC LIMIT 1`
   )
     .bind(`%${wa.slice(-9)}`)
@@ -266,6 +266,15 @@ export async function onRequestPostSugerencias({ request, env }) {
   let filasVentas = null;
 
   for (const s of lista) {
+    // La clave de retiro de Shalom (shalom_code, 4 dígitos) NUNCA va en una sugerencia: si el texto la lleva, se rechaza
+    // (dueño, 2026-11-04). Se revisa contra la clave del contacto al que va dirigida.
+    {
+      const waG = String(s?.whatsapp || "").replace(/\D/g, "");
+      const convG = waG ? await convDe(env, waG).catch(() => null) : null;
+      const claveG = String(convG?.shalom_code || "").trim();
+      const textosG = [s?.texto, s?.mensaje, ...(Array.isArray(s?.pasos) ? s.pasos.map((x) => x?.texto ?? x?.mensaje) : [])].filter(Boolean).map(String);
+      if (claveG && textosG.some((t) => t.includes(claveG))) { res.rechazadas = (res.rechazadas || []).concat([{ whatsapp: waG, motivo: "lleva la clave de retiro de Shalom: nunca va al cliente" }]); continue; }
+    }
     const texto = String(s?.texto || "").trim().slice(0, 4096);
     if (!texto) continue;
     const motivo = String(s.motivo || "").slice(0, 300) || null;
@@ -441,7 +450,12 @@ export async function onRequestGetContexto({ request, env }) {
     no_cierran: noCierran,
     aprendizaje: await aprendizaje(env),
     // Experimentos de flujo con testers (2026-11-03): métricas por brazo, para que el director CRO las lea.
-    experimentos: await experimentosConMetricas(env).catch((err) => ({ error: err.message }))
+    experimentos: await experimentosConMetricas(env).catch((err) => ({ error: err.message })),
+    // Chats ejemplares (dueño, 2026-11-04): el banco de conocimiento; el chat completo se lee con reporte.py chat <whatsapp>.
+    ejemplares: await env.CRM_DB.prepare(
+      `SELECT e.conversation_id, c.wa_id AS whatsapp, COALESCE(c.name, c.profile_name) AS nombre, e.titulo, e.notas, e.updated_at
+       FROM chats_ejemplares e JOIN conversations conv ON conv.id = e.conversation_id JOIN contacts c ON c.id = conv.contact_id ORDER BY e.updated_at DESC LIMIT 50`
+    ).all().then((r) => r.results || []).catch(() => [])
   });
 }
 

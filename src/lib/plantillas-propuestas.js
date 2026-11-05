@@ -28,6 +28,12 @@ const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/
 /** Plantillas de los planes de seguimiento de 7 días (ver docs/seguimientos.md). Botones de hasta 20 caracteres. */
 export const SEGUIMIENTO_7D = [
   {
+    nombre: "bono_saldo_shalom", titulo: "Bono (clases y libros) a quien tiene saldo pendiente en Shalom",
+    cuando: "a mano o por campaña, a los clientes de provincia que ya tienen la boleta y todavía no pagan el saldo",
+    texto: "Hola estimad@ ☺️ su kit sigue esperándolo en su agencia Shalom; en cuanto complete el saldo pendiente le enviamos su clave de recojo 🔑 Y una buena noticia: ahora el kit incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ ¿Le paso el monto de su saldo?",
+    botones: ["Sí, mi saldo", "Ya pagué"]
+  },
+  {
     nombre: "bono_clases_libros", titulo: "Bono: clases grabadas y libros digitales (a los chats de la semana)", cuando: "una vez, a los chats de los últimos días que no compraron (dueño, 3/11)",
     texto: "Hola estimad@ 🩷 tenemos una novedad: el kit ahora incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ Si separa su kit esta semana se lo enviamos con todo ese bono 🎁 ¿Se lo separamos?",
     botones: ["Sí, quiero", "Tengo una duda"]

@@ -64,3 +64,11 @@ Una Routine **activable a mano** («Run now»), pensada para correr con **Claude
 - ¿Qué estado de Shalom equivale a «cobrar saldo»? (hoy el cobro se cierra cuando se manda el código de 4 dígitos; ver
   `docs/boletas.md`). Si «entregado» en Shalom debe cerrar el cobro solo, hay que decirlo.
 - ¿Devoluciones: se marcan en Ventas como «Cancelado» o quieren otro estado?
+
+
+## Nota del 2026-11-05 (dueño): Routine periódica para el panel del courier de Lima
+Idea aprobada en principio, no construida: cada N horas Claude Code (Cowork, navegador del dueño) entra al panel del courier
+de Lima, lee los pedidos entregados y pagados, actualiza la hoja Ventas (`ventas.py estado` / «Pedidos auto» por
+`reporte.py enviado`) y, para los de Lima ya pagados, comparte la carpeta de Drive de las clases y libros como lector
+(por el conector de Google Drive de la Routine o desde el Worker con la API de Drive; Apps Script está prohibido desde el
+2026-11-03). Falta: el link de la carpeta de bonos y confirmar el acceso al panel.

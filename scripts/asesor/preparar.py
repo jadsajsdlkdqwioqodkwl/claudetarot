@@ -101,11 +101,33 @@ def main():
     ap.add_argument("--salida", default="/tmp/asesor")
     ap.add_argument("--activos-horas", type=int, default=0)
     ap.add_argument("--linea", type=int, default=0, help="otro número de WhatsApp (id de la línea); por defecto Tarot Store")
+    ap.add_argument("--con-reporte", action="store_true", help="suma los chats que el reporte de pedidos y ventas dejó como INTENCION o POR_CONFIRMAR (aunque no estén activos), con su nota")
     a = ap.parse_args()
 
     hoy = dt.date.fromisoformat(a.hoy)
     desde = hoy - dt.timedelta(days=a.dias - 1)
     filas = leer_filas(a.xlsx, desde, hoy, a.activos_horas, a.linea)
+    # --con-reporte (dueño, 2026-11-04): los leads que el reporte nocturno dejó como INTENCION o POR_CONFIRMAR merecen un
+    # seguimiento personalizado aunque hoy no hayan escrito: se traen sus chats y su nota del reporte.
+    del_reporte = {}
+    if a.con_reporte and a.xlsx == "api":
+        try:
+            import pedidos_estado as pe
+            clave_rep = os.environ.get("ASESOR_CLAVE", "")
+            for f_desp in (hoy, hoy + dt.timedelta(days=1)):
+                reg = pe.traer(clave_rep, f_desp.isoformat()) or {}
+                for p in reg.get("pedidos", []):
+                    if str(p.get("estado") or "").upper() in ("INTENCION", "POR_CONFIRMAR", "POR_VERIFICAR") and p.get("whatsapp"):
+                        del_reporte[str(p["whatsapp"])[-9:]] = {"estado": p.get("estado"), "nota": p.get("nota") or "", "destino": p.get("destino") or ""}
+        except Exception as err:  # noqa: BLE001
+            print(f"(sin reporte: {err})", file=sys.stderr)
+        if del_reporte:
+            ya = {str(f["wa"])[-9:] for f in filas}
+            faltan = {wa for wa in del_reporte if wa not in ya}
+            if faltan:
+                todas = leer_api(desde, hoy, 0, a.linea)
+                filas += [f for f in todas if str(f["wa"])[-9:] in faltan]
+                filas.sort(key=lambda f: f["t"])
     # Promesas de 21 días (el collar del día 7 suele estar fuera de la ventana).
     promesas = prom.de_filas(filas)
     if a.xlsx == "api":
@@ -133,6 +155,7 @@ def main():
             "asesora": next((m["asesora"] for m in reversed(ms) if m["asesora"]), ""),
             "embudo": next((m["embudo"] for m in reversed(ms) if m["embudo"]), ""),
             "promesas": promesas.get(prom.nueve(wa), []),
+            "reporte": del_reporte.get(str(wa)[-9:]),
         }
         lineas, anterior, bienvenida = [], "", False
         for m in ms:
@@ -155,6 +178,9 @@ def main():
             anterior = linea
         extra = " | ya salió recordatorio automático" if meta[wa]["recordatorio_auto_despues"] else ""
         aviso = ""
+        if meta[wa].get("reporte"):
+            rp = meta[wa]["reporte"]
+            aviso += f"🎯 REPORTE DE VENTAS: {rp['estado']} ({rp['destino'] or '?'}) — {rp['nota'] or 'sin nota'}. Propón un seguimiento a medida (qué lo frena, según el chat).\n"
         if meta[wa]["promesas"]:
             aviso = ("📦 PROMETIDO (va en `empaque` si compra o ya compró; el que empaca no lo ve si no):\n"
                      + "\n".join(f"   📦 {p}" for p in meta[wa]["promesas"]) + "\n")

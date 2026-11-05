@@ -242,6 +242,31 @@ def cmd_buscar(args):
         c["hallado_por"] = k
         chats.append(recortar_chat(c))
     out["chats_candidatos"] = chats
+    # Lo que el reporte de pedidos y ventas anotó de este cliente (estado, nota, empaque, kits): si dice «otro producto»,
+    # «S/69», «unitario» o similar, el saldo NO es el de un kit normal (caso Miller, 2026-11-04: era un tarot solo a S/69).
+    try:
+        hoy = (dt.datetime.utcnow() - dt.timedelta(hours=5)).strftime("%Y-%m-%d")
+        st, ag = pedir(f"/pedidos-sheet?hoy={hoy}")
+        was = {str(c.get("wa_id") or "")[-9:] for c in chats if c.get("wa_id")}
+        filas = [r for k in ("atrasados", "hoy", "futuros", "sin_fecha") for r in (ag.get(k) or [])] if st == 200 else []
+        out["reporte_pedidos"] = [{k: r.get(k) for k in ("fecha_entrega", "nombre", "estado", "destino", "kits", "empaque", "nota", "pago")}
+                                  for r in filas if str(r.get("whatsapp") or "")[-9:] in was]
+    except Exception as err:  # noqa: BLE001
+        out["reporte_pedidos"] = {"error": str(err)[:120]}
+    # Menciones de precio en el chat: «A 69 verdad?», «S/79», «descuento»… Si aparece un monto distinto del kit (S/89,
+    # adelanto S/20), el precio fue negociado o es otro producto: caso especial (PASO 3d), no se despacha sin el dueño.
+    RE_PRECIO = re.compile(r"(S/\s*\d+|\b\d{2,3}\s*soles\b|\ba\s+\d{2}\b|\bprecio\b|\bdescuento\b|\boferta\b|\bunitario\b|\bsolo (el|la) (tarot|mazo|manual)\b)", re.I)
+    menciones = []
+    for c in chats:
+        for m in c.get("mensajes", []):
+            t = m.get("txt") or ""
+            if RE_PRECIO.search(t):
+                menciones.append(f"{m.get('cuando','')[:16]} {'C' if m.get('q') == 'in' else 'V'}: {t[:120]}")
+    out["menciones_precio"] = menciones[-12:]
+    RE_MONTO = re.compile(r"S/\s*(\d{2,3})|(\d{2,3})\s*soles|\ba\s+(\d{2,3})\b", re.I)
+    montos = {int(next(g for g in m.groups() if g)) for t in menciones for m in RE_MONTO.finditer(t.split(": ", 1)[-1])}
+    if montos - {20, 89, 149, 199}:
+        out["aviso_precio"] = f"⚠️ El chat menciona montos distintos del kit normal ({sorted(montos - {20, 89, 149, 199})}): puede ser un producto unitario u oferta. Calcula el saldo con el precio que acordaron en el chat y, si no es seguro, repórtalo sin despachar (PASO 3d)."
     if not chats:
         out["aviso"] = "No encontré el chat: prueba `reportes` (PDF de ventas con WhatsApp y DNI) y vuelve a buscar por teléfono; si no, repórtalo al dueño sin despachar."
     salida(out)

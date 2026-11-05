@@ -966,3 +966,9 @@ PASO 8 — Reporte al dueño (siempre que hubo fotos hoy)
 💡 Una línea si viste algo que mejorar.
 Termina respondiendo en esta sesión con ese mismo resumen.
 ```
+
+
+## 2026-11-05 — Asesor — mensajes (11:30 · 16:30): prompt con `--con-reporte` y chats ejemplares
+Cambio: `preparar.py api --dias 3 --activos-horas 6 --con-reporte --salida /tmp/asesor`; seguimiento a medida a los chats
+«🎯 REPORTE DE VENTAS: INTENCION / POR_CONFIRMAR»; usar «Chats ejemplares» del contexto; no repetir el plan de 7 días; nunca
+escribir la clave de retiro (el Worker la rechaza). El resto del prompt igual al del 2026-11-02.

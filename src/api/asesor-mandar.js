@@ -213,6 +213,10 @@ export async function onRequestPost({ request, env }) {
 
     if (p.tipo === "texto") {
       if (!p.texto) return json({ error: "Falta texto." }, 400);
+      // La clave de retiro (shalom_code) NUNCA va al cliente por el asesor, en ningún tipo de envío (dueño, 2026-11-04).
+      const ct = await env.CRM_DB.prepare("SELECT c.shalom_code FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE conv.id = ?").bind(conv.convId).first().catch(() => null);
+      const clave = String(ct?.shalom_code || "").trim();
+      if (clave && String(p.texto).includes(clave)) return json({ error: `El texto lleva la clave de retiro (${clave}): esa NUNCA va al cliente.` }, 400);
       await pausaEnvio(env, conv.convId);
       const waMessageId = await mandarTexto(env, conv.convId, conv.waId, String(p.texto), "asesor-boletas");
       await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta").catch(() => {});
