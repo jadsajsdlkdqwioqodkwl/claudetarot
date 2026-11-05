@@ -10,7 +10,7 @@
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
-import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque } from "./crm-send.js";
+import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque, subidaDe } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
 import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
 import { parametrosBotonCatalogo } from "./catalogo-boton.js";
@@ -19,7 +19,7 @@ import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA,
 import { ajustarAlHorario } from "./horario.js";
 import { envDeConversacion } from "./lineas.js";
 import { plantillaAprobada, primerNombre } from "./plantillas.js";
-import { textoParaChat, parametrosDePlantilla } from "./plantillas-propuestas.js";
+import { textoParaChat, parametrosDePlantilla, imagenDePlantilla } from "./plantillas-propuestas.js";
 
 // Los seguimientos no suben el chat en la bandeja; sube cuando el cliente responde.
 const SIN_SUBIR = { subirEnBandeja: false };
@@ -235,6 +235,13 @@ export async function procesarSeguimientosVencidos(env) {
           if (yapeNum) botonesParams.push({ type: "button", sub_type: "copy_code", index: "0", parameters: [{ type: "coupon_code", coupon_code: String(yapeNum).slice(0, 20) }] });
         }
         if (aprobada.conCatalogo) botonesParams.push(...(await parametrosBotonCatalogo(envChat).catch(() => [])));
+        // Cabecera de imagen: la foto de la fila (media_key) o la de la plantilla (IMAGENES_PLANTILLA), subida y reusada.
+        if (aprobada.conImagen) {
+          const clave = s.media_key || imagenDePlantilla(s.template_name);
+          if (!clave) throw new Error(`La plantilla ${s.template_name} lleva imagen y no sé cuál mandar.`);
+          const { mediaId } = await subidaDe(envChat, clave);
+          botonesParams.unshift({ type: "header", parameters: [{ type: "image", image: { id: mediaId } }] });
+        }
         const waMessageId = await mandarConEscribiendo(env, s.conv_id, (e) => enviarTemplate(e, s.wa_id, s.template_name, aprobada.idioma || s.template_language || "es", parametros, botonesParams.length ? botonesParams : undefined));
         await registrarMensajeSaliente(env.CRM_DB, s.conv_id, {
           waMessageId,

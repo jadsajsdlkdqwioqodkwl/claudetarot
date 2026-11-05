@@ -1297,6 +1297,7 @@ $("#btn-admin").addEventListener("click", () => {
   cargarPausa();
   pintarPlanesPorAprobar();
   pintarEjemplares();
+  pintarFlujos();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";
   cargarPlantillasBulk();
@@ -3015,6 +3016,98 @@ $("#ejemplar-quitar")?.addEventListener("click", async () => {
   } catch (err) { alert(err.message); }
 });
 $("#ejemplar-cerrar")?.addEventListener("click", () => $("#modal-ejemplar-fondo").classList.remove("abierto"));
+/**
+ * Flujos de mensajes (dueño, 2026-11-04): un solo lugar en Herramientas con TODO lo que sale solo (bienvenida de anuncios,
+ * planes de seguimiento, recojo en Shalom y Olva, cobro automático, rescate del día 7, toques y las secuencias viejas), con el
+ * texto exacto, cuándo sale y su estado en Meta. Cada flujo se edita donde vive: el botón abre ese editor.
+ */
+async function pintarFlujos() {
+  const cont = $("#flujos-mapa");
+  if (!cont) return;
+  cont.innerHTML = "Cargando…";
+  const seguro = (p) => p.catch(() => null);
+  const [ajustes, planes, bienvenida, propuestas, shalom, pausa, secuencias, rapidas] = await Promise.all([
+    seguro(pedir("/api/crm/settings")), seguro(pedir("/api/crm/planes-seguimiento")), seguro(pedir("/api/crm/welcome-sequence")),
+    seguro(pedir("/api/crm/plantillas-propuestas")), seguro(pedir("/api/crm/planes")), seguro(pedir("/api/crm/pausa")),
+    seguro(pedir("/api/crm/followup-sequences")), Promise.resolve(estado.quickReplies || [])
+  ]);
+  const props = (propuestas?.marcas || []).find((m) => m.marca === "tarot")?.propuestas || [];
+  const propDe = (nombre) => props.find((p) => p.nombre === nombre);
+  const estadoMeta = (nombre) => { const p = propDe(nombre); const e = p?.estado || "?"; return `<span class="flujo-estado ${e === "APPROVED" ? "" : "meta"}" title="Estado en Meta">${e === "APPROVED" ? "aprobada en Meta" : e === "PENDING" ? "en revisión de Meta" : e === "SIN_ENVIAR" ? "sin mandar a Meta" : escapar(e)}</span>`; };
+  const textoPlantilla = (nombre) => { const p = propDe(nombre); return p ? `${escapar(p.texto)}${p.botones?.length ? `\n<span class="btns">[${p.botones.map(escapar).join("] [")}]</span>` : ""}` : `<i>Plantilla ${escapar(nombre)} (no está en el banco)</i>`; };
+  const fila = (cuando, texto) => `<li><span class="cuando">${cuando}</span><span class="texto">${texto}</span></li>`;
+  const tarjeta = ({ titulo, estado: est, resumen, pasos, boton, abrir }) => `<div class="flujo">
+      <div class="flujo-cab"><h3>${titulo}</h3>${est || ""}${boton ? `<button type="button" class="cancelar flujo-abrir" data-abrir="${abrir}" style="font-size:12px">${icon("pencil")} ${boton}</button>` : ""}</div>
+      ${resumen ? `<div class="flujo-resumen">${resumen}</div>` : ""}
+      ${pasos?.length ? `<details><summary>Ver los ${pasos.length} mensajes</summary><ul class="flujo-pasos">${pasos.join("")}</ul></details>` : ""}
+    </div>`;
+  const tarjetas = [];
+  // 1. Bienvenida de anuncios.
+  const pasosB = (bienvenida?.steps || []).filter((s) => s.activo !== 0).map((s, i) => fila(`Paso ${i + 1}${s.media?.length ? ` · ${s.media.length} archivo(s)` : ""}`, `${escapar((s.body || s.texto_por_defecto || "(solo archivo)").trim())}${s.botones?.length ? `\n<span class="btns">[${s.botones.map(escapar).join("] [")}]</span>` : ""}`));
+  const planInt = (planes?.planes || []).find((p) => p.interesados);
+  tarjetas.push(tarjeta({ titulo: "Bienvenida de anuncios", estado: `<span class="flujo-estado">al primer mensaje desde un anuncio</span>`,
+    resumen: `${pasosB.length} mensaje(s) al toque. Después programa ${planInt ? `el plan «${escapar(planInt.nombre)}»` : "la secuencia de interesados vieja"}.`, pasos: pasosB, boton: "Configurar", abrir: "bienvenida" }));
+  // 2. Planes de seguimiento con nombre.
+  for (const p of planes?.planes || []) {
+    const pasos = (p.pasos || []).map((x, i) => {
+      const c = p.calendario?.[i];
+      const cuando = Number.isInteger(x.dia) && x.hora ? `Día ${x.dia} · ${escapar(x.hora)}` : `+${x.horas} h${x.plantilla && x.desde === "inicio" ? " del inicio" : ""}`;
+      const texto = x.plantilla ? `${textoPlantilla(x.plantilla)} ${x.activo === false ? "<i>(apagado)</i>" : ""}` : `${escapar(x.body || "(archivo)")}${x.media_key ? ` <i>(+ ${escapar(x.media_type || "archivo")})</i>` : ""}${x.botones?.length ? `\n<span class="btns">[${x.botones.map(escapar).join("] [")}]</span>` : ""}`;
+      return fila(`${cuando}${c?.pagado ? " · no sale" : c?.salta ? " · se salta" : ""}`, texto);
+    });
+    const usos = [...(p.rapidas || []).map((r) => r.title), ...(p.interesados ? ["la bienvenida de anuncios"] : [])];
+    tarjetas.push(tarjeta({ titulo: `Plan de seguimiento · ${escapar(p.nombre)}`, estado: `<span class="flujo-estado ${p.activo ? "" : "apagado"}">${p.activo ? (p.segmento === "general" ? "general" : "solo " + p.segmento) : "apagado"}</span>`,
+      resumen: usos.length ? `Lo programan: ${usos.map(escapar).join(", ")}. Mínimo ${planes.espacio_min_h ?? 5} h entre pasos; nada pasados los 7 días del chat.` : "Ninguna rápida lo usa todavía.", pasos, boton: "Editar el plan", abrir: `plan:${p.id}` }));
+  }
+  // 3. Recojo en Shalom y en Olva (cobro).
+  const dias = (shalom?.dias || []).join(", "), diasOlva = (shalom?.dias_olva || []).join(", ");
+  tarjetas.push(tarjeta({ titulo: "Recojo en Shalom (cobro del saldo)", estado: estadoMeta("recojo_shalom_1"),
+    resumen: `Al despachar la boleta (Routine o a mano): 3 recordatorios a los días ${escapar(dias || "4, 7, 21")} desde el despacho. Si el cliente responde, se vuelve a contar desde su mensaje; termina cuando paga el saldo («Ya pagó su saldo» en el chat) o toca «Ya lo recogí».`,
+    pasos: ["recojo_shalom_1", "recojo_shalom_2", "recojo_shalom_3"].map((n, i) => fila(`Día ${(shalom?.dias || [4, 7, 21])[i] ?? "?"}`, textoPlantilla(n))), boton: "Editar textos y días", abrir: "plantillas" }));
+  tarjetas.push(tarjeta({ titulo: "Recojo en agencia Olva", estado: estadoMeta("recojo_agencia_1"),
+    resumen: `Para los pedidos marcados «Envío por Olva»: 3 recordatorios a los días ${escapar(diasOlva || "3, 7, 13")} desde el despacho.`,
+    pasos: ["recojo_agencia_1", "recojo_agencia_2", "recojo_agencia_3"].map((n, i) => fila(`Día ${(shalom?.dias_olva || [3, 7, 13])[i] ?? "?"}`, textoPlantilla(n))), boton: "Editar textos y días", abrir: "plantillas" }));
+  tarjetas.push(tarjeta({ titulo: "Aviso de envío (ventana cerrada)", estado: estadoMeta("aviso_envio_shalom"),
+    resumen: "Cuando la boleta está lista pero el cliente lleva más de 24 h sin escribir: sale esta plantilla y, al tocar el botón, el Worker manda solo la boleta, la caja y el texto del cobro.",
+    pasos: [fila("Al despachar", textoPlantilla("aviso_envio_shalom"))], boton: "Editar texto", abrir: "plantillas" }));
+  // 4. Cobro automático.
+  const rapidaCobro = rapidas.find((q) => q.id === (ajustes?.cobro_rapida_id || 116));
+  tarjetas.push(tarjeta({ titulo: "Respuesta automática de cobro (saldo y Yape)", estado: `<span class="flujo-estado ${ajustes?.cobro_auto === false ? "apagado" : ""}" id="flujo-cobro-estado">${ajustes?.cobro_auto === false ? "apagada" : "prendida"}</span>`,
+    resumen: `Cuando un cliente con boleta y saldo pendiente pregunta por su saldo, el Yape, su clave o el recojo, sale sola la rápida «${escapar(rapidaCobro?.title || "Cobro")}» con su saldo y el número de Yape ${escapar(ajustes?.yape_numero || "")} puestos en el texto (una vez cada 6 h). La clave de retiro nunca sale sola. <button type="button" class="cancelar" id="flujo-cobro-toggle" style="font-size:11px;padding:2px 8px">${ajustes?.cobro_auto === false ? "Prender" : "Apagar"}</button>`,
+    pasos: rapidaCobro ? [fila("Al preguntar", escapar(rapidaCobro.body || ""))] : [], boton: "Editar la rápida", abrir: `rapida:${rapidaCobro?.id || ""}` }));
+  // 5. Rescate del día 7.
+  const r7 = pausa?.rescate7;
+  tarjetas.push(tarjeta({ titulo: "Rescate de lead del día 7", estado: `<span class="flujo-estado ${r7?.activo ? "" : "apagado"}">${r7?.activo ? `prendido · ${r7.agendados} agendados` : "apagado"}</span>`,
+    resumen: "A todo el que no compró, al final de su semana gratis del anuncio (día 6 + 18 h). Se cancela si compra.",
+    pasos: [fila("Día 6 + 18 h", textoPlantilla(r7?.plantillas?.tarot || "rescate_lead_1"))], boton: "Configurar", abrir: "rescate7" }));
+  // 6. Toques (plantillas pagadas a leads y clientes).
+  const toques = props.filter((p) => p.toque);
+  if (toques.length) tarjetas.push(tarjeta({ titulo: "Toques con plantilla (leads y clientes)", estado: `<span class="flujo-estado">${toques.filter((t) => t.activo).length} prendidos de ${toques.length}</span>`,
+    resumen: "Plantillas pagadas que salen solas a quien no compró (días 2, 7, 14, 30) y a quien compró (7, 14, 30, 60 días después). 1 de cada 5 chats es grupo de control; tope diario.",
+    pasos: toques.map((t) => fila(`${escapar(t.titulo)} · ${t.activo ? "prendido" : "apagado"}`, textoPlantilla(t.nombre))), boton: "Prender, apagar y editar", abrir: "plantillas" }));
+  // 7. Secuencias viejas (varios mensajes con timing, se aplican a mano o desde la bienvenida sin plan).
+  const seqs = secuencias?.sequences || [];
+  if (seqs.length) tarjetas.push(tarjeta({ titulo: `Secuencias de seguimiento (las de antes)`, estado: `<span class="flujo-estado apagado">${seqs.length} secuencia(s)</span>`,
+    resumen: `${seqs.map((s) => escapar(s.name || s.title || "")).join(", ")}. Se aplican a mano a un chat; la bienvenida ya usa el plan con nombre.`, pasos: [], boton: "Ver y editar", abrir: "secuencias" }));
+  cont.innerHTML = tarjetas.join("");
+  cont.querySelectorAll(".flujo-abrir").forEach((b) => b.addEventListener("click", () => {
+    const [tipo, id] = String(b.dataset.abrir).split(":");
+    if (tipo === "bienvenida") $("#btn-abrir-bienvenida")?.click();
+    else if (tipo === "plan") { $("#modal-admin-fondo").classList.remove("abierto"); abrirPlanes(Number(id)); }
+    else if (tipo === "plantillas") $("#btn-abrir-plantillas-meta")?.click();
+    else if (tipo === "rapida") { const q = (estado.quickReplies || []).find((x) => x.id === Number(id)); if (q) { $("#modal-admin-fondo").classList.remove("abierto"); abrirModalRapidaEdicion(q); } }
+    else if (tipo === "rescate7") $("#rescate7-activo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    else if (tipo === "secuencias") { $("#modal-admin-fondo").classList.remove("abierto"); abrirModalSecuencias(null, true); }
+  }));
+  $("#flujo-cobro-toggle")?.addEventListener("click", async (e) => {
+    const prender = e.target.textContent.trim() === "Prender";
+    try {
+      await pedir("/api/crm/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cobro_auto: prender }) });
+      pintarFlujos();
+    } catch (err) { alert(err.message); }
+  });
+}
+
 async function pintarEjemplares() {
   const cont = $("#lista-ejemplares");
   if (!cont) return;

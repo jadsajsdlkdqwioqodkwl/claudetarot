@@ -352,3 +352,22 @@ async function firmaDe(secreto, cuerpoCrudo, esperado) {
   for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ esperado.charCodeAt(i);
   return diff === 0;
 }
+
+/**
+ * Imagen de muestra para crear una plantilla con cabecera de imagen (dueño, 2026-11-04: plantillas con la foto del bono).
+ * Meta exige subirla por la Resumable Upload API de la app a la que pertenece el token (no por /media): devuelve un
+ * «handle» (`h`) que va en el componente HEADER → example.header_handle. Pasos: GET /app (la app del token),
+ * POST /{app_id}/uploads (sesión), POST /{upload_session_id} con los bytes y file_offset 0.
+ */
+export async function subirMuestraPlantilla(env, blob, mime, nombreArchivo) {
+  const auth = { Authorization: `OAuth ${env.WHATSAPP_TOKEN}` };
+  const app = await (await fetch(graphUrl(env, "app"), { headers: auth })).json().catch(() => ({}));
+  if (!app?.id) throw new Error(`No se pudo saber la app del token de WhatsApp (${app?.error?.message || "sin id"}).`);
+  const q = new URLSearchParams({ file_name: nombreArchivo || "muestra", file_length: String(blob.size), file_type: mime });
+  const sesion = await (await fetch(graphUrl(env, `${app.id}/uploads?${q}`), { method: "POST", headers: auth })).json().catch(() => ({}));
+  if (!sesion?.id) throw new Error(`Meta no abrió la sesión de subida (${sesion?.error?.message || "sin id"}).`);
+  const res = await fetch(graphUrl(env, sesion.id), { method: "POST", headers: { ...auth, file_offset: "0", "Content-Type": "application/octet-stream" }, body: await blob.arrayBuffer() });
+  const datos = await res.json().catch(() => ({}));
+  if (!datos?.h) throw new Error(`Meta no devolvió el handle de la imagen (${datos?.error?.message || `HTTP ${res.status}`}).`);
+  return datos.h;
+}

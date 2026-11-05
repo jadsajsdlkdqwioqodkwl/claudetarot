@@ -1624,3 +1624,20 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   con sus textos; (b) plantillas con cabecera de imagen (bono); (c) «Dincides»/panel del courier de Lima: Routine que cada N
   horas lea los entregados/pagados, actualice la hoja y comparta la carpeta de clases en Drive como lector (por el conector de
   Drive o el Worker, nunca Apps Script); notas en `docs/estados-envio.md`.
+
+
+## 2026-11-05 (madrugada, 2) — Flujos de mensajes en un solo lugar, plantillas con cabecera de imagen
+- **Herramientas → «Flujos de mensajes (todo lo que sale solo)»** (`pintarFlujos` en app.js, arriba de todo en el modal
+  admin): tarjetas con el texto exacto, cuándo sale, estado en Meta y botón al editor de cada flujo: bienvenida de anuncios
+  (welcome-sequence), cada plan de seguimiento con nombre (calendario, usos), recojo en Shalom (días `dias`) y en Olva
+  (`dias_olva`), aviso de envío, respuesta automática de cobro (con interruptor `cobro_auto` y la rápida que usa), rescate del
+  día 7, toques (prendidos/apagados) y las secuencias viejas. Solo lee de endpoints existentes (settings, planes-seguimiento,
+  welcome-sequence, plantillas-propuestas, planes, pausa, followup-sequences). `settings.js` expone y guarda `cobro_auto`,
+  `cobro_rapida_id` y `aviso_sin_respuesta`.
+- **Plantillas con cabecera de imagen:** `subirMuestraPlantilla` (whatsapp.js; Resumable Upload: GET /app → POST
+  /{app}/uploads → POST /{sesión} con file_offset 0 → handle `h`), `IMAGENES_PLANTILLA` / `imagenDePlantilla`
+  (plantillas-propuestas.js: clave R2 por plantilla), `mandarPropuestas` antepone `HEADER IMAGE` con el handle, `plantillaAprobada`
+  guarda `conImagen` (8.º campo) y el cron sube la foto (`subidaDe`, reusada 25 días) y la manda en el componente `header`.
+  Creadas el 5/11 en Meta: `bono_clases_libros_img` y `bono_saldo_shalom_img` (misma letra que las de texto, con la foto
+  «Bonos adicionales» `chat/1793756360391-d34b1b08.png`). Los toques y el envío a mano desde el chat todavía no ponen la cabecera
+  (solo el cron de `scheduled_messages`): pendiente si se usan desde ahí.
