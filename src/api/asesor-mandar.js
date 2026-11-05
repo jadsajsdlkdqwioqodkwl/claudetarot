@@ -73,6 +73,9 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
   });
 
+// Boletas y tracking no suben el chat en la bandeja: solo sube cuando el cliente escribe (dueño, 2026-11-04).
+const SIN_SUBIR = { subirEnBandeja: false };
+
 async function resolverConversacion(db, conversationId, waId) {
   if (conversationId) {
     const row = await db.prepare(
@@ -160,10 +163,10 @@ async function despachar(env, conv, p) {
 
   const enviados = [];
   for (const f of ordenadas) {
-    enviados.push(await mandarMediaPorId(env, conv.convId, conv.waId, f.media_id, f.media_mime || "image/jpeg", "asesor-boletas"));
+    enviados.push(await mandarMediaPorId(env, conv.convId, conv.waId, f.media_id, f.media_mime || "image/jpeg", "asesor-boletas", SIN_SUBIR));
   }
   await pausaEnvio(env, conv.convId);
-  enviados.push(await mandarTexto(env, conv.convId, conv.waId, texto, "asesor-boletas"));
+  enviados.push(await mandarTexto(env, conv.convId, conv.waId, texto, "asesor-boletas", undefined, SIN_SUBIR));
   await stagingActualizar(db, ids[0], { status: "enviado", ...datos });
   await stagingActualizar(db, ids[1], { status: "enviado", conversation_id: conv.convId });
   await agregarEtiquetaMeta(db, conv.convId, "bot_boleta").catch(() => {});
@@ -218,7 +221,7 @@ export async function onRequestPost({ request, env }) {
       const clave = String(ct?.shalom_code || "").trim();
       if (clave && String(p.texto).includes(clave)) return json({ error: `El texto lleva la clave de retiro (${clave}): esa NUNCA va al cliente.` }, 400);
       await pausaEnvio(env, conv.convId);
-      const waMessageId = await mandarTexto(env, conv.convId, conv.waId, String(p.texto), "asesor-boletas");
+      const waMessageId = await mandarTexto(env, conv.convId, conv.waId, String(p.texto), "asesor-boletas", undefined, SIN_SUBIR);
       await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta").catch(() => {});
       return json({ ok: true, wa_message_id: waMessageId });
     }
@@ -230,7 +233,7 @@ export async function onRequestPost({ request, env }) {
         "SELECT media_id, media_mime FROM boletas_staging WHERE id = ? LIMIT 1"
       ).bind(stagingId).first();
       if (!item?.media_id) return json({ error: "No encontré esa foto en staging." }, 404);
-      const waMessageId = await mandarMediaPorId(env, conv.convId, conv.waId, item.media_id, item.media_mime, "asesor-boletas");
+      const waMessageId = await mandarMediaPorId(env, conv.convId, conv.waId, item.media_id, item.media_mime, "asesor-boletas", SIN_SUBIR);
       await agregarEtiquetaMeta(env.CRM_DB, conv.convId, "bot_boleta").catch(() => {});
       return json({ ok: true, wa_message_id: waMessageId });
     }

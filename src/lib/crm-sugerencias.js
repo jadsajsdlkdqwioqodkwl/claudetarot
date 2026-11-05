@@ -1,8 +1,8 @@
 /**
  * Que las sugerencias no se acumulen: una sugerencia para un chat deja de
- * tener sentido en cuanto alguien le escribe al cliente (a mano, una
- * respuesta rápida, otra sugerencia o un automático), si el cliente ya
- * compró. Las que quedaron con la ventana de 24 h cerrada NO se cierran: siguen en la cola «Atención
+ * tener sentido en cuanto una persona del equipo le escribe al cliente (a mano,
+ * una respuesta rápida u otra sugerencia; los automáticos NO la cierran desde el
+ * 2026-11-04), o si el cliente ya compró. Las que quedaron con la ventana de 24 h cerrada NO se cierran: siguen en la cola «Atención
  * pendiente» para que la asesora evalúe mandarles una plantilla (2026-10-18). Se cierran solas (estado
  * 'obsoleta', con el motivo en resuelto_por) antes de listar o contar.
  * Dos UPDATE en un batch; nada de IA.
@@ -18,6 +18,13 @@ import { enSilencio } from "./horario.js";
  */
 const SEGUIMIENTO_PROPIO = "instr(sm.created_by, 'Automático (día 7)') = 0 AND instr(sm.created_by, 'Rescate de interesado') = 0";
 
+/**
+ * Lo escribió una PERSONA del equipo (una cuenta del CRM). Los automáticos (seguimientos, envío masivo, planes con
+ * plantilla, toques, boletas, bienvenida) no cuentan: desde que casi todos los chats tienen un plan corriendo,
+ * cerraban las recomendaciones del asesor antes de que nadie las viera (2026-11-04).
+ */
+const ESCRITO_POR_PERSONA = (m) => `${m}.sent_by IN (SELECT display_name FROM agents UNION SELECT username FROM agents)`;
+
 export async function limpiarSugerenciasViejas(db, env = null) {
   // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
   if (env) await proponerPlanPorVentanaCerrada(env).catch((err) => console.error("Plan por ventana cerrada:", err.message));
@@ -26,7 +33,7 @@ export async function limpiarSugerenciasViejas(db, env = null) {
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'se le escribió al cliente', resuelto_at = datetime('now')
        WHERE estado = 'pendiente' AND tipo IN ('seguimiento', 'envio', 'sin_pregunta') AND conversation_id IS NOT NULL
          AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = asesor_sugerencias.conversation_id
-                     AND m.direction = 'out' AND m.created_at > asesor_sugerencias.created_at)`
+                     AND m.direction = 'out' AND m.created_at > asesor_sugerencias.created_at AND ${ESCRITO_POR_PERSONA("m")})`
     ),
     // «Sin pregunta»: ya no hace falta cuando el chat tiene un seguimiento programado.
     db.prepare(
@@ -88,7 +95,7 @@ export async function sugerirSinPregunta(db) {
   const { results } = await db.prepare(
     `SELECT conv.id AS conversation_id FROM conversations conv
      JOIN messages m ON m.id = (SELECT MAX(id) FROM messages WHERE conversation_id = conv.id)
-     WHERE m.direction = 'out' AND m.type = 'text' AND m.body IS NOT NULL AND m.body <> ''
+     WHERE m.direction = 'out' AND m.type = 'text' AND m.body IS NOT NULL AND m.body <> '' AND ${ESCRITO_POR_PERSONA("m")}
        AND m.body NOT LIKE '%?%' AND m.body NOT LIKE '%¿%'
        AND conv.blocked = 0 AND COALESCE(conv.etapa, 0) < 5
        AND conv.last_inbound_at >= datetime('now', '-24 hours')

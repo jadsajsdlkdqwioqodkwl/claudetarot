@@ -115,6 +115,7 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - 2026-10-15 · **Bienvenida manual de URO no se podía mandar** (panel derecho): la cuenta limitada a un producto (`RUTAS_DE_PRODUCTO`) no tenía `welcome-send` (POST), `welcome-sequence` (GET) ni `followup-sequences` (GET), y el panel respondía «Tu cuenta no tiene acceso a esto». Se agregaron; los dos GET salen filtrados al producto de la cuenta (solo su bienvenida y su secuencia) y `welcome-send` rechaza pasos de otro producto. Seguimiento «Programar» (`followup-apply`) sigue cerrado para esas cuentas.
 - 2026-10-15 (reclamo del dueño: seguimientos seguían reflotando): faltaban dos envíos de texto. El seguimiento del asesor aprobado con envío inmediato (`programar()` en `src/api/crm/sugerencias.js`) y el texto del link de Shalom dentro de 24 h (`shalom.js`) subían el chat y ponían el «sin leer» en 0. Ahora van con `{ subirEnBandeja: false }`; `npm run check` lo vigila.
 - Lo que la vendedora escribe a mano (texto, foto, catálogo) sí lo deja arriba como hasta hoy (y pone en 0 el «sin leer»). Si el dueño quiere que eso tampoco suba, es cambiar `subirEnBandeja` en esos envíos.
+- 2026-11-04 (reclamo del dueño: «que no se reflote el mensaje de envío de boletas, ni los seguimientos; solo cuando el cliente escriba»): las **boletas** subían el chat y ponían el «sin leer» en 0. Las fotos y el texto de tracking de `POST /api/asesor/mandar` (`despachar`, `texto`, `foto-staging`; Routine «Despacho automático de boletas») y el envío automático de la boleta pendiente cuando el cliente abre la ventana (`whatsapp-webhook.js`, `asesor-boletas-auto`) van con `{ subirEnBandeja: false }`; `mandarMediaPorId` (`crm-send.js`) recibe ahora esas `opciones`. Los seguimientos automáticos ya no reflotaban (verificado en D1: en las últimas 24 h el último mensaje de los chats de arriba era de bienvenida, vendedoras o `asesor-boletas`). Lo único que sigue subiendo un chat sin que el cliente escriba es el reflote de las **recomendaciones del asesor** (`reflotarSugerencia`, ver más abajo), que el dueño pidió que vuelvan a salir. `npm run check` lo vigila.
 
 ## Cloudflare: este entorno ya tiene acceso (dueño, 2026-10-15)
 
@@ -1574,14 +1575,22 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   post7 ya enviado; repartidos 5, 6 y 7 de noviembre a las 11:00 Lima. Salen cuando Meta apruebe `toque_post7` (mandada el 4/11).
   Los que compren de aquí en adelante lo reciben por el toque del día 7 (`toques.js`).
 
+## 2026-11-04 — Por qué dejaron de salir las recomendaciones del asesor (y arreglo)
+
+- **Causa (visto en D1):** `limpiarSugerenciasViejas` (`src/lib/crm-sugerencias.js`) cerraba como «obsoleta — se le escribió al cliente» toda recomendación de seguimiento en cuanto salía CUALQUIER mensaje al chat. Desde que casi todos los chats tienen un plan corriendo (plan Interesado a 2 904 chats, envío masivo «bono clases y libros» del 3/11, seguimientos automáticos, documentos de bonos) el automático llegaba antes que la vendedora: del 31/10 al 4/11, 43 de 50 recomendaciones cerradas así las cerró un «Seguimiento automático» o el «Envío masivo · bono clases y libros», sin que nadie las viera. Las «sin pregunta» del cron, además, nacían del último mensaje automático.
+- **Arreglo:** solo cierra una recomendación un mensaje escrito por una **persona del equipo** (`sent_by` = una cuenta de `agents`, `ESCRITO_POR_PERSONA`); los automáticos (seguimientos, envío masivo, planes con plantilla, toques, boletas, bienvenida) ya no. La «sin pregunta» (`sugerirSinPregunta`) mira solo el último mensaje escrito por una persona. Lo de «ya compró» y la ventana cerrada sigue igual. `npm run check` lo vigila.
+- **Posibles ventas del reporte → recomendación:** `scripts/asesor/preparar.py api` (Routine «Asesor — mensajes y cierre», 11:30 · 16:30 · 22:30) trae del registro de pedidos (`pedidos_estado.py`, fechas de despacho de ayer, hoy y mañana) los chats en **POR VERIFICAR** o **INTENCIÓN** que nadie confirmó, los lee SIEMPRE (aunque no tengan movimiento en las `--activos-horas`), van primero y abren con «⭐ POSIBLE VENTA en el reporte de ventas (estado · nota)». El asesor les propone su seguimiento en `mensajes` (plantilla si la ventana ya cerró) y salen en ✨ Sugerencias / Atención pendiente. El resumen JSON de `preparar.py` trae `posibles_ventas`. Sin cambio en el prompt de la Routine.
+
+
 
 ## 2026-11-05 (madrugada) — Cobro automático, aviso «nadie responde», clave de retiro blindada, chats ejemplares, asesor con el reporte, caso Miller
 - **Cron del asesor:** la Routine «Asesor — mensajes (11:30 · 16:30)» (`trig_01PN2ZZaL1MzG9AMB8Nj6PoS`) estaba prendida y
   corriendo (última corrida 4/11 16:38 Lima, OK). Prompt actualizado (sesión no persistente, por eso se pudo): corre
   `preparar.py api --dias 3 --activos-horas 6 --con-reporte`, propone seguimientos A MEDIDA a los chats que el reporte
   nocturno dejó como INTENCION / POR_CONFIRMAR (aunque no estén activos), usa los chats ejemplares como modelo y no repite lo
-  que ya manda el plan de 7 días. `preparar.py --con-reporte` (lee el registro con `pedidos_estado.traer` de hoy y mañana,
-  trae esos chats y les pone la línea «🎯 REPORTE DE VENTAS: …» con la nota). Texto completo en `docs/routines.md`.
+  que ya manda el plan de 7 días. La otra sesión (3fef1fc, mismo día) implementó lo mismo sin bandera y siempre prendido con «api»
+  (`posibles_ventas`, marca «⭐ POSIBLE VENTA», van primero): en el merge se quedó esa versión; `--con-reporte` sigue
+  aceptándose por compatibilidad y el prompt de la Routine habla de «⭐ POSIBLE VENTA». Texto completo en `docs/routines.md`.
 - **Respuesta automática de cobro** (`src/lib/cobro-auto.js`, hook en el webhook tras «Ver catálogo»): cliente con
   `cobro_3x`, sin `saldo_pagado`, saldo > 0, chat sin pausa, que escribe sobre saldo/Yape/clave/recojo (regex `RE_SALDO`) →
   sale la rápida «Cobro» (ajuste `cobro_rapida_id`, por defecto 116) con `S/<saldo del contacto>` y el `yape_numero`
