@@ -1651,6 +1651,8 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 
 - Aviso «nadie responde» (5/11, 2.ª precisión del dueño): hasta dos por hora (`aviso_sin_respuesta_cada_min`, 30) y le llega al
   dueño y a Jennifer (`aviso_sin_respuesta_agentes`, ids de agents, por defecto «4»).
+- 2026-11-05 (noche) · Espada Voladora (`/espada/`), pedido del dueño: se quitó la barra fija de abajo (CTA sticky) y el adelanto de provincia pasa de S/ 10 a **S/ 20** (`ADELANTO_PROVINCIA` en `src/lib/pedido-espada.js`, página y gracias). Solo esta landing; las demás siguen con S/ 10 y su barra fija.
+
 
 
 ## 2026-11-05 (tarde) — Precio web S/95, reporte que lee el historial entero, estados de envío (script y Routine manual)

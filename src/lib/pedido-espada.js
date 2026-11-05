@@ -18,7 +18,7 @@ export const PIXEL_ESPADA = "1602561284224693";
 
 /**
  * Tres packs por cantidad de espadas. `viejo` es el precio «antes».
- * PRECIOS PROVISORIOS (2026-11-05): el dueño debe confirmarlos (docs/espada.md).
+ * Precios confirmados por el dueño el 2026-11-05 (docs/espada.md).
  */
 export const PACKS = {
   x1: { etiqueta: "1 Espada Voladora RC", cantidad: 1, precio: 159, viejo: 318 },
@@ -26,8 +26,8 @@ export const PACKS = {
   x3: { etiqueta: "Pack Familia: 3 Espadas Voladoras RC", cantidad: 3, precio: 379, viejo: 954 }
 };
 
-/** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia (igual que el Kit, el Cable y la Masilla). */
-export const ADELANTO_PROVINCIA = 10;
+/** Provincia: adelanto por Yape/transferencia y el resto al recoger en la agencia. S/ 20 (dueño, 2026-11-05; el Kit, el Cable y la Masilla siguen con S/ 10). */
+export const ADELANTO_PROVINCIA = 20;
 
 /**
  * Dominio largo de la landing: `/` es /espada/ y `/gracias` su gracias. Sin la palabra tarot en el
