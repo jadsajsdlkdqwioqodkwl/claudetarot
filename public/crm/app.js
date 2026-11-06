@@ -4418,9 +4418,11 @@ async function actualizarRecomendacionChat() {
       <div class="reco-cab">${icon("sparkle")} <b>Recomendación del asesor</b>${sugerencia.motivo ? ` · <span class="sub">${escapar(sugerencia.motivo)}</span>` : ""}</div>
       ${sugerencia.objecion ? `<div class="sug-objecion">${icon("alertCircle")} Lo que probablemente lo frena: <b>${escapar(sugerencia.objecion)}</b></div>` : ""}
       <textarea class="reco-texto" rows="3">${escapar(sugerencia.texto)}</textarea>
+      ${sugerencia.ventana_abierta === false ? `<div class="sug-objecion">${icon("clock")} Pasaron más de 24 h desde su último mensaje: este texto ya no puede salir. Mándale una plantilla aprobada (la recomendación queda como guía):
+        <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${(sugerencia.plantillas || []).map((p) => `<option value="${escapar(p.name)}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}">${escapar(p.name)} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select></div>` : ""}
       <div class="reco-acciones">
         <button type="button" class="reco-descartar">${icon("trash")} Descartar</button>
-        <button type="button" class="reco-enviar">${icon("send")} Enviar</button>
+        <button type="button" class="reco-enviar">${icon("send")} ${sugerencia.ventana_abierta === false ? "Mandar la plantilla" : "Enviar"}</button>
       </div>`;
     const resolver = async (boton, cuerpo) => {
       boton.disabled = true;
@@ -4436,6 +4438,12 @@ async function actualizarRecomendacionChat() {
     };
     caja.querySelector(".reco-enviar").addEventListener("click", (e) => {
       const texto = caja.querySelector(".reco-texto").value.trim();
+      if (sugerencia.ventana_abierta === false) {
+        const sel = caja.querySelector(".reco-plantilla");
+        if (!sel?.value) { alert("Elige la plantilla que va a salir (el texto libre ya no puede mandarse pasadas las 24 h)."); return; }
+        resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto: texto || sugerencia.texto, plantilla: { name: sel.value, language: sel.selectedOptions[0]?.dataset.lang || "es_PE", params: [] } });
+        return;
+      }
       if (!texto) { alert("El mensaje está vacío."); return; }
       resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto });
     });

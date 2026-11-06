@@ -1671,3 +1671,17 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   manual para Claude Cowork en la computadora del dueño en `docs/routines.md` (sin trigger en la nube: los paneles piden su
   sesión). Entrega de bonos: carpeta de Drive compartida con el link + rápida «Entrega de bonos» aprobada por una persona;
   `cruzar` lista los Lima entregados sin el link (`bonos_pendientes`). Falta del dueño: URL del panel de Lima y link de la carpeta.
+
+
+## 2026-11-06 — Bono a clientes con saldo: plantilla «va en camino»; recomendaciones del asesor reflotan aunque la ventana cerró
+- **Error del 5/11:** `bono_saldo_shalom(_img)` («su kit sigue esperándolo en su agencia») salió a 14 clientes con `cobro_3x`
+  sin mirar cuándo se despachó: 10 tenían la boleta del día anterior y el kit aún no llegaba (quejas). Regla del negocio:
+  antes del día 4 del despacho no se asume que llegó. Nuevas plantillas `bono_saldo_camino` y `bono_saldo_camino_img`
+  («su kit ya va en camino a su agencia… apenas llegue le avisamos»), mandadas a Meta el 6/11; las de «en agencia» quedan solo
+  para quien lleva 4 o más días despachado. Nada se reenvió solo a esos 10 (lo atendieron las vendedoras).
+- **Recomendaciones del asesor:** el cron de reflote (cada 10 min, `reflotarSugerencia`) estaba activo (último reflote 6/11
+  01:50 UTC, 52 en 24 h) y el banner «Recomendación del asesor» del chat (texto editable + Enviar + Descartar) existe desde antes.
+  Lo que no subía: las recomendaciones de chats con la ventana de 24 h cerrada (solo se veían en ✨ Sugerencias); 11 de las 49
+  pendientes estaban así. Ahora reflotan igual (solo las de los últimos 3 días) y el banner, con la ventana cerrada, muestra el
+  texto como guía y un selector de plantillas aprobadas para mandarla (`GET /api/crm/sugerencias?de_chat=` devuelve
+  `ventana_abierta` y `plantillas`; el POST `aprobar` ya aceptaba `plantilla`).

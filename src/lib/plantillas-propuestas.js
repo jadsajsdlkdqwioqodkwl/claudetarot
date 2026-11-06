@@ -33,11 +33,27 @@ const ejemploDe = (texto, ejemplo) => ejemplo.slice(0, (texto.match(/\{\{\d\}\}/
  */
 export const IMAGENES_PLANTILLA = {
   bono_clases_libros_img: "chat/1793756360391-d34b1b08.png",
-  bono_saldo_shalom_img: "chat/1793756360391-d34b1b08.png"
+  bono_saldo_shalom_img: "chat/1793756360391-d34b1b08.png",
+  bono_saldo_camino_img: "chat/1793756360391-d34b1b08.png"
 };
 export const imagenDePlantilla = (nombre) => IMAGENES_PLANTILLA[nombre] || null;
 
 export const SEGUIMIENTO_7D = [
+  // Dueño, 2026-11-06: «bono_saldo_shalom» dice «su kit sigue esperándolo en su agencia» y se mandó a clientes cuyo pedido había
+  // salido el día anterior (hubo quejas). Antes del día 4 del despacho NO se asume que llegó: esta versión no habla de la
+  // agencia, solo de que va en camino. Es la que se usa para el bono a clientes con saldo pendiente recién despachados.
+  {
+    nombre: "bono_saldo_camino", titulo: "Bono (clases y libros) a quien tiene saldo pendiente y su kit va en camino (sin decir que llegó)",
+    cuando: "a los clientes de provincia con la boleta enviada y saldo pendiente, antes del día 4 del despacho (no afirma que el kit ya está en la agencia)",
+    texto: "Hola estimad@ ☺️ su kit ya va en camino a su agencia Shalom ✨ apenas llegue le avisamos por aquí. Recuerde que al completar el saldo pendiente le enviamos su clave de recojo 🔑 Y una buena noticia: ahora el kit incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales 📚 ¿Le paso el monto de su saldo?",
+    botones: ["Sí, mi saldo", "Ya pagué"]
+  },
+  {
+    nombre: "bono_saldo_camino_img", titulo: "Bono a quien tiene saldo pendiente y su kit va en camino, CON la foto de los bonos",
+    cuando: "igual que bono_saldo_camino, con la imagen arriba",
+    texto: "Hola estimad@ ☺️ su kit ya va en camino a su agencia Shalom ✨ apenas llegue le avisamos por aquí. Recuerde que al completar el saldo pendiente le enviamos su clave de recojo 🔑 Y una buena noticia: ahora el kit incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales 📚 ¿Le paso el monto de su saldo?",
+    botones: ["Sí, mi saldo", "Ya pagué"], imagen: IMAGENES_PLANTILLA.bono_saldo_camino_img
+  },
   {
     nombre: "bono_clases_libros_img", titulo: "Bono (clases y libros) CON la foto de los bonos", cuando: "a los chats de la semana que no compraron; igual que bono_clases_libros pero con la imagen arriba",
     texto: "Hola estimad@ 🩷 tenemos una novedad: el kit ahora incluye de regalo más de 30 clases grabadas de tarot, de cero a lector, y más de 50 libros digitales ✨ Si separa su kit esta semana se lo enviamos con todo ese bono 🎁 ¿Se lo separamos?",

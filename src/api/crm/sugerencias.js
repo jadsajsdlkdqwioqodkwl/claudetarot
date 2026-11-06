@@ -80,10 +80,18 @@ async function get({ request, env, agent }) {
   if (deChat) {
     await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
     const s = await env.CRM_DB.prepare(
-      `SELECT id, texto, motivo, objecion, origen, pasos, idea FROM asesor_sugerencias
-       WHERE estado = 'pendiente' AND tipo = 'seguimiento' AND conversation_id = ? ORDER BY created_at DESC LIMIT 1`
+      `SELECT s.id, s.texto, s.motivo, s.objecion, s.origen, s.pasos, s.idea, conv.last_inbound_at FROM asesor_sugerencias s
+       JOIN conversations conv ON conv.id = s.conversation_id
+       WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.conversation_id = ? ORDER BY s.created_at DESC LIMIT 1`
     ).bind(deChat).first();
-    return json({ sugerencia: s ? { ...s, pasos: parsear(s.pasos), idea: s.idea ? parsear(s.idea) : null } : null });
+    if (!s) return json({ sugerencia: null });
+    // Ventana cerrada (dueño, 2026-11-06): el banner igual se ve y ofrece mandar la recomendación como plantilla aprobada.
+    const ventanaAbierta = Boolean(s.last_inbound_at) && new Date(String(s.last_inbound_at).replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000 > Date.now();
+    let plantillas = [];
+    if (!ventanaAbierta) {
+      plantillas = await listarTemplates(await envDeConversacion(env, deChat)).then((l) => l.filter((t) => t.status === "APPROVED").map((t) => ({ name: t.name, language: t.language, texto: (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "" }))).catch(() => []);
+    }
+    return json({ sugerencia: { ...s, last_inbound_at: undefined, pasos: parsear(s.pasos), idea: s.idea ? parsear(s.idea) : null, ventana_abierta: ventanaAbierta, plantillas } });
   }
   const chat = Number(new URL(request.url).searchParams.get("chat"));
   if (chat) {
