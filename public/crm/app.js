@@ -2632,7 +2632,7 @@ function pintarLista() {
         ${(c.shalom_code || c.olva) ? `<button type="button" class="badge-olva-lista btn-toggle-olva" title="${c.olva ? "Envío por Olva — clic para quitar" : "Clic para marcar como Olva"}">${icon(c.olva ? "checkBox" : "squareEmpty")} Olva</button>` : ""}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
-        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
+        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El cliente escribió y nadie del equipo le contestó (los seguimientos automáticos no cuentan como respuesta). Toca «Ya respondí» si ya lo atendiste o no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Ya respondí</button></span>` : marcadoAtendido(c) ? `<span class="badge-seguimiento badge-atendido" title="Alguien marcó «Ya respondí» después del último mensaje del cliente. Vuelve a «Falta respuesta» si el cliente escribe otra vez">${icon("check")} Atendido <button type="button" class="btn-no-atendido" title="Deshacer: vuelve a «Falta respuesta»">${icon("undo")}</button></span>` : ""}
         ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento marcha" title="Cadena de seguimiento en marcha: sigue aunque el cliente escriba. El próximo paso sale el ${escapar(fechaCorta(c.seg_auto_proximo))}. Solo se detiene con este botón (o el de la barra del chat)">${icon("clock")} Seguimiento en marcha · ${escapar(fechaCorta(c.seg_auto_proximo))} <button type="button" class="btn-detener-seg" title="Detener la cadena de seguimiento de este chat">${icon("close")} Detener</button></span>` : ""}
@@ -2642,7 +2642,7 @@ function pintarLista() {
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva, .btn-detener-seg")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-no-atendido, .btn-toggle-olva, .btn-detener-seg")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -2655,6 +2655,10 @@ function pintarLista() {
       e.stopPropagation();
       marcarAtendido(c);
     }));
+    div.querySelector(".btn-no-atendido")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      desmarcarAtendido(c);
+    });
     div.querySelector(".btn-detener-seg")?.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`¿Detener el seguimiento de ${c.contact_name || c.profile_name || c.wa_id}? Se cancelan sus pasos automáticos pendientes; se puede reactivar desde la barra del chat.`)) return;
@@ -4012,7 +4016,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
+          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -4419,7 +4423,9 @@ async function actualizarRecomendacionChat() {
       ${sugerencia.objecion ? `<div class="sug-objecion">${icon("alertCircle")} Lo que probablemente lo frena: <b>${escapar(sugerencia.objecion)}</b></div>` : ""}
       <textarea class="reco-texto" rows="3">${escapar(sugerencia.texto)}</textarea>
       ${sugerencia.ventana_abierta === false ? `<div class="sug-objecion">${icon("clock")} Pasaron más de 24 h desde su último mensaje: este texto ya no puede salir. Mándale una plantilla aprobada (la recomendación queda como guía):
-        <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${(sugerencia.plantillas || []).map((p) => `<option value="${escapar(p.name)}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}">${escapar(p.name)} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select></div>` : ""}
+        <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${(sugerencia.plantillas || []).map((p, i) => `<option value="${escapar(p.name)}" data-i="${i}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}">${escapar(p.name)} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select>
+        ${(sugerencia.plantillas || []).length ? "" : `<div class="sub">No encontré plantillas aprobadas para este número.</div>`}
+        <div class="reco-plantilla-texto sub" style="display:none;white-space:pre-wrap;margin-top:4px"></div></div>` : ""}
       <div class="reco-acciones">
         <button type="button" class="reco-descartar">${icon("trash")} Descartar</button>
         <button type="button" class="reco-enviar">${icon("send")} ${sugerencia.ventana_abierta === false ? "Mandar la plantilla" : "Enviar"}</button>
@@ -4448,7 +4454,14 @@ async function actualizarRecomendacionChat() {
       resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto });
     });
     caja.querySelector(".reco-descartar").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar" }));
-  } catch { /* silencioso */ }
+    // Ventana cerrada: al elegir la plantilla se ve su texto completo (lo que le va a llegar al cliente).
+    caja.querySelector(".reco-plantilla")?.addEventListener("change", (e) => {
+      const p = (sugerencia.plantillas || [])[Number(e.target.selectedOptions[0]?.dataset.i)];
+      const vista = caja.querySelector(".reco-plantilla-texto");
+      vista.style.display = p ? "" : "none";
+      vista.textContent = p ? `Le llega: ${p.texto}` : "";
+    });
+  } catch (err) { console.error("Recomendación del chat:", err); }
 }
 
 async function cargarMensajesAnteriores() {
@@ -5083,6 +5096,24 @@ async function marcarAtendido(c) {
     estado.atencionTotal = Math.max(0, estado.atencionTotal - 1);
     pintarColaAtencion();
     pintarLista();
+    pintarRelojChat();
+  } catch (err) { alert(err.message); }
+}
+
+/** «Atendido» marcado a mano después del último mensaje del cliente (la etiqueta verde, con «deshacer»). */
+function marcadoAtendido(c) {
+  if (!c?.atendido_at || !c.last_inbound_at || c.falta_respuesta) return false;
+  const t = (v) => new Date(String(v).replace(" ", "T") + (/Z|[+-]\d\d:?\d\d$/.test(v) ? "" : "Z")).getTime();
+  return t(c.atendido_at) >= t(c.last_inbound_at);
+}
+
+/** Deshacer «Ya respondí»: el chat vuelve a «Falta respuesta» (si nadie le contestó) y a Atención pendiente. */
+async function desmarcarAtendido(c) {
+  try {
+    await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "no_atendido" }) });
+    c.atendido_at = null;
+    await cargarConversaciones();
+    pintarRelojChat();
   } catch (err) { alert(err.message); }
 }
 
@@ -7206,6 +7237,27 @@ function pintarRelojChat() {
   el.className = `reloj${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
   el.title = !cierra ? "No ha escrito: solo plantilla" : queda <= 0 ? "Ventana cerrada: solo plantilla" : "Tiempo para escribirle gratis";
   el.innerHTML = `${icon("clock")} ${!cierra ? "no escribió" : queda <= 0 ? "ventana cerrada" : duracion(queda)}`;
+  pintarEstadoRespuestaChat(c);
+}
+
+/**
+ * Al lado del cronómetro: «Falta respuesta» (con «Ya respondí») o «Atendido» (respondido por el equipo o marcado
+ * a mano; si fue a mano, con «deshacer»). Mismo criterio que la etiqueta de la lista (falta_respuesta del servidor).
+ */
+function pintarEstadoRespuestaChat(c) {
+  const el = $("#estado-resp-chat");
+  if (!el) return;
+  if (!c?.last_inbound_at) { el.innerHTML = ""; return; }
+  const firma = `${c.conversation_id}|${c.falta_respuesta ? 1 : 0}|${marcadoAtendido(c) ? 1 : 0}`;
+  if (el.dataset.firma === firma) return;
+  el.dataset.firma = firma;
+  el.innerHTML = c.falta_respuesta
+    ? `<span class="badge-seguimiento badge-falta" title="El cliente escribió y nadie del equipo le contestó (los seguimientos automáticos no cuentan)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Ya lo atendí o no hace falta responder (vuelve si el cliente escribe otra vez)">${icon("squareEmpty")} Ya respondí</button></span>`
+    : `<span class="badge-seguimiento badge-atendido" title="${marcadoAtendido(c) ? "Marcado «Ya respondí» a mano" : "El equipo ya le contestó su último mensaje"}. Vuelve a «Falta respuesta» si el cliente escribe otra vez">${icon("check")} Atendido${marcadoAtendido(c) ? ` <button type="button" class="btn-no-atendido" title="Deshacer: vuelve a «Falta respuesta»">${icon("undo")}</button>` : ""}</span>`;
+  // La lista se recarga cada pocos segundos: se usa la fila vigente del chat, no la de cuando se pintó.
+  const vigente = () => estado.conversaciones.find((x) => x.conversation_id === c.conversation_id) || c;
+  el.querySelector(".btn-atendido")?.addEventListener("click", (e) => { e.stopPropagation(); marcarAtendido(vigente()); });
+  el.querySelector(".btn-no-atendido")?.addEventListener("click", (e) => { e.stopPropagation(); desmarcarAtendido(vigente()); });
 }
 setInterval(pintarRelojChat, 30000);
 

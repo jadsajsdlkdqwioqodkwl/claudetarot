@@ -45,7 +45,8 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { limpiarSugerenciasViejas } from "../../lib/crm-sugerencias.js";
-import { enviarTemplate } from "../../lib/whatsapp.js";
+// listarTemplates faltaba (2026-11-06): el banner de un chat con la ventana cerrada respondía 500 y el CRM lo escondía.
+import { enviarTemplate, listarTemplates } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos, limpiarPlantilla } from "../asesor.js";
 import { limpiarBotones } from "../../lib/whatsapp.js";

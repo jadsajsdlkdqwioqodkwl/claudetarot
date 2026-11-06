@@ -25,6 +25,27 @@ const SEGUIMIENTO_PROPIO = "instr(sm.created_by, 'Automático (día 7)') = 0 AND
  */
 const ESCRITO_POR_PERSONA = (m) => `${m}.sent_by IN (SELECT display_name FROM agents UNION SELECT username FROM agents)`;
 
+/**
+ * Lo que sale solo y NO es una respuesta al cliente: plantillas, planes de seguimiento, seguimientos automáticos,
+ * envíos masivos y toques. Sí cuentan como respuesta lo que escribe el equipo, la bienvenida (contesta su saludo),
+ * las boletas y los automáticos que contestan un botón (dueño, 2026-11-06).
+ */
+const NO_ES_RESPUESTA = (m) => `(${m}.type = 'template' OR substr(COALESCE(${m}.sent_by, ''), 1, 5) IN ('Plan ', 'Toque')
+  OR substr(COALESCE(${m}.sent_by, ''), 1, 11) = 'Seguimiento' OR substr(COALESCE(${m}.sent_by, ''), 1, 12) = 'Envío masivo')`;
+
+/**
+ * «Falta respuesta» (SQL; `conv` = alias de conversations): el cliente escribió, nadie le contestó después y nadie
+ * marcó «Ya respondí» (atendido_at). Desde el 2026-11-06 un seguimiento automático que salió después de su mensaje
+ * NO cuenta como respuesta (antes la etiqueta se apagaba sola con cualquier plantilla del plan); eso aplica a lo
+ * que escribió en los últimos 3 días; en chats más viejos sigue la regla de antes (cualquier salida lo apaga), para
+ * no llenar de etiquetas los leads viejos que recibieron un envío masivo.
+ * Es también la ÚNICA razón para reflotar una recomendación del asesor (reflotarSugerencia).
+ */
+export const FALTA_RESPUESTA = (conv) => `(${conv}.last_inbound_at IS NOT NULL
+  AND (${conv}.atendido_at IS NULL OR ${conv}.atendido_at < ${conv}.last_inbound_at)
+  AND NOT EXISTS (SELECT 1 FROM messages mr WHERE mr.conversation_id = ${conv}.id AND mr.direction = 'out' AND mr.created_at >= ${conv}.last_inbound_at
+                  AND (${conv}.last_inbound_at < datetime('now', '-3 days') OR NOT ${NO_ES_RESPUESTA("mr")})))`;
+
 export async function limpiarSugerenciasViejas(db, env = null) {
   // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
   if (env) await proponerPlanPorVentanaCerrada(env).catch((err) => console.error("Plan por ventana cerrada:", err.message));
@@ -56,6 +77,10 @@ export async function limpiarSugerenciasViejas(db, env = null) {
  * (la más antigua primero) y, si no queda ninguna, vuelve a subir UNA que sigue pendiente y subió hace más
  * de VUELVE_A_SUBIR_H horas (nadie la atendió). Dentro del chat se ve el mensaje recomendado, editable,
  * con «Enviar» y «Descartar». No sube de madrugada (horario de envío). Devuelve los ids reflotados.
+ * Dueño, 2026-11-06: se reflota por FALTA DE RESPUESTA, nunca por falta de seguimiento (los seguimientos ya son
+ * automáticos). Solo sube un chat cuya recomendación está pendiente Y el cliente escribió sin que nadie le contestara
+ * (FALTA_RESPUESTA). Si el último mensaje es nuestro y el cliente calló, la recomendación igual se ve en el chat
+ * (banner) y en ✨ Sugerencias, pero el chat no sube. «Ya respondí» (atendido) lo saca.
  */
 const POR_PASADA = 3;
 const VUELVE_A_SUBIR_H = 3;
@@ -67,7 +92,7 @@ export async function reflotarSugerencia(env) {
   // Dueño, 2026-11-06: la recomendación sube el chat aunque la ventana de 24 h ya haya cerrado (antes esos chats solo se
   // veían en ✨ Sugerencias); en ese caso el banner del chat la ofrece como plantilla. «Sin pregunta» sigue pidiendo ventana
   // abierta (es para escribirle ya). Solo recomendaciones de los últimos 3 días: las viejas no vuelven a subir.
-  const VENTANA = `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours'))`;
+  const VENTANA = `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours')) AND ${FALTA_RESPUESTA("conv")}`;
   let { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at IS NULL AND conv.blocked = 0
