@@ -1239,6 +1239,12 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("espada: _headers no solapa reglas de /espada/ (Cloudflare junta sus encabezados)", !/^\/espada\/\*\s*$/m.test(headers));
   check("espada: no quedan textos de la Masilla ni del Cable copiados",
     !/\b(sachets?|masilla selladora|USB-C|Lightning|90 días)\b/i.test(es + gr));
+  check("espada: la página tiene la barra fija (CTA con precio) y el botón del formulario NO queda pegado abajo",
+    es.includes('<div class="sticky" id="sticky">') && !/\.btn-fijo \{[^}]*position:sticky/.test(es));
+  check("espada: las fotos se cargan livianas (srcset 480/800, miniaturas chicas, fuente sin bloquear)",
+    !/<img src="\/espada\/img\/(mando|piruetas|detalle|motores|campo)\.webp"/.test(es) && /srcset="\/espada\/img\/mando-480\.webp/.test(es) &&
+    /data-thumb="\/espada\/img\/\w+-t\.webp"/.test(es) && !/@import url\('https:\/\/fonts/.test(es + gr));
+  check("espada: el píxel recibe ciudad, región y país limpios, y order_id en Lead/Purchase", /st: limpio\(c\.region\)/.test(es) && /datos\.order_id = c\.eventId;/.test(es));
   check("espada: un solo color (dorado): sin fotos ni textos de otro color", !/\b(cobre|copper)\b/i.test(es + gr));
   check("espada: no queda texto en inglés quemado en la página",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer|Flying Sword)\b/i.test(es + gr));

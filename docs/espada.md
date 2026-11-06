@@ -74,3 +74,9 @@ Se descartaron las fotos que muestran una mochila y un control de muñeca, que v
 
 - Se quitó la barra fija de abajo (CTA sticky con precio) a pedido del dueño; quedan los botones «COMPLETAR PEDIDO» de la ficha y del final, y el botón fijo dentro del formulario.
 - Provincia: adelanto de **S/ 20** (antes S/ 10) en la página, la gracias, el servidor (`ADELANTO_PROVINCIA`) y la hoja. Solo la Espada; el Kit, el Cable y la Masilla siguen con S/ 10.
+
+## Cambios del 2026-11-06
+
+- **Vuelve la barra fija** de abajo en la página (CTA con precio, siempre visible) y se quita lo «pegado» del botón dentro del formulario: ahora va en su lugar, al final de los campos (pedido del dueño). Lo anotado el 2026-11-05 sobre quitar la barra queda como historia.
+- **Fotos más livianas**: cada foto tiene versión de 480 y 800 px (`-480.webp`, `-800.webp`, el navegador elige con `srcset`) y miniatura de 128 px (`-t.webp`) para la tira de la galería, que antes bajaba la foto completa. Sellos del formulario a 800 px. La fuente Inter ya no bloquea el primer pintado (se carga aparte). Primera vista en celular: de ~190 KB a ~125 KB de fotos.
+- **Píxel**: los datos del cliente van limpios (sin tildes ni espacios) y con ciudad y región correctas: Lima → `lima`, provincia → la ciudad que escribió (antes se mandaba el distrito como ciudad). Lead y Purchase llevan además `order_id` (= el `eventID` del pedido).

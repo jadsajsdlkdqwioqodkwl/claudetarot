@@ -1685,3 +1685,4 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   pendientes estaban así. Ahora reflotan igual (solo las de los últimos 3 días) y el banner, con la ventana cerrada, muestra el
   texto como guía y un selector de plantillas aprobadas para mandarla (`GET /api/crm/sugerencias?de_chat=` devuelve
   `ventana_abierta` y `plantillas`; el POST `aprobar` ya aceptaba `plantilla`).
+- 2026-11-06 · Espada Voladora (`/espada/`), pedido del dueño: vuelve la barra fija de la página y el botón del formulario deja de quedar pegado abajo; fotos más livianas (versiones 480/800 con `srcset`, miniaturas de 128 px, sellos a 800 px, fuente sin bloquear); el píxel `1602561284224693` recibe ciudad/región limpias (Lima → `lima`) y `order_id`. Detalle en `docs/espada.md`.

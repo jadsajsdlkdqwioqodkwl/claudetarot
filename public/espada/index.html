@@ -7,14 +7,15 @@
 <meta name="description" content="La espada voladora a control remoto: 4 motores con giroscopio que la estabilizan solos, despegue con un botón, piruetas de 360°, 3 velocidades y luces LED. Envío gratis a todo el Perú; en Lima pagas al recibir.">
 <meta property="og:title" content="Espada Voladora RC: vuela, hace piruetas y no se rompe">
 <meta property="og:description" content="Despega con un botón, se estabiliza sola y hace piruetas de 360°. Envío gratis a todo el Perú; en Lima pagas al recibir.">
-<meta property="og:image" content="/espada/img/mando.webp">
+<meta property="og:image" content="/espada/img/mando-800.webp">
 <meta name="theme-color" content="#0e1630">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a5cff'/%3E%3Cpath d='M44 8 52 12 26 44l-6-6zM18 40l6 6-4 4-2 6-4-4-4-2 6-2z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="preload" as="image" href="/espada/img/mando.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/espada/img/mando-800.webp" imagesrcset="/espada/img/mando-480.webp 480w, /espada/img/mando-800.webp 800w" imagesizes="(min-width:900px) 540px, 100vw" fetchpriority="high">
 <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
 <link rel="preconnect" href="https://www.facebook.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
     --ink:#0e1630;
@@ -170,8 +171,18 @@
   .final h2 { font-size:24px; font-weight:800; letter-spacing:-.3px; line-height:1.2; }
   .final p { color:var(--muted-txt); font-size:15px; margin:6px 0 16px; }
 
-  .legal { max-width:760px; margin:40px auto 0; padding:20px 16px 30px; border-top:1px solid var(--line); text-align:center; font-size:11px; color:var(--muted); line-height:1.5; }
+  .legal { max-width:760px; margin:40px auto 0; padding:20px 16px 110px; border-top:1px solid var(--line); text-align:center; font-size:11px; color:var(--muted); line-height:1.5; }
 
+
+  /* Barra fija en móvil */
+  .sticky { position:fixed; left:0; right:0; bottom:0; z-index:45; background:#fff; border-top:1px solid var(--line); padding:10px 16px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:center; transition:transform .3s; }
+  .sticky.hidden { transform:translateY(110%); }
+  .sticky .sp { flex:0 0 auto; line-height:1.1; }
+  .sticky .sp b { font-size:20px; font-weight:800; display:block; }
+  .sticky .sp s { font-size:12px; color:var(--price-old); }
+  .sticky .cta { padding:13px 10px; }
+  .sticky .cta .l1 { font-size:15.5px; }
+  @media (min-width:900px) { .sticky { justify-content:center; } .sticky .cta { max-width:340px; flex:1 1 auto; } }
 
   /* ── Formulario COD (modal) ── */
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); z-index:100; display:none; overflow-y:auto; padding:14px 0; -webkit-overflow-scrolling:touch; }
@@ -210,8 +221,8 @@
   .fg input::placeholder { color:#8a8a8a; opacity:1; }
   .err { border-color:var(--red) !important; }
   .entrega-note { text-align:center; font-size:14px; font-weight:700; margin:18px 0 12px; }
-  /* El botón se queda pegado al borde de abajo mientras se llena el formulario: siempre visible. */
-  .btn-fijo { position:sticky; bottom:0; z-index:5; background:#fff; margin:14px -18px 0; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.07); }
+  /* El botón del formulario va en su lugar, sin quedarse pegado abajo (dueño, 2026-11-06). */
+  .btn-fijo { margin:14px 0 0; }
   .btn-pedido { width:100%; border:none; cursor:pointer; background:var(--cta); color:#fff; border-radius:12px; padding:17px; transition:background .15s, transform .1s; }
   .btn-pedido:hover { background:var(--cta-d); }
   .btn-pedido:active { transform:scale(.99); }
@@ -282,11 +293,11 @@
   <!-- Galería -->
   <div class="gallery">
     <div class="g-track" id="gTrack">
-      <div class="g-slide"><img src="/espada/img/mando.webp" alt="La espada voladora dorada en el aire, manejada con el control tipo mando" width="1000" height="1000" fetchpriority="high" decoding="async"></div>
-      <div class="g-slide"><img src="/espada/img/piruetas.webp" alt="La espada voladora haciendo piruetas de 360 grados en el aire" width="1000" height="1000" loading="lazy"></div>
-      <div class="g-slide"><img src="/espada/img/detalle.webp" alt="Detalle de la espada voladora dorada: sus 4 hélices protegidas" width="541" height="561" loading="lazy"></div>
-      <div class="g-slide"><img src="/espada/img/motores.webp" alt="La espada voladora dorada con sus motores tipo turbina y luces LED" width="900" height="672" loading="lazy"></div>
-      <div class="g-slide"><img src="/espada/img/campo.webp" alt="La espada voladora dorada planeando sobre el campo" width="704" height="480" loading="lazy"></div>
+      <div class="g-slide" data-thumb="/espada/img/mando-t.webp"><img src="/espada/img/mando-800.webp" srcset="/espada/img/mando-480.webp 480w, /espada/img/mando-800.webp 800w" sizes="(min-width:900px) 540px, 100vw" alt="La espada voladora dorada en el aire, manejada con el control tipo mando" width="800" height="800" fetchpriority="high" decoding="async"></div>
+      <div class="g-slide" data-thumb="/espada/img/piruetas-t.webp"><img src="/espada/img/piruetas-800.webp" srcset="/espada/img/piruetas-480.webp 480w, /espada/img/piruetas-800.webp 800w" sizes="(min-width:900px) 540px, 100vw" alt="La espada voladora haciendo piruetas de 360 grados en el aire" width="800" height="800" loading="lazy"></div>
+      <div class="g-slide" data-thumb="/espada/img/detalle-t.webp"><img src="/espada/img/detalle-800.webp" srcset="/espada/img/detalle-480.webp 480w, /espada/img/detalle-800.webp 541w" sizes="(min-width:900px) 540px, 100vw" alt="Detalle de la espada voladora dorada: sus 4 hélices protegidas" width="541" height="561" loading="lazy"></div>
+      <div class="g-slide" data-thumb="/espada/img/motores-t.webp"><img src="/espada/img/motores-800.webp" srcset="/espada/img/motores-480.webp 480w, /espada/img/motores-800.webp 800w" sizes="(min-width:900px) 540px, 100vw" alt="La espada voladora dorada con sus motores tipo turbina y luces LED" width="800" height="597" loading="lazy"></div>
+      <div class="g-slide" data-thumb="/espada/img/campo-t.webp"><img src="/espada/img/campo-800.webp" srcset="/espada/img/campo-480.webp 480w, /espada/img/campo-800.webp 704w" sizes="(min-width:900px) 540px, 100vw" alt="La espada voladora dorada planeando sobre el campo" width="704" height="480" loading="lazy"></div>
     </div>
     <div class="g-count" id="gCount">1 / 5</div>
     <div class="g-thumbs" id="gThumbs"></div>
@@ -337,9 +348,9 @@
   <h2>Así vuela</h2>
   <p class="sub">Un juguete que se ve como una espada de película</p>
   <div class="shots">
-    <figure class="shot"><img src="/espada/img/campo.webp" alt="La espada voladora dorada planeando sobre el campo" width="704" height="480" loading="lazy"><figcaption>Despega con un botón y planea estable</figcaption></figure>
-    <figure class="shot"><img src="/espada/img/piruetas.webp" alt="Piruetas de 360 grados en el aire" width="1000" height="1000" loading="lazy"><figcaption>Piruetas de 360° con un toque</figcaption></figure>
-    <figure class="shot"><img src="/espada/img/motores.webp" alt="Los 4 motores tipo turbina de la espada voladora con sus luces LED" width="900" height="672" loading="lazy"><figcaption>4 motores tipo turbina con luces LED</figcaption></figure>
+    <figure class="shot"><img src="/espada/img/campo-800.webp" srcset="/espada/img/campo-480.webp 480w, /espada/img/campo-800.webp 704w" sizes="(min-width:900px) 540px, 100vw" alt="La espada voladora dorada planeando sobre el campo" width="704" height="480" loading="lazy"><figcaption>Despega con un botón y planea estable</figcaption></figure>
+    <figure class="shot"><img src="/espada/img/piruetas-800.webp" srcset="/espada/img/piruetas-480.webp 480w, /espada/img/piruetas-800.webp 800w" sizes="(min-width:900px) 540px, 100vw" alt="Piruetas de 360 grados en el aire" width="800" height="800" loading="lazy"><figcaption>Piruetas de 360° con un toque</figcaption></figure>
+    <figure class="shot"><img src="/espada/img/motores-800.webp" srcset="/espada/img/motores-480.webp 480w, /espada/img/motores-800.webp 800w" sizes="(min-width:900px) 540px, 100vw" alt="Los 4 motores tipo turbina de la espada voladora con sus luces LED" width="800" height="597" loading="lazy"><figcaption>4 motores tipo turbina con luces LED</figcaption></figure>
   </div>
 </section>
 
@@ -406,11 +417,17 @@
   <p style="margin-top:6px">Este sitio no forma parte de Facebook ni de Meta Platforms, Inc., y no está respaldado por ellos. FACEBOOK es una marca registrada de Meta Platforms, Inc.</p>
 </footer>
 
+<!-- Barra fija -->
+<div class="sticky" id="sticky">
+  <div class="sp"><b id="sNow">S/ 159.00</b><s id="sWas">S/ 318.00</s></div>
+  <button class="cta" onclick="openCOD()"><div class="l1">COMPLETAR PEDIDO</div></button>
+</div>
+
 <!-- Formulario COD -->
 <div class="overlay" id="codOverlay" role="dialog" aria-modal="true" aria-label="Completar pedido">
   <div class="modal">
     <span class="mclose" onclick="closeCOD()" role="button" aria-label="Cerrar"><svg class="ico" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
-    <div class="logo-circle"><img src="/espada/img/logo.webp" alt="Puerto Secreto" width="92" height="92"></div>
+    <div class="logo-circle"><img src="/espada/img/logo.webp" alt="Puerto Secreto" width="92" height="92" loading="lazy"></div>
     <div class="vendedor"><svg class="ico" style="width:15px;height:15px"><use href="#i-shield"/></svg> Vendedor autorizado</div>
     <div class="garantia">Envío gratis a todo el Perú</div>
 
@@ -573,6 +590,8 @@
     document.getElementById('packsPage').innerHTML = filas;
     document.getElementById('packsModal').innerHTML = '<div class="sect-title">Elige tu pack</div>' + filas;
     var p = PACKS[packActual];
+    document.getElementById('sNow').textContent = soles(p.precio);
+    document.getElementById('sWas').textContent = soles(p.viejo);
     pintarResumen();
   }
   function pintarResumen() {
@@ -673,11 +692,13 @@
     if (typeof fbq !== 'function' || !c.eventId) return;
     var partes = c.nombre.toLowerCase().split(/\s+/);
     var tel = aE164(c.telefono).replace(/\D/g, '');
-    var datosUsuario = { ph: tel, fn: partes[0], ct: c.ciudad.toLowerCase().replace(/\s+/g, ''), country: 'pe', external_id: tel };
-    if (partes.length > 1) datosUsuario.ln = partes.slice(1).join(' ');
+    var limpio = function (t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, ''); };
+    var datosUsuario = { ph: tel, fn: limpio(partes[0]), ct: limpio(c.ciudad), st: limpio(c.region), country: 'pe', external_id: tel };
+    if (partes.length > 1) datosUsuario.ln = limpio(partes.slice(1).join(''));
     fbq('init', PIXEL_ID, datosUsuario);
     var datos = datosCarrito();
     datos.value = c.total;
+    datos.order_id = c.eventId;
     fbq('track', 'Lead', datos, { eventID: c.eventId });
     fbq('track', 'Purchase', datos, { eventID: c.eventId });
   }
@@ -730,7 +751,7 @@
             eventId: res.body.eventId || '', cantidad: pk.cant
           }));
         } catch (e) { /* modo privado sin storage: la página de gracias saldrá genérica */ }
-        fbCompra({ nombre: n, telefono: p, ciudad: dis, total: total, eventId: res.body.eventId || '' });
+        fbCompra({ nombre: n, telefono: p, ciudad: esCasa ? 'lima' : dis, region: esCasa ? 'lima' : dis, total: total, eventId: res.body.eventId || '' });
         /* Pausa corta para que el navegador alcance a mandar Lead y Purchase antes de cambiar de página. */
         /* Ruta ABSOLUTA a /espada/gracias: así nunca cae en otra página de gracias (en el dominio largo,
            «/gracias» sin su regla de Cloudflare sería la de Tarot, con OTRO píxel). */
