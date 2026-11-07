@@ -1759,3 +1759,9 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   «Enviar» con el texto guardado. El asesor puede proponer así seguimientos a chats de días anteriores («le pago mañana»).
 - Pruebas: `scripts/test-recursos-adjuntos.mjs` (en `npm run check`, SQLite real y WhatsApp simulado). Revisado en Chromium
   con la API simulada: banner con adjuntos y plantilla sugerida, «esperando respuesta», pestaña Recursos, «Mandar a este chat».
+
+## 2026-11-07 — Pendiente: registro rápido de pedidos (Dinsides y Shalom) y revisión del ecosistema
+- La persona que registra los pedidos se va. Propuesta del registro rápido (ficha Dinsides desde el reporte de la noche,
+  Excel del envío masivo de Shalom, tabla de agencias con «CONFIRMAR AGENCIA», link de Maps para quien solo mandó su
+  ubicación) en `docs/registro-pedidos.md`. Nada construido; el dueño pidió dejarlo apuntado para revisarlo junto con
+  `docs/estados-envio.md` (lectura de estados de Shalom Pro y Dinsides) y darle una chequeada al ecosistema completo.
