@@ -109,9 +109,10 @@ export async function onRequestPost({ request, env }) {
     const origenInforme = String(payload.origen || "director CRO").slice(0, 60);
     await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)").bind(origenInforme, texto).run();
     const link = await guardarInformeComoPagina(env, origenInforme, texto).catch(() => null);
-    // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13).
+    // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13). Y el resumen del despacho de
+    // boletas (2026-11-07): la Routine no tiene las claves de Telegram y su aviso nunca llegaba.
     let telegram = null;
-    if (/ventas/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
+    if (/ventas|boletas/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
       try {
         const msg = (texto + (link ? `\n\n${link}` : "")).slice(0, 4000);
         const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {

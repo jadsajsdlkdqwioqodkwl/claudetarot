@@ -76,7 +76,41 @@ async function leerFilas(env) {
   return getValues(env, `${hojaVentas(env)}!${RANGO_DATOS_VENTA}`);
 }
 
+/**
+ * Candado en D1 para crear ventas de a una (2026-11-07). La Routine de boletas mandó 9 despachos a la vez: cada uno leyó
+ * la hoja, eligió «la primera fila vacía» y escribió ahí, así que varios cayeron en la MISMA fila y se pisaron (5 de 9
+ * ventas del 6/11 se perdieron y después salía «No encontré esa venta»). Con el candado, la segunda espera a que la
+ * primera termine de escribir. D1 hace el INSERT … ON CONFLICT de forma atómica; el candado vence solo a los 30 s.
+ */
+const CANDADO_VENTAS = "candado_ventas_crear";
+export async function conCandadoVentas(env, fn, { intentos = 80, esperaMs = 250 } = {}) {
+  const db = env.CRM_DB;
+  if (!db) return fn();
+  const yo = `${Math.random().toString(36).slice(2)}${Date.now()}`;
+  for (let i = 0; i < intentos; i++) {
+    const valor = `${Date.now() + 30_000}|${yo}`;
+    const r = await db.prepare(
+      `INSERT INTO crm_settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value
+       WHERE CAST(substr(crm_settings.value, 1, instr(crm_settings.value, '|') - 1) AS INTEGER) < ?`
+    ).bind(CANDADO_VENTAS, valor, Date.now()).run().catch(() => null);
+    if (r?.meta?.changes) {
+      try {
+        return await fn();
+      } finally {
+        await db.prepare("DELETE FROM crm_settings WHERE key = ? AND value = ?").bind(CANDADO_VENTAS, valor).run().catch(() => {});
+      }
+    }
+    await new Promise((res) => setTimeout(res, esperaMs + Math.random() * esperaMs));
+  }
+  return fn(); // ~30 s sin poder tomarlo (candado colgado): sigue como antes antes que perder la venta
+}
+
 export async function crear(env, p) {
+  return conCandadoVentas(env, () => crearSinCandado(env, p));
+}
+
+async function crearSinCandado(env, p) {
   const dni = soloDigitos(p.dni).slice(0, 12);
   const celular = soloDigitos(p.celular).slice(-9);
   if (!dni && !celular) return json({ error: "Falta DNI o celular." }, 400);

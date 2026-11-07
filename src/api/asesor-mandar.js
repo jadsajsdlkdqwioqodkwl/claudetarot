@@ -14,6 +14,8 @@
  *       · cerrada  → staging 'pendiente_ventana' con el texto guardado + plantilla aviso_envio_shalom;
  *                    el webhook manda fotos+texto solo cuando el cliente responde.
  *       En los dos casos registra la venta en la pestaña Ventas (fila nueva si no existía) con la foto de la boleta.
+ *   { tipo: "registrar-venta", staging_id, adelanto? }
+ *     → vuelve a registrar en Ventas la venta de una boleta ya despachada (foto + orden); no le escribe al cliente.
  *   { tipo: "texto", conversation_id?, wa_id?, texto }            (se rechaza si la ventana está cerrada)
  *   { tipo: "foto-staging", conversation_id?, wa_id?, staging_id } (se rechaza si la ventana está cerrada)
  *   { tipo: "cobro", conversation_id?, wa_id?, courier: "shalom"|"olva" }
@@ -195,6 +197,22 @@ export async function onRequestPost({ request, env }) {
   const p = await request.json().catch(() => null);
   if (!p?.tipo) return json({ error: "Falta tipo." }, 400);
 
+  // Reparación (2026-11-07): vuelve a registrar en la pestaña Ventas la venta de una boleta YA despachada (con su foto y
+  // nro de orden), sacando el chat de la propia foto. No le escribe al cliente. Para las que se perdieron cuando la
+  // Routine despachó en paralelo (ver conCandadoVentas en asesor-ventas.js).
+  if (p.tipo === "registrar-venta") {
+    const s = await env.CRM_DB.prepare(
+      "SELECT id, media_id, media_mime, conversation_id, courier, dni_boleta, nro_orden, saldo, status FROM boletas_staging WHERE id = ?"
+    ).bind(Number(p.staging_id) || 0).first();
+    if (!s?.media_id) return json({ error: "No encontré esa foto en staging." }, 404);
+    if (!["enviado", "pendiente_ventana"].includes(s.status)) return json({ error: `Esa boleta no está despachada (${s.status}).` }, 409);
+    const convS = await resolverConversacion(env.CRM_DB, Number(s.conversation_id) || null, null);
+    if (!convS) return json({ error: "Esa boleta no tiene chat." }, 404);
+    const ventas = await registrarVenta(env, convS, { dni_boleta: s.dni_boleta, courier: s.courier, saldo: s.saldo, nro_orden: s.nro_orden, adelanto: p.adelanto ? String(p.adelanto) : "" }, s)
+      .catch((err) => ({ error: err.message }));
+    return json({ ok: !ventas.error, staging_id: s.id, ventas }, ventas.error ? 422 : 200);
+  }
+
   let waIdNorm = String(p.wa_id || "").replace(/\D/g, "") || null;
   // Número peruano de 9 dígitos: agregar código de país
   if (waIdNorm?.length === 9) waIdNorm = "51" + waIdNorm;
@@ -207,6 +225,7 @@ export async function onRequestPost({ request, env }) {
 
   try {
     if (p.tipo === "despachar") return await despachar(env, conv, p);
+
 
     if (p.tipo === "texto" || p.tipo === "foto-staging") {
       // Fuera de la ventana de 24 h WhatsApp lo rechaza (131047) y el cliente no recibe nada: solo plantilla.

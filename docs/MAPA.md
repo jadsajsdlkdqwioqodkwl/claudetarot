@@ -1765,3 +1765,20 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   Excel del envío masivo de Shalom, tabla de agencias con «CONFIRMAR AGENCIA», link de Maps para quien solo mandó su
   ubicación) en `docs/registro-pedidos.md`. Nada construido; el dueño pidió dejarlo apuntado para revisarlo junto con
   `docs/estados-envio.md` (lectura de estados de Shalom Pro y Dinsides) y darle una chequeada al ecosistema completo.
+
+## 2026-11-07 — Boletas: ventas que no se registraban en la hoja y Telegram que no salía
+- **Causa:** el 6/11 la Routine de boletas despachó 9 clientes EN PARALELO. `crear` (`src/api/asesor-ventas.js`) lee la
+  pestaña Ventas, elige la «primera fila vacía» y escribe: varios eligieron la misma fila y se pisaron. Se perdieron 5 filas
+  del 6/11 (Ardiles, Villacrez, Rioja, Paco, Silva) y 1 del 5/11 (Ibeth Pari); después `actualizar` respondía «No encontré
+  esa venta (ni por código ni por DNI)». El despacho al cliente (fotos y texto o plantilla) salió bien en todos.
+- **Arreglo en el Worker:** `conCandadoVentas` crea las ventas de a una con un candado en D1 (`crm_settings` clave
+  `candado_ventas_crear`, `INSERT … ON CONFLICT` atómico, vence a los 30 s, se suelta aunque falle Sheets). Prueba:
+  `scripts/test-candado-ventas.mjs` (9 a la vez: sin candado se pisan, con candado cada una en su fila).
+- **Reparación:** `POST /api/asesor/mandar { tipo: "registrar-venta", staging_id }` vuelve a registrar la venta de una
+  boleta ya despachada (fila nueva o la abierta con ese DNI, foto de la boleta y nro de orden), sin escribirle al cliente;
+  `python3 scripts/asesor/boletas.py registrar <staging_id> […]` (de a uno). Faltaban: staging 98, 106, 108, 114, 120, 122.
+- **Telegram:** `boletas.py telegram` sin `TELEGRAM_BOT_TOKEN` en la Routine avisa por el Worker (`/api/asesor/avisos`,
+  origen «boletas (aviso)»); el Worker manda por Telegram los informes con origen «ventas» o «boletas» (antes solo «ventas»).
+- Routine de boletas v16 en `docs/routines.md` (despachar de a uno; `registrar` si falla el registro).
+- **Migración 0076 aplicada en D1 el 2026-11-07** (Recursos y adjuntos del asesor; ver la entrada de Recursos): el código de
+  esa entrada ya está en `main`.
