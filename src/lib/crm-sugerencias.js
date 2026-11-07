@@ -63,11 +63,14 @@ export async function reflotarSugerencia(env) {
   const db = env.CRM_DB;
   if (!db || enSilencio(Date.now(), env.HORARIO_ENVIO)) return [];
   await limpiarSugerenciasViejas(db).catch((err) => console.error("Limpiar sugerencias:", err.message));
-  await sugerirSinPregunta(db).catch((err) => console.error("Sugerir sin pregunta:", err.message));
+  // «Sin pregunta» (dueño, 2026-11-06): APAGADO. Con los seguimientos automáticos en todos los chats ya no hay «falta de
+  // seguimiento»; el chat sube solo por falta de respuesta o por una recomendación del asesor. Ajuste `sin_pregunta_auto` = 1 lo prende.
+  const sinPregunta = await db.prepare("SELECT value FROM crm_settings WHERE key = 'sin_pregunta_auto'").first().catch(() => null);
+  if (sinPregunta?.value === "1") await sugerirSinPregunta(db).catch((err) => console.error("Sugerir sin pregunta:", err.message));
   // Dueño, 2026-11-06: la recomendación sube el chat aunque la ventana de 24 h ya haya cerrado (antes esos chats solo se
   // veían en ✨ Sugerencias); en ese caso el banner del chat la ofrece como plantilla. «Sin pregunta» sigue pidiendo ventana
   // abierta (es para escribirle ya). Solo recomendaciones de los últimos 3 días: las viejas no vuelven a subir.
-  const VENTANA = `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours'))`;
+  const VENTANA = sinPregunta?.value === "1" ? `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours'))` : `s.tipo = 'seguimiento'`;
   let { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at IS NULL AND conv.blocked = 0
@@ -113,4 +116,25 @@ export async function sugerirSinPregunta(db) {
     "INSERT INTO asesor_sugerencias (tipo, conversation_id, texto, motivo, origen) VALUES ('sin_pregunta', ?, '', ?, 'cron (sin pregunta)')"
   ).bind(r.conversation_id, motivo)));
   return results.length;
+}
+
+/**
+ * La recomendación del asesor pendiente de un chat (el banner del chat y `/api/asesor/chat`): la última de tipo
+ * «seguimiento», con `ventana_abierta` (si el texto todavía puede salir) y, con la ventana cerrada, las plantillas aprobadas
+ * para mandarla igual. Una sola función para el CRM y para el asesor, así se prueba y se depura desde afuera (dueño, 6/11).
+ * `listar(env, conversationId)` → plantillas aprobadas [{ name, language, texto }] (inyectado para no depender de Meta en pruebas).
+ */
+export async function recomendacionDeChat(db, conversationId, listar = null) {
+  await limpiarSugerenciasViejas(db).catch(() => {});
+  const s = await db.prepare(
+    `SELECT s.id, s.texto, s.motivo, s.objecion, s.origen, s.pasos, s.idea, s.created_at, s.reflotada_at, conv.last_inbound_at
+     FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
+     WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.conversation_id = ? ORDER BY s.created_at DESC LIMIT 1`
+  ).bind(conversationId).first();
+  if (!s) return null;
+  const parse = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
+  const ventanaAbierta = Boolean(s.last_inbound_at) && new Date(String(s.last_inbound_at).replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000 > Date.now();
+  const plantillas = !ventanaAbierta && listar ? await listar(conversationId).catch(() => []) : [];
+  return { id: s.id, texto: s.texto, motivo: s.motivo, objecion: s.objecion, origen: s.origen, created_at: s.created_at, reflotada_at: s.reflotada_at,
+    pasos: parse(s.pasos), idea: parse(s.idea), ventana_abierta: ventanaAbierta, plantillas };
 }

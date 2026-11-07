@@ -30,6 +30,7 @@
  *      /api/asesor/contexto junto con el aprendizaje medido (aprendizaje()).
  */
 
+import { recomendacionDeChat } from "../lib/crm-sugerencias.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { servirMensaje } from "./crm/media.js";
 import { descargarMedia, subirMedia } from "../lib/whatsapp.js";
@@ -481,7 +482,9 @@ export async function onRequestGetChat({ request, env }) {
     ventana: limite > Date.now() ? "abierta" : "cerrada",
     boleta_ya_enviada: boleta || null,
     staging: staging || [],
-    mensajes: (mensajes || []).reverse()
+    mensajes: (mensajes || []).reverse(),
+    // La recomendación del asesor pendiente en este chat (la misma que ve el banner del CRM), para depurar y no repetirla.
+    recomendacion: await recomendacionDeChat(env.CRM_DB, conv.id).catch((err) => ({ error: err.message }))
   });
 }
 

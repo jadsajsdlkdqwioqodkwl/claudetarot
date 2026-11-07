@@ -4395,8 +4395,9 @@ function aplicarMensajes(conversationId, { messages, hay_mas }) {
     estado.panelesCargadosPara = conversationId;
     actualizarPedidosPanel();
     actualizarSeguimientosDetalle();
-    actualizarRecomendacionChat();
   }
+  // La recomendación del asesor se revisa en cada ciclo: puede reflotar mientras el chat está abierto (dueño, 6/11).
+  actualizarRecomendacionChat();
 }
 
 /**
@@ -4421,7 +4422,8 @@ async function actualizarRecomendacionChat() {
       ${sugerencia.ventana_abierta === false ? `<div class="sug-objecion">${icon("clock")} Pasaron más de 24 h desde su último mensaje: este texto ya no puede salir. Mándale una plantilla aprobada (la recomendación queda como guía):
         <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${(sugerencia.plantillas || []).map((p) => `<option value="${escapar(p.name)}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}">${escapar(p.name)} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select></div>` : ""}
       <div class="reco-acciones">
-        <button type="button" class="reco-descartar">${icon("trash")} Descartar</button>
+        <button type="button" class="reco-descartar" title="No se manda y la recomendación se cierra">${icon("trash")} Descartar</button>
+        <button type="button" class="reco-respondi" title="Ya le contesté por mi cuenta: la recomendación se cierra y el chat deja de subir">${icon("check")} Ya respondí</button>
         <button type="button" class="reco-enviar">${icon("send")} ${sugerencia.ventana_abierta === false ? "Mandar la plantilla" : "Enviar"}</button>
       </div>`;
     const resolver = async (boton, cuerpo) => {
@@ -4448,7 +4450,8 @@ async function actualizarRecomendacionChat() {
       resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto });
     });
     caja.querySelector(".reco-descartar").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar" }));
-  } catch { /* silencioso */ }
+    caja.querySelector(".reco-respondi").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar", motivo: "ya respondí" }));
+  } catch (err) { console.error("Recomendación del chat:", err.message); }
 }
 
 async function cargarMensajesAnteriores() {
