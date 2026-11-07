@@ -1797,7 +1797,10 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   gratis» a los chats antiguos (fuera de la semana gratis) que el dueño pidió el 4/11, más el catálogo a clientes anteriores y
   el bono: 1 066 (4/11) + 1 588 (5/11) + 1 692 (6/11) plantillas del plan, 162 del catálogo, 14 del bono, más los rescates del día
   7 de siempre. Meta cobra cada plantilla fuera de la ventana gratis.
-- **Bloqueo:** la tarjeta (Visa ···6321) rechazó el cobro y desde el 7/11 15:20 Lima Meta rechaza TODO envío
+- **Bloqueo (precisado 7/11 19:00 Lima):** la tarjeta (Visa ···6321) rechazó el cobro y desde el 7/11 15:20 Lima Meta rechaza
+  casi todas las PLANTILLAS (90–137 fallidas por hora: pasos del plan, catálogo, rescates, recordatorios de Shalom) y algunos
+  textos e imágenes (3–5 por hora, en chats que venían de una plantilla pagada); la mayoría de los textos de las vendedoras sí
+  sale. Es decir, el bloqueo es parcial, no total; la frase original decía «TODO envío»
   («Business eligibility payment issue: unsettled payments»): 465 mensajes fallidos en 3 h, incluidos los textos de las vendedoras
   (ejemplo: chat 430, +51991014098, margiory 16:14–16:16). Se arregla pagando el saldo en WhatsApp Manager → Facturación y
   pagos (o cambiando la tarjeta); los envíos vuelven solos. Los mensajes fallidos NO se reenvían solos: los de las vendedoras se
