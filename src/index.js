@@ -71,6 +71,7 @@ import { onRequestGet as crmSettingsGet, onRequestPatch as crmSettingsPatch } fr
 import { onRequestGet as crmPlanesSegGet, onRequestPost as crmPlanesSegPost, onRequestPatch as crmPlanesSegPatch } from "./api/crm/planes-seguimiento.js";
 import { onRequestGet as crmExperimentosGet, onRequestPost as crmExperimentosPost, onRequestPatch as crmExperimentosPatch } from "./api/crm/experimentos.js";
 import { onRequestGet as crmEjemplaresGet, onRequestPost as crmEjemplaresPost, onRequestDelete as crmEjemplaresDelete } from "./api/crm/ejemplares.js";
+import { onRequestGet as crmRecursosGet, onRequestPost as crmRecursosPost, onRequestPatch as crmRecursosPatch, onRequestDelete as crmRecursosDelete } from "./api/crm/recursos.js";
 import { avisarSinRespuesta } from "./lib/crm-avisos.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
 import { onRequestPost as crmWelcomeSendPost } from "./api/crm/welcome-send.js";
@@ -225,6 +226,7 @@ const ROUTES = {
   "/api/crm/planes-seguimiento": { GET: crmPlanesSegGet, POST: crmPlanesSegPost, PATCH: crmPlanesSegPatch },
   "/api/crm/experimentos": { GET: crmExperimentosGet, POST: crmExperimentosPost, PATCH: crmExperimentosPatch },
   "/api/crm/ejemplares": { GET: crmEjemplaresGet, POST: crmEjemplaresPost, DELETE: crmEjemplaresDelete },
+  "/api/crm/recursos": { GET: crmRecursosGet, POST: crmRecursosPost, PATCH: crmRecursosPatch, DELETE: crmRecursosDelete },
   "/api/crm/test-welcome": { POST: crmTestWelcomePost },
   "/api/crm/welcome-send": { POST: crmWelcomeSendPost },
   "/api/crm/welcome-sequence": { GET: crmWelcomeSeqGet, POST: crmWelcomeSeqPost, DELETE: crmWelcomeSeqDelete, PATCH: crmWelcomeSeqPatch },

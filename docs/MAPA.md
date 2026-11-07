@@ -1737,3 +1737,25 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   la plantilla para ventana cerrada en `plantilla`. Los dos campos los guarda el Worker (ver la entrada siguiente).
 - `scripts/asesor/contexto.py`: suma «Banco de recursos» y «Plantillas aprobadas» (de `GET /api/asesor/contexto`).
 - Prueba: `python3 scripts/asesor/pruebas/test_asesor_calidad.py`.
+
+## 2026-11-07 — Recursos, «Adjunta: …» y plantilla del asesor para chats con la ventana cerrada
+- **Migración `0076_recursos_y_adjuntos.sql`** (PENDIENTE de aplicar en D1 al escribir esto: el filtro de permisos de la
+  sesión bloqueó aplicarla; ver la respuesta al dueño). `asesor_sugerencias.adjuntar` (JSON con lo que hay que adjuntar),
+  `.plantilla` (la que sugiere el asesor) y `.plantilla_enviada_at`; tabla `recursos`. **Sin esta migración el Worker nuevo
+  rompe las recomendaciones**: no subir a `main` el código de esta entrada antes de aplicarla.
+- **Pestaña «Recursos»** (botón con icono de caja en la cabecera de la lista; `GET/POST/PATCH/DELETE /api/crm/recursos`,
+  `src/api/crm/recursos.js`): fotos, videos y PDF (subidos a R2 con `upload-media`), links y textos listos, con título,
+  categoría y para qué sirve. Todos ven, descargan, copian y mandan al chat abierto («Mandar a este chat» usa
+  `POST /api/crm/messages` con `media_key`); todo el equipo puede agregar; editar y quitar, solo admin (quitar = `activo = 0`,
+  el archivo sigue en R2). «Fotos del catálogo» se abre desde ahí y cada foto del catálogo tiene «Descargar».
+- **Lo que recomienda el asesor adjuntar** (`adjuntar` en `salida.json` → `POST /api/asesor/sugerencias`): el banner del chat
+  muestra «Adjunta: …»; si coincide con un recurso del banco (por título o `recurso#id`, `recursosDeAdjuntar` en
+  `src/api/crm/sugerencias.js`) trae el botón «Mandar» (o «Al mensaje» si es link/texto); si no, «Recursos» para buscarlo.
+  El asesor conoce el banco y las plantillas aprobadas por `GET /api/asesor/contexto` (`recursos`, `plantillas_aprobadas`).
+- **Ventana de 24 h cerrada:** el banner preselecciona la plantilla que sugirió el asesor y muestra su texto. Al mandarla, la
+  recomendación ya NO se cierra: queda «esperando respuesta» (`plantilla_enviada_at`) con su texto. La limpieza no la cierra
+  por la plantilla (`limpiarSugerenciasViejas` ignora `type = 'template'`), el reflote no la sube mientras el cliente no
+  conteste y, cuando contesta (mensaje posterior a la plantilla, con «Falta respuesta»), sube el chat y el banner ofrece
+  «Enviar» con el texto guardado. El asesor puede proponer así seguimientos a chats de días anteriores («le pago mañana»).
+- Pruebas: `scripts/test-recursos-adjuntos.mjs` (en `npm run check`, SQLite real y WhatsApp simulado). Revisado en Chromium
+  con la API simulada: banner con adjuntos y plantilla sugerida, «esperando respuesta», pestaña Recursos, «Mandar a este chat».

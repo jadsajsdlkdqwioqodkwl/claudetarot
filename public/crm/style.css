@@ -1309,3 +1309,30 @@ body.solo-lectura #form-envio { display: none; }
 .flujo-pasos li .texto .btns { color: var(--gris); font-size: 11px; }
 .flujo-resumen { font-size: 12px; color: var(--gris); margin-top: 2px; }
 .flujo details > summary { cursor: pointer; font-size: 12px; color: var(--azul, #0b5cad); margin-top: 4px; }
+
+/* Recursos (2026-11-07): banco de fotos, videos, PDF, links y textos; y lo que el asesor recomienda adjuntar. */
+.recursos-barra { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.recursos-barra input { flex: 1 1 160px; min-width: 0; }
+.recursos-barra button { display: inline-flex; align-items: center; gap: 4px; }
+#recursos-form { border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 8px; margin-bottom: 8px; display: grid; gap: 6px; }
+.recursos-form-fila { display: flex; flex-wrap: wrap; gap: 6px; }
+.recursos-form-fila > * { flex: 1 1 140px; min-width: 0; }
+.recursos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 60vh; overflow-y: auto; }
+#modal-recursos-fondo .modal { max-width: 860px; width: calc(100% - 32px); }
+.recursos-barra input, .recursos-barra select { width: auto; flex: 1 1 160px; margin: 0; }
+.recurso-card { border: 1px solid var(--borde); border-radius: var(--radio-m); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+.recurso-card img { width: 100%; height: 130px; object-fit: cover; display: block; background: var(--fondo); }
+.recurso-icono { display: flex; align-items: center; justify-content: center; height: 64px; background: var(--fondo); color: var(--gris); }
+.recurso-icono .icono-svg { width: 28px; height: 28px; }
+.recurso-info { padding: 6px 8px; display: grid; gap: 2px; font-size: 13px; overflow-wrap: anywhere; }
+.recurso-titulo { font-weight: 600; }
+.recurso-texto { white-space: pre-wrap; font-size: 12px; background: var(--fondo); border-radius: 6px; padding: 4px 6px; max-height: 120px; overflow-y: auto; }
+.recurso-acciones { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 8px; margin-top: auto; }
+.boton-chico { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; font-size: 12px; border: 1px solid var(--borde); border-radius: var(--radio-full); background: var(--panel); color: inherit; text-decoration: none; cursor: pointer; font-family: inherit; }
+.boton-chico .icono-svg { width: 12px; height: 12px; }
+.gal-descargar { display: inline-flex; align-items: center; gap: 3px; margin: 0 8px 8px; font-size: 12px; color: var(--verde-osc); text-decoration: none; }
+.gal-descargar .icono-svg { width: 12px; height: 12px; }
+#banner-recomendacion .reco-adjuntar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; font-size: 12.5px; }
+#banner-recomendacion .reco-adjunto { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: var(--radio-full); background: #eef4ff; color: #0b5cad; }
+#banner-recomendacion .reco-adjunto button { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; font-size: 11px; border: 1px solid currentColor; border-radius: var(--radio-full); background: #fff; color: inherit; cursor: pointer; }
+#banner-recomendacion .reco-adjunto .icono-svg, #banner-recomendacion .reco-adjuntar > .icono-svg { width: 12px; height: 12px; }

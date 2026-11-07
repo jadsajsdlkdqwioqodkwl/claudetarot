@@ -54,7 +54,10 @@ export async function limpiarSugerenciasViejas(db, env = null) {
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'se le escribió al cliente', resuelto_at = datetime('now')
        WHERE estado = 'pendiente' AND tipo IN ('seguimiento', 'envio', 'sin_pregunta') AND conversation_id IS NOT NULL
          AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = asesor_sugerencias.conversation_id
-                     AND m.direction = 'out' AND m.created_at > asesor_sugerencias.created_at AND ${ESCRITO_POR_PERSONA("m")})`
+                     AND m.direction = 'out' AND m.created_at > asesor_sugerencias.created_at AND ${ESCRITO_POR_PERSONA("m")}
+                     -- Una plantilla no la cierra (2026-11-07): con la ventana cerrada se manda la plantilla y la
+                     -- recomendación queda esperando que el cliente conteste para mandar su texto.
+                     AND m.type <> 'template')`
     ),
     // «Sin pregunta»: ya no hace falta cuando el chat tiene un seguimiento programado.
     db.prepare(
@@ -91,19 +94,21 @@ export async function reflotarSugerencia(env) {
   await sugerirSinPregunta(db).catch((err) => console.error("Sugerir sin pregunta:", err.message));
   // Dueño, 2026-11-06: la recomendación sube el chat aunque la ventana de 24 h ya haya cerrado (antes esos chats solo se
   // veían en ✨ Sugerencias); en ese caso el banner del chat la ofrece como plantilla. «Sin pregunta» sigue pidiendo ventana
-  // abierta (es para escribirle ya). Solo recomendaciones de los últimos 3 días: las viejas no vuelven a subir.
-  const VENTANA = `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours')) AND ${FALTA_RESPUESTA("conv")}`;
+  // abierta (es para escribirle ya). Solo recomendaciones de los últimos 3 días: las viejas no vuelven a subir (una que esperaba respuesta a su plantilla cuenta desde que salió la plantilla).
+  // Si ya se le mandó la plantilla (2026-11-07), espera: sube solo cuando el cliente escribe DESPUÉS de esa plantilla.
+  const VENTANA = `(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours')) AND ${FALTA_RESPUESTA("conv")}
+    AND (s.plantilla_enviada_at IS NULL OR conv.last_inbound_at > s.plantilla_enviada_at)`;
   let { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at IS NULL AND conv.blocked = 0
-       AND s.created_at >= datetime('now', '-3 days') AND ${VENTANA}
+       AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days') AND ${VENTANA}
      ORDER BY s.created_at ASC, s.id ASC LIMIT ?`
   ).bind(POR_PASADA).all();
   if (!results.length) {
     ({ results } = await db.prepare(
       `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
        WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at < datetime('now', ?) AND conv.blocked = 0
-         AND s.created_at >= datetime('now', '-3 days') AND ${VENTANA}
+         AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days') AND ${VENTANA}
        ORDER BY s.reflotada_at ASC LIMIT 1`
     ).bind(`-${VUELVE_A_SUBIR_H} hours`).all());
   }
