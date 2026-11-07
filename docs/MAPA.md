@@ -115,6 +115,7 @@ Pendiente (no tocado, ver informe): doble bienvenida si los avisos llegan por la
 - 2026-10-15 · **Videos rechazados por Meta ((#100) Invalid parameter)**: causa probable, video que no es MP4 H.264 + AAC (HEVC del celular). `mandarMediaGuardada` (`src/lib/crm-send.js`): si Meta rechaza un video con código 100, manda el mismo archivo como DOCUMENTO MP4 (queda `type` document en el chat). Los errores de WhatsApp ahora traen el detalle de Meta (`llamar` en `whatsapp.js`). Transcodificar a H.264 no se puede en el Worker.
 - 2026-10-15 · **Bienvenida manual de URO no se podía mandar** (panel derecho): la cuenta limitada a un producto (`RUTAS_DE_PRODUCTO`) no tenía `welcome-send` (POST), `welcome-sequence` (GET) ni `followup-sequences` (GET), y el panel respondía «Tu cuenta no tiene acceso a esto». Se agregaron; los dos GET salen filtrados al producto de la cuenta (solo su bienvenida y su secuencia) y `welcome-send` rechaza pasos de otro producto. Seguimiento «Programar» (`followup-apply`) sigue cerrado para esas cuentas.
 - 2026-10-15 (reclamo del dueño: seguimientos seguían reflotando): faltaban dos envíos de texto. El seguimiento del asesor aprobado con envío inmediato (`programar()` en `src/api/crm/sugerencias.js`) y el texto del link de Shalom dentro de 24 h (`shalom.js`) subían el chat y ponían el «sin leer» en 0. Ahora van con `{ subirEnBandeja: false }`; `npm run check` lo vigila.
+- 2026-11-06 (dueño: «no debe haber lógica de reflotar por falta de seguimiento sino por falta de respuesta»): la recomendación del asesor solo reflota el chat si al cliente le **falta respuesta** (`FALTA_RESPUESTA` en `src/lib/crm-sugerencias.js`). Ver la entrada del 2026-11-06 «Reflote solo por falta de respuesta».
 - Lo que la vendedora escribe a mano (texto, foto, catálogo) sí lo deja arriba como hasta hoy (y pone en 0 el «sin leer»). Si el dueño quiere que eso tampoco suba, es cambiar `subirEnBandeja` en esos envíos.
 - 2026-11-04 (reclamo del dueño: «que no se reflote el mensaje de envío de boletas, ni los seguimientos; solo cuando el cliente escriba»): las **boletas** subían el chat y ponían el «sin leer» en 0. Las fotos y el texto de tracking de `POST /api/asesor/mandar` (`despachar`, `texto`, `foto-staging`; Routine «Despacho automático de boletas») y el envío automático de la boleta pendiente cuando el cliente abre la ventana (`whatsapp-webhook.js`, `asesor-boletas-auto`) van con `{ subirEnBandeja: false }`; `mandarMediaPorId` (`crm-send.js`) recibe ahora esas `opciones`. Los seguimientos automáticos ya no reflotaban (verificado en D1: en las últimas 24 h el último mensaje de los chats de arriba era de bienvenida, vendedoras o `asesor-boletas`). Lo único que sigue subiendo un chat sin que el cliente escriba es el reflote de las **recomendaciones del asesor** (`reflotarSugerencia`, ver más abajo), que el dueño pidió que vuelvan a salir. `npm run check` lo vigila.
 
@@ -1685,3 +1686,131 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   pendientes estaban así. Ahora reflotan igual (solo las de los últimos 3 días) y el banner, con la ventana cerrada, muestra el
   texto como guía y un selector de plantillas aprobadas para mandarla (`GET /api/crm/sugerencias?de_chat=` devuelve
   `ventana_abierta` y `plantillas`; el POST `aprobar` ya aceptaba `plantilla`).
+- 2026-11-06 · Espada Voladora (`/espada/`), pedido del dueño: vuelve la barra fija de la página y el botón del formulario deja de quedar pegado abajo; fotos más livianas (versiones 480/800 con `srcset`, miniaturas de 128 px, sellos a 800 px, fuente sin bloquear); el píxel `1602561284224693` recibe ciudad/región limpias (Lima → `lima`) y `order_id`. Detalle en `docs/espada.md`.
+
+## 2026-11-06 — Reflote solo por falta de respuesta, «Falta respuesta / Atendido» y el banner de la recomendación (chat +51 969 799 398)
+- **Qué pasó con +51 969 799 398 (conv 4035):** el asesor le dejó una recomendación el 4/11 16:40 (Lima) («calló tras la
+  pregunta de cierre»). Con el cambio de la mañana del 6/11 (recomendaciones con la ventana cerrada también reflotan) el cron
+  la subió el 5/11 23:20 (Lima), pero **el banner no salía**: `GET /api/crm/sugerencias?de_chat=` llamaba `listarTemplates`
+  sin importarla → `ReferenceError` → 500 en TODO chat con la ventana cerrada, y el CRM lo escondía sin avisar (`catch`
+  silencioso). La recomendación nunca se editó ni se perdió: seguía `pendiente` en D1. **Arreglado** (import en
+  `src/api/crm/sugerencias.js`); el error del banner ahora va a la consola del navegador.
+- **Botón «Enviar» / «Mandar la plantilla» del banner, blanco sobre blanco:** la regla `#banner-recomendacion .reco-acciones button`
+  le ganaba el fondo verde a `.reco-enviar` (especificidad). Pasaba desde que existe el banner. Ahora `.reco-acciones .reco-enviar`.
+  Con la ventana cerrada, al elegir la plantilla se ve su texto completo («Le llega: …»); si el número no tiene plantillas aprobadas, lo dice.
+- **Reflote solo por falta de respuesta (regla del dueño):** `reflotarSugerencia` (cron de 10 min) sube un chat solo si tiene
+  recomendación pendiente **y** le falta respuesta. Si el cliente calló tras nuestro mensaje (falta de seguimiento, que ya hacen
+  los planes automáticos), la recomendación se ve en el chat (banner) y en ✨ Sugerencias, pero el chat NO sube. Dato del 6/11:
+  de 48 recomendaciones pendientes, 47 eran de chats donde el cliente calló (todas reflotaban); con la regla nueva subirían 4.
+  La recomendación «sin pregunta» (`sin_pregunta`) por definición es de chats donde el último mensaje es nuestro: ya no reflota
+  (se sigue generando; si el dueño la quiere apagar, se quita aparte).
+- **«Falta respuesta» con un solo criterio** (`FALTA_RESPUESTA` en `crm-sugerencias.js`, lo usan la lista, la cola «Atención
+  pendiente» y el reflote): el cliente escribió, nadie del equipo le contestó después y nadie marcó «Ya respondí». Antes bastaba
+  que el último mensaje fuera nuestro, así que **cualquier seguimiento automático apagaba la etiqueta** (ej.: conv 4102,
+  «Tengo una duda» el 4/11, sin respuesta de nadie, solo plantillas del plan). Ahora NO cuentan como respuesta: plantillas,
+  `Plan …`, `Seguimiento…`, `Envío masivo…`, `Toque…`. Sí cuentan: lo que escribe el equipo, la bienvenida, boletas y los
+  automáticos que contestan un botón. Para mensajes del cliente de más de 3 días sigue la regla anterior (para no prender la
+  etiqueta a leads viejos que recibieron un envío masivo). Dato del 6/11: la cola pasa de 60 a 92 chats.
+- **Etiqueta «Falta respuesta / Atendido»:** en la lista, «Falta respuesta» con el botón **«Ya respondí»** (antes decía «Atendido»;
+  misma acción `POST /api/crm/chat-estado {accion:"atendido"}`, que también descarta la recomendación pendiente, como desde el
+  18/10). Marcado a mano, la fila muestra «Atendido» en verde con «deshacer» (`no_atendido`). En la **cabecera del chat**, al lado
+  del cronómetro de 24 h: «Falta respuesta · Ya respondí» o «Atendido» (respondido por el equipo o marcado a mano; si fue a mano,
+  con «deshacer»). Vuelve a «Falta respuesta» cuando el cliente escribe otra vez. Sin migraciones (usa `atendido_at`, 0060).
+- **Pruebas:** `scripts/test-reflote-respuesta.mjs` (en `npm run check`, SQLite real): el que calló no reflota, el que solo
+  recibió automáticos sí, «Ya respondí» apaga y un mensaje nuevo prende, y el banner con la ventana cerrada responde 200 con las
+  plantillas aprobadas (con el import faltante daba `ReferenceError`). Nuevo chequeo en `check.mjs`: toda función exportada en
+  `src/` que se llama en un archivo tiene que estar importada ahí (habría atrapado este 500). Revisado en Chromium con la API
+  simulada (escritorio y celular): banner, selector y vista previa de la plantilla, POST `aprobar` con `plantilla`, «Ya respondí»
+  y «deshacer», sin errores en la consola.
+
+## 2026-11-07 — Asesor de mensajes: 10:00 · 15:00 · 19:00, sin recomendaciones «por cumplir»
+- **Routine** `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` ahora «Asesor — mensajes (10:00 · 15:00 · 19:00)», `CRON_TZ=America/Lima 0 10,15,19 * * *`
+  (antes 11:30 y 16:30). Prompt y motivos en `docs/routines.md` (entrada del 2026-11-07).
+- **Corrida del 6/11 16:30 sin recomendaciones:** el filtro de permisos de la sesión de la Routine bloqueó el comando que
+  escribía `salida.json` y corría `enviar.py` juntos («transacción real»); se perdieron 31 textos. No fue el reflote ni el
+  Worker. El prompt nuevo los separa en dos comandos.
+- `scripts/asesor/preparar.py --sin-rechazos`: no lee el chat cuyo último mensaje del cliente es un no claro («no gracias»,
+  «no quiero, muy caro», «no me interesa»), salvo posibles ventas del reporte o que el equipo lo haya reabierto con una
+  pregunta; «luego / fin de mes / te aviso» no cuenta como no. Los lista en `saltados_dijo_que_no`.
+- `scripts/asesor/enviar.py`: rechaza (como «suena a bot») el texto que pide permiso para mandar fotos/videos
+  («¿le mando fotos?», «si desea le paso fotos»); lo que hay que adjuntar va en el campo `adjuntar` de cada mensaje, y
+  la plantilla para ventana cerrada en `plantilla`. Los dos campos los guarda el Worker (ver la entrada siguiente).
+- `scripts/asesor/contexto.py`: suma «Banco de recursos» y «Plantillas aprobadas» (de `GET /api/asesor/contexto`).
+- Prueba: `python3 scripts/asesor/pruebas/test_asesor_calidad.py`.
+
+## 2026-11-07 — Recursos, «Adjunta: …» y plantilla del asesor para chats con la ventana cerrada
+- **Migración `0076_recursos_y_adjuntos.sql`** (PENDIENTE de aplicar en D1 al escribir esto: el filtro de permisos de la
+  sesión bloqueó aplicarla; ver la respuesta al dueño). `asesor_sugerencias.adjuntar` (JSON con lo que hay que adjuntar),
+  `.plantilla` (la que sugiere el asesor) y `.plantilla_enviada_at`; tabla `recursos`. **Sin esta migración el Worker nuevo
+  rompe las recomendaciones**: no subir a `main` el código de esta entrada antes de aplicarla.
+- **Pestaña «Recursos»** (botón con icono de caja en la cabecera de la lista; `GET/POST/PATCH/DELETE /api/crm/recursos`,
+  `src/api/crm/recursos.js`): fotos, videos y PDF (subidos a R2 con `upload-media`), links y textos listos, con título,
+  categoría y para qué sirve. Todos ven, descargan, copian y mandan al chat abierto («Mandar a este chat» usa
+  `POST /api/crm/messages` con `media_key`); todo el equipo puede agregar; editar y quitar, solo admin (quitar = `activo = 0`,
+  el archivo sigue en R2). «Fotos del catálogo» se abre desde ahí y cada foto del catálogo tiene «Descargar».
+- **Lo que recomienda el asesor adjuntar** (`adjuntar` en `salida.json` → `POST /api/asesor/sugerencias`): el banner del chat
+  muestra «Adjunta: …»; si coincide con un recurso del banco (por título o `recurso#id`, `recursosDeAdjuntar` en
+  `src/api/crm/sugerencias.js`) trae el botón «Mandar» (o «Al mensaje» si es link/texto); si no, «Recursos» para buscarlo.
+  El asesor conoce el banco y las plantillas aprobadas por `GET /api/asesor/contexto` (`recursos`, `plantillas_aprobadas`).
+- **Ventana de 24 h cerrada:** el banner preselecciona la plantilla que sugirió el asesor y muestra su texto. Al mandarla, la
+  recomendación ya NO se cierra: queda «esperando respuesta» (`plantilla_enviada_at`) con su texto. La limpieza no la cierra
+  por la plantilla (`limpiarSugerenciasViejas` ignora `type = 'template'`), el reflote no la sube mientras el cliente no
+  conteste y, cuando contesta (mensaje posterior a la plantilla, con «Falta respuesta»), sube el chat y el banner ofrece
+  «Enviar» con el texto guardado. El asesor puede proponer así seguimientos a chats de días anteriores («le pago mañana»).
+- Pruebas: `scripts/test-recursos-adjuntos.mjs` (en `npm run check`, SQLite real y WhatsApp simulado). Revisado en Chromium
+  con la API simulada: banner con adjuntos y plantilla sugerida, «esperando respuesta», pestaña Recursos, «Mandar a este chat».
+
+## 2026-11-07 — Pendiente: registro rápido de pedidos (Dinsides y Shalom) y revisión del ecosistema
+- La persona que registra los pedidos se va. Propuesta del registro rápido (ficha Dinsides desde el reporte de la noche,
+  Excel del envío masivo de Shalom, tabla de agencias con «CONFIRMAR AGENCIA», link de Maps para quien solo mandó su
+  ubicación) en `docs/registro-pedidos.md`. Nada construido; el dueño pidió dejarlo apuntado para revisarlo junto con
+  `docs/estados-envio.md` (lectura de estados de Shalom Pro y Dinsides) y darle una chequeada al ecosistema completo.
+
+## 2026-11-07 — Boletas: ventas que no se registraban en la hoja y Telegram que no salía
+- **Causa:** el 6/11 la Routine de boletas despachó 9 clientes EN PARALELO. `crear` (`src/api/asesor-ventas.js`) lee la
+  pestaña Ventas, elige la «primera fila vacía» y escribe: varios eligieron la misma fila y se pisaron. Se perdieron 5 filas
+  del 6/11 (Ardiles, Villacrez, Rioja, Paco, Silva) y 1 del 5/11 (Ibeth Pari); después `actualizar` respondía «No encontré
+  esa venta (ni por código ni por DNI)». El despacho al cliente (fotos y texto o plantilla) salió bien en todos.
+- **Arreglo en el Worker:** `conCandadoVentas` crea las ventas de a una con un candado en D1 (`crm_settings` clave
+  `candado_ventas_crear`, `INSERT … ON CONFLICT` atómico, vence a los 30 s, se suelta aunque falle Sheets). Prueba:
+  `scripts/test-candado-ventas.mjs` (9 a la vez: sin candado se pisan, con candado cada una en su fila).
+- **Reparación:** `POST /api/asesor/mandar { tipo: "registrar-venta", staging_id }` vuelve a registrar la venta de una
+  boleta ya despachada (fila nueva o la abierta con ese DNI, foto de la boleta y nro de orden), sin escribirle al cliente;
+  `python3 scripts/asesor/boletas.py registrar <staging_id> […]` (de a uno). Faltaban: staging 98, 106, 108, 114, 120, 122.
+- **Telegram:** `boletas.py telegram` sin `TELEGRAM_BOT_TOKEN` en la Routine avisa por el Worker (`/api/asesor/avisos`,
+  origen «boletas (aviso)»); el Worker manda por Telegram los informes con origen «ventas» o «boletas» (antes solo «ventas»).
+- Routine de boletas v16 en `docs/routines.md` (despachar de a uno; `registrar` si falla el registro).
+- **Migración 0076 aplicada en D1 el 2026-11-07** (Recursos y adjuntos del asesor; ver la entrada de Recursos): el código de
+  esa entrada ya está en `main`.
+
+## 2026-11-07 — Permisos de las Routines (auto mode)
+- Pedido del dueño: «agregar una regla de permiso para Bash». En auto mode la regla amplia `"Bash"` de `.claude/settings.json`
+  queda suspendida (doc oficial: code.claude.com/docs/en/auto-mode-config.md): por eso el filtro bloqueó el `enviar.py` del
+  asesor el 6/11 («Real-World Transactions») y la migración 0076 («Production Deploy»). Se agregaron reglas ESPECÍFICAS por
+  comando, que sí valen en auto mode y se resuelven antes del filtro: `python3 scripts/asesor/{enviar,boletas,reporte,
+  preparar,contexto,memoria}.py`. No se agregó nada para curl/D1 ni deploys (siguen pasando por el filtro). La regla
+  `autoMode.allow` solo se lee de la configuración del usuario (`~/.claude/settings.json`), nunca del repo.
+
+
+## 2026-11-07 — Meta cobró la campaña y bloqueó los envíos por pago pendiente; campaña pagada en pausa; recomendaciones (merge de dos sesiones)
+- **Cobro de Meta (US$ 189,33, 4 al 6 de noviembre):** son las plantillas de marketing de la campaña del plan «Interesado · semana
+  gratis» a los chats antiguos (fuera de la semana gratis) que el dueño pidió el 4/11, más el catálogo a clientes anteriores y
+  el bono: 1 066 (4/11) + 1 588 (5/11) + 1 692 (6/11) plantillas del plan, 162 del catálogo, 14 del bono, más los rescates del día
+  7 de siempre. Meta cobra cada plantilla fuera de la ventana gratis.
+- **Bloqueo:** la tarjeta (Visa ···6321) rechazó el cobro y desde el 7/11 15:20 Lima Meta rechaza TODO envío
+  («Business eligibility payment issue: unsettled payments»): 465 mensajes fallidos en 3 h, incluidos los textos de las vendedoras
+  (ejemplo: chat 430, +51991014098, margiory 16:14–16:16). Se arregla pagando el saldo en WhatsApp Manager → Facturación y
+  pagos (o cambiando la tarjeta); los envíos vuelven solos. Los mensajes fallidos NO se reenvían solos: los de las vendedoras se
+  reescriben; los pasos de plan fallidos de ese rato se pueden reprogramar con `programar-plan`.
+- **Además Meta está frenando marketing:** 288 fallos el 7/11 «not delivered to maintain healthy ecosystem engagement» (demasiadas
+  plantillas de marketing a gente que no responde) y 29 «user's number is part of an experiment». Es una señal de calidad: la
+  campaña masiva perjudica la entregabilidad.
+- **Pausa (7/11, decisión de esta sesión, reversible):** se cancelaron las 9 872 plantillas pendientes del plan a chats de más de
+  7 días (3 075 chats, días 2 a 5 que faltaban, hasta el 12/11). Las 2 396 de chats dentro de su semana gratis (739 chats) siguen.
+  Para re-armar: `POST /api/asesor/programar-plan` con `desde_hoy: true` (ver 4/11).
+- **Recomendaciones del asesor, merge con la otra sesión (67ea579, a9af92e):** ganó su reflote «solo por falta de respuesta»
+  (`FALTA_RESPUESTA`), su banner (plantilla sugerida, adjuntos del banco de Recursos, «esperando» tras mandar la plantilla) y su
+  arreglo del import de `listarTemplates` (el mismo 500 que esta sesión había encontrado). De esta sesión quedan: `recomendacionDeChat`
+  (compartida con `/api/asesor/chat` → `recomendacion`), el botón «Ya respondí» del banner (cierra como «atendida»), el refresco
+  del banner en cada ciclo, «sin pregunta» apagado (`sin_pregunta_auto`; 23 pendientes cerradas) y la prueba
+  `scripts/test-sugerencias.mjs` con el caso real del chat 51969799398.

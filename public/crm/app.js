@@ -150,6 +150,7 @@ function iconizar() {
   $("#btn-menu-lista").innerHTML = icon("more");
   $("#btn-equipo").innerHTML = icon("users");
   $("#btn-galeria").innerHTML = icon("image");
+  $("#btn-recursos").innerHTML = icon("box");
   $("#btn-colores").innerHTML = icon("paleta");
   $("#btn-notificaciones").innerHTML = icon("bell");
   $("#btn-salir").innerHTML = icon("logout");
@@ -2632,7 +2633,7 @@ function pintarLista() {
         ${(c.shalom_code || c.olva) ? `<button type="button" class="badge-olva-lista btn-toggle-olva" title="${c.olva ? "Envío por Olva — clic para quitar" : "Clic para marcar como Olva"}">${icon(c.olva ? "checkBox" : "squareEmpty")} Olva</button>` : ""}
         ${c.blocked ? `<span class="badge-oculto bloqueado">${icon("slash")} Bloqueado</span>` : c.hidden ? `<span class="badge-oculto">${icon("eyeOff")} Oculto</span>` : ""}
         ${c.assigned_agent ? `<span class="badge-asignado">${icon("star")} ${[c.assigned_agent, ...compartidosDe(c)].map(escapar).join(" + ")}</span>` : ""}
-        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El último mensaje es del cliente y nadie le ha contestado. Marca «Atendido» si ya lo viste y no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
+        ${c.falta_respuesta ? `<span class="badge-seguimiento badge-falta" title="El cliente escribió y nadie del equipo le contestó (los seguimientos automáticos no cuentan como respuesta). Toca «Ya respondí» si ya lo atendiste o no hace falta responder (vuelve a aparecer si el cliente escribe otra vez)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Marcar como atendido">${icon("squareEmpty")} Ya respondí</button></span>` : marcadoAtendido(c) ? `<span class="badge-seguimiento badge-atendido" title="Alguien marcó «Ya respondí» después del último mensaje del cliente. Vuelve a «Falta respuesta» si el cliente escribe otra vez">${icon("check")} Atendido <button type="button" class="btn-no-atendido" title="Deshacer: vuelve a «Falta respuesta»">${icon("undo")}</button></span>` : ""}
         ${c.con_recomendacion ? `<span class="badge-seguimiento badge-reco" title="El asesor dejó una recomendación en este chat. «Atendido» la descarta y el chat sale de Atención pendiente">${icon("sparkle")} Recomendación <button type="button" class="btn-atendido" title="Descartar la recomendación y marcar como atendido">${icon("squareEmpty")} Atendido</button></span>` : ""}
         ${c.seg_pendientes ? `<span class="badge-seguimiento" title="${c.seg_pendientes} seguimiento${c.seg_pendientes === 1 ? "" : "s"} programado${c.seg_pendientes === 1 ? "" : "s"} a mano — el próximo sale el ${escapar(fechaCorta(c.seg_proximo))}">${icon("clock")} Seguimiento${c.seg_pendientes > 1 ? ` ×${c.seg_pendientes}` : ""} · ${escapar(fechaCorta(c.seg_proximo))}</span>` : ""}
         ${c.seg_auto_proximo ? `<span class="badge-seguimiento marcha" title="Cadena de seguimiento en marcha: sigue aunque el cliente escriba. El próximo paso sale el ${escapar(fechaCorta(c.seg_auto_proximo))}. Solo se detiene con este botón (o el de la barra del chat)">${icon("clock")} Seguimiento en marcha · ${escapar(fechaCorta(c.seg_auto_proximo))} <button type="button" class="btn-detener-seg" title="Detener la cadena de seguimiento de este chat">${icon("close")} Detener</button></span>` : ""}
@@ -2642,7 +2643,7 @@ function pintarLista() {
       toggleSeleccionChat(c.conversation_id);
     });
     div.querySelector(".conv-info").addEventListener("click", (e) => {
-      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-toggle-olva, .btn-detener-seg")) return;
+      if (e.target.closest(".btn-star, .btn-conv-menu, .btn-atendido, .btn-no-atendido, .btn-toggle-olva, .btn-detener-seg")) return;
       if (div.dataset.mantenido) { delete div.dataset.mantenido; e.stopPropagation(); return; }
       if (estado.modoSeleccion) return toggleSeleccionChat(c.conversation_id);
       abrirConversacion(c);
@@ -2655,6 +2656,10 @@ function pintarLista() {
       e.stopPropagation();
       marcarAtendido(c);
     }));
+    div.querySelector(".btn-no-atendido")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      desmarcarAtendido(c);
+    });
     div.querySelector(".btn-detener-seg")?.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`¿Detener el seguimiento de ${c.contact_name || c.profile_name || c.wa_id}? Se cancelan sus pasos automáticos pendientes; se puede reactivar desde la barra del chat.`)) return;
@@ -3732,6 +3737,7 @@ const ETIQUETAS_MENU_LISTA = {
   "btn-comisiones": "Comisiones por quincena",
   "btn-colores": "Colores de las tiendas",
   "btn-galeria": "Fotos del catálogo",
+  "btn-recursos": "Recursos (fotos, PDF, links)",
   "btn-equipo": "Equipo",
   "btn-salir": "Salir"
 };
@@ -4012,7 +4018,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span></div>
+          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -4412,19 +4418,32 @@ async function actualizarRecomendacionChat() {
     const { sugerencia } = await pedir(`/api/crm/sugerencias?de_chat=${conversationId}`);
     if (estado.conversacionActivaId !== conversationId) return;
     if (!sugerencia) { caja.style.display = "none"; caja.innerHTML = ""; delete caja.dataset.id; return; }
-    if (caja.dataset.id === String(sugerencia.id)) return; // ya está: no pisar lo que la vendedora está editando
-    caja.dataset.id = String(sugerencia.id);
+    // Se repinta solo si cambió el estado (no pisar lo que la vendedora está editando).
+    const clave = `${sugerencia.id}|${sugerencia.esperando ? 1 : 0}|${sugerencia.ventana_abierta ? 1 : 0}`;
+    if (caja.dataset.id === clave) return;
+    caja.dataset.id = clave;
     caja.style.display = "";
+    const cerrada = sugerencia.ventana_abierta === false;
+    const plantillas = sugerencia.plantillas || [];
+    const sugerida = plantillas.findIndex((p) => p.name === sugerencia.plantilla);
+    const adjuntos = sugerencia.adjuntar || [];
     caja.innerHTML = `
       <div class="reco-cab">${icon("sparkle")} <b>Recomendación del asesor</b>${sugerencia.motivo ? ` · <span class="sub">${escapar(sugerencia.motivo)}</span>` : ""}</div>
       ${sugerencia.objecion ? `<div class="sug-objecion">${icon("alertCircle")} Lo que probablemente lo frena: <b>${escapar(sugerencia.objecion)}</b></div>` : ""}
       <textarea class="reco-texto" rows="3">${escapar(sugerencia.texto)}</textarea>
-      ${sugerencia.ventana_abierta === false ? `<div class="sug-objecion">${icon("clock")} Pasaron más de 24 h desde su último mensaje: este texto ya no puede salir. Mándale una plantilla aprobada (la recomendación queda como guía):
-        <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${(sugerencia.plantillas || []).map((p) => `<option value="${escapar(p.name)}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}">${escapar(p.name)} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select></div>` : ""}
+      ${adjuntos.length ? `<div class="reco-adjuntar">${icon("paperclip")} <b>Adjunta:</b> ${adjuntos.map((a, i) => `<span class="reco-adjunto">${escapar(a.nombre)}${a.recurso
+        ? ` <button type="button" class="reco-adj-accion" data-i="${i}" title="${a.recurso.media_key ? "Mandarlo a este chat" : "Ponerlo en el mensaje"}">${icon(a.recurso.media_key ? "send" : "plus")} ${a.recurso.media_key ? "Mandar" : "Al mensaje"}</button>`
+        : ` <button type="button" class="reco-adj-buscar" title="No está en Recursos: búscalo ahí o adjúntalo a mano">${icon("search")} Recursos</button>`}</span>`).join("")}</div>` : ""}
+      ${sugerencia.esperando
+        ? `<div class="sug-objecion">${icon("clock")} Ya se le mandó la plantilla${sugerencia.plantilla ? ` «${escapar(sugerencia.plantilla)}»` : ""}. Cuando el cliente conteste, este chat sube solo y mandas este texto.</div>`
+        : cerrada ? `<div class="sug-objecion">${icon("clock")} Pasaron más de 24 h desde su último mensaje: este texto ya no puede salir. Manda la plantilla; el texto queda guardado y el chat sube solo cuando el cliente conteste:
+        <select class="reco-plantilla" style="width:100%;margin-top:4px"><option value="">Elige la plantilla…</option>${plantillas.map((p, i) => `<option value="${escapar(p.name)}" data-i="${i}" data-lang="${escapar(p.language || "es")}" title="${escapar(p.texto)}"${i === sugerida ? " selected" : ""}>${escapar(p.name)}${i === sugerida ? " (la sugiere el asesor)" : ""} · ${escapar(p.texto.slice(0, 70))}</option>`).join("")}</select>
+        ${plantillas.length ? "" : `<div class="sub">No encontré plantillas aprobadas para este número.</div>`}
+        <div class="reco-plantilla-texto sub" style="${sugerida >= 0 ? "" : "display:none;"}white-space:pre-wrap;margin-top:4px">${sugerida >= 0 ? `Le llega: ${escapar(plantillas[sugerida].texto)}` : ""}</div></div>` : ""}
       <div class="reco-acciones">
         <button type="button" class="reco-descartar" title="No se manda y la recomendación se cierra">${icon("trash")} Descartar</button>
         <button type="button" class="reco-respondi" title="Ya le contesté por mi cuenta: la recomendación se cierra y el chat deja de subir">${icon("check")} Ya respondí</button>
-        <button type="button" class="reco-enviar">${icon("send")} ${sugerencia.ventana_abierta === false ? "Mandar la plantilla" : "Enviar"}</button>
+        ${sugerencia.esperando ? "" : `<button type="button" class="reco-enviar">${icon("send")} ${cerrada ? "Mandar la plantilla" : "Enviar"}</button>`}
       </div>`;
     const resolver = async (boton, cuerpo) => {
       boton.disabled = true;
@@ -4433,14 +4452,15 @@ async function actualizarRecomendacionChat() {
         caja.style.display = "none"; caja.innerHTML = ""; delete caja.dataset.id;
         actualizarConteoSugerencias();
         cargarMensajes();
+        actualizarRecomendacionChat(); // con plantilla, vuelve como «esperando respuesta»
       } catch (err) {
         alert(err.message);
         boton.disabled = false;
       }
     };
-    caja.querySelector(".reco-enviar").addEventListener("click", (e) => {
+    caja.querySelector(".reco-enviar")?.addEventListener("click", (e) => {
       const texto = caja.querySelector(".reco-texto").value.trim();
-      if (sugerencia.ventana_abierta === false) {
+      if (cerrada) {
         const sel = caja.querySelector(".reco-plantilla");
         if (!sel?.value) { alert("Elige la plantilla que va a salir (el texto libre ya no puede mandarse pasadas las 24 h)."); return; }
         resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto: texto || sugerencia.texto, plantilla: { name: sel.value, language: sel.selectedOptions[0]?.dataset.lang || "es_PE", params: [] } });
@@ -4450,8 +4470,29 @@ async function actualizarRecomendacionChat() {
       resolver(e.currentTarget, { accion: "aprobar", modo: "ahora", texto });
     });
     caja.querySelector(".reco-descartar").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar" }));
-    caja.querySelector(".reco-respondi").addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar", motivo: "ya respondí" }));
-  } catch (err) { console.error("Recomendación del chat:", err.message); }
+    caja.querySelector(".reco-respondi")?.addEventListener("click", (e) => resolver(e.currentTarget, { accion: "descartar", motivo: "ya respondí" }));
+    // Ventana cerrada: al elegir la plantilla se ve su texto completo (lo que le va a llegar al cliente).
+    caja.querySelector(".reco-plantilla")?.addEventListener("change", (e) => {
+      const p = plantillas[Number(e.target.selectedOptions[0]?.dataset.i)];
+      const vista = caja.querySelector(".reco-plantilla-texto");
+      vista.style.display = p ? "" : "none";
+      vista.textContent = p ? `Le llega: ${p.texto}` : "";
+    });
+    // Adjuntos que recomienda el asesor: los del banco se mandan con un toque; los demás se buscan en Recursos.
+    caja.querySelectorAll(".reco-adj-accion").forEach((b) => b.addEventListener("click", async () => {
+      const r = adjuntos[Number(b.dataset.i)].recurso;
+      if (!r.media_key) {
+        const area = caja.querySelector(".reco-texto");
+        area.value = `${area.value.trim()}\n${r.url || r.texto || ""}`.trim();
+        return;
+      }
+      if (cerrada) { alert("La ventana de 24 h está cerrada: primero tiene que contestar el cliente."); return; }
+      b.disabled = true;
+      try { await mandarRecursoAlChat(r, conversationId); b.innerHTML = `${icon("check")} Enviado`; }
+      catch (err) { alert(err.message); b.disabled = false; }
+    }));
+    caja.querySelectorAll(".reco-adj-buscar").forEach((b) => b.addEventListener("click", () => abrirRecursos()));
+  } catch (err) { console.error("Recomendación del chat:", err); }
 }
 
 async function cargarMensajesAnteriores() {
@@ -5086,6 +5127,24 @@ async function marcarAtendido(c) {
     estado.atencionTotal = Math.max(0, estado.atencionTotal - 1);
     pintarColaAtencion();
     pintarLista();
+    pintarRelojChat();
+  } catch (err) { alert(err.message); }
+}
+
+/** «Atendido» marcado a mano después del último mensaje del cliente (la etiqueta verde, con «deshacer»). */
+function marcadoAtendido(c) {
+  if (!c?.atendido_at || !c.last_inbound_at || c.falta_respuesta) return false;
+  const t = (v) => new Date(String(v).replace(" ", "T") + (/Z|[+-]\d\d:?\d\d$/.test(v) ? "" : "Z")).getTime();
+  return t(c.atendido_at) >= t(c.last_inbound_at);
+}
+
+/** Deshacer «Ya respondí»: el chat vuelve a «Falta respuesta» (si nadie le contestó) y a Atención pendiente. */
+async function desmarcarAtendido(c) {
+  try {
+    await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion: "no_atendido" }) });
+    c.atendido_at = null;
+    await cargarConversaciones();
+    pintarRelojChat();
   } catch (err) { alert(err.message); }
 }
 
@@ -7209,6 +7268,27 @@ function pintarRelojChat() {
   el.className = `reloj${!cierra || queda <= 0 ? " cerrada" : queda < 3600000 ? " urgente" : ""}`;
   el.title = !cierra ? "No ha escrito: solo plantilla" : queda <= 0 ? "Ventana cerrada: solo plantilla" : "Tiempo para escribirle gratis";
   el.innerHTML = `${icon("clock")} ${!cierra ? "no escribió" : queda <= 0 ? "ventana cerrada" : duracion(queda)}`;
+  pintarEstadoRespuestaChat(c);
+}
+
+/**
+ * Al lado del cronómetro: «Falta respuesta» (con «Ya respondí») o «Atendido» (respondido por el equipo o marcado
+ * a mano; si fue a mano, con «deshacer»). Mismo criterio que la etiqueta de la lista (falta_respuesta del servidor).
+ */
+function pintarEstadoRespuestaChat(c) {
+  const el = $("#estado-resp-chat");
+  if (!el) return;
+  if (!c?.last_inbound_at) { el.innerHTML = ""; return; }
+  const firma = `${c.conversation_id}|${c.falta_respuesta ? 1 : 0}|${marcadoAtendido(c) ? 1 : 0}`;
+  if (el.dataset.firma === firma) return;
+  el.dataset.firma = firma;
+  el.innerHTML = c.falta_respuesta
+    ? `<span class="badge-seguimiento badge-falta" title="El cliente escribió y nadie del equipo le contestó (los seguimientos automáticos no cuentan)">${icon("alertCircle")} Falta respuesta <button type="button" class="btn-atendido" title="Ya lo atendí o no hace falta responder (vuelve si el cliente escribe otra vez)">${icon("squareEmpty")} Ya respondí</button></span>`
+    : `<span class="badge-seguimiento badge-atendido" title="${marcadoAtendido(c) ? "Marcado «Ya respondí» a mano" : "El equipo ya le contestó su último mensaje"}. Vuelve a «Falta respuesta» si el cliente escribe otra vez">${icon("check")} Atendido${marcadoAtendido(c) ? ` <button type="button" class="btn-no-atendido" title="Deshacer: vuelve a «Falta respuesta»">${icon("undo")}</button>` : ""}</span>`;
+  // La lista se recarga cada pocos segundos: se usa la fila vigente del chat, no la de cuando se pintó.
+  const vigente = () => estado.conversaciones.find((x) => x.conversation_id === c.conversation_id) || c;
+  el.querySelector(".btn-atendido")?.addEventListener("click", (e) => { e.stopPropagation(); marcarAtendido(vigente()); });
+  el.querySelector(".btn-no-atendido")?.addEventListener("click", (e) => { e.stopPropagation(); desmarcarAtendido(vigente()); });
 }
 setInterval(pintarRelojChat, 30000);
 
@@ -9720,6 +9800,7 @@ function pintarGaleria() {
       ${p.image_url ? `<img src="${escapar(p.image_url)}" alt="" loading="lazy" />` : `<div class="miniatura" style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center">${icon("tag")}</div>`}
       <div class="gal-nombre">${escapar(p.name || p.retailer_id)}</div>
       ${p.price ? `<div class="gal-precio">${escapar(p.price)}${p.availability && p.availability !== "in stock" ? " · agotado" : ""}</div>` : ""}
+      ${p.image_url ? `<a class="gal-descargar" href="${escapar(p.image_url)}" target="_blank" rel="noopener" download title="Abrir la foto en grande para guardarla">${icon("install")} Descargar</a>` : ""}
     </div>`).join("") : `<p class="ayuda-modal">Sin productos.</p>`;
 }
 
@@ -9747,6 +9828,161 @@ function abrirGaleriaCatalogo() {
   cargarGaleria();
 }
 $("#btn-galeria").addEventListener("click", abrirGaleriaCatalogo);
+
+/* ---------- Recursos (dueño, 2026-11-07): banco de fotos, videos, PDF, links y textos ---------- */
+
+let listaRecursos = [];
+const TIPO_MEDIA_RECURSO = { foto: "image", video: "video", pdf: "document" };
+const ICONO_RECURSO = { foto: "image", video: "video", pdf: "doc", link: "link", texto: "chat" };
+const urlRecurso = (r) => `/api/crm/media?key=${encodeURIComponent(r.media_key)}`;
+
+/** Manda un recurso guardado (foto, video o PDF) al chat: al toque, como cualquier archivo. */
+async function mandarRecursoAlChat(r, conversationId = estado.conversacionActivaId) {
+  if (!conversationId) throw new Error("Abre primero el chat al que se lo quieres mandar.");
+  if (!r?.media_key) throw new Error("Este recurso no es un archivo.");
+  await pedir("/api/crm/messages", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationId, media_key: r.media_key, media_type: TIPO_MEDIA_RECURSO[r.tipo] || "document", file_name: r.tipo === "pdf" ? `${r.titulo}.pdf` : undefined }) });
+  cargarMensajes?.();
+}
+
+function pintarRecursos() {
+  const filtro = $("#recursos-buscar").value.trim().toLowerCase();
+  const cat = $("#recursos-categoria").value;
+  const lista = listaRecursos.filter((r) => (!cat || (r.categoria || "") === cat)
+    && (!filtro || `${r.titulo} ${r.descripcion || ""} ${r.categoria || ""}`.toLowerCase().includes(filtro)));
+  const hayChat = Boolean(estado.conversacionActivaId);
+  const admin = estado.miRol === "admin";
+  $("#recursos-lista").innerHTML = lista.length ? lista.map((r) => `
+    <div class="recurso-card" data-id="${r.id}">
+      ${r.tipo === "foto" ? `<img src="${urlRecurso(r)}" alt="" loading="lazy" />`
+        : `<div class="recurso-icono">${icon(ICONO_RECURSO[r.tipo] || "doc")}</div>`}
+      <div class="recurso-info">
+        <div class="recurso-titulo">${escapar(r.titulo)}</div>
+        <div class="sub">${escapar([r.tipo, r.categoria].filter(Boolean).join(" · "))}</div>
+        ${r.descripcion ? `<div class="sub">${escapar(r.descripcion)}</div>` : ""}
+        ${r.tipo === "texto" ? `<div class="recurso-texto">${escapar(r.texto)}</div>` : ""}
+        ${r.tipo === "link" ? `<a href="${escapar(r.url)}" target="_blank" rel="noopener" class="sub">${escapar(r.url)}</a>` : ""}
+      </div>
+      <div class="recurso-acciones">
+        ${r.media_key ? `<a class="boton-chico" href="${urlRecurso(r)}" download="${escapar(r.titulo)}" target="_blank" rel="noopener">${icon("install")} Descargar</a>` : ""}
+        ${r.media_key && hayChat ? `<button type="button" class="boton-chico rec-mandar">${icon("send")} Mandar a este chat</button>` : ""}
+        ${!r.media_key ? `<button type="button" class="boton-chico rec-copiar">${icon("doc")} Copiar</button>` : ""}
+        ${!r.media_key && hayChat ? `<button type="button" class="boton-chico rec-pegar">${icon("plus")} Al mensaje</button>` : ""}
+        ${admin ? `<button type="button" class="boton-chico rec-editar" title="Cambiar título, descripción o categoría">${icon("pencil")}</button>
+          <button type="button" class="boton-chico rec-quitar" title="Quitar del banco">${icon("trash")}</button>` : ""}
+      </div>
+    </div>`).join("") : `<p class="ayuda-modal">${listaRecursos.length ? "Nada coincide con la búsqueda." : "Todavía no hay recursos. Agrega el primero con «Agregar»."}</p>`;
+}
+
+async function cargarRecursos() {
+  $("#recursos-lista").textContent = "Cargando…";
+  try {
+    listaRecursos = (await pedir("/api/crm/recursos")).recursos || [];
+    const cats = [...new Set(listaRecursos.map((r) => r.categoria).filter(Boolean))].sort();
+    const sel = $("#recursos-categoria");
+    const actual = sel.value;
+    sel.innerHTML = `<option value="">Todas las categorías</option>` + cats.map((c) => `<option${c === actual ? " selected" : ""}>${escapar(c)}</option>`).join("");
+    $("#recursos-categorias").innerHTML = cats.map((c) => `<option value="${escapar(c)}">`).join("");
+    pintarRecursos();
+  } catch (err) {
+    $("#recursos-lista").innerHTML = `<p class="ayuda-modal">${escapar(err.message)}</p>`;
+  }
+}
+
+function abrirRecursos() {
+  $("#recursos-buscar").value = "";
+  $("#recursos-form").style.display = "none";
+  $("#modal-recursos-fondo").classList.add("abierto");
+  cargarRecursos();
+}
+
+function tipoRecursoCambio() {
+  const t = $("#recurso-tipo").value;
+  $("#recurso-archivo").style.display = ["foto", "video", "pdf"].includes(t) ? "" : "none";
+  $("#recurso-archivo").accept = t === "foto" ? "image/jpeg,image/png" : t === "video" ? "video/mp4" : "application/pdf";
+  $("#recurso-url").style.display = t === "link" ? "" : "none";
+  $("#recurso-texto").style.display = t === "texto" ? "" : "none";
+}
+
+$("#btn-recursos").addEventListener("click", abrirRecursos);
+$("#recursos-cerrar").addEventListener("click", () => $("#modal-recursos-fondo").classList.remove("abierto"));
+$("#recursos-buscar").addEventListener("input", pintarRecursos);
+$("#recursos-categoria").addEventListener("change", pintarRecursos);
+$("#recursos-catalogo").innerHTML = `${icon("image")} Fotos del catálogo`;
+$("#recursos-catalogo").addEventListener("click", () => { $("#modal-recursos-fondo").classList.remove("abierto"); abrirGaleriaCatalogo(); });
+$("#recursos-nuevo-btn").innerHTML = `${icon("plus")} Agregar`;
+$("#recursos-nuevo-btn").addEventListener("click", () => {
+  $("#recursos-form").reset();
+  tipoRecursoCambio();
+  $("#recursos-form").style.display = "";
+});
+$("#recurso-tipo").addEventListener("change", tipoRecursoCambio);
+$("#recurso-cancelar").addEventListener("click", () => { $("#recursos-form").style.display = "none"; });
+$("#recursos-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = $("#recurso-guardar");
+  boton.disabled = true;
+  try {
+    const tipo = $("#recurso-tipo").value;
+    const cuerpo = { tipo, titulo: $("#recurso-titulo").value, descripcion: $("#recurso-descripcion").value, categoria: $("#recurso-categoria").value };
+    if (tipo === "link") cuerpo.url = $("#recurso-url").value.trim();
+    else if (tipo === "texto") cuerpo.texto = $("#recurso-texto").value;
+    else {
+      const file = $("#recurso-archivo").files[0];
+      if (!file) throw new Error("Elige el archivo.");
+      boton.textContent = "Subiendo…";
+      const subido = await subirArchivo(file);
+      cuerpo.media_key = subido.media_key;
+      cuerpo.media_mime = subido.mime;
+    }
+    await pedir("/api/crm/recursos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+    $("#recursos-form").style.display = "none";
+    await cargarRecursos();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Guardar";
+  }
+});
+$("#recursos-lista").addEventListener("click", async (e) => {
+  const card = e.target.closest(".recurso-card");
+  const r = listaRecursos.find((x) => x.id === Number(card?.dataset.id));
+  if (!r) return;
+  const boton = e.target.closest("button");
+  if (!boton) return;
+  try {
+    if (boton.classList.contains("rec-mandar")) {
+      boton.disabled = true;
+      await mandarRecursoAlChat(r);
+      boton.innerHTML = `${icon("check")} Enviado`;
+    } else if (boton.classList.contains("rec-copiar")) {
+      await navigator.clipboard.writeText(r.url || r.texto || "");
+      boton.innerHTML = `${icon("check")} Copiado`;
+    } else if (boton.classList.contains("rec-pegar")) {
+      const caja = $("#texto-envio");
+      if (caja) { caja.value = `${caja.value.trim()} ${r.url || r.texto || ""}`.trim(); caja.dispatchEvent(new Event("input")); }
+      $("#modal-recursos-fondo").classList.remove("abierto");
+      caja?.focus();
+    } else if (boton.classList.contains("rec-editar")) {
+      const titulo = prompt("Título (así lo nombra el asesor):", r.titulo);
+      if (titulo === null) return;
+      const descripcion = prompt("Para qué sirve o cuándo usarlo:", r.descripcion || "");
+      if (descripcion === null) return;
+      const categoria = prompt("Categoría:", r.categoria || "");
+      if (categoria === null) return;
+      await pedir("/api/crm/recursos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.id, titulo, descripcion, categoria }) });
+      await cargarRecursos();
+    } else if (boton.classList.contains("rec-quitar")) {
+      if (!confirm(`¿Quitar «${r.titulo}» del banco de recursos?`)) return;
+      await pedir("/api/crm/recursos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.id }) });
+      await cargarRecursos();
+    }
+  } catch (err) {
+    alert(err.message);
+    boton.disabled = false;
+  }
+});
 
 /* ---------- Comisiones por quincena (admin ve todo; cada vendedora, lo suyo) ---------- */
 
@@ -9816,6 +10052,7 @@ $("#galeria-linea").addEventListener("change", cargarGaleria);
 $("#galeria-buscar").addEventListener("input", pintarGaleria);
 $("#galeria-cerrar").addEventListener("click", () => $("#modal-galeria-fondo").classList.remove("abierto"));
 $("#galeria-lista").addEventListener("click", (e) => {
+  if (e.target.closest(".gal-descargar")) return; // el link abre/guarda la foto, no el zoom
   const p = galeriaProductos[Number(e.target.closest(".galeria-card")?.dataset.i)];
   if (!p?.image_url) return;
   const visor = document.createElement("div");

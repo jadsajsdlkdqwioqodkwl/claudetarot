@@ -37,6 +37,9 @@ sq.prepare("INSERT INTO asesor_sugerencias (id, tipo, conversation_id, wa_id, no
   .run(sqlFecha(ahora - 31 * H));
 // Un automático después de la recomendación (el plan de 7 días): NO la cierra.
 sq.prepare("INSERT INTO messages (conversation_id, direction, type, body, sent_by, created_at) VALUES (4035, 'out', 'template', 'Hola estimad@ 🩷 muchas personas creen…', 'Plan de seguimiento · Interesado · semana gratis', ?)").run(sqlFecha(ahora - 20 * H));
+// El cliente vuelve a escribir hace 30 h y nadie le contesta (solo salió el automático): FALTA RESPUESTA → el chat reflota.
+sq.prepare("INSERT INTO messages (conversation_id, direction, type, body, sent_by, created_at) VALUES (4035, 'in', 'text', '¿Y el precio?', NULL, ?)").run(sqlFecha(ahora - 30 * H));
+sq.prepare("UPDATE conversations SET last_inbound_at = ? WHERE id = 4035").run(sqlFecha(ahora - 30 * H));
 
 console.log("Recomendaciones del asesor (caso 51969799398)");
 await limpiarSugerenciasViejas(db);
@@ -44,8 +47,18 @@ check("una vendedora que escribió ANTES de la recomendación y un automático D
 
 const reflotados = await reflotarSugerencia(env);
 const fila = sq.prepare("SELECT reflotada_at FROM asesor_sugerencias WHERE id = 1919").get();
-check("el cron reflota la recomendación aunque la ventana de 24 h ya cerró", reflotados.includes(4035) && Boolean(fila.reflotada_at), JSON.stringify(reflotados));
+check("el cron reflota la recomendación por FALTA DE RESPUESTA aunque la ventana de 24 h ya cerró", reflotados.includes(4035) && Boolean(fila.reflotada_at), JSON.stringify(reflotados));
 check("el chat sube en la lista (last_message_at se adelanta a ahora)", new Date(sq.prepare("SELECT last_message_at FROM conversations WHERE id = 4035").get().last_message_at.replace(" ", "T") + "Z").getTime() > ahora - 60000);
+
+// Contraste: chat con recomendación cuyo último mensaje es nuestro (margiory ya contestó): no sube, pero el banner sí la muestra.
+sq.prepare("INSERT INTO contacts (id, wa_id, name) VALUES (4, '51900000004', 'Contestado')").run();
+sq.prepare("INSERT INTO conversations (id, contact_id, last_inbound_at, last_message_at, created_at, etapa, blocked) VALUES (4038, 4, ?, ?, ?, 2, 0)").run(sqlFecha(ahora - 30 * H), sqlFecha(ahora - 29 * H), sqlFecha(ahora - 50 * H));
+sq.prepare("INSERT INTO messages (conversation_id, direction, type, body, created_at) VALUES (4038, 'in', 'text', 'info', ?)").run(sqlFecha(ahora - 30 * H));
+sq.prepare("INSERT INTO messages (conversation_id, direction, type, body, sent_by, created_at) VALUES (4038, 'out', 'text', 'Le cuento', 'margiory', ?)").run(sqlFecha(ahora - 29 * H));
+sq.prepare("INSERT INTO asesor_sugerencias (id, tipo, conversation_id, wa_id, texto, origen, estado, created_at) VALUES (1921, 'seguimiento', 4038, '51900000004', 'Estimad@, ¿le quedó alguna duda?', 'asesor 16:30', 'pendiente', ?)").run(sqlFecha(ahora - 10 * H));
+const otra = await reflotarSugerencia(env);
+check("si ya le contestamos (no falta respuesta), la recomendación NO reflota el chat", !otra.includes(4038) && sq.prepare("SELECT reflotada_at FROM asesor_sugerencias WHERE id = 1921").get().reflotada_at === null, JSON.stringify(otra));
+check("pero el banner del chat sí la muestra", (await recomendacionDeChat(db, 4038))?.id === 1921);
 
 const listar = async () => [{ name: "rescate_lead_1", language: "es_PE", texto: "Hola {{1}} ☺️ le escribo por su consulta…" }];
 const reco = await recomendacionDeChat(db, 4035, listar);

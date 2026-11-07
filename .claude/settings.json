@@ -1,10 +1,16 @@
 {
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
-      "source": { "source": "github", "repo": "anthropics/claude-plugins-official" }
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
     },
     "thedotmack": {
-      "source": { "source": "github", "repo": "thedotmack/claude-mem" }
+      "source": {
+        "source": "github",
+        "repo": "thedotmack/claude-mem"
+      }
     }
   },
   "enabledPlugins": {
@@ -38,7 +44,13 @@
       "Edit",
       "Write",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Bash(python3 scripts/asesor/enviar.py:*)",
+      "Bash(python3 scripts/asesor/boletas.py:*)",
+      "Bash(python3 scripts/asesor/reporte.py:*)",
+      "Bash(python3 scripts/asesor/preparar.py:*)",
+      "Bash(python3 scripts/asesor/contexto.py:*)",
+      "Bash(python3 scripts/asesor/memoria.py:*)"
     ]
   }
 }

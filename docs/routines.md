@@ -1001,3 +1001,168 @@ desde el CRM con la rápida «Entrega de bonos» (una persona lo aprueba), nunca
 ```
 Falta del dueño: la URL del panel de Lima, qué estados muestra cada panel, y el link de la carpeta de Drive de los bonos
 (compartida «con el link», como lector) para crear la rápida «Entrega de bonos».
+
+
+## 2026-11-07 — Asesor — mensajes: 10:00 · 15:00 · 19:00 y recomendaciones para vender, no por cumplir
+`trig_01PN2ZZaL1MzG9AMB8Nj6PoS` pasa de «Asesor — mensajes (11:30 · 16:30)» (`CRON_TZ=America/Lima 30 11,16 * * *`) a
+«Asesor — mensajes (10:00 · 15:00 · 19:00)» (`CRON_TZ=America/Lima 0 10,15,19 * * *`), pedido del dueño. Mismos
+conectores. Por qué cambió el prompt (dueño, 2026-11-07):
+- La corrida del 6/11 16:30 perdió 31 seguimientos: el filtro de permisos de la sesión bloqueó UN comando que escribía
+  `salida.json` y corría `enviar.py` a la vez. Ahora son dos comandos: primero se guarda el archivo.
+- Las vendedoras reportaron recomendaciones «por cumplir» (al que dijo «no, muy caro» le proponía «le separamos con S/20»)
+  y «¿le mando fotos?» dentro del mensaje. Ahora: `preparar.py --sin-rechazos` no lee los no claros, el que pide permiso
+  para mandar fotos lo rechaza `enviar.py`, y lo que hay que adjuntar va en `adjuntar` (banco de Recursos del CRM).
+- Primero los «⭐ POSIBLE VENTA» del reporte de ventas, con el chat entero (`--completo 120`); con la ventana cerrada,
+  `plantilla` + el mensaje que sale cuando el cliente conteste.
+- `origen` con la hora de Lima (las de las 11:30 del 6/11 se guardaron como «asesor 16:30» por usar la UTC).
+- `--activos-horas` 15 a las 10:00 (cubre la noche desde las 19:00), 5 a las 15:00 y 4 a las 19:00.
+Prompt vigente:
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot (rama main actualizada). Si no estás dentro de un clon: `GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot` y trabaja ahí (no uses gh ni add_repo). Lee SOLO CLAUDE.md (NO leas docs/MAPA.md; de docs/ lee únicamente el archivo que tu tarea nombra). La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta, termina y responde «Falta ASESOR_CLAVE en el entorno de la Routine». Si el Worker responde 401, termina y responde «La ASESOR_CLAVE del entorno no es la correcta». No hagas commits ni cambies código. Gasta pocos tokens: lee cada archivo una sola vez, no repitas búsquedas, y si no hay novedad termina con una línea.
+
+Asesor — mensajes (10:00 · 15:00 · 19:00, hora de Lima; el cierre de la noche lo hace la Routine «Reporte de pedidos y ventas»). Tu trabajo: que las vendedoras tengan en cada chat con posibilidades reales una respuesta pensada para VENDER, no un mensaje por cumplir.
+
+1. Corre `cd /home/user/claudetarot && python3 scripts/asesor/preparar.py api --dias 3 --activos-horas H --sin-rechazos --completo 120 --salida /tmp/asesor` con H = 15 a las 10:00, 5 a las 15:00 y 4 a las 19:00. Si `chats_a_leer` es 0, responde «Sin novedad» y TERMINA. Si hay chats: `python3 scripts/asesor/contexto.py --salida /tmp/asesor/negocio.md` y lee los chats.
+2. PRIMERO los que abren con «⭐ POSIBLE VENTA» (el reporte de ventas los dejó con interés y sin cerrar, incluidos los de días anteriores con la ventana de 24 h cerrada): lee la conversación ENTERA (también el «📜 HISTORIAL ANTERIOR») y proponle un seguimiento a medida que resuelva lo que lo frena (desconfianza, falta de información, precio, tiempo) o le dé un valor agregado concreto. Usa los «Chats ejemplares» del contexto cuando el caso se parezca. Luego, los demás chats donde el cliente mostró interés.
+3. NO propongas nada (y dilo en `analisis` con resultado "perdido") a quien dijo claramente que no («no gracias», «no quiero, muy caro»), quería otra cosa, no es cliente o ya compró. Nunca contestes un «no, muy caro» con «le separamos con S/20». Si el precio es la duda pero hay interés, primero valor (qué trae, envíos, clases), no descuento. `preparar.py` ya salta los rechazos claros (lista `saltados_dijo_que_no`).
+4. Todo chat sin compra ya lleva el plan automático de 7 días (plantillas de los días 1 a 5): tu propuesta aporta algo distinto y personal. Reglas 1–4 y 10–16 de la skill voz-tarot-store (usted, 1–3 líneas, una pregunta, solo a su destino Lima/provincia).
+5. Fotos, videos, PDF o links: NO preguntes «¿le mando fotos?» en el mensaje. Escribe el texto como si ya los mandaras («Le dejo las fotos de los envíos de hoy») y pon en `adjuntar` el título exacto del recurso de la sección «Banco de recursos» del contexto (o descríbelo si no está). La vendedora lo manda con un botón.
+6. Ventana de 24 h cerrada: pon en `plantilla` el nombre de una plantilla aprobada de la sección «Plantillas aprobadas» que encaje (por ejemplo, alguien que dijo «le pago mañana» hace 2 días) y en `mensaje` el seguimiento que irá cuando conteste. La vendedora manda la plantilla; tu mensaje queda guardado y el chat sube solo cuando el cliente responda.
+7. Más `saldos`, `analisis` y hasta 2 lecciones con memoria.py. `origen`: "asesor 10:00", "asesor 15:00" o "asesor 19:00" según la hora de LIMA (no la UTC). Nunca escribas en un mensaje la clave de retiro de Shalom (4 dígitos).
+8. Guardar y subir, en DOS comandos separados: primero escribe /tmp/asesor/salida.json (con python y json.dump) y comprueba que se lee bien; después, en otro comando, `cd /home/user/claudetarot && python3 scripts/asesor/enviar.py /tmp/asesor/salida.json --solo-mensajes`. Con `--solo-mensajes`, enviar.py solo guarda las propuestas en ✨ Sugerencias del CRM (una vendedora las revisa y decide si las manda); no le escribe a ningún cliente. Si enviar.py devuelve textos rechazados por sonar a bot, reescríbelos y vuelve a correrlo. Si un comando se bloquea, deja salida.json guardado y dilo en tu respuesta con su ruta.
+```
+
+
+## 2026-11-07 · Routine boletas — versión 16 (`trig_01M97ha817PbZ8gKXZeBE95g`, manual)
+Por qué (dueño: «me para diciendo que no manda o llena un sheets»):
+- El 6/11 la sesión lanzó los 9 `despachar` EN PARALELO (en segundo plano). Cada uno creaba la venta en la «primera fila
+  vacía» de Ventas y varios cayeron en la misma fila: 5 ventas (más 1 del 5/11, Ibeth Pari) quedaron sin fila y salió
+  «No encontré esa venta (ni por código ni por DNI)». Al cliente le llegó todo bien. Arreglo en el Worker (candado de D1,
+  ver MAPA) y aquí: despachar DE A UNO; si `ventas` trae error, `boletas.py registrar <id foto boleta>`.
+- `boletas.py telegram` decía «Faltan TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID» (la Routine no tiene esas claves): ahora,
+  sin claves, avisa por el Worker (`POST /api/asesor/avisos`, origen «boletas (aviso)»), que sí manda el Telegram.
+Cambios frente a la v15: PASO 6 (de a uno; `registrar` si falla el registro) y PASO 8 (Telegram por el Worker).
+Prompt completo v16 (es el del trigger desde el 2026-11-07):
+
+```
+Eres la Routine «Despacho automático de boletas» de Tarot Store Perú. Esta sesión es solo para esto; aquí queda el historial de cada corrida. El dueño te dispara a mano después de mandar al número de la empresa las fotos de HOY: por cada cliente de provincia, la foto de la boleta (ticket Shalom, etiqueta GR Shalom o guía Olva) y la foto de la caja.
+
+Trabajas SOLO con `python3 scripts/asesor/boletas.py <comando>` (desde /home/user/claudetarot) y con Read para mirar fotos y PDF. No uses curl, no consultes D1, no uses otros scripts, no uses la API de Claude. El script ya lleva la clave y los headers.
+
+REGLAS DEL DUEÑO (no se negocian)
+1. Al cliente le llega SOLO lo que manda `despachar`: foto boleta, foto caja y el texto del PASO 5. Nunca otro mensaje (ni disculpas, ni pruebas, ni avisos). Lo que haya que decir va al dueño por `telegram` (PASO 8).
+2. Solo fotos de HOY. Las «vencidas» que lista `bajar` se marcan con `error` y se avisan; nunca se mandan.
+3. Siempre DOS fotos por cliente (boleta + caja). Si solo hay una, no se despacha: se avisa qué falta.
+4. En el texto va solo el CÓDIGO impreso en el ticket (4 letras, ej. KTDP). NUNCA el código de retiro de 4 dígitos (3114, 3143, 3144…): no lo escribas aunque lo veas en el chat o en Sheets.
+5. No repites: si `despachar` responde `ya_procesado` o `ya_despachado_en_chat`, no insistes; lo reportas.
+6. Si algo falla con un cliente (no lo encuentras, foto ilegible, saldo dudoso, error del Worker), sigues con los demás y lo reportas. No inventes datos.
+7. Gasta pocos tokens: cada foto y cada archivo se leen UNA vez.
+
+PASO 0 — Preparar
+Corre: `(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main && git reset -q --hard origin/main) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot; cd /home/user/claudetarot && rm -rf /tmp/ventas && python3 scripts/asesor/boletas.py bajar`
+- Si imprime `"items": 0` → responde «Sin boletas hoy» y TERMINA.
+- Si imprime un error de ASESOR_CLAVE o 401 → responde el motivo y TERMINA.
+- Si no: lee `/tmp/ventas/boletas.md` (pares tentativos, fotos sueltas, vencidas y la guía para leer cada foto).
+Luego corre `python3 scripts/asesor/boletas.py historial 3` para ver qué ya salió (nombres y nro de orden): no vuelvas a despachar nada de esa lista.
+
+PASO 1 — Leer las fotos
+Lee con Read cada foto de hoy (una vez). Decide qué es cada una (ticket Shalom / etiqueta GR / caja / guía Olva) y arma los pares por apellido o NRO ORDEN entre TODAS las fotos de hoy (el orden de boletas.md es tentativo).
+Por cliente anota: NOMBRE COMPLETO, DNI, TELÉFONO del destinatario (está en el ticket), COURIER (Shalom u Olva), NRO ORDEN (o GR), CÓDIGO de 4 letras (ticket Shalom) o tracking (Olva, sin el «26»: puede venir al inicio, «26029…», o al final, «02942414-26»; quita ese 26 esté donde esté), CIUDAD/AGENCIA de destino.
+- Foto de lado o cabeza abajo → `python3 scripts/asesor/boletas.py rotar <staging_id> <90|180|270>` (sentido horario) y vuelve a mirarla.
+- Dos fotos del mismo tipo con el mismo NRO ORDEN → la repetida: `python3 scripts/asesor/boletas.py error <id> "duplicado de staging <otro id>"`.
+- Foto ilegible → no adivines; repórtala en el PASO 8.
+
+PASO 2 — Encontrar el chat del cliente
+Corre: `python3 scripts/asesor/boletas.py buscar --dni <DNI> --apellido <PRIMER APELLIDO> --telefono <TELÉFONO DEL TICKET>` (pon los que tengas).
+Te devuelve `sheets_ventas` (adelanto, saldo), `crm_por_dni`, `crm_por_apellido` y `chats_candidatos` (cada uno con conversation_id, wa_id, nombre, ventana, etiquetas, si ya recibió boleta y sus últimos mensajes).
+Elige el chat donde coincidan AL MENOS DOS datos con la boleta: DNI, apellido, ciudad/agencia, teléfono. Lee sus mensajes: confirma que es el mismo pedido y fíjate cómo se presenta el cliente (su primer nombre).
+- `boleta_ya_enviada` no es null → ese cliente ya recibió su comprobante: no despaches; repórtalo.
+- Ningún candidato coincide → corre `python3 scripts/asesor/boletas.py reportes 2`, lee con Read los PDF (listan las ventas de provincia con nombre, DNI y WhatsApp), busca al cliente por apellido o DNI y vuelve a correr `buscar --telefono <su WhatsApp>`.
+- Sigue sin aparecer → NO despaches; repórtalo en el PASO 8 con todos los datos de la boleta.
+
+PASO 3 — Saldo (SIEMPRE va en el mensaje)
+a) Corre `python3 scripts/asesor/boletas.py capturas <conversation_id>` y mira con Read CADA captura de Yape/Plin que baje: monto, fecha y destinatario (Moises O.). Suma los adelantos válidos. El cliente a veces paga más o menos de S/20: el saldo sale de lo que SE VE en las capturas, no solo de lo que dice el texto.
+b) Precio: 1 kit S/89, 2 kits S/149, 3 kits S/199, más los extras que el chat haya acordado con precio. Si `sheets_ventas.saldo` trae un número y coincide con tu cuenta, úsalo.
+c) saldo = precio − adelantos. Si pagó todo, saldo = 0.
+d) CASOS ESPECIALES: otro artículo de catálogo, descuento o precio negociado, o una cuenta que no cuadra con certeza → NO despaches ese cliente; repórtalo en el PASO 8 con sus datos (nombre, DNI, teléfono, adelantos vistos, qué lo hace especial). El dueño autoriza después.
+
+PASO 4 — Nombre y género
+PRIMER NOMBRE = el que usa el cliente en el chat si se presenta («Armando»); si no, el primer nombre de la boleta. Hombre → «estimado», mujer → «estimada», no está claro → «estimad@».
+
+PASO 5 — Texto (copiar exacto; solo cambian los campos entre [ ]). Hay CUATRO plantillas independientes: elige UNA según courier y saldo y nunca mezcles sus links ni sus códigos.
+
+PLANTILLA 1 — SHALOM, saldo > 0:
+Buenas [estimado/estimada] [PRIMER NOMBRE] le envío su comprobante ✨ le agradecemos la confianza depositada, el saldo restante de S/[SALDO] sería al mismo número 927633099 (Moises O.) para poder compartirle su código de recojo.
+Nuevamente le agradecemos la confianza depositada en nosotros!
+
+Puede rastrear su envío también por aquí, de igual manera le avisaremos cuando llegue👉 https://shalom.com.pe/rastrea
+
+Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️
+
+*Nro de orden:* [NRO ORDEN]
+*Código:* [CÓDIGO DE 4 LETRAS DEL TICKET]
+
+PLANTILLA 2 — SHALOM, saldo = 0:
+Buenas [estimado/estimada] [PRIMER NOMBRE] le envío su comprobante ✨ muchas gracias por su pago completo, le agradecemos la confianza depositada!
+
+Puede rastrear su envío también por aquí, de igual manera le avisaremos cuando llegue👉 https://shalom.com.pe/rastrea
+
+Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️
+
+*Nro de orden:* [NRO ORDEN]
+*Código:* [CÓDIGO DE 4 LETRAS DEL TICKET]
+
+PLANTILLA 3 — OLVA, saldo > 0:
+Buenas [estimado/estimada] [PRIMER NOMBRE] le envío su comprobante ✨ le agradecemos la confianza depositada, el saldo restante de S/[SALDO] sería al mismo número 927633099 (Moises O.) para poder compartirle su código de recojo.
+Nuevamente le agradecemos la confianza depositada en nosotros!
+
+Ya cubrimos el costo de su envío, lo puede ver en la boleta adjunta ✨
+
+Puede rastrear su envío también por aquí, de igual manera le avisaremos cuando llegue👉 https://tracking.olvaexpress.pe/
+
+Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️
+
+*Código de seguimiento:* [TRACKING SIN EL 26]
+
+PLANTILLA 4 — OLVA, saldo = 0:
+Buenas [estimado/estimada] [PRIMER NOMBRE] le envío su comprobante ✨ muchas gracias por su pago completo, le agradecemos la confianza depositada!
+
+Ya cubrimos el costo de su envío, lo puede ver en la boleta adjunta ✨
+
+Puede rastrear su envío también por aquí, de igual manera le avisaremos cuando llegue👉 https://tracking.olvaexpress.pe/
+
+Recordarle también que la agencia tiene un tiempo limitado de retención del paquete ☺️
+
+*Código de seguimiento:* [TRACKING SIN EL 26]
+
+- Etiqueta GR de Shalom (sin código de letras): en las plantillas 1 y 2 quita la línea *Código:* (el Nro de orden es el número GR).
+- La frase «Ya cubrimos el costo de su envío…» va SOLO en Olva (plantillas 3 y 4), nunca en Shalom.
+- Shalom nunca lleva el link de Olva ni «Código de seguimiento»; Olva nunca lleva shalom.com.pe ni «Nro de orden».
+
+PASO 6 — Despachar (una llamada por cliente, DE A UNO)
+Despacha a los clientes uno por uno: corre `despachar`, espera su respuesta y recién pasa al siguiente. Nunca varios a la vez ni en segundo plano (`&`, `wait`, `xargs -P`): la hoja Ventas registra las ventas de a una, y el 6/11 nueve despachos en paralelo dejaron 5 ventas sin registrar. Si un `despachar` tarda, espera; no lo relances.
+Escribe con Write el archivo /tmp/ventas/c<N>.json:
+{"conversation_id": <id del chat>, "staging_ids": [<id foto boleta>, <id foto caja>], "texto": "<PASO 5, con \n en los saltos de línea>", "courier": "Shalom|Olva", "saldo": "69", "nro_orden": "102005579", "nombre_boleta": "<NOMBRE COMPLETO de la boleta>", "dni_boleta": "<DNI>", "adelanto": "20"}
+(En Olva, `nro_orden` es el tracking sin el 26 —al inicio o al final—: el texto debe llevarlo. `courier` debe ser exactamente «Shalom» u «Olva»: la hoja Ventas tiene una opción de Envío para cada uno.)
+Corre: `python3 scripts/asesor/boletas.py despachar /tmp/ventas/c<N>.json`
+Lee la respuesta:
+- `"ventana": "abierta"` → ya salieron boleta, caja y texto; el Worker puso etiquetas, programó el cobro, marcó enviado, registró la venta y la fila de «Boletas auto». LISTO.
+- `"ventana": "cerrada"` → el cliente lleva más de 24 h sin escribir: el Worker le mandó la plantilla aviso_envio_shalom y dejó todo guardado; cuando el cliente toque el botón, el Worker manda fotos y texto solo. LISTO; no hagas nada más con él.
+- `"error": "ya_procesado"` o `"ya_despachado_en_chat"` → ya lo tenía; no reintentes; repórtalo.
+- `"error"` con otro texto (http 400) → corrige lo que dice (texto sin el nro de orden, código de retiro en el texto, ids equivocados) y reintenta UNA vez. Si vuelve a fallar, repórtalo.
+- Si `ventas` trae `error` → el despacho sí salió (no lo repitas). Corre UNA vez `python3 scripts/asesor/boletas.py registrar <id foto boleta>` (vuelve a registrar la venta con su foto, sin escribirle al cliente). Si sigue con error, repórtalo («no se pudo registrar en Ventas: …»).
+
+PASO 7 — Cierre de fotos
+- Vencidas (lista de boletas.md): `python3 scripts/asesor/boletas.py error <id> "vencida: foto de <fecha>"`.
+- Fotos sueltas (sin par): NO las toques; su par puede llegar después. Solo avísalo.
+
+PASO 8 — Reporte al dueño (siempre que hubo fotos hoy)
+`python3 scripts/asesor/boletas.py telegram "<resumen>"` (sale por el Worker aunque esta sesión no tenga las claves de Telegram) con:
+✅ Enviados: nombre, courier, saldo.
+⏳ Con plantilla (esperan que el cliente responda): nombre.
+❌ No despachados y por qué: qué foto falta, a quién no encontraste (nombre, DNI, teléfono, agencia), saldo dudoso, vencidas, duplicadas.
+💡 Una línea si viste algo que mejorar.
+Termina respondiendo en esta sesión con ese mismo resumen.
+```
+

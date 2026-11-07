@@ -14,10 +14,12 @@ texto y `despachar`; el Worker decide ventana, duplicados, cobro, etiquetas y re
   python3 scripts/asesor/boletas.py rotar <staging_id> <90|180|270>  → gira la foto (sentido horario) y la sube de nuevo
   python3 scripts/asesor/boletas.py despachar <archivo.json>    → UNA llamada por cliente (ver despachar en asesor-mandar.js)
   python3 scripts/asesor/boletas.py error <staging_id> "<motivo>"   → marca una foto como error (vencida, duplicada)
+  python3 scripts/asesor/boletas.py registrar <staging_id> [...]  → vuelve a registrar en Ventas la venta de boletas YA
+                                                                despachadas (si `despachar` trajo un error en `ventas`); no le escribe al cliente
   python3 scripts/asesor/boletas.py telegram "<texto>"          → reporte al dueño
 
 Carpeta de trabajo: BOLETAS_DIR o /tmp/ventas. Variables: ASESOR_CLAVE (obligatoria);
-TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID solo para `telegram`.
+`telegram` usa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID si están; si no, avisa por el Worker (POST /avisos), que tiene Telegram.
 """
 import base64, datetime as dt, io, json, os, re, sys, urllib.error, urllib.parse, urllib.request
 
@@ -362,10 +364,21 @@ def cmd_error(staging_id, motivo):
     salida(resp)
 
 
+def cmd_registrar(ids):
+    """Vuelve a registrar en Ventas, de a una (nunca en paralelo), las boletas ya despachadas."""
+    for sid in ids:
+        status, resp = pedir("/mandar", "POST", {"tipo": "registrar-venta", "staging_id": int(sid)})
+        resp["http"] = status
+        salida(resp)
+
+
 def cmd_telegram(texto):
     token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat:
-        sys.exit("Faltan TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID.")
+        # La Routine no tiene las claves de Telegram (2026-11-07): el Worker sí, igual que en el reporte de la noche.
+        status, resp = pedir("/avisos", "POST", {"informe": f"Boletas — despacho automático\n\n{texto}", "origen": "boletas (aviso)"})
+        print(json.dumps({"telegram_por_worker": status == 200, **resp}, ensure_ascii=False))
+        return
     datos = urllib.parse.urlencode({"chat_id": chat, "text": texto}).encode()
     req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=datos)
     with urllib.request.urlopen(req, timeout=30) as r:
@@ -396,6 +409,8 @@ def main():
         cmd_rotar(*resto[:2])
     elif cmd == "despachar":
         cmd_despachar(resto[0])
+    elif cmd == "registrar" and resto:
+        cmd_registrar(resto)
     elif cmd == "error":
         cmd_error(resto[0], " ".join(resto[1:]) or "error")
     elif cmd == "telegram":

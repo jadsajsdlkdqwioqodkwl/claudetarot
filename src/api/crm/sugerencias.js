@@ -45,6 +45,7 @@ import { conAuth } from "../../lib/crm-auth.js";
 import { fueraDeVentana } from "./scheduled.js";
 import { mandarTexto, pausaEnvio, mandarConEscribiendo } from "../../lib/crm-send.js";
 import { limpiarSugerenciasViejas, recomendacionDeChat } from "../../lib/crm-sugerencias.js";
+// listarTemplates faltaba (2026-11-06): el banner de un chat con la ventana cerrada respondía 500 y el CRM lo escondía.
 import { enviarTemplate, listarTemplates } from "../../lib/whatsapp.js";
 import { registrarMensajeSaliente, origenSugerencia } from "../../lib/crm-db.js";
 import { normalizarPasos, limpiarPlantilla } from "../asesor.js";
@@ -77,6 +78,20 @@ const parsear = (texto) => {
 
 const esAdmin = (agent) => !agent || agent.role === "admin";
 
+/** ["Fotos de envíos", "recurso#3"] → [{ nombre, recurso: {id, tipo, titulo, media_key, url, texto} | null }]. */
+export async function recursosDeAdjuntar(db, lista) {
+  const nombres = (Array.isArray(lista) ? lista : []).map((x) => String(x || "").trim()).filter(Boolean).slice(0, 5);
+  if (!nombres.length) return [];
+  const { results } = await db.prepare("SELECT id, tipo, titulo, media_key, media_mime, url, texto FROM recursos WHERE activo = 1").all().catch(() => ({ results: [] }));
+  const plano = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return nombres.map((nombre) => {
+    const id = Number(nombre.match(/recurso\s*#\s*(\d+)/i)?.[1]);
+    const r = (results || []).find((x) => (id && x.id === id) || plano(x.titulo) === plano(nombre))
+      || (results || []).find((x) => plano(x.titulo) && (plano(nombre).includes(plano(x.titulo)) || plano(x.titulo).includes(plano(nombre))));
+    return { nombre, recurso: r || null };
+  });
+}
+
 async function get({ request, env, agent }) {
   // ?chat=<conversation_id>: los últimos mensajes de ese chat, para editar la
   // sugerencia viendo la conversación. No lo marca como leído.
@@ -84,10 +99,23 @@ async function get({ request, env, agent }) {
   const deChat = Number(new URL(request.url).searchParams.get("de_chat"));
   if (deChat) {
     await limpiarSugerenciasViejas(env.CRM_DB).catch(() => {});
+    const s = await env.CRM_DB.prepare(
+      `SELECT s.id, s.texto, s.motivo, s.objecion, s.origen, s.pasos, s.idea, s.adjuntar, s.plantilla, s.plantilla_enviada_at, conv.last_inbound_at FROM asesor_sugerencias s
+       JOIN conversations conv ON conv.id = s.conversation_id
+       WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.conversation_id = ? ORDER BY s.created_at DESC LIMIT 1`
+    ).bind(deChat).first();
+    if (!s) return json({ sugerencia: null });
     // Ventana cerrada (dueño, 2026-11-06): el banner igual se ve y ofrece mandar la recomendación como plantilla aprobada.
-    // La lógica vive en recomendacionDeChat (crm-sugerencias.js): la misma que ve el asesor en /api/asesor/chat.
-    const sugerencia = await recomendacionDeChat(env.CRM_DB, deChat, plantillasAprobadasDe(env)).catch((err) => { console.error("Recomendación del chat:", err.message); return null; });
-    return json({ sugerencia });
+    const ventanaAbierta = Boolean(s.last_inbound_at) && new Date(String(s.last_inbound_at).replace(" ", "T") + "Z").getTime() + 24 * 3600 * 1000 > Date.now();
+    let plantillas = [];
+    if (!ventanaAbierta) {
+      plantillas = await listarTemplates(await envDeConversacion(env, deChat)).then((l) => l.filter((t) => t.status === "APPROVED").map((t) => ({ name: t.name, language: t.language, texto: (t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "" }))).catch(() => []);
+    }
+    // Lo que el asesor recomienda adjuntar (2026-11-07): cada nombre con su recurso del banco, si lo hay (por id «recurso#3» o título).
+    const adjuntar = await recursosDeAdjuntar(env.CRM_DB, parsear(s.adjuntar));
+    // Ya se mandó la plantilla y el cliente todavía no contesta: el texto espera (sube solo cuando conteste).
+    const esperando = Boolean(s.plantilla_enviada_at) && !ventanaAbierta;
+    return json({ sugerencia: { ...s, last_inbound_at: undefined, pasos: parsear(s.pasos), idea: s.idea ? parsear(s.idea) : null, ventana_abierta: ventanaAbierta, plantillas, adjuntar, esperando } });
   }
   const chat = Number(new URL(request.url).searchParams.get("chat"));
   if (chat) {
@@ -323,6 +351,14 @@ async function post({ request, env, agent }) {
   if (s.tipo !== "respuesta_rapida") {
     if (!s.conversation_id) return json({ error: "No encontré el chat de este cliente en el CRM." }, 422);
     let error = await programar(env, s.conversation_id, texto, quien, cuando, { plantilla: plantilla1, botones: payload.botones });
+    // Seguimiento con la ventana cerrada (dueño, 2026-11-07): sale la plantilla y la recomendación NO se cierra; queda
+    // «esperando respuesta» con su texto, y cuando el cliente contesta el chat sube (reflote) para mandarlo.
+    if (!error && plantilla1 && cuando === "ahora" && s.tipo === "seguimiento" && texto) {
+      await env.CRM_DB.prepare(
+        "UPDATE asesor_sugerencias SET texto = ?, plantilla = ?, plantilla_enviada_at = datetime('now'), reflotada_at = NULL WHERE id = ?"
+      ).bind(texto, plantilla1.name, id).run();
+      return json({ ok: true, enviados: 1, programados: 0, saltados: [], esperando: true });
+    }
     // Envío con la ventana cerrada: sale con la plantilla.
     if (error && s.tipo === "envio" && cuando === "ahora" && s.titulo && (await fueraDeVentana(env.CRM_DB, s.conversation_id, new Date()))) {
       error = await conPlantilla(env, s, quien);

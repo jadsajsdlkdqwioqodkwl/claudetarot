@@ -1239,6 +1239,12 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("espada: _headers no solapa reglas de /espada/ (Cloudflare junta sus encabezados)", !/^\/espada\/\*\s*$/m.test(headers));
   check("espada: no quedan textos de la Masilla ni del Cable copiados",
     !/\b(sachets?|masilla selladora|USB-C|Lightning|90 días)\b/i.test(es + gr));
+  check("espada: la página tiene la barra fija (CTA con precio) y el botón del formulario NO queda pegado abajo",
+    es.includes('<div class="sticky" id="sticky">') && !/\.btn-fijo \{[^}]*position:sticky/.test(es));
+  check("espada: las fotos se cargan livianas (srcset 480/800, miniaturas chicas, fuente sin bloquear)",
+    !/<img src="\/espada\/img\/(mando|piruetas|detalle|motores|campo)\.webp"/.test(es) && /srcset="\/espada\/img\/mando-480\.webp/.test(es) &&
+    /data-thumb="\/espada\/img\/\w+-t\.webp"/.test(es) && !/@import url\('https:\/\/fonts/.test(es + gr));
+  check("espada: el píxel recibe ciudad, región y país limpios, y order_id en Lead/Purchase", /st: limpio\(c\.region\)/.test(es) && /datos\.order_id = c\.eventId;/.test(es));
   check("espada: un solo color (dorado): sin fotos ni textos de otro color", !/\b(cobre|copper)\b/i.test(es + gr));
   check("espada: no queda texto en inglés quemado en la página",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer|Flying Sword)\b/i.test(es + gr));
@@ -1256,6 +1262,30 @@ check("las letras de columna llegan hasta la última de la hoja",
     check(`${p}-v2: manda el pedido al mismo endpoint que la v1`, html.includes(`'${api}'`));
     check(`${p}-v2: el dominio largo es válido, no dice «tarot» y el Worker lo atiende`, host.split(".")[0].length <= 63 && !/tarot/i.test(host.split(".")[0]) && host.endsWith(".tarotperu.store") && idx.includes(host.startsWith("puerto-secreto-cable") ? "HOST_CABLE_V2" : "HOST_MASILLA_V2"));
   }
+}
+
+/* Una función del repo que se llama sin importarla rompe el endpoint en producción (2026-11-06: el banner de la
+   recomendación en chats con la ventana cerrada respondía 500 porque faltaba importar listarTemplates). Nada en el
+   chequeo lo veía: aquí, toda llamada a una función exportada en src/ tiene que estar importada o definida en el archivo. */
+{
+  const { readdirSync, statSync } = await import("node:fs");
+  const archivos = [];
+  const recorrer = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) recorrer(p); else if (p.endsWith(".js")) archivos.push(p); } };
+  recorrer(join(root, "src"));
+  const exportadas = new Set();
+  for (const f of archivos) for (const m of readFileSync(f, "utf8").matchAll(/export\s+(?:async\s+)?(?:function\s*\*?|const|let|class)\s+([A-Za-z_$][\w$]*)/g)) exportadas.add(m[1]);
+  const faltan = new Set();
+  for (const f of archivos) {
+    const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+    const definidas = new Set();
+    for (const m of src.matchAll(/import\s*\{([^}]*)\}/g)) for (const n of m[1].split(",")) { const x = n.trim().split(/\s+as\s+/).pop(); if (x) definidas.add(x); }
+    for (const m of src.matchAll(/import\s+([A-Za-z_$][\w$]*)/g)) definidas.add(m[1]);
+    for (const m of src.matchAll(/import\s*\*\s*as\s+([\w$]+)/g)) definidas.add(m[1]);
+    for (const m of src.matchAll(/(?:function\s*\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/g)) definidas.add(m[1]);
+    for (const m of src.matchAll(/(?:const|let|var)\s*[{[]([^}\]=]*)[}\]]\s*=/g)) for (const n of m[1].split(",")) { const x = n.trim().split(/\s*:\s*/).pop().split("=")[0].trim(); if (x) definidas.add(x); }
+    for (const m of src.matchAll(/(?:^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) if (exportadas.has(m[1]) && !definidas.has(m[1])) faltan.add(`${f.slice(root.length + 1)}: ${m[1]}`);
+  }
+  check("toda función del repo que se llama está importada en su archivo (sugerencias.js: listarTemplates)", faltan.size === 0, [...faltan].join(", "));
 }
 
 console.log(failures === 0 ? "\nTodo en orden." : `\n${failures} chequeo(s) fallaron.`);

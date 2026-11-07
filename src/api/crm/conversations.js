@@ -26,6 +26,7 @@ import { leerMensajes } from "./messages.js";
 import { ORIGEN_SEGUIMIENTO_AUTO, PREFIJO_SEGUIMIENTO_LEAD, PREFIJO_SUGERENCIA, PREFIJO_SEGUIMIENTO_RAPIDA, PREFIJO_PLAN_PLANTILLA, PREFIJO_PLAN } from "../../lib/crm-db.js";
 import { ORIGEN_DIA7 } from "../../lib/rescate-lead.js";
 import { PREFIJO_SEGUIMIENTO_PLANTILLA } from "../../lib/plantillas-seguimiento.js";
+import { FALTA_RESPUESTA } from "../../lib/crm-sugerencias.js";
 
 /** Minúsculas y sin tildes, en SQL (SQLite no trae unaccent y su lower() no toca las tildes). */
 const TILDES = [["á", "a"], ["é", "e"], ["í", "i"], ["ó", "o"], ["ú", "u"], ["ü", "u"], ["ñ", "n"],
@@ -54,7 +55,8 @@ export function tokensBusqueda(q) {
 /* Cola «Atención pendiente»: chats con el último mensaje del cliente sin contestar (y sin «Atendido») o con una
    recomendación del asesor pendiente, incluidas las de chats con la ventana de 24 h ya cerrada (para evaluar
    una plantilla). Las recomendaciones que aún no subieron a la bandeja y tienen ventana abierta esperan su turno. */
-const ATENCION_FALTA = `(lm.direction = 'in' AND (conv.atendido_at IS NULL OR conv.atendido_at < conv.last_inbound_at))`;
+// «Falta respuesta»: criterio único en crm-sugerencias.js (un seguimiento automático no cuenta como respuesta, 2026-11-06).
+const ATENCION_FALTA = FALTA_RESPUESTA("conv");
 const ATENCION_REC = `EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
                 AND sg.tipo = 'seguimiento' AND (sg.reflotada_at IS NOT NULL OR conv.last_inbound_at IS NULL OR conv.last_inbound_at < datetime('now', '-24 hours')))`;
 

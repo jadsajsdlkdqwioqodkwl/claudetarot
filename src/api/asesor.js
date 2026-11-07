@@ -22,7 +22,7 @@
  *     mensajes: [{ whatsapp, nombre, motivo, mensaje }] }
  */
 
-import { limpiarBotones } from "../lib/whatsapp.js";
+import { limpiarBotones, listarTemplates } from "../lib/whatsapp.js";
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { notificarRecomendaciones } from "../lib/crm-avisos.js";
 import { aprendizaje } from "./asesor-datos.js";
@@ -109,9 +109,10 @@ export async function onRequestPost({ request, env }) {
     const origenInforme = String(payload.origen || "director CRO").slice(0, 60);
     await env.CRM_DB.prepare("INSERT INTO asesor_informes (origen, texto) VALUES (?, ?)").bind(origenInforme, texto).run();
     const link = await guardarInformeComoPagina(env, origenInforme, texto).catch(() => null);
-    // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13).
+    // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13). Y el resumen del despacho de
+    // boletas (2026-11-07): la Routine no tiene las claves de Telegram y su aviso nunca llegaba.
     let telegram = null;
-    if (/ventas/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
+    if (/ventas|boletas/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
       try {
         const msg = (texto + (link ? `\n\n${link}` : "")).slice(0, 4000);
         const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -378,6 +379,12 @@ export async function onRequestPostSugerencias({ request, env }) {
     const ideaTexto = String(s.idea?.texto || s.idea?.mensaje || "").trim().slice(0, 1000);
     const idea = ideaTexto ? JSON.stringify({ titulo: String(s.idea.titulo || "").trim().slice(0, 160) || null, texto: ideaTexto }) : null;
     const link = tipo === "envio" ? String(s.link || "").slice(0, 200) || null : null;
+    // Dueño, 2026-11-07: qué adjuntar (recurso del banco o algo a mano) va APARTE del texto, como nota para la vendedora;
+    // y la plantilla aprobada para cuando su ventana de 24 h está cerrada.
+    const adjuntarLista = (Array.isArray(s.adjuntar) ? s.adjuntar : s.adjuntar ? [s.adjuntar] : [])
+      .map((x) => String(x || "").trim().slice(0, 160)).filter(Boolean).slice(0, 5);
+    const adjuntar = adjuntarLista.length ? JSON.stringify(adjuntarLista) : null;
+    const plantillaSug = String(s.plantilla || "").trim().replace(/[^a-z0-9_]/gi, "").slice(0, 120) || null;
     const wa = String(s.whatsapp || "").replace(/\D/g, "");
     const conv = await convDe(env, wa);
     if (!conv) {
@@ -397,15 +404,15 @@ export async function onRequestPostSugerencias({ request, env }) {
       .bind(conv.id, tipo)
       .first();
     if (previa) {
-      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), pasos = ?, objecion = ?, idea = ?, created_at = datetime('now') WHERE id = ?")
-        .bind(texto, texto, motivo, origen, link, pasos, objecion, idea, previa.id)
+      await env.CRM_DB.prepare("UPDATE asesor_sugerencias SET texto = ?, texto_original = ?, motivo = ?, origen = ?, titulo = COALESCE(?, titulo), pasos = ?, objecion = ?, idea = ?, adjuntar = ?, plantilla = ?, plantilla_enviada_at = NULL, reflotada_at = NULL, created_at = datetime('now') WHERE id = ?")
+        .bind(texto, texto, motivo, origen, link, pasos, objecion, idea, adjuntar, plantillaSug, previa.id)
         .run();
       res.actualizadas++;
     } else {
       await env.CRM_DB.prepare(
-        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen, pasos, objecion, idea) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, titulo, texto, texto_original, motivo, origen, pasos, objecion, idea, adjuntar, plantilla) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       )
-        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen, pasos, objecion, idea)
+        .bind(tipo, conv.id, wa, String(s.nombre || "").slice(0, 80), link, texto, texto, motivo, origen, pasos, objecion, idea, adjuntar, plantillaSug)
         .run();
       res.creadas++;
     }
@@ -455,7 +462,16 @@ export async function onRequestGetContexto({ request, env }) {
     ejemplares: await env.CRM_DB.prepare(
       `SELECT e.conversation_id, c.wa_id AS whatsapp, COALESCE(c.name, c.profile_name) AS nombre, e.titulo, e.notas, e.updated_at
        FROM chats_ejemplares e JOIN conversations conv ON conv.id = e.conversation_id JOIN contacts c ON c.id = conv.contact_id ORDER BY e.updated_at DESC LIMIT 50`
-    ).all().then((r) => r.results || []).catch(() => [])
+    ).all().then((r) => r.results || []).catch(() => []),
+    // Banco de recursos (dueño, 2026-11-07): lo que el asesor puede recomendar en `adjuntar` (por su título).
+    recursos: await env.CRM_DB.prepare(
+      "SELECT id, tipo, titulo, descripcion, categoria FROM recursos WHERE activo = 1 ORDER BY categoria, orden, id LIMIT 200"
+    ).all().then((r) => r.results || []).catch(() => []),
+    // Plantillas aprobadas del número principal: para proponer `plantilla` cuando la ventana de 24 h cerró.
+    plantillas_aprobadas: await listarTemplates(env)
+      .then((l) => l.filter((t) => t.status === "APPROVED").map((t) => ({ nombre: t.name, categoria: t.category,
+        texto: ((t.components || []).find((c) => String(c.type).toUpperCase() === "BODY")?.text || "").slice(0, 300) })))
+      .catch(() => [])
   });
 }
 
