@@ -111,6 +111,16 @@ def main():
         quien = s.get("titulo") if s["tipo"] == "respuesta_rapida" else f"{s.get('nombre') or ''} +{s.get('wa_id') or ''}"
         partes.append(f"- [{s['tipo']}] {quien} ({s.get('origen')}, {s.get('created_at')}): {s['texto'][:160]}")
     ap_ = datos.get("aprendizaje") or {}
+    rec = datos.get("recursos") or []
+    partes += ["", f"## Banco de recursos ({len(rec)}; pestaña «Recursos» del CRM). Para que la vendedora adjunte algo, nómbralo "
+               "en `adjuntar` con su título exacto; NUNCA escribas «¿le mando fotos?» en el mensaje. Si no está aquí, descríbelo "
+               "igual en `adjuntar` (la vendedora lo busca o lo pide)."]
+    partes += [f"- [{r['tipo']}] {r['titulo']}" + (f" ({r['categoria']})" if r.get("categoria") else "") + (f": {r['descripcion']}" if r.get("descripcion") else "") for r in rec] or ["- (vacío por ahora)"]
+    pl = datos.get("plantillas_aprobadas") or []
+    if pl:
+        partes += ["", f"## Plantillas aprobadas ({len(pl)}): para un chat con la ventana de 24 h cerrada, elige una en `plantilla`; "
+                   "tu `mensaje` queda guardado y sube solo cuando el cliente conteste"]
+        partes += [f"- {t['nombre']}: {t['texto'][:160]}" for t in pl]
     ej = datos.get("ejemplares") or []
     if ej:
         partes += ["", f"## Chats ejemplares ({len(ej)}; banco de conocimiento del dueño: cómo se resolvió cada caso)",

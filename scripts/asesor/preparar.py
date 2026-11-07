@@ -51,6 +51,22 @@ MAX_CLIENTE, MAX_EQUIPO, MAX_ARCHIVO = 2000, 2000, 60000
 
 POSIBLES = ("POR_CONFIRMAR", "INTENCION")
 
+# Dueño, 2026-11-07: «no, no quiero, muy caro» y el asesor igual proponía «le separamos con S/20». Con --sin-rechazos, el
+# chat cuyo ÚLTIMO mensaje del cliente es un no claro (y nadie del equipo lo reabrió después) no se lee: no hay venta
+# que empujar y se ahorran tokens. Las posibles ventas del reporte se leen igual. «Luego / más tarde / te aviso» NO es
+# un no (regla 10: tiene posibilidades).
+RE_RECHAZO = re.compile(
+    r"\bno+[,.!\s]*(gracias|me interesa|estoy interesad[oa]|quiero|deseo|necesito|lo quiero|por el momento no)\b"
+    r"|\bno me interesa\b|\bya no (quiero|deseo|me interesa|estoy interesad[oa])\b|\bno estoy interesad[oa]\b"
+    r"|\bya (lo )?compr[eé]\b.*\b(otr[oa]|otro lado|otra tienda)\b|\bno (me )?(escriba|mande|env[ií]e)n?\s+m[aá]s\b"
+    r"|\b(muy|demasiado|bien) car[oa]\b.*\bno\b|\bno\b.*\b(muy|demasiado) car[oa]\b", re.I)
+RE_NO_ES_RECHAZO = re.compile(r"\b(luego|m[aá]s tarde|despu[eé]s|te aviso|le aviso|otro d[ií]a|fin de mes|cuando (me )?paguen|quincena)\b|\?", re.I)
+
+
+def es_rechazo(texto):
+    t = re.sub(r"\s+", " ", texto or "").strip()
+    return bool(t) and len(t) <= 160 and bool(RE_RECHAZO.search(t)) and not RE_NO_ES_RECHAZO.search(t)
+
 
 def posibles_ventas(hoy):
     """{9 dígitos: "ESTADO · nota"} de lo que el reporte dejó como posible venta y nadie confirmó todavía."""
@@ -179,6 +195,7 @@ def main():
     ap.add_argument("--activos-horas", type=int, default=0)
     ap.add_argument("--linea", type=int, default=0, help="otro número de WhatsApp (id de la línea); por defecto Tarot Store")
     ap.add_argument("--con-reporte", action="store_true", help="compatibilidad: con «api» las posibles ventas del reporte se leen siempre (desde el 2026-11-04)")
+    ap.add_argument("--sin-rechazos", action="store_true", help="no lee los chats cuyo último mensaje del cliente es un no claro (asesor de mensajes; dueño 2026-11-07)")
     ap.add_argument("--completo", type=int, default=0, help="N > 0: a los chats con señal de venta (pago, dirección, agencia, DNI, collar, imagen del cliente, compra en el CRM) se les suma el historial anterior completo, hasta N mensajes (reporte de pedidos, dueño 2026-11-05)")
     a = ap.parse_args()
 
@@ -201,7 +218,7 @@ def main():
     for f in filas:
         chats.setdefault(f["wa"], []).append(f)
 
-    elegidos, primeros, meta = [], [], {}
+    elegidos, primeros, meta, rechazos = [], [], {}, []
     for wa, ms in chats.items():
         cli = [m for m in ms if m["quien"] == "Cliente"]
         humano = any(m["quien"] != "Cliente" and not RE_AUTO.search(m["vend"]) for m in ms)
@@ -210,6 +227,10 @@ def main():
             continue
         ult_cli = max(i for i, m in enumerate(ms) if m["quien"] == "Cliente")
         despues = ms[ult_cli + 1:]
+        if a.sin_rechazos and not posible and es_rechazo(ms[ult_cli]["msg"]) and not any(
+                m["quien"] != "Cliente" and not RE_AUTO.search(m["vend"]) and "?" in (m["msg"] or "") for m in despues):
+            rechazos.append({"whatsapp": wa, "dijo": re.sub(r"\s+", " ", ms[ult_cli]["msg"]).strip()[:120]})
+            continue
         nombre = next((m["nombre"] for m in reversed(ms) if m["nombre"] not in ("", ".")), "")
         meta[wa] = {
             "nombre": nombre,
@@ -285,6 +306,8 @@ def main():
         "sin_respuesta": sum(1 for v in meta.values() if v["ultimo"] == "cliente"),
         "con_promesas": [wa for wa, v in meta.items() if v["promesas"]],
         "posibles_ventas": [wa for wa, v in meta.items() if v["posible_venta"]],
+        # Con --sin-rechazos: chats que no se leen porque el cliente dijo que no (van a `analisis` como perdidos si quieres).
+        "saltados_dijo_que_no": rechazos,
     }, ensure_ascii=False, indent=1))
 
 

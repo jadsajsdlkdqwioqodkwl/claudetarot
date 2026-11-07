@@ -1722,3 +1722,18 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   `src/` que se llama en un archivo tiene que estar importada ahí (habría atrapado este 500). Revisado en Chromium con la API
   simulada (escritorio y celular): banner, selector y vista previa de la plantilla, POST `aprobar` con `plantilla`, «Ya respondí»
   y «deshacer», sin errores en la consola.
+
+## 2026-11-07 — Asesor de mensajes: 10:00 · 15:00 · 19:00, sin recomendaciones «por cumplir»
+- **Routine** `trig_01PN2ZZaL1MzG9AMB8Nj6PoS` ahora «Asesor — mensajes (10:00 · 15:00 · 19:00)», `CRON_TZ=America/Lima 0 10,15,19 * * *`
+  (antes 11:30 y 16:30). Prompt y motivos en `docs/routines.md` (entrada del 2026-11-07).
+- **Corrida del 6/11 16:30 sin recomendaciones:** el filtro de permisos de la sesión de la Routine bloqueó el comando que
+  escribía `salida.json` y corría `enviar.py` juntos («transacción real»); se perdieron 31 textos. No fue el reflote ni el
+  Worker. El prompt nuevo los separa en dos comandos.
+- `scripts/asesor/preparar.py --sin-rechazos`: no lee el chat cuyo último mensaje del cliente es un no claro («no gracias»,
+  «no quiero, muy caro», «no me interesa»), salvo posibles ventas del reporte o que el equipo lo haya reabierto con una
+  pregunta; «luego / fin de mes / te aviso» no cuenta como no. Los lista en `saltados_dijo_que_no`.
+- `scripts/asesor/enviar.py`: rechaza (como «suena a bot») el texto que pide permiso para mandar fotos/videos
+  («¿le mando fotos?», «si desea le paso fotos»); lo que hay que adjuntar va en el campo `adjuntar` de cada mensaje, y
+  la plantilla para ventana cerrada en `plantilla`. Los dos campos los guarda el Worker (ver la entrada siguiente).
+- `scripts/asesor/contexto.py`: suma «Banco de recursos» y «Plantillas aprobadas» (de `GET /api/asesor/contexto`).
+- Prueba: `python3 scripts/asesor/pruebas/test_asesor_calidad.py`.

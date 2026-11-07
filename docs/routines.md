@@ -1001,3 +1001,35 @@ desde el CRM con la rápida «Entrega de bonos» (una persona lo aprueba), nunca
 ```
 Falta del dueño: la URL del panel de Lima, qué estados muestra cada panel, y el link de la carpeta de Drive de los bonos
 (compartida «con el link», como lector) para crear la rápida «Entrega de bonos».
+
+
+## 2026-11-07 — Asesor — mensajes: 10:00 · 15:00 · 19:00 y recomendaciones para vender, no por cumplir
+`trig_01PN2ZZaL1MzG9AMB8Nj6PoS` pasa de «Asesor — mensajes (11:30 · 16:30)» (`CRON_TZ=America/Lima 30 11,16 * * *`) a
+«Asesor — mensajes (10:00 · 15:00 · 19:00)» (`CRON_TZ=America/Lima 0 10,15,19 * * *`), pedido del dueño. Mismos
+conectores. Por qué cambió el prompt (dueño, 2026-11-07):
+- La corrida del 6/11 16:30 perdió 31 seguimientos: el filtro de permisos de la sesión bloqueó UN comando que escribía
+  `salida.json` y corría `enviar.py` a la vez. Ahora son dos comandos: primero se guarda el archivo.
+- Las vendedoras reportaron recomendaciones «por cumplir» (al que dijo «no, muy caro» le proponía «le separamos con S/20»)
+  y «¿le mando fotos?» dentro del mensaje. Ahora: `preparar.py --sin-rechazos` no lee los no claros, el que pide permiso
+  para mandar fotos lo rechaza `enviar.py`, y lo que hay que adjuntar va en `adjuntar` (banco de Recursos del CRM).
+- Primero los «⭐ POSIBLE VENTA» del reporte de ventas, con el chat entero (`--completo 120`); con la ventana cerrada,
+  `plantilla` + el mensaje que sale cuando el cliente conteste.
+- `origen` con la hora de Lima (las de las 11:30 del 6/11 se guardaron como «asesor 16:30» por usar la UTC).
+- `--activos-horas` 15 a las 10:00 (cubre la noche desde las 19:00), 5 a las 15:00 y 4 a las 19:00.
+Prompt vigente:
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot (rama main actualizada). Si no estás dentro de un clon: `GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot` y trabaja ahí (no uses gh ni add_repo). Lee SOLO CLAUDE.md (NO leas docs/MAPA.md; de docs/ lee únicamente el archivo que tu tarea nombra). La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta, termina y responde «Falta ASESOR_CLAVE en el entorno de la Routine». Si el Worker responde 401, termina y responde «La ASESOR_CLAVE del entorno no es la correcta». No hagas commits ni cambies código. Gasta pocos tokens: lee cada archivo una sola vez, no repitas búsquedas, y si no hay novedad termina con una línea.
+
+Asesor — mensajes (10:00 · 15:00 · 19:00, hora de Lima; el cierre de la noche lo hace la Routine «Reporte de pedidos y ventas»). Tu trabajo: que las vendedoras tengan en cada chat con posibilidades reales una respuesta pensada para VENDER, no un mensaje por cumplir.
+
+1. Corre `cd /home/user/claudetarot && python3 scripts/asesor/preparar.py api --dias 3 --activos-horas H --sin-rechazos --completo 120 --salida /tmp/asesor` con H = 15 a las 10:00, 5 a las 15:00 y 4 a las 19:00. Si `chats_a_leer` es 0, responde «Sin novedad» y TERMINA. Si hay chats: `python3 scripts/asesor/contexto.py --salida /tmp/asesor/negocio.md` y lee los chats.
+2. PRIMERO los que abren con «⭐ POSIBLE VENTA» (el reporte de ventas los dejó con interés y sin cerrar, incluidos los de días anteriores con la ventana de 24 h cerrada): lee la conversación ENTERA (también el «📜 HISTORIAL ANTERIOR») y proponle un seguimiento a medida que resuelva lo que lo frena (desconfianza, falta de información, precio, tiempo) o le dé un valor agregado concreto. Usa los «Chats ejemplares» del contexto cuando el caso se parezca. Luego, los demás chats donde el cliente mostró interés.
+3. NO propongas nada (y dilo en `analisis` con resultado "perdido") a quien dijo claramente que no («no gracias», «no quiero, muy caro»), quería otra cosa, no es cliente o ya compró. Nunca contestes un «no, muy caro» con «le separamos con S/20». Si el precio es la duda pero hay interés, primero valor (qué trae, envíos, clases), no descuento. `preparar.py` ya salta los rechazos claros (lista `saltados_dijo_que_no`).
+4. Todo chat sin compra ya lleva el plan automático de 7 días (plantillas de los días 1 a 5): tu propuesta aporta algo distinto y personal. Reglas 1–4 y 10–16 de la skill voz-tarot-store (usted, 1–3 líneas, una pregunta, solo a su destino Lima/provincia).
+5. Fotos, videos, PDF o links: NO preguntes «¿le mando fotos?» en el mensaje. Escribe el texto como si ya los mandaras («Le dejo las fotos de los envíos de hoy») y pon en `adjuntar` el título exacto del recurso de la sección «Banco de recursos» del contexto (o descríbelo si no está). La vendedora lo manda con un botón.
+6. Ventana de 24 h cerrada: pon en `plantilla` el nombre de una plantilla aprobada de la sección «Plantillas aprobadas» que encaje (por ejemplo, alguien que dijo «le pago mañana» hace 2 días) y en `mensaje` el seguimiento que irá cuando conteste. La vendedora manda la plantilla; tu mensaje queda guardado y el chat sube solo cuando el cliente responda.
+7. Más `saldos`, `analisis` y hasta 2 lecciones con memoria.py. `origen`: "asesor 10:00", "asesor 15:00" o "asesor 19:00" según la hora de LIMA (no la UTC). Nunca escribas en un mensaje la clave de retiro de Shalom (4 dígitos).
+8. Guardar y subir, en DOS comandos separados: primero escribe /tmp/asesor/salida.json (con python y json.dump) y comprueba que se lee bien; después, en otro comando, `cd /home/user/claudetarot && python3 scripts/asesor/enviar.py /tmp/asesor/salida.json --solo-mensajes`. Con `--solo-mensajes`, enviar.py solo guarda las propuestas en ✨ Sugerencias del CRM (una vendedora las revisa y decide si las manda); no le escribe a ningún cliente. Si enviar.py devuelve textos rechazados por sonar a bot, reescríbelos y vuelve a correrlo. Si un comando se bloquea, deja salida.json guardado y dilo en tu respuesta con su ruta.
+```
+

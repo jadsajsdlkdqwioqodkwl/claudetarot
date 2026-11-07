@@ -28,6 +28,8 @@ salida.json:
   "mensajes": [{"whatsapp": "", "nombre": "", "motivo": "", "mensaje": "",
                 "objecion": "lo que probablemente lo frena (desconfianza por el adelanto, falta de info…)",
                 "idea": {"titulo": "otra opción para la próxima", "mensaje": "texto listo"},   # opcional
+                "adjuntar": ["Fotos de envíos de hoy"],   # opcional: recursos del banco (título exacto) o algo a mano; NO va en el mensaje
+                "plantilla": "rescate_lead_1",   # opcional: plantilla aprobada si su ventana de 24 h cerró (el mensaje sale cuando conteste)
                 "pasos": [{"horas": 5, "mensaje": ""}]}],   # opcional: secuencia si no responde
   "preguntas": [{"pregunta": "¿Puedo ofrecerle a X…?", "motivo": "", "opciones": ["Sí", "No"],
                  "whatsapp": "", "nombre": ""}],   # al dueño; su respuesta queda en la memoria
@@ -433,9 +435,25 @@ RE_ROBOT = [
 ]
 
 
+# Dueño, 2026-11-07: «¿le mando fotos?» / «si desea le paso fotos» suena a cumplir, no a vender. Lo que hay que adjuntar
+# va en `adjuntar` (nota para la vendedora) y el texto se escribe como si ya los mandara («Le dejo las fotos de…»).
+RE_PIDE_PERMISO_ADJUNTO = re.compile(
+    r"(\b(le|les)\s+(mando|env[ií]o|paso|comparto)\s+(unas?\s+|las\s+|los\s+|algunas?\s+)?(fotos?|videos?|im[aá]genes|capturas?|pdf)\b"
+    r"|\b(desea|quiere|gusta)\s+que\s+le\s+(mande|env[ií]e|pase)\s+(unas?\s+|las\s+|los\s+)?(fotos?|videos?|im[aá]genes)\b)", re.I)
+
+
+def pide_permiso_adjunto(texto):
+    for frase in re.split(r"(?<=[.!?])\s+|\n", texto):
+        if RE_PIDE_PERMISO_ADJUNTO.search(frase) and ("?" in frase or re.search(r"\bsi\s+(desea|gusta|quiere|prefiere)\b", frase, re.I)):
+            return True
+    return False
+
+
 def problemas_de(texto):
     """Lo que delata a un bot en un texto para clientes (vacío = pasa)."""
     p = [motivo for patron, motivo in RE_ROBOT if patron.search(texto)]
+    if pide_permiso_adjunto(texto):
+        p.append("pide permiso para mandar fotos/videos: ponlo en `adjuntar` y escribe como si ya los mandaras")
     if len(texto) > 420:
         p.append(f"muy largo ({len(texto)} caracteres; las vendedoras escriben 1–3 líneas)")
     if texto.count("?") > 1:
@@ -679,6 +697,7 @@ def main():
     propuestas = [{"tipo": "seguimiento", "whatsapp": m.get("whatsapp"), "nombre": m.get("nombre"),
                    "motivo": m.get("motivo"), "texto": m.get("mensaje"), "objecion": m.get("objecion"),
                    "idea": m.get("idea") if isinstance(m.get("idea"), dict) else None,
+                   "adjuntar": m.get("adjuntar") or [], "plantilla": m.get("plantilla") or None,
                    "pasos": [{"horas": p.get("horas"), "texto": p.get("mensaje") or p.get("texto")}
                              for p in m.get("pasos") or []]} for m in mensajes]
     propuestas += [dict(r, tipo="respuesta_rapida") for r in datos.get("respuestas_rapidas", [])]
