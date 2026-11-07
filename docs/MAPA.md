@@ -1782,3 +1782,11 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - Routine de boletas v16 en `docs/routines.md` (despachar de a uno; `registrar` si falla el registro).
 - **Migración 0076 aplicada en D1 el 2026-11-07** (Recursos y adjuntos del asesor; ver la entrada de Recursos): el código de
   esa entrada ya está en `main`.
+
+## 2026-11-07 — Permisos de las Routines (auto mode)
+- Pedido del dueño: «agregar una regla de permiso para Bash». En auto mode la regla amplia `"Bash"` de `.claude/settings.json`
+  queda suspendida (doc oficial: code.claude.com/docs/en/auto-mode-config.md): por eso el filtro bloqueó el `enviar.py` del
+  asesor el 6/11 («Real-World Transactions») y la migración 0076 («Production Deploy»). Se agregaron reglas ESPECÍFICAS por
+  comando, que sí valen en auto mode y se resuelven antes del filtro: `python3 scripts/asesor/{enviar,boletas,reporte,
+  preparar,contexto,memoria}.py`. No se agregó nada para curl/D1 ni deploys (siguen pasando por el filtro). La regla
+  `autoMode.allow` solo se lee de la configuración del usuario (`~/.claude/settings.json`), nunca del repo.
