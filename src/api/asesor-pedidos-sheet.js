@@ -9,6 +9,10 @@
  *      cliente cambia de fecha, se actualiza su fila; una vez enviada, un pedido nuevo abre otra fila).
  * GET  /api/asesor/pedidos-sheet?hoy=AAAA-MM-DD → { atrasados, hoy, futuros, sin_fecha } con las filas
  *      sin «Enviado», para que el reporte las traiga todas las noches hasta que alguien las marque.
+ * Columna P «Dinsides» (2026-11-08): lo que pasó con el pedido en Dinsides. La escribe el Worker al registrar («registrado
+ *      AAAA-MM-DD HH:MM») o una persona para guiar a la Routine: «ok» (confirmado, regístralo), «distrito: Comas»,
+ *      «dirección: …», «coord: -12.1,-77.0», «manual 1234» (lo registró a mano), «no» (no va por Dinsides).
+ *      `filasPedidosAuto(env)` y `marcarDinsidesEnHoja(env, whatsapp, texto, enviado)` los usa src/api/asesor-dinsides.js.
  */
 
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
@@ -16,8 +20,9 @@ import { getValues, updateValues, appendRowsTo, asegurarPestana } from "../lib/g
 
 const PESTAÑA = "Pedidos auto";
 const ENCABEZADOS = ["Fecha venta", "Entrega", "Nombre", "WhatsApp", "Destino", "Estado", "Vendedora", "Dirección / Agencia",
-  "Kits", "Empaque", "Pago", "Nota", "Reporte", "Actualizado (Lima)", "Enviado"];
-const COLS = ENCABEZADOS.length; // A..O; «Enviado» es la O (índice 14)
+  "Kits", "Empaque", "Pago", "Nota", "Reporte", "Actualizado (Lima)", "Enviado", "Dinsides"];
+const COLS = ENCABEZADOS.length; // A..P; «Enviado» es la O (índice 14), «Dinsides» la P (índice 15)
+const ULTIMA = String.fromCharCode(64 + COLS);
 const LIMA_OFFSET_MS = -5 * 3600 * 1000;
 
 const json = (data, status = 200) =>
@@ -43,8 +48,37 @@ const celda = (v, i) => {
 
 async function leerFilas(env) {
   await asegurarPestana(env, env.GOOGLE_SHEET_ID, PESTAÑA, ENCABEZADOS);
-  const filas = await getValues(env, `${PESTAÑA}!A2:O`).catch(() => []);
+  const filas = await getValues(env, `${PESTAÑA}!A2:${ULTIMA}`).catch(() => []);
   return (filas || []).map((f) => [...f, ...Array(COLS).fill("")].slice(0, COLS).map(celda));
+}
+
+const filaAObjeto = (f, i) => ({ fila: i + 2, fecha_venta: f[0], fecha_entrega: f[1], nombre: f[2], whatsapp: f[3], destino: f[4], estado: f[5],
+  vendedora: f[6], direccion_o_agencia: f[7], kits: f[8], empaque: f[9], pago: f[10], nota: f[11], reporte: f[12], actualizado: f[13],
+  enviado: f[14], dinsides: f[15] });
+
+/** Todas las filas de «Pedidos auto» como objetos (con «Enviado» y «Dinsides»), para el registro en Dinsides. */
+export async function filasPedidosAuto(env) {
+  if (!env.GOOGLE_SHEET_ID) throw new Error("Falta GOOGLE_SHEET_ID.");
+  return (await leerFilas(env)).map(filaAObjeto).filter((r) => String(r.nombre || r.whatsapp || "").trim());
+}
+
+/**
+ * Escribe la columna «Dinsides» (y, si se pide, «Enviado») en la fila abierta de ese WhatsApp. Si no hay fila abierta,
+ * usa la última fila de ese WhatsApp; si no existe ninguna, lo dice (`sin_fila`). Pone el encabezado P1 si faltaba.
+ */
+export async function marcarDinsidesEnHoja(env, whatsapp, textoDinsides, enviado = "") {
+  if (!env.GOOGLE_SHEET_ID) return { sin_fila: true, error: "Falta GOOGLE_SHEET_ID." };
+  const filas = await leerFilas(env);
+  const k = n9(whatsapp);
+  let i = -1;
+  filas.forEach((f, j) => { if (n9(f[3]) === k && !String(f[14] || "").trim()) i = j; });
+  if (i < 0) filas.forEach((f, j) => { if (n9(f[3]) === k) i = j; });
+  if (i < 0) return { sin_fila: true, whatsapp };
+  const cab = await getValues(env, `${PESTAÑA}!${ULTIMA}1`).catch(() => []);
+  if (!String(cab?.[0]?.[0] || "").trim()) await updateValues(env, `${PESTAÑA}!${ULTIMA}1`, [["Dinsides"]]);
+  await updateValues(env, `${PESTAÑA}!${ULTIMA}${i + 2}`, [[String(textoDinsides || "")]]);
+  if (enviado && !String(filas[i][14] || "").trim()) await updateValues(env, `${PESTAÑA}!O${i + 2}`, [[String(enviado)]]);
+  return { fila: i + 2, nombre: filas[i][2], whatsapp: filas[i][3] };
 }
 
 const filaDe = (p, fechaObjetivo, origen) => [
@@ -106,7 +140,7 @@ export async function onRequestPost({ request, env }) {
         await updateValues(env, `${PESTAÑA}!A${i + 2}:N${i + 2}`, [fila]);
         actualizadas++;
       } else {
-        nuevasFilas.push([...fila, ""]);
+        nuevasFilas.push([...fila, "", ""]);
         if (k) abiertas.set(k, filas.length + nuevasFilas.length - 1);
         nuevas++;
       }
@@ -131,8 +165,7 @@ export async function onRequestGet({ request, env }) {
     filas.forEach((f, i) => {
       if (!String(f[2] || f[3] || "").trim()) return;
       if (String(f[14] || "").trim()) { out.enviados++; return; }
-      const r = { fila: i + 2, fecha_venta: f[0], fecha_entrega: f[1], nombre: f[2], whatsapp: f[3], destino: f[4], estado: f[5],
-        vendedora: f[6], direccion_o_agencia: f[7], kits: f[8], empaque: f[9], pago: f[10], nota: f[11], reporte: f[12], actualizado: f[13] };
+      const r = filaAObjeto(f, i);
       if (!esIso(f[1])) out.sin_fecha.push(r);
       else if (f[1] < hoy) out.atrasados.push(r);
       else if (f[1] === hoy) out.hoy_.push(r);

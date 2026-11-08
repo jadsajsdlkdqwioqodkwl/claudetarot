@@ -1817,3 +1817,53 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   (compartida con `/api/asesor/chat` → `recomendacion`), el botón «Ya respondí» del banner (cierra como «atendida»), el refresco
   del banner en cada ciclo, «sin pregunta» apagado (`sin_pregunta_auto`; 23 pendientes cerradas) y la prueba
   `scripts/test-sugerencias.mjs` con el caso real del chat 51969799398.
+
+## 2026-11-08 — Dinsides (Lima): registro automático de pedidos (Routine nueva + endpoint + mapa de cobertura)
+- **Pedido del dueño:** automatizar lo que hacía la asesora con el Project de Claude y el script de consola en
+  https://dinsidescourier.com/pedido/nuevo, con intervención humana solo donde falla (dirección de entrega y distrito), y una «cuarta
+  corrida» que revise los chats para que ningún pedido de Lima quede fuera del reporte. Estado práctico en **`docs/dinsides.md`**.
+- **Qué se vio en Dinsides (sin credenciales, solo lo público):** la página pide login (teléfono de 9 dígitos + clave, `POST
+  login/validar`, respuesta 2/3 = cliente); su JS público (`public/js/pedido.js`) muestra el formulario completo: `#tipo_pedido`
+  (CONTRAENTREGA, SOLO-ENTREGA-NO-COBRAR, PEDIDO-EN-ALMACEN…, REUTILIZADO-…, CARGO-REMISION, ENVIO-AGENCIA-PROVINCIA), `#nombreD`,
+  `#tlfD` (9 dígitos que empiezan en 9, no se repite en el listado), `#fechaD` (no pasada), `#id_distrito` (código + `data-price`
+  tarifa), `#direccionD` (obligatoria), `#coordenadasD` (opcional), `tpaquete` (1 = 30×15×20 cm 1,5 kg), `#productoD`,
+  `revisar_paquete` (obligatorio Sí/No), `#cobrarD`, `#monto_service` (tarifa), `#tipo_pago` (NO COBRAR · EFECTIVO · PLIN · YAPE ·
+  POS), `#obsD`, `#tTurno`; «Agregar pedido al listado» arma una tabla y «Guardar» manda `POST pedido/registro` con arreglos
+  (`nombres[]`, `tlfs[]`, `id_distritos[]`, `fechas_entrega[]`, `revisar[]`, `id_recojo`, `negocio`…); responde 1 = registrado,
+  2 = error, 4 = falta «revisar». Cronómetro de 10 minutos en la página. La «cobertura» es el Google My Maps «MAPA ZONA DE COBERTURA
+  GENERAL» (mid `1ybY_sWYIA0Am6u-NvSg55xPo91dSVHY`): se bajó como KML (147 polígonos, 182 puntos).
+- **Código nuevo:**
+  - `src/lib/dinsides.js`: `DISTRITOS`/`ALIAS` (desplegable con código y tarifa, snapshot del Project), `buscarDistrito`,
+    `distritosEnTexto` (qué distrito nombra una dirección; «San Juan»/«Lima»/«Callao» a secas son ambiguos), `limpiarCoordenadas`
+    (links de Maps, pin), `coordenadasDeUbicacion` (cuerpo `lat|lng|…` del webhook), `zonaDe` (punto en polígono del mapa:
+    entrega / no_entrega / punto_encuentro / fuera), `fechaEntrega` (regla del dueño: lo de esta noche sale mañana aunque sea la 1 a. m.;
+    otra fecha pedida manda), `armarPedido` (ficha con `campos`, `alertas`, `bloqueos`), `scriptConsola`, `payloadRegistro`,
+    `codificarFormulario`. `src/lib/dinsides-cobertura.js` (datos del mapa; se regenera con `scripts/dinsides-cobertura.py`).
+  - `src/lib/dinsides-cliente.js`: `login` (secretos `DINSIDES_TLF`/`DINSIDES_CLAVE`, nunca en el repo), `formulario` (lee el
+    formulario real: negocio, traslado, turnos, distritos y **diferencias** con la tabla del repo), `registrar` (`POST pedido/registro`).
+  - `src/api/asesor-dinsides.js` → `GET/POST /api/asesor/dinsides` (ruta en `src/index.js`): GET arma las fichas de Lima de una fecha
+    de entrega (registro `pedidos-estado/FECHA.json` + hoja «Pedidos auto» + pin y direcciones del chat) y lista los **candidatos del
+    CRM** (chats con pin / dirección / compra marcada que el reporte no trae); `?zona=lat,lng`. POST `probar` (entra y lee el
+    formulario, sin registrar), `registrar` (un solo listado con los que no tienen bloqueos; `simular` = pedido de prueba sin POST final;
+    `forzar` solo si lo pidió una persona), `marcar` (registrado a mano), `script` (consola). Memoria: R2 `dinsides/FECHA.json` +
+    `dinsides/indice.json` (no se repite un WhatsApp en 3 días), columna **P «Dinsides»** y «Enviado» (`Dinsides FECHA`) de la hoja
+    «Pedidos auto», etiqueta `dinsides_registrado`. Sin credenciales responde 503 `sin_credenciales` con el script de consola.
+  - `src/api/asesor-pedidos-sheet.js`: encabezado P «Dinsides» (A..P), `filasPedidosAuto(env)`, `marcarDinsidesEnHoja(...)`; el GET
+    devuelve `enviado` y `dinsides` por fila. Lo que escribe una persona en P: `ok` · `distrito: X` · `dirección: …` ·
+    `coord: lat,lng` · `manual 1234` · `no`.
+  - `src/api/asesor.js`: los informes con origen «dinsides» también salen por Telegram al dueño (como ventas y boletas).
+  - `scripts/asesor/dinsides.py`: `preparar`, `chat`, `zona`, `registrar [--simular] [--forzar]`, `probar`, `script`, `marcar`, `telegram`.
+  - Pruebas en `npm run check`: `scripts/test-dinsides.mjs` (librería) y `scripts/test-dinsides-api.mjs` (endpoint de punta a punta con
+    un Dinsides simulado: login, formulario, listado, memoria, idempotencia, sin credenciales, clave mala).
+  - `.claude/settings.json`: **pendiente** agregar la regla de permiso `Bash(python3 scripts/asesor/dinsides.py:*)` (auto mode): el filtro
+    de auto mode no dejó editar ese archivo desde la sesión; lo agrega el dueño (una línea junto a las de boletas.py y reporte.py).
+- **Routine:** «Dinsides — registro de pedidos de Lima» (Sonnet, sesión fija, `CRON_TZ=America/Lima 55 23 * * *` + «Run now»).
+  Prompt v1 en `docs/routines.md`. IDs: se anotan abajo al crearla.
+- **Lo que NO se pudo hacer en esta sesión:** entrar a Dinsides (no hay credenciales en ningún lado, y así debe ser: van como secretos
+  del Worker con `wrangler secret put`, no en el repo ni en la Routine) ni, por lo tanto, el pedido de prueba real. El pedido de
+  prueba quedó simulado de punta a punta en `scripts/test-dinsides-api.mjs`; el real es `dinsides.py probar` + `registrar --simular`
+  cuando estén los secretos. Shalom (provincia) queda para después (`docs/registro-pedidos.md`).
+- **Decisiones:** (1) el Worker es el único que habla con Dinsides (igual que con Sheets y WhatsApp); (2) la Routine no adivina:
+  dirección y distrito dudosos van al dueño con la pregunta exacta y se resuelven en la columna «Dinsides» de la hoja; (3) la tabla de
+  distritos del repo se compara con el formulario real en cada `probar`/`registrar` y se usa la tarifa real; (4) los pedidos de otro
+  día salen con su fecha (si se quieren juntar para la cuota, «no» hoy y «ok» cuando toque).

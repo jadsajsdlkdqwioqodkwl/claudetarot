@@ -138,6 +138,7 @@ import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
 import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
 import { onRequestPost as asesorBoletasLogPost } from "./api/asesor-boletas-log.js";
 import { onRequestGet as asesorPedidosSheetGet, onRequestPost as asesorPedidosSheetPost } from "./api/asesor-pedidos-sheet.js";
+import { onRequestGet as asesorDinsidesGet, onRequestPost as asesorDinsidesPost } from "./api/asesor-dinsides.js";
 import { onRequestGet as asesorPlantillasGet, onRequestPost as asesorPlantillasPost } from "./api/asesor-plantillas.js";
 import { onRequestPost as asesorProgramarPlanPost } from "./api/asesor-programar-plan.js";
 import { onRequestPost as asesorMandarPost } from "./api/asesor-mandar.js";
@@ -171,6 +172,7 @@ const ROUTES = {
   "/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet },
   "/api/asesor/boletas-log": { POST: asesorBoletasLogPost },
   "/api/asesor/pedidos-sheet": { GET: asesorPedidosSheetGet, POST: asesorPedidosSheetPost },
+  "/api/asesor/dinsides": { GET: asesorDinsidesGet, POST: asesorDinsidesPost },
   "/api/asesor/plantillas-meta": { GET: asesorPlantillasGet, POST: asesorPlantillasPost },
   "/api/asesor/programar-plan": { POST: asesorProgramarPlanPost },
   "/api/asesor/control-ventas": { GET: asesorControlVentasGet },
