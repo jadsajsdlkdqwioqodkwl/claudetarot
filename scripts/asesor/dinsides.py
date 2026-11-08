@@ -155,7 +155,9 @@ def cmd_zona(texto):
 def _cargar_salida(args, defecto="/tmp/dinsides/salida.json"):
     ruta = next((a for a in args if a.endswith(".json")), defecto)
     if not os.path.exists(ruta):
-        return {}, ruta
+        # Sin archivo NO se registra nada (2026-11-08: un archivo mal escrito hizo que se registraran TODOS los listos de mañana).
+        # Para registrar todos los listos a propósito, escribe un salida.json con {"pedidos": []}.
+        sys.exit(f"No existe {ruta}. Escribe el salida.json (con {{\"pedidos\": []}} si quieres registrar todos los listos) y vuelve a correr.")
     try:
         return json.load(open(ruta)), ruta
     except ValueError as err:

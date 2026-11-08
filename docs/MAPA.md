@@ -1932,3 +1932,31 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **Shalom Pro:** `pro.shalom.pe/registroindividual` responde 403 al Worker (protección anti-bot) y no hay credenciales en el sistema; el
   dueño describió el flujo (medida XXS S/8, origen Lima/Lima/Chorrillos/Chorrillos Co, agencia por código Región/Provincia/Distrito/Agencia,
   sin protegido ni comprobante, sin cobro seguro, clave de 4 dígitos rotando entre 3). Queda para el siguiente paso (`docs/registro-pedidos.md`).
+
+## 2026-11-08 (tarde) — Dinsides: regularizaciones hechas, registro accidental de 3 pedidos del domingo, Shalom (agencias y Excel masivo)
+- **Regularizaciones pedidas por Devoluciones de Dinsides (registradas; ellos las anulan):** Mariela Ramos Carpió **#2940734** (entrega
+  2026-12-31, contacto: el número del dueño), «CLIENTE 1» **#2940741** (entrega 2026-12-23) y «CLIENTE 2» **#2940742** (entrega 2026-12-27),
+  estos dos con los otros dos teléfonos de contacto del negocio que figuran en la propia ficha de Dinsides (los encargados del recojo).
+  Solo entrega sin cobrar S/0, Av Arica 1702 Cercado de Lima, traslado «lo llevaré a tienda Cercado». Motivo de usar tres teléfonos
+  distintos: Dinsides descarta en silencio un segundo pedido abierto con el mismo teléfono (el primer intento de CLIENTE 1 y 2 respondió 1
+  y no creó nada). Sus filas en «Pedidos auto» quedaron cerradas con `marcar`.
+- **Arreglo por eso:** `registrar` solo da por registrado lo que aparece en el listado de Dinsides con su id; lo demás vuelve como
+  `no_confirmados` y la Routine lo reporta. Antes se guardaba en la memoria y en la hoja como registrado.
+- **Registro accidental (2026-11-08 11:48 Lima):** al correr `dinsides.py registrar <archivo>` con una ruta que no existía, el script tomó
+  `{}` y registró TODOS los listos de mañana: **#2940738 Dante Díaz Olivera (Pueblo Libre, S/89 efectivo), #2940739 July / Julia (San
+  Miguel, S/89 Yape) y #2940740 Milagros Herrera Aguayo (Santiago de Surco, S/89 Yape)**, los tres con entrega 2026-11-09 (domingo), tal
+  como estaban confirmados en el registro del reporte. Son pedidos reales y correctos; solo se registraron al mediodía en vez de en la
+  noche. El dueño decide si se quedan o se anulan (`dinsides.py anular 2940738 2940739 2940740`). **Arreglo:** sin archivo, `registrar`
+  termina con error; para registrar todos los listos a propósito hay que escribir `{"pedidos": []}`.
+- **Shalom, primer paso (sin credenciales):** `scripts/asesor/shalom.py` + `data/shalom-agencias.json` (566 agencias bajadas de la API
+  pública `newwebservices.shalomcontrol.com/api/v1/web/agencias/listar`, versión 5184; `agencias --actualizar` las refresca) con el código
+  exacto que acepta Shalom Pro («AREQUIPA / AREQUIPA / AREQUIPA / AV PARRA 379»), dirección, horario y coordenadas. `buscar "<texto del
+  cliente>"` elige la agencia (probado: «Av. Parra, Arequipa» → AV PARRA 379; «Calle Tacna 1095 Chiclayo» → CALLE TACNA; «Nuevo Chimbote
+  Garatea» → GARATEA; «terminal Ayacucho» → AYACUCHO CO). `masivo AAAA-MM-DD` arma el Excel del «Formato Pro Masivo» (plantilla del dueño
+  en `data/shalom-masivo-plantilla.xlsx`: DESTINATARIO (DOC), TELF, ORIGEN CHORRILLOS CO, DESTINO = agencia, PAQUETE XXS, CANTIDAD 1) con
+  los provincia confirmados del registro del reporte y lista lo dudoso. `pro.shalom.pe` devuelve 403 a cualquier cliente que no sea un
+  navegador (también desde el Worker): el registro individual automático necesitaría un navegador real con las credenciales del dueño;
+  el masivo por Excel no lo necesita.
+- **`.claude/settings.json`:** el filtro de auto mode no deja que la sesión lo edite (dos intentos, con autorización del dueño). Lo agrega
+  el dueño dentro de `permissions.allow`: `"Bash(python3 scripts/asesor/dinsides.py:*)"`, `"Bash(python3 scripts/asesor/etiquetas.py:*)"`
+  y `"Bash(python3 scripts/asesor/shalom.py:*)"`.

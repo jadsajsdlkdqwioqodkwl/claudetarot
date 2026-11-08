@@ -98,6 +98,12 @@ Av Arica 1702 y traslado «lo llevaré a tienda Cercado», y luego ellos lo anul
 pedido nuevo (nombre, dirección, distrito Cercado de Lima, `tipo_pago` NO COBRAR, fecha lejana). Hecho el 2026-11-08 para Mariela Ramos
 Carpió (ver MAPA).
 
+## Shalom (provincia): lo que ya hay
+`scripts/asesor/shalom.py`: `agencias` (las 566 agencias con el código de Shalom Pro, desde su API pública; `--actualizar` refresca
+`data/shalom-agencias.json`), `buscar "<texto del cliente>"` (la agencia que calza, con ★ cuando no hay duda) y `masivo FECHA` (Excel del
+«Formato Pro Masivo» con los provincia confirmados del registro). El registro individual en Shalom Pro queda pendiente: su panel devuelve
+403 a todo lo que no sea un navegador.
+
 ## Dónde ver las cosas
 - `python3 scripts/asesor/dinsides.py preparar [FECHA]` → fichas, bloqueos, ya registrados y candidatos; `/tmp/dinsides/fichas.json`.
 - Hoja «Pedidos auto» (libro «Pedidos Tarot Kit» `1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc`): columna P «Dinsides» y O «Enviado».

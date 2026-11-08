@@ -9,6 +9,10 @@
 > **2026-11-08:** la parte de **Lima (Dinsides) ya está construida** y va más allá de esta propuesta: el Worker arma la ficha, la
 > registra en Dinsides por su API web y la Routine «Dinsides — registro de pedidos de Lima» revisa los chats como cuarta corrida.
 > Estado en `docs/dinsides.md`. Lo de Shalom (provincia) sigue pendiente tal como se describe abajo.
+>
+> **2026-11-08 (tarde):** de Shalom ya están la **tabla de agencias** (`data/shalom-agencias.json`, 566 agencias de la API pública con el
+> código de Shalom Pro; `scripts/asesor/shalom.py agencias | buscar`) y el **Excel del envío masivo** (`shalom.py masivo FECHA`, plantilla
+> `data/shalom-masivo-plantilla.xlsx`). Falta el registro individual en Shalom Pro (su panel bloquea robots: hace falta navegador + credenciales).
 
 ## Idea central: el reporte de la noche ya hace el trabajo difícil
 El reporte «Pedidos y ventas» (21:45 · 22:30 · 23:45) ya lee todos los chats y saca, por pedido, nombre, teléfono,
