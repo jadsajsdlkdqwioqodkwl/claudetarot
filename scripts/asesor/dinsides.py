@@ -25,6 +25,7 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
     python3 scripts/asesor/dinsides.py probar                                -> entra a Dinsides y lee el formulario real, sin registrar.
     python3 scripts/asesor/dinsides.py script [/tmp/dinsides/salida.json]    -> solo el script de consola (F12) de los listos.
     python3 scripts/asesor/dinsides.py marcar <whatsapp> [nro] [motivo…]      -> alguien lo registró a mano: queda en la memoria.
+    python3 scripts/asesor/dinsides.py quitar <whatsapp> [AAAA-MM-DD] [motivo…] -> saca un WhatsApp de la memoria de esa fecha (si el panel dice otra cosa).
     python3 scripts/asesor/dinsides.py telegram "texto"                       -> resumen al dueño (sale por el Worker).
     python3 scripts/asesor/dinsides.py estados [desde AAAA-MM-DD] [hasta AAAA-MM-DD] [--solo-ver]
         -> Los ojos del reporte: lee el historial de Dinsides (ENTREGADO, ANULADO, RECHAZADO, REGISTRADO), lo cruza con la hoja
@@ -91,6 +92,7 @@ def cmd_preparar(args):
     st, r = pedir(f"/dinsides?fecha={fecha}" if fecha else "/dinsides")
     salir_si_error(st, r)
     json.dump(r, open(os.path.join(carpeta, "fichas.json"), "w"), ensure_ascii=False, indent=1)
+    json.dump({"fecha": r.get("fecha")}, open(os.path.join(carpeta, "ctx.json"), "w"))  # registrar usa esta fecha si salida.json no trae una
     pedidos = r.get("pedidos", [])
     listos = [f for f in pedidos if f.get("listo")]
     ya = [f for f in pedidos if f.get("ya_registrado")]
@@ -201,8 +203,10 @@ def cmd_registrar(args, accion="registrar"):
     datos, ruta = _cargar_salida(args)
     carpeta = os.path.dirname(os.path.abspath(ruta))
     body = {"accion": accion, "origen": f"dinsides.py {dt.datetime.now(LIMA).strftime('%H:%M')}"}
-    if datos.get("fecha") or fecha_arg(args):
-        body["fecha"] = datos.get("fecha") or fecha_arg(args)
+    ctx = os.path.join(carpeta, "ctx.json")
+    fecha_ctx = json.load(open(ctx)).get("fecha") if os.path.exists(ctx) else None
+    if datos.get("fecha") or fecha_arg(args) or fecha_ctx:
+        body["fecha"] = datos.get("fecha") or fecha_arg(args) or fecha_ctx
     if datos.get("pedidos"):
         body["pedidos"] = datos["pedidos"]
     if "--simular" in args:
@@ -249,6 +253,19 @@ def cmd_marcar(args):
     body = {"accion": "marcar", "whatsapp": wa, "nro": nro, "motivo": motivo, "origen": "dinsides.py marcar"}
     if fecha_arg(args):
         body["fecha"] = fecha_arg(args)
+    st, r = pedir("/dinsides", "POST", body)
+    salir_si_error(st, r)
+    print(json.dumps(r, ensure_ascii=False))
+
+
+def cmd_quitar(args):
+    """quitar <whatsapp> [AAAA-MM-DD] [motivo…]: saca un WhatsApp de la memoria de registros de esa fecha (no toca Dinsides)."""
+    wa = "".join(c for c in str(args[0]) if c.isdigit())
+    fecha = fecha_arg(args)
+    motivo = " ".join(a for a in args[1:] if a != fecha)
+    body = {"accion": "quitar", "whatsapp": wa, "motivo": motivo}
+    if fecha:
+        body["fecha"] = fecha
     st, r = pedir("/dinsides", "POST", body)
     salir_si_error(st, r)
     print(json.dumps(r, ensure_ascii=False))
@@ -330,6 +347,8 @@ def main():
         cmd_probar()
     elif cmd == "marcar" and resto:
         cmd_marcar(resto)
+    elif cmd == "quitar" and resto:
+        cmd_quitar(resto)
     elif cmd == "telegram" and resto:
         cmd_telegram(" ".join(resto))
     elif cmd == "estados":

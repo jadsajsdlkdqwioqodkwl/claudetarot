@@ -2022,3 +2022,23 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **Pendiente (decisión del dueño):** crear la venta en Ventas al armar el Excel es nuevo (antes la creaba la Routine de boletas al
   despachar). Si prefiere lo de antes, la Routine corre con `--sin-ventas` y la clave la teclea él a su criterio (pero entonces puede
   no coincidir con la que el CRM le manda al cliente).
+
+## 2026-11-08 (noche 2) — Simulacro completo (sin subir nada) y lo que destapó
+- **Clave del día:** el dueño no quiere la clave en ningún prompt. `shalom.py masivo --clave NNNN` crea todas las ventas nuevas del lote
+  con esa clave (`POST /api/asesor/ventas crear` ya aceptaba `clave`); sin `--clave`, el Worker asigna una por envío. La clave solo
+  aparece en el archivo de referencia (`shalom.py telegram` rechaza cualquier texto con una clave de 4 dígitos). Se escribe «la clave del
+  día es NNNN» en la sesión fija y la Routine la usa. Prompt v2 en `docs/routines.md`; la API no permitió actualizar el trigger desde aquí.
+- **Simulacro Dinsides (entrega 2026-11-05, solo lectura):** `preparar` separó 4 listos (Nataly, Adri, Laura/Milagros, Dana —cambio de dije,
+  S/0—), 11 con bloqueos (solo pin sin dirección, «La Perla, Callao» ambiguo, pin en zona roja, POR_CONFIRMAR…) y 40 candidatos del CRM.
+  `registrar --simular` destapó un bug: sin fecha en salida.json tomaba «mañana» en vez de la fecha de `preparar` → ahora `preparar`
+  deja `ctx.json` y `registrar` la usa.
+- **Bug grave corregido:** los tres pedidos anulados a mano (#2940738/39/40) seguían en la memoria como registrados porque se habían
+  guardado sin `nro` (Dinsides aún no los listaba al segundo de crearlos) y `anular` solo casaba por `nro`. Consecuencia: la Routine
+  habría saltado a Dante y July esta noche. Arreglos: `anular` también casa por teléfono + fecha de entrega; `registrar` reintenta la
+  búsqueda del id a los 2,5 s e ignora anulados; acción nueva **`quitar`** (`dinsides.py quitar <whatsapp> [fecha] [motivo]`) para sacar
+  un WhatsApp de la memoria cuando el panel dice otra cosa. Reparación aplicada: Dante y July quitados de la memoria del 2026-11-09;
+  Milagros marcada como registrada por el equipo (#2939495).
+- **Simulacro Shalom (despacho 2026-11-05, `--sin-ventas`):** 5 filas, las 5 agencias seguras (Las Mercedes Juliaca, Tacna CO Jorge Basadre,
+  Nuevo Horizonte Av. 54, Calle Emaús, Lambayeque Centro). Destapó otro bug: los DNI que empiezan en 0 («00485469») perdían el cero al ir
+  como número; ahora van como texto (los demás siguen como número, igual que el ejemplo de la plantilla). Pendiente de confirmar con una
+  subida real que Shalom acepte el DNI en texto.

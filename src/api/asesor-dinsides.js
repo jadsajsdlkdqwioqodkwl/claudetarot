@@ -371,7 +371,7 @@ export async function onRequestPost({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const p = await request.json().catch(() => null);
-  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular | editar)." }, 400);
+  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular | editar | quitar)." }, 400);
   const fecha = esIso(p.fecha) ? p.fecha : fechaPorDefecto();
   try {
     if (p.accion === "estados") {
@@ -396,17 +396,35 @@ export async function onRequestPost({ request, env }) {
       const idx = await indice(env);
       const hojaAnulados = [];
       for (const x of despues) {
-        const m = reg.registros.find((y) => String(y.nro) === x.id_pedido);
+        const ped = antes.find((y) => y.id_pedido === x.id_pedido);
+        const m = reg.registros.find((y) => String(y.nro) === x.id_pedido)
+          || reg.registros.find((y) => !y.nro && ped && n9(y.whatsapp) === ped.telefono && y.fecha_entrega === ped.fecha_entrega);
         if (!m) continue;
+        if (!m.nro) m.nro = x.id_pedido;
         m.anulado = ahoraLima(); m.seguimiento = x.seguimiento;
         const k = n9(m.whatsapp);
-        if (idx[k] && String(idx[k].nro || "") === x.id_pedido) delete idx[k];
+        if (idx[k] && (String(idx[k].nro || "") === x.id_pedido || !idx[k].nro)) delete idx[k];
         hojaAnulados.push(await marcarDinsidesEnHoja(env, m.whatsapp, `anulado #${x.id_pedido} ${ahoraLima()}${p.motivo ? `: ${String(p.motivo).slice(0, 80)}` : ""}`).catch((err) => ({ error: err.message })));
       }
       reg.corridas.push({ modo: "anular", ids: mios, cuando: ahoraLima(), motivo: String(p.motivo || "") });
       await escribirJson(env, `dinsides/${fecha}.json`, reg);
       await escribirJson(env, "dinsides/indice.json", idx);
       return json({ ok: r.ok, resultados: r.resultados, anulados: despues, hoja: hojaAnulados, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
+    }
+    if (p.accion === "quitar") {
+      // { accion: "quitar", fecha, whatsapp, motivo } → saca un WhatsApp de la memoria de esa fecha y del índice (no toca Dinsides):
+      // para reparar un registro que la memoria da por hecho y no lo está (p. ej. anulado a mano en el panel).
+      const k = n9(p.whatsapp);
+      if (!k) return json({ error: "Falta whatsapp." }, 400);
+      const reg = await registroDe(env, fecha);
+      const idx = await indice(env);
+      let quitados = 0;
+      for (const r of reg.registros) if (n9(r.whatsapp) === k && !r.anulado) { r.anulado = ahoraLima(); r.quitado = String(p.motivo || "quitado a mano"); quitados++; }
+      if (idx[k]) delete idx[k];
+      reg.corridas.push({ modo: "quitar", whatsapp: "51" + k, motivo: String(p.motivo || ""), cuando: ahoraLima() });
+      await escribirJson(env, `dinsides/${fecha}.json`, reg);
+      await escribirJson(env, "dinsides/indice.json", idx);
+      return json({ ok: true, fecha, whatsapp: "51" + k, quitados });
     }
     if (p.accion === "editar") {
       // { accion: "editar", id, cambios: { fecha_entrega?, direccion?, distrito? (nombre) | id_distrito?, nombre?, telefono?, cobrar?, tipo_pago?, obs?, producto? } }
@@ -498,13 +516,17 @@ export async function onRequestPost({ request, env }) {
     if (!r.ok) return json({ error: "dinsides_rechazo", detalle: r.detalle, respuesta: r.respuesta, fecha, listos: paraEnviar.map((f) => f.campos), no_van: noVan, avisos: avisosForm }, 502);
     // El id que Dinsides le dio a cada pedido: se busca en el listado por teléfono y fecha de entrega (el POST no lo devuelve).
     let ids = {};
-    try {
-      const lista = await listado(env, cookie, {});
-      for (const f of paraEnviar) {
-        const m = lista.filter((x) => x.telefono === f.campos.telefono && x.fecha_entrega === f.campos.fecha_entrega).sort((a, b) => b.fecha_pedido.localeCompare(a.fecha_pedido))[0];
-        if (m) ids[f.whatsapp] = m.id_pedido;
-      }
-    } catch (err) { console.error("dinsides: ids", err.message); }
+    for (let intento = 0; intento < 2 && Object.keys(ids).length < paraEnviar.length; intento++) {
+      if (intento) await new Promise((r) => setTimeout(r, 2500));
+      try {
+        const lista = await listado(env, cookie, {});
+        for (const f of paraEnviar) {
+          const m = lista.filter((x) => x.telefono === f.campos.telefono && x.fecha_entrega === f.campos.fecha_entrega && !/ANULADO/i.test(x.seguimiento))
+            .sort((a, b) => b.fecha_pedido.localeCompare(a.fecha_pedido))[0];
+          if (m) ids[f.whatsapp] = m.id_pedido;
+        }
+      } catch (err) { console.error("dinsides: ids", err.message); }
+    }
     for (const f of paraEnviar) f.nro = ids[f.whatsapp] || "";
     // Dinsides responde 1 aunque descarte un pedido en silencio (p. ej. mismo teléfono que otro pedido abierto, 2026-11-08):
     // solo cuenta como registrado lo que aparece en su listado con su id. Lo demás se devuelve como «no confirmado».

@@ -8,7 +8,7 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
     python3 scripts/asesor/shalom.py buscar "<lo que escribió el cliente>"
         -> las agencias que mejor calzan (ciudad, distrito, avenida, nombre), con su código, dirección y horario. Si calzan varias,
            hay que preguntarle al cliente (el reporte lo marca «CONFIRMAR AGENCIA»).
-    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--solo N] [--agencias ajustes.json] [--sin-ventas] [--subir] [--salida x.xlsx]
+    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--solo N] [--agencias ajustes.json] [--clave NNNN] [--sin-ventas] [--subir] [--salida x.xlsx]
         -> el Excel del «Formato Pro Masivo» de Shalom con los pedidos de PROVINCIA confirmados del registro del reporte de esa(s)
            fecha(s) de despacho (DNI, teléfono, agencia de destino, PAQUETE XXS, 1 unidad, origen CHORRILLOS CO). Varias fechas = un
            simulacro con varios días. Junto al Excel sale «…-referencia.xlsx» (NO se sube a Shalom) con, por fila: nombre, WhatsApp, lo
@@ -21,6 +21,9 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
            existe una venta abierta con ese DNI devuelve esa): así la CLAVE DE SEGURIDAD de 4 dígitos que hay que teclear en Shalom
            Pro es la misma que el CRM le mandará al cliente cuando pague el saldo. La clave va en el archivo de referencia (nunca en
            Telegram ni al cliente).
+           --clave NNNN: la clave de seguridad del día que el dueño le dijo a la sesión; se usa para TODAS las ventas nuevas del lote
+           (así en Shalom Pro basta «CLAVE MASIVA»). Sin --clave, el Worker asigna la clave de cada envío (la menos usada entre las
+           ventas abiertas). Una venta que ya existía conserva la suya: la referencia lo dice.
            --subir: deja el Excel y la referencia en CRM → Reportes (links) para descargarlos desde cualquier lado.
     python3 scripts/asesor/shalom.py telegram "texto"   -> aviso al dueño por el Worker (sin claves).
 
@@ -207,7 +210,10 @@ def llenar_plantilla(filas, salida):
         raise RuntimeError("la plantilla de Shalom tiene 499 filas de datos como máximo")
     for i, f in enumerate(filas):
         r = i + 2
-        hoja = poner(hoja, r, "A", 4, re.sub(r"\D", "", str(f.get("dni") or "")), "n")
+        dni = re.sub(r"\D", "", str(f.get("dni") or ""))
+        # Un DNI que empieza en 0 («00485469») va como texto: como número perdería los ceros. Los demás, como número (igual que
+        # el ejemplo de la plantilla).
+        hoja = poner(hoja, r, "A", 4, dni, "s" if dni.startswith("0") else "n")
         hoja = poner(hoja, r, "B", 4, re.sub(r"\D", "", str(f.get("tel") or "")), "n")
         hoja = poner(hoja, r, "F", 1, f.get("origen") or ORIGEN, "s")
         hoja = poner(hoja, r, "G", 1, f.get("destino") or "", "s")
@@ -260,6 +266,9 @@ def cmd_masivo(args):
         ajustes = {re.sub(r"\D", "", k)[-9:]: v for k, v in json.load(open(args[args.index("--agencias") + 1])).items()}
     nombres_agencia = {a["agencia"] for a in cargar()["agencias"]}
     con_ventas = "--sin-ventas" not in args
+    clave_dia = args[args.index("--clave") + 1] if "--clave" in args else ""
+    if clave_dia and not re.fullmatch(r"\d{4}", clave_dia):
+        sys.exit("--clave debe ser de 4 dígitos.")
     fila = 2; revisar = []; claves = {}
     for p in pedidos:
         if tope and fila - 2 >= tope:
@@ -284,13 +293,16 @@ def cmd_masivo(args):
         clave = ""
         if con_ventas and dni and destino:
             adelanto, saldo = montos(p)
-            v = pedir_worker("/ventas", {"accion": "crear", "dni": dni, "celular": tel, "envio": "Shalom", "adelanto": adelanto, "saldo": saldo,
-                                         "notas": f"{p.get('nombre') or ''} · {destino}"[:80]})
+            cuerpo = {"accion": "crear", "dni": dni, "celular": tel, "envio": "Shalom", "adelanto": adelanto, "saldo": saldo,
+                      "notas": f"{p.get('nombre') or ''} · {destino}"[:80]}
+            if clave_dia:
+                cuerpo["clave"] = clave_dia
+            v = pedir_worker("/ventas", cuerpo)
             clave = str(v.get("clave") or "")
             if v.get("error"):
                 aviso.append(f"Ventas: {v['error']}"); revisar.append(f"{p.get('nombre')}: no se pudo crear/leer la venta en la hoja Ventas: {v['error']}")
             elif v.get("nuevo") is False:
-                aviso.append("ya tenía venta abierta en la hoja Ventas (se usa su clave)")
+                aviso.append("ya tenía venta abierta en la hoja Ventas (se usa su clave)" + (f", distinta de la del día" if clave_dia and clave and clave != clave_dia else ""))
             claves[k9] = clave
         if not dni:
             aviso.append("sin DNI en el registro: pedirlo o buscarlo en el chat"); revisar.append(f"{p.get('nombre')}: sin DNI en el registro")
@@ -324,7 +336,7 @@ def cmd_masivo(args):
 
 
 def cmd_telegram(texto):
-    if re.search(r"\b(3114|3143|3144)\b", texto) or re.search(r"clave\D{0,6}\d{4}", texto, re.I):
+    if re.search(r"clave\D{0,8}\d{4}", texto, re.I) or re.search(r"\b\d{4}\b(?!-\d{2})", texto):
         sys.exit("El aviso lleva una clave de 4 dígitos: quítala (las claves solo van en el archivo de referencia).")
     r = pedir_worker("/avisos", {"informe": f"Shalom — envío masivo\n\n{texto}", "origen": "shalom (aviso)"})
     print(json.dumps(r, ensure_ascii=False))

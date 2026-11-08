@@ -167,6 +167,12 @@ check("la memoria anota la anulación", JSON.parse(r2.get(`dinsides/${FECHA}.jso
 r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
 check("un pedido anulado deja de contar como registrado (se puede volver a registrar)", !(r.json.pedidos.find((f) => f.whatsapp === "51988888880") || {}).ya_registrado, JSON.stringify(r.json.pedidos.map((f) => [f.whatsapp, f.ya_registrado])));
 
+// 7c2. quitar: repara la memoria cuando un registro quedó como hecho y no lo está
+r = await pedir("POST", { accion: "quitar", fecha: FECHA, whatsapp: "51957845104", motivo: "prueba" });
+check("quitar saca al WhatsApp de la memoria y del índice", r.json.ok && r.json.quitados === 1 && !JSON.parse(r2.get("dinsides/indice.json"))["957845104"], JSON.stringify(r.json));
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+check("tras quitar, vuelve a estar listo para registrarse", (r.json.pedidos.find((f) => f.whatsapp === "51957845104") || {}).listo === true);
+
 // 7d. editar: mover la fecha de entrega de Gladys una semana (como pide el dueño: todo se puede editar antes de la ruta)
 const idGladys = listadoFalso.find((x) => x.telefono_destinatario === "957845104").id_pedido;
 const nuevaFecha = new Date(new Date(`${FECHA}T00:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10);
