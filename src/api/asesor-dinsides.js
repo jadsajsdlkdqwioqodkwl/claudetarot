@@ -26,7 +26,7 @@
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas, buscarDistrito } from "../lib/dinsides.js";
-import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado as listadoDinsides, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
+import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
 import { filasPedidosAuto, marcarDinsidesEnHoja, upsertPedidosAuto } from "./asesor-pedidos-sheet.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
 
@@ -203,7 +203,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
 
 /** Cruza el historial de Dinsides con las filas de «Pedidos auto» y los chats: los ojos del reporte. */
 async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
-  const lista = await listadoDinsides(env, cookie, { desde, hasta });
+  const lista = await listado(env, cookie, { desde, hasta });
   let hoja = [];
   if (env.GOOGLE_SHEET_ID) { try { hoja = await filasPedidosAuto(env); } catch (err) { console.error("dinsides estados: hoja", err.message); } }
   const porTel = new Map();
@@ -328,7 +328,7 @@ export async function onRequestGet({ request, env }) {
     if (url.searchParams.get("listado") === "1") {
       if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
       const { cookie } = await login(env);
-      const lista = await listadoDinsides(env, cookie, { desde: url.searchParams.get("desde") || "", hasta: url.searchParams.get("hasta") || "" });
+      const lista = await listado(env, cookie, { desde: url.searchParams.get("desde") || "", hasta: url.searchParams.get("hasta") || "" });
       return json({ ok: true, total: lista.length, pedidos: lista });
     }
     const { fichas, registro, conocidos: delSistema } = await armarTodo(env, fecha);
@@ -380,11 +380,11 @@ export async function onRequestPost({ request, env }) {
       const ids = (Array.isArray(p.ids) ? p.ids : [p.id]).map((x) => String(x || "").replace(/\D/g, "")).filter(Boolean);
       if (!ids.length) return json({ error: "Falta id o ids del pedido a anular." }, 400);
       const { cookie } = await login(env);
-      const antes = await listadoDinsides(env, cookie, {});
+      const antes = await listado(env, cookie, {});
       const mios = ids.filter((id) => antes.some((x) => x.id_pedido === id));
       if (!mios.length) return json({ error: "Ninguno de esos ids está en el listado de pedidos de este negocio." }, 404);
       const r = await anularEnDinsides(env, cookie, mios);
-      const despues = (await listadoDinsides(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento,
+      const despues = (await listado(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento,
         en_ruta: Boolean(r.resultados.find((y) => y.id_pedido === x.id_pedido)?.en_ruta) }));
       const reg = await registroDe(env, fecha);
       for (const x of despues) { const m = reg.registros.find((y) => String(y.nro) === x.id_pedido); if (m) { m.anulado = ahoraLima(); m.seguimiento = x.seguimiento; } }
@@ -483,7 +483,7 @@ export async function onRequestPost({ request, env }) {
     // El id que Dinsides le dio a cada pedido: se busca en el listado por teléfono y fecha de entrega (el POST no lo devuelve).
     let ids = {};
     try {
-      const lista = await listadoDinsides(env, cookie, {});
+      const lista = await listado(env, cookie, {});
       for (const f of paraEnviar) {
         const m = lista.filter((x) => x.telefono === f.campos.telefono && x.fecha_entrega === f.campos.fecha_entrega).sort((a, b) => b.fecha_pedido.localeCompare(a.fecha_pedido))[0];
         if (m) ids[f.whatsapp] = m.id_pedido;
