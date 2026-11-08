@@ -1434,3 +1434,10 @@ PASO 4 — Cuando te respondan en esta sesión
 - Si te dan la clave del día (o la corrigen): `python3 scripts/asesor/shalom.py clave NNNN /tmp/shalom/lote.json` y confirma cuántas ventas quedaron con ella.
 - Si te dan la agencia o el DNI de un pendiente: agrégalo a /tmp/shalom/agencias.json (o corrige el dato) y vuelve a correr el PASO 2 con `--subir` (y `--clave` si ya la tienes); manda los links nuevos. Nunca inventes una agencia ni un DNI.
 ```
+
+## 2026-11-08 (noche 4) · Instrucciones para la cuenta de Jennifer (opción 2 de tercerización)
+
+Jennifer corre el registro de envíos desde SU cuenta de Claude. No hay Routine nueva en la cuenta del dueño. Su Project o Routine
+manual lleva solo el «arranque» que está en `docs/envios-jennifer.md` (sección «Arranque»); ese archivo es la fuente de verdad de los
+pasos (Dinsides A, Shalom B) y se mantiene desde el repo. Copia legible: Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
+(compartido con el correo del dueño y el correo de la empresa (el que usa Jennifer)). Cambios al flujo: se editan en el .md y se regenera el Doc.

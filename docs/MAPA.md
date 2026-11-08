@@ -2081,3 +2081,28 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   clave del asesor en su entorno; conviene una clave propia y acotada (solo Dinsides, Shalom, chat de lectura, Reportes y avisos) que
   habría que agregar al Worker. Recomendación: (1), porque el flujo ya es determinista salvo leer el chat, y eso la asesora lo hace en el
   CRM. Boletas pueden quedarse con el dueño (él manda las fotos).
+
+## 2026-11-08 (noche 4) · Tercerización opción 2 (decisión del dueño): Jennifer corre el registro de envíos en su propia cuenta de Claude
+
+- **Decisión del dueño:** opción 2. Jennifer usa su propio Project / Routine de Claude con la MISMA clave del asesor (`ASESOR_CLAVE`
+  en su entorno, el dueño se la pasa fuera del repo). Nada cambia en el Worker ni en las Routines del dueño (las de Dinsides y Shalom
+  v3 siguen vivas en su sesión fija; ver `docs/routines.md`).
+- **Fuente de verdad de las instrucciones: `docs/envios-jennifer.md`** (nuevo). Lleva (a) el «arranque»: el ÚNICO texto que va en el
+  Project o Routine de Jennifer, que clona/actualiza el repo y le dice a Claude que lea ese archivo; (b) reglas fijas del dueño;
+  (c) pasos A (Dinsides) y B (Shalom) con los mismos comandos de los prompts v3 y la vuelta de respuestas en la sesión (PASO 6 / PASO 4).
+  Así Jennifer NUNCA edita su prompt: cualquier mejora se hace en ese archivo del repo y entra sola en la siguiente corrida.
+- **Copia legible en Google Docs:** «Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
+  (https://docs.google.com/document/d/1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c/edit), dueño: la cuenta de Google del dueño,
+  compartido como editor con el correo de la empresa (el que usa Jennifer). Se regenera desde el .md cuando cambie
+  (conector de Google Docs, nunca a mano). No es la fuente: si el Doc y el .md difieren, manda el .md.
+- **La hoja de pedidos («Pedidos Tarot Kit» → pestaña «Pedidos auto», gid 1131206013):** su dueño YA es la cuenta de Google del dueño
+  (también editores: las tres vendedoras y la cuenta de servicio del Worker
+  (la misma de siempre)). Link directo:
+  https://docs.google.com/spreadsheets/d/1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc/edit#gid=1131206013 . **Falta** agregar a
+  el correo de la empresa (el que usa Jennifer) como editor: el conector de Drive de esta sesión no tiene permiso para compartir ese archivo (lo intentó el
+  2026-11-08 y Google respondió «The caller does not have permission»); lo comparte el dueño desde Compartir en la hoja.
+- **Qué necesita Jennifer en su cuenta:** (1) acceso al repo (ya lo tiene); (2) variable `ASESOR_CLAVE` en el entorno de su sesión de
+  Claude Code (misma clave del asesor; la pone ella, el dueño se la dicta fuera de la sesión); (3) el «arranque» de
+  `docs/envios-jennifer.md` como prompt de su Project o de una Routine manual («Run now»), igual que las del dueño. Telegram sigue
+  avisando al dueño desde el Worker (`dinsides.py telegram`, `shalom.py telegram`). Pendiente (idea, no hecho): una clave del asesor
+  acotada solo a Dinsides/Shalom/lectura de chat/Reportes para no compartir la clave completa.
