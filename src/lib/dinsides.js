@@ -284,11 +284,15 @@ export function armarPedido(pedido, ctx = {}) {
   if (dicho) {
     distrito = dicho;
     if (zona?.distrito && zona.distrito !== dicho.clave) alertas.push(`DISTRITO: se puso «${dicho.clave}» pero el pin cae en «${zona.distrito}» según el mapa de Dinsides`);
+  } else if (zona?.distrito && zona.clase === "entrega") {
+    // Regla del dueño (2026-11-08): el distrito que vale es el del MAPA DE COBERTURA de Dinsides (donde cae el pin); si el
+    // texto dice otro, Dinsides rechaza el pedido. Se usa el del mapa y se avisa la diferencia.
+    distrito = buscarDistrito(zona.distrito);
+    if (enTexto.distritos.length && !enTexto.distritos.includes(zona.distrito)) {
+      alertas.push(`DISTRITO: la dirección dice «${enTexto.distritos.join("/")}» pero el pin cae en «${zona.distrito}» en el mapa de Dinsides: va el del mapa`);
+    } else if (!enTexto.distritos.length) alertas.push(`DISTRITO: deducido del pin (${zona.nombre}); la dirección no lo nombra`);
   } else if (enTexto.distritos.length === 1) {
     distrito = buscarDistrito(enTexto.distritos[0]);
-    if (zona?.distrito && zona.distrito !== distrito.clave) {
-      bloqueos.push(`DISTRITO: la dirección dice «${distrito.clave}» pero el pin cae en «${zona.distrito}» (mapa de Dinsides). Confirmar cuál es`);
-    }
   } else if (enTexto.distritos.length > 1) {
     bloqueos.push(`DISTRITO: la dirección nombra varios (${enTexto.distritos.join(", ")}); elegir uno`);
   } else if (zona?.distrito) {

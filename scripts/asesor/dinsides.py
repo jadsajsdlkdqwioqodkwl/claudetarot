@@ -25,6 +25,12 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
     python3 scripts/asesor/dinsides.py script [/tmp/dinsides/salida.json]    -> solo el script de consola (F12) de los listos.
     python3 scripts/asesor/dinsides.py marcar <whatsapp> [nro] [motivo…]      -> alguien lo registró a mano: queda en la memoria.
     python3 scripts/asesor/dinsides.py telegram "texto"                       -> resumen al dueño (sale por el Worker).
+    python3 scripts/asesor/dinsides.py estados [desde AAAA-MM-DD] [hasta AAAA-MM-DD] [--solo-ver]
+        -> Los ojos del reporte: lee el historial de Dinsides (ENTREGADO, ANULADO, RECHAZADO, REGISTRADO), lo cruza con la hoja
+           «Pedidos auto» y marca «entregado #id» / «anulado…» en la columna Dinsides (y «Enviado» si estaba vacío) y la etiqueta
+           del chat. --solo-ver no marca nada.
+    python3 scripts/asesor/dinsides.py listado [desde] [hasta]                 -> el historial de Dinsides tal cual (id, nombre, tel, estado).
+    python3 scripts/asesor/dinsides.py anular <id_pedido…> [--motivo "…"]      -> anula pedidos propios (solo los de hoy aún no enviados).
 """
 import datetime as dt, json, os, sys, urllib.error, urllib.request
 
@@ -244,6 +250,45 @@ def cmd_telegram(texto):
     print(json.dumps(r, ensure_ascii=False))
 
 
+def cmd_estados(args):
+    fechas = [a for a in args if len(a) == 10 and a[4] == "-"]
+    body = {"accion": "estados", "marcar": "--solo-ver" not in args}
+    if fechas:
+        body["desde"] = fechas[0]
+        body["hasta"] = fechas[1] if len(fechas) > 1 else fechas[0]
+    st, r = pedir("/dinsides", "POST", body, timeout=240)
+    salir_si_error(st, r)
+    if r.get("error"):
+        sys.exit(f"❌ {r.get('error')}: {r.get('detalle') or ''}")
+    print(f"Pedidos en Dinsides: {r.get('total')} · entregados {len(r.get('entregados', []))} · pendientes {len(r.get('pendientes', []))} · "
+          f"anulados {len(r.get('anulados', []))} · rechazados {len(r.get('rechazados', []))} · marcados en la hoja: {r.get('marcados')} · chats etiquetados: {r.get('etiquetados')}")
+    for k, titulo in (("pendientes", "PENDIENTES en Dinsides"), ("rechazados", "RECHAZADOS"), ("sin_fila_en_hoja", "EN DINSIDES PERO SIN FILA EN «Pedidos auto»")):
+        if r.get(k):
+            print(f"\n{titulo}:")
+            for x in r[k][:60]:
+                print(f"  #{x['id_pedido']} · {x['nombre']} · {x['telefono']} · {x['distrito']} · entrega {x['fecha_entrega']} · {x['seguimiento']} · S/{x['monto']}")
+
+
+def cmd_listado(args):
+    fechas = [a for a in args if len(a) == 10 and a[4] == "-"]
+    q = "&".join(f"{k}={v}" for k, v in zip(("desde", "hasta"), fechas))
+    st, r = pedir(f"/dinsides?listado=1&{q}", timeout=240)
+    salir_si_error(st, r)
+    for x in r.get("pedidos", []):
+        print(f"#{x['id_pedido']} · {x['fecha_pedido'][:16]} · entrega {x['fecha_entrega']} · {x['nombre']} · {x['telefono']} · {x['distrito']} · {x['seguimiento']} · S/{x['monto_cobrar']} · {x['detalle'][:40]}")
+    print(f"total {r.get('total')}")
+
+
+def cmd_anular(args):
+    ids = [a for a in args if a.isdigit()]
+    motivo = args[args.index("--motivo") + 1] if "--motivo" in args else ""
+    if not ids:
+        sys.exit("Falta el id del pedido (número) a anular.")
+    st, r = pedir("/dinsides", "POST", {"accion": "anular", "ids": ids, "motivo": motivo}, timeout=180)
+    salir_si_error(st, r)
+    print(json.dumps(r, ensure_ascii=False, indent=1))
+
+
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
@@ -263,6 +308,12 @@ def main():
         cmd_marcar(resto)
     elif cmd == "telegram" and resto:
         cmd_telegram(" ".join(resto))
+    elif cmd == "estados":
+        cmd_estados(resto)
+    elif cmd == "listado":
+        cmd_listado(resto)
+    elif cmd == "anular" and resto:
+        cmd_anular(resto)
     else:
         sys.exit(__doc__)
 

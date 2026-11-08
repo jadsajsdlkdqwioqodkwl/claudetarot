@@ -86,7 +86,7 @@ p = D.armarPedido({ nombre: "Sin distrito", whatsapp: "51999999998", direccion_o
 check("sin distrito ni pin → BLOQUEO de distrito", !p.listo && p.bloqueos.some((b) => /^DISTRITO: no se deduce/.test(b)), JSON.stringify(p.bloqueos));
 
 p = D.armarPedido({ nombre: "Choque", whatsapp: "51999999997", direccion_o_agencia: "Av Arequipa 1200, Lince", coordenadas: "-12.1211,-77.0297", estado: "CONFIRMADO" }, ctx);
-check("texto dice Lince y el pin cae en Miraflores → BLOQUEO", !p.listo && p.bloqueos.some((b) => /Lince.*miraflores|lince.*miraflores/i.test(b)), JSON.stringify(p.bloqueos));
+check("texto dice Lince y el pin cae en Miraflores → manda el MAPA de Dinsides (miraflores) y avisa", p.listo && p.campos.distrito === "miraflores" && p.alertas.some((a) => /lince.*miraflores/i.test(a)), JSON.stringify(p));
 
 p = D.armarPedido({ nombre: "Zona roja", whatsapp: "51999999996", direccion_o_agencia: "Av Néstor Gambetta km 5, Callao", coordenadas: "-12.0443,-77.1269", estado: "CONFIRMADO" }, ctx);
 check("pin en zona sin entregas → BLOQUEO ZONA ROJA", !p.listo && p.bloqueos.some((b) => /^ZONA ROJA/.test(b)), JSON.stringify(p.bloqueos));

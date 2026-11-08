@@ -26,8 +26,8 @@
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas } from "../lib/dinsides.js";
-import { login, formulario, registrar as registrarEnDinsides, hayCredenciales } from "../lib/dinsides-cliente.js";
-import { filasPedidosAuto, marcarDinsidesEnHoja } from "./asesor-pedidos-sheet.js";
+import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado as listadoDinsides, anular as anularEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
+import { filasPedidosAuto, marcarDinsidesEnHoja, upsertPedidosAuto } from "./asesor-pedidos-sheet.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
 
 const json = (data, status = 200) =>
@@ -180,7 +180,58 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }
+  // Pedidos que la Routine agrega (candidatos del CRM que el reporte no trae): vienen completos en la corrección.
+  for (const [k, corr] of correcciones) {
+    if (fichas.some((f) => n9(f.whatsapp) === k) || !(corr.direccion || corr.distrito || corr.nombre)) continue;
+    const chat = await datosDelChat(env, k).catch(() => null);
+    const base = { whatsapp: "51" + k, nombre: corr.nombre || chat?.nombre_crm || "", direccion_o_agencia: corr.direccion || "", distrito: corr.distrito || "",
+      coordenadas: corr.coordenadas || "", ubicacion: chat?.ubicacion || "", telefono: corr.telefono || "", cobrar: corr.cobrar, tipo_pago: corr.tipo_pago,
+      nota: corr.nota || "", fecha_entrega: corr.fecha_entrega || "", kits: corr.kits, empaque: corr.empaque, estado: corr.estado || "CONFIRMADO", destino: "LIMA" };
+    const f = armarPedido(base, { fecha_objetivo: fechaObjetivo });
+    f.whatsapp = "51" + k; f.conversation_id = chat?.conversation_id || null; f.asesora = chat?.asesora || ""; f.origen = "routine"; f.estado_reporte = base.estado;
+    f.destino = "LIMA"; f.direcciones_chat = chat?.direcciones_chat || []; f.ubicacion = chat?.ubicacion ? { body: chat.ubicacion } : null; f.hoja = null; f.base = base;
+    const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
+    if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
+    else if (chat?.ya_etiquetado) f.ya_registrado = { modo: "etiqueta dinsides_registrado en el chat" };
+    f.listo = f.listo && !f.ya_registrado;
+    fichas.push(f);
+  }
+  await comprobarConElMapa(fichas.filter((f) => f.listo));
   return { fichas, registro: reg, conocidos };
+}
+
+/** Cruza el historial de Dinsides con las filas de «Pedidos auto» y los chats: los ojos del reporte. */
+async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
+  const lista = await listadoDinsides(env, cookie, { desde, hasta });
+  let hoja = [];
+  if (env.GOOGLE_SHEET_ID) { try { hoja = await filasPedidosAuto(env); } catch (err) { console.error("dinsides estados: hoja", err.message); } }
+  const porTel = new Map();
+  for (const f of hoja) { const k = n9(f.whatsapp); if (k) (porTel.get(k) || porTel.set(k, []).get(k)).push(f); }
+  const resumen = { entregados: [], anulados: [], rechazados: [], pendientes: [], otros: [], sin_fila_en_hoja: [], marcados: 0, etiquetados: 0 };
+  for (const ped of lista) {
+    const clase = claseSeguimiento(ped.seguimiento);
+    const filas = porTel.get(ped.telefono) || [];
+    const fila = filas.find((f) => f.fecha_entrega === ped.fecha_entrega) || filas.find((f) => !f.enviado) || filas[filas.length - 1] || null;
+    const item = { id_pedido: ped.id_pedido, nombre: ped.nombre, telefono: ped.telefono, distrito: ped.distrito, fecha_entrega: ped.fecha_entrega, seguimiento: ped.seguimiento,
+      monto: ped.monto_cobrar, fila_hoja: fila?.fila || null, dinsides_hoja: fila?.dinsides || "" };
+    (resumen[{ entregado: "entregados", anulado: "anulados", rechazado: "rechazados", pendiente: "pendientes" }[clase] || "otros"]).push(item);
+    if (!fila) { if (clase !== "anulado") resumen.sin_fila_en_hoja.push(item); continue; }
+    if (!marcar) continue;
+    const yaDice = String(fila.dinsides || "").toLowerCase();
+    if (clase === "entregado" && !/entregado/.test(yaDice)) {
+      await marcarDinsidesEnHoja(env, fila.whatsapp, `entregado ${ped.fecha_entrega} #${ped.id_pedido}`, `Dinsides entregado ${ped.fecha_entrega}`).catch(() => null);
+      resumen.marcados++;
+      const chat = await datosDelChat(env, ped.telefono).catch(() => null);
+      if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, "dinsides_entregado").catch(() => null); resumen.etiquetados++; }
+    } else if ((clase === "anulado" || clase === "rechazado") && !/anulado|rechazado/.test(yaDice)) {
+      await marcarDinsidesEnHoja(env, fila.whatsapp, `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}`).catch(() => null);
+      resumen.marcados++;
+      const chat = await datosDelChat(env, ped.telefono).catch(() => null);
+      if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, `dinsides_${clase}`).catch(() => null); resumen.etiquetados++; }
+    }
+  }
+  resumen.total = lista.length;
+  return resumen;
 }
 
 /** Chats de la noche (y del día anterior) con pinta de pedido de Lima que el reporte no trae (pin, dirección en texto o compra marcada). */
@@ -225,6 +276,40 @@ async function candidatosCrm(env, fechaVenta, conocidos) {
   return [...porWa.values()].slice(0, 40).map((c) => ({ ...c, parece_provincia: c.senales.some((s) => PROVINCIA_RE.test(s)) }));
 }
 
+/**
+ * Dirección en texto → lat,lng aproximada con Nominatim (OpenStreetMap, gratis, 1 consulta por segundo). Solo para comprobar
+ * contra el mapa de cobertura de Dinsides si la dirección cae en el distrito que dice el texto; nunca se manda a Dinsides.
+ */
+async function geocodificar(direccion, distrito) {
+  const q = `${direccion}, ${distrito || ""}, Lima, Perú`.replace(/\s+/g, " ");
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=pe&q=${encodeURIComponent(q)}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "TarotStore-CRM/1.0 (registro de pedidos)", Accept: "application/json" }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const [hit] = await res.json();
+    if (!hit) return null;
+    const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
+    if (lat < -12.9 || lat > -11.4 || lng < -77.4 || lng > -76.4) return null;
+    return { lat, lng, nombre: String(hit.display_name || "").slice(0, 160) };
+  } catch { return null; }
+}
+
+async function comprobarConElMapa(fichas) {
+  let n = 0;
+  for (const f of fichas) {
+    if (f.campos.coordenadas || !f.campos.direccion || !f.campos.distrito || n >= 12) continue;
+    n++;
+    const g = await geocodificar(f.campos.direccion, f.campos.distrito);
+    if (!g) continue;
+    const z = zonaDe(g.lat, g.lng);
+    f.geocodificado = { ...g, zona: z.nombre, clase: z.clase, distrito: z.distrito || null };
+    f.distrito_fuentes.geocodificado = z.distrito || z.nombre;
+    if (z.distrito && z.distrito !== f.campos.distrito) f.alertas.push(`MAPA: la dirección (ubicada por OpenStreetMap) cae en «${z.distrito}» en el mapa de Dinsides, no en «${f.campos.distrito}»; revisar el distrito`);
+    else if (z.clase === "no_entrega") f.alertas.push(`MAPA: la dirección (ubicada por OpenStreetMap) cae en «${z.nombre}» (sin reparto); revisar`);
+    await new Promise((r) => setTimeout(r, 1100));
+  }
+}
+
 const fechaPorDefecto = () => fechaEntrega().fecha;
 
 export async function onRequestGet({ request, env }) {
@@ -239,6 +324,12 @@ export async function onRequestGet({ request, env }) {
   }
   const fecha = esIso(url.searchParams.get("fecha")) ? url.searchParams.get("fecha") : fechaPorDefecto();
   try {
+    if (url.searchParams.get("listado") === "1") {
+      if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
+      const { cookie } = await login(env);
+      const lista = await listadoDinsides(env, cookie, { desde: url.searchParams.get("desde") || "", hasta: url.searchParams.get("hasta") || "" });
+      return json({ ok: true, total: lista.length, pedidos: lista });
+    }
     const { fichas, registro, conocidos: delSistema } = await armarTodo(env, fecha);
     // Todo lo que el reporte ya trae (Lima, provincia, intención…) y lo ya registrado no es candidato.
     const conocidos = new Set([...delSistema, ...fichas.map((f) => n9(f.whatsapp)), ...registro.registros.map((r) => n9(r.whatsapp))]);
@@ -258,11 +349,12 @@ export async function onRequestGet({ request, env }) {
 
 async function despuesDeRegistrar(env, fecha, fichas, modo, extra = {}) {
   const cuando = ahoraLima();
-  const nuevos = fichas.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, campos: f.campos, cuando, modo, fecha_entrega: f.campos.fecha_entrega, ...extra }));
+  const nuevos = fichas.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, nro: f.nro || extra.nro || "", campos: f.campos, cuando, modo, fecha_entrega: f.campos.fecha_entrega, ...extra }));
   await anotarRegistros(env, fecha, nuevos, { modo, origen: extra.origen || "" });
   const hoja = [], etiquetas = [];
   for (const f of fichas) {
-    const texto = modo === "manual" ? `manual ${extra.nro || ""} ${cuando}`.replace(/\s+/g, " ").trim() : `registrado ${cuando}${extra.nro ? ` #${extra.nro}` : ""}`;
+    const nro = f.nro || extra.nro || "";
+    const texto = modo === "manual" ? `manual ${nro} ${cuando}`.replace(/\s+/g, " ").trim() : `registrado ${cuando}${nro ? ` #${nro}` : ""}`;
     hoja.push(await marcarDinsidesEnHoja(env, f.whatsapp, texto, `Dinsides ${f.campos.fecha_entrega}`).catch((err) => ({ error: err.message })));
     if (f.conversation_id) etiquetas.push(await agregarEtiquetaMeta(env.CRM_DB, f.conversation_id, "dinsides_registrado").then(() => "ok").catch((err) => err.message));
   }
@@ -273,9 +365,31 @@ export async function onRequestPost({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const p = await request.json().catch(() => null);
-  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script)." }, 400);
+  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular)." }, 400);
   const fecha = esIso(p.fecha) ? p.fecha : fechaPorDefecto();
   try {
+    if (p.accion === "estados") {
+      if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
+      const { cookie } = await login(env);
+      const r = await cruzarEstados(env, cookie, { desde: esIso(p.desde) ? p.desde : "", hasta: esIso(p.hasta) ? p.hasta : "", marcar: p.marcar !== false });
+      return json({ ok: true, ...r });
+    }
+    if (p.accion === "anular") {
+      if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
+      const ids = (Array.isArray(p.ids) ? p.ids : [p.id]).map((x) => String(x || "").replace(/\D/g, "")).filter(Boolean);
+      if (!ids.length) return json({ error: "Falta id o ids del pedido a anular." }, 400);
+      const { cookie } = await login(env);
+      const antes = await listadoDinsides(env, cookie, {});
+      const mios = ids.filter((id) => antes.some((x) => x.id_pedido === id));
+      if (!mios.length) return json({ error: "Ninguno de esos ids está en el listado de pedidos de este negocio." }, 404);
+      const r = await anularEnDinsides(env, cookie, mios);
+      const despues = (await listadoDinsides(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento }));
+      const reg = await registroDe(env, fecha);
+      for (const x of despues) { const m = reg.registros.find((y) => String(y.nro) === x.id_pedido); if (m) { m.anulado = ahoraLima(); m.seguimiento = x.seguimiento; } }
+      reg.corridas.push({ modo: "anular", ids: mios, cuando: ahoraLima(), motivo: String(p.motivo || "") });
+      await escribirJson(env, `dinsides/${fecha}.json`, reg);
+      return json({ ok: r.ok, respuesta: r.respuesta, anulados: despues, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
+    }
     if (p.accion === "probar") {
       if (!hayCredenciales(env)) return json({ error: "sin_credenciales", detalle: "Faltan los secretos DINSIDES_TLF y DINSIDES_CLAVE del Worker (wrangler secret put)." }, 503);
       const { cookie, perfil } = await login(env);
@@ -339,8 +453,27 @@ export async function onRequestPost({ request, env }) {
     if (!paraEnviar.length) return json({ ok: true, fecha, registrados: [], no_van: noVan, avisos: avisosForm, sin_pedido_en_el_sistema: pedidosFaltantes });
     const r = await registrarEnDinsides(env, cookie, payload);
     if (!r.ok) return json({ error: "dinsides_rechazo", detalle: r.detalle, respuesta: r.respuesta, fecha, listos: paraEnviar.map((f) => f.campos), no_van: noVan, avisos: avisosForm }, 502);
+    // El id que Dinsides le dio a cada pedido: se busca en el listado por teléfono y fecha de entrega (el POST no lo devuelve).
+    let ids = {};
+    try {
+      const lista = await listadoDinsides(env, cookie, {});
+      for (const f of paraEnviar) {
+        const m = lista.filter((x) => x.telefono === f.campos.telefono && x.fecha_entrega === f.campos.fecha_entrega).sort((a, b) => b.fecha_pedido.localeCompare(a.fecha_pedido))[0];
+        if (m) ids[f.whatsapp] = m.id_pedido;
+      }
+    } catch (err) { console.error("dinsides: ids", err.message); }
+    for (const f of paraEnviar) f.nro = ids[f.whatsapp] || "";
     const despues = await despuesDeRegistrar(env, fecha, paraEnviar, "api", { origen: String(p.origen || ""), respuesta_dinsides: r.respuesta });
-    return json({ ok: true, fecha, registrados: paraEnviar.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, distrito: f.campos.distrito, fecha_entrega: f.campos.fecha_entrega, cobrar: f.campos.cobrar, tipo_pago: f.campos.tipo_pago, alertas: f.alertas })),
+    // Los que el reporte no traía (los agregó la Routine) entran a la hoja «Pedidos auto» para que el reporte de la noche los vea.
+    const nuevosEnHoja = paraEnviar.filter((f) => f.origen === "routine");
+    if (nuevosEnHoja.length) {
+      despues.hoja_nuevas = await upsertPedidosAuto(env, fecha, String(p.origen || "dinsides"), nuevosEnHoja.map((f) => ({
+        nombre: f.campos.nombre, whatsapp: f.whatsapp, destino: "LIMA", estado: "CONFIRMADO", vendedora: f.asesora, direccion_o_agencia: f.campos.direccion,
+        kits: f.base?.kits ?? 1, empaque: f.base?.empaque || "", pago: f.campos.tipo_pago, nota: f.campos.obs, fecha_entrega: f.campos.fecha_entrega, fecha_venta: sumarDias(fecha, -1)
+      }))).catch((err) => ({ error: err.message }));
+      for (const f of nuevosEnHoja) await marcarDinsidesEnHoja(env, f.whatsapp, `registrado ${ahoraLima()}${f.nro ? ` #${f.nro}` : ""}`, `Dinsides ${f.campos.fecha_entrega}`).catch(() => null);
+    }
+    return json({ ok: true, fecha, registrados: paraEnviar.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, nro: f.nro || "", distrito: f.campos.distrito, fecha_entrega: f.campos.fecha_entrega, cobrar: f.campos.cobrar, tipo_pago: f.campos.tipo_pago, alertas: f.alertas })),
       no_van: noVan, avisos: avisosForm, sin_pedido_en_el_sistema: pedidosFaltantes, respuesta_dinsides: r.respuesta, ...despues });
   } catch (err) {
     console.error("asesor-dinsides POST:", err.message);

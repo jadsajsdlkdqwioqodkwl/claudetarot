@@ -50,10 +50,18 @@ const HTML_FORM = `<html><body><select id="tipo_pedido"><option value="0">Selecc
 <input type="hidden" id="trecojo" value="1"><select id="tTurno"><option value="" selected>Todo el día</option><option value="M">Mañana</option></select>
 <button class="btn addPedidos" data-idn="77">Guardar</button><div id="count-down-timer"></div></body></html>`;
 const LOGIN_HTML = `<html><head><title>Dinsides Courier | Iniciar sesión</title></head><body><button id="loginUser">Entrar</button></body></html>`;
+let listadoFalso = []; // lo que devuelve pedido/getlistadoCliente
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url); const cookie = init.headers?.Cookie || "";
   llamadas.push({ url: u, method: init.method || "GET", body: init.body || "", cookie });
   const resp = (status, body, headers = {}) => new Response(body, { status, headers });
+  if (/nominatim\.openstreetmap\.org/.test(u)) return resp(200, "[]");
+  if (u.endsWith("pedido/getlistadoCliente")) return /ci_session=ok/.test(cookie) ? resp(200, JSON.stringify(listadoFalso)) : resp(200, LOGIN_HTML);
+  if (u.endsWith("pedido/anular_ped_client")) {
+    const ids = new URLSearchParams(init.body).getAll("datos[]");
+    for (const x of listadoFalso) if (ids.includes(x.id_pedido)) x.seguimiento = "ANULADO- POR TIENDA";
+    return resp(200, "1");
+  }
   if (u.endsWith("pedido/nuevo")) {
     if (/ci_session=ok/.test(cookie)) return resp(200, HTML_FORM);
     return resp(200, LOGIN_HTML, { "set-cookie": "ci_session=anon; path=/" });
@@ -68,6 +76,8 @@ globalThis.fetch = async (url, init = {}) => {
     const ps = new URLSearchParams(init.body);
     const n = ps.getAll("nombres[]").length;
     if (!n || ps.getAll("revisar[]").length !== n) return resp(200, "4");
+    ps.getAll("nombres[]").forEach((nombre, i) => listadoFalso.push({ id_pedido: String(9000 + listadoFalso.length), nombre_destinataio: nombre, telefono_destinatario: ps.getAll("tlfs[]")[i],
+      nombre_distrito: "x", fecha_pedido: `2026-11-08 2${i}:00:00`, fecha_entrega: `${ps.getAll("fechas_entrega[]")[i]} 00:00:00`, seguimiento: "REGISTRADO", monto_cobrar: ps.getAll("cobrars[]")[i] }));
     return resp(200, "1");
   }
   return resp(404, "");
@@ -105,16 +115,18 @@ r = await pedir("POST", { accion: "registrar", fecha: FECHA, simular: true });
 check("simular: arma el payload de Gladys y no manda pedido/registro", r.json.simulado && r.json.payload.nombres.length === 1 && r.json.payload.id_distritos[0] === "150140"
   && r.json.payload.negocio === "77" && !llamadas.some((l) => l.url.endsWith("pedido/registro")), JSON.stringify(r.json.payload));
 
-// 5. registrar con una corrección para el pin (dirección escrita por la persona)
-r = await pedir("POST", { accion: "registrar", fecha: FECHA, origen: "prueba", pedidos: [{ whatsapp: "51957845104" }, { whatsapp: "51999999990", direccion: "Calle Schell 345 Dpto 2, Miraflores" }] });
-check("registrar: Dinsides respondió 1 y se registraron los dos", r.status === 200 && r.json.ok && r.json.registrados.length === 2, JSON.stringify(r.json).slice(0, 500));
+// 5. registrar con una corrección para el pin (dirección escrita por la persona) y un pedido NUEVO que el reporte no traía (candidato del CRM)
+r = await pedir("POST", { accion: "registrar", fecha: FECHA, origen: "prueba", pedidos: [{ whatsapp: "51957845104" }, { whatsapp: "51999999990", direccion: "Calle Schell 345 Dpto 2, Miraflores" },
+  { whatsapp: "51988888880", nombre: "Fuera del reporte", direccion: "Jr Puno 500, Cercado de Lima, al costado del banco", distrito: "Cercado de Lima", estado: "CONFIRMADO" }] });
+check("registrar: Dinsides respondió 1 y se registraron los tres (dos del reporte + uno nuevo de la Routine)", r.status === 200 && r.json.ok && r.json.registrados.length === 3, JSON.stringify(r.json).slice(0, 600));
+check("cada registrado trae el id que le dio Dinsides (buscado en el listado por teléfono y fecha)", r.json.registrados.every((x) => /^900\d$/.test(x.nro)), JSON.stringify(r.json.registrados.map((x) => x.nro)));
 const post = llamadas.find((l) => l.url.endsWith("pedido/registro"));
 const ps = new URLSearchParams(post?.body || "");
-check("el POST lleva los arreglos como la página (nombres[], tlfs[], id_distritos[], fechas_entrega[], revisar[])", ps.getAll("nombres[]").length === 2 && ps.getAll("tlfs[]").includes("957845104")
-  && ps.getAll("id_distritos[]").includes("150122") && ps.getAll("fechas_entrega[]").every((f) => f === FECHA) && ps.getAll("revisar[]").length === 2 && ps.get("id_recojo") === "3", post?.body?.slice(0, 300));
+check("el POST lleva los arreglos como la página (nombres[], tlfs[], id_distritos[], fechas_entrega[], revisar[])", ps.getAll("nombres[]").length === 3 && ps.getAll("tlfs[]").includes("957845104")
+  && ps.getAll("id_distritos[]").includes("150122") && ps.getAll("id_distritos[]").includes("150101") && ps.getAll("fechas_entrega[]").every((f) => f === FECHA) && ps.getAll("revisar[]").length === 3 && ps.get("id_recojo") === "3", post?.body?.slice(0, 300));
 check("el POST va con la sesión iniciada y como AJAX", /ci_session=ok/.test(post?.cookie || ""));
 const reg = JSON.parse(r2.get(`dinsides/${FECHA}.json`));
-check("memoria en R2: dos registros y la corrida", reg.registros.length === 2 && reg.corridas.length === 1 && reg.registros[0].modo === "api", JSON.stringify(reg).slice(0, 200));
+check("memoria en R2: tres registros con su nro y la corrida", reg.registros.length === 3 && reg.corridas.length === 1 && reg.registros[0].modo === "api" && reg.registros[0].nro, JSON.stringify(reg).slice(0, 200));
 check("etiqueta dinsides_registrado en los chats", / dinsides_registrado/.test(` ${sq.prepare("SELECT meta_tags FROM conversations WHERE id = 1").get().meta_tags}`), String(sq.prepare("SELECT meta_tags FROM conversations WHERE id = 1").get().meta_tags));
 
 // 6. idempotencia: la segunda vez no registra nada.
@@ -123,8 +135,20 @@ r = await pedir("POST", { accion: "registrar", fecha: FECHA });
 check("segunda corrida: ya registrados, sin nuevo POST", r.json.registrados.length === 0 && r.json.no_van.filter((x) => x.ya_registrado).length === 2 && llamadas.filter((l) => l.url.endsWith("pedido/registro")).length === antes, JSON.stringify(r.json.no_van).slice(0, 300));
 
 // 7. marcar a mano uno que no estaba en el sistema
-r = await pedir("POST", { accion: "marcar", fecha: FECHA, whatsapp: "51988888880", nro: "A1", motivo: "lo registró Moi a mano" });
-check("marcar guarda el registro manual", r.json.ok && JSON.parse(r2.get(`dinsides/${FECHA}.json`)).registros.some((x) => x.whatsapp === "51988888880" && x.modo === "manual"));
+r = await pedir("POST", { accion: "marcar", fecha: FECHA, whatsapp: "51977777770", nro: "A1", motivo: "lo registró Moi a mano" });
+check("marcar guarda el registro manual", r.json.ok && JSON.parse(r2.get(`dinsides/${FECHA}.json`)).registros.some((x) => x.whatsapp === "51977777770" && x.modo === "manual"));
+
+// 7b. estados: Dinsides dice que el de Gladys ya se entregó → etiqueta en el chat (la hoja no está en esta prueba)
+listadoFalso.find((x) => x.telefono_destinatario === "957845104").seguimiento = "ENTREGADO";
+r = await pedir("POST", { accion: "estados", marcar: true });
+check("estados: clasifica el historial de Dinsides (1 entregado, 2 pendientes)", r.json.ok && r.json.entregados.length === 1 && r.json.pendientes.length === 2, JSON.stringify(r.json).slice(0, 300));
+check("sin fila en la hoja no se marca nada, pero se lista para revisar", r.json.sin_fila_en_hoja.length === 3 && r.json.marcados === 0);
+
+// 7c. anular el pedido nuevo (como el pedido de prueba) y ver que Dinsides lo deja ANULADO
+const idNuevo = listadoFalso.find((x) => x.telefono_destinatario === "988888880").id_pedido;
+r = await pedir("POST", { accion: "anular", fecha: FECHA, ids: [idNuevo, "1"], motivo: "prueba" });
+check("anular: solo anula ids del negocio y devuelve el estado nuevo", r.json.ok && r.json.anulados[0].seguimiento === "ANULADO- POR TIENDA" && r.json.no_eran_mios.includes("1"), JSON.stringify(r.json));
+check("la memoria anota la anulación", JSON.parse(r2.get(`dinsides/${FECHA}.json`)).registros.some((x) => x.nro === idNuevo && x.anulado));
 
 // 8. sin credenciales: 503 con el script de consola
 const env2 = { ...env, DINSIDES_TLF: "", DINSIDES_CLAVE: "" };

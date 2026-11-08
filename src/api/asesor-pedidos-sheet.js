@@ -98,6 +98,31 @@ const filaDe = (p, fechaObjetivo, origen) => [
   fechaLima()
 ];
 
+/**
+ * Suma o actualiza filas de «Pedidos auto» desde otro módulo (Dinsides registra un pedido que el reporte no traía):
+ * misma regla que el POST (clave = WhatsApp entre las filas sin «Enviado»). Devuelve { nuevas, actualizadas }.
+ */
+export async function upsertPedidosAuto(env, fechaObjetivo, origen, pedidos) {
+  if (!env.GOOGLE_SHEET_ID || !pedidos?.length) return { nuevas: 0, actualizadas: 0 };
+  const filas = await leerFilas(env);
+  const abiertas = new Map();
+  filas.forEach((f, i) => { const k = n9(f[3]); if (k && !String(f[14] || "").trim()) abiertas.set(k, i); });
+  let nuevas = 0, actualizadas = 0;
+  const nuevasFilas = [];
+  for (const ped of pedidos) {
+    const k = n9(ped.whatsapp);
+    const fila = filaDe(ped, fechaObjetivo, origen);
+    if (k && abiertas.has(k)) {
+      const i = abiertas.get(k);
+      if (!fila[0]) fila[0] = filas[i][0];
+      await updateValues(env, `${PESTAÑA}!A${i + 2}:N${i + 2}`, [fila]);
+      actualizadas++;
+    } else { nuevasFilas.push([...fila, "", ""]); nuevas++; }
+  }
+  if (nuevasFilas.length) await appendRowsTo(env, env.GOOGLE_SHEET_ID, PESTAÑA, nuevasFilas);
+  return { nuevas, actualizadas };
+}
+
 export async function onRequestPost({ request, env }) {
   const ip = request.headers.get("CF-Connecting-IP");
   if (!(await dentroDelLimiteAsesor(env, ip))) return json({ error: "Demasiados intentos." }, 429);

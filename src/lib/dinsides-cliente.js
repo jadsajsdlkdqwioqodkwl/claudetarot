@@ -127,3 +127,49 @@ export async function registrar(env, cookie, payload) {
   else if (!ok) detalle = `Dinsides respondió http ${r.status}: ${typeof respuesta === "string" ? respuesta : JSON.stringify(respuesta)}`;
   return { ok, respuesta, status: r.status, detalle };
 }
+
+/**
+ * Historial de pedidos del negocio (la tabla «Listado de pedidos Lima»): POST pedido/getlistadoCliente.
+ * Devuelve [{ id_pedido, nombre_destinataio, telefono_destinatario, nombre_distrito, fecha_pedido, fecha_entrega, seguimiento
+ * (REGISTRADO · ENTREGADO · ANULADO- … · RECHAZADO …), monto_cobrar, costo_service, detalle, observaciones, tipo_pedido }].
+ * `desde`/`hasta` (AAAA-MM-DD) filtran por fecha en Dinsides; sin fechas trae todo el historial (≈350 filas en 3 meses).
+ */
+export async function listado(env, cookie, { desde = "", hasta = "", estado = "" } = {}) {
+  const r = await pedir(env, "pedido/getlistadoCliente", { method: "POST", cookie, ajax: true,
+    cuerpo: codificarFormulario({ draw: 1, start: 0, length: 5000, selectEstado: estado, searchDateIni: desde, searchDateFin: hasta }) });
+  let datos;
+  try { datos = JSON.parse(r.texto); } catch { throw new Error(`Dinsides no devolvió el listado (http ${r.status})`); }
+  const filas = Array.isArray(datos) ? datos : datos?.data || [];
+  return filas.map((f) => ({
+    id_pedido: String(f.id_pedido || ""), nombre: String(f.nombre_destinataio || "").trim(), telefono: String(f.telefono_destinatario || "").replace(/\D/g, "").slice(-9),
+    distrito: String(f.nombre_distrito || "").trim(), fecha_pedido: String(f.fecha_pedido || ""), fecha_entrega: String(f.fecha_entrega || f.fecha_entrega2 || "").slice(0, 10),
+    seguimiento: String(f.seguimiento || "").trim(), tipo_pedido: String(f.tipo_pedido || ""), monto_cobrar: String(f.monto_cobrar || ""), costo_service: String(f.costo_service || ""),
+    detalle: String(f.detalle || ""), observaciones: String(f.observaciones || ""), estado_devolucion: f.estado_devolucion || null
+  }));
+}
+
+/** Pedidos de hoy aún no enviados (POST Pedido/getpedido_hoy): los únicos que el cliente puede anular desde su panel. */
+export async function pedidosHoy(env, cookie) {
+  const r = await pedir(env, "Pedido/getpedido_hoy", { method: "POST", cookie, ajax: true, cuerpo: "" });
+  try { return JSON.parse(r.texto); } catch { throw new Error(`Dinsides no devolvió los pedidos de hoy (http ${r.status})`); }
+}
+
+/** Anula pedidos (POST pedido/anular_ped_client { datos: [ids] }), lo mismo que el botón «Anular» de «Paquete no enviado». */
+export async function anular(env, cookie, ids) {
+  const lista = (Array.isArray(ids) ? ids : [ids]).map((x) => String(x).replace(/\D/g, "")).filter(Boolean);
+  if (!lista.length) throw new Error("Falta el id del pedido a anular");
+  const r = await pedir(env, "pedido/anular_ped_client", { method: "POST", cookie, ajax: true, cuerpo: codificarFormulario({ datos: lista }) });
+  let respuesta = null;
+  try { respuesta = JSON.parse(r.texto); } catch { respuesta = r.texto.slice(0, 200); }
+  return { ok: r.status < 400, status: r.status, respuesta, ids: lista };
+}
+
+/** Clasifica el `seguimiento` de Dinsides. */
+export function claseSeguimiento(seguimiento) {
+  const s = String(seguimiento || "").toUpperCase();
+  if (/ENTREGADO/.test(s)) return "entregado";
+  if (/ANULADO/.test(s)) return "anulado";
+  if (/RECHAZ|DEVUEL/.test(s)) return "rechazado";
+  if (/REGISTRADO|ASIGNADO|RUTA|CAMINO|REPROGRAM|REAGEND/.test(s)) return "pendiente";
+  return s ? "otro" : "pendiente";
+}
