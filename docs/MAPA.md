@@ -2061,3 +2061,23 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **Hoja de pedidos (lo que ya existe y cómo se completa):** «Pedidos auto» es el libro de todos los pedidos (Lima y provincia) con
   «Enviado» y la columna «Dinsides» (registrado #id / entregado / anulado / rechazado, que ahora llena `estados` en cada corrida);
   «Ventas» lleva los de provincia con estado y saldo (pagado cuando llega la clave); «Boletas auto» los despachos. No hace falta otro Excel.
+
+## 2026-11-08 (noche 4) — Distrito desde el mapa también sin pin; Excel de Shalom solo con filas completas; consumo de Cloudflare
+- **Distrito (dueño):** «lo sacas del polígono del mapa de cobertura, no se lo preguntas al asesor». Con pin ya era así. Sin pin, el Worker
+  ubica la dirección con OpenStreetMap y toma el polígono de Dinsides: si el texto no traía distrito o era ambiguo, ese distrito deja de
+  ser bloqueo (queda la alerta de cómo se obtuvo); si el texto decía X y el polígono dice Y y OpenStreetMap reconoció la zona, va el del
+  mapa; si la dirección no se pudo ubicar (p. ej. solo «Mz C Lt 12» sin urbanización), sigue el bloqueo y se pregunta. Prueba en
+  `scripts/test-dinsides-api.mjs` («Urb Los Jardines» → Miraflores).
+- **Shalom:** al Excel solo entran las filas con DNI y agencia resueltos; las dudosas quedan en la referencia (fila «—») y en las preguntas
+  de la Routine. Excel del despacho 08-11 subido a CRM → Reportes para que el dueño lo vea desde su dominio.
+- **Cloudflare (pedido del dueño):** el Worker `claudetarot` recibió ~21 000 peticiones/día en octubre y ~32 000/día del 1 al 8 de
+  noviembre (pico 42 000 el 6/11; errores 3 250 el 3/11, 300 el 4/11, luego casi 0). Proyección ≈ 1 millón/mes. El modelo de uso de la
+  cuenta es «standard» (plan de pago de Workers: 10 millones de peticiones al mes incluidas), así que está muy lejos del tope; las
+  subpeticiones (Sheets, WhatsApp, Dinsides) son ~13 000/día. Consulta por GraphQL `workersInvocationsAdaptive`.
+- **Tercerizar (análisis para el dueño, sin API de Claude ni gasto extra):** (1) una sección «Envíos» en el CRM del propio dominio que
+  use los endpoints ya existentes (`/api/asesor/dinsides`, `shalom.py` como endpoint) con botones: ver listos y pendientes, corregir
+  dirección/distrito/agencia, «Registrar en Dinsides», «Excel Shalom» + clave; es lo que permite que Jennifer o quien sea lo haga sin
+  Claude ni Routines del dueño. (2) Que Jennifer corra las mismas Routines en su cuenta de Claude: necesita el repo (lo tiene) y una
+  clave del asesor en su entorno; conviene una clave propia y acotada (solo Dinsides, Shalom, chat de lectura, Reportes y avisos) que
+  habría que agregar al Worker. Recomendación: (1), porque el flujo ya es determinista salvo leer el chat, y eso la asesora lo hace en el
+  CRM. Boletas pueden quedarse con el dueño (él manda las fotos).

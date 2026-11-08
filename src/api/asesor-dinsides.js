@@ -25,7 +25,7 @@
  * (salvo `forzar`); todo lo que no registró lo devuelve con el motivo para que la Routine lo reporte.
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
-import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas, buscarDistrito } from "../lib/dinsides.js";
+import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas, buscarDistrito, normalizar } from "../lib/dinsides.js";
 import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
 import { filasPedidosAuto, marcarDinsidesEnHoja, upsertPedidosAuto } from "./asesor-pedidos-sheet.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
@@ -197,7 +197,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }
-  await comprobarConElMapa(fichas.filter((f) => f.listo));
+  await comprobarConElMapa(fichas.filter((f) => !f.ya_registrado && (f.listo || f.bloqueos.some((b) => /^DISTRITO: /.test(b)))));
   return { fichas, registro: reg, conocidos };
 }
 
@@ -300,18 +300,45 @@ async function geocodificar(direccion, distrito) {
   } catch { return null; }
 }
 
+/**
+ * Sin pin, el distrito también sale del MAPA DE COBERTURA (regla del dueño, 2026-11-08: «el distrito lo sacas del polígono, no se lo
+ * preguntas al asesor»): la dirección se ubica con OpenStreetMap y se mira en qué polígono de Dinsides cae.
+ *  - Sin distrito o ambiguo en el texto → el del polígono (deja de ser bloqueo; queda la alerta de cómo se obtuvo).
+ *  - Texto dice X y el polígono dice Y → manda el polígono si OpenStreetMap reconoció la zona del texto (el nombre que devolvió
+ *    menciona X o Y); si no la reconoció (dirección mal ubicada), se queda X y se avisa.
+ *  - Si la dirección no se pudo ubicar, el bloqueo sigue y se pregunta.
+ */
 async function comprobarConElMapa(fichas) {
   let n = 0;
+  const RE_DISTRITO_BLOQUEO = /^DISTRITO: (no se deduce|la dirección nombra varios|«)/;
   for (const f of fichas) {
-    if (f.campos.coordenadas || !f.campos.direccion || !f.campos.distrito || n >= 12) continue;
+    const faltaDistrito = !f.campos.distrito && f.bloqueos.some((b) => RE_DISTRITO_BLOQUEO.test(b));
+    if (f.campos.coordenadas || !f.campos.direccion || (!f.campos.distrito && !faltaDistrito) || n >= 12) continue;
     n++;
     const g = await geocodificar(f.campos.direccion, f.campos.distrito);
     if (!g) continue;
     const z = zonaDe(g.lat, g.lng);
     f.geocodificado = { ...g, zona: z.nombre, clase: z.clase, distrito: z.distrito || null };
     f.distrito_fuentes.geocodificado = z.distrito || z.nombre;
-    if (z.distrito && z.distrito !== f.campos.distrito) f.alertas.push(`MAPA: la dirección (ubicada por OpenStreetMap) cae en «${z.distrito}» en el mapa de Dinsides, no en «${f.campos.distrito}»; revisar el distrito`);
-    else if (z.clase === "no_entrega") f.alertas.push(`MAPA: la dirección (ubicada por OpenStreetMap) cae en «${z.nombre}» (sin reparto); revisar`);
+    const nombreOsm = normalizar(g.nombre);
+    if (z.distrito && faltaDistrito) {
+      const d = buscarDistrito(z.distrito);
+      f.campos.distrito = d.clave; f.campos.id_distrito = d.codigo; f.campos.monto_service = String(d.tarifa);
+      f.bloqueos = f.bloqueos.filter((b) => !RE_DISTRITO_BLOQUEO.test(b));
+      f.alertas.push(`DISTRITO por el mapa de cobertura: la dirección (ubicada por OpenStreetMap en «${g.nombre.slice(0, 80)}») cae en «${z.distrito}»`);
+    } else if (z.distrito && z.distrito !== f.campos.distrito) {
+      const reconoce = nombreOsm.includes(normalizar(f.campos.distrito).split(" ")[0]) || nombreOsm.includes(normalizar(z.distrito).split(" ")[0]);
+      if (reconoce) {
+        const d = buscarDistrito(z.distrito);
+        f.alertas.push(`DISTRITO: la dirección dice «${f.campos.distrito}» pero en el mapa de Dinsides cae en «${z.distrito}» (ubicada por OpenStreetMap en «${g.nombre.slice(0, 80)}»): va el del mapa`);
+        f.campos.distrito = d.clave; f.campos.id_distrito = d.codigo; f.campos.monto_service = String(d.tarifa);
+      } else {
+        f.alertas.push(`MAPA: OpenStreetMap ubicó la dirección en «${g.nombre.slice(0, 80)}» (cae en «${z.distrito}»), que no parece la zona del texto; se deja «${f.campos.distrito}»`);
+      }
+    } else if (z.clase === "no_entrega") {
+      f.alertas.push(`MAPA: la dirección (ubicada por OpenStreetMap) cae en «${z.nombre}» (sin reparto); revisar`);
+    }
+    f.listo = f.bloqueos.length === 0 && !f.ya_registrado;
     await new Promise((r) => setTimeout(r, 1100));
   }
 }
