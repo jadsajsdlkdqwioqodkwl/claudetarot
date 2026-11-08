@@ -1960,3 +1960,21 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **`.claude/settings.json`:** el filtro de auto mode no deja que la sesión lo edite (dos intentos, con autorización del dueño). Lo agrega
   el dueño dentro de `permissions.allow`: `"Bash(python3 scripts/asesor/dinsides.py:*)"`, `"Bash(python3 scripts/asesor/etiquetas.py:*)"`
   y `"Bash(python3 scripts/asesor/shalom.py:*)"`.
+
+## 2026-11-08 (tarde 2) — Dinsides: anulados los 3 del registro accidental; Routine de SIMULACRO; Shalom: Excel de simulacro
+- **Anulados por orden del dueño** («solo deben haber tres registrados por ti»): #2940738, #2940739 y #2940740 → «ANULADO- POR TIENDA».
+  El equipo ya había registrado los pedidos del lunes 9/11 (#2939495 Laura = Milagros Herrera, #2939521, #2939467, #2936324); los
+  tres eran duplicados o adelantados. Quedan solo las tres regularizaciones (#2940734, #2940741, #2940742). El dueño también decidió que
+  **los domingos no se mandan pedidos** (hoy el motorizado de confianza).
+- **Memoria y hoja corregidas:** `anular` ahora marca el registro como anulado (deja de contar como «ya registrado»), lo saca del índice por
+  WhatsApp y escribe «anulado #id» en la columna Dinsides; `estados` ignora un anulado si el mismo teléfono tiene otro pedido vigente para
+  la misma entrega. En la hoja «Pedidos auto»: filas de July (95) y Dante (76) reabiertas (sin «Enviado», Dinsides «anulado … pendiente
+  de registrar para el lunes»), Milagros (53) «registrado por el equipo #2939495», TEST (115) «anulado #2940714», Mariela (116) con su
+  id, y las dos filas falsas de CLIENTE 1/2 con el número del dueño (117, 118) marcadas «no se creó en Dinsides». Hecho con el conector.
+- **Routine de simulacro:** **`trig_0117rbxvHaaw3ddQZioaNDjV`** «Dinsides — SIMULACRO (no registra nada · Run now)», misma sesión fija,
+  mismo flujo con `registrar --simular` y sin Telegram: para probar antes de la Routine real. Prompt en el trigger (y en `docs/routines.md`).
+- **Shalom, Excel de simulacro:** `shalom.py masivo` acepta varias fechas y agrega la hoja «Referencia» (nombre, WhatsApp, DNI, texto del
+  cliente, agencia elegida, candidatas, kits, nota, qué revisar). El buscador ya no cuenta palabras genéricas (avenida, calle, nuevo, san…)
+  como propias de la agencia y da por segura la única agencia de un distrito nombrado. Simulacro con los provincia confirmados del 2 al 8
+  de noviembre: 44 filas, agencia segura en la gran mayoría; el resto queda marcado para una persona (ciudad sin agencia clara,
+  «Serpost», DNI de 9 dígitos). Cómo se llena cada columna: en el docstring de `scripts/asesor/shalom.py`.

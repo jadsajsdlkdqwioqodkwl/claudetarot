@@ -164,6 +164,8 @@ const idNuevo = listadoFalso.find((x) => x.telefono_destinatario === "988888880"
 r = await pedir("POST", { accion: "anular", fecha: FECHA, ids: [idNuevo, "1"], motivo: "prueba" });
 check("anular: solo anula ids del negocio (pedido/anular_tienda) y devuelve el estado nuevo", r.json.ok && r.json.anulados[0].seguimiento === "ANULADO- POR TIENDA" && r.json.no_eran_mios.includes("1"), JSON.stringify(r.json));
 check("la memoria anota la anulación", JSON.parse(r2.get(`dinsides/${FECHA}.json`)).registros.some((x) => x.nro === idNuevo && x.anulado));
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+check("un pedido anulado deja de contar como registrado (se puede volver a registrar)", !(r.json.pedidos.find((f) => f.whatsapp === "51988888880") || {}).ya_registrado, JSON.stringify(r.json.pedidos.map((f) => [f.whatsapp, f.ya_registrado])));
 
 // 7d. editar: mover la fecha de entrega de Gladys una semana (como pide el dueño: todo se puede editar antes de la ruta)
 const idGladys = listadoFalso.find((x) => x.telefono_destinatario === "957845104").id_pedido;

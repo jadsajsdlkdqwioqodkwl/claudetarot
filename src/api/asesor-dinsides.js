@@ -63,7 +63,7 @@ async function anotarRegistros(env, fecha, nuevos, corrida) {
   for (const r of nuevos) {
     reg.registros = reg.registros.filter((x) => n9(x.whatsapp) !== n9(r.whatsapp));
     reg.registros.push(r);
-    idx[n9(r.whatsapp)] = { fecha, cuando: r.cuando, modo: r.modo, nombre: r.nombre };
+    idx[n9(r.whatsapp)] = { fecha, cuando: r.cuando, modo: r.modo, nombre: r.nombre, nro: r.nro || "" };
   }
   reg.corridas.push({ ...corrida, cuando: ahoraLima(), registrados: nuevos.length });
   await escribirJson(env, `dinsides/${fecha}.json`, reg);
@@ -142,7 +142,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
   const { pedidos, hoja, conocidos } = await pedidosDelSistema(env, fecha);
   const reg = await registroDe(env, fecha);
   const idx = await indice(env);
-  const registradosPorWa = new Map(reg.registros.map((r) => [n9(r.whatsapp), r]));
+  const registradosPorWa = new Map(reg.registros.filter((r) => !r.anulado).map((r) => [n9(r.whatsapp), r]));
   const fechaObjetivo = fecha;
   const fichas = [];
   for (const p of pedidos) {
@@ -211,6 +211,11 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
   const resumen = { entregados: [], anulados: [], rechazados: [], pendientes: [], otros: [], sin_fila_en_hoja: [], marcados: 0, etiquetados: 0 };
   for (const ped of lista) {
     const clase = claseSeguimiento(ped.seguimiento);
+    // Un pedido anulado no marca la fila si ese mismo teléfono tiene otro pedido vigente para la misma entrega (duplicado anulado).
+    if (clase === "anulado" && lista.some((o) => o !== ped && o.telefono === ped.telefono && o.fecha_entrega === ped.fecha_entrega && claseSeguimiento(o.seguimiento) !== "anulado")) {
+      resumen.anulados.push({ id_pedido: ped.id_pedido, nombre: ped.nombre, telefono: ped.telefono, distrito: ped.distrito, fecha_entrega: ped.fecha_entrega, seguimiento: ped.seguimiento, monto: ped.monto_cobrar, duplicado_anulado: true });
+      continue;
+    }
     const filas = porTel.get(ped.telefono) || [];
     const fila = filas.find((f) => f.fecha_entrega === ped.fecha_entrega) || filas.find((f) => !f.enviado) || filas[filas.length - 1] || null;
     const item = { id_pedido: ped.id_pedido, nombre: ped.nombre, telefono: ped.telefono, distrito: ped.distrito, fecha_entrega: ped.fecha_entrega, seguimiento: ped.seguimiento,
@@ -386,11 +391,22 @@ export async function onRequestPost({ request, env }) {
       const r = await anularEnDinsides(env, cookie, mios);
       const despues = (await listado(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento,
         en_ruta: Boolean(r.resultados.find((y) => y.id_pedido === x.id_pedido)?.en_ruta) }));
+      // Memoria: el registro queda marcado como anulado (deja de contar como registrado) y sale del índice por WhatsApp.
       const reg = await registroDe(env, fecha);
-      for (const x of despues) { const m = reg.registros.find((y) => String(y.nro) === x.id_pedido); if (m) { m.anulado = ahoraLima(); m.seguimiento = x.seguimiento; } }
+      const idx = await indice(env);
+      const hojaAnulados = [];
+      for (const x of despues) {
+        const m = reg.registros.find((y) => String(y.nro) === x.id_pedido);
+        if (!m) continue;
+        m.anulado = ahoraLima(); m.seguimiento = x.seguimiento;
+        const k = n9(m.whatsapp);
+        if (idx[k] && String(idx[k].nro || "") === x.id_pedido) delete idx[k];
+        hojaAnulados.push(await marcarDinsidesEnHoja(env, m.whatsapp, `anulado #${x.id_pedido} ${ahoraLima()}${p.motivo ? `: ${String(p.motivo).slice(0, 80)}` : ""}`).catch((err) => ({ error: err.message })));
+      }
       reg.corridas.push({ modo: "anular", ids: mios, cuando: ahoraLima(), motivo: String(p.motivo || "") });
       await escribirJson(env, `dinsides/${fecha}.json`, reg);
-      return json({ ok: r.ok, resultados: r.resultados, anulados: despues, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
+      await escribirJson(env, "dinsides/indice.json", idx);
+      return json({ ok: r.ok, resultados: r.resultados, anulados: despues, hoja: hojaAnulados, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
     }
     if (p.accion === "editar") {
       // { accion: "editar", id, cambios: { fecha_entrega?, direccion?, distrito? (nombre) | id_distrito?, nombre?, telefono?, cobrar?, tipo_pago?, obs?, producto? } }

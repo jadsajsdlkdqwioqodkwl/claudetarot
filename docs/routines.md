@@ -1281,3 +1281,9 @@ PASO 5 — Aviso al dueño (siempre que hubo algo que hacer)
 💡 Una línea si viste algo que mejorar.
 Termina respondiendo en esta sesión con ese mismo resumen (máximo 12 líneas).
 ```
+
+## 2026-11-08 (tarde) · Routine «Dinsides — SIMULACRO (no registra nada · Run now)» — `trig_0117rbxvHaaw3ddQZioaNDjV`
+Misma sesión fija que la Routine real (`session_017wTF8ckoBNtwk4nSxvvFzk`), sin cron. Hace los pasos 0 a 3 de la v2 y en el PASO 4 corre
+`registrar --simular` (el Worker entra a Dinsides y arma el listado, pero no lo manda ni escribe en la hoja ni en los chats); no manda
+Telegram y responde en la sesión qué se habría registrado y qué no. Sirve para probar una noche antes de usar la Routine real. El prompt
+es el de la v2 con esos dos cambios (texto completo en el trigger).
