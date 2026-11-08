@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plan al 10 %</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  :root { --ink:#1d1b26; --mut:#5d5870; --acc:#6b3fa0; --acc2:#efe8f7; --ok:#1f7a4d; --okbg:#e6f4ec; --bad:#a3322a; --badbg:#fbe9e7; --warn:#8a5a00; --warnbg:#fff4dc; --line:#ddd8e6; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Arial, "Noto Color Emoji", sans-serif; color: var(--ink); font-size: 9.5pt; line-height: 1.42; margin: 0; background:#fff; }
+  h1 { font-size: 20pt; margin: 0 0 4px; color: var(--acc); }
+  h2 { font-size: 13.5pt; color: var(--acc); border-bottom: 2px solid var(--acc); padding-bottom: 3px; margin: 18px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 5px; page-break-after: avoid; }
+  p { margin: 5px 0; }
+  .sub { color: var(--mut); font-size: 9.3pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 8.6pt; page-break-inside: avoid; }
+  th { background: var(--acc2); text-align: left; padding: 4px 5px; border-bottom: 1px solid var(--line); }
+  td { padding: 4px 5px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.n, th.n { text-align: right; }
+  table { table-layout: auto; word-break: break-word; }
+  tr.hi td { background: var(--okbg); }
+  tr.lo td { background: var(--badbg); }
+  .box { border-radius: 6px; padding: 8px 10px; margin: 8px 0; page-break-inside: avoid; }
+  .key { background: var(--acc2); border-left: 4px solid var(--acc); }
+  .ok { background: var(--okbg); border-left: 4px solid var(--ok); }
+  .bad { background: var(--badbg); border-left: 4px solid var(--bad); }
+  .warn { background: var(--warnbg); border-left: 4px solid var(--warn); }
+  .msg { background: #f4fbf3; border: 1px solid #cfe6cc; border-radius: 8px; padding: 6px 8px; margin: 3px 0; }
+  ul, ol { margin: 4px 0 6px 18px; padding: 0; } li { margin: 2px 0; }
+  .small { font-size: 8.2pt; color: var(--mut); }
+  .big { font-size: 15pt; font-weight: bold; color: var(--acc); }
+  .kpis { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin: 10px 0; }
+  .kpi { border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  .kpi .l { font-size:8pt; color:var(--mut); }
+</style>
+</head>
+<body>
+
+<h1>Reto: 10 % de conversión</h1>
+<p class="sub">8/11/2026 · si mejoramos o no, qué hizo la bienvenida nueva, qué falla en las vendedoras y el plan para llegar al 10 % · datos del CRM (D1) y de Meta Ads</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">Conversión en 7 días (marcada en el CRM)</div><div class="big">8,3 %</div><div class="small">chats nuevos del 27/10 al 1/11</div></div>
+  <div class="kpi"><div class="l">Conversión real estimada</div><div class="big">~9,5 %</div><div class="small">sumando ventas confirmadas sin marcar</div></div>
+  <div class="kpi"><div class="l">Anuncios por venta de chat nuevo</div><div class="big">US$10,0</div><div class="small">antes US$12,3 (–19 %)</div></div>
+  <div class="kpi"><div class="l">Ventas confirmadas sin marcar</div><div class="big">30</div><div class="small">en 2 semanas (18 de margiory)</div></div>
+</div>
+
+<h2>1. ¿Estamos igual o mejor? Mejor, sobre todo en anuncios</h2>
+<table>
+<tr><th>Semana</th><th class="n">Gasto Meta</th><th class="n">Chats</th><th class="n">Costo por chat</th><th class="n">Ventas de chats nuevos</th><th class="n">Anuncios por venta</th><th class="n">CTR</th></tr>
+<tr><td>13–19 oct</td><td class="n">US$630</td><td class="n">955</td><td class="n">US$0,66</td><td class="n">76</td><td class="n">US$8,3</td><td class="n">2,8 %</td></tr>
+<tr><td>20–26 oct</td><td class="n">US$461</td><td class="n">558</td><td class="n">US$0,83</td><td class="n">49</td><td class="n">US$9,4</td><td class="n">2,9 %</td></tr>
+<tr class="lo"><td>27 oct–2 nov</td><td class="n">US$679</td><td class="n">819</td><td class="n">US$0,83</td><td class="n">55</td><td class="n">US$12,3</td><td class="n">3,3 %</td></tr>
+<tr class="hi"><td>3–8 nov (6 días)</td><td class="n">US$541</td><td class="n">819</td><td class="n">US$0,66</td><td class="n">54</td><td class="n">US$10,0</td><td class="n">3,9 %</td></tr>
+</table>
+<ul>
+  <li><b>Anuncios: sí mejoraron.</b> El mismo número de ventas de chats nuevos con 20 % menos de gasto, en 6 días en vez de 7. Además, 20 ventas más de chats antiguos (bono y campaña).</li>
+  <li>La razón principal es <b>«CROCHET INES»</b>: desde el 4/11 trae dos de cada tres chats, a US$0,36 cada uno, y compra 9,3 % en 72 h (107 chats). Sale a unos <b>US$4 por venta</b>.</li>
+  <li><b>Ojo:</b> «claude1» («Aprende a leer Tarot»), que cerraba 10,7 %, casi dejó de recibir presupuesto. «Pagos contraentrega» bajó a 13 % de chats que dicen su destino y ninguna compra desde el 4/11.</li>
+  <li><b>El cierre de los chats no cambió:</b> ~7 % en 72 h antes y después. Lo que mejoró es el costo de traer cada chat.</li>
+</ul>
+
+<h2>2. La bienvenida nueva (desde la noche del 3/11)</h2>
+<p>Hoy salen 5 fotos y un video: «Qué trae tu kit», «Aprendiendo Tarot», <b>bonos</b> (clases, libros, mazos), <b>entregas Shalom</b> y <b>entregas Lima</b>.</p>
+<table>
+<tr><th>Chats nuevos de anuncio</th><th class="n">Chats</th><th class="n">Dijo su destino en 48 h</th><th class="n">Compró en 72 h</th></tr>
+<tr><td>20–26 oct</td><td class="n">521</td><td class="n">33 %</td><td class="n">5,8 %</td></tr>
+<tr><td>27 oct–3 nov</td><td class="n">902</td><td class="n">29 %</td><td class="n">7,1 %</td></tr>
+<tr><td>4–7 nov (bienvenida nueva)</td><td class="n">543</td><td class="n">26 %</td><td class="n">6,9 % (218 con 72 h cumplidas)</td></tr>
+</table>
+<p><b>Lectura:</b> la compra se mantuvo. El % que dice su destino viene bajando desde antes de las fotos, y por anuncio el cambio es mixto (sube en «loquitom», baja en «Pagos contraentrega»): lo explica más el cambio de anuncios que las fotos. <b>No hay evidencia de que la bienvenida nueva haya bajado la conversión</b>, pero tampoco de que la haya subido.</p>
+<div class="box key"><b>Mejoras para la bienvenida:</b>
+<ol>
+  <li><b>Menos de golpe:</b> 5 fotos más un video es mucho para un primer mensaje. Deja 3 fotos más el video: «Qué trae tu kit», «Aprendiendo Tarot» (cómo se lee una carta) y bonos.</li>
+  <li><b>La prueba social, en el momento justo:</b> «Entregas Lima» va en Lima msj 1 y «Entregas Shalom» en Provincia msj 1 o 2, cuando el cliente ya dijo su destino. A un cliente de Lima no le sirve ver la foto de Shalom, y viceversa.</li>
+  <li><b>La imagen de bonos muestra cajas con la marca «CONDE»:</b> confunde («¿qué es Conde?») y no es la marca de la tienda. Rehazla con la marca Tarot Store, el celular con una clase y el kit al lado. Cuida también no prometer más de lo que se entrega (dice «+300 libros» y «+150 mazos»).</li>
+  <li><b>El video:</b> que sea una lectura real de 15 s (barajar, sacar 3 cartas, leer el significado impreso). Es lo que más preguntan («¿cómo se usa?», 46 chats).</li>
+</ol></div>
+
+<h2>3. Las vendedoras: qué está fallando de verdad</h2>
+<p>Chats nuevos de anuncio atendidos del 26/10 al 8/11. «Esperado» = lo que cerraría una vendedora promedio con su misma mezcla de Lima, provincia, sin destino y horario.</p>
+<table>
+<tr><th>Vendedora</th><th class="n">Chats</th><th class="n">Real</th><th class="n">Esperado</th><th class="n">Índice</th><th class="n">Ventas confirmadas sin marcar</th><th class="n">Resp. &gt;1 h</th><th class="n">Perdidos sin pedir el cierre</th><th class="n">«Quedamos atentos» en perdidos</th></tr>
+<tr><td>Jennifer</td><td class="n">246</td><td class="n">18,3 %</td><td class="n">16,3 %</td><td class="n">1,12</td><td class="n">3 de 79</td><td class="n">40 %</td><td class="n">39 %</td><td class="n">10 %</td></tr>
+<tr><td>Fandio</td><td class="n">155</td><td class="n">15,5 %</td><td class="n">13,1 %</td><td class="n">1,18</td><td class="n">2 de 49</td><td class="n">29 %</td><td class="n">42 %</td><td class="n">19 %</td></tr>
+<tr class="lo"><td>margiory</td><td class="n">61</td><td class="n">6,6 %</td><td class="n">16,0 %</td><td class="n">0,41</td><td class="n"><b>18 de 28</b></td><td class="n">33 %</td><td class="n">32 %</td><td class="n">28 %</td></tr>
+<tr><td>Bruce</td><td class="n">45</td><td class="n">15,6 %</td><td class="n">15,5 %</td><td class="n">1,00</td><td class="n">1 de 22</td><td class="n">16 %</td><td class="n">26 %</td><td class="n">16 %</td></tr>
+<tr><td>Mayra</td><td class="n">44</td><td class="n">20,5 %</td><td class="n">14,7 %</td><td class="n">1,39</td><td class="n">0 de 16</td><td class="n">27 %</td><td class="n">26 %</td><td class="n">6 %</td></tr>
+<tr><td>Danitza</td><td class="n">23</td><td class="n">8,7 %</td><td class="n">15,7 %</td><td class="n">0,55</td><td class="n">2 de 20</td><td class="n">22 %</td><td class="n">29 %</td><td class="n">14 %</td></tr>
+<tr class="lo"><td>carmen</td><td class="n">21</td><td class="n">4,8 %</td><td class="n">16,6 %</td><td class="n">0,29</td><td class="n">3 de 7</td><td class="n">14 %</td><td class="n">20 %</td><td class="n">10 %</td></tr>
+<tr><td>Moi</td><td class="n">19</td><td class="n">15,8 %</td><td class="n">22,3 %</td><td class="n">0,71</td><td class="n">1 de 12</td><td class="n">16 %</td><td class="n">6 %</td><td class="n">6 %</td></tr>
+</table>
+<div class="box bad"><b>1. No marcan las ventas.</b> margiory confirmó 28 ventas («gracias por la confianza depositada», «queda agendado») y 18 no tienen compra en el CRM. Revisé dos: son ventas reales (Katerin, Tacna, ya despachada; Luiz, Juliaca). Con esas ventas, su cierre pasa de 6,6 % a cerca del promedio. Lo mismo con carmen (3 de 7). Esto:
+<ul>
+  <li>hace que todos los números de conversión salgan más bajos de lo real;</li>
+  <li>le quita a Meta la señal de compra con la que optimiza los anuncios (Conversions API).</li>
+</ul>
+<b>Arreglo:</b> que el CRM marque la compra solo cuando se manda «Confirmación Lima», «Confirmación provincia» o «Muchas gracias Provincia», o cuando sale la boleta. Con un botón para deshacer.</div>
+<div class="box warn"><b>2. No piden el cierre.</b> En 4 de cada 10 chats perdidos de Jennifer y Fandio, el cliente dijo su destino y nunca le pidieron la ubicación o el adelanto. Es la fuga más grande que depende de ellas.<br>
+<b>3. Cierran con «quedamos atentos»</b> (margiory 28 %, Fandio 19 % de sus perdidos). Esa rápida cierra 12,5 %, contra 23 % de «para dónde lo desea».<br>
+<b>4. Jennifer tarda:</b> en 40 % de sus chats la primera respuesta pasa de 1 hora (antes 33 %). Es la que más chats atiende.<br>
+<b>5. El Yape de golpe sigue en ~90 %</b> de los chats de provincia, en todas.</div>
+
+<h2>4. El plan para llegar al 10 %</h2>
+<p>Base: unos 800 chats nuevos por semana, ~8,3 % marcado (~66 ventas). Llegar al 10 % son ~14 ventas más por semana.</p>
+<table>
+<tr><th>#</th><th>Mejora</th><th>Qué se hace</th><th class="n">Ventas extra / semana (estimado)</th></tr>
+<tr class="hi"><td>1</td><td><b>Marcar todas las ventas</b></td><td>Compra automática al mandar la confirmación o al despachar la boleta. Reunión de 10 min con margiory y carmen.</td><td class="n">+6 a 8 visibles<br><span class="small">(ya existen; además mejora Meta)</span></td></tr>
+<tr class="hi"><td>2</td><td><b>Presupuesto donde se vende</b></td><td>Más a «CROCHET INES» y «claude1»; pausar «Pagos contraentrega». Renovar creativos cuando la frecuencia pase de 2.</td><td class="n">+3 a 5</td></tr>
+<tr class="hi"><td>3</td><td><b>Siempre pedir el cierre</b></td><td>Aviso en el CRM si un chat dijo su destino y en 20 min no se le pidió la ubicación o el adelanto. Prohibido cerrar con «quedamos atentos»: siempre una pregunta.</td><td class="n">+3 a 4</td></tr>
+<tr><td>4</td><td><b>«Precio?» nuevo</b></td><td>Precio en una línea y la pregunta del destino de una vez (es la puerta de 420 chats y cierra 9,5 %).</td><td class="n">+1 a 2</td></tr>
+<tr><td>5</td><td><b>Provincia en 2 tiempos</b></td><td>Retomar la prueba con Jennifer y Mayra: primero confianza (fotos de entregas Shalom) y una pregunta; el Yape cuando responde.</td><td class="n">+2 a 3</td></tr>
+<tr><td>6</td><td><b>Velocidad</b></td><td>Repartir mejor los chats de Jennifer en sus horas pico. Aviso «nadie responde» a los 10 min (ya existe; revisar que llegue).</td><td class="n">+1</td></tr>
+<tr><td>7</td><td><b>Seguimientos que aportan</b></td><td>Plan de 7 días en 3 toques; cambiar «quedó pendiente su envío» y los que no venden (seg_d4_envios_hoy 0,2 %, rescate_lead_2 0,4 %); dejar el bono (1,6 %).</td><td class="n">+1, y menos bloqueos</td></tr>
+<tr><th colspan="3">Total estimado</th><th class="n">+17 a 24 → 10,5 % a 11 %</th></tr>
+</table>
+<p class="small">Las estimaciones suponen que cada mejora mueve una parte de los chats que hoy se pierden en ese punto. Las mejoras 1 a 3 son las seguras y las más baratas; con solo esas ya se pasa el 10 % visible.</p>
+
+<h2>5. Fotos, collages y videos a producir</h2>
+<table>
+<tr><th>Pieza</th><th>Dónde va</th><th>Para qué</th></tr>
+<tr><td><b>Video «Tu primera lectura en 15 s»</b>: barajar, 3 cartas, primer plano del significado impreso, sin voz de vendedora</td><td>Bienvenida, «Para qué sirve / cómo se usa», anuncios</td><td>Contesta «¿cómo se usa?» (46 chats) y «¿son clases?»</td></tr>
+<tr><td><b>Collage «Clientas con su kit»</b>: 6 fotos reales de clientes con su caja o su tirada (con permiso, caras tapadas si quieren)</td><td>Provincia msj 1, rescates</td><td>Confianza más fuerte que la foto de cajas</td></tr>
+<tr><td><b>Captura de un Yape de adelanto + boleta Shalom del mismo cliente</b>, datos tapados</td><td>Provincia msj 2 (junto a «Entregas Shalom»)</td><td>Muestra que el adelanto termina en un envío real</td></tr>
+<tr><td><b>Bonos con marca Tarot Store</b>: celular con la clase 1 + el kit</td><td>Bienvenida, plantilla del bono</td><td>Reemplaza la imagen con cajas «CONDE»</td></tr>
+<tr><td><b>Unboxing de 10 s</b> (textura de las cartas, tapete, collar)</td><td>«Material», anuncios de regalo</td><td>24 chats preguntan por el material</td></tr>
+</table>
+
+<h2>6. Textos para cambiar</h2>
+<p>Pasados por la guía de voz de las vendedoras: de usted, cortos, una sola pregunta. Los apruebas tú antes de usarlos.</p>
+<h3>«Precio?» (versión para probar contra la actual)</h3>
+<div class="msg">Está en S/89 todo el kit con envío gratis ✨ Le llega el mazo con el significado en cada carta, manual, tapete y collar de regalo ☺️ ¿Para qué distrito o ciudad sería?</div>
+<h3>En vez de «quedamos atentos» (cuando el cliente se enfría)</h3>
+<div class="msg">Entiendo estimad@ ☺️ ¿Le quedó alguna duda del envío o del pago? Así se la resuelvo al toque ✨</div>
+<h3>Rescate (plantilla nueva, en vez de «Quedó pendiente su envío»)</h3>
+<div class="msg">Hola estimad@ 🩷 le escribo por el kit de tarot que consultó. Todavía lo tenemos disponible, con envío gratis y ahora con clases grabadas de regalo para aprender desde cero ✨ ¿Desea que le separemos uno?</div>
+<p class="small">Botones: «Sí, separar» · «No, gracias».</p>
+
+<h2>7. Qué necesito de ti para arrancar</h2>
+<ol>
+  <li>¿Hago que el CRM marque la compra solo al mandar la confirmación o la boleta (con botón de deshacer)?</li>
+  <li>¿Hago el aviso de «dijo su destino y no se le pidió el cierre»?</li>
+  <li>¿Paso los textos nuevos de «Precio?» y «quedamos atentos» como versiones de prueba, y dejo la plantilla nueva del rescate lista para «Mandar a Meta»?</li>
+  <li>Presupuesto de Meta: ¿lo muevo yo (pausar «Pagos contraentrega», subir «CROCHET INES» y «claude1») o lo haces tú?</li>
+  <li>Hablar con margiory y carmen sobre marcar las ventas, y con todas sobre pedir siempre el cierre.</li>
+</ol>
+
+<p class="small" style="margin-top:12px"><b>Método y límites.</b> Compra = evento Purchase del CRM. Las «ventas confirmadas sin marcar» son chats donde la vendedora mandó la confirmación sin que haya compra marcada; revisé dos a mano, el resto es estimado. Ventas de chats nuevos = compras en chats de menos de 7 días. El índice de vendedoras ajusta por la mezcla Lima / provincia / sin destino y horario; con las ventas sin marcar, margiory y carmen subirían cerca del promedio.</p>
+</body>
+</html>

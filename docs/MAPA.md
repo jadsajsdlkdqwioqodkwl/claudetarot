@@ -2088,3 +2088,12 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
 - **Rescates que no salen (dos causas):** (1) la Routine «Asesor — rescate de lead 1» (`trig_012BNuxd8Zs13YZFPNhvaXCK`) elige sus 15 pero el filtro de auto mode bloquea el envío porque corre `enviar.py` encadenado (`cd … && python3 -c … && enviar.py … | tail`): la regla `Bash(python3 scripts/asesor/enviar.py:*)` solo vale con el comando solo. El prompt corregido está en el anexo A del informe; **no se aplicó**: el clasificador de esta sesión negó `update_trigger` («Account & Standing-Rule Changes»), queda para el dueño. (2) Los planes «Rescate de interesado · Asesor …» quedan `por_aprobar` en `scheduled_messages` (147 el 8/11) y el cron cancela los que pasan su hora sin aprobar.
 - **Plantilla `rescate_lead_1` («Quedó pendiente su envío…»):** una clienta de Cusco respondió «están estafando y amenazando» (3/11): suena a deuda. Propuesta de texto nuevo en el informe (sección 6), sin mandar a Meta.
 - **Hoja Ventas:** la fila 1 tiene títulos viejos (Código, Cliente, WhatsApp, Pagado, Destino…); los datos siguen `COLUMNAS_VENTA` de `src/lib/ventas.js`. «Estado» nunca pasa a «Pagado» aunque el CRM tenga `saldo_pagado`. Sin cambios todavía.
+
+## 2026-11-08 (noche 6) · «Reto 10 %»: bienvenida nueva, vendedoras y plan (PDF)
+- **Nuevo `docs/cro/2026-11-08-plan-10.pdf`** (fuente `.html`). Solo documento: no cambia código, CRM ni hojas.
+- Hallazgos:
+  - La bienvenida nueva (fotos de bonos y entregas Shalom/Lima, desde el 4/11 03:43 UTC) mantuvo la compra en 72 h (~7 %). El % que dice su destino baja desde antes y se explica más por el cambio de anuncios.
+  - Anuncios: mismas ventas de chats nuevos con 20 % menos de gasto (US$12,3 → US$10,0 por venta). «CROCHET INES» trae 2 de cada 3 chats a US$0,36 y compra 9,3 % en 72 h.
+  - **30 ventas confirmadas sin marcar como compra en 2 semanas (18 de margiory, 3 de carmen)**: baja todos los porcentajes y le quita a Meta la señal de compra. La conversión real estimada en 7 días es ~9,5 % (8,3 % marcado).
+  - En ~40 % de los chats perdidos de Jennifer y Fandio nunca se pidió el cierre.
+- Plan: compra automática al mandar la confirmación o despachar la boleta, aviso de «dijo su destino sin pedido de cierre», presupuesto a los anuncios que venden, «Precio?» nuevo, provincia en 2 tiempos, seguimientos de 3 toques y textos nuevos. Nada implementado: espera las respuestas del dueño (sección 7 del PDF).
