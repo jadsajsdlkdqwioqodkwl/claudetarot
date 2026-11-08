@@ -18,16 +18,17 @@ protegido, sin comprobante, sin cobro seguro, clave de 4 dígitos) o pelearse co
    (A DNI, B teléfono, F origen, G destino, H mercadería, M cantidad) dentro de `xl/worksheets/sheet1.xml`, agregando los textos a
    `xl/sharedStrings.xml` como lo hace Shalom. Nada más cambia. **No tocar esa función sin volver a probar una subida real.**
 
-## El flujo completo (Routine «Shalom — Excel de envío masivo», manual «Run now»)
+## El flujo completo (Routine «Shalom — Excel de envío masivo», manual «Run now», `trig_013nuA3ZdCtxtkVNbJPvMxox`)
 1. `shalom.py masivo` toma los pedidos de **PROVINCIA confirmados** del registro del reporte «Pedidos y ventas» para la fecha de
    despacho (mañana por defecto): nombre, WhatsApp, DNI, kits, lo que el cliente escribió de su agencia, adelanto y saldo.
 2. Para cada uno elige la **agencia de Shalom** con `buscar` sobre las 566 agencias reales (`data/shalom-agencias.json`, API pública de
    shalom.com.pe; `agencias --actualizar` las refresca). «Seguro» solo si el texto nombra algo propio de la agencia (avenida, nombre) o
    es la única agencia del distrito nombrado. Lo dudoso queda listado; la Routine lee el chat (`dinsides.py chat <wa>`) y fija la
    agencia con `--agencias ajustes.json`; si ni así, se le pregunta al cliente y no entra al Excel.
-3. Por cada fila pide al Worker la venta de la pestaña **Ventas** (`POST /api/asesor/ventas crear`; si ya existe una abierta con ese
-   DNI devuelve esa): así la **clave de seguridad** de 4 dígitos es la que el CRM le mandará al cliente cuando pague el saldo
-   (`--sin-ventas` lo desactiva). La clave va SOLO en el archivo de referencia; nunca en Telegram ni al cliente.
+3. **Clave de seguridad (sagrada):** nadie la asigna, ni el Worker ni la Routine. Solo con la clave del día que el dueño escribe en la
+   sesión (`--clave NNNN`, o después `shalom.py clave NNNN /tmp/shalom/lote.json`) se crean o corrigen las ventas de la pestaña
+   **Ventas** con esa clave, que es la que el CRM le mandará al cliente cuando pague el saldo. Sin clave no se toca la hoja Ventas y la
+   referencia dice «PENDIENTE». La clave va SOLO en el archivo de referencia; nunca en Telegram, en prompts ni al cliente.
 4. Genera dos archivos y, con `--subir`, los deja en **CRM → Reportes** (links que llegan por Telegram):
    - `masivo-FECHA.xlsx`: la plantilla oficial con los datos (es lo que se sube a Shalom Pro).
    - `masivo-FECHA-referencia.xlsx`: por fila, nombre, WhatsApp, DNI, texto del cliente, agencia elegida (código completo), otras

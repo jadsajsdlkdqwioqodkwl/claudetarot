@@ -2042,3 +2042,22 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   Nuevo Horizonte Av. 54, Calle Emaús, Lambayeque Centro). Destapó otro bug: los DNI que empiezan en 0 («00485469») perdían el cero al ir
   como número; ahora van como texto (los demás siguen como número, igual que el ejemplo de la plantilla). Pendiente de confirmar con una
   subida real que Shalom acepte el DNI en texto.
+
+## 2026-11-08 (noche 3) — Routines v3 (todo lo hace Claude, pregunta y registra con la respuesta), claves solo del dueño, limpieza
+- **Dueño:** nadie registra a mano. Lo dudoso se pregunta (Telegram + sesión fija) y Claude registra cuando el dueño o la asesora
+  responden en la sesión. Las claves de Shalom son sagradas: ni el Worker ni la Routine asignan ninguna; solo la clave del día que da el
+  dueño en la sesión (`shalom.py masivo --clave NNNN` o `shalom.py clave NNNN /tmp/shalom/lote.json`, que también la corrige en la hoja
+  Ventas); sin clave no se toca la hoja Ventas y la referencia dice «PENDIENTE». Todo pedido sale al día siguiente, corte 3:00 (el
+  sistema ya lo hacía: `fechaEntrega` y `shalom.py`). Los domingos no se registra nada.
+- **Triggers nuevos (v3) sobre `session_017wTF8ckoBNtwk4nSxvvFzk`:** Dinsides real **`trig_01SQ3ENu3TfYbZrc3qyeksU4`**, Dinsides
+  SIMULACRO **`trig_014Vk7mWt2DwJkv4SxVHK23z`**, Shalom masivo **`trig_013nuA3ZdCtxtkVNbJPvMxox`**. Se borraron los v2
+  (`trig_01NcY8f7qCR4FhYXZRiupYqZ`, `trig_0117rbxvHaaw3ddQZioaNDjV`, `trig_011Q1Lso76f8LAKK3DjziP64`) porque la API no deja cambiar el
+  prompt desde otra sesión. Prompts v3 completos en `docs/routines.md`. La Routine de Dinsides corre `estados` en el PASO 0b (los ojos:
+  entregados / anulados / rechazados a la hoja y al chat) y tiene PASO 6 (registrar lo pendiente con la respuesta del dueño).
+- **Dante y July:** el dueño aclara que eran pruebas, no hay envío. Filas 76 y 95 de «Pedidos auto» cerradas («no va (prueba)»,
+  Dinsides «no: era una prueba…»); fuera de la memoria de Dinsides (`quitar`). Lo del lunes 9/11 lo registró el equipo (#2939495,
+  #2939521, #2939467, #2936324) y no se toca. En Dinsides, de esta sesión solo quedan vigentes las tres regularizaciones (#2940734
+  Mariela, #2940741 CLIENTE 1, #2940742 CLIENTE 2); el test #2940714 y los tres accidentales #2940738/39/40 están ANULADO- POR TIENDA.
+- **Hoja de pedidos (lo que ya existe y cómo se completa):** «Pedidos auto» es el libro de todos los pedidos (Lima y provincia) con
+  «Enviado» y la columna «Dinsides» (registrado #id / entregado / anulado / rechazado, que ahora llena `estados` en cada corrida);
+  «Ventas» lleva los de provincia con estado y saldo (pagado cuando llega la clave); «Boletas auto» los despachos. No hace falta otro Excel.

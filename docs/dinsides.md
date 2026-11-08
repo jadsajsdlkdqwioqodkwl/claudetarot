@@ -27,7 +27,7 @@ luego hacía a mano «Agregar pedido al listado», elegía el traslado («Recoge
      encuentro** del mapa de Dinsides; teléfono inválido; estado POR_VERIFICAR / INTENCION; provincia; la hoja dice «no».
    - Alertas (se registra igual, se avisa): extras y 2+ kits, pago distinto de Yape, monto distinto de lista, nota con 🚨, otro día,
      dirección corta, distrito deducido solo del pin, pin fuera del mapa.
-3. **La Routine «Dinsides — registro de pedidos de Lima»** (Sonnet, sesión fija, **solo manual: «Run now» cuando el dueño quiera**,
+3. **La Routine «Dinsides — registro de pedidos de Lima»** (`trig_01SQ3ENu3TfYbZrc3qyeksU4`; simulacro `trig_014Vk7mWt2DwJkv4SxVHK23z`; Sonnet, sesión fija, **solo manual: «Run now» cuando el dueño quiera**,
    normalmente después del último reporte de la noche) corre `scripts/asesor/dinsides.py`: `preparar` → lee los chats de los bloqueados y de los **candidatos del CRM**
    (chats de la noche con pin, dirección en texto o compra marcada que el reporte no trae: la «cuarta corrida» para que nadie quede
    fuera) → escribe `salida.json` solo con lo que corrige o agrega → `registrar` → `telegram` al dueño. Prompt en `docs/routines.md`.

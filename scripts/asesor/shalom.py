@@ -17,13 +17,16 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
 
            --agencias ajustes.json: {"51987654321": "AV PARRA 379", ...} fija la agencia (nombre del desplegable de Shalom) de un
            WhatsApp cuando el buscador dudó o se equivocó. Las dudas que queden salen listadas.
-           Por cada fila, salvo --sin-ventas, pide al Worker la venta de la pestaña Ventas (`POST /api/asesor/ventas crear`: si ya
-           existe una venta abierta con ese DNI devuelve esa): así la CLAVE DE SEGURIDAD de 4 dígitos que hay que teclear en Shalom
-           Pro es la misma que el CRM le mandará al cliente cuando pague el saldo. La clave va en el archivo de referencia (nunca en
-           Telegram ni al cliente).
-           --clave NNNN: la clave de seguridad del día que el dueño le dijo a la sesión; se usa para TODAS las ventas nuevas del lote
-           (así en Shalom Pro basta «CLAVE MASIVA»). Sin --clave, el Worker asigna la clave de cada envío (la menos usada entre las
-           ventas abiertas). Una venta que ya existía conserva la suya: la referencia lo dice.
+           Las claves son sagradas (dueño, 2026-11-08): el Worker NUNCA inventa ni asigna una. Solo con --clave NNNN (la clave del día
+           que el dueño le dio a la sesión) se crean las ventas de la pestaña Ventas (`POST /api/asesor/ventas crear`) con esa clave,
+           que es la que el CRM le mandará al cliente cuando pague el saldo; si una venta ya existía, se le pone esa misma clave. Sin
+           --clave no se toca la hoja Ventas y la referencia dice «PENDIENTE». La clave va en el archivo de referencia (nunca en
+           Telegram ni al cliente). Deja /tmp/shalom/lote.json con los DNI del lote para `clave`.
+    python3 scripts/asesor/shalom.py clave NNNN [lote.json]
+        -> pone o corrige la clave de seguridad de TODAS las ventas del último lote (crea la venta si no existe). Es lo que se corre
+           cuando el dueño da la clave después del Excel o la corrige.
+           --clave NNNN: la clave de seguridad del día que el dueño le dijo a la sesión; se usa para TODAS las ventas del lote (así en
+           Shalom Pro basta «CLAVE MASIVA»). Sin --clave no se crea ninguna venta y nadie asigna clave.
            --subir: deja el Excel y la referencia en CRM → Reportes (links) para descargarlos desde cualquier lado.
     python3 scripts/asesor/shalom.py telegram "texto"   -> aviso al dueño por el Worker (sin claves).
 
@@ -265,10 +268,11 @@ def cmd_masivo(args):
     if "--agencias" in args:
         ajustes = {re.sub(r"\D", "", k)[-9:]: v for k, v in json.load(open(args[args.index("--agencias") + 1])).items()}
     nombres_agencia = {a["agencia"] for a in cargar()["agencias"]}
-    con_ventas = "--sin-ventas" not in args
     clave_dia = args[args.index("--clave") + 1] if "--clave" in args else ""
     if clave_dia and not re.fullmatch(r"\d{4}", clave_dia):
         sys.exit("--clave debe ser de 4 dígitos.")
+    con_ventas = bool(clave_dia)  # sin clave del dueño no se toca la hoja Ventas (--sin-ventas queda como sinónimo de no pasar --clave)
+    lote = []
     fila = 2; revisar = []; claves = {}
     for p in pedidos:
         if tope and fila - 2 >= tope:
@@ -290,19 +294,17 @@ def cmd_masivo(args):
             revisar.append(f"{p.get('nombre')} ({p.get('whatsapp')}): agencia dudosa para «{texto.strip()}» → " + (" | ".join(c["codigo"] for c in cand) if cand else "sin candidatas"))
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
         dni = re.sub(r"\D", "", str(p.get("dni") or ""))
-        clave = ""
+        clave = "PENDIENTE (la da el dueño)"
+        adelanto, saldo = montos(p)
+        if dni and destino:
+            lote.append({"whatsapp": p.get("whatsapp"), "nombre": p.get("nombre"), "dni": dni, "tel": tel, "destino": destino, "adelanto": adelanto, "saldo": saldo})
         if con_ventas and dni and destino:
-            adelanto, saldo = montos(p)
-            cuerpo = {"accion": "crear", "dni": dni, "celular": tel, "envio": "Shalom", "adelanto": adelanto, "saldo": saldo,
-                      "notas": f"{p.get('nombre') or ''} · {destino}"[:80]}
-            if clave_dia:
-                cuerpo["clave"] = clave_dia
-            v = pedir_worker("/ventas", cuerpo)
-            clave = str(v.get("clave") or "")
-            if v.get("error"):
-                aviso.append(f"Ventas: {v['error']}"); revisar.append(f"{p.get('nombre')}: no se pudo crear/leer la venta en la hoja Ventas: {v['error']}")
-            elif v.get("nuevo") is False:
-                aviso.append("ya tenía venta abierta en la hoja Ventas (se usa su clave)" + (f", distinta de la del día" if clave_dia and clave and clave != clave_dia else ""))
+            r = poner_clave(dni, tel, clave_dia, adelanto, saldo, f"{p.get('nombre') or ''} · {destino}"[:80])
+            clave = clave_dia if r.get("ok") else "ERROR"
+            if r.get("error"):
+                aviso.append(f"Ventas: {r['error']}"); revisar.append(f"{p.get('nombre')}: no se pudo crear/actualizar la venta en la hoja Ventas: {r['error']}")
+            elif r.get("existia"):
+                aviso.append("ya tenía venta abierta en la hoja Ventas: se le puso la clave del día")
             claves[k9] = clave
         if not dni:
             aviso.append("sin DNI en el registro: pedirlo o buscarlo en el chat"); revisar.append(f"{p.get('nombre')}: sin DNI en el registro")
@@ -310,20 +312,21 @@ def cmd_masivo(args):
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
         kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
         filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits})
-        ad, sa = montos(p)
         ref.append([fila, p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), next((c["codigo"] for c in cand if c["agencia"] == destino), cand[0]["codigo"] if cand else ""), "sí" if destino else "NO",
-                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso), clave, ad, sa])
+                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso), clave, adelanto, saldo])
         fila += 1
     for col, w in zip("ABCDEFGHIJKLMNO", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45, 14, 9, 9)):
         ref.column_dimensions[col].width = w
     llenar_plantilla(filas_excel, salida)
     salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
     wb_ref.save(salida_ref)
+    json.dump({"fecha": fecha, "clave": clave_dia, "lote": lote}, open(os.path.join(os.path.dirname(os.path.abspath(salida)), "lote.json"), "w"), ensure_ascii=False, indent=1)
     print(f"{salida} · {fila - 2} fila(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
     print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas, CLAVE); NO se sube a Shalom")
-    distintas = sorted({c for c in claves.values() if c})
-    if distintas:
-        print(f"Claves de seguridad en este lote: {len(distintas)} distinta(s) → {'una sola, sirve CLAVE MASIVA' if len(distintas) == 1 else 'teclear la de cada envío (archivo de referencia)'}")
+    if con_ventas:
+        print(f"Ventas en la hoja Ventas con la clave del día: {sum(1 for c in claves.values() if c == clave_dia)} de {len(lote)} (CLAVE MASIVA en Shalom Pro).")
+    else:
+        print("Sin clave del día: no se tocó la hoja Ventas. Cuando el dueño la dé: python3 scripts/asesor/shalom.py clave NNNN " + os.path.join(os.path.dirname(os.path.abspath(salida)), "lote.json"))
     if "--subir" in args:
         import base64
         links = {}
@@ -333,6 +336,37 @@ def cmd_masivo(args):
         print("CRM → Reportes:", json.dumps(links, ensure_ascii=False))
     for r in revisar:
         print(f"⚠️ {r}")
+
+
+def poner_clave(dni, tel, clave, adelanto, saldo, notas=""):
+    """Crea la venta en la hoja Ventas si no existe y le pone la clave; si ya existía, le corrige la clave. {ok, existia, error}."""
+    v = pedir_worker("/ventas", {"accion": "crear", "dni": dni, "celular": tel, "envio": "Shalom", "adelanto": adelanto, "saldo": saldo, "clave": clave, "notas": notas})
+    if v.get("error"):
+        return {"ok": False, "error": v["error"]}
+    existia = v.get("nuevo") is False
+    if existia and str(v.get("clave") or "") != clave:
+        u = pedir_worker("/ventas", {"accion": "estado", "dni": dni, "clave": clave})
+        if u.get("error"):
+            return {"ok": False, "error": u["error"], "existia": True}
+    return {"ok": True, "existia": existia, "codigo": v.get("codigo")}
+
+
+def cmd_clave(args):
+    clave = args[0]
+    if not re.fullmatch(r"\d{4}", clave):
+        sys.exit("La clave debe ser de 4 dígitos.")
+    ruta = next((a for a in args[1:] if a.endswith(".json")), "/tmp/shalom/lote.json")
+    if not os.path.exists(ruta):
+        sys.exit(f"No existe {ruta}: primero corre `masivo`.")
+    lote = json.load(open(ruta))
+    ok = 0
+    for f in lote.get("lote", []):
+        r = poner_clave(f["dni"], f["tel"], clave, f.get("adelanto", 20), f.get("saldo", 69), f"{f.get('nombre') or ''} · {f.get('destino') or ''}"[:80])
+        print(f"{'✅' if r.get('ok') else '❌'} {f.get('nombre')} · DNI {f['dni']} · {'ya existía, clave corregida' if r.get('existia') else 'venta creada'}{' · ' + r['error'] if r.get('error') else ''}")
+        ok += bool(r.get("ok"))
+    lote["clave"] = clave
+    json.dump(lote, open(ruta, "w"), ensure_ascii=False, indent=1)
+    print(f"Clave del día puesta en {ok} de {len(lote.get('lote', []))} ventas. En Shalom Pro: CLAVE MASIVA.")
 
 
 def cmd_telegram(texto):
@@ -347,6 +381,8 @@ def main():
     cmd, resto = (a[0], a[1:]) if a else ("", [])
     if cmd == "telegram" and resto:
         cmd_telegram(" ".join(resto))
+    elif cmd == "clave" and resto:
+        cmd_clave(resto)
     elif cmd == "agencias":
         if "--actualizar" in resto:
             v, n = actualizar(); print(f"Agencias actualizadas: {n} (versión {v})")
