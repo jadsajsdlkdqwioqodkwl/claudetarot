@@ -18,7 +18,8 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
            "nota": "…", "fecha_entrega": "AAAA-MM-DD", "kits": 1, "empaque": "…", "estado": "CONFIRMADO"}], "marcar": [...]}.
            Solo pone lo que corriges; lo demás lo completa el Worker. Sin "pedidos" registra todos los listos de la fecha.
            El Worker registra en Dinsides los que quedan sin bloqueos (un solo listado), guarda la memoria y marca la hoja.
-           --simular: hace todo menos el POST final a Dinsides (pedido de prueba sin crear nada). --forzar: registra aunque haya
+           --traslado 1|2|3: cómo llegan los paquetes a Dinsides (1 recojo en mi domicilio, por defecto; 2 lo llevo a la tienda
+           Cercado, Av Arica 1702; 3 tienda Gamarra). --simular: hace todo menos el POST final a Dinsides (pedido de prueba sin crear nada). --forzar: registra aunque haya
            bloqueos de dirección/distrito (nunca con teléfono inválido o provincia); úsalo solo si una persona lo pidió.
            Si el Worker no tiene credenciales de Dinsides, deja el script de consola en --dir/consola.js para pegarlo a mano.
     python3 scripts/asesor/dinsides.py probar                                -> entra a Dinsides y lee el formulario real, sin registrar.
@@ -204,6 +205,8 @@ def cmd_registrar(args, accion="registrar"):
         body["simular"] = True
     if "--forzar" in args:
         body["forzar"] = True
+    if "--traslado" in args:  # 1 recojo en domicilio (defecto) · 2 lo llevo a tienda Cercado (Av Arica 1702) · 3 tienda Gamarra
+        body["traslado"] = args[args.index("--traslado") + 1]
     for m in datos.get("marcar", []) if accion == "registrar" else []:
         st, r = pedir("/dinsides", "POST", {"accion": "marcar", "fecha": body.get("fecha"), **m})
         print(f"marcar {m.get('whatsapp')}: {json.dumps(r, ensure_ascii=False)[:200]}")

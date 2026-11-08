@@ -468,7 +468,10 @@ export async function onRequestPost({ request, env }) {
     const sinCodigo = lote.filter((f) => !form.distritos.some((d) => d.valor === f.campos.id_distrito));
     const paraEnviar = lote.filter((f) => !sinCodigo.includes(f));
     for (const f of sinCodigo) noVan.push({ whatsapp: f.whatsapp, nombre: f.campos.nombre, bloqueos: [`DISTRITO: el código ${f.campos.id_distrito} ya no existe en Dinsides; elegir otro`], resumen: resumenFicha(f) });
-    const payload = payloadRegistro(paraEnviar, { negocio: form.negocio, id_recojo: form.recojo.id_recojo, recojo: form.recojo.recojo, turno: form.turno });
+    // `traslado`: 1 = recoger en mi domicilio (por defecto), 2 = lo llevaré a la tienda Cercado (Av Arica 1702), 3 = tienda Gamarra.
+    // Dinsides pide el 2 para regularizar un paquete que llegó a su almacén sin registro (devoluciones, 2026-11-03).
+    const traslado = /^[123]$/.test(String(p.traslado || "")) ? String(p.traslado) : form.recojo.recojo;
+    const payload = payloadRegistro(paraEnviar, { negocio: form.negocio, id_recojo: form.recojo.id_recojo, recojo: traslado, turno: form.turno });
     if (p.simular) {
       return json({ ok: true, simulado: true, fecha, perfil, formulario: { negocio: form.negocio, recojo: form.recojo, turno: form.turno, diferencias: form.diferencias },
         payload, listos: paraEnviar.map((f) => ({ whatsapp: f.whatsapp, campos: f.campos, alertas: f.alertas })), no_van: noVan, avisos: avisosForm, sin_pedido_en_el_sistema: pedidosFaltantes });
