@@ -1990,3 +1990,15 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   Chromium real), así que la regla exacta sigue sin verse; la corrección se basa en la comparación byte a byte de los dos archivos. Si el
   archivo nuevo vuelve a fallar, el siguiente paso es abrir Shalom Pro desde el navegador del dueño (Cowork) para leer el mensaje
   completo y el código del validador.
+
+## 2026-11-08 (tarde 4) — Shalom masivo: la plantilla se llena a nivel XML, byte a byte
+- Con la columna O quitada, Shalom Pro pasó a responder «El archivo no corresponde a la plantilla oficial». La plantilla la genera el
+  propio servidor de Shalom (PhpSpreadsheet): lleva docProps (título «Excel de Plataformas PRO», autor SHALOM EMPRESARIAL), dos hojas
+  ocultas con las tablas de agencias («Medidas» y «Hoja2», ids y nombres) y las 2 206 cadenas compartidas; cualquier librería de Excel
+  que reescriba el libro cambia eso y el validador lo detecta.
+- `shalom.py` ahora tiene `llenar_plantilla(filas, salida)`: copia la plantilla **byte a byte** y solo reemplaza las celdas A, B, F, G,
+  H y M de las filas con datos dentro de `xl/worksheets/sheet1.xml` (cadenas por `sharedStrings.xml`, como las trae Shalom). Verificado
+  con `cmp`: del archivo original solo cambian esos dos XML. Los nombres de agencia («GARATEA», «AV PARRA 379», «CHORRILLOS CO») ya
+  existen en las cadenas de la plantilla: son los mismos que valida Shalom (último tramo del código de `data/shalom-agencias.json`).
+- Pendiente de confirmar con una subida real del dueño. Si vuelve a fallar, hace falta leer el validador desde su navegador (Remote
+  Control o Cowork): `pro.shalom.pe` devuelve 403 desde la nube.

@@ -13,7 +13,7 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
            fecha(s) de despacho (DNI, teléfono, agencia de destino, PAQUETE XXS, 1 unidad, origen CHORRILLOS CO). Varias fechas = un
            simulacro con varios días. Junto al Excel sale «…-referencia.xlsx» (NO se sube a Shalom) con, por fila: nombre, WhatsApp, lo
            que escribió el cliente, la agencia elegida y las otras candidatas, para que una persona revise antes de subir. El archivo
-           para Shalom es su plantilla tal cual (14 columnas, hojas ocultas intactas): cualquier columna u hoja de más la rechaza.
+           para Shalom es su plantilla oficial byte a byte (solo se escriben las celdas con datos): cualquier otro cambio la rechaza.
 
 De dónde sale cada columna del Excel (el masivo NO autocompleta nada por DNI, así que todo tiene que venir del chat):
   DESTINATARIO (DOC) = DNI que el cliente escribió en el chat (el reporte lo guarda en `dni`; sin DNI la fila sale marcada).
@@ -126,6 +126,77 @@ def pedir_worker(ruta):
         return json.load(r)
 
 
+def _xml_escape(t):
+    return str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def llenar_plantilla(filas, salida):
+    """
+    Copia la plantilla oficial BYTE A BYTE y solo escribe los valores de las filas (A, B, F, G, H, M) dentro de
+    xl/worksheets/sheet1.xml, con las cadenas en xl/sharedStrings.xml como las trae Shalom. No se toca nada más: ni docProps
+    (título «Excel de Plataformas PRO», autor SHALOM EMPRESARIAL), ni las hojas ocultas «Medidas» y «Hoja2» (tablas de agencias), ni
+    estilos ni fórmulas. Reescribir el libro con una librería de Excel cambia esas partes y Shalom Pro responde «El archivo no
+    corresponde a la plantilla oficial» (2026-11-08).
+    filas = [{"dni": "32992096", "tel": "927055371", "origen": "CHORRILLOS CO", "destino": "GARATEA", "mercaderia": "PAQUETE XXS", "cantidad": 1}]
+    """
+    import zipfile
+    zin = zipfile.ZipFile(PLANTILLA)
+    hoja = zin.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    sst = zin.read("xl/sharedStrings.xml").decode("utf-8")
+    cadenas = re.findall(r"<si>(.*?)</si>", sst, re.S)
+    indice = {re.sub(r"<[^>]+>", "", c): i for i, c in enumerate(cadenas)}
+    nuevas = []
+
+    def idx(texto):
+        texto = str(texto)
+        if texto not in indice:
+            indice[texto] = len(cadenas) + len(nuevas); nuevas.append(texto)
+        return indice[texto]
+
+    def celda(col, r, estilo, valor, tipo):
+        if valor in (None, ""):
+            return f'<c r="{col}{r}" s="{estilo}"/>'
+        if tipo == "n":
+            return f'<c r="{col}{r}" s="{estilo}"><v>{valor}</v></c>'
+        return f'<c r="{col}{r}" s="{estilo}" t="s"><v>{idx(valor)}</v></c>'
+
+    def poner(hoja, r, col, estilo, valor, tipo):
+        patron = re.compile(r'<c r="%s%d"(?:\s[A-Za-z:]+="[^"]*")*\s*(?:/>|>.*?</c>)' % (col, r), re.S)
+        nueva = celda(col, r, estilo, valor, tipo)
+        if patron.search(hoja):
+            return patron.sub(lambda _m: nueva, hoja, count=1)
+        raise RuntimeError(f"la plantilla no tiene la celda {col}{r}")
+
+    if len(filas) > 499:
+        raise RuntimeError("la plantilla de Shalom tiene 499 filas de datos como máximo")
+    for i, f in enumerate(filas):
+        r = i + 2
+        hoja = poner(hoja, r, "A", 4, re.sub(r"\D", "", str(f.get("dni") or "")), "n")
+        hoja = poner(hoja, r, "B", 4, re.sub(r"\D", "", str(f.get("tel") or "")), "n")
+        hoja = poner(hoja, r, "F", 1, f.get("origen") or ORIGEN, "s")
+        hoja = poner(hoja, r, "G", 1, f.get("destino") or "", "s")
+        hoja = poner(hoja, r, "H", 1, f.get("mercaderia") or "PAQUETE XXS", "s")
+        hoja = poner(hoja, r, "M", 1, int(f.get("cantidad") or 1), "n")
+    # la fila 2 de ejemplo de la plantilla (ZAMACOLA → JAEN) se limpia si no se usó
+    if not filas:
+        for col, est in (("A", 4), ("B", 4), ("F", 1), ("G", 1), ("H", 1), ("M", 1)):
+            hoja = poner(hoja, 2, col, est, "", "n")
+    if nuevas:
+        sst = sst.replace("</sst>", "".join(f"<si><t>{_xml_escape(t)}</t></si>" for t in nuevas) + "</sst>")
+        sst = re.sub(r'uniqueCount="\d+"', f'uniqueCount="{len(cadenas) + len(nuevas)}"', sst)
+        sst = re.sub(r' count="\d+"', f' count="{len(cadenas) + len(nuevas)}"', sst)
+    os.makedirs(os.path.dirname(os.path.abspath(salida)), exist_ok=True)
+    with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            datos = zin.read(item.filename)
+            if item.filename == "xl/worksheets/sheet1.xml":
+                datos = hoja.encode("utf-8")
+            elif item.filename == "xl/sharedStrings.xml":
+                datos = sst.encode("utf-8")
+            zout.writestr(item, datos)
+    zin.close()
+
+
 def cmd_masivo(args):
     import openpyxl
     fechas = [a for a in args if len(a) == 10 and a[4] == "-"]
@@ -143,15 +214,7 @@ def cmd_masivo(args):
     if not pedidos:
         sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)}.")
     os.makedirs(os.path.dirname(os.path.abspath(salida)), exist_ok=True)
-    shutil.copy(PLANTILLA, salida)
-    wb = openpyxl.load_workbook(salida); ws = wb.worksheets[0]
-    for r in range(2, ws.max_row + 1):  # limpia el ejemplo de la plantilla (deja las fórmulas de medidas)
-        for c in ("A", "B", "C", "D", "E", "F", "G", "H", "M", "N"):
-            ws[f"{c}{r}"].value = None
-    # La plantilla trae una columna O vacía con formato; al guardarla, openpyxl la escribe como celda numérica sin valor y el
-    # validador de Shalom Pro la lee como una columna «0» («columnas adicionales no permitidas: 0», 2026-11-08). Se elimina.
-    if ws.max_column > 14:
-        ws.delete_cols(15, ws.max_column - 14)
+    filas_excel = []
     # La referencia para la persona va en OTRO archivo: Shalom solo debe recibir su plantilla tal cual (sin hojas extra).
     wb_ref = openpyxl.Workbook(); ref = wb_ref.active; ref.title = "Referencia"
     ref.append(["Fila Excel", "Despacho", "Nombre", "WhatsApp", "DNI", "Lo que escribió el cliente", "Agencia elegida (código Shalom Pro)", "Seguro", "Otras candidatas", "Kits", "Nota del reporte", "Revisar"])
@@ -176,18 +239,13 @@ def cmd_masivo(args):
         elif len(dni) != 8:
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
         kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
-        ws[f"A{fila}"] = dni or None
-        ws[f"B{fila}"] = int(tel) if tel else None
-        ws[f"F{fila}"] = ORIGEN
-        ws[f"G{fila}"] = destino or None
-        ws[f"H{fila}"] = "PAQUETE XXS"
-        ws[f"M{fila}"] = kits
+        filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits})
         ref.append([fila, p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), cand[0]["codigo"] if cand else "", "sí" if destino else "NO",
                     " | ".join(c["codigo"] for c in cand[1:]) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso)])
         fila += 1
     for col, w in zip("ABCDEFGHIJKL", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45)):
         ref.column_dimensions[col].width = w
-    wb.save(salida)
+    llenar_plantilla(filas_excel, salida)
     salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
     wb_ref.save(salida_ref)
     print(f"{salida} · {fila - 2} fila(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
