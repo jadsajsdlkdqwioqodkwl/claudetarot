@@ -176,7 +176,8 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
     if (col.hecho) f.ya_registrado = { modo: "manual (hoja)", detalle: col.hecho };
     else if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
-    else if (chat?.ya_etiquetado) f.ya_registrado = { modo: "etiqueta dinsides_registrado en el chat" };
+    // La etiqueta del chat NO bloquea (un cliente puede volver a comprar; 2026-11-08): solo avisa. La memoria R2 (3 días) sí bloquea.
+    else if (chat?.ya_etiquetado) f.alertas.push("el chat ya tiene la etiqueta dinsides_registrado (un pedido anterior); verificar que no sea repetido");
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }
@@ -192,7 +193,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.destino = "LIMA"; f.direcciones_chat = chat?.direcciones_chat || []; f.ubicacion = chat?.ubicacion ? { body: chat.ubicacion } : null; f.hoja = null; f.base = base;
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
     if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
-    else if (chat?.ya_etiquetado) f.ya_registrado = { modo: "etiqueta dinsides_registrado en el chat" };
+    else if (chat?.ya_etiquetado) f.alertas.push("el chat ya tiene la etiqueta dinsides_registrado (un pedido anterior); verificar que no sea repetido");
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }

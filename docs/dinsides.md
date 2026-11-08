@@ -85,6 +85,19 @@ la tabla; al registrar, el Worker usa la tarifa real del formulario y rechaza un
 Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).
 El dueño también puede darle «Run now» en claude.ai: va a la misma sesión, con su historial. Prompt v1 en `docs/routines.md`.
 
+## Etiquetas para imprimir (desde los datos, no desde fotos)
+`python3 scripts/asesor/etiquetas.py [FECHA_ENTREGA] [--shalom datos.json] [--olva datos.json] [--subir]` arma el PDF A4 (3 × 5, línea
+de corte, huecos con etiquetas en blanco Shalom → Lima → Olva) con el mismo formato del Project «Etiquetas de pedidos en PDF»: las de
+Lima salen solas del historial de Dinsides (ID PEDIDO, Negocio, ENTREGAR A, Teléfono, Producto, Cobrar, Distrito, Fecha Entrega,
+Detalle); las de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia, dirección, pie «Envía: 76250205») y las de Olva se
+pasan por datos hasta que Shalom se automatice. `--subir` deja el PDF en CRM → Reportes. Probado el 2026-11-08 con las 9 entregas del 7/11.
+
+## Regularizaciones pedidas por Dinsides
+Cuando un paquete llega a su almacén sin registro (devoluciones), Dinsides pide registrarlo como «solo entrega sin cobrar», dirección
+Av Arica 1702 y traslado «lo llevaré a tienda Cercado», y luego ellos lo anulan: `dinsides.py registrar salida.json --traslado 2` con un
+pedido nuevo (nombre, dirección, distrito Cercado de Lima, `tipo_pago` NO COBRAR, fecha lejana). Hecho el 2026-11-08 para Mariela Ramos
+Carpió (ver MAPA).
+
 ## Dónde ver las cosas
 - `python3 scripts/asesor/dinsides.py preparar [FECHA]` → fichas, bloqueos, ya registrados y candidatos; `/tmp/dinsides/fichas.json`.
 - Hoja «Pedidos auto» (libro «Pedidos Tarot Kit» `1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc`): columna P «Dinsides» y O «Enviado».

@@ -1909,3 +1909,26 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   `editar <id> campo=valor`. Pruebas actualizadas (el flujo completo con el Dinsides simulado: registrar, ids, estados, anular, editar).
 - **Para el proyecto de estados de envío (`docs/estados-envio.md`):** la parte de Lima ya no necesita Cowork ni navegador: es
   `dinsides.py estados`. Falta decidir si se corre dentro de la Routine de Dinsides (como PASO 0b) o en otra Routine manual.
+
+## 2026-11-08 (mediodía) — Dinsides: etiquetas desde los datos, regularización de Mariela Ramos Carpió, traslado por registro
+- **Etiquetas:** `scripts/asesor/etiquetas.py` reemplaza el Project «Etiquetas de pedidos en PDF» (que combinaba fotos): mismo PDF A4
+  3 × 5 con blancos, pero las de Lima salen del historial de Dinsides (`listado`) por fecha de entrega; Shalom y Olva por JSON de datos
+  (formato en el docstring). La etiqueta de Dinsides es la que imprime su portal («ver boleto»: ID PEDIDO, Negocio, ENTREGAR A,
+  Teléfono, Detalle, Cobrar, Distrito grande, Fecha Entrega); la de Shalom es la boleta de Shalom Pro recortada. Cuando Shalom se
+  automatice, sus etiquetas saldrán de ahí. `--subir` guarda el PDF en CRM → Reportes (`POST /api/asesor/reporte`).
+  Los dos PDF del dueño (lote del 7/11 para el motorizado de los domingos, con más detalle, y el del 31/10) quedaron como referencia
+  del formato; no se guardan en el repo.
+- **`registrar` acepta `traslado` (1 recojo en domicilio, 2 lo llevaré a tienda Cercado Av Arica 1702, 3 tienda Gamarra)**;
+  `dinsides.py registrar … --traslado 2`. Lo pidió Devoluciones de Dinsides (03/11) para regularizar un paquete que llegó a su almacén
+  sin registro: «solo entrega sin cobrar, dirección Av Arica 1702, lo llevaré a tienda Cercado; luego ellos lo anulan y gestionan la
+  devolución».
+- **Mariela Ramos Carpió:** no está en el CRM (ningún contacto «Ramos Carpió» ni «Mariela» con Puno/Olva), ni en la hoja Ventas (solo
+  guarda DNI y celular), ni en «Pedidos auto», ni en los reportes del 27/10 al 1/11. Su etiqueta era de Olva (destino PUNO - Jr Arequipa
+  139) y la foto no deja leer el DNI ni el teléfono. Se registró la regularización con el nombre completo y el teléfono del dueño
+  (927633099) como contacto, entrega 2026-12-31, NO COBRAR, traslado 2. Otros dos paquetes sin etiqueta ni registro que el dueño
+  mencionó: faltan los nombres para registrarlos igual.
+- **Arreglo:** la etiqueta `dinsides_registrado` del chat ya no bloquea un registro nuevo (bloqueaba a cualquier cliente que recompra y a
+  las regularizaciones con el número del dueño); ahora solo avisa. La memoria R2 por WhatsApp (3 días) sigue bloqueando repetidos.
+- **Shalom Pro:** `pro.shalom.pe/registroindividual` responde 403 al Worker (protección anti-bot) y no hay credenciales en el sistema; el
+  dueño describió el flujo (medida XXS S/8, origen Lima/Lima/Chorrillos/Chorrillos Co, agencia por código Región/Provincia/Distrito/Agencia,
+  sin protegido ni comprobante, sin cobro seguro, clave de 4 dígitos rotando entre 3). Queda para el siguiente paso (`docs/registro-pedidos.md`).
