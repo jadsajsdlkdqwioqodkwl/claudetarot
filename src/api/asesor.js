@@ -112,7 +112,7 @@ export async function onRequestPost({ request, env }) {
     // Los reportes de ventas SÍ llegan por Telegram al dueño (regla del dueño, 2026-10-13). Y el resumen del despacho de
     // boletas (2026-11-07): la Routine no tiene las claves de Telegram y su aviso nunca llegaba. Y el de Dinsides (2026-11-08).
     let telegram = null;
-    if (/ventas|boletas|dinsides/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
+    if (/ventas|boletas|dinsides|shalom/i.test(origenInforme) && env.TELEGRAM_CHAT_ID) {
       try {
         const msg = (texto + (link ? `\n\n${link}` : "")).slice(0, 4000);
         const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {

@@ -8,12 +8,26 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
     python3 scripts/asesor/shalom.py buscar "<lo que escribió el cliente>"
         -> las agencias que mejor calzan (ciudad, distrito, avenida, nombre), con su código, dirección y horario. Si calzan varias,
            hay que preguntarle al cliente (el reporte lo marca «CONFIRMAR AGENCIA»).
-    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--solo N] [--salida /tmp/shalom/masivo.xlsx]
+    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--solo N] [--agencias ajustes.json] [--sin-ventas] [--subir] [--salida x.xlsx]
         -> el Excel del «Formato Pro Masivo» de Shalom con los pedidos de PROVINCIA confirmados del registro del reporte de esa(s)
            fecha(s) de despacho (DNI, teléfono, agencia de destino, PAQUETE XXS, 1 unidad, origen CHORRILLOS CO). Varias fechas = un
            simulacro con varios días. Junto al Excel sale «…-referencia.xlsx» (NO se sube a Shalom) con, por fila: nombre, WhatsApp, lo
            que escribió el cliente, la agencia elegida y las otras candidatas, para que una persona revise antes de subir. El archivo
            para Shalom es su plantilla oficial byte a byte (solo se escriben las celdas con datos): cualquier otro cambio la rechaza.
+
+           --agencias ajustes.json: {"51987654321": "AV PARRA 379", ...} fija la agencia (nombre del desplegable de Shalom) de un
+           WhatsApp cuando el buscador dudó o se equivocó. Las dudas que queden salen listadas.
+           Por cada fila, salvo --sin-ventas, pide al Worker la venta de la pestaña Ventas (`POST /api/asesor/ventas crear`: si ya
+           existe una venta abierta con ese DNI devuelve esa): así la CLAVE DE SEGURIDAD de 4 dígitos que hay que teclear en Shalom
+           Pro es la misma que el CRM le mandará al cliente cuando pague el saldo. La clave va en el archivo de referencia (nunca en
+           Telegram ni al cliente).
+           --subir: deja el Excel y la referencia en CRM → Reportes (links) para descargarlos desde cualquier lado.
+    python3 scripts/asesor/shalom.py telegram "texto"   -> aviso al dueño por el Worker (sin claves).
+
+Paso a paso en Shalom Pro (probado el 2026-11-08): Registra → Registro de envíos masivos → «Sube el archivo» (el Excel de `masivo`)
+→ Continuar → Shalom muestra «N envíos registrados» y autocompleta el nombre por DNI (puede cambiar el celular por el de su base:
+revisar) → «Ingresar clave de seguridad» en cada envío con la clave del archivo de referencia (o «CLAVE MASIVA» si todas son
+iguales) → «Registrar envíos» → descargar/imprimir las boletas → foto de boleta + caja al número de la empresa → Routine de boletas.
 
 De dónde sale cada columna del Excel (el masivo NO autocompleta nada por DNI, así que todo tiene que venir del chat):
   DESTINATARIO (DOC) = DNI que el cliente escribió en el chat (el reporte lo guarda en `dni`; sin DNI la fila sale marcada).
@@ -118,12 +132,34 @@ def cmd_buscar(texto):
         print(f"{'★' if a['seguro'] else ' '} {a['puntos']:>2} · {a['codigo']} · {a['direccion']} · {a['horario']}")
 
 
-def pedir_worker(ruta):
+def pedir_worker(ruta, body=None):
     clave = os.environ.get("ASESOR_CLAVE") or sys.exit("Falta ASESOR_CLAVE en el entorno.")
     base = os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor"
-    req = urllib.request.Request(f"{base}{ruta}", headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)
+    datos = json.dumps(body, ensure_ascii=False).encode() if body is not None else None
+    req = urllib.request.Request(f"{base}{ruta}", data=datos, method="POST" if datos else "GET",
+                                 headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read())
+        except ValueError:
+            return {"error": f"http {e.code}"}
+
+
+def montos(p):
+    """Adelanto y saldo de un pedido de provincia según el reporte («Adelanto S/20; saldo S/69»); por defecto 20 y precio − 20."""
+    texto = f"{p.get('pago') or ''} {p.get('nota') or ''}"
+    kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
+    precio = {1: 89, 2: 149, 3: 199}.get(kits, 89 * kits)
+    m = re.search(r"adelanto\D{0,12}(\d{2,3})", texto, re.I) or re.search(r"(?:yape|plin)\s*s?/?\s*(\d{2,3})", texto, re.I)
+    adelanto = int(m.group(1)) if m else 20
+    if re.search(r"pag[oó] (todo|completo|el total)|pago completo|s/\s*%d completo" % precio, texto, re.I):
+        adelanto = precio
+    m2 = re.search(r"saldo\D{0,12}(\d{2,3})", texto, re.I)
+    saldo = int(m2.group(1)) if m2 else max(0, precio - adelanto)
+    return adelanto, saldo
 
 
 def _xml_escape(t):
@@ -217,9 +253,14 @@ def cmd_masivo(args):
     filas_excel = []
     # La referencia para la persona va en OTRO archivo: Shalom solo debe recibir su plantilla tal cual (sin hojas extra).
     wb_ref = openpyxl.Workbook(); ref = wb_ref.active; ref.title = "Referencia"
-    ref.append(["Fila Excel", "Despacho", "Nombre", "WhatsApp", "DNI", "Lo que escribió el cliente", "Agencia elegida (código Shalom Pro)", "Seguro", "Otras candidatas", "Kits", "Nota del reporte", "Revisar"])
+    ref.append(["Fila Excel", "Despacho", "Nombre", "WhatsApp", "DNI", "Lo que escribió el cliente", "Agencia elegida (código Shalom Pro)", "Seguro", "Otras candidatas", "Kits", "Nota del reporte", "Revisar", "CLAVE de seguridad (teclear en Shalom Pro)", "Adelanto", "Saldo"])
     tope = int(args[args.index("--solo") + 1]) if "--solo" in args else 0  # --solo N: solo las primeras N filas (pruebas)
-    fila = 2; revisar = []
+    ajustes = {}
+    if "--agencias" in args:
+        ajustes = {re.sub(r"\D", "", k)[-9:]: v for k, v in json.load(open(args[args.index("--agencias") + 1])).items()}
+    nombres_agencia = {a["agencia"] for a in cargar()["agencias"]}
+    con_ventas = "--sin-ventas" not in args
+    fila = 2; revisar = []; claves = {}
     for p in pedidos:
         if tope and fila - 2 >= tope:
             break
@@ -228,36 +269,73 @@ def cmd_masivo(args):
         if re.search(r"\bolva\b", norm(texto)):
             revisar.append(f"{p.get('nombre')}: va por OLVA, no entra al masivo de Shalom"); continue
         cand = buscar(texto, 3)
-        destino = cand[0]["agencia"] if cand and cand[0]["seguro"] else ""
+        k9 = re.sub(r"\D", "", str(p.get("whatsapp") or ""))[-9:]
+        if k9 in ajustes:
+            destino = str(ajustes[k9]).strip().upper()
+            if destino not in nombres_agencia:
+                revisar.append(f"{p.get('nombre')}: la agencia del ajuste «{destino}» no existe en Shalom (usa el nombre exacto de `buscar`)"); destino = ""
+        else:
+            destino = cand[0]["agencia"] if cand and cand[0]["seguro"] else ""
         if not destino:
             aviso.append("agencia dudosa: elegir entre las candidatas o preguntar al cliente")
             revisar.append(f"{p.get('nombre')} ({p.get('whatsapp')}): agencia dudosa para «{texto.strip()}» → " + (" | ".join(c["codigo"] for c in cand) if cand else "sin candidatas"))
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
         dni = re.sub(r"\D", "", str(p.get("dni") or ""))
+        clave = ""
+        if con_ventas and dni and destino:
+            adelanto, saldo = montos(p)
+            v = pedir_worker("/ventas", {"accion": "crear", "dni": dni, "celular": tel, "envio": "Shalom", "adelanto": adelanto, "saldo": saldo,
+                                         "notas": f"{p.get('nombre') or ''} · {destino}"[:80]})
+            clave = str(v.get("clave") or "")
+            if v.get("error"):
+                aviso.append(f"Ventas: {v['error']}"); revisar.append(f"{p.get('nombre')}: no se pudo crear/leer la venta en la hoja Ventas: {v['error']}")
+            elif v.get("nuevo") is False:
+                aviso.append("ya tenía venta abierta en la hoja Ventas (se usa su clave)")
+            claves[k9] = clave
         if not dni:
             aviso.append("sin DNI en el registro: pedirlo o buscarlo en el chat"); revisar.append(f"{p.get('nombre')}: sin DNI en el registro")
         elif len(dni) != 8:
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
         kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
         filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits})
-        ref.append([fila, p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), cand[0]["codigo"] if cand else "", "sí" if destino else "NO",
-                    " | ".join(c["codigo"] for c in cand[1:]) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso)])
+        ad, sa = montos(p)
+        ref.append([fila, p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), next((c["codigo"] for c in cand if c["agencia"] == destino), cand[0]["codigo"] if cand else ""), "sí" if destino else "NO",
+                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso), clave, ad, sa])
         fila += 1
-    for col, w in zip("ABCDEFGHIJKL", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45)):
+    for col, w in zip("ABCDEFGHIJKLMNO", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45, 14, 9, 9)):
         ref.column_dimensions[col].width = w
     llenar_plantilla(filas_excel, salida)
     salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
     wb_ref.save(salida_ref)
     print(f"{salida} · {fila - 2} fila(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
-    print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas); NO se sube a Shalom")
+    print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas, CLAVE); NO se sube a Shalom")
+    distintas = sorted({c for c in claves.values() if c})
+    if distintas:
+        print(f"Claves de seguridad en este lote: {len(distintas)} distinta(s) → {'una sola, sirve CLAVE MASIVA' if len(distintas) == 1 else 'teclear la de cada envío (archivo de referencia)'}")
+    if "--subir" in args:
+        import base64
+        links = {}
+        for ruta, titulo in ((salida, f"Shalom masivo {fecha} (subir a Shalom Pro)"), (salida_ref, f"Shalom masivo {fecha} · referencia y claves")):
+            r = pedir_worker("/reporte", {"archivo_base64": base64.b64encode(open(ruta, "rb").read()).decode(), "nombre": os.path.basename(ruta), "titulo": titulo})
+            links[os.path.basename(ruta)] = r.get("url") or r.get("error")
+        print("CRM → Reportes:", json.dumps(links, ensure_ascii=False))
     for r in revisar:
         print(f"⚠️ {r}")
+
+
+def cmd_telegram(texto):
+    if re.search(r"\b(3114|3143|3144)\b", texto) or re.search(r"clave\D{0,6}\d{4}", texto, re.I):
+        sys.exit("El aviso lleva una clave de 4 dígitos: quítala (las claves solo van en el archivo de referencia).")
+    r = pedir_worker("/avisos", {"informe": f"Shalom — envío masivo\n\n{texto}", "origen": "shalom (aviso)"})
+    print(json.dumps(r, ensure_ascii=False))
 
 
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
-    if cmd == "agencias":
+    if cmd == "telegram" and resto:
+        cmd_telegram(" ".join(resto))
+    elif cmd == "agencias":
         if "--actualizar" in resto:
             v, n = actualizar(); print(f"Agencias actualizadas: {n} (versión {v})")
         d = cargar(); print(f"{len(d['agencias'])} agencias · versión {d.get('version')} · bajado {d.get('bajado')}")

@@ -1,10 +1,11 @@
 /**
  * Reportes de ventas en PDF que arman las Routines del asesor.
  *
- * POST /api/asesor/reporte   (x-asesor-clave) { nombre, pdf_base64 }
+ * POST /api/asesor/reporte   (x-asesor-clave) { nombre, pdf_base64 }  o  { nombre: "x.xlsx", archivo_base64 }
  *      Lo guarda en R2 (reportes/…) con un nombre imposible de adivinar y
- *      devuelve el link. Lo sube enviar.py, así el PDF no pasa por el modelo.
- * GET  /r/<id>.pdf           el PDF (quien tenga el link).
+ *      devuelve el link. Lo sube enviar.py, así el PDF no pasa por el modelo. Desde el 2026-11-08 también
+ *      acepta un Excel (.xlsx): el del envío masivo de Shalom que arma shalom.py.
+ * GET  /r/<id>.pdf           el PDF (quien tenga el link).  GET /r/<id>.xlsx  el Excel (se descarga).
  * GET  /r/<id>.html          el resumen semanal (lo guarda asesor-resumen.js).
  * GET  /api/crm/reportes     (sesión de admin) los últimos reportes, para el
  *      botón Reportes del CRM. /api/asesor/reportes: lo mismo con la clave.
@@ -20,24 +21,27 @@ const json = (data, status = 200) =>
   });
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const RE_ID = /^[a-z0-9-]{8,120}\.(pdf|html)$/;
+const RE_ID = /^[a-z0-9-]{8,120}\.(pdf|html|xlsx)$/;
+const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export async function onRequestPostReporte({ request, env }) {
   if (!(await dentroDelLimiteAsesor(env, request.headers.get("CF-Connecting-IP")))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizadoAsesor(request, env))) return json({ error: "No autorizado." }, 401);
   if (!env.CRM_MEDIA) return json({ error: "Falta el bucket R2." }, 503);
   const payload = await request.json().catch(() => null);
+  const esXlsx = /\.xlsx$/i.test(String(payload?.nombre || "")) && payload?.archivo_base64;
   let bytes;
   try {
-    bytes = Uint8Array.from(atob(String(payload?.pdf_base64 || "")), (c) => c.charCodeAt(0));
+    bytes = Uint8Array.from(atob(String((esXlsx ? payload?.archivo_base64 : payload?.pdf_base64) || "")), (c) => c.charCodeAt(0));
   } catch {
-    return json({ error: "PDF inválido." }, 400);
+    return json({ error: "Archivo inválido." }, 400);
   }
-  if (!bytes.length || bytes.length > MAX_BYTES) return json({ error: "PDF vacío o demasiado grande." }, 400);
-  const base = String(payload?.nombre || "reporte").toLowerCase().replace(/\.pdf$/, "").replace(/[^a-z0-9-]+/g, "-").slice(0, 60);
-  const id = `${base}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.pdf`;
+  if (!bytes.length || bytes.length > MAX_BYTES) return json({ error: "Archivo vacío o demasiado grande." }, 400);
+  const ext = esXlsx ? "xlsx" : "pdf";
+  const base = String(payload?.nombre || "reporte").toLowerCase().replace(/\.(pdf|xlsx)$/, "").replace(/[^a-z0-9-]+/g, "-").slice(0, 60);
+  const id = `${base}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.${ext}`;
   await env.CRM_MEDIA.put(`reportes/${id}`, bytes, {
-    httpMetadata: { contentType: "application/pdf" },
+    httpMetadata: { contentType: esXlsx ? XLSX : "application/pdf" },
     customMetadata: { titulo: String(payload?.titulo || base).slice(0, 120) }
   });
   return json({ ok: true, id, url: `${new URL(request.url).origin}/r/${id}` });
@@ -52,6 +56,12 @@ export async function reportePdf({ request, env }) {
     // El resumen semanal (asesor-resumen.js): una página, no un PDF.
     return new Response(obj.body, {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex, nofollow" }
+    });
+  }
+  if (id.endsWith(".xlsx")) {
+    return new Response(obj.body, {
+      headers: { "Content-Type": XLSX, "Content-Disposition": `attachment; filename="${id.replace(/-[a-f0-9]{16}\.xlsx$/, ".xlsx")}"`,
+        "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex, nofollow" }
     });
   }
   return new Response(obj.body, {

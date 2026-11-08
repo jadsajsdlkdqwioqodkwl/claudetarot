@@ -2002,3 +2002,23 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   existen en las cadenas de la plantilla: son los mismos que valida Shalom (último tramo del código de `data/shalom-agencias.json`).
 - Pendiente de confirmar con una subida real del dueño. Si vuelve a fallar, hace falta leer el validador desde su navegador (Remote
   Control o Cowork): `pro.shalom.pe` devuelve 403 desde la nube.
+
+## 2026-11-08 (noche) — Shalom: el Excel masivo FUNCIONA; flujo completo y Routine manual
+- **Éxito confirmado por el dueño:** el archivo armado por `shalom.py masivo` (plantilla oficial byte a byte, 2 filas) fue aceptado
+  por Shalom Pro: «2 envíos registrados» (Dhajyana Terán → Av Parra 379, Luzgardo Cenas → Garatea), con nombre autocompletado por
+  DNI y botón «Ingresar clave de seguridad» por envío (o «CLAVE MASIVA»). Hallazgo: Shalom **reemplazó el celular** de Luzgardo por el
+  de su propia base (956845125 en vez del WhatsApp del chat): hay que mirarlo en la pantalla de revisión.
+- **Regla fija:** `llenar_plantilla()` no se toca sin volver a probar una subida real. Estado práctico en **`docs/shalom.md`**.
+- **Flujo completo construido:** `masivo` → agencia por `buscar` (con `--agencias ajustes.json` para fijarla cuando dudó) → venta en la
+  pestaña Ventas por `POST /api/asesor/ventas crear` (devuelve la existente si ya hay una abierta con ese DNI) para que la **clave de
+  seguridad** que se teclea en Shalom sea la misma que el CRM le mandará al cliente (`--sin-ventas` lo apaga) → dos archivos (Excel para
+  Shalom + referencia con agencia, candidatas, CLAVE, adelanto y saldo) → `--subir` los deja en CRM → Reportes (`src/api/reportes.js`
+  ahora acepta `.xlsx` con `archivo_base64` y lo sirve como descarga) → `shalom.py telegram` avisa al dueño (rechaza textos con claves;
+  `asesor.js` manda por Telegram los informes con origen «shalom»).
+- **Routine nueva:** **`trig_011Q1Lso76f8LAKK3DjziP64`** «Shalom — Excel de envío masivo (manual · Run now)» sobre la sesión fija de Dinsides
+  (`session_017wTF8ckoBNtwk4nSxvvFzk`), sin cron. Prompt v1 en `docs/routines.md`. Pasos: masivo sin ventas → leer chats de las agencias
+  dudosas y fijarlas → masivo con ventas y `--subir` → Telegram con los links. El humano: subir el Excel, teclear las claves de la
+  referencia y «Registrar envíos».
+- **Pendiente (decisión del dueño):** crear la venta en Ventas al armar el Excel es nuevo (antes la creaba la Routine de boletas al
+  despachar). Si prefiere lo de antes, la Routine corre con `--sin-ventas` y la clave la teclea él a su criterio (pero entonces puede
+  no coincidir con la que el CRM le manda al cliente).

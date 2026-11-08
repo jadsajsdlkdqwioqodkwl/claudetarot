@@ -1287,3 +1287,11 @@ Misma sesión fija que la Routine real (`session_017wTF8ckoBNtwk4nSxvvFzk`), sin
 `registrar --simular` (el Worker entra a Dinsides y arma el listado, pero no lo manda ni escribe en la hoja ni en los chats); no manda
 Telegram y responde en la sesión qué se habría registrado y qué no. Sirve para probar una noche antes de usar la Routine real. El prompt
 es el de la v2 con esos dos cambios (texto completo en el trigger).
+
+## 2026-11-08 (noche) · Routine nueva «Shalom — Excel de envío masivo (manual · Run now)»
+Sobre la misma sesión fija de Dinsides (`session_017wTF8ckoBNtwk4nSxvvFzk`), sin cron, sin conectores. Trabaja con
+`scripts/asesor/shalom.py` (y `dinsides.py chat` para leer un chat). Trigger **`trig_011Q1Lso76f8LAKK3DjziP64`**. Estado en `docs/shalom.md`.
+Prompt v1 (el del trigger): PASO 0 `masivo --sin-ventas` → PASO 1 leer chats de las agencias dudosas y fijarlas en /tmp/shalom/agencias.json
+con `buscar` → PASO 2 `masivo --agencias … --subir` (crea/lee las ventas en la hoja Ventas y sube Excel + referencia a CRM → Reportes) →
+PASO 3 `shalom.py telegram` con links y pendientes, sin claves. Reglas: agencia real con nombre exacto o no entra; claves solo en la
+referencia; Olva aparte; nunca escribe a clientes.
