@@ -490,9 +490,15 @@ export async function onRequestPost({ request, env }) {
       }
     } catch (err) { console.error("dinsides: ids", err.message); }
     for (const f of paraEnviar) f.nro = ids[f.whatsapp] || "";
-    const despues = await despuesDeRegistrar(env, fecha, paraEnviar, "api", { origen: String(p.origen || ""), respuesta_dinsides: r.respuesta });
+    // Dinsides responde 1 aunque descarte un pedido en silencio (p. ej. mismo teléfono que otro pedido abierto, 2026-11-08):
+    // solo cuenta como registrado lo que aparece en su listado con su id. Lo demás se devuelve como «no confirmado».
+    const confirmados = paraEnviar.filter((f) => f.nro);
+    const noConfirmados = paraEnviar.filter((f) => !f.nro).map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, telefono: f.campos.telefono, fecha_entrega: f.campos.fecha_entrega,
+      motivo: "Dinsides respondió 1 pero el pedido no aparece en su listado (¿teléfono repetido con otro pedido abierto?). No se dio por registrado; revisar en el panel o volver a intentar con otro teléfono." }));
+    for (const x of noConfirmados) noVan.push({ whatsapp: x.whatsapp, nombre: x.nombre, bloqueos: [x.motivo], resumen: `${x.nombre} · ${x.telefono} · ${x.fecha_entrega}` });
+    const despues = confirmados.length ? await despuesDeRegistrar(env, fecha, confirmados, "api", { origen: String(p.origen || ""), respuesta_dinsides: r.respuesta }) : {};
     // Los que el reporte no traía (los agregó la Routine) entran a la hoja «Pedidos auto» para que el reporte de la noche los vea.
-    const nuevosEnHoja = paraEnviar.filter((f) => f.origen === "routine");
+    const nuevosEnHoja = confirmados.filter((f) => f.origen === "routine");
     if (nuevosEnHoja.length) {
       despues.hoja_nuevas = await upsertPedidosAuto(env, fecha, String(p.origen || "dinsides"), nuevosEnHoja.map((f) => ({
         nombre: f.campos.nombre, whatsapp: f.whatsapp, destino: "LIMA", estado: "CONFIRMADO", vendedora: f.asesora, direccion_o_agencia: f.campos.direccion,
@@ -500,8 +506,8 @@ export async function onRequestPost({ request, env }) {
       }))).catch((err) => ({ error: err.message }));
       for (const f of nuevosEnHoja) await marcarDinsidesEnHoja(env, f.whatsapp, `registrado ${ahoraLima()}${f.nro ? ` #${f.nro}` : ""}`, `Dinsides ${f.campos.fecha_entrega}`).catch(() => null);
     }
-    return json({ ok: true, fecha, registrados: paraEnviar.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, nro: f.nro || "", distrito: f.campos.distrito, fecha_entrega: f.campos.fecha_entrega, cobrar: f.campos.cobrar, tipo_pago: f.campos.tipo_pago, alertas: f.alertas })),
-      no_van: noVan, avisos: avisosForm, sin_pedido_en_el_sistema: pedidosFaltantes, respuesta_dinsides: r.respuesta, ...despues });
+    return json({ ok: true, fecha, registrados: confirmados.map((f) => ({ whatsapp: f.whatsapp, nombre: f.campos.nombre, nro: f.nro || "", distrito: f.campos.distrito, fecha_entrega: f.campos.fecha_entrega, cobrar: f.campos.cobrar, tipo_pago: f.campos.tipo_pago, alertas: f.alertas })),
+      no_confirmados: noConfirmados, no_van: noVan, avisos: avisosForm, sin_pedido_en_el_sistema: pedidosFaltantes, respuesta_dinsides: r.respuesta, ...despues });
   } catch (err) {
     console.error("asesor-dinsides POST:", err.message);
     const esCred = /sin_credenciales|inicio de sesión|DINSIDES_TLF/.test(err.message);

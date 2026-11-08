@@ -164,7 +164,9 @@ def _cargar_salida(args, defecto="/tmp/dinsides/salida.json"):
 
 def _imprimir_resultado(r, carpeta):
     for x in r.get("registrados", []):
-        print(f"✅ Registrado en Dinsides: {x.get('nombre')} · {x.get('whatsapp')} · {x.get('distrito')} · entrega {x.get('fecha_entrega')} · S/{x.get('cobrar')} {x.get('tipo_pago')}")
+        print(f"✅ Registrado en Dinsides #{x.get('nro') or '?'}: {x.get('nombre')} · {x.get('whatsapp')} · {x.get('distrito')} · entrega {x.get('fecha_entrega')} · S/{x.get('cobrar')} {x.get('tipo_pago')}")
+    for x in r.get("no_confirmados", []):
+        print(f"❓ NO CONFIRMADO: {x.get('nombre')} · tel {x.get('telefono')} · {x.get('motivo')}")
         for a in x.get("alertas", []):
             print(f"    · {a}")
     if r.get("simulado"):
