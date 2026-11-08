@@ -30,7 +30,10 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
            «Pedidos auto» y marca «entregado #id» / «anulado…» en la columna Dinsides (y «Enviado» si estaba vacío) y la etiqueta
            del chat. --solo-ver no marca nada.
     python3 scripts/asesor/dinsides.py listado [desde] [hasta]                 -> el historial de Dinsides tal cual (id, nombre, tel, estado).
-    python3 scripts/asesor/dinsides.py anular <id_pedido…> [--motivo "…"]      -> anula pedidos propios (solo los de hoy aún no enviados).
+    python3 scripts/asesor/dinsides.py anular <id_pedido…> [--motivo "…"]      -> anula pedidos propios que aún no están EN RUTA («Anular pedido» del detalle).
+    python3 scripts/asesor/dinsides.py editar <id_pedido> campo=valor [campo=valor…]
+        -> edita un pedido antes de la ruta. Campos: fecha_entrega=AAAA-MM-DD, direccion=…, distrito=Nombre, nombre=…, telefono=9…,
+           cobrar=89, tipo_pago=YAPE, obs=…, producto=… (ej.: editar 2940714 fecha_entrega=2026-11-12 "obs=llamar antes").
 """
 import datetime as dt, json, os, sys, urllib.error, urllib.request
 
@@ -289,6 +292,20 @@ def cmd_anular(args):
     print(json.dumps(r, ensure_ascii=False, indent=1))
 
 
+def cmd_editar(args):
+    idp = args[0]
+    cambios = {}
+    for a in args[1:]:
+        if "=" in a:
+            k, v = a.split("=", 1)
+            cambios[k.strip()] = v.strip()
+    if not idp.isdigit() or not cambios:
+        sys.exit("Uso: editar <id_pedido> campo=valor …")
+    st, r = pedir("/dinsides", "POST", {"accion": "editar", "id": idp, "cambios": cambios}, timeout=180)
+    salir_si_error(st, r)
+    print(json.dumps(r, ensure_ascii=False, indent=1))
+
+
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
@@ -314,6 +331,8 @@ def main():
         cmd_listado(resto)
     elif cmd == "anular" and resto:
         cmd_anular(resto)
+    elif cmd == "editar" and len(resto) >= 2:
+        cmd_editar(resto)
     else:
         sys.exit(__doc__)
 

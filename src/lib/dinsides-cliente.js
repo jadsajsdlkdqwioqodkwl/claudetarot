@@ -154,14 +154,52 @@ export async function pedidosHoy(env, cookie) {
   try { return JSON.parse(r.texto); } catch { throw new Error(`Dinsides no devolvió los pedidos de hoy (http ${r.status})`); }
 }
 
-/** Anula pedidos (POST pedido/anular_ped_client { datos: [ids] }), lo mismo que el botón «Anular» de «Paquete no enviado». */
+/**
+ * Anula un pedido como el botón «Anular pedido» de la página de detalle (POST pedido/anular_tienda { id_pedido }):
+ * 1 = anulado («ANULADO- POR TIENDA»), 2 = ya está EN RUTA y no se puede. (El botón masivo de «Paquete no enviado»,
+ * pedido/anular_ped_client, solo vale para los que salen HOY; probado el 2026-11-08.)
+ */
 export async function anular(env, cookie, ids) {
   const lista = (Array.isArray(ids) ? ids : [ids]).map((x) => String(x).replace(/\D/g, "")).filter(Boolean);
   if (!lista.length) throw new Error("Falta el id del pedido a anular");
-  const r = await pedir(env, "pedido/anular_ped_client", { method: "POST", cookie, ajax: true, cuerpo: codificarFormulario({ datos: lista }) });
+  const resultados = [];
+  for (const id of lista) {
+    const r = await pedir(env, "pedido/anular_tienda", { method: "POST", cookie, ajax: true, cuerpo: codificarFormulario({ id_pedido: id }) });
+    let respuesta = null;
+    try { respuesta = JSON.parse(r.texto); } catch { respuesta = r.texto.slice(0, 200); }
+    resultados.push({ id_pedido: id, ok: r.status < 400 && (respuesta === 1 || respuesta === "1"), en_ruta: respuesta === 2 || respuesta === "2", respuesta });
+  }
+  return { ok: resultados.every((x) => x.ok), resultados, ids: lista };
+}
+
+/** El pedido completo tal como lo ve la página de detalle (GET pedido/detalle/ID → `var pedido = {...}`). */
+export async function detalle(env, cookie, id) {
+  const r = await pedir(env, `pedido/detalle/${String(id).replace(/\D/g, "")}`, { cookie });
+  const m = r.texto.match(/var pedido = (\{[\s\S]*?\});/);
+  if (!m) throw new Error(`no se pudo leer el detalle del pedido ${id} (¿no es de este negocio?)`);
+  return JSON.parse(m[1]);
+}
+
+/**
+ * Edita un pedido antes de que esté EN RUTA, como «Guardar cambios» de la página de detalle (POST pedido/udpate).
+ * `cambios` admite: nombre, telefono, id_distrito, direccion, producto, cobrar, monto_service, obs, fecha_entrega (AAAA-MM-DD),
+ * coordenadas, tipo_pedido, tipo_pago, tipo_turno. Lo que no venga se conserva del pedido actual. 1 = editado.
+ */
+export async function editar(env, cookie, id, cambios = {}) {
+  const ped = await detalle(env, cookie, id);
+  const c = cambios;
+  const datos = {
+    id_pedido: ped.id_pedido, id_destinatario: ped.id_destinatario,
+    nombre: c.nombre ?? ped.nombre_destinataio, tlf: c.telefono ?? ped.telefono_destinatario, distrito: c.id_distrito ?? ped.id_distrito,
+    direccion: c.direccion ?? ped.direccion_destinatario, producto: c.producto ?? ped.detalle, cobro: c.cobrar ?? ped.monto_cobrar,
+    monto_service: c.monto_service ?? ped.costo_service, observs: c.obs ?? (ped.observaciones || ""),
+    fecha_entrega: c.fecha_entrega ?? String(ped.fecha_entrega || "").slice(0, 10), coordenadas: c.coordenadas ?? (ped.coordenadas || ""),
+    tipo_pedido: c.tipo_pedido ?? ped.tipo_pedido, tipo_pago: c.tipo_pago ?? ped.metodo_pago, tipo_turno: c.tipo_turno ?? (ped.tipo_turno || "0")
+  };
+  const r = await pedir(env, "pedido/udpate", { method: "POST", cookie, ajax: true, cuerpo: codificarFormulario(datos) });
   let respuesta = null;
   try { respuesta = JSON.parse(r.texto); } catch { respuesta = r.texto.slice(0, 200); }
-  return { ok: r.status < 400, status: r.status, respuesta, ids: lista };
+  return { ok: r.status < 400 && (respuesta === 1 || respuesta === "1"), respuesta, enviado: datos, antes: ped };
 }
 
 /** Clasifica el `seguimiento` de Dinsides. */

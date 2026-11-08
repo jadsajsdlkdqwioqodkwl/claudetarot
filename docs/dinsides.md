@@ -27,8 +27,8 @@ luego hacía a mano «Agregar pedido al listado», elegía el traslado («Recoge
      encuentro** del mapa de Dinsides; teléfono inválido; estado POR_VERIFICAR / INTENCION; provincia; la hoja dice «no».
    - Alertas (se registra igual, se avisa): extras y 2+ kits, pago distinto de Yape, monto distinto de lista, nota con 🚨, otro día,
      dirección corta, distrito deducido solo del pin, pin fuera del mapa.
-3. **La Routine «Dinsides — registro de pedidos de Lima»** (Sonnet, sesión fija, manual «Run now» + cron 23:55 Lima, después del
-   último reporte) corre `scripts/asesor/dinsides.py`: `preparar` → lee los chats de los bloqueados y de los **candidatos del CRM**
+3. **La Routine «Dinsides — registro de pedidos de Lima»** (Sonnet, sesión fija, **solo manual: «Run now» cuando el dueño quiera**,
+   normalmente después del último reporte de la noche) corre `scripts/asesor/dinsides.py`: `preparar` → lee los chats de los bloqueados y de los **candidatos del CRM**
    (chats de la noche con pin, dirección en texto o compra marcada que el reporte no trae: la «cuarta corrida» para que nadie quede
    fuera) → escribe `salida.json` solo con lo que corrige o agrega → `registrar` → `telegram` al dueño. Prompt en `docs/routines.md`.
 4. **El Worker registra en Dinsides** (`POST /api/asesor/dinsides {accion:"registrar"}`, `src/lib/dinsides-cliente.js`): entra con
@@ -38,8 +38,22 @@ luego hacía a mano «Agregar pedido al listado», elegía el traslado («Recoge
    `revisar[]`…). Dinsides responde `1` = registrado. Luego: memoria en R2 (`dinsides/FECHA.json`, `dinsides/indice.json`), columna
    **«Dinsides»** y «Enviado» de la hoja «Pedidos auto», etiqueta `dinsides_registrado` en el chat. Nunca registra dos veces el mismo
    WhatsApp (3 días) ni dos veces el mismo teléfono en un listado (Dinsides tampoco lo acepta).
-5. **Sin credenciales** (hoy): el mismo `registrar` responde `sin_credenciales` y deja el **script de consola** de los listos en
-   `/tmp/dinsides/consola.js` (el camino de siempre, pero ya armado); la Routine avisa que faltan los secretos.
+5. **Credenciales:** ya están en el Worker como secretos (`DINSIDES_TLF`, `DINSIDES_CLAVE`, puestos el 2026-11-08 por la API de
+   Cloudflare). Si algún día faltan, `registrar` responde `sin_credenciales` y deja el **script de consola** de los listos en
+   `/tmp/dinsides/consola.js` (el camino de siempre, pero ya armado).
+6. **Los ojos del reporte (`estados`):** `dinsides.py estados` lee el historial de Dinsides (`seguimiento`: ENTREGADO, ANULADO-…,
+   RECHAZADO…, REGISTRADO), lo cruza por teléfono con la hoja «Pedidos auto» y marca «entregado FECHA #id» (y «Enviado») o
+   «anulado/rechazado …» en la columna Dinsides, más la etiqueta `dinsides_entregado|anulado|rechazado` en el chat. Lista también lo que
+   está en Dinsides y no tiene fila en la hoja. `--solo-ver` no marca nada.
+7. **Anular y editar:** `dinsides.py anular <id>` (como «Anular pedido» del detalle; solo antes de la ruta) y `dinsides.py editar <id>
+   fecha_entrega=AAAA-MM-DD distrito=Nombre direccion=… cobrar=… tipo_pago=… obs=…` (como «Guardar cambios»). El id de cada pedido
+   lo guarda el Worker al registrar (memoria R2 y columna Dinsides de la hoja) y se ve con `dinsides.py listado`.
+
+## El distrito: manda el mapa de cobertura de Dinsides (regla del dueño)
+Dinsides rechaza el pedido si el distrito no coincide con su cobertura. Por eso: con pin, el distrito que va es el del polígono del mapa
+donde cae el pin (si el texto dice otro, se avisa pero va el del mapa). Sin pin, el Worker ubica la dirección con OpenStreetMap solo para
+avisar si el mapa dice otro distrito; esa coordenada aproximada nunca se manda a Dinsides. Si el pin cae en zona roja o punto de
+encuentro, no se registra solo.
 
 ## El factor humano (dirección y distrito)
 - La Routine primero intenta resolverlo sola **leyendo el chat** (`dinsides.py chat`), sin inventar nada.
@@ -60,12 +74,12 @@ zonas rojas / sin entregas / «no llegamos», puntos de encuentro; 182 puntos). 
 (snapshot 2026-11-08). `dinsides.py probar` entra a Dinsides y lista las **diferencias** (nuevos, quitados, tarifas) para actualizar
 la tabla; al registrar, el Worker usa la tarifa real del formulario y rechaza un código que ya no exista.
 
-## Lo que falta del dueño para que registre solo
-1. Poner los secretos del Worker (nunca en el repo ni en el chat): `wrangler secret put DINSIDES_TLF` (el celular con el que entra a
-   Dinsides) y `wrangler secret put DINSIDES_CLAVE`. Opcional: `DINSIDES_RECOJO_ID` / `DINSIDES_RECOJO` / `DINSIDES_TURNO` si `probar`
-   no elige bien el traslado («Recoger en mi domicilio») o el turno.
-2. Correr `python3 scripts/asesor/dinsides.py probar` y luego `registrar --simular` (pedido de prueba: arma todo y no crea nada).
-3. Mirar el primer registro real en https://dinsidescourier.com/pedido/listado_cliente y comparar con el Telegram de la Routine.
+## Probado en producción (2026-11-08)
+- `probar`: sesión OK, negocio 19647, traslado «Recoger en mi domicilio», tabla de distritos igual a la del formulario.
+- Pedido de prueba real **#2940714** («TEST - PEDIDO DE PRUEBA (anular)», entrega 2026-12-08, S/0 NO COBRAR): registrado por el Worker,
+  encontrado en el listado con su id, y anulado con `anular` → «ANULADO- POR TIENDA». La fila TEST de la hoja se cerró con `marcar`.
+- Cómo se cambian los secretos si hace falta: Cloudflare → Workers & Pages → `claudetarot` → Settings → Variables and Secrets (o
+  `wrangler secret put DINSIDES_CLAVE`). Opcionales: `DINSIDES_RECOJO_ID`, `DINSIDES_RECOJO`, `DINSIDES_TURNO`.
 
 ## Routine
 Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).

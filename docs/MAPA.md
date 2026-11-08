@@ -1869,3 +1869,43 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   dirección y distrito dudosos van al dueño con la pregunta exacta y se resuelven en la columna «Dinsides» de la hoja; (3) la tabla de
   distritos del repo se compara con el formulario real en cada `probar`/`registrar` y se usa la tarifa real; (4) los pedidos de otro
   día salen con su fecha (si se quieren juntar para la cuota, «no» hoy y «ok» cuando toque).
+
+## 2026-11-08 (noche) — Dinsides: Routine solo manual, credenciales en el Worker, pedido de prueba real, estados/anular/editar
+- **Dueño:** la Routine se dispara solo a mano («Run now»), sin cron; no se usa Claude Cowork: todo sale del Worker. Se borró
+  `trig_01Xwa3awazBmncnXCiQXFgec` (cron 23:55; corrió una vez la noche del 7/11 sin credenciales) y se creó
+  **`trig_01NcY8f7qCR4FhYXZRiupYqZ`** «Dinsides — registro de pedidos de Lima (manual · Run now)» sobre la misma sesión fija
+  `session_017wTF8ckoBNtwk4nSxvvFzk`. Prompt v2 en `docs/routines.md`.
+- **Credenciales:** el dueño las dio en el chat y autorizó guardarlas como secretos del Worker. Se pusieron con la API de Cloudflare
+  (`PUT /accounts/…/workers/scripts/claudetarot/secrets`, tipo `secret_text`): `DINSIDES_TLF` y `DINSIDES_CLAVE`. No están en el repo ni
+  en la Routine. `dinsides.py probar` en producción: sesión OK (perfil 2 = cliente), negocio 19647, traslado «Recoger en mi domicilio»
+  (`trecojo=1`, `selectRecojo=1` «Almacén Dinsides Courier»), la tabla de distritos del repo coincide con el formulario (67 opciones).
+- **Regla del dueño sobre el distrito:** el que vale es el del **mapa de cobertura** de Dinsides (donde cae el pin). `armarPedido` ahora
+  usa el distrito del polígono cuando hay pin y solo avisa si el texto decía otro (antes bloqueaba). Sin pin, el Worker ubica la dirección
+  con **OpenStreetMap (Nominatim)** solo para avisar si el mapa dice otro distrito (`comprobarConElMapa`, nunca se manda a Dinsides).
+- **Pedido de prueba real (hecho):** `registrar` creó en Dinsides el pedido **#2940714** «TEST - PEDIDO DE PRUEBA (anular)», tel.
+  927633099, Cercado de Lima, entrega 2026-12-08, SOLO-ENTREGA-NO-COBRAR S/0. Lecciones: el POST `pedido/registro` no devuelve el id (se
+  busca después en `pedido/getlistadoCliente` por teléfono y fecha de entrega); el botón masivo `pedido/anular_ped_client` solo vale para
+  los pedidos que salen HOY (con otros ids da un error PHP o «success» sin cambiar nada); el que sí funciona es el de la página de detalle,
+  **`POST pedido/anular_tienda { id_pedido }`** → 1 = «ANULADO- POR TIENDA» (2 = ya EN RUTA). El #2940714 quedó **ANULADO- POR TIENDA**.
+  La fila TEST que entró a «Pedidos auto» (fila 115) se cerró con `marcar` (Enviado «Dinsides 2026-12-08», Dinsides «manual 2940714 …»).
+  Quedó la etiqueta `dinsides_registrado` en el chat del número del dueño (927633099); es inofensiva.
+- **Mapa de la página de Dinsides (cliente):** `pedido/nuevo` (formulario; caduca a los 10 min), `pedido/listado_cliente` → datos en
+  `POST pedido/getlistadoCliente` (todo el historial: id_pedido, destinatario, teléfono, distrito, fecha_pedido, fecha_entrega,
+  `seguimiento` = REGISTRADO · ENTREGADO · ANULADO- … · RECHAZADO …, monto, servicio; filtros `selectEstado`, `searchDateIni/Fin`),
+  `pedido/listado_hoy` → `POST Pedido/getpedido_hoy` (solo los que salen hoy), `pedido/detalle/ID` (JS `var pedido = {…}` con todos los
+  campos; «Guardar cambios» = `POST pedido/udpate` con id_pedido, id_destinatario, nombre, tlf, distrito, direccion, producto, cobro,
+  monto_service, observs, fecha_entrega, coordenadas, tipo_pedido, tipo_pago, tipo_turno; «Anular pedido» = `pedido/anular_tienda`),
+  `pedido/listado_recojo` (historial de recojos a domicilio), `pedido/carga` (carga por Excel), `pedido/calculadora`,
+  `pedido/devoluciones_entregadas`, `pedido/listado_pedido_entregado_foto`, `pedido/listado_notificacion`, `pedido/contrato`
+  (términos: `public/terminosycondiciones.pdf`). Historial al 2026-11-08: 349 pedidos desde el 5/8 (307 ENTREGADO, 33 ANULADO, 5
+  RECHAZADO, 4 REGISTRADO).
+- **Código nuevo:** `dinsides-cliente.js` → `listado`, `pedidosHoy`, `anular` (anular_tienda), `detalle`, `editar` (udpate),
+  `claseSeguimiento`. `asesor-dinsides.js` → acciones **`estados`** (cruza el historial de Dinsides con «Pedidos auto»: marca
+  «entregado FECHA #id» / «anulado…» / «rechazado…» en la columna Dinsides y «Enviado», etiqueta `dinsides_entregado|anulado|rechazado`
+  en el chat; lista lo que está en Dinsides sin fila en la hoja), **`anular`**, **`editar`** (fecha_entrega, dirección, distrito por
+  nombre, nombre, teléfono, cobrar, tipo_pago, obs; rechaza fechas pasadas), `GET ?listado=1`; `registrar` ahora guarda el id de
+  Dinsides en la memoria y en la hoja, y los pedidos que agrega la Routine (candidatos del CRM) entran a «Pedidos auto»
+  (`upsertPedidosAuto` en `asesor-pedidos-sheet.js`). `dinsides.py` → `estados [desde hasta] [--solo-ver]`, `listado`, `anular`,
+  `editar <id> campo=valor`. Pruebas actualizadas (el flujo completo con el Dinsides simulado: registrar, ids, estados, anular, editar).
+- **Para el proyecto de estados de envío (`docs/estados-envio.md`):** la parte de Lima ya no necesita Cowork ni navegador: es
+  `dinsides.py estados`. Falta decidir si se corre dentro de la Routine de Dinsides (como PASO 0b) o en otra Routine manual.

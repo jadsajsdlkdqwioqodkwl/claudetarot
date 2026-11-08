@@ -25,8 +25,8 @@
  * (salvo `forzar`); todo lo que no registró lo devuelve con el motivo para que la Routine lo reporte.
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
-import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas } from "../lib/dinsides.js";
-import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado as listadoDinsides, anular as anularEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
+import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas, buscarDistrito } from "../lib/dinsides.js";
+import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado as listadoDinsides, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
 import { filasPedidosAuto, marcarDinsidesEnHoja, upsertPedidosAuto } from "./asesor-pedidos-sheet.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
 
@@ -365,7 +365,7 @@ export async function onRequestPost({ request, env }) {
   const cortar = await puerta(request, env);
   if (cortar) return cortar;
   const p = await request.json().catch(() => null);
-  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular)." }, 400);
+  if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular | editar)." }, 400);
   const fecha = esIso(p.fecha) ? p.fecha : fechaPorDefecto();
   try {
     if (p.accion === "estados") {
@@ -383,12 +383,35 @@ export async function onRequestPost({ request, env }) {
       const mios = ids.filter((id) => antes.some((x) => x.id_pedido === id));
       if (!mios.length) return json({ error: "Ninguno de esos ids está en el listado de pedidos de este negocio." }, 404);
       const r = await anularEnDinsides(env, cookie, mios);
-      const despues = (await listadoDinsides(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento }));
+      const despues = (await listadoDinsides(env, cookie, {})).filter((x) => mios.includes(x.id_pedido)).map((x) => ({ id_pedido: x.id_pedido, nombre: x.nombre, seguimiento: x.seguimiento,
+        en_ruta: Boolean(r.resultados.find((y) => y.id_pedido === x.id_pedido)?.en_ruta) }));
       const reg = await registroDe(env, fecha);
       for (const x of despues) { const m = reg.registros.find((y) => String(y.nro) === x.id_pedido); if (m) { m.anulado = ahoraLima(); m.seguimiento = x.seguimiento; } }
       reg.corridas.push({ modo: "anular", ids: mios, cuando: ahoraLima(), motivo: String(p.motivo || "") });
       await escribirJson(env, `dinsides/${fecha}.json`, reg);
-      return json({ ok: r.ok, respuesta: r.respuesta, anulados: despues, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
+      return json({ ok: r.ok, resultados: r.resultados, anulados: despues, no_eran_mios: ids.filter((id) => !mios.includes(id)) });
+    }
+    if (p.accion === "editar") {
+      // { accion: "editar", id, cambios: { fecha_entrega?, direccion?, distrito? (nombre) | id_distrito?, nombre?, telefono?, cobrar?, tipo_pago?, obs?, producto? } }
+      if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
+      const id = String(p.id || "").replace(/\D/g, "");
+      const cambios = { ...(p.cambios || {}) };
+      if (!id || !Object.keys(cambios).length) return json({ error: "Faltan id y cambios." }, 400);
+      if (cambios.distrito && !cambios.id_distrito) {
+        const d = buscarDistrito(cambios.distrito);
+        if (!d) return json({ error: `Distrito «${cambios.distrito}» no está en el desplegable de Dinsides.` }, 400);
+        cambios.id_distrito = d.codigo; cambios.monto_service = cambios.monto_service ?? String(d.tarifa);
+      }
+      delete cambios.distrito;
+      if (cambios.fecha_entrega && (!esIso(cambios.fecha_entrega) || cambios.fecha_entrega < hoyLima())) return json({ error: "fecha_entrega debe ser AAAA-MM-DD y no pasada." }, 400);
+      const { cookie } = await login(env);
+      const r = await editarEnDinsides(env, cookie, id, cambios);
+      if (!r.ok) return json({ error: "dinsides_rechazo", detalle: `Dinsides no aceptó la edición (respuesta ${JSON.stringify(r.respuesta)}); si ya está EN RUTA no se puede editar`, enviado: r.enviado }, 502);
+      const reg = await registroDe(env, fecha);
+      reg.corridas.push({ modo: "editar", id, cambios, cuando: ahoraLima() });
+      await escribirJson(env, `dinsides/${fecha}.json`, reg);
+      return json({ ok: true, id, cambios, antes: { nombre: r.antes.nombre_destinataio, telefono: r.antes.telefono_destinatario, distrito: r.antes.nombre_distrito, direccion: r.antes.direccion_destinatario,
+        fecha_entrega: String(r.antes.fecha_entrega || "").slice(0, 10), cobrar: r.antes.monto_cobrar, tipo_pago: r.antes.metodo_pago, obs: r.antes.observaciones } });
     }
     if (p.accion === "probar") {
       if (!hayCredenciales(env)) return json({ error: "sin_credenciales", detalle: "Faltan los secretos DINSIDES_TLF y DINSIDES_CLAVE del Worker (wrangler secret put)." }, 503);

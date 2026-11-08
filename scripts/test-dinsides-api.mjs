@@ -57,9 +57,24 @@ globalThis.fetch = async (url, init = {}) => {
   const resp = (status, body, headers = {}) => new Response(body, { status, headers });
   if (/nominatim\.openstreetmap\.org/.test(u)) return resp(200, "[]");
   if (u.endsWith("pedido/getlistadoCliente")) return /ci_session=ok/.test(cookie) ? resp(200, JSON.stringify(listadoFalso)) : resp(200, LOGIN_HTML);
-  if (u.endsWith("pedido/anular_ped_client")) {
-    const ids = new URLSearchParams(init.body).getAll("datos[]");
-    for (const x of listadoFalso) if (ids.includes(x.id_pedido)) x.seguimiento = "ANULADO- POR TIENDA";
+  if (u.endsWith("pedido/anular_tienda")) {
+    const id = new URLSearchParams(init.body).get("id_pedido");
+    const x = listadoFalso.find((y) => y.id_pedido === id);
+    if (!x) return resp(200, "0");
+    if (/EN RUTA/.test(x.seguimiento)) return resp(200, "2");
+    x.seguimiento = "ANULADO- POR TIENDA";
+    return resp(200, "1");
+  }
+  if (/pedido\/detalle\/(\d+)$/.test(u)) {
+    const id = u.match(/(\d+)$/)[1]; const x = listadoFalso.find((y) => y.id_pedido === id);
+    if (!x) return resp(200, "<html>sin pedido</html>");
+    return resp(200, `<html><script>var pedido = ${JSON.stringify({ id_pedido: x.id_pedido, id_destinatario: "77" + x.id_pedido, nombre_destinataio: x.nombre_destinataio, telefono_destinatario: x.telefono_destinatario,
+      id_distrito: "150101", direccion_destinatario: "dir", detalle: "Kit", monto_cobrar: x.monto_cobrar, costo_service: "10.00", observaciones: "", fecha_entrega: x.fecha_entrega, coordenadas: "", tipo_pedido: "CONTRAENTREGA", metodo_pago: "YAPE", tipo_turno: "0" })};</script></html>`);
+  }
+  if (u.endsWith("pedido/udpate")) {
+    const ps = new URLSearchParams(init.body); const x = listadoFalso.find((y) => y.id_pedido === ps.get("id_pedido"));
+    if (!x || !ps.get("id_destinatario")) return resp(200, "0");
+    x.fecha_entrega = ps.get("fecha_entrega") + " 00:00:00"; x.nombre_destinataio = ps.get("nombre");
     return resp(200, "1");
   }
   if (u.endsWith("pedido/nuevo")) {
@@ -147,8 +162,17 @@ check("sin fila en la hoja no se marca nada, pero se lista para revisar", r.json
 // 7c. anular el pedido nuevo (como el pedido de prueba) y ver que Dinsides lo deja ANULADO
 const idNuevo = listadoFalso.find((x) => x.telefono_destinatario === "988888880").id_pedido;
 r = await pedir("POST", { accion: "anular", fecha: FECHA, ids: [idNuevo, "1"], motivo: "prueba" });
-check("anular: solo anula ids del negocio y devuelve el estado nuevo", r.json.ok && r.json.anulados[0].seguimiento === "ANULADO- POR TIENDA" && r.json.no_eran_mios.includes("1"), JSON.stringify(r.json));
+check("anular: solo anula ids del negocio (pedido/anular_tienda) y devuelve el estado nuevo", r.json.ok && r.json.anulados[0].seguimiento === "ANULADO- POR TIENDA" && r.json.no_eran_mios.includes("1"), JSON.stringify(r.json));
 check("la memoria anota la anulación", JSON.parse(r2.get(`dinsides/${FECHA}.json`)).registros.some((x) => x.nro === idNuevo && x.anulado));
+
+// 7d. editar: mover la fecha de entrega de Gladys una semana (como pide el dueño: todo se puede editar antes de la ruta)
+const idGladys = listadoFalso.find((x) => x.telefono_destinatario === "957845104").id_pedido;
+const nuevaFecha = new Date(new Date(`${FECHA}T00:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10);
+r = await pedir("POST", { accion: "editar", id: idGladys, cambios: { fecha_entrega: nuevaFecha, distrito: "San Isidro" } });
+check("editar: Dinsides respondió 1, se mandó la fecha nueva y el código del distrito", r.json.ok && listadoFalso.find((x) => x.id_pedido === idGladys).fecha_entrega.startsWith(nuevaFecha)
+  && new URLSearchParams(llamadas.filter((l) => l.url.endsWith("pedido/udpate")).pop().body).get("distrito") === "150131", JSON.stringify(r.json).slice(0, 300));
+r = await pedir("POST", { accion: "editar", id: idGladys, cambios: { fecha_entrega: "2020-01-01" } });
+check("editar con fecha pasada se rechaza", r.status === 400);
 
 // 8. sin credenciales: 503 con el script de consola
 const env2 = { ...env, DINSIDES_TLF: "", DINSIDES_CLAVE: "" };
