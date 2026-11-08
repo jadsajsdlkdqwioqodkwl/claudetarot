@@ -104,6 +104,11 @@ check("pago en efectivo y otro día → alertas, no bloqueos", p.listo && p.camp
 p = D.armarPedido({ nombre: "Provincia", whatsapp: "51999999992", direccion_o_agencia: "Shalom Arequipa", destino: "PROVINCIA", estado: "CONFIRMADO" }, ctx);
 check("provincia no va por Dinsides", p.bloqueos.some((b) => /PROVINCIA/.test(b)));
 
+p = D.armarPedido({ nombre: "Cecilia", whatsapp: "51996941086", direccion_o_agencia: "Av Antúnez de Mayolo Mz F2 Lt 14, San Martín de Porres", estado: "CONFIRMADO",
+  nota: "Dijo que pagaría S/89 por Yape (sin captura vista); si no, cobrar al recibir", empaque: "VERIFICAR, en el chat se le prometió: «11-07 13:26 V(margiory): Claro bell@ está en *S/89 todo el kit*…»" }, ctx);
+check("«pagaría…; si no, cobrar al recibir» NO es pagado: se cobra S/89 YAPE", p.campos.tipo_pago === "YAPE" && p.campos.cobrar === "89" && p.campos.tipo_pedido === "CONTRAENTREGA", JSON.stringify(p.campos));
+check("el «VERIFICAR…» de enviar.py no entra al producto ni a la observación; solo avisa", p.campos.producto === "Kit Tarot de aprendizaje" && !/VERIFICAR/.test(p.campos.obs) && p.alertas.some((a) => /^EMPAQUE por verificar/.test(a)), JSON.stringify(p));
+
 // Script de consola y payload
 const fichas = [D.armarPedido({ nombre: "A", whatsapp: "51957845104", direccion_o_agencia: "Av X 1, Surco", estado: "CONFIRMADO" }, ctx)];
 const sc = D.scriptConsola(fichas);

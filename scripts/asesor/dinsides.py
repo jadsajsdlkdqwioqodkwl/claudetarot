@@ -112,7 +112,8 @@ def cmd_preparar(args):
     if r.get("candidatos_crm"):
         print("\nCANDIDATOS DEL CRM que el reporte NO trae (léelos con `chat`; si es un pedido de Lima confirmado, agrégalo a `pedidos` de salida.json con whatsapp, nombre, direccion, distrito, estado CONFIRMADO):")
         for c in r["candidatos_crm"]:
-            print(f"  {c.get('nombre') or '(sin nombre)'} · {c.get('whatsapp')} · {c.get('asesora') or 'sin asesora'}{' · COMPRA MARCADA' if c.get('compra_marcada') else ''}")
+            print(f"  {c.get('nombre') or '(sin nombre)'} · {c.get('whatsapp')} · {c.get('asesora') or 'sin asesora'}{' · COMPRA MARCADA' if c.get('compra_marcada') else ''}"
+                  f"{' · parece PROVINCIA (agencia/ciudad en el chat): no va por Dinsides' if c.get('parece_provincia') else ''}")
             for s in c.get("senales", []):
                 print(f"    - {s}")
     print(f"\nFichas completas en {carpeta}/fichas.json. Siguiente: escribe {carpeta}/salida.json y corre `python3 scripts/asesor/dinsides.py registrar {carpeta}/salida.json`.")

@@ -1172,7 +1172,8 @@ Pedido del dueño: automatizar el registro de los pedidos de Lima en Dinsides Co
 script en la consola del navegador), con intervención humana solo en lo que falla (dirección de entrega y distrito), y que sea una
 «cuarta corrida» que revise los chats para que ningún pedido se quede fuera del reporte. Estado actual en `docs/dinsides.md`.
 Sesión fija propia (Sonnet), como boletas y el reporte; cron `CRON_TZ=America/Lima 55 23 * * *` (después del reporte de las 23:45) y
-«Run now» del dueño a la misma sesión. Sin conectores. Trabaja solo con `scripts/asesor/dinsides.py`. Los IDs quedan en `docs/MAPA.md`.
+«Run now» del dueño a la misma sesión. Sin conectores. Trabaja solo con `scripts/asesor/dinsides.py`.
+IDs: Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).
 Prompt v1:
 
 ```

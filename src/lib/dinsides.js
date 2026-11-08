@@ -311,7 +311,10 @@ export function armarPedido(pedido, ctx = {}) {
 
   // Producto, kits y extras (regla del dueño: todo extra va con «+ Extra»; el que empaca solo mira el PDF).
   const kits = Math.max(0, parseInt(p.kits ?? 1, 10) || 0);
-  const empaque = SIN_EMOJI(p.empaque);
+  let empaque = SIN_EMOJI(p.empaque);
+  // «VERIFICAR, en el chat se le prometió: «…»» lo agrega enviar.py cuando ve una promesa sin confirmar: no es un extra decidido.
+  // Se avisa (corto) y no se mete en el producto; si de verdad hay extra, la Routine lo pone en `empaque` con sus palabras.
+  if (/^VERIFICAR|en el chat se le prometi/i.test(empaque)) { alertas.push(`EMPAQUE por verificar (enviar.py): ${empaque.slice(0, 160)}…`); empaque = ""; }
   let producto = kits > 1 ? `${PRODUCTO} x${kits}` : PRODUCTO;
   if (kits === 0) producto = empaque || "Reposición / cambio";
   if (empaque) { if (kits !== 0) producto += ` + Extra: ${empaque}`; alertas.push(`EMPAQUE: ${empaque}`); }
@@ -322,7 +325,10 @@ export function armarPedido(pedido, ctx = {}) {
   const notaL = normalizar(`${p.pago || ""} ${nota}`);
   let tipoPago = TIPOS_PAGO.includes(String(p.tipo_pago || "").toUpperCase()) ? String(p.tipo_pago).toUpperCase() : null;
   if (!tipoPago) {
-    if (/no cobrar|ya pago|ya pagado|pago completo|pago todo|pago el total|pago los 89|cancelado|cancelo el total/.test(notaL)) tipoPago = "NO COBRAR";
+    // «Ya pagó … NO cobrar» → NO COBRAR. Pero «pagará por Yape; si no, cobrar al recibir» NO es pagado: se cobra.
+    const dicePagado = /ya pago\b|ya pagado|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)/.test(notaL);
+    const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL);
+    if (dicePagado && !diceQuePagara) tipoPago = "NO COBRAR";
     else if (/tarjeta|\bpos\b/.test(notaL)) tipoPago = "POS";
     else if (/efectivo|cash|billete/.test(notaL)) tipoPago = "EFECTIVO";
     else if (/\bplin\b/.test(notaL) && !/\byape\b/.test(notaL)) tipoPago = "PLIN";

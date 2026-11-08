@@ -1858,7 +1858,9 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   - `.claude/settings.json`: **pendiente** agregar la regla de permiso `Bash(python3 scripts/asesor/dinsides.py:*)` (auto mode): el filtro
     de auto mode no dejó editar ese archivo desde la sesión; lo agrega el dueño (una línea junto a las de boletas.py y reporte.py).
 - **Routine:** «Dinsides — registro de pedidos de Lima» (Sonnet, sesión fija, `CRON_TZ=America/Lima 55 23 * * *` + «Run now»).
-  Prompt v1 en `docs/routines.md`. IDs: se anotan abajo al crearla.
+  Prompt v1 en `docs/routines.md`. IDs (creados 2026-11-08 04:32 UTC): Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).
+  Su prompt solo se edita desde esa sesión. La primera corrida real es la de esta noche (23:55 Lima): sin credenciales, avisa por Telegram
+  qué pedidos quedaron listos y deja el script de consola.
 - **Lo que NO se pudo hacer en esta sesión:** entrar a Dinsides (no hay credenciales en ningún lado, y así debe ser: van como secretos
   del Worker con `wrangler secret put`, no en el repo ni en la Routine) ni, por lo tanto, el pedido de prueba real. El pedido de
   prueba quedó simulado de punta a punta en `scripts/test-dinsides-api.mjs`; el real es `dinsides.py probar` + `registrar --simular`

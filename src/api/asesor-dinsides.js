@@ -118,7 +118,7 @@ async function pedidosDelSistema(env, fecha) {
         direccion_o_agencia: f.direccion_o_agencia, kits: f.kits, empaque: f.empaque, pago: f.pago, nota: f.nota, fecha_entrega: f.fecha_entrega, origen: "hoja" });
     }
   }
-  return { pedidos: [...porWa.values()], hoja: hojaPorWa, estado_existe: Boolean(estado) };
+  return { pedidos: [...porWa.values()], hoja: hojaPorWa, estado_existe: Boolean(estado), conocidos: new Set(porWa.keys()) };
 }
 
 /** Lo que una persona escribió en la columna «Dinsides» de la hoja: «ok», «distrito: Comas», «manual 1234», «no». */
@@ -139,7 +139,7 @@ function leerColumnaDinsides(texto) {
 }
 
 async function armarTodo(env, fecha, correcciones = new Map()) {
-  const { pedidos, hoja } = await pedidosDelSistema(env, fecha);
+  const { pedidos, hoja, conocidos } = await pedidosDelSistema(env, fecha);
   const reg = await registroDe(env, fecha);
   const idx = await indice(env);
   const registradosPorWa = new Map(reg.registros.map((r) => [n9(r.whatsapp), r]));
@@ -180,7 +180,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }
-  return { fichas, registro: reg };
+  return { fichas, registro: reg, conocidos };
 }
 
 /** Chats de la noche (y del día anterior) con pinta de pedido de Lima que el reporte no trae (pin, dirección en texto o compra marcada). */
@@ -221,7 +221,8 @@ async function candidatosCrm(env, fechaVenta, conocidos) {
     c.compra_marcada = true;
     porWa.set(k, c);
   }
-  return [...porWa.values()].slice(0, 40);
+  const PROVINCIA_RE = /shalom|olva|agencia|provincia|arequipa|trujillo|cusco|chiclayo|piura|huancayo|\bica\b|tacna|chimbote|iquitos|puno|juliaca|cajamarca|huaraz|ayacucho|pucallpa|tarapoto|huanuco|hu[aá]nuco/i;
+  return [...porWa.values()].slice(0, 40).map((c) => ({ ...c, parece_provincia: c.senales.some((s) => PROVINCIA_RE.test(s)) }));
 }
 
 const fechaPorDefecto = () => fechaEntrega().fecha;
@@ -238,8 +239,9 @@ export async function onRequestGet({ request, env }) {
   }
   const fecha = esIso(url.searchParams.get("fecha")) ? url.searchParams.get("fecha") : fechaPorDefecto();
   try {
-    const { fichas, registro } = await armarTodo(env, fecha);
-    const conocidos = new Set([...fichas.map((f) => n9(f.whatsapp)), ...registro.registros.map((r) => n9(r.whatsapp))]);
+    const { fichas, registro, conocidos: delSistema } = await armarTodo(env, fecha);
+    // Todo lo que el reporte ya trae (Lima, provincia, intención…) y lo ya registrado no es candidato.
+    const conocidos = new Set([...delSistema, ...fichas.map((f) => n9(f.whatsapp)), ...registro.registros.map((r) => n9(r.whatsapp))]);
     const fechaVenta = sumarDias(fecha, -1);
     const candidatos = url.searchParams.get("candidatos") === "0" ? [] : await candidatosCrm(env, fechaVenta, conocidos);
     return json({

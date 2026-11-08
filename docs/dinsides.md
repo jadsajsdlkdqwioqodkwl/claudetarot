@@ -67,6 +67,10 @@ la tabla; al registrar, el Worker usa la tarifa real del formulario y rechaza un
 2. Correr `python3 scripts/asesor/dinsides.py probar` y luego `registrar --simular` (pedido de prueba: arma todo y no crea nada).
 3. Mirar el primer registro real en https://dinsidescourier.com/pedido/listado_cliente y comparar con el Telegram de la Routine.
 
+## Routine
+Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).
+El dueño también puede darle «Run now» en claude.ai: va a la misma sesión, con su historial. Prompt v1 en `docs/routines.md`.
+
 ## Dónde ver las cosas
 - `python3 scripts/asesor/dinsides.py preparar [FECHA]` → fichas, bloqueos, ya registrados y candidatos; `/tmp/dinsides/fichas.json`.
 - Hoja «Pedidos auto» (libro «Pedidos Tarot Kit» `1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc`): columna P «Dinsides» y O «Enviado».
