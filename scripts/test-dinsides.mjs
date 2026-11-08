@@ -109,6 +109,9 @@ p = D.armarPedido({ nombre: "Cecilia", whatsapp: "51996941086", direccion_o_agen
 check("«pagaría…; si no, cobrar al recibir» NO es pagado: se cobra S/89 YAPE", p.campos.tipo_pago === "YAPE" && p.campos.cobrar === "89" && p.campos.tipo_pedido === "CONTRAENTREGA", JSON.stringify(p.campos));
 check("el «VERIFICAR…» de enviar.py no entra al producto ni a la observación; solo avisa", p.campos.producto === "Kit Tarot de aprendizaje" && !/VERIFICAR/.test(p.campos.obs) && p.alertas.some((a) => /^EMPAQUE por verificar/.test(a)), JSON.stringify(p));
 
+p = D.armarPedido({ nombre: "Pin y texto", whatsapp: "51993455129", direccion_o_agencia: "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco (pin -12.1651891,-76.9978476)", estado: "CONFIRMADO" }, ctx);
+check("al quitar el pin del texto no queda «(pin )» en la dirección", p.campos.direccion === "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco" && p.campos.coordenadas === "-12.1651891,-76.9978476", JSON.stringify(p.campos));
+
 // Script de consola y payload
 const fichas = [D.armarPedido({ nombre: "A", whatsapp: "51957845104", direccion_o_agencia: "Av X 1, Surco", estado: "CONFIRMADO" }, ctx)];
 const sc = D.scriptConsola(fichas);

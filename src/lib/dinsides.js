@@ -221,6 +221,7 @@ const SIN_EMOJI = (s) => String(s || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\
 export function limpiarDireccion(texto) {
   let d = SIN_EMOJI(String(texto || "").replace(LINK_RE, " "));
   d = d.replace(/-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/g, " "); // coordenadas sueltas
+  d = d.replace(/\(\s*(pin|ubicaci[oó]n)?\s*[:;,-]?\s*\)/gi, " "); // «(pin )» que queda al quitar el link o las coordenadas
   d = d.replace(/\b(mz|mza|manzana)\.?\s*/gi, "Mz ").replace(/\b(lt|lte|lote)\.?\s*/gi, "Lt ").replace(/\bav\.?\s+/gi, "Av ")
     .replace(/\bjr\.?\s+/gi, "Jr ").replace(/\bjir[oó]n\s+/gi, "Jr ").replace(/\bpsje\.?\s+/gi, "Pasaje ").replace(/\burb\.?\s+/gi, "Urb ")
     .replace(/\bdpto\.?\s*/gi, "Dpto ").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
