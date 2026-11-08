@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe CRO semana</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  :root { --ink:#1d1b26; --mut:#5d5870; --acc:#6b3fa0; --acc2:#efe8f7; --ok:#1f7a4d; --okbg:#e6f4ec; --bad:#a3322a; --badbg:#fbe9e7; --warn:#8a5a00; --warnbg:#fff4dc; --line:#ddd8e6; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Arial, "Noto Color Emoji", sans-serif; color: var(--ink); font-size: 9.5pt; line-height: 1.42; margin: 0; background:#fff; }
+  h1 { font-size: 20pt; margin: 0 0 4px; color: var(--acc); }
+  h2 { font-size: 13.5pt; color: var(--acc); border-bottom: 2px solid var(--acc); padding-bottom: 3px; margin: 18px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 5px; page-break-after: avoid; }
+  p { margin: 5px 0; }
+  .sub { color: var(--mut); font-size: 9.3pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 8.6pt; page-break-inside: avoid; }
+  th { background: var(--acc2); text-align: left; padding: 4px 5px; border-bottom: 1px solid var(--line); }
+  td { padding: 4px 5px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  tr.hi td { background: var(--okbg); }
+  tr.lo td { background: var(--badbg); }
+  .box { border-radius: 6px; padding: 8px 10px; margin: 8px 0; page-break-inside: avoid; }
+  .key { background: var(--acc2); border-left: 4px solid var(--acc); }
+  .ok { background: var(--okbg); border-left: 4px solid var(--ok); }
+  .bad { background: var(--badbg); border-left: 4px solid var(--bad); }
+  .warn { background: var(--warnbg); border-left: 4px solid var(--warn); }
+  .msg { background: #f4fbf3; border: 1px solid #cfe6cc; border-radius: 8px; padding: 6px 8px; margin: 3px 0; }
+  ul, ol { margin: 4px 0 6px 18px; padding: 0; } li { margin: 2px 0; }
+  .small { font-size: 8.2pt; color: var(--mut); }
+  .big { font-size: 15pt; font-weight: bold; color: var(--acc); }
+  .kpis { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin: 10px 0; }
+  .kpi { border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  .kpi .l { font-size:8pt; color:var(--mut); }
+  pre { white-space: pre-wrap; font-size: 7.8pt; background:#f6f5f9; border:1px solid var(--line); border-radius:6px; padding:8px; }
+</style>
+</head>
+<body>
+
+<h1>Informe CRO · Tarot Store Perú</h1>
+<p class="sub">8/11/2026 · respuestas rápidas, plantillas y seguimientos, fotos vs catálogo, bono y precio, clientes antiguos, rescates que no salen, saldos y estados de Shalom, ángulos de anuncios · datos del CRM (D1), Meta Ads y la hoja «Pedidos Tarot Kit»</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">Ventas 3–8 nov (6 días)</div><div class="big">74</div><div class="small">12,3 por día (antes 9,9)</div></div>
+  <div class="kpi"><div class="l">Anuncios por venta</div><div class="big">US$7,3</div><div class="small">antes US$9,8</div></div>
+  <div class="kpi"><div class="l">Compra en 72 h de un chat nuevo</div><div class="big">6–7 %</div><div class="small">igual que antes del bono</div></div>
+  <div class="kpi"><div class="l">Chats sin respuesta humana</div><div class="big">36 / semana</div><div class="small">antes ~115 (–69 %)</div></div>
+</div>
+
+<h2>1. Lo más importante</h2>
+<ol>
+  <li><b>Las fotos no movieron el cierre de provincia</b> (15,5 % vs 14,5 % con catálogo; Lima, el control, bajó un poco). Quédate con las fotos, pero no esperes de ahí el salto.</li>
+  <li><b>El bono no subió la conversión</b> de los chats nuevos. Funciona como gancho para reactivar (es la plantilla que más vende), no como argumento que cierre más.</li>
+  <li><b>Precio:</b> el precio no es la objeción. Recomiendo probar <b>dos opciones a la vez</b> (S/79 básico y S/95 completo con bonos) contra el kit de siempre, midiendo soles por chat.</li>
+  <li><b>Clientes antiguos en masa no es rentable</b>: 0,5 % de compra y unos US$14 por venta, el doble que con anuncios, y Meta empezó a frenar las entregas. A los antiguos se les escribe <b>de a pocos y solo con señales de compra</b>.</li>
+  <li><b>La rutina de rescates no está enviando</b> por dos razones (sección 5): el filtro de permisos le bloquea el envío, y los rescates que propone el asesor quedan «por aprobar» en el CRM (147 esperando) y se cancelan solos.</li>
+  <li><b>La plantilla del rescate del día 7 genera desconfianza</b>: «Quedó pendiente su envío» se lee como una deuda. Una clienta respondió «están estafando y amenazando». Hay que cambiarla.</li>
+  <li><b>Hoja Ventas:</b> la fila de títulos está desfasada y el estado «Pagado» nunca se escribe, aunque el CRM sabe quién pagó. Es la base para la rutina semanal de estados de Shalom (sección 7).</li>
+</ol>
+
+<h2>2. Fotos sueltas vs botón de catálogo (Provincia msj. 2)</h2>
+<table>
+<tr><th>Chats de provincia, compra en 72 h</th><th class="n">Chats</th><th class="n">Compraron</th><th class="n">Respondió en 24 h</th></tr>
+<tr><td>Catálogo «Referencias y fotos de envíos» (13/10–2/11)</td><td class="n">482</td><td class="n">14,5 %</td><td class="n">44 %</td></tr>
+<tr class="hi"><td>Fotos sueltas (3/11–5/11)</td><td class="n">84</td><td class="n">15,5 %</td><td class="n">38 %</td></tr>
+<tr><th colspan="4">Control: Lima, que no cambió nada</th></tr>
+<tr><td>13/10–2/11 → 3/11–5/11</td><td class="n">307 → 53</td><td class="n">33,9 % → 30,2 %</td><td></td></tr>
+</table>
+<p><b>Lectura:</b> provincia subió 1 punto mientras Lima bajó casi 4, así que hay una señal leve a favor de las fotos, pero con 84 chats no es significativa. Para confirmarlo hacen falta unos 300 chats (unas 3 semanas). Mientras tanto, las fotos se quedan: no hacen daño y se ven más reales. Lo que sí movería provincia es lo que ya está identificado: no mandar el Yape de golpe («Yape en 2 tiempos», en pausa) y la confianza.</p>
+
+<h2>3. Bono y precio</h2>
+<ul>
+  <li>Chats nuevos que compran en 72 h: 7,7 % (13–19 oct) · 5,8 % · 7,0 % · <b>6,3 % (3–5 nov, ya con bono)</b>. El bono no cambió la decisión del que ya estaba en el chat.</li>
+  <li>Donde el bono sí rinde es reactivando: el envío masivo «bono clases y libros» a chats de los últimos 5 días tuvo 21 % de respuesta y 9 ventas. Es la mejor plantilla de todas (sección 4).</li>
+  <li>Hoy la web dice S/95 y por WhatsApp se vende a S/89. La prueba de S/99 nunca se activó.</li>
+</ul>
+<div class="box key"><b>Recomendación sobre tu idea de dos opciones:</b> sí, pero como prueba contra el control, no como cambio para todos.
+<table>
+<tr><th>Brazo</th><th>Lo que se ofrece</th></tr>
+<tr><td>A (control)</td><td>Kit completo S/89 con bonos (lo de hoy)</td></tr>
+<tr><td>B (menú)</td><td><b>Opción 1 · S/79:</b> mazo de 78 cartas con significados + manual (sin tapete, collar ni bonos). <b>Opción 2 · S/95:</b> kit completo (mazo, manual, tapete, collar) + clases grabadas y libros digitales.</td></tr>
+</table>
+Métrica: <b>soles por chat</b> (no % de cierre) y qué % elige la opción 2. Con dos opciones, la mayoría compara entre ellas en vez de preguntarse «¿compro o no?», y la de S/79 hace que S/95 se vea razonable. Se puede montar en el experimento 2 que ya existe (hoy en pausa, 25 % de los chats) cambiando sus rápidas por dos versiones de «Precio?». Antes de activarlo: confirma tu margen con S/79 sin tapete ni collar, y que las clases ya estén listas para entregar.</div>
+
+<h2>4. Qué cierra más: respuestas rápidas, plantillas y seguimientos</h2>
+<h3>Respuestas rápidas (9/10–5/11, chats que aún no habían comprado; compra dentro de 3 días)</h3>
+<table>
+<tr><th>Respuesta rápida</th><th class="n">Chats</th><th class="n">Respondió 24 h</th><th class="n">Compró 3 días</th><th>Comentario</th></tr>
+<tr class="hi"><td>Lima msj 1 / 2 / 3</td><td class="n">~330</td><td class="n">60 %</td><td class="n">33–35 %</td><td>la mejor cadena</td></tr>
+<tr class="hi"><td>Pedir captura Yape provincia</td><td class="n">84</td><td class="n">64 %</td><td class="n">47,6 %</td><td>se manda a quien ya está cerca</td></tr>
+<tr><td>Provincia msj 1 / 2 / Msj 3</td><td class="n">~615</td><td class="n">44 %</td><td class="n">15–17 %</td><td>la mitad que Lima</td></tr>
+<tr><td>MOTIVO ADELANTO</td><td class="n">23</td><td class="n">61 %</td><td class="n">26,1 %</td><td>explicar el adelanto ayuda</td></tr>
+<tr><td>Seguimiento «para dónde lo desea»</td><td class="n">13</td><td class="n">54 %</td><td class="n">23,1 %</td><td></td></tr>
+<tr><td>quedamos atentos</td><td class="n">88</td><td class="n">45 %</td><td class="n">12,5 %</td><td>cierra sin pregunta</td></tr>
+<tr class="lo"><td>Si no dice dónde</td><td class="n">193</td><td class="n">41 %</td><td class="n">11,4 %</td><td></td></tr>
+<tr class="lo"><td>Para qué sirve / uso</td><td class="n">36</td><td class="n">36 %</td><td class="n">11,1 %</td><td>falta mostrar cómo se usa</td></tr>
+<tr class="lo"><td>Precio?</td><td class="n">420</td><td class="n">40 %</td><td class="n">9,5 %</td><td>la más usada y de las que menos cierran</td></tr>
+<tr class="lo"><td>clases curso recurso digital</td><td class="n">11</td><td class="n">45 %</td><td class="n">9,1 %</td><td></td></tr>
+<tr class="lo"><td>Tienda física? / Instagram desconfiado</td><td class="n">34 / 11</td><td class="n">59 % / 27 %</td><td class="n">8,8 % / 9,1 %</td><td>la desconfianza no se resuelve con el link</td></tr>
+</table>
+<p class="small">Las confirmaciones (Confirmación Lima/provincia, Muchas gracias) cierran 84–91 % porque se mandan después de la venta: no cuentan.</p>
+<p><b>Qué cambiar:</b> «Precio?» es la puerta de 420 chats y cierra la mitad que la cadena de provincia. Prueba una versión que dé el precio en una línea y pregunte de una vez el destino («Está en S/89 con envío gratis ☺️ ¿Para qué distrito o ciudad sería?»), sin el bloque largo. En «Para qué sirve / cómo se usa» falta un video corto de una lectura real.</p>
+
+<h3>Plantillas automáticas y envíos masivos (20/10–8/11)</h3>
+<table>
+<tr><th>Plantilla</th><th>A quién</th><th class="n">Envíos</th><th class="n">Respondió 24 h</th><th class="n">Compró 7 días</th></tr>
+<tr class="hi"><td>bono_clases_libros (masivo)</td><td>chats de los últimos 5 días</td><td class="n">580</td><td class="n">8,1 %</td><td class="n">1,6 %</td></tr>
+<tr><td>rescate_lead_1 (día 7)</td><td>semana gratis</td><td class="n">1.221</td><td class="n">4,8 %</td><td class="n">1,1 %</td></tr>
+<tr><td>rescate_lead_catalogo_1 (día 7)</td><td>semana gratis</td><td class="n">663</td><td class="n">10,7 %</td><td class="n">0,8 %</td></tr>
+<tr><td>seg7_primera_lectura (plan)</td><td>&lt; 7 días · antiguos</td><td class="n">508 · 2.338</td><td class="n">6,5 % · 9,2 %</td><td class="n">0,6 % · 0,6 %</td></tr>
+<tr><td>seg_d2_miedo_principiante (plan)</td><td>&lt; 7 días · antiguos</td><td class="n">532 · 1.339</td><td class="n">6,2 % · 8,1 %</td><td class="n">0,4 % · 0,6 %</td></tr>
+<tr><td>seg_d5_ultimo_bono (plan)</td><td>&lt; 7 días</td><td class="n">413</td><td class="n">7,7 %</td><td class="n">0,5 %</td></tr>
+<tr class="lo"><td>seg_d4_envios_hoy (plan)</td><td>&lt; 7 días · antiguos</td><td class="n">438 · 424</td><td class="n">6,6 %</td><td class="n">0,2 % · 0,5 %</td></tr>
+<tr class="lo"><td>rescate_lead_2 (plan)</td><td>&lt; 7 días</td><td class="n">531</td><td class="n">4,7 %</td><td class="n">0,4 %</td></tr>
+<tr class="lo"><td>toque_post7 (catálogo a clientes)</td><td>compraron hace +7 días</td><td class="n">232</td><td class="n">7,3 %</td><td class="n">0 recompras marcadas</td></tr>
+</table>
+<ul>
+  <li><b>Nada automático vende mucho: entre 0,2 % y 1,6 %.</b> Casi todas las ventas pasan en las primeras 72 h del chat; del día 3 al 7 caen solo 4 o 5 por semana.</li>
+  <li><b>Lo que funciona tiene algo nuevo y concreto</b> (el bono: clases y libros). Lo que menos funciona son los recordatorios genéricos («envíos de hoy», «quedó pendiente»).</li>
+  <li><b>Recorta el plan diario a 3 toques</b> para quien no responde (día 1 bono, día 3 primera lectura, día 6 rescate) en vez de 5 o 6. Meta ya está frenando: 883 plantillas no entregadas «para mantener el ecosistema sano», y eso perjudica también a las útiles (recojo de Shalom).</li>
+  <li><b>Recompras:</b> las 232 de catálogo no dejaron ninguna compra marcada (puede que alguna recompra no se marcara en el CRM). Pausa ese envío hasta tener una oferta para clientes (oráculo, segundo mazo, Classic S/49) y ofrécela solo a quien ya recogió su kit.</li>
+</ul>
+
+<h2>5. Clientes antiguos: si fue rentable, cómo elegirlos y por qué no salen los rescates</h2>
+<div class="box bad"><b>Campaña masiva a chats de más de 7 días (4–6/11):</b> 2.398 chats, 4.101 plantillas, 286 respondieron (12 %) y <b>13 compraron (0,5 %)</b>. Meta cobró US$189 por esas plantillas más el catálogo y el bono, o sea unos <b>US$14 por venta</b>, contra US$7–8 con anuncios. Además dejó 883 envíos frenados por Meta y la tarjeta rechazada. <b>No conviene repetirla en masa.</b></div>
+<h3>Cómo elegir a qué antiguos escribirles (en vez de a todos)</h3>
+<ol>
+  <li><b>Solo con señal de compra</b> en el chat: preguntó precio <b>y</b> dio distrito o ciudad, pidió datos de envío, dijo «luego / te aviso / a fin de mes», o tocó un botón de plantilla. Es justo lo que ya hace la rutina «Asesor — rescate de lead 1» (regla 10).</li>
+  <li><b>Recientes primero:</b> de 7 a 30 días. Más atrás la respuesta cae y el costo por venta sube.</li>
+  <li><b>Una sola plantilla por persona</b> fuera de la semana gratis, nunca una cadena de días.</li>
+  <li><b>Tope diario</b> (ya existe: 15 por corrida y 30 por día) y <b>con la oferta que más vende</b> (el bono), no el «quedó pendiente».</li>
+  <li><b>Clientes que ya compraron</b> (recompra): solo quienes ya recogieron su kit, con una oferta para clientes (el oráculo o un segundo mazo), de a 20 o 30 por día.</li>
+</ol>
+<h3>Por qué la rutina de rescates no está enviando</h3>
+<ul>
+  <li><b>Causa 1 · el filtro de permisos.</b> La rutina «Asesor — rescate de lead 1» (todos los días a las 9:47) sí elige sus 15 candidatos. El 8/11, por ejemplo, encontró 80 chats con señales. Pero el envío se bloquea («Real-World Transactions»): arma el comando encadenado (<code>cd … && python3 -c … && enviar.py … | tail</code>), y la regla de permiso de <code>enviar.py</code> solo vale si el comando va solo. <b>No pude corregir el prompt desde aquí</b>: el modo automático no me deja modificar rutinas. Abajo dejo el prompt corregido para pegarlo (anexo A), o dame permiso y lo cambio yo.</li>
+  <li><b>Causa 2 · rescates «por aprobar».</b> Los planes «Rescate de interesado» que propone el asesor quedan en estado «por aprobar» en el CRM (Herramientas → planes por aprobar). <b>Hay 147 esperando</b> desde el 11/10, y el cron cancela los que pasan su hora sin aprobar. Solo salieron 10, entre el 14 y el 21/10. Hay que decidir: o alguien los aprueba cada día, o se aprueban solos los que cumplen la regla 10.</li>
+</ul>
+
+<h2>6. La plantilla del rescate genera desconfianza</h2>
+<div class="box warn">Chat de Cusco: la clienta dijo «PROVINCIA / Cusco», recibió los 4 mensajes con el Yape de golpe, dos seguimientos y el 3/11 el rescate: «Hola estimad@ 🩷🤗, espero que se encuentre muy bien. <b>Quedó pendiente su envío</b>, cualquier consulta o comentario quedamos atentos». Respondió: «No gracias <b>están estafando y amenazando</b>». A alguien que nunca pagó, «quedó pendiente su envío» le suena a cobro.</div>
+<p>Propuesta de plantilla nueva (marketing, sin nombre ni precio; el texto lo apruebas tú antes de mandarlo a Meta):</p>
+<div class="msg">Hola estimad@ 🩷 le escribo por el kit de tarot que consultó. Todavía lo tenemos disponible, con envío gratis y ahora con clases grabadas de regalo para aprender desde cero ✨ ¿Desea que le separemos uno?</div>
+<p class="small">Botones: «Sí, separar» · «No, gracias». El «No, gracias» deja que la gente se baje sola en vez de bloquear, y eso protege la calidad del número.</p>
+
+<h2>7. Saldos y estados de Shalom: rutina semanal</h2>
+<ul>
+  <li><b>Hoy:</b> de lo despachado hace más de 7 días pagó el 83 % (10 de 12), de 4 a 7 días el 76 % (19 de 25) y de menos de 4 días el 13 % (3 de 23, la mayoría en camino). Quedan unos 28 saldos por cobrar (~S/1.900). El CRM los marca recién desde el 28/10.</li>
+  <li><b>La página <code>pro.shalom.pe/seguimientoenvios</code> pide inicio de sesión con reCAPTCHA.</b> Una rutina en la nube no puede entrar. Tiene que correr con <b>Cowork en tu computadora</b>, con tu sesión de Shalom Pro abierta. El repo ya tiene la pieza: <code>scripts/asesor/estados.py</code> (pendientes → cruzar → resumen) y el prompt manual «Estados de envío» en <code>docs/routines.md</code>.</li>
+  <li><b>Lima no necesita navegador:</b> <code>dinsides.py estados</code> ya lee los entregados, anulados y rechazados de Dinsides por API.</li>
+  <li><b>Antes de activarla hay que arreglar la hoja Ventas:</b>
+    <ul>
+      <li>La fila 1 tiene los títulos viejos («Código, Cliente, WhatsApp, Pagado, Destino…»), pero los datos siguen el orden del Worker (Fecha · DNI/WSP · Envío · Adelanto · Saldo · Clave/Notas · Alerta · Avisar · Voucher · Estado · Código · En destino desde · Drive ID). Por eso parece corrida. Se arregla reescribiendo solo la fila de títulos con el conector de Sheets.</li>
+      <li>La columna «Estado» nunca pasa a «Pagado» aunque el CRM ya tenga la etiqueta <code>saldo_pagado</code>. Hay que sincronizarla.</li>
+    </ul>
+  </li>
+</ul>
+<div class="box key"><b>Rutina semanal propuesta (Cowork, lunes 9:00, en tu computadora):</b>
+<ol>
+  <li>Sincroniza Ventas → «Pagado» desde las etiquetas del CRM.</li>
+  <li>Lima: <code>dinsides.py estados</code>.</li>
+  <li>Abre Shalom Pro → Seguimiento de envíos. Si pide login, se detiene y te avisa.</li>
+  <li>Por cada orden: en tránsito, en agencia desde (días), entregado / recogido, devuelto.</li>
+  <li><code>estados.py cruzar</code> → hoja Ventas («En destino», «Entregado», «Devuelto») y «Pedidos auto».</li>
+  <li>Resumen por Telegram:
+    <ul>
+      <li>en agencia con más de 5 días sin recoger (para llamarlos);</li>
+      <li>entregados con saldo pendiente;</li>
+      <li>devueltos;</li>
+      <li>lo que no cuadra.</li>
+    </ul>
+  </li>
+</ol>
+No escribe a ningún cliente: lo que merezca un mensaje va a Sugerencias. El prompt completo está en el anexo B. Las tareas programadas de Cowork se crean desde la app de escritorio de Cowork, no desde esta sesión en la nube.</div>
+
+<h2>8. Ángulos para anuncios</h2>
+<p>Hechos de lo que dicen los clientes (13 días, chats que escribieron algo más que el saludo) y de lo que vende cada anuncio (27/10–6/11).</p>
+<table>
+<tr><th>Anuncio actual</th><th class="n">Chats</th><th class="n">Compran</th><th class="n">Costo por venta aprox.</th></tr>
+<tr class="hi"><td>«claude1» · «Aprende a leer Tarot con nuestro Kit para principiantes»</td><td class="n">168</td><td class="n">10,7 %</td><td class="n">US$4,6</td></tr>
+<tr><td>«loquitom» · «Tarot para principiantes, manual, tapete y amuleto»</td><td class="n">287</td><td class="n">8,0 %</td><td class="n">US$7</td></tr>
+<tr><td>«video hooksaso» · «Incluye tarot, manual, tapete y amuleto»</td><td class="n">369</td><td class="n">7,9 %</td><td class="n">US$9</td></tr>
+<tr><td>«CROCHET INES» · «La magia llegó a tus manos»</td><td class="n">280</td><td class="n">5,4 % (madurando)</td><td class="n">US$7 (chat a US$0,36)</td></tr>
+<tr class="lo"><td>«si siempre 8/26» · «Pagos contraentrega / envío gratis»</td><td class="n">137</td><td class="n">2,9 %</td><td class="n">~US$21</td></tr>
+</table>
+<p><b>Lo que preguntan los clientes:</b> precio (210 chats); cómo se usa / no sé leer / ¿son clases? (46); regalo (25); material y calidad (24); confianza (14); amor y pareja (11); significado escrito en la carta (10).</p>
+<table>
+<tr><th>Ángulo</th><th>Gancho (idea)</th><th>Por qué</th></tr>
+<tr class="hi"><td><b>1. Aprende sin memorizar</b> (el que mejor vende)</td><td>«Cada carta te dice qué significa. Tu primera lectura hoy, aunque nunca hayas tocado un tarot.» Primer plano de la carta con el texto.</td><td>«Aprende a leer» es el anuncio que más cierra; 46 chats preguntan cómo se usa.</td></tr>
+<tr class="hi"><td><b>2. Tutorial: tu primera tirada en 3 pasos</b></td><td>Video de 15–20 s: baraja → saca 3 cartas → lee el significado impreso. Sin voz en off de vendedora: manos y carta.</td><td>Contesta «¿cómo se usa?» antes de que pregunten; atrae compradores, no curiosos.</td></tr>
+<tr><td><b>3. Léete a ti misma</b></td><td>«No necesitas a nadie que te lea las cartas. Pregúntale al tarot sobre tu amor, tu trabajo y tus decisiones, tú misma.»</td><td>Autoconocimiento; ya lo trabajan, combina con el 1.</td></tr>
+<tr><td><b>4. Curso incluido</b> (cuando las clases estén listas)</td><td>«Kit + más de 30 clases grabadas de cero a lector.» Mostrar el celular con la clase y el kit al lado.</td><td>«Pensé que daban clases» aparece seguido. Convierte esa expectativa en venta.</td></tr>
+<tr><td><b>5. Regalo</b></td><td>«El regalo para la amiga que ama lo místico.» Unboxing con el collar y el tapete. En campañas de fechas (Navidad, cumpleaños).</td><td>25 chats compran para regalar; el collar de regalo engancha.</td></tr>
+<tr><td><b>6. Calidad que se toca</b></td><td>Unboxing ASMR: textura de las cartas, tamaño en la mano, el tapete extendido.</td><td>24 chats preguntan por el material; quita la duda «¿es de papel?».</td></tr>
+<tr><td><b>7. Pregúntale al tarot sobre el amor</b></td><td>«¿Volverá? ¿Me conviene? Haz tu propia tirada del amor.» Sin prometer resultados.</td><td>Es el motivo más común para empezar a leer; cuidar las políticas de Meta.</td></tr>
+<tr class="lo"><td><b>Evitar:</b> solo «paga contraentrega / envío gratis»</td><td>Que el beneficio logístico vaya como apoyo, no como gancho principal.</td><td>Ese anuncio trae curiosos: 2,9 % de compra. Pásale su presupuesto a «claude1».</td></tr>
+</table>
+
+<h2>9. Plan de acción (en orden)</h2>
+<ol>
+  <li><b>Hoy:</b> pegar el prompt corregido de la rutina de rescates (anexo A) y decidir qué pasa con los 147 «por aprobar».</li>
+  <li><b>Hoy:</b> pausar el anuncio «Pagos contraentrega» y pasar su presupuesto a «claude1» y «loquitom».</li>
+  <li><b>Esta semana:</b> plantilla nueva del rescate (sección 6) en lugar de «Quedó pendiente su envío».</li>
+  <li><b>Esta semana:</b> recortar el plan de 7 días a 3 toques; pausar el catálogo a clientes hasta tener una oferta para ellos.</li>
+  <li><b>Esta semana:</b> arreglar la hoja Ventas (títulos y «Pagado») y crear en Cowork la rutina semanal de estados (anexo B).</li>
+  <li><b>Cuando las clases estén listas:</b> activar la prueba de dos opciones (S/79 / S/95) contra el control, con soles por chat como métrica.</li>
+  <li><b>Creativos:</b> producir los ángulos 1, 2 y 4 (video tutorial y curso incluido) con la skill de creativos.</li>
+  <li><b>Provincia:</b> retomar la prueba «Yape en 2 tiempos» con Jennifer; es la palanca más grande que queda en las primeras 72 h.</li>
+</ol>
+
+<h2>Anexo A · Prompt corregido para «Asesor — rescate de lead 1» (trig_012BNuxd8Zs13YZFPNhvaXCK)</h2>
+<p class="small">Mismo prompt de hoy, con un bloque nuevo «CÓMO ENVIAR» al final. Se pega en la rutina (claude.ai → Routines → editar) o me das permiso para cambiarlo.</p>
+<pre>… (todo igual hasta «Tope 15.») …
+
+CÓMO ENVIAR (importante, si no el filtro de permisos bloquea el envío y no sale nada):
+1. Escribe /tmp/rescate/salida.json con la herramienta Write (NO con `python3 -c`, `echo` ni heredoc).
+2. Si no estás en /home/user/claudetarot, corre primero `cd /home/user/claudetarot` como comando aparte.
+3. Corre el envío como UN SOLO comando, exactamente así, sin `cd`, sin `&&`, sin `;`, sin `|`, sin `2>&1`:
+   python3 scripts/asesor/enviar.py /tmp/rescate/salida.json --solo-mensajes
+4. Si aun así se bloquea, no lo intentes por otra vía: responde la lista de 15 con sus motivos y di que el envío fue bloqueado.
+
+Responde cuántos se programaron, cuántos rechazó el Worker y por qué (lo dice la salida de enviar.py).</pre>
+
+<h2>Anexo B · Prompt de la rutina semanal de estados (Cowork, en tu computadora)</h2>
+<pre>Eres la rutina semanal «Estados de envío y saldos» de Tarot Store Perú. Trabajas en el clon local del repo
+claudetarot (rama main al día). Solo usas `python3 scripts/asesor/estados.py`, `python3 scripts/asesor/dinsides.py`
+y el navegador. No escribes a ningún cliente. No cambias nada en Shalom Pro ni en Dinsides: solo lees.
+
+PASO 0. python3 scripts/asesor/estados.py pendientes --dias 30   → lo que el sistema espera en camino.
+PASO 1. Lima: python3 scripts/asesor/dinsides.py estados          → entregados, anulados y rechazados (por API).
+PASO 2. Abre https://pro.shalom.pe/seguimientoenvios en el navegador. Si pide iniciar sesión, DETENTE y pídele al
+        dueño que entre él; no escribas contraseñas. Lee cada envío de los últimos 30 días: número de orden, nombre,
+        DNI o teléfono, estado (en tránsito, en agencia, entregado/recogido, devuelto) y desde qué fecha está en agencia.
+PASO 3. Cruza con el PASO 0 por número de orden, DNI o teléfono (9 dígitos) y escribe /tmp/estados/leido.json con la
+        herramienta Write (formato en el encabezado de estados.py; courier "Shalom" u "Olva").
+PASO 4. python3 scripts/asesor/estados.py cruzar /tmp/estados/leido.json
+PASO 5. python3 scripts/asesor/estados.py resumen
+        Además responde en la sesión con 4 listas:
+        (a) en agencia con más de 5 días sin recoger;
+        (b) entregados con saldo pendiente;
+        (c) devueltos;
+        (d) lo que el panel tiene y el sistema no, y al revés.
+Cada comando va solo, sin encadenar con && ni |.</pre>
+
+<p class="small" style="margin-top:12px"><b>Método y límites.</b> Fuente: CRM (D1), compras = evento Purchase del CRM (las vendedoras no marcan todas: los porcentajes reales son un poco más altos); costos de anuncios de la cuenta USD de Meta; respuestas rápidas medidas por <code>quick_reply_id</code> en el primer uso por chat; plantillas por remitente y nombre. Fotos vs catálogo es antes y después, con Lima como control, no un A/B. Las 72 h de los chats del 6 al 8/11 todavía no se completan.</p>
+</body>
+</html>
