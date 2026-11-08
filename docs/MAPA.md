@@ -1978,3 +1978,15 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   como propias de la agencia y da por segura la única agencia de un distrito nombrado. Simulacro con los provincia confirmados del 2 al 8
   de noviembre: 44 filas, agencia segura en la gran mayoría; el resto queda marcado para una persona (ciudad sin agencia clara,
   «Serpost», DNI de 9 dígitos). Cómo se llena cada columna: en el docstring de `scripts/asesor/shalom.py`.
+
+## 2026-11-08 (tarde 3) — Shalom: por qué el masivo rechazaba el Excel («columnas adicionales no permitidas: 0»)
+- La plantilla de Shalom trae una **columna O vacía pero con formato** (dimensión `A1:O500`, `<c r="O1" s="3"/>`). Al reescribirla con
+  openpyxl, esa celda sale como numérica sin valor (`<c r="O1" s="3" t="n">`) y el validador de Shalom Pro la lee como una columna de
+  nombre «0» → «El archivo contiene columnas adicionales no permitidas: 0». Es el mismo problema que probablemente tenían los Excel que
+  se armaban antes con otras herramientas. `shalom.py masivo` ahora **borra la columna O** (queda `A1:N500`, 14 columnas) y **no agrega
+  hojas**: la referencia para la persona va en un archivo aparte (`…-referencia.xlsx`). Las hojas ocultas de la plantilla («Medidas»,
+  «Hoja2») se conservan. Opción `--solo N` para pruebas con pocas filas.
+- No se pudo leer el validador de Shalom Pro: `pro.shalom.pe` responde **403 Forbidden** a cualquier acceso desde la nube (curl y
+  Chromium real), así que la regla exacta sigue sin verse; la corrección se basa en la comparación byte a byte de los dos archivos. Si el
+  archivo nuevo vuelve a fallar, el siguiente paso es abrir Shalom Pro desde el navegador del dueño (Cowork) para leer el mensaje
+  completo y el código del validador.

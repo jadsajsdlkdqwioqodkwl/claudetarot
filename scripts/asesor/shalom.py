@@ -8,11 +8,12 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
     python3 scripts/asesor/shalom.py buscar "<lo que escribió el cliente>"
         -> las agencias que mejor calzan (ciudad, distrito, avenida, nombre), con su código, dirección y horario. Si calzan varias,
            hay que preguntarle al cliente (el reporte lo marca «CONFIRMAR AGENCIA»).
-    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--salida /tmp/shalom/masivo.xlsx]
+    ASESOR_CLAVE=... python3 scripts/asesor/shalom.py masivo [AAAA-MM-DD ...] [--solo N] [--salida /tmp/shalom/masivo.xlsx]
         -> el Excel del «Formato Pro Masivo» de Shalom con los pedidos de PROVINCIA confirmados del registro del reporte de esa(s)
            fecha(s) de despacho (DNI, teléfono, agencia de destino, PAQUETE XXS, 1 unidad, origen CHORRILLOS CO). Varias fechas = un
-           simulacro con varios días. La hoja 2 «Referencia» (no la lee Shalom) lleva por fila: nombre, WhatsApp, lo que escribió el
-           cliente, la agencia elegida y las otras candidatas, para que una persona revise antes de subir. Lo dudoso sale listado.
+           simulacro con varios días. Junto al Excel sale «…-referencia.xlsx» (NO se sube a Shalom) con, por fila: nombre, WhatsApp, lo
+           que escribió el cliente, la agencia elegida y las otras candidatas, para que una persona revise antes de subir. El archivo
+           para Shalom es su plantilla tal cual (14 columnas, hojas ocultas intactas): cualquier columna u hoja de más la rechaza.
 
 De dónde sale cada columna del Excel (el masivo NO autocompleta nada por DNI, así que todo tiene que venir del chat):
   DESTINATARIO (DOC) = DNI que el cliente escribió en el chat (el reporte lo guarda en `dni`; sin DNI la fila sale marcada).
@@ -147,10 +148,18 @@ def cmd_masivo(args):
     for r in range(2, ws.max_row + 1):  # limpia el ejemplo de la plantilla (deja las fórmulas de medidas)
         for c in ("A", "B", "C", "D", "E", "F", "G", "H", "M", "N"):
             ws[f"{c}{r}"].value = None
-    ref = wb.create_sheet("Referencia")
+    # La plantilla trae una columna O vacía con formato; al guardarla, openpyxl la escribe como celda numérica sin valor y el
+    # validador de Shalom Pro la lee como una columna «0» («columnas adicionales no permitidas: 0», 2026-11-08). Se elimina.
+    if ws.max_column > 14:
+        ws.delete_cols(15, ws.max_column - 14)
+    # La referencia para la persona va en OTRO archivo: Shalom solo debe recibir su plantilla tal cual (sin hojas extra).
+    wb_ref = openpyxl.Workbook(); ref = wb_ref.active; ref.title = "Referencia"
     ref.append(["Fila Excel", "Despacho", "Nombre", "WhatsApp", "DNI", "Lo que escribió el cliente", "Agencia elegida (código Shalom Pro)", "Seguro", "Otras candidatas", "Kits", "Nota del reporte", "Revisar"])
+    tope = int(args[args.index("--solo") + 1]) if "--solo" in args else 0  # --solo N: solo las primeras N filas (pruebas)
     fila = 2; revisar = []
     for p in pedidos:
+        if tope and fila - 2 >= tope:
+            break
         texto = f"{p.get('direccion_o_agencia') or ''} {p.get('courier') or ''}"
         aviso = []
         if re.search(r"\bolva\b", norm(texto)):
@@ -179,7 +188,10 @@ def cmd_masivo(args):
     for col, w in zip("ABCDEFGHIJKL", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45)):
         ref.column_dimensions[col].width = w
     wb.save(salida)
-    print(f"{salida} · {fila - 2} fila(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS) · hoja «Referencia» con el detalle")
+    salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
+    wb_ref.save(salida_ref)
+    print(f"{salida} · {fila - 2} fila(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
+    print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas); NO se sube a Shalom")
     for r in revisar:
         print(f"⚠️ {r}")
 
