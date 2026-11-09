@@ -103,7 +103,13 @@ def buscar(texto, n=5):
     if not q:
         return []
     res = []
-    for a in cargar()["agencias"]:
+    agencias = cargar()["agencias"]
+    # Palabras del cliente que son un LUGAR conocido por Shalom (departamento / provincia / distrito de alguna agencia). Si el cliente
+    # nombró un lugar, una agencia de OTRO lugar no puede ganar por el nombre de la calle (2026-11-09: «Av. Mariscal Castilla, Mollendo»
+    # ganaba la agencia de Huancayo «AV MARISCAL CASTILLA»; la correcta es MOLLENDO CO).
+    geo_conocidas = {c for a in agencias for seg in str(a["codigo"]).split(" / ")[:-1] for c in palabras(seg)} - set(GENERICO)
+    lugares = [w for w in q if len(w) > 3 and w in geo_conocidas]
+    for a in agencias:
         segmentos = [palabras(x) for x in str(a["codigo"]).split(" / ")]  # departamento, provincia, distrito, agencia
         dire = palabras(a["direccion"]); nom = segmentos[-1] if segmentos else []
         geo = {c for seg in segmentos[:-1] for c in seg}
@@ -116,7 +122,9 @@ def buscar(texto, n=5):
             if propia and any(parecido(c) for c in nom): p += 6; especifico = True      # una palabra PROPIA del nombre de la agencia
             if propia and w in dire: p += 2; especifico = True
             elif propia and any(len(w) > 4 and d.startswith(w) for d in dire): p += 1; especifico = True
-        if p:
+        if lugares and not any(any(w == c or (len(w) > 4 and (c.startswith(w) or w.startswith(c))) for c in geo) for w in lugares):
+            p -= 8 * len(lugares)  # el cliente nombró un lugar y esta agencia no está ahí
+        if p > 0:
             res.append((p, especifico, a))
     res.sort(key=lambda x: (-x[0], x[2]["codigo"]))
     if not res:
