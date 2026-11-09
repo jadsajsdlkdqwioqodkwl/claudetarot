@@ -23,7 +23,7 @@ Criterio LIBERAL (dueño): el reporte lo verifica una persona. Todo lo que huela
 revisó y no es (sale listado, nunca se esconde). Un pedido para otro día queda agendado y aparece en cada reporte hasta
 que alguien escriba en la columna «Enviado» de la hoja.
 """
-import datetime as dt, json, math, os, subprocess, sys, urllib.error, urllib.request
+import datetime as dt, json, math, os, re, subprocess, sys, urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
@@ -112,6 +112,22 @@ def cmd_preparar(args):
     except (ValueError, json.JSONDecodeError):
         out["chats"] = {"error": (r.stderr or r.stdout)[-400:]}
     out["chats"]["modo"] = f"solo chats con movimiento en las últimas {horas} h (desde el corte anterior)" if horas else "hoy y ayer completos (primera corrida de la noche)"
+
+    # 3b. PRIORIDAD (dueño 2026-11-09): pedidos PENDIENTES de la hoja (sin «Enviado») cuyo cliente escribió en esta ventana. Casi
+    # siempre es el dato que faltaba (DNI, agencia, dirección), el pago del saldo o un reclamo. La Routine los lee PRIMERO y los
+    # manda como `tipo: "CORRECCION"` (salen arriba del PDF) o como incidencia; nunca abajo con las intenciones.
+    try:
+        meta = json.load(open(os.path.join(carpeta, "meta.json")))
+        movidos = {str(k)[-9:] for k in meta}
+        n9 = lambda v: re.sub(r"\D", "", str(v or ""))[-9:]
+        out["agenda_con_movimiento"] = [f"{r.get('fecha_entrega')} · {r.get('nombre')} · {r.get('whatsapp')} · {r.get('destino')} · {r.get('estado')} · fila {r.get('fila')} · nota: {str(r.get('nota') or '')[:90]}"
+                                        for k in ("atrasados", "hoy", "futuros", "sin_fecha") for r in (ag.get(k) or []) if st == 200 and n9(r.get("whatsapp")) in movidos]
+        if out["agenda_con_movimiento"]:
+            out["agenda_con_movimiento_instruccion"] = ("LÉELOS PRIMERO: son pedidos que NO han salido y cuyo cliente escribió. Si llegó el dato que faltaba o una "
+                                                        "corrección → en `pedidos` con `tipo: \"CORRECCION\"`, estado CONFIRMADO, los datos nuevos y nota «🚨 …»; "
+                                                        "si es reclamo → `incidencias`. Salen arriba del PDF.")
+    except (OSError, ValueError):
+        out["agenda_con_movimiento"] = []
 
     # 4. Capturas (Yape/Plin, DNI, ubicación) para mirarlas con Read.
     r = subprocess.run([sys.executable, os.path.join(AQUI, "imagenes.py"), carpeta, "--max", str(max_img)], capture_output=True, text=True)

@@ -2222,3 +2222,30 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   que el registro de envíos arranque **solo con Dinsides (Lima)** para empezar; Shalom se suma cuando él lo diga. La Routine
   `trig_01J7vAUuHMuVL7MCccFkGaP7` se disparó con «solo Lima: revisa TODOS los pedidos de Lima de la entrega, presenta las fichas y
   espera el OK del dueño en la sesión». El reporte ya corre en una sola sesión fija (igual que boletas) desde el 2026-11-02.
+
+## 2026-11-09 (madrugada 4) · Correcciones arriba del todo, pendientes de la hoja con movimiento, atrasados de provincia al masivo, Shalom sin rastreo público
+
+- **Caso que lo motivó:** Elia Rita (provincia, adelanto 06-11) no salió porque su DNI estaba incompleto; la vendedora se lo pidió y
+  ella lo mandó completo el 07-11, pero en el reporte quedó abajo (POR VERIFICAR / atrasados) y nadie lo vio. Regla del dueño: ese
+  tipo de casos (dato que faltaba, corrección, pedido pendiente al que el cliente escribe) va ARRIBA DEL TODO, aunque sea falsa alarma.
+- **Reporte:** `reporte.py preparar` cruza la agenda abierta de la hoja con los chats que se movieron en la ventana
+  (`/tmp/reporte/meta.json`) → `agenda_con_movimiento` + instrucción. `docs/prompts/reporte.md` tiene la sección «PRIORIDAD CERO»:
+  esos chats se leen primero y salen como `tipo: "CORRECCION"` (CONFIRMADO, datos nuevos, nota «🚨 …») o como incidencia; un
+  cliente con pedido pendiente nunca va como INTENCION ni DESCARTADO. `enviar.py`: `ESPECIALES["CORRECCION"]` y una sección roja al
+  inicio del PDF «PRIMERO: CORRECCIONES Y DATOS QUE LLEGARON»; la fila de la hoja se actualiza (upsert por WhatsApp).
+- **Shalom masivo (`shalom.py masivo`):** además del estado de la fecha, toma de la hoja (`/pedidos-sheet?hoy=`) los provincia
+  CONFIRMADO/corrección sin «Enviado» de hoy o atrasados (sin boleta), marcados «ATRASADO (despacho previsto FECHA)» en la referencia
+  y en los avisos; Olva se salta. Así un pedido que no salió en su día por DNI incompleto entra al siguiente Excel.
+- **Envíos (`docs/envios-jennifer.md`):** YA REGISTRADOS en una sola línea compacta (el dueño no quiere verlos como fichas); paso
+  A2b «última revisada» de los chats con intención / por verificar y candidatos buscando datos que llegaron, pedidos pendientes con
+  mensaje y ventas salvables (como PENDIENTE con la pregunta exacta; nunca escribe al cliente); domingos: Dinsides no reparte, sale
+  motorizado externo (se presenta la lista igual, no se registra en Dinsides); B1 explica los «ATRASADO».
+- **Primera corrida de la Routine única de envíos (2026-11-09 ~00:10):** presentó la ficha completa de Ketty (Barranco, NO COBRAR,
+  pidió confirmar el Plin), pendientes Marikiño y Liliana (solo pin), lista de ya registrados, descartados con motivo; Shalom en pausa
+  por orden del dueño. No registró nada: espera el OK en su sesión. Funcionó como se pidió.
+- **Rastreo de Shalom (pregunta del dueño):** el bundle de shalom.com.pe/rastrea llama a `/rastrea/buscar`, `/rastrea/estados`,
+  `/rastrea/comprobante` con cabecera `X-Auth-Token` que sale de `/pro/login` + reCAPTCHA v3 («login_rastrea_pro»). Es decir: el
+  rastreo público exige iniciar sesión Pro desde un navegador con captcha; no se puede desde el Worker ni desde un script. Pro
+  (pro.shalom.pe) además responde 403 a lo que no es navegador y solo lista lo pendiente. Lo que sí tenemos: «Boletas auto» (boleta =
+  salió), hoja Ventas (clave, saldo, pagado) y los chats (cliente confirma recojo). Si el dueño quiere estados reales de Shalom, la
+  vía es un navegador con sesión (Cowork / Chrome del dueño) una vez al día; queda anotado, no implementado.

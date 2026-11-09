@@ -43,8 +43,17 @@ duda: la duda va en `nota` y el pedido sale igual.
 - Una venta es del día y de la vendedora que la cerró (la asesora del chat). Un Lima que pide entrega otro día NO sale mañana:
   OTRO_DIA con su fecha.
 
+### PRIORIDAD CERO (dueño, 2026-11-09): correcciones y datos que llegaron
+`preparar` devuelve `agenda_con_movimiento`: pedidos de la hoja que NO han salido (sin «Enviado») y cuyo cliente escribió en esta
+ventana. LÉELOS PRIMERO, antes que cualquier chat nuevo. Casi siempre es el dato que faltaba (DNI completo, agencia, dirección en
+texto), el pago del saldo o un reclamo. Si llegó el dato o una corrección → en `pedidos` con `tipo: "CORRECCION"`, estado
+CONFIRMADO, los datos nuevos (DNI, agencia, dirección) y nota que empiece con «🚨 » diciendo qué llegó (p. ej. «🚨 llegó el DNI
+completo 0463…; pedido del 06-11 sin enviar»). Sale ARRIBA DEL TODO en el PDF, en rojo, y actualiza la fila de la hoja. Si es
+reclamo → `incidencias`. Prefiere una falsa alarma arriba a que quede abajo sin que nadie lo vea. Un cliente con pedido pendiente
+NUNCA va como INTENCION ni DESCARTADO («ya había comprado»): su compra sigue sin despacharse.
+
 ### PASOS
-1) `python3 scripts/asesor/reporte.py preparar` → JSON: fecha_venta, fecha_objetivo (mañana), hora, corrida, ya_registrado (lo que
+1) `python3 scripts/asesor/reporte.py preparar` → JSON (incluye `agenda_con_movimiento`, ver PRIORIDAD CERO): fecha_venta, fecha_objetivo (mañana), hora, corrida, ya_registrado (lo que
    ya está en el reporte de esta noche; NO lo repitas salvo que haya cambiado), agenda_hoja, chats (la primera corrida trae hoy y
    ayer completos; las siguientes solo lo que se movió desde el corte), imagenes y control (candidatos = lo que el CRM ya tiene
    como venta de hoy: compras marcadas, pedidos web y del catálogo; otras_lineas).

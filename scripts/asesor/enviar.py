@@ -72,7 +72,10 @@ ESTADOS_SINONIMOS = {"POR_VERIFICAR": "POR_CONFIRMAR", "VERIFICAR": "POR_CONFIRM
 # Lo que sale el día del despacho sin ser venta nueva: cambio, reposición o un
 # pedido de un día pasado agendado para esta fecha. Va en su propia sección,
 # después de los confirmados y ANTES de los por confirmar, para que no se pierda.
-ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGENDADO": "📌 Agendado de otro día"}
+ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGENDADO": "📌 Agendado de otro día",
+              # 2026-11-09 (dueño): pedido PENDIENTE de envío al que le llegó el dato que faltaba (DNI, agencia, dirección) o una
+              # corrección. Va ARRIBA DEL TODO en rojo; antes quedaba abajo y nadie lo veía (caso Elia Rita, DNI incompleto).
+              "CORRECCION": "✏️ Corrección / dato que faltaba"}
 # Incidencia que obliga a mandar algo (reposición, cambio, motorizado…): va arriba y marcada.
 ENVIO = re.compile(r"reposici|repon[eé]|cambi(o|ar) (de|el|la|por)|motoriz|devoluci|llev[aá](r|rle|rsela)\b"
                    r"|falt\w* (la |el |una |un )?(carta|mazo|collar|manual|tapete|kit)", re.I)
@@ -240,6 +243,13 @@ def armar_pdf(datos, carpeta):
                       + tabla(inc_filas, [("Qué pasa / qué hacer", "texto"), ("¿Requiere envío?", "envio"),
                                           ("WhatsApp", "whatsapp")]) + "</div>")
     esp = [dict(p, tipo=ESPECIALES[str(p.get("tipo")).upper().replace("Ó", "O")]) for p in pedidos if especial(p)]
+    # Correcciones y datos que llegaron: lo primero del PDF, en rojo (dueño 2026-11-09: «prefiero una falsa alarma arriba a que quede abajo»).
+    correcciones = [p for p in esp if str(p.get("tipo")).startswith("✏️")]
+    if correcciones:
+        partes.append(f"<h2 class=inc>🚨 PRIMERO: CORRECCIONES Y DATOS QUE LLEGARON — pedidos pendientes que ya se pueden despachar ({len(correcciones)})</h2>"
+                      + "<div class=inc>" + tabla(correcciones, [("Destino", "destino"), ("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("DNI", "dni"),
+                                                                    ("Dirección / Agencia", "direccion_o_agencia"), ("Kits", "kits"), ("📦 Qué lleva", "_empaque"),
+                                                                    ("Pago", "pago"), ("Qué llegó / qué corregir", "nota")]) + "</div>")
     unificado = datos.get("tipo_reporte") == "unificado"
     for (estado, destino), titulo in (TITULOS_UNIFICADO if unificado else TITULOS).items():
         if estado == "POR_CONFIRMAR" and esp:

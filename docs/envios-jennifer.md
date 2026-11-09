@@ -64,6 +64,17 @@ y busca en lo que escribió EL CLIENTE («C:»):
   «YA AGENDADO … para el DD». En la presentación (A4) se informa «ya estaba agendado en Dinsides (#id, fecha X)»; si el cliente
   cambió la fecha, con el OK se corre `python3 scripts/asesor/dinsides.py editar <id> fecha_entrega=AAAA-MM-DD`, nunca `registrar`.
 
+A2b — ÚLTIMA REVISADA (dueño 2026-11-09): antes de presentar, pasa una vez por los chats del día con INTENCIÓN o POR_VERIFICAR y
+por los candidatos del CRM (los trae `preparar`; léelos con `chat <whatsapp> 40`) buscando (a) el dato que faltaba y ya llegó (DNI,
+dirección, agencia), (b) un pedido pendiente de otro día al que el cliente le escribió (reclamo, «¿cuándo llega?», pago del saldo)
+y (c) ventas que se pueden salvar con una sola pregunta. Lo de (a) entra a `pedidos`; lo de (b) y (c) va en la presentación como
+PENDIENTE con la pregunta exacta para la asesora (tú nunca escribes al cliente). Prefiere una falsa alarma arriba a que algo quede
+abajo sin que nadie lo vea.
+
+Domingos (información del dueño): Dinsides no reparte; los pedidos de domingo salen por un motorizado externo. Si el día de entrega
+que corresponde es domingo, no registres en Dinsides: presenta la lista igual (fichas completas) y dilo, para que la use el motorizado
+externo; el dueño decide.
+
 A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 `{"pedidos": [{"whatsapp": "51…", "distrito": "…", "direccion": "…", "coordenadas": "lat,lng", "nombre": "…", "nota": "…",
 "kits": 1, "empaque": "…", "cobrar": 89, "estado": "CONFIRMADO", "fecha_entrega": "AAAA-MM-DD"}]}`.
@@ -79,7 +90,8 @@ como los escribe el equipo: «Kit Tarot de aprendizaje», «2 Kits Tarot de apre
 «Tarot Gold Rider Waite», y «+ Extra: …» para lo extra; no los reescribas. Después de las fichas, los pendientes: una línea por
 pedido con «PENDIENTE: <pregunta exacta>»
 («solo mandó el pin, ¿dirección en texto? [link]», «¿La Perla o Callao?», «¿ya confirmó?», «MONTO: no es kit, ¿cuánto se cobra?»).
-Debajo: lo que marcó `estados`, los YA REGISTRADOS (no se tocan) y los candidatos descartados con su motivo. Termina con:
+Debajo: lo que marcó `estados`; los YA REGISTRADOS en UNA sola línea compacta («Ya en Dinsides, no se tocan: Dante #…, July #…»;
+el dueño no quiere verlos como fichas), y los candidatos descartados con su motivo en una línea cada uno. Termina con:
 «Responde OK para registrar los LISTOS, o corrige (ej.: “Judith: Av. X 123, Comas” / “Pedro: cobrar 69” / “María no va”).»
 Manda la misma tabla al dueño: `python3 scripts/asesor/dinsides.py telegram "<tabla en texto, máximo 25 líneas>"`.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
@@ -100,7 +112,9 @@ Otros comandos: `dinsides.py anular <id>` (antes de la ruta), `dinsides.py edita
 
 B1 — `rm -rf /tmp/shalom && python3 scripts/asesor/shalom.py masivo --salida /tmp/shalom/masivo.xlsx` (sin `--subir`: no sube nada).
 Sin pedidos de provincia confirmados → «Sin pedidos de provincia para mañana» y fin del ciclo. Lee las líneas ⚠️: «agencia dudosa»
-(con las candidatas), «sin DNI», «DNI de N dígitos», «MONTO: …», «va por OLVA».
+(con las candidatas), «sin DNI», «DNI de N dígitos», «MONTO: …», «va por OLVA», «ATRASADO: previsto para FECHA y sin boleta» (pedidos
+pendientes de la hoja que no salieron en su día, p. ej. por DNI incompleto: entran al Excel si ya tienen DNI y agencia; en la
+presentación se dicen aparte, con su fecha original).
 Por cada «agencia dudosa»: `python3 scripts/asesor/dinsides.py chat <whatsapp> 60` (avenida, local, distrito, ciudad que escribió el
 cliente) y `python3 scripts/asesor/shalom.py buscar "<ese texto>"`. Si una candidata calza sin duda, anótala con su NOMBRE DE AGENCIA
 (último tramo del código, p. ej. «AV PARRA 379») en /tmp/shalom/agencias.json: `{"51987654321": "AV PARRA 379"}` y vuelve a correr

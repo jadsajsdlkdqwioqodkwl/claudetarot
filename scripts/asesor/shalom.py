@@ -273,8 +273,23 @@ def cmd_masivo(args):
             k = re.sub(r"\D", "", str(p.get("whatsapp") or ""))[-9:]
             if str(p.get("destino", "")).upper() == "PROVINCIA" and str(p.get("estado", "")).upper() == "CONFIRMADO" and k not in vistos:
                 vistos.add(k); pedidos.append({**p, "_fecha": f})
+    # Provincia PENDIENTE en la hoja «Pedidos auto» (sin «Enviado», fecha de hoy o pasada, CONFIRMADO o corrección): pedidos que no
+    # salieron en su día (DNI incompleto, agencia dudosa…) y que no están en el estado de esta fecha. Entran al masivo marcados como
+    # ATRASADO para que no se queden en la hoja para siempre (dueño 2026-11-09, caso Elia Rita).
+    ag = pedir_worker(f"/pedidos-sheet?hoy={fecha}") or {}
+    for grupo in ("atrasados", "hoy"):
+        for r in ag.get(grupo) or []:
+            k = re.sub(r"\D", "", str(r.get("whatsapp") or ""))[-9:]
+            est = str(r.get("estado") or "").upper()
+            if str(r.get("destino", "")).upper() != "PROVINCIA" or k in vistos or not (est.startswith("CONFIRMADO") or "CORRECCION" in est):
+                continue
+            if "olva" in f"{r.get('direccion_o_agencia')} {r.get('nota')}".lower():
+                continue
+            vistos.add(k)
+            pedidos.append({**r, "_fecha": r.get("fecha_entrega") or fecha, "_atrasado": True,
+                            "nota": f"ATRASADO (despacho previsto {r.get('fecha_entrega')}, sin boleta): " + str(r.get("nota") or "")})
     if not pedidos:
-        sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)}.")
+        sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)} ni pendientes en la hoja.")
     os.makedirs(os.path.dirname(os.path.abspath(salida)), exist_ok=True)
     filas_excel = []
     # La referencia para la persona va en OTRO archivo: Shalom solo debe recibir su plantilla tal cual (sin hojas extra).
@@ -312,6 +327,8 @@ def cmd_masivo(args):
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
         dni = re.sub(r"\D", "", str(p.get("dni") or ""))
         clave = "PENDIENTE (la da el dueño)"
+        if p.get("_atrasado"):
+            aviso.append(f"ATRASADO: previsto para {p.get('_fecha')} y sin boleta; confirmar que no salió por otro lado antes de mandarlo")
         adelanto, saldo, aviso_monto = montos(p)
         if aviso_monto:
             aviso.append(aviso_monto); revisar.append(f"{p.get('nombre')}: {aviso_monto}")
