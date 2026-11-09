@@ -1,7 +1,7 @@
 {
 "fuente": "https://newwebservices.shalomcontrol.com/api/v1/web/agencias/listar (API pública de shalom.com.pe/agencias)",
 "version": 5184,
-"bajado": "2026-11-08",
+"bajado": "2026-11-09",
 "agencias": [
 {
 "id": 2,

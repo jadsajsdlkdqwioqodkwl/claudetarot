@@ -15,7 +15,7 @@ etiquetas en blanco, línea de corte, pie «Envía: 76250205» en las de Shalom)
         --subir         además guarda el PDF en CRM → Reportes (como los reportes) e imprime el link.
     Sin ASESOR_CLAVE solo arma Shalom y Olva desde los archivos (sin Lima).
 """
-import base64, datetime as dt, json, os, sys, textwrap, urllib.error, urllib.request
+import base64, datetime as dt, json, os, re, sys, textwrap, urllib.error, urllib.request
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -97,12 +97,19 @@ def etiqueta_lima(c, x0, yb, d):
         fe = f"{fe[8:10]}/{fe[5:7]}/{fe[0:4]}"
     y -= campo(c, x, y, "Fecha Entrega:", fe, ancho, negrita_valor=True)
     obs = str(d.get("observaciones", "") or "").strip()
+    # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie (del producto de Dinsides: «Kit Tarot de
+    # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).
+    paq = re.search(r"Paquete:\s*([^.]+)", obs)
+    empaque = (paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip()
+    pie = 3.6 * mm if empaque else 0
     if obs:
         c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
         c.setFont("Helvetica", 6.3)
-        restante = int((y - yb - p) / (6.3 * 1.3))
-        for ln in textwrap.wrap(obs, 62)[:max(0, restante)]:
+        restante = int((y - yb - p - pie) / (6.3 * 1.3))
+        for ln in textwrap.wrap(re.sub(r"\s*Paquete:[^.]+\.?", "", obs).strip(), 62)[:max(0, restante)]:
             c.drawString(x, y, ln); y -= 6.3 * 1.3
+    if empaque:
+        c.setFont("Helvetica-Bold", 5.2); c.drawString(x, yb + p + 0.4 * mm, ("EMPAQUE: " + empaque)[:95])
     cut(c, x0, yb, cell_w, cell_h)
 
 

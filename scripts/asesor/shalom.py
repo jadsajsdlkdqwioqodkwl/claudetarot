@@ -118,8 +118,12 @@ def buscar(texto, n=5):
         p = 0; especifico = False
         for w in q:
             parecido = lambda c: w == c or (len(w) > 4 and (c.startswith(w) or w.startswith(c)))
-            niveles = sum(1 for seg in segmentos[:-1] if any(parecido(c) for c in seg))
-            p += 3 * niveles                                                            # cada nivel (dep/prov/dist) que calza
+            # Cada nivel que calza suma; el distrito pesa más que la provincia y esta más que el departamento (2026-11-09: «Sachaca»
+            # empataba con todas las agencias de Arequipa y ganaba la primera por orden alfabético).
+            # Cada palabra cuenta UNA vez, por el nivel más profundo que calza («Arequipa» en dep, prov y distrito vale 5, no 10).
+            pesos = (2, 3, 5)
+            niveles_ok = [pesos[min(i_, 2)] for i_, seg in enumerate(segmentos[:-1]) if any(parecido(c) for c in seg)]
+            p += max(niveles_ok) if niveles_ok else 0
             propia = w not in GENERICO and not any(parecido(c) for c in geo)
             if propia and any(parecido(c) for c in nom): p += 6; especifico = True      # una palabra PROPIA del nombre de la agencia
             if propia and w in dire: p += 2; especifico = True

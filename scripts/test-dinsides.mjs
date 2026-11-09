@@ -157,4 +157,8 @@ check("«12-5 pm» es la ventana normal: sin alerta de hora", !p.alertas.some((a
 // La observación de Dinsides es solo operativa; lo de la asesora (reprogramar, confirmar) sale como alerta (dueño 2026-11-09)
 p = D.armarPedido({ nombre: "Mavel", whatsapp: "51999195063", direccion_o_agencia: "Calle Ramón Ribeyro 509, Miraflores", pago: "Pagado S/89", estado: "CONFIRMADO",
   nota: "🚨 Ya pagó S/89 por Yape (20:22, op 30121691): NO cobrar. Ella no está hasta las 5:30 pm; pide que le dejen el paquete por la ventana lateral abierta. También pidió reprogramar al miércoles 11-11: confirmar la fecha con ella." }, ctx);
-check("«pidió reprogramar… confirmar la fecha» NO va en la observación de Dinsides; va como PARA LA ASESORA", !/reprogramar|confirmar la fecha/.test(p.campos.obs) && /ventana lateral/.test(p.campos.obs) && p.alertas.some((a) => /^PARA LA ASESORA.*reprogramar/.test(a)), JSON.stringify([p.campos.obs, p.alertas]));
+check("«pidió reprogramar… confirmar la fecha» NO va en la observación de Dinsides; va como PARA LA ASESORA", !/reprogramar|confirmar la fecha/.test(p.campos.obs) && /ventana lateral/.test(p.campos.obs) && p.alertas.some((a) => /^NOTA PARA LA ASESORA.*reprogramar/.test(a)), JSON.stringify([p.campos.obs, p.alertas]));
+
+p = D.armarPedido({ nombre: "Agendado", whatsapp: "51935760271", direccion_o_agencia: "Jr Granada 464, Dpto 104, Pueblo Libre", pago: "Efectivo exacto S/89", estado: "CONFIRMADO",
+  nota: "Pidió que se la entreguen el LUNES 09-11, no mañana. Recibe Dante 935760271. Efectivo exacto S/89 · agendado desde el reporte del 2026-11-06" }, ctx);
+check("la observación no lleva «agendado desde el reporte…» ni «, no mañana»", !/agendado desde el reporte|no mañana/.test(p.campos.obs) && /LUNES 09-11\. Recibe Dante/.test(p.campos.obs), p.campos.obs);

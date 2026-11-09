@@ -12,6 +12,7 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
            marcada que el reporte no trae: la «cuarta corrida» para que nadie se quede fuera). Deja --dir/fichas.json.
     python3 scripts/asesor/dinsides.py presentar [AAAA-MM-DD]       -> TODO lo que el dueño mira antes del OK, en su formato (fichas +
                                                                         historial del chat + estado en Dinsides y en la hoja + CRM + pendientes con mensaje nuevo).
+    python3 scripts/asesor/dinsides.py notas <id|link de la página de revisión> -> lo que la persona marcó (OK / corrección / no va / ya se envió).
     python3 scripts/asesor/dinsides.py chat <whatsapp|conversation_id> [N]   -> los últimos N mensajes de un chat (para resolver una duda).
     python3 scripts/asesor/dinsides.py zona <lat,lng | link de Maps>         -> en qué zona del mapa de cobertura de Dinsides cae.
     python3 scripts/asesor/dinsides.py registrar [/tmp/dinsides/salida.json] [--simular] [--forzar]
@@ -343,7 +344,7 @@ def cmd_editar(args):
 # ---------- presentar: lo que el dueño quiere ver antes de dar el OK (2026-11-09) ----------
 RE_RELEVANTE = re.compile(r"direcci|calle|\bav\b|\bjr\b|\bmz\b|\blt\b|dpto|depa|piso|referenc|frente|esquina|portero|timbre|hora|\bpm\b|\bam\b|mañana|tarde|noche|"
                           r"lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|reprogram|cancel|anul|yape|plin|pag[oóa]|adelanto|efectivo|tarjeta|"
-                          r"separ|pedido|kit|mazo|collar|descuento|dni|agencia|lleg|recib|entreg|\d{3,}", re.I)
+                          r"separ|pedido|kit|mazo|collar|descuento|dni|agencia|shalom|olva|oficina|sede|jir[oó]n|urb|lote|ciudad|provincia|lleg|recib|entreg|\d{3,}", re.I)
 RE_VENDEDORA_UTIL = re.compile(r"agendad|queda|mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|horario|cobr|pag[oó] completo|sin cobrar|comprobante|boleta|entregad", re.I)
 NUM = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
 NEGOCIO = "Tarot Store Peru"
@@ -419,7 +420,7 @@ def _pregunta(f):
         if a.startswith("YA AGENDADO"):
             return "ya está agendado en Dinsides para otra fecha: ¿editar la fecha o dejarlo?"
     for a in f.get("alertas", []):
-        if a.startswith("PARA LA ASESORA") and not re.search(r"usar este|se usa|ya resuelto", a, re.I):  # lo ya resuelto no es pregunta
+        if a.startswith("NOTA PARA LA ASESORA") and not re.search(r"usar este|se usa|ya resuelto", a, re.I):  # lo ya resuelto no es pregunta
             return a.split(":", 1)[1].strip()[:140]
     return ""
 
@@ -466,7 +467,7 @@ def _bloque(i, f, lista, boletas, corto=False):
            f"👤 WhatsApp {f.get('whatsapp')} · asesora {f.get('asesora') or '-'} · distrito por {fuente}"]
     out += _tarjeta_dinsides(c)
     for a in f.get("alertas", []):
-        if a.startswith("PARA LA ASESORA"):
+        if a.startswith("NOTA PARA LA ASESORA"):
             out.append(f"📣 {a}")
     if c.get("coordenadas"):
         out.append(f"🔎 VERIFICAR (asesora o dueño, antes del OK): el cliente mandó este pin → https://maps.google.com/?q={c.get('coordenadas')} · ¿la dirección de la etiqueta coincide? Si no: «{primer}: dirección …»")
@@ -483,7 +484,7 @@ def _bloque(i, f, lista, boletas, corto=False):
         if f.get("hoja"):
             out.append(f"📄 Hoja «Pedidos auto»: fila {f['hoja'].get('fila')} · Dinsides: {f['hoja'].get('dinsides') or '—'} · Enviado: {f['hoja'].get('enviado') or '—'}")
         for a in f.get("alertas", []):
-            if not a.startswith("PARA LA ASESORA"):
+            if not a.startswith("NOTA PARA LA ASESORA"):
                 out.append(f"⚠️ {a}")
         if f.get("ya_registrado"):
             out.append(f"↩️ {json.dumps(f['ya_registrado'], ensure_ascii=False)[:160]}")
@@ -559,71 +560,124 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
     return "\n".join(out)
 
 
-CSS_PDF = """@page{size:A4;margin:10mm} body{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12px;color:#111;margin:0}
+CSS_PDF = """@page{size:A4;margin:10mm} body{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111;margin:0}
 h1{font-size:22px;margin:0 0 2px;color:#075E54} .sub{color:#666;margin:0 0 10px}
 h2{font-size:16px;border-bottom:2px solid #075E54;color:#075E54;margin:16px 0 6px;page-break-after:avoid}
 h2.rojo{color:#b91c1c;border-color:#dc2626} h2.amb{color:#854d0e;border-color:#ca8a04} h2.gris{color:#555;border-color:#999;font-size:14px}
 .cajas{display:flex;gap:8px;margin:6px 0 10px} .cajas div{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px} .cajas b{display:block;font-size:22px;color:#075E54} .cajas span{color:#555}
-.ped{border:1px solid #bbb;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid} .ped.listo{border-left:6px solid #075E54} .ped.conf{border-left:6px solid #ca8a04;background:#fffbeb} .ped.pend{border-left:6px solid #dc2626;background:#fff5f5} .ped.ya{border-left:6px solid #999;color:#444}
-.ped h3{margin:0 0 4px;font-size:14px} .ped .meta{color:#555;font-size:11px;margin-bottom:6px}
-table.et{border-collapse:collapse;width:100%;margin:4px 0} table.et th{background:#075E54;color:#fff;text-align:left;padding:3px 6px;width:150px;font-weight:600} table.et td{border:1px solid #bbb;padding:3px 6px}
+.ped{border:1px solid #bbb;border-radius:8px;padding:10px 12px;margin:8px 0;page-break-inside:avoid} .pagina .ped{page-break-before:always;min-height:240mm}
+.ped.listo{border-left:8px solid #075E54} .ped.conf{border-left:8px solid #ca8a04;background:#fffbeb} .ped.pend{border-left:8px solid #dc2626;background:#fff5f5} .ped.ya{border-left:8px solid #999;color:#444}
+.ped h3{margin:0 0 4px;font-size:17px} .ped .meta{color:#555;font-size:11.5px;margin-bottom:8px}
+table.et{border-collapse:collapse;width:100%;margin:4px 0 8px} table.et th{background:#075E54;color:#fff;text-align:left;padding:5px 8px;width:160px;font-weight:600} table.et td{border:1px solid #bbb;padding:5px 8px;font-size:13px}
 .ped.pend table.et th,.ped.conf table.et th{background:#444}
-.lin{margin:3px 0} .lin.ases{background:#fef9c3;padding:3px 6px;border-radius:4px;font-weight:600} .lin.ver{background:#e0f2fe;padding:3px 6px;border-radius:4px} .lin.blq{color:#b91c1c;font-weight:600} .lin.al{color:#7c2d12}
-.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10.5px;color:#333;background:#f6f6f6;padding:5px 7px;border-radius:4px;margin:4px 0;white-space:pre-wrap}
+.porque{background:#fde68a;border:2px solid #ca8a04;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:15px;font-weight:700;color:#78350f}
+.ver{background:#dbeafe;border:2px solid #2563eb;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:14px} .ver b{display:block;font-size:15px;color:#1e3a8a;margin-bottom:4px} .ver ol{margin:2px 0 0 18px;padding:0} .ver li{margin:3px 0}
+.lin{margin:4px 0} .lin.ases{background:#fef9c3;padding:4px 8px;border-radius:4px;font-weight:600} .lin.blq{color:#b91c1c;font-weight:700} .lin.al{color:#7c2d12}
+.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10.5px;color:#333;background:#f6f6f6;padding:6px 8px;border-radius:4px;margin:6px 0;white-space:pre-wrap} .chat b{color:#075E54}
+.notas{margin-top:10px;border:2px dashed #888;border-radius:6px;padding:8px 10px;min-height:38mm} .notas b{display:block;margin-bottom:4px;color:#333} .notas .opc{margin:4px 0 8px} .notas .opc span{display:inline-block;border:1.5px solid #555;border-radius:4px;padding:2px 10px;margin-right:10px}
+.notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0} .ctl label{border:1.5px solid #555;border-radius:6px;padding:4px 10px;cursor:pointer} .ctl input[type=radio]{margin-right:4px}
+.ctl textarea{width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px} .guardado{color:#075E54;font-weight:600;font-size:12px}
+.sticky{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:2px solid #075E54;z-index:2}
 ul.l{margin:4px 0 4px 18px;padding:0} ul.l li{margin:2px 0} pre{white-space:pre-wrap;font-family:inherit;margin:0}"""
 
+RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|Destino|Mercadería|Adelanto):")
 
-def _html(titulo, secciones, resumen=None):
-    """PDF con el estilo del reporte de ventas: una tarjeta por pedido (etiqueta en tabla, chat en gris, avisos en color)."""
+
+def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
+    """Una tarjeta (pedido) a HTML: etiqueta en tabla, «por qué confirmar» en ámbar, VERIFICAR como llamada a la acción, chat, notas."""
+    tipo = "ya" if "↩️" in cab else "pend" if ("❓" in cab and "✅" not in cab) else "conf" if "✅❓" in cab else "listo"
+    wa = (re.search(r"WhatsApp (51\d{9})", "\n".join(cuerpo)) or re.search(r"(51\d{9})", cab) or [None, ""])[1]
+    filas, otros, chat, meta = [], [], [], ""
+    for x in cuerpo:
+        xs = x.strip()
+        if not xs or xs.startswith("🏷️ ETIQUETA") or xs.startswith("🗨️"):
+            continue
+        if RE_ETIQ.match(xs):
+            k, v = xs.split(":", 1); filas.append((k, v.strip()))
+        elif re.match(r"^\d\d-\d\d \d\d:\d\d [CV]:", xs):
+            chat.append(xs)
+        elif xs.startswith("👤"):
+            meta = xs
+        else:
+            otros.append(xs)
+    h = [f"<div class='ped {tipo}' data-wa='{E(wa)}'><h3>{E(cab)}</h3>"]
+    if meta: h.append(f"<div class=meta>{E(meta)}</div>")
+    m = re.search(r"✅❓ LISTO, pero confirmar(?: antes del OK)?: (.+)$", cab)
+    if m: h.append(f"<div class=porque>⚠️ POR QUÉ HAY QUE CONFIRMAR: {E(m.group(1))}</div>")
+    if filas: h.append("<table class=et>" + "".join(f"<tr><th>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in filas) + "</table>")
+    for o in otros:
+        if o.startswith("🔎"):
+            txt = o.replace("🔎 VERIFICAR (asesora o dueño, antes del OK): ", "").replace("🔎 VERIFICAR AGENCIA (asesora o dueño, antes del OK): ", "")
+            link = re.search(r"https?://\S+", txt)
+            paso2 = "¿Va por Dinsides (12–5 pm) o por el motorizado de confianza?" if tipo == "conf" and "hora" in cab.lower() else "Si algo no cuadra, escríbelo abajo (dirección, distrito, agencia, monto)."
+            h.append("<div class=ver><b>🔎 VERIFICAR ANTES DEL OK (asesora o dueño)</b><ol>"
+                     + f"<li>{E(txt.split(' · ¿')[0].split(' y confirma')[0])}" + (f" → <a href='{E(link.group(0))}'>abrir</a>" if link else "") + "</li>"
+                     + f"<li>{E(paso2)}</li></ol></div>")
+        else:
+            cl = "ases" if o.startswith("📣") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢", "🧾", "🏷️", "📄")) else ""
+            h.append(f"<div class='lin {cl}'>{E(o)}</div>")
+    if chat:
+        h.append("<div class=chat>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in chat) + "</div>")
+    if interactivo and wa:
+        h.append("<div class=ctl>"
+                 + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{t}</label>" for v, t in (("ok", "✅ OK, va así"), ("correccion", "✏️ Corrección"), ("no_va", "❌ No va"), ("ya_enviado", "📦 Ya se envió")))
+                 + f"</div><textarea class=nota placeholder='Nota: dirección correcta, agencia, monto, motorizado, otra fecha…'></textarea><div class=guardado></div>")
+    elif pdf_pagina:
+        h.append("<div class=notas><b>Notas de revisión (marca y escribe; luego dile a Claude «revisa mis notas»):</b>"
+                 "<div class=opc><span>☐ OK, va así</span><span>☐ Corrección</span><span>☐ No va</span><span>☐ Ya se envió</span></div>"
+                 "<div class=lineas></div><div class=lineas></div><div class=lineas></div></div>")
+    h.append("</div>")
+    return "".join(h)
+
+
+def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
+    """PDF (una tarjeta por página) o página de revisión interactiva (misma tarjeta + OK / corrección / no va + nota)."""
     import html as _h
     E = _h.escape
     partes = [f"<h1>{E(titulo)}</h1><p class=sub>Tarot Store Perú · generado por dinsides.py presentar</p>"]
+    if interactivo:
+        partes.append("<div class=sticky>Marca en cada pedido <b>OK</b>, <b>Corrección</b> (y escribe qué), <b>No va</b> o <b>Ya se envió</b>. Se guarda solo. "
+                      "Cuando termines, dile a Claude en la sesión: <b>«revisa mis notas»</b>. <span id=total class=guardado></span></div>")
     if resumen:
         partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
-        lineas = [l for x in lineas for l in str(x).split("\n")]  # cada bloque viene como un solo string con saltos de línea
+        lineas = [l for x in lineas for l in str(x).split("\n")]
         clase = "rojo" if ("PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t) else "amb" if ("confirmar" in t.lower() or "NO CERRADAS" in t) else "gris" if ("CHATS DE HOY" in t or "YA REGISTRADOS" in t) else ""
-        partes.append(f"<h2 class='{clase}'>{E(t)}</h2>")
+        pagina = "pagina" if re.search(r"PARA REGISTRAR|SHALOM|PENDIENTES, falta", t) else ""
+        partes.append(f"<div class='{pagina}'><h2 class='{clase}'>{E(t)}</h2>")
         bloques, actual = [], []
         for ln in lineas:
-            if re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F|1\ufe0f\u20e3[0-9])", ln) and actual:
+            if re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F|1\ufe0f\u20e3[0-9]|🚨 |· )", ln) and actual:
                 bloques.append(actual); actual = [ln]
             else:
                 actual.append(ln)
         if actual:
             bloques.append(actual)
-        for b in bloques:
-            if not any(x.strip() for x in b):
+        for b_ in bloques:
+            if not any(x.strip() for x in b_):
                 continue
-            cab = b[0]
-            es_ped = bool(re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F)", cab))
-            if not es_ped:
-                partes.append("<pre>" + E("\n".join(x for x in b if x.strip())) + "</pre>"); continue
-            tipo = "ya" if "↩️" in cab else "pend" if "❓ PENDIENTE" in cab or "❓ " in cab and "✅" not in cab else "conf" if "✅❓" in cab else "listo"
-            filas, otros, chat = [], [], []
-            for x in b[1:]:
-                xs = x.strip()
-                if not xs: continue
-                if re.match(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|Destino|Mercadería|Adelanto):", xs):
-                    k, v = xs.split(":", 1); filas.append((k, v.strip()))
-                elif xs.startswith("🏷️ ETIQUETA") or xs.startswith("🗨️"):
-                    continue
-                elif re.match(r"^\d\d-\d\d \d\d:\d\d [CV]:", xs):
-                    chat.append(xs)
-                else:
-                    otros.append(xs)
-            html_b = [f"<div class='ped {tipo}'><h3>{E(cab)}</h3>"]
-            meta = [o for o in otros if o.startswith("👤")]
-            if meta: html_b.append(f"<div class=meta>{E(meta[0])}</div>")
-            if filas: html_b.append("<table class=et>" + "".join(f"<tr><th>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in filas) + "</table>")
-            for o in otros:
-                if o.startswith("👤"): continue
-                cl = "ases" if o.startswith("📣") else "ver" if o.startswith("🔎") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢")) else ""
-                html_b.append(f"<div class='lin {cl}'>{E(o)}</div>")
-            if chat: html_b.append("<div class=chat>" + E("\n".join(chat)) + "</div>")
-            html_b.append("</div>")
-            partes.append("".join(html_b))
-    return "<!doctype html><html><head><meta charset='utf-8'><style>" + CSS_PDF + "</style></head><body>" + "".join(partes) + "</body></html>"
+            cab = b_[0]
+            if re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F)", cab) and len(b_) > 1:
+                partes.append(_tarjeta_html(cab, b_[1:], E, interactivo, pdf_pagina=bool(pagina) and not interactivo))
+            elif (cab.startswith("🚨 ") or cab.startswith("· ")) and "OTROS DÍAS" in t:
+                wa = (re.search(r"(51\d{9})", cab) or [None, ""])[1]
+                partes.append(f"<div class='ped {'conf' if cab.startswith('🚨') else 'ya'}' data-wa='{E(wa)}'><h3>{E(cab)}</h3>" + "".join(f"<div class=lin>{E(x)}</div>" for x in b_[1:] if x.strip())
+                              + ("<div class=ctl>" + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{tt}</label>" for v, tt in (("ya_enviado", "📦 Ya se envió"), ("pendiente", "⏳ Sigue pendiente"), ("no_va", "❌ No va / falsa alarma")))
+                                 + "</div><textarea class=nota placeholder='Nota…'></textarea><div class=guardado></div>" if interactivo and wa else "") + "</div>")
+            else:
+                partes.append("<pre>" + E("\n".join(x for x in b_ if x.strip())) + "</pre>")
+        partes.append("</div>")
+    js = ""
+    if interactivo and revision:
+        js = ("<script>const REV=" + json.dumps({"token": revision["token"], "api": revision["api"]}) + ";REV.id=location.pathname.split('/').pop().replace('.html','');"
+              "const prev=" + json.dumps(revision.get("notas") or {}) + ";"
+              "function guardar(p){const wa=p.dataset.wa;const r=p.querySelector('input[type=radio]:checked');const t=p.querySelector('textarea.nota');"
+              "const g=p.querySelector('.guardado');g.textContent='guardando…';"
+              "fetch(REV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:REV.id,token:REV.token,whatsapp:wa,decision:r?r.value:'',texto:t?t.value:''})})"
+              ".then(x=>x.json()).then(x=>{g.textContent=x.ok?('guardado ✓ ('+x.guardadas+' notas)'):('error: '+(x.error||''));document.getElementById('total').textContent=x.ok?('Notas guardadas: '+x.guardadas):'';}).catch(()=>{g.textContent='sin conexión, reintenta';});}"
+              "document.querySelectorAll('.ped[data-wa]').forEach(p=>{const wa=p.dataset.wa;if(prev[wa]){const r=p.querySelector(`input[value='${prev[wa].decision}']`);if(r)r.checked=true;const t=p.querySelector('textarea.nota');if(t)t.value=prev[wa].texto||'';}"
+              "p.querySelectorAll('input[type=radio]').forEach(i=>i.addEventListener('change',()=>guardar(p)));const t=p.querySelector('textarea.nota');if(t){let h;t.addEventListener('input',()=>{clearTimeout(h);h=setTimeout(()=>guardar(p),900);});}});</script>")
+    return "<!doctype html><html lang=es><head><meta charset='utf-8'><meta name=viewport content='width=device-width,initial-scale=1'><title>" + E(titulo) + "</title><style>" + CSS_PDF + "</style></head><body>" + "".join(partes) + js + "</body></html>"
 
 
 def _pdf_y_subir(titulo, secciones, nombre, resumen=None):
@@ -636,6 +690,55 @@ def _pdf_y_subir(titulo, secciones, nombre, resumen=None):
     subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={ruta_pdf}", ruta_html], check=True, capture_output=True)
     st, r = pedir("/reporte", "POST", {"pdf_base64": base64.b64encode(open(ruta_pdf, "rb").read()).decode(), "nombre": nombre, "titulo": titulo}, timeout=180)
     return ruta_pdf, (r.get("url") if st == 200 else f"(no se pudo subir: {st})")
+
+
+def _pagina_revision(titulo, secciones, resumen, fecha, pedidos_rev):
+    """Sube la página interactiva a CRM → Reportes y registra la revisión (id + token) en el Worker. Devuelve (url, id)."""
+    import base64, secrets
+    token = secrets.token_urlsafe(18)
+    api = (os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor").replace("/api/asesor", "/api/revision/nota")
+    nombre = f"revision-envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.html"
+    html = _html(titulo, secciones, resumen, interactivo=True, revision={"token": token, "api": api})
+    st, r = pedir("/reporte", "POST", {"archivo_base64": base64.b64encode(html.encode("utf-8")).decode(), "nombre": nombre, "titulo": titulo}, timeout=180)
+    if st != 200:
+        return f"(no se pudo subir la página: {st} {str(r)[:80]})", ""
+    rid = str(r.get("id") or "").replace(".html", "")
+    st2, r2 = pedir("/revision", "POST", {"id": rid, "token": token, "fecha": fecha, "pedidos": pedidos_rev})
+    if st2 != 200:
+        return f"{r.get('url')} (la revisión no se pudo registrar: {st2} {str(r2)[:80]})", rid
+    return r.get("url"), rid
+
+
+def cmd_notas(args):
+    """dinsides.py notas <id|url de la página de revisión>: lo que la persona marcó en la página (OK / corrección / no va / ya se envió),
+    agrupado para actuar: los OK van a salida.json (registrar), los «no va» a `marcar`, los «ya se envió» a `reporte.py enviado`, y
+    las correcciones se leen y se aplican (dirección, distrito, agencia, monto, fecha, motorizado)."""
+    rid = re.sub(r"^.*/r/", "", args[0]).replace(".html", "") if args else ""
+    if not rid:
+        sys.exit("Falta el id (o el link) de la página de revisión.")
+    st, r = pedir(f"/revision?id={rid}")
+    salir_si_error(st, r)
+    if r.get("error"):
+        sys.exit(f"❌ {r['error']}")
+    nombres = {str(p.get("whatsapp") or "")[-9:]: p for p in r.get("pedidos", [])}
+    notas = r.get("notas") or {}
+    grupos = {"ok": [], "correccion": [], "no_va": [], "ya_enviado": [], "pendiente": [], "": []}
+    for wa, n in notas.items():
+        p = nombres.get(wa[-9:], {})
+        grupos.setdefault(n.get("decision", ""), []).append((wa, p.get("nombre") or "?", p.get("tipo") or "", n.get("texto") or "", n.get("cuando")))
+    print(f"📝 Revisión {rid} · despacho {r.get('fecha')} · {len(notas)} nota(s) de {len(nombres)} pedidos presentados")
+    for k, titulo in (("ok", "✅ OK (se registran / entran al Excel tal cual)"), ("correccion", "✏️ CORRECCIONES (aplicar lo que dice y volver a presentar solo estos)"),
+                      ("no_va", "❌ NO VA (marcar «no va» en la hoja; no se registra)"), ("ya_enviado", "📦 YA SE ENVIÓ (cerrar la fila con reporte.py enviado)"), ("pendiente", "⏳ SIGUE PENDIENTE"), ("", "(sin decisión, solo nota)")):
+        if grupos.get(k):
+            print(f"\n{titulo}:")
+            for wa, nom, tipo, texto, cuando in grupos[k]:
+                print(f"- {nom} · {wa} · {tipo}{' · «' + texto + '»' if texto else ''} · {cuando}")
+    sin = [p for k9, p in nombres.items() if k9 not in {w[-9:] for w in notas}]
+    if sin:
+        print(f"\nSin nota todavía ({len(sin)}): " + ", ".join(f"{p.get('nombre')} {p.get('whatsapp')}" for p in sin[:30]))
+    os.makedirs("/tmp/dinsides", exist_ok=True)
+    json.dump({"id": rid, "fecha": r.get("fecha"), "notas": notas, "pedidos": r.get("pedidos")}, open("/tmp/dinsides/notas.json", "w"), ensure_ascii=False, indent=1)
+    print("\nGuardado en /tmp/dinsides/notas.json. Lima: los OK + correcciones aplicadas → salida.json → `registrar`; Shalom: «OK» → `shalom.py masivo --subir` (con --agencias si corrigieron agencias).")
 
 
 def cmd_presentar(args):
@@ -718,7 +821,7 @@ def cmd_presentar(args):
         cab_, hist, ultimo = _historial(wa, 30, desde=fv)
         nuevos = [h for h in hist if " C: " in h and (not fv or h[:5] > fv)]
         linea = (f"{'🚨' if nuevos else '·'} {x.get('nombre')} · {wa} · {x.get('destino')} · {x.get('estado')} · venta {x.get('fecha_venta')} · previsto {x.get('fecha_entrega')} · fila {x.get('fila')}"
-                 f"\n    Dinsides: {_estado_dinsides(lista, wa, *_telefonos_en(x.get('nota')), *_telefonos_en(x.get('direccion_o_agencia')))} · Boleta: {_boleta(boletas, wa)} · último mensaje del cliente: {ultimo or '—'} · nota: {str(x.get('nota') or '')[:90]}"
+                 f"\n    Dinsides: {_estado_dinsides(lista, wa, *_telefonos_en(x.get('nota')), *_telefonos_en(x.get('direccion_o_agencia')))} · Boleta: {_boleta(boletas, wa)} · nota: {str(x.get('nota') or '')[:90]}"
                  + "".join(f"\n    {h}" for h in nuevos[-4:]))
         (conf if str(x.get("estado") or "").upper().startswith("CONFIRMADO") else noconf).append((linea, bool(nuevos)))
     sec(f"📅 PEDIDOS CONFIRMADOS DE OTROS DÍAS AÚN SIN DESPACHAR ({len(conf)}) — 🚨 = el cliente escribió después de la venta",
@@ -757,7 +860,13 @@ def cmd_presentar(args):
     if con_pdf:
         resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Provincia (Shalom)", len(prov)), ("Correcciones", len(corr)), ("Chats de hoy", len(chats_hoy) if chats_hoy is not None else "?")]
         ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf", resumen)
-        C.insert(1, ("📄 DETALLE COMPLETO (chats, Dinsides, hoja, candidatos, chats de hoy)", [url]))
+        pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend] \
+            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov] \
+            + [{"whatsapp": x.get("whatsapp"), "nombre": x.get("nombre"), "tipo": "otro_dia"} for x in abiertos[:60]]
+        url_rev, rid = _pagina_revision(f"Revisión de envíos {fecha}", S, resumen, fecha, pedidos_rev)
+        C.insert(1, ("📝 PÁGINA DE REVISIÓN (marca OK / corrección / no va por pedido; se guarda sola) y 📄 PDF completo",
+                     [f"Revisar y marcar: {url_rev}", f"PDF para imprimir (una hoja por pedido, con casilla de notas): {url}",
+                      f"Cuando termines de marcar, escribe en la sesión «revisa mis notas» (Claude corre `dinsides.py notas {rid or '<id>'}`)."]))
         for t, lineas in C:
             print(f"══════ {t} ══════"); print("\n".join(lineas)); print()
     else:
@@ -772,6 +881,8 @@ def main():
         cmd_preparar(resto)
     elif cmd == "presentar":
         cmd_presentar(resto)
+    elif cmd == "notas" and resto:
+        cmd_notas(resto)
     elif cmd == "chat" and resto:
         cmd_chat(*resto[:2])
     elif cmd == "zona" and resto:

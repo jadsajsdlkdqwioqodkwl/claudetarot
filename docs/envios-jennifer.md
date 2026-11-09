@@ -134,8 +134,19 @@ PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»),
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
 
 A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py AAAA-MM-DD --subir` imprime las etiquetas de
-Dinsides de esa entrega (formato Dinsides, 3×5) y deja el PDF en CRM → Reportes; da el link. Las de Shalom se imprimen cuando ya hay
+Dinsides de esa entrega (formato Dinsides, 3×5; al pie de cada una va en letra chica «EMPAQUE: …», lo que lleva la caja) y deja el PDF en
+CRM → Reportes; da el link. Las de Shalom se imprimen cuando ya hay
 número de orden (boletas).
+
+A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pdf` también deja una PÁGINA DE REVISIÓN (link en la salida) donde
+el dueño o la asesora marcan por pedido OK / Corrección (con texto) / No va / Ya se envió, y se guarda sola. Cuando te digan
+«revisa mis notas» (o cuando llegue un OK), corre `python3 scripts/asesor/dinsides.py notas <id o link>`: te lista las decisiones.
+Aplica: OK → esos WhatsApp van a salida.json y se registran (A5); Corrección → aplica el texto (dirección, distrito, agencia, cobrar,
+fecha, «motorizado» → sección C) y vuelve a presentar SOLO esos; No va → `marcar <whatsapp> "" "no va: <motivo>"`; Ya se envió →
+`python3 scripts/asesor/reporte.py enviado <whatsapp> "sí <fecha> <courier> (según el dueño)"`. Para Shalom: OK → entra al Excel;
+corrección de agencia → /tmp/shalom/agencias.json. Un «OK» escrito en la sesión vale igual que marcar OK en la página.
+Si el dueño dice que ya registró a mano algunos en Shalom Pro (manda las etiquetas o los nombres), ciérralos con `reporte.py enviado
+<whatsapp> "sí <fecha> Shalom <nro de orden> (registrado a mano)"`: el Excel lleva solo los que faltan.
 
 A5 — Con la respuesta:
 - «OK» → `python3 scripts/asesor/dinsides.py registrar /tmp/dinsides/salida.json` (el mismo archivo, sin `--simular`).

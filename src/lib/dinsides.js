@@ -411,10 +411,12 @@ export function armarPedido(pedido, ctx = {}) {
   // preguntar, verificar…) sale de la nota y va como alerta «PARA LA ASESORA» (dueño 2026-11-09: «si el repartidor lee “también pidió
   // reprogramar” se queda en qué»).
   const RE_ASESORA = /reprogram|confirmar (la |su )?(fecha|hora|direcci|con)|pregunt|verificar|revisar|por confirmar|¿|pidi[oó] (otro|cambiar|reprogramar)|no respondi|sin respuesta|falta[n]? (confirmar|el |la |que)|duda/i;
-  const frases = nota.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+  // Lo interno del reporte no va al motorizado: «agendado desde el reporte del …», «(agenda)», «, no mañana» (dueño 2026-11-09).
+  const notaLimpia = nota.replace(/\s*[·,;.]?\s*agendado desde el reporte del \d{4}-\d{2}-\d{2}/gi, "").replace(/,?\s*no mañana/gi, "").replace(/\s*\(agenda\)/gi, "").trim();
+  const frases = notaLimpia.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
   const paraAsesora = frases.filter((x) => RE_ASESORA.test(x));
   const operativo = frases.filter((x) => !RE_ASESORA.test(x)).join(" ").replace(/\.\./g, ".").trim();
-  if (paraAsesora.length) alertas.push(`PARA LA ASESORA (no va a Dinsides): ${paraAsesora.join(" ").slice(0, 240)}`);
+  if (paraAsesora.length) alertas.push(`NOTA PARA LA ASESORA (no se escribe en el formulario de Dinsides): ${paraAsesora.join(" ").slice(0, 240)}`);
   const obs = [operativo, pagoUtil, paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,

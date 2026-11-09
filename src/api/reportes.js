@@ -30,18 +30,20 @@ export async function onRequestPostReporte({ request, env }) {
   if (!env.CRM_MEDIA) return json({ error: "Falta el bucket R2." }, 503);
   const payload = await request.json().catch(() => null);
   const esXlsx = /\.xlsx$/i.test(String(payload?.nombre || "")) && payload?.archivo_base64;
+  // .html: la página de revisión de envíos (dinsides.py presentar --pdf), con casillas OK / corrección / no va por pedido (2026-11-09).
+  const esHtml = /\.html$/i.test(String(payload?.nombre || "")) && payload?.archivo_base64;
   let bytes;
   try {
-    bytes = Uint8Array.from(atob(String((esXlsx ? payload?.archivo_base64 : payload?.pdf_base64) || "")), (c) => c.charCodeAt(0));
+    bytes = Uint8Array.from(atob(String(((esXlsx || esHtml) ? payload?.archivo_base64 : payload?.pdf_base64) || "")), (c) => c.charCodeAt(0));
   } catch {
     return json({ error: "Archivo inválido." }, 400);
   }
   if (!bytes.length || bytes.length > MAX_BYTES) return json({ error: "Archivo vacío o demasiado grande." }, 400);
-  const ext = esXlsx ? "xlsx" : "pdf";
-  const base = String(payload?.nombre || "reporte").toLowerCase().replace(/\.(pdf|xlsx)$/, "").replace(/[^a-z0-9-]+/g, "-").slice(0, 60);
+  const ext = esXlsx ? "xlsx" : esHtml ? "html" : "pdf";
+  const base = String(payload?.nombre || "reporte").toLowerCase().replace(/\.(pdf|xlsx|html)$/, "").replace(/[^a-z0-9-]+/g, "-").slice(0, 60);
   const id = `${base}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.${ext}`;
   await env.CRM_MEDIA.put(`reportes/${id}`, bytes, {
-    httpMetadata: { contentType: esXlsx ? XLSX : "application/pdf" },
+    httpMetadata: { contentType: esXlsx ? XLSX : esHtml ? "text/html; charset=utf-8" : "application/pdf" },
     customMetadata: { titulo: String(payload?.titulo || base).slice(0, 120) }
   });
   return json({ ok: true, id, url: `${new URL(request.url).origin}/r/${id}` });

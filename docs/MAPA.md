@@ -2376,3 +2376,31 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   `shalom.dni_de()` lo recupera (masivo y presentación). Versión corta: pendientes solo si dijeron Lima/provincia/separar o tienen
   dirección o pin; el resto se cuenta («N solo pidieron precio»). Sin backslashes en f-strings: compila en 3.11. `docs/envios-jennifer.md`:
   presentar UNA vez al final y pegar solo la última; quien tiene boleta no se propone.
+
+## 2026-11-09 (mañana) · Página de revisión interactiva, PDF una hoja por pedido, agencias por nivel, nota del empaque en la etiqueta
+
+- Pedidos del dueño tras la corrida de la madrugada (que él mismo calificó de bien, salvo la agencia de Sachaca): que pueda marcar en
+  cada pedido «OK / corrección / no va» y escribir notas, y que Claude las lea («revisa mis notas»); cada pedido en una hoja con su casilla
+  de notas; «verificar» como llamada a la acción con dos pasos (¿existe la calle/pin? ¿Dinsides o motorizado?); el «por qué confirmar»
+  más grande; el log del chat con lo clave (agencia, dirección); sin «agendado desde el reporte…» ni «no mañana» en la observación del
+  motorizado; sin la columna «último mensaje»; nota chica para el que empaca al pie de cada etiqueta; y que los 7 de Shalom que el
+  equipo registró a mano hoy no vuelvan a salir.
+- **Página de revisión:** `presentar --pdf` sube además `/r/revision-envios-FECHA-HHMM-<id>.html` (reportes.js acepta .html) con la
+  misma tarjeta por pedido + radios OK / Corrección / No va / Ya se envió + nota; se guarda sola en `POST /api/revision/nota` (público,
+  con el token de la página; la página lee su id de su URL) → R2 `revision/<id>.json`; `src/api/revision.js` (nuevo) +
+  `POST/GET /api/asesor/revision` (clave del asesor). `dinsides.py notas <id|link>` lista las decisiones agrupadas y deja
+  /tmp/dinsides/notas.json; `docs/envios-jennifer.md` A4c dice cómo aplicarlas. Los pedidos de otros días también llevan radios
+  (ya se envió / sigue pendiente / no va).
+- **PDF:** una tarjeta por página en las secciones de pedidos, cuadro ámbar «POR QUÉ HAY QUE CONFIRMAR», cuadro azul «VERIFICAR ANTES
+  DEL OK» con dos pasos y link, chat con las líneas del cliente en negrita, casilla de notas punteada con opciones ☐ para marcar a mano.
+- **Agencias Shalom (`shalom.buscar`):** cada palabra puntúa una sola vez por el nivel más profundo que calza (distrito 5 > provincia 3 >
+  departamento 2). Antes «Sachaca, Arequipa» empataba con todas las agencias de Arequipa y ganaba la primera por alfabeto; ahora sale
+  VARIANTE UCHUMAYO CO (la que usó el equipo). Lista de agencias actualizada desde la API (566).
+- **Datos:** los 7 de provincia que el equipo registró hoy en Shalom Pro (Leny, Antony, Juan Guevara, Richer, Luiz, Katherin, Elia)
+  quedaron cerrados en la hoja con su número de orden («sí 2026-11-09 Shalom NNN (registrado a mano)»): el próximo Excel lleva solo
+  los que faltan (Abel).
+- **Etiquetas (`etiquetas.py`):** al pie de cada etiqueta de Lima, en letra chica, «EMPAQUE: …» (lo que lleva la caja, del producto o
+  del «Paquete: …» de la observación). Las de Shalom en el formato de Shalom (orden, código) necesitan el número de orden y el código
+  del comprobante: pendiente de que la Routine de boletas los guarde (hoy «Boletas auto» solo trae el número de orden).
+- **Pendiente que señaló el dueño:** las «recomendaciones del asesor» (mensajes sugeridos a las vendedoras) no se están mandando; hay
+  que revisar la Routine del asesor / ✨ Sugerencias por separado.
