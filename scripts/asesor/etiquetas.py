@@ -4,9 +4,16 @@ el mismo formato del Project «Etiquetas de pedidos en PDF» que usaba el dueño
 etiquetas en blanco, línea de corte, pie «Envía: 76250205» en las de Shalom).
 
     ASESOR_CLAVE=... python3 scripts/asesor/etiquetas.py [AAAA-MM-DD] [--shalom datos.json] [--olva datos.json] [--salida /tmp/etiquetas.pdf] [--subir]
-        AAAA-MM-DD      fecha de ENTREGA de los pedidos de Lima (por defecto mañana, como la Routine de Dinsides). Las etiquetas
-                        de Lima salen solas del historial de Dinsides (`GET /api/asesor/dinsides?listado=1`): ID PEDIDO, Negocio,
+        AAAA-MM-DD      día de RECOJO de Dinsides (por defecto hoy antes de las 6:00, si no mañana). Salen las etiquetas de Lima de lo
+                        REGISTRADO en ese ciclo (desde las 6:00 del día anterior hasta las 6:00 de ese día), sea cual sea su fecha de
+                        entrega: Dinsides pasa a las ~8:00, se lleva todo lo registrado que aún no tiene en su almacén y guarda lo de
+                        otros días hasta su fecha (dueño, 2026-11-09). Lo registrado en ciclos anteriores ya está en su almacén y NO se
+                        vuelve a imprimir. Datos del historial de Dinsides (`GET /api/asesor/dinsides?listado=1`): ID PEDIDO, Negocio,
                         ENTREGAR A, Teléfono, Producto, Cobrar, Distrito, Fecha Entrega, Detalle (observaciones). Los ANULADOS no salen.
+        --entrega       (modo viejo) filtrar por fecha de ENTREGA en vez de por ciclo de registro.
+        --shalom-hoja   además las etiquetas de Shalom de lo que el equipo registró A MANO en Shalom Pro en ese ciclo (hoja «Pedidos
+                        auto», «Enviado» = «sí FECHA Shalom NNN (registrado a mano)»): orden, destinatario, DNI de la nota, destino y
+                        agencia (data/shalom-agencias.json). El «Código» que imprime Shalom no se guarda: queda en blanco para escribirlo.
         --shalom f.json lista [{"orden": "103026403", "codigo": "7D9K", "destinatario": "…", "doc": "42371371",
                         "destino": "La Libertad - Sanchez Carrion - Huamachuco", "agencia": "Huamachuco", "direccion": "Jr. …"}]
                         (lo que imprime Shalom Pro; cuando Shalom se automatice saldrá solo de ahí).
@@ -45,9 +52,41 @@ def pedir(ruta):
 
 
 def fecha_por_defecto():
+    """Día de recojo: hasta las 6:00 todavía es el de hoy (Dinsides pasa ~8:00); después, mañana."""
     t = dt.datetime.now(LIMA)
-    base = t.date() if t.hour < 3 else t.date() + dt.timedelta(days=1)
+    base = t.date() if t.hour < 6 else t.date() + dt.timedelta(days=1)
     return base.isoformat()
+
+
+def en_ciclo(fecha_pedido, recojo):
+    """¿Se registró entre las 6:00 del día anterior y las 6:00 del día de recojo? (fecha_pedido de Dinsides: 'AAAA-MM-DD HH:MM:SS')."""
+    fp = str(fecha_pedido or "")[:19]
+    if len(fp) < 16:
+        return False
+    d = dt.date.fromisoformat(recojo)
+    return f"{(d - dt.timedelta(days=1)).isoformat()} 06:00:00" < fp <= f"{recojo} 06:00:00"
+
+
+def shalom_de_hoja(recojo):
+    """Etiquetas de Shalom de lo registrado a mano por el equipo en este ciclo (hoja «Pedidos auto», columna Enviado)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import shalom as sh
+    r = pedir(f"/pedidos-sheet?hoy={recojo}&enviadas=1") or {}
+    ayer = (dt.date.fromisoformat(recojo) - dt.timedelta(days=1)).isoformat()
+    out = []
+    for f in r.get("enviadas") or []:
+        env_ = str(f.get("enviado") or "")
+        m = re.search(r"Shalom\s+(\d{6,})", env_)
+        if not m or "mano" not in env_.lower() or not (recojo in env_ or ayer in env_):
+            continue
+        texto = str(f.get("direccion_o_agencia") or "")
+        cand = sh.buscar(texto) if texto.strip() else []
+        a = cand[0] if cand else {}
+        dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
+        out.append({"orden": m.group(1), "codigo": "", "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
+                    "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
+                    "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
+    return out
 
 
 # ---------- dibujo ----------
@@ -101,15 +140,20 @@ def etiqueta_lima(c, x0, yb, d):
     # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).
     paq = re.search(r"Paquete:\s*([^.]+)", obs)
     empaque = (paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip()
-    pie = 3.6 * mm if empaque else 0
+    # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
+    lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
+    pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
     if obs:
         c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
         c.setFont("Helvetica", 6.3)
         restante = int((y - yb - p - pie) / (6.3 * 1.3))
         for ln in textwrap.wrap(re.sub(r"\s*Paquete:[^.]+\.?", "", obs).strip(), 62)[:max(0, restante)]:
             c.drawString(x, y, ln); y -= 6.3 * 1.3
-    if empaque:
-        c.setFont("Helvetica-Bold", 5.2); c.drawString(x, yb + p + 0.4 * mm, ("EMPAQUE: " + empaque)[:95])
+    if lineas_emp:
+        c.setFont("Helvetica-Bold", 5.2)
+        ye = yb + p + 0.4 * mm
+        for ln in reversed(lineas_emp):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb, cell_w, cell_h)
 
 
@@ -256,6 +300,11 @@ def main():
     if "--shalom" in args:
         for d in json.load(open(args[args.index("--shalom") + 1])):
             items.append({"tipo": "shalom", "datos": d})
+    if "--shalom-hoja" in args and os.environ.get("ASESOR_CLAVE"):
+        for d in shalom_de_hoja(fecha):
+            items.append({"tipo": "shalom", "datos": d})
+            if not d.get("_seguro"):
+                print(f"⚠️ Shalom {d['orden']} {d['destinatario']}: agencia no segura ({d.get('agencia') or '?'}); revisar la etiqueta.")
     lima = []
     try:
         r = pedir("/dinsides?listado=1")  # el filtro por fecha de Dinsides es por fecha de REGISTRO; aquí se filtra por fecha de ENTREGA
@@ -263,15 +312,20 @@ def main():
         sys.exit(f"El Worker respondió {err.code} al pedir el listado de Dinsides.")
     if r:
         for p in r.get("pedidos", []):
-            if p.get("fecha_entrega") != fecha or "ANULADO" in str(p.get("seguimiento", "")).upper():
+            if "ANULADO" in str(p.get("seguimiento", "")).upper():
                 continue
+            if "--entrega" in args:
+                if p.get("fecha_entrega") != fecha:
+                    continue
+            elif not en_ciclo(p.get("fecha_pedido"), fecha):
+                continue  # registrado en otro ciclo: ya está (o estará) en el almacén de Dinsides
             lima.append({"tipo": "lima", "datos": {**p, "tipo_pago": ""}})
     items += sorted(lima, key=lambda e: e["datos"].get("distrito", ""))
     if "--olva" in args:
         for d in json.load(open(args[args.index("--olva") + 1])):
             items.append({"tipo": "olva", "datos": d})
     if not items:
-        sys.exit(f"No hay etiquetas: Dinsides no tiene pedidos con entrega {fecha} y no se pasaron --shalom ni --olva.")
+        sys.exit(f"No hay etiquetas: nada registrado en Dinsides para el recojo del {fecha} (6:00 del día anterior a 6:00 de ese día) y no se pasaron --shalom ni --olva.")
     total, hojas = armar_pdf(items, salida, rellenar="--sin-blancos" not in args)
     reales = len(items)
     por_tipo = {t: sum(1 for e in items if e["tipo"] == t) for t in ("shalom", "lima", "olva")}

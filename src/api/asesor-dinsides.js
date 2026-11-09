@@ -484,7 +484,8 @@ async function comprobarConElMapa(fichas) {
 /**
  * Fecha por defecto (dueño, 2026-11-09 madrugada): hasta las 3:00 es «la noche de ayer» (entrega HOY). Después de las 3:00 la base
  * pasa a mañana, PERO si el despacho de hoy todavía tiene pedidos de Lima sin registrar (el dueño dio el OK a las 3:20 y la Routine
- * saltó al día 10, dejando a los 7 de Lima sin registrar), la fecha se queda en HOY hasta las 11:00 (Dinsides reparte de 12 a 5).
+ * saltó al día 10, dejando a los 7 de Lima sin registrar), la fecha se queda en HOY hasta las 6:00: Dinsides pasa a recoger a eso de
+ * las 8:00 y se lleva todo lo registrado que aún no está en su almacén, así que hasta las 6:00 se puede registrar para hoy (dueño).
  * Devuelve { fecha, motivo } para que la presentación diga por qué.
  */
 async function fechaPorDefecto(env) {
@@ -492,14 +493,14 @@ async function fechaPorDefecto(env) {
   const hoy = hoyLima();
   if (base === hoy) return { fecha: base, motivo: null };
   const hora = new Date(Date.now() - LIMA_MS).getUTCHours();
-  if (hora >= 11) return { fecha: base, motivo: null };
+  if (hora >= 6) return { fecha: base, motivo: null };
   try {
     const { pedidos } = await pedidosDelSistema(env, hoy);
     const reg = await registroDe(env, hoy);
     const hechos = new Set(reg.registros.filter((r) => !r.anulado).map((r) => n9(r.whatsapp)));
     // Solo cuentan los CONFIRMADOS (dirección dada): los INTENCION / POR_CONFIRMAR sin dirección no se van a registrar y no deben frenar el día siguiente.
     const sinRegistrar = pedidos.filter((p) => String(p.destino || "").toUpperCase() !== "PROVINCIA" && String(p.estado || "").toUpperCase().startsWith("CONFIRMADO") && !hechos.has(n9(p.whatsapp)));
-    if (sinRegistrar.length) return { fecha: hoy, motivo: `el despacho de hoy ${hoy} todavía tiene ${sinRegistrar.length} pedido(s) de Lima CONFIRMADOS sin registrar; mañana (${base}) se presenta cuando queden registrados o pasadas las 11:00` };
+    if (sinRegistrar.length) return { fecha: hoy, motivo: `el despacho de hoy ${hoy} todavía tiene ${sinRegistrar.length} pedido(s) de Lima CONFIRMADOS sin registrar; mañana (${base}) se presenta cuando queden registrados o pasadas las 6:00 (Dinsides recoge ~8:00)` };
   } catch (err) { console.error("dinsides: fecha por defecto", err.message); }
   return { fecha: base, motivo: null };
 }

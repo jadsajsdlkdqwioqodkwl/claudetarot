@@ -34,9 +34,14 @@ sesión («OK», correcciones, la clave del día). Las respuestas a los pendient
    antes la lista completa (paso A4 / B2) y sin que una persona haya respondido «OK» en la sesión. Sin OK, nada sale.
 2. Nunca se escribe al cliente. Nunca se inventa una dirección, un distrito, una agencia, un DNI, un monto ni una clave.
 3. Todo pedido se registra para el DÍA SIGUIENTE; el corte es a las 3:00 de la madrugada (hasta esa hora sigue siendo «la noche de
-   ayer»). El sistema ya pone la fecha. Pasadas las 3:00 y hasta las 11:00, si el despacho de HOY todavía tiene pedidos de Lima sin
+   ayer»). El sistema ya pone la fecha. Pasadas las 3:00 y hasta las 6:00, si el despacho de HOY todavía tiene pedidos de Lima sin
    registrar (CONFIRMADOS con dirección; p. ej. el dueño dio el OK a las 3:20), el sistema se queda en HOY y lo dice en el RESUMEN («📆 Fecha … porque …»); no
-   saltes a mañana por tu cuenta. Si necesitas otra fecha, pásala: `presentar AAAA-MM-DD --pagina`. Si el cliente pidió otro día, va con esa fecha. Los domingos no se registra nada.
+   saltes a mañana por tu cuenta. Si necesitas otra fecha, pásala: `presentar AAAA-MM-DD --pagina`.
+   **Cómo trabaja Dinsides (dueño, 2026-11-09):** se puede registrar para HOY hasta las 6:00 de la mañana. Dinsides pasa por la
+   tienda a eso de las 8:00 y se lleva TODO lo registrado que todavía no tiene en su almacén, sea cual sea su fecha de entrega: lo
+   de hoy lo reparte de 12 a 5, y lo de otro día (p. ej. Liliana, registrada el 09 con entrega el 12) lo guarda en su almacén
+   hasta esa fecha. Lo que se registró en días anteriores ya está en su almacén. Por eso las etiquetas son solo de lo REGISTRADO en
+   el ciclo (6:00 de ayer → 6:00 de hoy), nunca de lo que ya se llevaron. Si el cliente pidió otro día, va con esa fecha. Los domingos no se registra nada.
 4. El distrito de Lima es el del MAPA DE COBERTURA de Dinsides (el polígono donde cae el pin o la dirección ubicada). El sistema lo
    resuelve; solo cuando la dirección no se puede ubicar se pregunta.
 5. Las claves de seguridad de Shalom son sagradas: solo existe la clave del día que da el dueño en la sesión. Nadie asigna otra.
@@ -144,10 +149,13 @@ PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»),
 «hay que verificar» sin haber leído el chat. Todo lo que afirmes sale de `presentar` o del chat, con fecha y hora.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
 
-A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py AAAA-MM-DD --subir` imprime las etiquetas de
-Dinsides de esa entrega (formato Dinsides, 3×5; al pie de cada una va en letra chica «EMPAQUE: …», lo que lleva la caja) y deja el PDF en
-CRM → Reportes; da el link. Las de Shalom se imprimen cuando ya hay
-número de orden (boletas).
+A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py --subir --shalom-hoja` (sin fecha:
+el script elige solo el día de recojo; hasta las 6:00 es hoy) imprime las etiquetas de Lima de lo REGISTRADO en este ciclo (6:00 de
+ayer → 6:00 de hoy, con cualquier fecha de entrega: lo de otro día Dinsides lo guarda en su almacén) y NO las de ciclos anteriores
+(ya están en el almacén de Dinsides; el dueño no las quiere otra vez). Formato Dinsides, 3×5; al pie de cada una, en letra chica y
+varias líneas, «EMPAQUE: …» (lo que lleva la caja). Con `--shalom-hoja` agrega las etiquetas de Shalom de lo que el equipo registró
+A MANO en Shalom Pro en este ciclo (orden, destinatario, DNI, destino y agencia; el «Código» de Shalom no se guarda y queda en blanco).
+Deja el PDF en CRM → Reportes; da el link. Las de Shalom del Excel masivo las imprime Shalom Pro.
 
 A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pagina` deja la PÁGINA DE REVISIÓN (link en la salida) donde
 el dueño o la asesora marcan por pedido OK / Corrección (con texto) / No va / Ya se envió, y se guarda sola. `presentar` guarda el id

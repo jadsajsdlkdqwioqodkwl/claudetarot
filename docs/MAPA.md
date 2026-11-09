@@ -2425,3 +2425,16 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   exacta: Abel (agregado a las 03:07 con entrega del día 10) no salía en el Shalom del 09. El CRM revisado dice «ya está numerado en
   la sección SHALOM» cuando el candidato es ese mismo WhatsApp (Abel aparecía como «Alejandro · REVISAR»). El pie «ya despachados»
   muestra solo lo cerrado ese día o el anterior (antes listaba 26 nombres).
+
+## 2026-11-09 (mañana 3) · Etiquetas por ciclo de recojo, corte real a las 6:00, Shalom a mano en las etiquetas, EMPAQUE en varias líneas
+
+- **Cómo trabaja Dinsides (dueño):** se registra para hoy hasta las 6:00; Dinsides pasa ~8:00 y se lleva TODO lo registrado que aún no
+  tiene en su almacén (lo de otro día lo guarda hasta su fecha); lo de días anteriores ya está en su almacén. Anotado en
+  `docs/envios-jennifer.md` (regla 3 y A4b). `fechaPorDefecto` (Worker) se queda en hoy hasta las 6:00 (antes 11:00).
+- **`etiquetas.py`:** elige por CICLO DE REGISTRO (`fecha_pedido` de Dinsides entre las 6:00 del día anterior y las 6:00 del día de
+  recojo), no por fecha de entrega; fecha por defecto = día de recojo (hoy hasta las 6:00). `--entrega` conserva el filtro viejo.
+  `--shalom-hoja` agrega las etiquetas de Shalom de lo registrado a mano («sí FECHA Shalom NNN (registrado a mano)» en la hoja) con
+  orden, destinatario, DNI de la nota, destino y agencia (`shalom.buscar`); el «Código» de Shalom queda en blanco porque no se guarda.
+  «EMPAQUE: …» va en hasta 3 líneas (en una sola se superponía). Nuevo `GET /api/asesor/pedidos-sheet?enviadas=1` devuelve las filas
+  cerradas completas de los últimos 3 días.
+- **Presentación:** se quitó el pie «Ya despachados o registrados a mano…» de Shalom (dueño: «está de más»).

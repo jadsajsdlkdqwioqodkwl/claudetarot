@@ -248,6 +248,13 @@ export async function onRequestGet({ request, env }) {
       salida.enviados_recientes = filas.filter((f) => String(f[14] || "").trim() && (f[1] >= desde || /\b20\d\d-\d\d-\d\d\b/.test(String(f[14])) && String(f[14]).match(/\b(20\d\d-\d\d-\d\d)\b/)[1] >= desde))
         .map((f) => ({ whatsapp: f[3], fecha_entrega: f[1], enviado: f[14], nombre: f[2] }));
     }
+    // ?enviadas=1: las filas cerradas de los últimos 3 días COMPLETAS (agencia, nota con DNI, «Enviado» con el número de orden), para
+    // armar las etiquetas de Shalom de lo que el equipo registró a mano (etiquetas.py --shalom-hoja, 2026-11-09).
+    if (new URL(request.url).searchParams.get("enviadas") === "1") {
+      const desde = new Date(new Date(`${hoy}T00:00:00Z`).getTime() - 3 * 86400000).toISOString().slice(0, 10);
+      salida.enviadas = filas.map((f, i) => [f, i]).filter(([f]) => String(f[14] || "").trim() && (f[1] >= desde || /\b20\d\d-\d\d-\d\d\b/.test(String(f[14])) && String(f[14]).match(/\b(20\d\d-\d\d-\d\d)\b/)[1] >= desde))
+        .map(([f, i]) => filaAObjeto(f, i));
+    }
     return json(salida);
   } catch (err) {
     console.error("pedidos-sheet:", err.message);
