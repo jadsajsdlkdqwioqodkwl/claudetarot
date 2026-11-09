@@ -153,3 +153,8 @@ p = D.armarPedido({ nombre: "Hora", whatsapp: "51999999980", direccion_o_agencia
 check("«a las 5 pm» → alerta HORA ESPECÍFICA (no bloquea)", p.listo && p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
 p = D.armarPedido({ nombre: "Ventana", whatsapp: "51999999981", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/89, 12-5 pm", nota: "la recibe ella", estado: "CONFIRMADO" }, ctx);
 check("«12-5 pm» es la ventana normal: sin alerta de hora", !p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
+
+// La observación de Dinsides es solo operativa; lo de la asesora (reprogramar, confirmar) sale como alerta (dueño 2026-11-09)
+p = D.armarPedido({ nombre: "Mavel", whatsapp: "51999195063", direccion_o_agencia: "Calle Ramón Ribeyro 509, Miraflores", pago: "Pagado S/89", estado: "CONFIRMADO",
+  nota: "🚨 Ya pagó S/89 por Yape (20:22, op 30121691): NO cobrar. Ella no está hasta las 5:30 pm; pide que le dejen el paquete por la ventana lateral abierta. También pidió reprogramar al miércoles 11-11: confirmar la fecha con ella." }, ctx);
+check("«pidió reprogramar… confirmar la fecha» NO va en la observación de Dinsides; va como PARA LA ASESORA", !/reprogramar|confirmar la fecha/.test(p.campos.obs) && /ventana lateral/.test(p.campos.obs) && p.alertas.some((a) => /^PARA LA ASESORA.*reprogramar/.test(a)), JSON.stringify([p.campos.obs, p.alertas]));

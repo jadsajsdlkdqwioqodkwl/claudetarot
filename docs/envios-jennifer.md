@@ -96,7 +96,12 @@ A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 Sin cambios: `{"pedidos": []}` toma todos los listos. OJO: si `pedidos` trae algo, solo se toman esos WhatsApp; para que los listos
 también salgan, se incluyen con solo su whatsapp.
 
-A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py presentar` (y, si quieres comprobar el payload exacto,
+A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py presentar --pdf`. Con `--pdf` el detalle completo (chats, Dinsides,
+hoja, candidatos, chats de hoy) se sube a CRM → Reportes y en pantalla sale la VERSIÓN CORTA, que es lo que pegas en la sesión: por
+pedido la ETIQUETA (Dinsides: Negocio · ENTREGAR A · Teléfono · Producto · Cobrar · Distrito · Fecha Entrega · Detalle; Shalom:
+Destinatario · N°DOC · Destino · Mercadería · Adelanto/Saldo), su estado (✅ listo · ✅❓ listo pero confirmar · ❓ pendiente · ↩️ ya
+registrado), la nota 📣 para la asesora (lo que NO va a Dinsides), la línea 🔎 VERIFICAR, correcciones, resumen de candidatos y chats
+de hoy, lista de verificación y el link del PDF. Sin `--pdf` imprime todo (y, si quieres comprobar el payload exacto,
 `registrar /tmp/dinsides/salida.json --simular`). `presentar` imprime, en el formato del dueño, UN bloque por pedido: ficha
 completa (cliente · teléfono · dirección · distrito y de dónde salió · producto · cobrar y forma · fecha · nota para el motorizado),
 LO QUE ESCRIBIÓ EL CLIENTE con fecha y hora (dirección, horas, fechas, pagos, cambios), su estado en Dinsides (sin pedido / ANULADO
@@ -124,6 +129,10 @@ PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»),
 «hay que verificar» sin haber leído el chat. Todo lo que afirmes sale de `presentar` o del chat, con fecha y hora.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
 
+A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py AAAA-MM-DD --subir` imprime las etiquetas de
+Dinsides de esa entrega (formato Dinsides, 3×5) y deja el PDF en CRM → Reportes; da el link. Las de Shalom se imprimen cuando ya hay
+número de orden (boletas).
+
 A5 — Con la respuesta:
 - «OK» → `python3 scripts/asesor/dinsides.py registrar /tmp/dinsides/salida.json` (el mismo archivo, sin `--simular`).
   Lee: ✅ Registrado #id · ↩️ Ya estaba · ⛔ No registrado con bloqueos · ❓ No confirmado · «dinsides_rechazo» (no insistir más de una
@@ -143,6 +152,9 @@ por pedido, cliente · WhatsApp · DNI, la agencia que escribió el cliente, la 
 candidatas), qué lleva, adelanto y saldo, nota, boleta, estado en Dinsides y el chat; y si es LISTO para el Excel o PENDIENTE (sin DNI,
 agencia por confirmar, monto por confirmar). Incluye los pendientes de la hoja (ATRASADO / CORRECCIÓN: p. ej. la clienta cuyo DNI
 llegó después). Preséntala junto con Lima, en el mismo mensaje y en el mismo Telegram: el dueño quiere UN texto con los dos couriers.
+Un provincia que viene del CRM (no está en el reporte ni en la hoja) sale numerado como PENDIENTE: lee su chat y, si tiene nombre,
+DNI, agencia y adelanto, agrégalo con `python3 scripts/asesor/shalom.py agregar <whatsapp> --nombre "…" --dni … --agencia "<texto del
+cliente>" --pago "…"` (queda en la hoja como CONFIRMADO y entra al masivo); si le falta algo, va como pregunta.
 Para una agencia dudosa: `python3 scripts/asesor/dinsides.py chat <whatsapp> 60` y `python3 scripts/asesor/shalom.py buscar "<texto>"`;
 si calza sin duda, anótala en /tmp/shalom/agencias.json `{"51987654321": "AV PARRA 379"}` (nombre de agencia = último tramo del código).
 NO corras `shalom.py masivo` antes del OK: arma el Excel y, con `--subir`, lo publica; es el paso B3.

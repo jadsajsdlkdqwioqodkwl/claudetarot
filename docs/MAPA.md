@@ -2347,3 +2347,19 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
 - Cada pedido de Lima lleva «🔎 VERIFICAR EN GOOGLE MAPS» (link al pin o a la búsqueda de la dirección y el distrito); cada pedido de
   Shalom lleva «🔎 VERIFICAR AGENCIA» (buscar el texto del cliente en shalom.com.pe/agencias y confirmar la elegida). Formato de
   corrección: «Nombre: dirección …», «Nombre: distrito …», «Nombre: agencia <nombre exacto>».
+
+## 2026-11-09 (madrugada 10) · Presentación en formato etiqueta, PDF completo + texto corto, nota operativa vs nota para la asesora
+
+- Pedido del dueño: la respuesta debe mostrar lo que irá en cada campo del formulario (formato de la etiqueta de Dinsides y de Shalom),
+  con ✅ listo, ✅❓ listo-pero-confirmar y ❓ pendiente; el link de Maps solo cuando el cliente mandó pin; Abel (provincia que venía
+  del CRM) numerado en Shalom; la nota al repartidor sin «también pidió reprogramar»; todo el detalle en un PDF porque el texto es muy
+  largo; y las etiquetas para las cajas reutilizando ese formato.
+- `src/lib/dinsides.js`: la observación de Dinsides lleva solo lo operativo; las frases de decisión (reprogramar, confirmar fecha,
+  preguntar, verificar…) salen como alerta «PARA LA ASESORA (no va a Dinsides)». Prueba en `test-dinsides.mjs`.
+- `dinsides.py presentar [--pdf]` (reescrito): por pedido la «🏷️ ETIQUETA DINSIDES» (Negocio, ENTREGAR A, Teléfono, Producto,
+  Cobrar, Distrito, Fecha Entrega, Detalle, Coordenadas) o la «🏷️ ETIQUETA SHALOM» (Destinatario, N°DOC, Destino/código, Mercadería,
+  Adelanto/Saldo, clave del día); estado ✅ / ✅❓ (con la pregunta corta) / ❓ / ↩️; 📣 nota para la asesora; 🔎 VERIFICAR con link solo
+  si hay pin, si no «busca en Google Maps “dirección, distrito”»; Shalom incluye los candidatos del CRM que parecen provincia como
+  PENDIENTE (Abel) y `shalom.py agregar` (nuevo) los mete a la hoja como CONFIRMADO con los datos del chat; otros días separados en
+  «confirmados sin despachar» y «ventas no cerradas» (menos peso: Jessica, William). `--pdf` sube el detalle completo (HTML → Chromium →
+  PDF → CRM → Reportes) y en pantalla deja la versión corta con el link. `etiquetas.py FECHA --subir` después de registrar (A4b).

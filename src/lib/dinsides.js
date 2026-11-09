@@ -407,7 +407,15 @@ export function armarPedido(pedido, ctx = {}) {
 
   const pagoUtil = pagoTxt && /adelanto|saldo|pagad|pago completo|efectivo|tarjeta|exacto|billete/i.test(pagoTxt) && !normalizar(nota).includes(normalizar(pagoTxt).slice(0, 25)) ? `Pago: ${pagoTxt}` : "";
   const paquete = extra || kits > 1 ? `Paquete: ${producto}${extra && !producto.includes(extra) ? ` (${extra})` : ""}` : "";
-  const obs = [nota, pagoUtil, paquete].filter(Boolean).join(". ").slice(0, 480);
+  // La observación que ve el motorizado lleva SOLO lo operativo. Lo que es para la asesora o el dueño (reprogramar, confirmar la fecha,
+  // preguntar, verificar…) sale de la nota y va como alerta «PARA LA ASESORA» (dueño 2026-11-09: «si el repartidor lee “también pidió
+  // reprogramar” se queda en qué»).
+  const RE_ASESORA = /reprogram|confirmar (la |su )?(fecha|hora|direcci|con)|pregunt|verificar|revisar|por confirmar|¿|pidi[oó] (otro|cambiar|reprogramar)|no respondi|sin respuesta|falta[n]? (confirmar|el |la |que)|duda/i;
+  const frases = nota.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+  const paraAsesora = frases.filter((x) => RE_ASESORA.test(x));
+  const operativo = frases.filter((x) => !RE_ASESORA.test(x)).join(" ").replace(/\.\./g, ".").trim();
+  if (paraAsesora.length) alertas.push(`PARA LA ASESORA (no va a Dinsides): ${paraAsesora.join(" ").slice(0, 240)}`);
+  const obs = [operativo, pagoUtil, paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

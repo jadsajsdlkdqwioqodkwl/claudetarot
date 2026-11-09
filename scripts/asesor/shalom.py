@@ -28,6 +28,8 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
            --clave NNNN: la clave de seguridad del día que el dueño le dijo a la sesión; se usa para TODAS las ventas del lote (así en
            Shalom Pro basta «CLAVE MASIVA»). Sin --clave no se crea ninguna venta y nadie asigna clave.
            --subir: deja el Excel y la referencia en CRM → Reportes (links) para descargarlos desde cualquier lado.
+    python3 scripts/asesor/shalom.py agregar <whatsapp> --nombre "…" --dni 12345678 --agencia "texto del cliente" [--pago …] [--nota …]
+                                                 -> provincia que el reporte no trajo: a la hoja como CONFIRMADO (entra al masivo)
     python3 scripts/asesor/shalom.py telegram "texto"   -> aviso al dueño por el Worker (sin claves).
 
 Paso a paso en Shalom Pro (probado el 2026-11-08): Registra → Registro de envíos masivos → «Sube el archivo» (el Excel de `masivo`)
@@ -418,6 +420,27 @@ def cmd_clave(args):
     print(f"Clave del día puesta en {ok} de {len(lote.get('lote', []))} ventas. En Shalom Pro: CLAVE MASIVA.")
 
 
+def cmd_agregar(args):
+    """shalom.py agregar <whatsapp> --nombre "…" --dni 12345678 --agencia "texto del cliente" [--pago "Adelanto S/20 Yape 08-11; saldo S/69"]
+    [--nota "…"] [--vendedora X] [--fecha AAAA-MM-DD] [--kits 1] [--empaque "…"]
+    Un pedido de provincia que el reporte no trajo (viene del CRM / del chat) se agrega a la hoja «Pedidos auto» como CONFIRMADO para
+    que entre al masivo. Lo usa la Routine solo con los datos leídos en el chat (nombre, DNI, agencia, adelanto); nunca inventa."""
+    wa = re.sub(r"\D", "", args[0]) if args else ""
+    if len(wa) < 9:
+        sys.exit("Falta el WhatsApp (51…).")
+    def opt(n, d=""):
+        return args[args.index(n) + 1] if n in args and args.index(n) + 1 < len(args) else d
+    nombre, dni, agencia = opt("--nombre"), re.sub(r"\D", "", opt("--dni")), opt("--agencia")
+    if not (nombre and agencia):
+        sys.exit("Faltan --nombre y --agencia (lo que escribió el cliente).")
+    t = dt.datetime.now(LIMA); fecha = opt("--fecha") or (t.date() if t.hour < 3 else t.date() + dt.timedelta(days=1)).isoformat()
+    ped = {"estado": "CONFIRMADO", "destino": "PROVINCIA", "nombre": nombre, "whatsapp": wa if wa.startswith("51") else "51" + wa[-9:], "telefono": wa[-9:], "dni": dni,
+           "direccion_o_agencia": agencia, "courier": "Shalom", "kits": int(opt("--kits", "1") or 1), "empaque": opt("--empaque"), "pago": opt("--pago"),
+           "fecha_entrega": fecha, "vendedora": opt("--vendedora"), "nota": ("🚨 AGREGADO DESDE EL CHAT (no estaba en el reporte): " + opt("--nota")).strip(), "fecha_venta": (t - dt.timedelta(hours=3)).date().isoformat()}
+    r = pedir_worker("/pedidos-sheet", {"fecha_objetivo": fecha, "origen": f"shalom.py agregar {t.strftime('%H:%M')}", "pedidos": [ped]})
+    print(f"Hoja «Pedidos auto»: {json.dumps(r, ensure_ascii=False)[:160]} · {nombre} queda como provincia CONFIRMADO para el despacho {fecha}; vuelve a correr `presentar` y entra al masivo.")
+
+
 def cmd_telegram(texto):
     if re.search(r"clave\D{0,8}\d{4}", texto, re.I) or re.search(r"\b\d{4}\b(?!-\d{2})", texto):
         sys.exit("El aviso lleva una clave de 4 dígitos: quítala (las claves solo van en el archivo de referencia).")
@@ -428,7 +451,9 @@ def cmd_telegram(texto):
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
-    if cmd == "telegram" and resto:
+    if cmd == "agregar" and resto:
+        cmd_agregar(resto)
+    elif cmd == "telegram" and resto:
         cmd_telegram(" ".join(resto))
     elif cmd == "clave" and resto:
         cmd_clave(resto)
