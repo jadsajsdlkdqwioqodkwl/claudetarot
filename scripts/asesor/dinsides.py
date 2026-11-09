@@ -581,6 +581,7 @@ def _html(titulo, secciones, resumen=None):
     if resumen:
         partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
+        lineas = [l for x in lineas for l in str(x).split("\n")]  # cada bloque viene como un solo string con saltos de línea
         clase = "rojo" if ("PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t) else "amb" if ("confirmar" in t.lower() or "NO CERRADAS" in t) else "gris" if ("CHATS DE HOY" in t or "YA REGISTRADOS" in t) else ""
         partes.append(f"<h2 class='{clase}'>{E(t)}</h2>")
         bloques, actual = [], []
