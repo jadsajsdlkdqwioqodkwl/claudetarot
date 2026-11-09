@@ -5,6 +5,15 @@
 > autocompleta. Quiere que sea más rápido, **no 100 % automático**: con intervención humana donde hace falta (cliente
 > que solo mandó su ubicación; agencia de Shalom que no aparece o hay que confirmar). Estado: **propuesta, nada construido.**
 > Revisar junto con `docs/estados-envio.md` (lectura de estados) y `docs/reporte.md` (reporte «Pedidos y ventas»).
+>
+> **2026-11-08:** la parte de **Lima (Dinsides) ya está construida** y va más allá de esta propuesta: el Worker arma la ficha, la
+> registra en Dinsides por su API web y la Routine «Dinsides — registro de pedidos de Lima» revisa los chats como cuarta corrida.
+> Estado en `docs/dinsides.md`. Lo de Shalom (provincia) sigue pendiente tal como se describe abajo.
+>
+> **2026-11-08 (tarde):** de Shalom ya están la **tabla de agencias** (`data/shalom-agencias.json`, 566 agencias de la API pública con el
+> código de Shalom Pro; `scripts/asesor/shalom.py agencias | buscar`) y el **Excel del envío masivo** (`shalom.py masivo FECHA`, plantilla
+> `data/shalom-masivo-plantilla.xlsx`). **2026-11-08 (noche): el Excel masivo ya es aceptado por Shalom Pro** (plantilla byte a byte);
+> flujo y Routine en `docs/shalom.md`. El registro individual automático ya no hace falta: el humano sube el Excel y teclea las claves.
 
 ## Idea central: el reporte de la noche ya hace el trabajo difícil
 El reporte «Pedidos y ventas» (21:45 · 22:30 · 23:45) ya lee todos los chats y saca, por pedido, nombre, teléfono,

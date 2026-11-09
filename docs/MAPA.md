@@ -1818,6 +1818,327 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   del banner en cada ciclo, «sin pregunta» apagado (`sin_pregunta_auto`; 23 pendientes cerradas) y la prueba
   `scripts/test-sugerencias.mjs` con el caso real del chat 51969799398.
 
+## 2026-11-08 — Dinsides (Lima): registro automático de pedidos (Routine nueva + endpoint + mapa de cobertura)
+- **Pedido del dueño:** automatizar lo que hacía la asesora con el Project de Claude y el script de consola en
+  https://dinsidescourier.com/pedido/nuevo, con intervención humana solo donde falla (dirección de entrega y distrito), y una «cuarta
+  corrida» que revise los chats para que ningún pedido de Lima quede fuera del reporte. Estado práctico en **`docs/dinsides.md`**.
+- **Qué se vio en Dinsides (sin credenciales, solo lo público):** la página pide login (teléfono de 9 dígitos + clave, `POST
+  login/validar`, respuesta 2/3 = cliente); su JS público (`public/js/pedido.js`) muestra el formulario completo: `#tipo_pedido`
+  (CONTRAENTREGA, SOLO-ENTREGA-NO-COBRAR, PEDIDO-EN-ALMACEN…, REUTILIZADO-…, CARGO-REMISION, ENVIO-AGENCIA-PROVINCIA), `#nombreD`,
+  `#tlfD` (9 dígitos que empiezan en 9, no se repite en el listado), `#fechaD` (no pasada), `#id_distrito` (código + `data-price`
+  tarifa), `#direccionD` (obligatoria), `#coordenadasD` (opcional), `tpaquete` (1 = 30×15×20 cm 1,5 kg), `#productoD`,
+  `revisar_paquete` (obligatorio Sí/No), `#cobrarD`, `#monto_service` (tarifa), `#tipo_pago` (NO COBRAR · EFECTIVO · PLIN · YAPE ·
+  POS), `#obsD`, `#tTurno`; «Agregar pedido al listado» arma una tabla y «Guardar» manda `POST pedido/registro` con arreglos
+  (`nombres[]`, `tlfs[]`, `id_distritos[]`, `fechas_entrega[]`, `revisar[]`, `id_recojo`, `negocio`…); responde 1 = registrado,
+  2 = error, 4 = falta «revisar». Cronómetro de 10 minutos en la página. La «cobertura» es el Google My Maps «MAPA ZONA DE COBERTURA
+  GENERAL» (mid `1ybY_sWYIA0Am6u-NvSg55xPo91dSVHY`): se bajó como KML (147 polígonos, 182 puntos).
+- **Código nuevo:**
+  - `src/lib/dinsides.js`: `DISTRITOS`/`ALIAS` (desplegable con código y tarifa, snapshot del Project), `buscarDistrito`,
+    `distritosEnTexto` (qué distrito nombra una dirección; «San Juan»/«Lima»/«Callao» a secas son ambiguos), `limpiarCoordenadas`
+    (links de Maps, pin), `coordenadasDeUbicacion` (cuerpo `lat|lng|…` del webhook), `zonaDe` (punto en polígono del mapa:
+    entrega / no_entrega / punto_encuentro / fuera), `fechaEntrega` (regla del dueño: lo de esta noche sale mañana aunque sea la 1 a. m.;
+    otra fecha pedida manda), `armarPedido` (ficha con `campos`, `alertas`, `bloqueos`), `scriptConsola`, `payloadRegistro`,
+    `codificarFormulario`. `src/lib/dinsides-cobertura.js` (datos del mapa; se regenera con `scripts/dinsides-cobertura.py`).
+  - `src/lib/dinsides-cliente.js`: `login` (secretos `DINSIDES_TLF`/`DINSIDES_CLAVE`, nunca en el repo), `formulario` (lee el
+    formulario real: negocio, traslado, turnos, distritos y **diferencias** con la tabla del repo), `registrar` (`POST pedido/registro`).
+  - `src/api/asesor-dinsides.js` → `GET/POST /api/asesor/dinsides` (ruta en `src/index.js`): GET arma las fichas de Lima de una fecha
+    de entrega (registro `pedidos-estado/FECHA.json` + hoja «Pedidos auto» + pin y direcciones del chat) y lista los **candidatos del
+    CRM** (chats con pin / dirección / compra marcada que el reporte no trae); `?zona=lat,lng`. POST `probar` (entra y lee el
+    formulario, sin registrar), `registrar` (un solo listado con los que no tienen bloqueos; `simular` = pedido de prueba sin POST final;
+    `forzar` solo si lo pidió una persona), `marcar` (registrado a mano), `script` (consola). Memoria: R2 `dinsides/FECHA.json` +
+    `dinsides/indice.json` (no se repite un WhatsApp en 3 días), columna **P «Dinsides»** y «Enviado» (`Dinsides FECHA`) de la hoja
+    «Pedidos auto», etiqueta `dinsides_registrado`. Sin credenciales responde 503 `sin_credenciales` con el script de consola.
+  - `src/api/asesor-pedidos-sheet.js`: encabezado P «Dinsides» (A..P), `filasPedidosAuto(env)`, `marcarDinsidesEnHoja(...)`; el GET
+    devuelve `enviado` y `dinsides` por fila. Lo que escribe una persona en P: `ok` · `distrito: X` · `dirección: …` ·
+    `coord: lat,lng` · `manual 1234` · `no`.
+  - `src/api/asesor.js`: los informes con origen «dinsides» también salen por Telegram al dueño (como ventas y boletas).
+  - `scripts/asesor/dinsides.py`: `preparar`, `chat`, `zona`, `registrar [--simular] [--forzar]`, `probar`, `script`, `marcar`, `telegram`.
+  - Pruebas en `npm run check`: `scripts/test-dinsides.mjs` (librería) y `scripts/test-dinsides-api.mjs` (endpoint de punta a punta con
+    un Dinsides simulado: login, formulario, listado, memoria, idempotencia, sin credenciales, clave mala).
+  - `.claude/settings.json`: **pendiente** agregar la regla de permiso `Bash(python3 scripts/asesor/dinsides.py:*)` (auto mode): el filtro
+    de auto mode no dejó editar ese archivo desde la sesión; lo agrega el dueño (una línea junto a las de boletas.py y reporte.py).
+- **Routine:** «Dinsides — registro de pedidos de Lima» (Sonnet, sesión fija, `CRON_TZ=America/Lima 55 23 * * *` + «Run now»).
+  Prompt v1 en `docs/routines.md`. IDs (creados 2026-11-08 04:32 UTC): Routine **`trig_01Xwa3awazBmncnXCiQXFgec`** («Dinsides — registro de pedidos de Lima (23:55 · Run now)», `CRON_TZ=America/Lima 55 23 * * *`, sin conectores) → sesión fija **`session_017wTF8ckoBNtwk4nSxvvFzk`** («Dinsides — registro de pedidos de Lima (historial de la Routine)», `claude-sonnet-5-5`, clon de `main`).
+  Su prompt solo se edita desde esa sesión. La primera corrida real es la de esta noche (23:55 Lima): sin credenciales, avisa por Telegram
+  qué pedidos quedaron listos y deja el script de consola.
+- **Lo que NO se pudo hacer en esta sesión:** entrar a Dinsides (no hay credenciales en ningún lado, y así debe ser: van como secretos
+  del Worker con `wrangler secret put`, no en el repo ni en la Routine) ni, por lo tanto, el pedido de prueba real. El pedido de
+  prueba quedó simulado de punta a punta en `scripts/test-dinsides-api.mjs`; el real es `dinsides.py probar` + `registrar --simular`
+  cuando estén los secretos. Shalom (provincia) queda para después (`docs/registro-pedidos.md`).
+- **Decisiones:** (1) el Worker es el único que habla con Dinsides (igual que con Sheets y WhatsApp); (2) la Routine no adivina:
+  dirección y distrito dudosos van al dueño con la pregunta exacta y se resuelven en la columna «Dinsides» de la hoja; (3) la tabla de
+  distritos del repo se compara con el formulario real en cada `probar`/`registrar` y se usa la tarifa real; (4) los pedidos de otro
+  día salen con su fecha (si se quieren juntar para la cuota, «no» hoy y «ok» cuando toque).
+
+## 2026-11-08 (noche) — Dinsides: Routine solo manual, credenciales en el Worker, pedido de prueba real, estados/anular/editar
+- **Dueño:** la Routine se dispara solo a mano («Run now»), sin cron; no se usa Claude Cowork: todo sale del Worker. Se borró
+  `trig_01Xwa3awazBmncnXCiQXFgec` (cron 23:55; corrió una vez la noche del 7/11 sin credenciales) y se creó
+  **`trig_01NcY8f7qCR4FhYXZRiupYqZ`** «Dinsides — registro de pedidos de Lima (manual · Run now)» sobre la misma sesión fija
+  `session_017wTF8ckoBNtwk4nSxvvFzk`. Prompt v2 en `docs/routines.md`.
+- **Credenciales:** el dueño las dio en el chat y autorizó guardarlas como secretos del Worker. Se pusieron con la API de Cloudflare
+  (`PUT /accounts/…/workers/scripts/claudetarot/secrets`, tipo `secret_text`): `DINSIDES_TLF` y `DINSIDES_CLAVE`. No están en el repo ni
+  en la Routine. `dinsides.py probar` en producción: sesión OK (perfil 2 = cliente), negocio 19647, traslado «Recoger en mi domicilio»
+  (`trecojo=1`, `selectRecojo=1` «Almacén Dinsides Courier»), la tabla de distritos del repo coincide con el formulario (67 opciones).
+- **Regla del dueño sobre el distrito:** el que vale es el del **mapa de cobertura** de Dinsides (donde cae el pin). `armarPedido` ahora
+  usa el distrito del polígono cuando hay pin y solo avisa si el texto decía otro (antes bloqueaba). Sin pin, el Worker ubica la dirección
+  con **OpenStreetMap (Nominatim)** solo para avisar si el mapa dice otro distrito (`comprobarConElMapa`, nunca se manda a Dinsides).
+- **Pedido de prueba real (hecho):** `registrar` creó en Dinsides el pedido **#2940714** «TEST - PEDIDO DE PRUEBA (anular)», tel.
+  927633099, Cercado de Lima, entrega 2026-12-08, SOLO-ENTREGA-NO-COBRAR S/0. Lecciones: el POST `pedido/registro` no devuelve el id (se
+  busca después en `pedido/getlistadoCliente` por teléfono y fecha de entrega); el botón masivo `pedido/anular_ped_client` solo vale para
+  los pedidos que salen HOY (con otros ids da un error PHP o «success» sin cambiar nada); el que sí funciona es el de la página de detalle,
+  **`POST pedido/anular_tienda { id_pedido }`** → 1 = «ANULADO- POR TIENDA» (2 = ya EN RUTA). El #2940714 quedó **ANULADO- POR TIENDA**.
+  La fila TEST que entró a «Pedidos auto» (fila 115) se cerró con `marcar` (Enviado «Dinsides 2026-12-08», Dinsides «manual 2940714 …»).
+  Quedó la etiqueta `dinsides_registrado` en el chat del número del dueño (927633099); es inofensiva.
+- **Mapa de la página de Dinsides (cliente):** `pedido/nuevo` (formulario; caduca a los 10 min), `pedido/listado_cliente` → datos en
+  `POST pedido/getlistadoCliente` (todo el historial: id_pedido, destinatario, teléfono, distrito, fecha_pedido, fecha_entrega,
+  `seguimiento` = REGISTRADO · ENTREGADO · ANULADO- … · RECHAZADO …, monto, servicio; filtros `selectEstado`, `searchDateIni/Fin`),
+  `pedido/listado_hoy` → `POST Pedido/getpedido_hoy` (solo los que salen hoy), `pedido/detalle/ID` (JS `var pedido = {…}` con todos los
+  campos; «Guardar cambios» = `POST pedido/udpate` con id_pedido, id_destinatario, nombre, tlf, distrito, direccion, producto, cobro,
+  monto_service, observs, fecha_entrega, coordenadas, tipo_pedido, tipo_pago, tipo_turno; «Anular pedido» = `pedido/anular_tienda`),
+  `pedido/listado_recojo` (historial de recojos a domicilio), `pedido/carga` (carga por Excel), `pedido/calculadora`,
+  `pedido/devoluciones_entregadas`, `pedido/listado_pedido_entregado_foto`, `pedido/listado_notificacion`, `pedido/contrato`
+  (términos: `public/terminosycondiciones.pdf`). Historial al 2026-11-08: 349 pedidos desde el 5/8 (307 ENTREGADO, 33 ANULADO, 5
+  RECHAZADO, 4 REGISTRADO).
+- **Código nuevo:** `dinsides-cliente.js` → `listado`, `pedidosHoy`, `anular` (anular_tienda), `detalle`, `editar` (udpate),
+  `claseSeguimiento`. `asesor-dinsides.js` → acciones **`estados`** (cruza el historial de Dinsides con «Pedidos auto»: marca
+  «entregado FECHA #id» / «anulado…» / «rechazado…» en la columna Dinsides y «Enviado», etiqueta `dinsides_entregado|anulado|rechazado`
+  en el chat; lista lo que está en Dinsides sin fila en la hoja), **`anular`**, **`editar`** (fecha_entrega, dirección, distrito por
+  nombre, nombre, teléfono, cobrar, tipo_pago, obs; rechaza fechas pasadas), `GET ?listado=1`; `registrar` ahora guarda el id de
+  Dinsides en la memoria y en la hoja, y los pedidos que agrega la Routine (candidatos del CRM) entran a «Pedidos auto»
+  (`upsertPedidosAuto` en `asesor-pedidos-sheet.js`). `dinsides.py` → `estados [desde hasta] [--solo-ver]`, `listado`, `anular`,
+  `editar <id> campo=valor`. Pruebas actualizadas (el flujo completo con el Dinsides simulado: registrar, ids, estados, anular, editar).
+- **Para el proyecto de estados de envío (`docs/estados-envio.md`):** la parte de Lima ya no necesita Cowork ni navegador: es
+  `dinsides.py estados`. Falta decidir si se corre dentro de la Routine de Dinsides (como PASO 0b) o en otra Routine manual.
+
+## 2026-11-08 (mediodía) — Dinsides: etiquetas desde los datos, regularización de Mariela Ramos Carpió, traslado por registro
+- **Etiquetas:** `scripts/asesor/etiquetas.py` reemplaza el Project «Etiquetas de pedidos en PDF» (que combinaba fotos): mismo PDF A4
+  3 × 5 con blancos, pero las de Lima salen del historial de Dinsides (`listado`) por fecha de entrega; Shalom y Olva por JSON de datos
+  (formato en el docstring). La etiqueta de Dinsides es la que imprime su portal («ver boleto»: ID PEDIDO, Negocio, ENTREGAR A,
+  Teléfono, Detalle, Cobrar, Distrito grande, Fecha Entrega); la de Shalom es la boleta de Shalom Pro recortada. Cuando Shalom se
+  automatice, sus etiquetas saldrán de ahí. `--subir` guarda el PDF en CRM → Reportes (`POST /api/asesor/reporte`).
+  Los dos PDF del dueño (lote del 7/11 para el motorizado de los domingos, con más detalle, y el del 31/10) quedaron como referencia
+  del formato; no se guardan en el repo.
+- **`registrar` acepta `traslado` (1 recojo en domicilio, 2 lo llevaré a tienda Cercado Av Arica 1702, 3 tienda Gamarra)**;
+  `dinsides.py registrar … --traslado 2`. Lo pidió Devoluciones de Dinsides (03/11) para regularizar un paquete que llegó a su almacén
+  sin registro: «solo entrega sin cobrar, dirección Av Arica 1702, lo llevaré a tienda Cercado; luego ellos lo anulan y gestionan la
+  devolución».
+- **Mariela Ramos Carpió:** no está en el CRM (ningún contacto «Ramos Carpió» ni «Mariela» con Puno/Olva), ni en la hoja Ventas (solo
+  guarda DNI y celular), ni en «Pedidos auto», ni en los reportes del 27/10 al 1/11. Su etiqueta era de Olva (destino PUNO - Jr Arequipa
+  139) y la foto no deja leer el DNI ni el teléfono. Se registró la regularización con el nombre completo y el teléfono del dueño
+  (927633099) como contacto, entrega 2026-12-31, NO COBRAR, traslado 2. Otros dos paquetes sin etiqueta ni registro que el dueño
+  mencionó: faltan los nombres para registrarlos igual.
+- **Arreglo:** la etiqueta `dinsides_registrado` del chat ya no bloquea un registro nuevo (bloqueaba a cualquier cliente que recompra y a
+  las regularizaciones con el número del dueño); ahora solo avisa. La memoria R2 por WhatsApp (3 días) sigue bloqueando repetidos.
+- **Shalom Pro:** `pro.shalom.pe/registroindividual` responde 403 al Worker (protección anti-bot) y no hay credenciales en el sistema; el
+  dueño describió el flujo (medida XXS S/8, origen Lima/Lima/Chorrillos/Chorrillos Co, agencia por código Región/Provincia/Distrito/Agencia,
+  sin protegido ni comprobante, sin cobro seguro, clave de 4 dígitos rotando entre 3). Queda para el siguiente paso (`docs/registro-pedidos.md`).
+
+## 2026-11-08 (tarde) — Dinsides: regularizaciones hechas, registro accidental de 3 pedidos del domingo, Shalom (agencias y Excel masivo)
+- **Regularizaciones pedidas por Devoluciones de Dinsides (registradas; ellos las anulan):** Mariela Ramos Carpió **#2940734** (entrega
+  2026-12-31, contacto: el número del dueño), «CLIENTE 1» **#2940741** (entrega 2026-12-23) y «CLIENTE 2» **#2940742** (entrega 2026-12-27),
+  estos dos con los otros dos teléfonos de contacto del negocio que figuran en la propia ficha de Dinsides (los encargados del recojo).
+  Solo entrega sin cobrar S/0, Av Arica 1702 Cercado de Lima, traslado «lo llevaré a tienda Cercado». Motivo de usar tres teléfonos
+  distintos: Dinsides descarta en silencio un segundo pedido abierto con el mismo teléfono (el primer intento de CLIENTE 1 y 2 respondió 1
+  y no creó nada). Sus filas en «Pedidos auto» quedaron cerradas con `marcar`.
+- **Arreglo por eso:** `registrar` solo da por registrado lo que aparece en el listado de Dinsides con su id; lo demás vuelve como
+  `no_confirmados` y la Routine lo reporta. Antes se guardaba en la memoria y en la hoja como registrado.
+- **Registro accidental (2026-11-08 11:48 Lima):** al correr `dinsides.py registrar <archivo>` con una ruta que no existía, el script tomó
+  `{}` y registró TODOS los listos de mañana: **#2940738 Dante Díaz Olivera (Pueblo Libre, S/89 efectivo), #2940739 July / Julia (San
+  Miguel, S/89 Yape) y #2940740 Milagros Herrera Aguayo (Santiago de Surco, S/89 Yape)**, los tres con entrega 2026-11-09 (domingo), tal
+  como estaban confirmados en el registro del reporte. Son pedidos reales y correctos; solo se registraron al mediodía en vez de en la
+  noche. El dueño decide si se quedan o se anulan (`dinsides.py anular 2940738 2940739 2940740`). **Arreglo:** sin archivo, `registrar`
+  termina con error; para registrar todos los listos a propósito hay que escribir `{"pedidos": []}`.
+- **Shalom, primer paso (sin credenciales):** `scripts/asesor/shalom.py` + `data/shalom-agencias.json` (566 agencias bajadas de la API
+  pública `newwebservices.shalomcontrol.com/api/v1/web/agencias/listar`, versión 5184; `agencias --actualizar` las refresca) con el código
+  exacto que acepta Shalom Pro («AREQUIPA / AREQUIPA / AREQUIPA / AV PARRA 379»), dirección, horario y coordenadas. `buscar "<texto del
+  cliente>"` elige la agencia (probado: «Av. Parra, Arequipa» → AV PARRA 379; «Calle Tacna 1095 Chiclayo» → CALLE TACNA; «Nuevo Chimbote
+  Garatea» → GARATEA; «terminal Ayacucho» → AYACUCHO CO). `masivo AAAA-MM-DD` arma el Excel del «Formato Pro Masivo» (plantilla del dueño
+  en `data/shalom-masivo-plantilla.xlsx`: DESTINATARIO (DOC), TELF, ORIGEN CHORRILLOS CO, DESTINO = agencia, PAQUETE XXS, CANTIDAD 1) con
+  los provincia confirmados del registro del reporte y lista lo dudoso. `pro.shalom.pe` devuelve 403 a cualquier cliente que no sea un
+  navegador (también desde el Worker): el registro individual automático necesitaría un navegador real con las credenciales del dueño;
+  el masivo por Excel no lo necesita.
+- **`.claude/settings.json`:** el filtro de auto mode no deja que la sesión lo edite (dos intentos, con autorización del dueño). Lo agrega
+  el dueño dentro de `permissions.allow`: `"Bash(python3 scripts/asesor/dinsides.py:*)"`, `"Bash(python3 scripts/asesor/etiquetas.py:*)"`
+  y `"Bash(python3 scripts/asesor/shalom.py:*)"`.
+
+## 2026-11-08 (tarde 2) — Dinsides: anulados los 3 del registro accidental; Routine de SIMULACRO; Shalom: Excel de simulacro
+- **Anulados por orden del dueño** («solo deben haber tres registrados por ti»): #2940738, #2940739 y #2940740 → «ANULADO- POR TIENDA».
+  El equipo ya había registrado los pedidos del lunes 9/11 (#2939495 Laura = Milagros Herrera, #2939521, #2939467, #2936324); los
+  tres eran duplicados o adelantados. Quedan solo las tres regularizaciones (#2940734, #2940741, #2940742). El dueño también decidió que
+  **los domingos no se mandan pedidos** (hoy el motorizado de confianza).
+- **Memoria y hoja corregidas:** `anular` ahora marca el registro como anulado (deja de contar como «ya registrado»), lo saca del índice por
+  WhatsApp y escribe «anulado #id» en la columna Dinsides; `estados` ignora un anulado si el mismo teléfono tiene otro pedido vigente para
+  la misma entrega. En la hoja «Pedidos auto»: filas de July (95) y Dante (76) reabiertas (sin «Enviado», Dinsides «anulado … pendiente
+  de registrar para el lunes»), Milagros (53) «registrado por el equipo #2939495», TEST (115) «anulado #2940714», Mariela (116) con su
+  id, y las dos filas falsas de CLIENTE 1/2 con el número del dueño (117, 118) marcadas «no se creó en Dinsides». Hecho con el conector.
+- **Routine de simulacro:** **`trig_0117rbxvHaaw3ddQZioaNDjV`** «Dinsides — SIMULACRO (no registra nada · Run now)», misma sesión fija,
+  mismo flujo con `registrar --simular` y sin Telegram: para probar antes de la Routine real. Prompt en el trigger (y en `docs/routines.md`).
+- **Shalom, Excel de simulacro:** `shalom.py masivo` acepta varias fechas y agrega la hoja «Referencia» (nombre, WhatsApp, DNI, texto del
+  cliente, agencia elegida, candidatas, kits, nota, qué revisar). El buscador ya no cuenta palabras genéricas (avenida, calle, nuevo, san…)
+  como propias de la agencia y da por segura la única agencia de un distrito nombrado. Simulacro con los provincia confirmados del 2 al 8
+  de noviembre: 44 filas, agencia segura en la gran mayoría; el resto queda marcado para una persona (ciudad sin agencia clara,
+  «Serpost», DNI de 9 dígitos). Cómo se llena cada columna: en el docstring de `scripts/asesor/shalom.py`.
+
+## 2026-11-08 (tarde 3) — Shalom: por qué el masivo rechazaba el Excel («columnas adicionales no permitidas: 0»)
+- La plantilla de Shalom trae una **columna O vacía pero con formato** (dimensión `A1:O500`, `<c r="O1" s="3"/>`). Al reescribirla con
+  openpyxl, esa celda sale como numérica sin valor (`<c r="O1" s="3" t="n">`) y el validador de Shalom Pro la lee como una columna de
+  nombre «0» → «El archivo contiene columnas adicionales no permitidas: 0». Es el mismo problema que probablemente tenían los Excel que
+  se armaban antes con otras herramientas. `shalom.py masivo` ahora **borra la columna O** (queda `A1:N500`, 14 columnas) y **no agrega
+  hojas**: la referencia para la persona va en un archivo aparte (`…-referencia.xlsx`). Las hojas ocultas de la plantilla («Medidas»,
+  «Hoja2») se conservan. Opción `--solo N` para pruebas con pocas filas.
+- No se pudo leer el validador de Shalom Pro: `pro.shalom.pe` responde **403 Forbidden** a cualquier acceso desde la nube (curl y
+  Chromium real), así que la regla exacta sigue sin verse; la corrección se basa en la comparación byte a byte de los dos archivos. Si el
+  archivo nuevo vuelve a fallar, el siguiente paso es abrir Shalom Pro desde el navegador del dueño (Cowork) para leer el mensaje
+  completo y el código del validador.
+
+## 2026-11-08 (tarde 4) — Shalom masivo: la plantilla se llena a nivel XML, byte a byte
+- Con la columna O quitada, Shalom Pro pasó a responder «El archivo no corresponde a la plantilla oficial». La plantilla la genera el
+  propio servidor de Shalom (PhpSpreadsheet): lleva docProps (título «Excel de Plataformas PRO», autor SHALOM EMPRESARIAL), dos hojas
+  ocultas con las tablas de agencias («Medidas» y «Hoja2», ids y nombres) y las 2 206 cadenas compartidas; cualquier librería de Excel
+  que reescriba el libro cambia eso y el validador lo detecta.
+- `shalom.py` ahora tiene `llenar_plantilla(filas, salida)`: copia la plantilla **byte a byte** y solo reemplaza las celdas A, B, F, G,
+  H y M de las filas con datos dentro de `xl/worksheets/sheet1.xml` (cadenas por `sharedStrings.xml`, como las trae Shalom). Verificado
+  con `cmp`: del archivo original solo cambian esos dos XML. Los nombres de agencia («GARATEA», «AV PARRA 379», «CHORRILLOS CO») ya
+  existen en las cadenas de la plantilla: son los mismos que valida Shalom (último tramo del código de `data/shalom-agencias.json`).
+- Pendiente de confirmar con una subida real del dueño. Si vuelve a fallar, hace falta leer el validador desde su navegador (Remote
+  Control o Cowork): `pro.shalom.pe` devuelve 403 desde la nube.
+
+## 2026-11-08 (noche) — Shalom: el Excel masivo FUNCIONA; flujo completo y Routine manual
+- **Éxito confirmado por el dueño:** el archivo armado por `shalom.py masivo` (plantilla oficial byte a byte, 2 filas) fue aceptado
+  por Shalom Pro: «2 envíos registrados» (Dhajyana Terán → Av Parra 379, Luzgardo Cenas → Garatea), con nombre autocompletado por
+  DNI y botón «Ingresar clave de seguridad» por envío (o «CLAVE MASIVA»). Hallazgo: Shalom **reemplazó el celular** de Luzgardo por el
+  de su propia base (956845125 en vez del WhatsApp del chat): hay que mirarlo en la pantalla de revisión.
+- **Regla fija:** `llenar_plantilla()` no se toca sin volver a probar una subida real. Estado práctico en **`docs/shalom.md`**.
+- **Flujo completo construido:** `masivo` → agencia por `buscar` (con `--agencias ajustes.json` para fijarla cuando dudó) → venta en la
+  pestaña Ventas por `POST /api/asesor/ventas crear` (devuelve la existente si ya hay una abierta con ese DNI) para que la **clave de
+  seguridad** que se teclea en Shalom sea la misma que el CRM le mandará al cliente (`--sin-ventas` lo apaga) → dos archivos (Excel para
+  Shalom + referencia con agencia, candidatas, CLAVE, adelanto y saldo) → `--subir` los deja en CRM → Reportes (`src/api/reportes.js`
+  ahora acepta `.xlsx` con `archivo_base64` y lo sirve como descarga) → `shalom.py telegram` avisa al dueño (rechaza textos con claves;
+  `asesor.js` manda por Telegram los informes con origen «shalom»).
+- **Routine nueva:** **`trig_011Q1Lso76f8LAKK3DjziP64`** «Shalom — Excel de envío masivo (manual · Run now)» sobre la sesión fija de Dinsides
+  (`session_017wTF8ckoBNtwk4nSxvvFzk`), sin cron. Prompt v1 en `docs/routines.md`. Pasos: masivo sin ventas → leer chats de las agencias
+  dudosas y fijarlas → masivo con ventas y `--subir` → Telegram con los links. El humano: subir el Excel, teclear las claves de la
+  referencia y «Registrar envíos».
+- **Pendiente (decisión del dueño):** crear la venta en Ventas al armar el Excel es nuevo (antes la creaba la Routine de boletas al
+  despachar). Si prefiere lo de antes, la Routine corre con `--sin-ventas` y la clave la teclea él a su criterio (pero entonces puede
+  no coincidir con la que el CRM le manda al cliente).
+
+## 2026-11-08 (noche 2) — Simulacro completo (sin subir nada) y lo que destapó
+- **Clave del día:** el dueño no quiere la clave en ningún prompt. `shalom.py masivo --clave NNNN` crea todas las ventas nuevas del lote
+  con esa clave (`POST /api/asesor/ventas crear` ya aceptaba `clave`); sin `--clave`, el Worker asigna una por envío. La clave solo
+  aparece en el archivo de referencia (`shalom.py telegram` rechaza cualquier texto con una clave de 4 dígitos). Se escribe «la clave del
+  día es NNNN» en la sesión fija y la Routine la usa. Prompt v2 en `docs/routines.md`; la API no permitió actualizar el trigger desde aquí.
+- **Simulacro Dinsides (entrega 2026-11-05, solo lectura):** `preparar` separó 4 listos (Nataly, Adri, Laura/Milagros, Dana —cambio de dije,
+  S/0—), 11 con bloqueos (solo pin sin dirección, «La Perla, Callao» ambiguo, pin en zona roja, POR_CONFIRMAR…) y 40 candidatos del CRM.
+  `registrar --simular` destapó un bug: sin fecha en salida.json tomaba «mañana» en vez de la fecha de `preparar` → ahora `preparar`
+  deja `ctx.json` y `registrar` la usa.
+- **Bug grave corregido:** los tres pedidos anulados a mano (#2940738/39/40) seguían en la memoria como registrados porque se habían
+  guardado sin `nro` (Dinsides aún no los listaba al segundo de crearlos) y `anular` solo casaba por `nro`. Consecuencia: la Routine
+  habría saltado a Dante y July esta noche. Arreglos: `anular` también casa por teléfono + fecha de entrega; `registrar` reintenta la
+  búsqueda del id a los 2,5 s e ignora anulados; acción nueva **`quitar`** (`dinsides.py quitar <whatsapp> [fecha] [motivo]`) para sacar
+  un WhatsApp de la memoria cuando el panel dice otra cosa. Reparación aplicada: Dante y July quitados de la memoria del 2026-11-09;
+  Milagros marcada como registrada por el equipo (#2939495).
+- **Simulacro Shalom (despacho 2026-11-05, `--sin-ventas`):** 5 filas, las 5 agencias seguras (Las Mercedes Juliaca, Tacna CO Jorge Basadre,
+  Nuevo Horizonte Av. 54, Calle Emaús, Lambayeque Centro). Destapó otro bug: los DNI que empiezan en 0 («00485469») perdían el cero al ir
+  como número; ahora van como texto (los demás siguen como número, igual que el ejemplo de la plantilla). Pendiente de confirmar con una
+  subida real que Shalom acepte el DNI en texto.
+
+## 2026-11-08 (noche 3) — Routines v3 (todo lo hace Claude, pregunta y registra con la respuesta), claves solo del dueño, limpieza
+- **Dueño:** nadie registra a mano. Lo dudoso se pregunta (Telegram + sesión fija) y Claude registra cuando el dueño o la asesora
+  responden en la sesión. Las claves de Shalom son sagradas: ni el Worker ni la Routine asignan ninguna; solo la clave del día que da el
+  dueño en la sesión (`shalom.py masivo --clave NNNN` o `shalom.py clave NNNN /tmp/shalom/lote.json`, que también la corrige en la hoja
+  Ventas); sin clave no se toca la hoja Ventas y la referencia dice «PENDIENTE». Todo pedido sale al día siguiente, corte 3:00 (el
+  sistema ya lo hacía: `fechaEntrega` y `shalom.py`). Los domingos no se registra nada.
+- **Triggers nuevos (v3) sobre `session_017wTF8ckoBNtwk4nSxvvFzk`:** Dinsides real **`trig_01SQ3ENu3TfYbZrc3qyeksU4`**, Dinsides
+  SIMULACRO **`trig_014Vk7mWt2DwJkv4SxVHK23z`**, Shalom masivo **`trig_013nuA3ZdCtxtkVNbJPvMxox`**. Se borraron los v2
+  (`trig_01NcY8f7qCR4FhYXZRiupYqZ`, `trig_0117rbxvHaaw3ddQZioaNDjV`, `trig_011Q1Lso76f8LAKK3DjziP64`) porque la API no deja cambiar el
+  prompt desde otra sesión. Prompts v3 completos en `docs/routines.md`. La Routine de Dinsides corre `estados` en el PASO 0b (los ojos:
+  entregados / anulados / rechazados a la hoja y al chat) y tiene PASO 6 (registrar lo pendiente con la respuesta del dueño).
+- **Dante y July:** el dueño aclara que eran pruebas, no hay envío. Filas 76 y 95 de «Pedidos auto» cerradas («no va (prueba)»,
+  Dinsides «no: era una prueba…»); fuera de la memoria de Dinsides (`quitar`). Lo del lunes 9/11 lo registró el equipo (#2939495,
+  #2939521, #2939467, #2936324) y no se toca. En Dinsides, de esta sesión solo quedan vigentes las tres regularizaciones (#2940734
+  Mariela, #2940741 CLIENTE 1, #2940742 CLIENTE 2); el test #2940714 y los tres accidentales #2940738/39/40 están ANULADO- POR TIENDA.
+- **Hoja de pedidos (lo que ya existe y cómo se completa):** «Pedidos auto» es el libro de todos los pedidos (Lima y provincia) con
+  «Enviado» y la columna «Dinsides» (registrado #id / entregado / anulado / rechazado, que ahora llena `estados` en cada corrida);
+  «Ventas» lleva los de provincia con estado y saldo (pagado cuando llega la clave); «Boletas auto» los despachos. No hace falta otro Excel.
+
+## 2026-11-08 (noche 4) — Distrito desde el mapa también sin pin; Excel de Shalom solo con filas completas; consumo de Cloudflare
+- **Distrito (dueño):** «lo sacas del polígono del mapa de cobertura, no se lo preguntas al asesor». Con pin ya era así. Sin pin, el Worker
+  ubica la dirección con OpenStreetMap y toma el polígono de Dinsides: si el texto no traía distrito o era ambiguo, ese distrito deja de
+  ser bloqueo (queda la alerta de cómo se obtuvo); si el texto decía X y el polígono dice Y y OpenStreetMap reconoció la zona, va el del
+  mapa; si la dirección no se pudo ubicar (p. ej. solo «Mz C Lt 12» sin urbanización), sigue el bloqueo y se pregunta. Prueba en
+  `scripts/test-dinsides-api.mjs` («Urb Los Jardines» → Miraflores).
+- **Shalom:** al Excel solo entran las filas con DNI y agencia resueltos; las dudosas quedan en la referencia (fila «—») y en las preguntas
+  de la Routine. Excel del despacho 08-11 subido a CRM → Reportes para que el dueño lo vea desde su dominio.
+- **Cloudflare (pedido del dueño):** el Worker `claudetarot` recibió ~21 000 peticiones/día en octubre y ~32 000/día del 1 al 8 de
+  noviembre (pico 42 000 el 6/11; errores 3 250 el 3/11, 300 el 4/11, luego casi 0). Proyección ≈ 1 millón/mes. El modelo de uso de la
+  cuenta es «standard» (plan de pago de Workers: 10 millones de peticiones al mes incluidas), así que está muy lejos del tope; las
+  subpeticiones (Sheets, WhatsApp, Dinsides) son ~13 000/día. Consulta por GraphQL `workersInvocationsAdaptive`.
+- **Tercerizar (análisis para el dueño, sin API de Claude ni gasto extra):** (1) una sección «Envíos» en el CRM del propio dominio que
+  use los endpoints ya existentes (`/api/asesor/dinsides`, `shalom.py` como endpoint) con botones: ver listos y pendientes, corregir
+  dirección/distrito/agencia, «Registrar en Dinsides», «Excel Shalom» + clave; es lo que permite que Jennifer o quien sea lo haga sin
+  Claude ni Routines del dueño. (2) Que Jennifer corra las mismas Routines en su cuenta de Claude: necesita el repo (lo tiene) y una
+  clave del asesor en su entorno; conviene una clave propia y acotada (solo Dinsides, Shalom, chat de lectura, Reportes y avisos) que
+  habría que agregar al Worker. Recomendación: (1), porque el flujo ya es determinista salvo leer el chat, y eso la asesora lo hace en el
+  CRM. Boletas pueden quedarse con el dueño (él manda las fotos).
+
+## 2026-11-08 (noche 4) · Tercerización opción 2 (decisión del dueño): Jennifer corre el registro de envíos en su propia cuenta de Claude
+
+- **Decisión del dueño:** opción 2. Jennifer usa su propio Project / Routine de Claude con la MISMA clave del asesor (`ASESOR_CLAVE`
+  en su entorno, el dueño se la pasa fuera del repo). Nada cambia en el Worker ni en las Routines del dueño (las de Dinsides y Shalom
+  v3 siguen vivas en su sesión fija; ver `docs/routines.md`).
+- **Fuente de verdad de las instrucciones: `docs/envios-jennifer.md`** (nuevo). Lleva (a) el «arranque»: el ÚNICO texto que va en el
+  Project o Routine de Jennifer, que clona/actualiza el repo y le dice a Claude que lea ese archivo; (b) reglas fijas del dueño;
+  (c) pasos A (Dinsides) y B (Shalom) con los mismos comandos de los prompts v3 y la vuelta de respuestas en la sesión (PASO 6 / PASO 4).
+  Así Jennifer NUNCA edita su prompt: cualquier mejora se hace en ese archivo del repo y entra sola en la siguiente corrida.
+- **Copia legible en Google Docs:** «Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
+  (https://docs.google.com/document/d/1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c/edit), dueño: la cuenta de Google del dueño,
+  compartido como editor con el correo de la empresa (el que usa Jennifer). Se regenera desde el .md cuando cambie
+  (conector de Google Docs, nunca a mano). No es la fuente: si el Doc y el .md difieren, manda el .md.
+- **La hoja de pedidos («Pedidos Tarot Kit» → pestaña «Pedidos auto», gid 1131206013):** su dueño YA es la cuenta de Google del dueño
+  (también editores: las tres vendedoras y la cuenta de servicio del Worker
+  (la misma de siempre)). Link directo:
+  https://docs.google.com/spreadsheets/d/1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc/edit#gid=1131206013 . **Falta** agregar a
+  el correo de la empresa (el que usa Jennifer) como editor: el conector de Drive de esta sesión no tiene permiso para compartir ese archivo (lo intentó el
+  2026-11-08 y Google respondió «The caller does not have permission»); lo comparte el dueño desde Compartir en la hoja.
+- **Qué necesita Jennifer en su cuenta:** (1) acceso al repo (ya lo tiene); (2) variable `ASESOR_CLAVE` en el entorno de su sesión de
+  Claude Code (misma clave del asesor; la pone ella, el dueño se la dicta fuera de la sesión); (3) el «arranque» de
+  `docs/envios-jennifer.md` como prompt de su Project o de una Routine manual («Run now»), igual que las del dueño. Telegram sigue
+  avisando al dueño desde el Worker (`dinsides.py telegram`, `shalom.py telegram`). Pendiente (idea, no hecho): una clave del asesor
+  acotada solo a Dinsides/Shalom/lectura de chat/Reportes para no compartir la clave completa.
+
+## 2026-11-09 · Ciclo completo para la cuenta de Jennifer («INICIA» hace todo y presenta antes de registrar) + montos leídos del texto del reporte
+
+- **Qué pasó:** el Project de Jennifer recibió solo el link del Doc + «INICIA» y no hizo nada (el Doc decía que cada acción la
+  disparaba una orden explícita). Pedido del dueño: que trabaje solo, ciclo completo de una vez (Dinsides y luego Shalom), con la
+  regla de PRESENTAR la lista antes de registrar o subir, y con las notas completas (extras, catálogo, collares, descuentos).
+- **`docs/envios-jennifer.md` reescrito (y el Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c` regenerado con el mismo
+  texto):** el arranque dice que sin orden («INICIA», link, vacío, «Run now») se hace el CICLO COMPLETO; regla 1 nueva «Presentar
+  antes de registrar»: A4 = `registrar --simular` → tabla en la sesión (cliente · teléfono · distrito y fuente · dirección · qué
+  lleva · cobrar y forma · nota · fecha · LISTO/PENDIENTE con la pregunta exacta) + la misma por Telegram → DETENERSE hasta un «OK» o
+  correcciones en la sesión → A5 registra. Shalom igual: B1 `masivo` sin `--subir` → B2 tabla (DNI · agencia · bultos · qué lleva ·
+  adelanto · saldo · pendientes) + pedir la clave del día → B3 `--subir` con el OK (`--clave` solo si la escribieron). Regla 6 «Notas
+  completas» enumera los casos especiales que deben verse en la presentación y en la nota al courier.
+- **Montos (código, `src/lib/dinsides.js` → `armarPedido`):** antes `cobrar` salía del precio de lista por kits y solo «ya pagó … no
+  cobrar» daba NO COBRAR; con los textos reales de la hoja «Pedidos auto» fallaba: «Pagado S/89» se cobraba otra vez; «NO es kit: solo
+  mazo S/69, Yape contraentrega S/69» (kits 0) salía S/0 NO COBRAR; «Adelanto S/10; saldo S/79» cobraba 89. Ahora lee `pago`+`nota`:
+  «saldo S/N» → cobra N; «Pagado / pago completo / sin saldo» (sin adelanto pendiente) → NO COBRAR; «contraentrega / efectivo / Yape /
+  exacto S/N» → cobra N; «adelanto S/A» sin saldo escrito → lista − A con aviso; kits 0 sin monto en ningún lado → BLOQUEO «MONTO»
+  (no se inventa S/0); descuento/promo con precio de lista → aviso; `cobrar` explícito manda sobre el «pagado» del texto. La
+  observación que ve el motorizado lleva además el texto de pago cuando aporta (adelanto/saldo/pagado/efectivo). Pruebas nuevas en
+  `scripts/test-dinsides.mjs` (9 casos reales de la hoja).
+- **Shalom (`scripts/asesor/shalom.py` → `montos()`):** bug: `kits` 0 se leía como 1 (`p.get("kits") or 1`); ahora kits 0 saca el
+  precio del texto del empaque/pago («(S/59, solo el mazo)») o avisa «MONTO: no es un kit y el reporte no dice el precio»; «Pagado /
+  pago completo / sin saldo» → saldo 0; extra con precio en el empaque o descuento → aviso «MONTO: … confirmar el saldo» (entra a la
+  referencia y a la lista de pendientes). La referencia lleva «QUÉ LLEVA: <empaque>» delante de la nota. Un pedido kits 0 viaja como
+  1 bulto en el Excel.
+- **Revisión del reporte «Pedidos y ventas» para casos especiales (pedido del dueño):** los reporta bien en `empaque` (2 kits, solo
+  mazo, Gold, cuencos, collar extra, «VERIFICAR, prometió…») y los montos en `pago` como texto («Adelanto S/20; saldo S/69», «Pagado
+  S/129», «Yape contraentrega S/69»); los pedidos del catálogo y de la web entran como candidatos del control del sistema
+  (`control_ventas.py`) y la Routine los pone en `empaque`/`pago`. Lo que NO tiene el reporte es un campo numérico «cobrar/precio»
+  ni «descuento»: por eso el arreglo se hizo río abajo (leer el texto en Dinsides y Shalom). Si se quiere el campo estructurado,
+  hay que cambiar el prompt de la Routine del reporte desde su sesión fija (no desde aquí) y la columna del PDF en `enviar.py`.
+
 
 ## 2026-11-09 — Pago hecho: envíos normales; cobro con el bono (imagen) a provincia con saldo; reporte también a Jennifer
 - El dueño pagó el saldo de Meta el 8/11: desde las 23:52 UTC del 7/11 no hay fallos por pago; las plantillas vuelven a salir.
