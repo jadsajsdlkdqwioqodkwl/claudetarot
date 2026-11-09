@@ -242,6 +242,7 @@ export function limpiarDireccion(texto) {
   let d = SIN_EMOJI(String(texto || "").replace(LINK_RE, " "));
   d = d.replace(/-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/g, " "); // coordenadas sueltas
   d = d.replace(/\(\s*(pin|ubicaci[oó]n)?\s*[:;,-]?\s*\)/gi, " "); // «(pin )» que queda al quitar el link o las coordenadas
+  d = d.replace(/\(\s*(pin|ubicaci[oó]n)\s*[:;,-]\s*/gi, "("); // «(pin ; edificio blanco…)» → «(edificio blanco…)»
   d = d.replace(/\b(mz|mza|manzana)\.?\s*/gi, "Mz ").replace(/\b(lt|lte|lote)\.?\s*/gi, "Lt ").replace(/\bav\.?\s+/gi, "Av ")
     .replace(/\bjr\.?\s+/gi, "Jr ").replace(/\bjir[oó]n\s+/gi, "Jr ").replace(/\bpsje\.?\s+/gi, "Pasaje ").replace(/\burb\.?\s+/gi, "Urb ")
     .replace(/\bdpto\.?\s*/gi, "Dpto ").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
@@ -398,6 +399,11 @@ export function armarPedido(pedido, ctx = {}) {
   if (/^(POR_VERIFICAR|POR_CONFIRMAR|INTENCION|DESCARTADO)$/.test(String(p.estado || ""))) bloqueos.push(`ESTADO ${p.estado}: el reporte no lo da por confirmado${p.nota ? ` («${nota.slice(0, 90)}»)` : ""}`);
   if (String(p.destino || "").toUpperCase() === "PROVINCIA") bloqueos.push("DESTINO PROVINCIA: no va por Dinsides");
   if (/^\s*🚨/.test(String(p.nota || "")) || /urgente|reclamo/.test(notaL)) alertas.push("NOTA con 🚨: leerla antes de registrar");
+  // Hora específica (dueño 2026-11-09): Dinsides reparte de 12 a 5 pm; si el cliente pidió otra hora, se pregunta si va por Dinsides o
+  // por el motorizado de confianza. «12-5 pm» / «12 a 5» es la ventana normal y no cuenta.
+  const notaHora = notaL.replace(/12\s*(a|-|–)\s*5\s*(pm)?/g, " ");
+  const hora = notaHora.match(/(a las|antes de las?|despues de las?|desde las?|hasta las?|a partir de las?|pasad[oa]s? las?)\s*\d{1,2}(:\d{2})?\s*(am|pm|de la (manana|tarde|noche)|h\b)?|\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\b(en la manana|temprano|en la noche|de noche|al mediodia|hora exacta|hora especifica|solo (en la )?(manana|tarde|noche))\b/);
+  if (hora) alertas.push(`HORA ESPECÍFICA pedida («${hora[0].trim()}»): Dinsides reparte de 12 a 5 pm; confirmar si va por Dinsides o por el motorizado de confianza`);
 
   const pagoUtil = pagoTxt && /adelanto|saldo|pagad|pago completo|efectivo|tarjeta|exacto|billete/i.test(pagoTxt) && !normalizar(nota).includes(normalizar(pagoTxt).slice(0, 25)) ? `Pago: ${pagoTxt}` : "";
   const paquete = extra || kits > 1 ? `Paquete: ${producto}${extra && !producto.includes(extra) ? ` (${extra})` : ""}` : "";

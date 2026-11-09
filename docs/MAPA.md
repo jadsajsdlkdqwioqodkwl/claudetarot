@@ -2249,3 +2249,24 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   (pro.shalom.pe) además responde 403 a lo que no es navegador y solo lista lo pendiente. Lo que sí tenemos: «Boletas auto» (boleta =
   salió), hoja Ventas (clave, saldo, pagado) y los chats (cliente confirma recojo). Si el dueño quiere estados reales de Shalom, la
   vía es un navegador con sesión (Cowork / Chrome del dueño) una vez al día; queda anotado, no implementado.
+
+## 2026-11-09 (madrugada 5) · Anulados por el equipo vuelven a estar pendientes; motorizado de confianza; hora específica
+
+- **Qué pasó:** el dueño anuló en el panel de Dinsides los 5 pedidos del lunes que su Routine (la del Doc) había registrado sin
+  presentar (Mane, Mavel, Graciela, July, Dante). La Routine de envíos los siguió dando por «ya registrados» porque solo miraba la
+  memoria R2. Además, los 4 de Lima del domingo 08-11 (Gladys, Ketty, Cecilia, Erlinda) salieron por el motorizado de confianza y el
+  sistema no lo sabía: Ketty se iba a registrar para el lunes.
+- **Anulados (`src/api/asesor-dinsides.js`):** `abiertosEnDinsides()` trae también los ANULADOS; en `armarTodo` toda memoria con `nro`
+  que Dinsides tenga ANULADO (y sin otro pedido abierto de ese teléfono) se marca `anulado` en R2 y en el índice, y la ficha vuelve a
+  estar pendiente con la alerta «ESTABA REGISTRADO pero en Dinsides figura ANULADO…». `estados`: «ANULADO- POR TIENDA» (lo anulamos
+  nosotros) ya NO cierra la fila de la hoja: queda abierta con «→ sigue pendiente: volver a registrar si el pedido sigue vigente», para
+  que el reporte y la Routine lo refloten; solo cierra lo que el cliente rechazó / no desea.
+- **Motorizado de confianza (`scripts/asesor/motorizado.py`, nuevo):** mensaje para el WhatsApp del motorizado (formato del dueño:
+  numerado, cliente · teléfono, dirección, referencia, horario, producto, COBRAR/NO COBRAR, discreción, Maps), etiquetas PDF formato
+  Dinsides (reusa `etiquetas.py`), `--subir` a Reportes y `--marcar` (acción `marcar` con nro «MOTORIZADO»: memoria + hoja «Enviado =
+  Motorizado externo FECHA», el Worker lo distingue por el texto). Sección C en `docs/envios-jennifer.md`. Boletas del motorizado:
+  pendiente, el dueño pasará el formato.
+- **Hora específica (`src/lib/dinsides.js`):** alerta «HORA ESPECÍFICA pedida (…)» cuando la nota pide una hora fuera de la ventana
+  12–5 pm; la Routine la presenta como pregunta «¿Dinsides o motorizado de confianza?». Prueba en `test-dinsides.mjs`.
+- **Marcados hoy como enviados por motorizado (08-11):** Gladys Falcón, Ketty, Cecilia, Erlinda Munguia (según el mensaje que el dueño
+  le mandó al motorizado); con eso Ketty deja de proponerse para el lunes.

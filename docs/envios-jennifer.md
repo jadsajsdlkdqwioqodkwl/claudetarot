@@ -71,9 +71,15 @@ y (c) ventas que se pueden salvar con una sola pregunta. Lo de (a) entra a `pedi
 PENDIENTE con la pregunta exacta para la asesora (tú nunca escribes al cliente). Prefiere una falsa alarma arriba a que algo quede
 abajo sin que nadie lo vea.
 
-Domingos (información del dueño): Dinsides no reparte; los pedidos de domingo salen por un motorizado externo. Si el día de entrega
-que corresponde es domingo, no registres en Dinsides: presenta la lista igual (fichas completas) y dilo, para que la use el motorizado
-externo; el dueño decide.
+Domingos y hora específica → MOTORIZADO DE CONFIANZA (dueño 2026-11-09). Dinsides reparte de 12 a 5 pm y no reparte los domingos.
+- Si el día de entrega es domingo: NO registres en Dinsides. Presenta las fichas igual y, con el OK, corre la sección C (motorizado).
+- Si una ficha trae la alerta «HORA ESPECÍFICA pedida (…)», en la presentación va como PENDIENTE con la pregunta: «X pide a las 5 pm:
+  ¿Dinsides (12–5 pm) o motorizado de confianza?». Si el dueño responde «motorizado», ese pedido sale de Dinsides y va a la sección C;
+  si responde «Dinsides» u «OK», se registra en Dinsides.
+- Un pedido que ya salió por motorizado queda marcado en la memoria y en la hoja («Motorizado externo FECHA»): no se vuelve a registrar.
+- ANULADO en Dinsides: si el sistema dice «ESTABA REGISTRADO pero en Dinsides figura ANULADO», el pedido vuelve a estar pendiente (el
+  equipo lo anuló: duplicado, cambio de fecha…). Se presenta de nuevo como LISTO o PENDIENTE y con el OK se registra otra vez; nunca
+  lo des por registrado.
 
 A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 `{"pedidos": [{"whatsapp": "51…", "distrito": "…", "direccion": "…", "coordenadas": "lat,lng", "nombre": "…", "nota": "…",
@@ -134,6 +140,16 @@ B3 — Con la respuesta:
 - Clave que llega después (o corrección) → `python3 scripts/asesor/shalom.py clave NNNN /tmp/shalom/lote.json`.
 - Agencia o DNI de un pendiente → agrégalo a agencias.json o corrige y repite B1→B2 solo con lo cambiado; con el OK, B3.
 - Cierra con: «Shalom Pro → Registro de envíos masivos → subir el Excel → Continuar → clave → Registrar envíos».
+
+### C. Motorizado de confianza (domingos y horas específicas; solo con el OK del dueño)
+
+C1 — `python3 scripts/asesor/motorizado.py AAAA-MM-DD --solo 51…,51… --subir` (sin `--solo` toma todos los LISTOS de la fecha). Escribe
+`/tmp/motorizado/FECHA/mensaje.txt` (el mensaje para pegar en el WhatsApp del motorizado: numerado, cliente · teléfono, dirección,
+referencia, horario, producto, COBRAR o NO COBRAR, discreción, link de Maps) y `etiquetas.pdf` (formato Dinsides, 3×5) y sube el PDF a
+CRM → Reportes. Presenta el mensaje completo en la sesión (el dueño lo copia tal cual) y el link del PDF.
+C2 — Con el OK del dueño («enviado por motorizado»): `python3 scripts/asesor/motorizado.py AAAA-MM-DD --solo … --marcar` → quedan
+como ENVIADOS POR MOTORIZADO EXTERNO en la memoria (no se registran en Dinsides) y en la hoja («Enviado = Motorizado externo FECHA»).
+Las boletas del motorizado las define el dueño (pendiente: pasará el formato); mientras, no se generan.
 
 ### Cierre del ciclo
 Una respuesta final en la sesión (máximo 15 líneas): Lima registrados (nombre · distrito · S/ · #id) y pendientes con su pregunta;

@@ -140,12 +140,13 @@ function leerColumnaDinsides(texto) {
 
 /** Pedidos ABIERTOS en Dinsides (registrados, en ruta, reprogramados) cerca de la fecha: lo que el equipo ya registró a mano. */
 async function abiertosEnDinsides(env, fecha) {
-  if (!hayCredenciales(env)) return [];
+  if (!hayCredenciales(env)) return { abiertos: [], anulados: new Map(), ok: false };
   try {
     const { cookie } = await login(env);
     const lista = await listado(env, cookie, { desde: sumarDias(fecha, -10), hasta: sumarDias(fecha, 30) });
-    return lista.filter((x) => claseSeguimiento(x.seguimiento) === "pendiente");
-  } catch (err) { console.error("dinsides abiertos:", err.message); return []; }
+    return { abiertos: lista.filter((x) => claseSeguimiento(x.seguimiento) === "pendiente"),
+      anulados: new Map(lista.filter((x) => claseSeguimiento(x.seguimiento) === "anulado").map((x) => [x.id_pedido, x])), ok: true };
+  } catch (err) { console.error("dinsides abiertos:", err.message); return { abiertos: [], anulados: new Map(), ok: false }; }
 }
 
 const tokensNombre = (n) => normalizar(n).replace(/\(.*?\)/g, " ").split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !/^(del|los|las|san|santa|sra|srta|cliente|regularizacion)$/.test(t));
@@ -177,8 +178,23 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
   const { pedidos, hoja, conocidos } = await pedidosDelSistema(env, fecha);
   const reg = await registroDe(env, fecha);
   const idx = await indice(env);
+  const { abiertos, anulados: anuladosDinsides, ok: dinsidesLeido } = await abiertosEnDinsides(env, fecha);
+  // Lo que el dueño anuló a mano en el panel de Dinsides (2026-11-09: anuló los 5 del lunes) deja de contar como registrado: la
+  // memoria se marca `anulado` y el pedido vuelve a estar pendiente (se vuelve a presentar y, con el OK, se registra de nuevo).
+  const reanulados = [];
+  if (dinsidesLeido) {
+    for (const r of reg.registros) {
+      if (r.anulado || !r.nro) continue;
+      const a = anuladosDinsides.get(String(r.nro));
+      if (a && !abiertos.some((x) => x.telefono === n9(r.whatsapp) || x.telefono === n9(r.campos?.telefono))) {
+        r.anulado = true; r.anulado_en_dinsides = a.seguimiento; r.anulado_visto = ahoraLima();
+        reanulados.push(n9(r.whatsapp));
+        if (idx[n9(r.whatsapp)]?.nro === String(r.nro)) delete idx[n9(r.whatsapp)];
+      }
+    }
+    if (reanulados.length) { await escribirJson(env, `dinsides/${fecha}.json`, reg); await escribirJson(env, "dinsides/indice.json", idx); }
+  }
   const registradosPorWa = new Map(reg.registros.filter((r) => !r.anulado).map((r) => [n9(r.whatsapp), r]));
-  const abiertos = await abiertosEnDinsides(env, fecha);
   const fechaObjetivo = fecha;
   const fichas = [];
   const marcarCruce = async (f, cruce) => {
@@ -219,6 +235,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     if (col.omitir) f.bloqueos.unshift(`La hoja dice «${col.omitir}»: no se registra`);
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
     const cruce = cruzarConDinsides(f, abiertos);
+    if (reanulados.includes(k)) f.alertas.push("ESTABA REGISTRADO pero en Dinsides figura ANULADO (lo anuló el equipo): vuelve a estar pendiente; con el OK se registra de nuevo");
     if (col.hecho) f.ya_registrado = { modo: "manual (hoja)", detalle: col.hecho };
     else if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
     else if (cruce) await marcarCruce(f, cruce);
@@ -280,8 +297,12 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
     } else if (clase === "anulado" || clase === "rechazado") {
       // Un pedido anulado o rechazado en Dinsides ya no sale: su fila se cierra («Enviado») para que deje de aparecer en la
       // agenda pendiente (dueño 2026-11-09: la agenda traía 100+ pedidos ya resueltos). Solo si la fila es de esa misma entrega.
-      const cerrar = fila.fecha_entrega === ped.fecha_entrega && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
-      const texto = /anulado|rechazado/.test(yaDice) ? fila.dinsides : `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}`;
+      // «ANULADO- POR TIENDA» lo anulamos nosotros (duplicado, reagendar, cambio de fecha): la fila sigue ABIERTA para que el reporte y la
+      // Routine lo vuelvan a ver (dueño 2026-11-09: «si está anulado hay que reagendarlo, debe reflotar»). Solo cierra la fila lo que el
+      // cliente rechazó o no quiso.
+      const porTienda = /POR TIENDA/i.test(String(ped.seguimiento || ""));
+      const cerrar = !porTienda && fila.fecha_entrega === ped.fecha_entrega && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
+      const texto = /anulado|rechazado/.test(yaDice) ? fila.dinsides : `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}${porTienda ? " → sigue pendiente: volver a registrar si el pedido sigue vigente" : ""}`;
       if (!/anulado|rechazado/.test(yaDice) || cerrar) {
         await marcarDinsidesEnHoja(env, fila.whatsapp, texto, cerrar).catch(() => null);
         resumen.marcados++;
@@ -443,8 +464,10 @@ async function despuesDeRegistrar(env, fecha, fichas, modo, extra = {}) {
   const hoja = [], etiquetas = [];
   for (const f of fichas) {
     const nro = f.nro || extra.nro || "";
-    const texto = modo === "manual" ? `manual ${nro} ${cuando}`.replace(/\s+/g, " ").trim() : `registrado ${cuando}${nro ? ` #${nro}` : ""}`;
-    hoja.push(await marcarDinsidesEnHoja(env, f.whatsapp, texto, `Dinsides ${f.campos.fecha_entrega}`).catch((err) => ({ error: err.message })));
+    const motorizado = /motorizado/i.test(`${extra.nro || ""} ${extra.motivo || ""}`);
+    const texto = motorizado ? `motorizado externo ${f.campos.fecha_entrega} ${cuando}${extra.motivo ? `: ${String(extra.motivo).slice(0, 60)}` : ""}`
+      : modo === "manual" ? `manual ${nro} ${cuando}`.replace(/\s+/g, " ").trim() : `registrado ${cuando}${nro ? ` #${nro}` : ""}`;
+    hoja.push(await marcarDinsidesEnHoja(env, f.whatsapp, texto, motorizado ? `Motorizado externo ${f.campos.fecha_entrega}` : `Dinsides ${f.campos.fecha_entrega}`).catch((err) => ({ error: err.message })));
     if (f.conversation_id) etiquetas.push(await agregarEtiquetaMeta(env.CRM_DB, f.conversation_id, "dinsides_registrado").then(() => "ok").catch((err) => err.message));
   }
   return { hoja, etiquetas };

@@ -147,3 +147,9 @@ check("resumenFicha es texto corto", /A · 957845104 · santiago de surco/.test(
 
 if (fallas) { console.error(`\n${fallas} prueba(s) de Dinsides fallaron`); process.exit(1); }
 console.log("\nDinsides: todo OK");
+
+// Hora específica (dueño 2026-11-09): Dinsides reparte 12–5 pm; otra hora se pregunta (Dinsides o motorizado de confianza)
+p = D.armarPedido({ nombre: "Hora", whatsapp: "51999999980", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", nota: "Pide que le lleguen a las 5 pm en punto, sale del trabajo", estado: "CONFIRMADO" }, ctx);
+check("«a las 5 pm» → alerta HORA ESPECÍFICA (no bloquea)", p.listo && p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
+p = D.armarPedido({ nombre: "Ventana", whatsapp: "51999999981", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/89, 12-5 pm", nota: "la recibe ella", estado: "CONFIRMADO" }, ctx);
+check("«12-5 pm» es la ventana normal: sin alerta de hora", !p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
