@@ -68,3 +68,9 @@ Salió bien: PDF a los dos, 25 pedidos, hoja con 22 filas, 2 agendados. Ajustes:
 sumar lo registrado (lo explicado en una corrida vale para las siguientes), el origen no repite la hora, y una fila con
 nota de relleno («ya registrada…») no pisa lo registrado. Cada reenvío de `reporte.py enviar` manda otro PDF por
 Telegram: la Routine solo reenvía si corrigió algo (máximo 2 veces).
+
+## 2026-11-09 · v2: adelanto = venta, agenda que se limpia sola, compras marcadas por el sistema
+
+Prompt v2 en `docs/prompts/reporte.md` (las Routines solo llevan el arranque). Cambios en `enviar.py`: `promover_provincia()`,
+`conciliar_agenda()` (boletas emitidas + estados de Dinsides, también a mano con `reporte.py conciliar`), atrasados de más de 3 días
+fuera de la tabla, `marcar_compras()` vía `/api/asesor/marcar-compra`. Detalle y motivos en `docs/MAPA.md` (2026-11-09 madrugada).

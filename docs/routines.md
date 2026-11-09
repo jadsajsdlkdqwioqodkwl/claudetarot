@@ -1447,3 +1447,13 @@ pasos (Dinsides A, Shalom B) y se mantiene desde el repo. Copia legible: Google 
 El arranque de `docs/envios-jennifer.md` cambió: sin orden explícita (link, «INICIA», «Run now») se hace el ciclo completo
 Dinsides → Shalom; regla «Presentar antes de registrar» (A4/B2: tabla en la sesión y por Telegram, detenerse hasta el OK). El Google
 Doc se regeneró con el mismo texto. Las Routines del dueño (v3) no cambian.
+
+## 2026-11-09 (madrugada) · Reporte v2 y Routine única de envíos: prompts en el repo, Routines con arranque corto
+
+- Reporte «Pedidos y ventas»: `trig_01MMWTgBTQ8aD1M1QM1xxGEc` (21:45 · 23:45) y `trig_01CwAvLG544pJd3FkAGu9Pf7` (22:30), sesión fija
+  `session_017wTF8ZruCb5hT61H2LkhRX`. Prompt = «Arranque» de `docs/prompts/reporte.md` (ahí está el prompt v2 completo). Borrada la
+  v1 de las 22:30; la v1 de 21:45·23:45 (`trig_016KfxjJWbHhxrEehCxH9Mri`) quedó apagada y renombrada.
+- Envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7` «Envíos — Dinsides y Shalom (manual · Run now · presenta antes de registrar)», sesión fija
+  `session_017wTF8ckoBNtwk4nSxvvFzk`. Prompt = «Arranque» de `docs/envios-jennifer.md`. Borradas las dos manuales v3 (Dinsides,
+  Shalom). La Routine `trig_01LrQ7TMN5dnhf9PMgszyU69` del dueño (link del Doc) la borra él desde la app.
+- Para cambiar cualquiera de estas Routines: editar el archivo del repo, nunca el prompt de la Routine.

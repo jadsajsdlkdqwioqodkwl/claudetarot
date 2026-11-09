@@ -2148,3 +2148,53 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   Si tocan «Sí, mi saldo», la respuesta automática de cobro les contesta con su saldo y el Yape.
 - **Reporte de pedidos y ventas por Telegram también a Jennifer:** `REPORTE_AGENTES` en wrangler.jsonc pasa de «danitza» a
   «danitza,jennifer» (usuarios del CRM con Telegram vinculado; `chatsReporte` en asesor.js).
+
+## 2026-11-09 (madrugada) · Reporte v2 (adelanto = venta), agenda que se limpia sola, compras marcadas por el sistema, una sola Routine de envíos con presentación previa
+
+Pedido del dueño (noche del 2026-11-08): (1) ver TODOS los pedidos sin excepción (venta, casi venta, huele a venta); (2) el
+reporte de ventas bien: en provincia el adelanto ES la venta (S/10, S/20 o S/50) y va en su sección en rojo, no en POR VERIFICAR;
+la «agenda pendiente» traía 109 pedidos ya entregados (Katia Reyes) y confundía al Claude de Dinsides; si una venta no está marcada
+como compra en el CRM, que la marque el sistema (permiso dado); (3) que el Project/Routine de envíos trabaje solo, ciclo completo,
+presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con los nombres de producto del equipo.
+
+- **Prompts en el repo, Routines con «arranque» corto (decisión, recomendado al dueño en vez del Google Doc):** la Routine solo
+  clona/actualiza el repo y lee un archivo; cambiar el flujo = editar el archivo. `docs/prompts/reporte.md` (reporte v2) y
+  `docs/envios-jennifer.md` (envíos). El Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c` queda como copia de lectura (se
+  anotó dentro que no manda). Motivo: el Project de Jennifer leyó el Doc una sola vez al inicio de la sesión y luego no lo volvía a
+  leer; la Routine del dueño `trig_01LrQ7TMN5dnhf9PMgszyU69` «REGISTRO DE PEDIDOS (DINSIDES Y SHALOM)» (creada por él desde la
+  app con el link del Doc como prompt, sin sesión fija) registró 5 pedidos el 2026-11-08 23:08 sin presentar. **Esa Routine no se
+  pudo borrar desde aquí (la creó la app, no un agente): el dueño la borra en https://claude.ai/code/routines/trig_01LrQ7TMN5dnhf9PMgszyU69.**
+- **Routines del reporte recreadas** (la API no deja editar el prompt desde otra sesión): borrada `trig_017dC3qg4T65tGRG7JXcq2hE`
+  (22:30 v1); `trig_016KfxjJWbHhxrEehCxH9Mri` (21:45·23:45 v1) NO se dejó borrar (clasificador) y quedó APAGADA y renombrada
+  «[APAGADA 2026-11-09, la reemplaza la v2] …». Nuevas, misma sesión fija `session_017wTF8ZruCb5hT61H2LkhRX`:
+  `trig_01MMWTgBTQ8aD1M1QM1xxGEc` «Reporte de pedidos y ventas (21:45 · 23:45)» y `trig_01CwAvLG544pJd3FkAGu9Pf7` «… (22:30)», prompt
+  = arranque de `docs/prompts/reporte.md`. Prompt v1 completo sigue en `docs/routines.md` (2026-11-02).
+- **Routine única de envíos:** borradas `trig_01SQ3ENu3TfYbZrc3qyeksU4` (Dinsides manual v3) y `trig_013nuA3ZdCtxtkVNbJPvMxox`
+  (Shalom manual v3); nueva `trig_01J7vAUuHMuVL7MCccFkGaP7` «Envíos — Dinsides y Shalom (manual · Run now · presenta antes de
+  registrar)», misma sesión fija `session_017wTF8ckoBNtwk4nSxvvFzk`, prompt = arranque de `docs/envios-jennifer.md` (+ «si es una
+  respuesta a algo que presentaste, sigue A5/B3»). El simulacro `trig_014Vk7mWt2DwJkv4SxVHK23z` se conserva. El mismo arranque
+  sirve para la cuenta de Jennifer.
+- **Reporte (`scripts/asesor/enviar.py`):** `promover_provincia()`: POR_VERIFICAR de provincia con pago visto («adelantó S/…»,
+  monto con operación, captura) → CONFIRMADO con nota «🚨 ATENCIÓN: adelanto visto (revisar monto)» (fila roja); se aplica a lo
+  nuevo y a lo ya registrado en la noche (casos reales del 2026-11-08: Luiz Alberto S/50 y Katherin S/10 estaban en POR VERIFICAR).
+  Sigue POR VERIFICAR solo sin captura/pago visto o si faltan DNI/agencia. `conciliar_agenda()` antes de leer la agenda: POST
+  `/api/asesor/pedidos-sheet {conciliar: true}` (cierra «Enviado» en filas con boleta en «Boletas auto», 40 por llamada) y
+  `/api/asesor/dinsides {accion: estados}` (14 días). En el PDF los atrasados de más de 3 días no se listan: se cuentan y se avisa.
+  `marcar_compras()`: por cada `sin_marcar_compra` con pedido CONFIRMADO/OTRO_DIA → POST `/api/asesor/marcar-compra` (nuevo,
+  `src/api/asesor-marcar-compra.js`: etiqueta `purchase` + Purchase a Meta por CAPI con la línea del chat, igual que el botón de la
+  bolsa; autorizado por el dueño 2026-11-09). `reporte.py conciliar` lo corre a mano. Prueba: `test_pdf_unificado.py` sigue OK.
+- **Limpieza hecha hoy en «Pedidos auto»:** antes 123 filas sin «Enviado»; tras `estados` (64 entregados, 12 anulados) y la
+  conciliación con boletas quedan 43 abiertas (12 de hoy, 10 futuras, 21 atrasadas; de esas, 16 de los últimos 3 días). Dinsides
+  `estados` ahora también cierra la fila de un pedido anulado/rechazado de esa misma entrega aunque la columna Dinsides ya lo dijera.
+  Dinsides tiene 16 pedidos ENTREGADOS (2026-10-30 → 11-07) sin fila en la hoja (anteriores a la hoja o con otro teléfono): no afectan.
+- **Dinsides (`src/lib/dinsides.js`):** `nombreProducto()`: «Kit Tarot de aprendizaje», «N Kits Tarot de aprendizaje», «Tarot de
+  aprendizaje» (kits 0, solo el mazo), «Tarot Gold Rider Waite», cambio/reposición con su texto; «+ Extra: …» solo cuando el
+  empaque trae algo más que repetir «N kits» o «kit normal». Es lo que el equipo escribía a mano (historial de Dinsides) y lo que
+  el viejo prompt del Project prescribía. `dinsides.py registrar --simular` imprime «FICHAS COMPLETAS» (los 11 campos que van a
+  Dinsides); `docs/envios-jennifer.md` A4 exige presentarlas tal cual.
+- **Pendientes de esta noche (entrega 2026-11-09) que la Routine debe preguntar:** Marikiño (solo mazo S/69) mandó solo
+  el pin (-11.855,-77.050, Carabayllo, fuera del mapa de cobertura) sin dirección en texto; Liliana Oviedo (entrega
+  12-11) solo pin. Los 5 registrados a las 23:08 por la Routine del dueño (#2941859–#2941863) quedan: Dante, July/Julia, Graciela,
+  Mavel (NO COBRAR), Mane (solo mazo S/69).
+- **Etiquetas (pendiente, lo dijo el dueño):** motorizado aparte para clientes con hora específica (otro formato de etiqueta), formato
+  de Olva, Shalom con el DNI abajo. Se ajusta `scripts/asesor/etiquetas.py` cuando el dueño pase los formatos.

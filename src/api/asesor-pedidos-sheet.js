@@ -142,10 +142,12 @@ async function conciliarConBoletas(env) {
     const b = porWa.get(n9(f[3]));
     // La boleta tiene que ser de ese pedido: emitida el día de la venta o después (una boleta vieja no cierra un pedido nuevo).
     if (!b || (esIso(f[0]) && b.fecha.slice(0, 10) < f[0])) continue;
-    await updateValues(env, `${PESTAÑA}!O${i + 2}`, [[`sí ${b.fecha.slice(0, 10)} ${b.courier} ${b.nro} (boleta)`]]);
-    marcados.push({ fila: i + 2, nombre: f[2], whatsapp: f[3], courier: b.courier, nro: b.nro });
+    marcados.push({ fila: i + 2, nombre: f[2], whatsapp: f[3], courier: b.courier, nro: b.nro, _valor: `sí ${b.fecha.slice(0, 10)} ${b.courier} ${b.nro} (boleta)` });
   }
-  return { marcados: marcados.length, filas: marcados, boletas: porWa.size };
+  // Hasta 40 filas por llamada, una escritura por fila (la API de valores no tiene rango disperso); el que llama repite si quedan.
+  const lote = marcados.slice(0, 40);
+  for (const m of lote) await updateValues(env, `${PESTAÑA}!O${m.fila}`, [[m._valor]]);
+  return { marcados: lote.length, restantes: marcados.length - lote.length, filas: lote.map(({ _valor, ...m }) => m), boletas: porWa.size };
 }
 
 export async function onRequestPost({ request, env }) {

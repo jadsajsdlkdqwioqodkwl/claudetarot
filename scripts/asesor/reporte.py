@@ -14,6 +14,7 @@ del libro «Pedidos Tarot Kit». La Routine solo corre estos subcomandos (nada d
     python3 scripts/asesor/reporte.py chat <whatsapp|id> [N] -> los últimos N mensajes de un chat (para verificar una duda).
     python3 scripts/asesor/reporte.py aviso "texto"           -> aviso corto al dueño (Telegram) cuando el reporte no pudo salir.
     python3 scripts/asesor/reporte.py enviado <whatsapp> ["sí 2026-11-02 Shalom"]
+    python3 scripts/asesor/reporte.py conciliar          (cierra en la hoja lo que ya salió: boletas emitidas + estados de Dinsides)
         -> marca «Enviado» en la fila abierta de ese cliente en «Pedidos auto» (deja de salir en la agenda). Lo usará la
            Routine de estados de envío (docs/estados-envio.md); una persona puede escribirlo a mano en la hoja.
 
@@ -213,6 +214,11 @@ def main():
         cmd_chat(*resto[:2])
     elif cmd == "enviado" and resto:
         cmd_enviado(resto)
+    elif cmd == "conciliar":
+        # Cierra en «Pedidos auto» lo que ya consta como salido (boletas emitidas, estados finales de Dinsides). Lo mismo que hace
+        # enviar.py antes de armar la agenda; a mano sirve para limpiar la hoja (dueño 2026-11-09).
+        import enviar
+        enviar.conciliar_agenda(clave(), (dt.datetime.now(LIMA) - dt.timedelta(hours=3)).date().isoformat())
     elif cmd == "aviso" and resto:
         cmd_aviso(" ".join(resto))
     else:

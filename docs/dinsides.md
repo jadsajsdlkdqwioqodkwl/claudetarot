@@ -117,3 +117,9 @@ Carpió (ver MAPA).
 COBRAR; «Yape contraentrega S/69» con `kits: 0` → cobra 69; adelanto sin saldo escrito → lista − adelanto con aviso; kits 0 sin monto
 → bloqueo «MONTO»). `cobrar` explícito manda. La observación lleva el texto de pago cuando aporta. Casos reales en
 `scripts/test-dinsides.mjs`. El flujo de la operadora (presentar con `--simular` → OK → registrar) está en `docs/envios-jennifer.md`.
+
+## 2026-11-09 · Nombres de producto del equipo, fichas completas, estados cierra filas
+
+`nombreProducto()` en `src/lib/dinsides.js`; `registrar --simular` imprime las fichas completas (11 campos) que la Routine de envíos
+presenta antes de registrar (`docs/envios-jennifer.md`, A4). `estados` cierra «Enviado» de las filas anuladas/rechazadas de la misma
+entrega. Routine única de envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7`.

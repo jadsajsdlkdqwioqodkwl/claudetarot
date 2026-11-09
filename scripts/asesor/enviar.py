@@ -144,6 +144,24 @@ def validar_ventas(datos):
         sys.exit("Reporte de ventas incompleto (cada pedido lleva vendedora, destino y estado; y fecha_objetivo):\n" + "\n".join(malos))
 
 
+def promover_provincia(p):
+    """Regla del dueño (2026-11-09): en provincia el adelanto ES la venta, haya mandado S/10, S/20 o S/50. Un POR_VERIFICAR de
+    provincia cuyo texto muestra el pago visto (monto con operación, captura, «adelantó S/…») pasa a CONFIRMADO con nota «🚨 ATENCIÓN»
+    (sale en rojo). Sigue POR VERIFICAR solo si NO hay pago visto o faltan DNI/agencia. Devuelve True si lo cambió."""
+    est = ESTADOS_SINONIMOS.get(str(p.get("estado") or "").strip().upper().replace(" ", "_"), str(p.get("estado") or "").strip().upper())
+    if est != "POR_CONFIRMAR" or p.get("destino") != "PROVINCIA" or p.get("tipo"):
+        return False
+    txt = f"{p.get('pago') or ''} {p.get('nota') or ''}"
+    vio = re.search(r"adelant[oó]\s*(de\s*)?s/\s*\d|yape[oó]\s*s/\s*\d|mand[oó]\s*s/\s*\d|\bop\.?\s*[0-9A-Z]{4,}|captura (de|del) (pago|yape|plin|adelanto)|(yape|plin)\s*s/\s*\d{2,3}", txt, re.I)
+    falta = re.search(r"sin captura|falta[n]? (la |una )?captura|no (hay|mand[oó]|envi[oó]) (la |una )?captura|dijo que (ya )?(yape|pag|deposit)|sin (comprobante|constancia)|falta[n]? (el |la |su )?(dni|agencia|nombre)|sin (dni|agencia|datos)", txt, re.I)
+    if not vio or falta:
+        return False
+    p["estado"] = "CONFIRMADO"
+    if "🚨" not in str(p.get("nota") or ""):
+        p["nota"] = ("🚨 ATENCIÓN: adelanto visto (revisar monto) · " + str(p.get("nota") or "")).strip(" ·")
+    return True
+
+
 def normalizar_unificado(datos):
     """Deja el salida.json del reporte unificado en el formato de siempre: estados sinónimos, DESCARTADO → `descartados`,
     Lima CONFIRMADO con entrega en otro día → OTRO_DIA (se avisa, no se frena). Devuelve los avisos."""
@@ -170,18 +188,9 @@ def normalizar_unificado(datos):
                 avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: destino {p.get('destino')!r} (debe ser LIMA o PROVINCIA) → sale como POR VERIFICAR.")
                 p["estado"], p["destino"] = ("POR_CONFIRMAR" if est in ("CONFIRMADO", "POR_CONFIRMAR") else est), p.get("destino") or "?"
                 p["nota"] = ("⚠️ sin destino claro · " + str(p.get("nota") or "")).strip(" ·")
-        if est == "POR_CONFIRMAR" and p.get("destino") == "PROVINCIA" and not p.get("tipo"):
-            # Regla del dueño (2026-11-09): en provincia el adelanto ES la venta, haya mandado S/10, S/20 o S/50. Si el reporte
-            # vio el pago (monto con operación, captura, «adelantó S/…») va CONFIRMADO en su sección, en rojo para mirarlo.
-            # Solo sigue POR VERIFICAR cuando NO hay captura/pago visto o faltan DNI/agencia.
-            txt = f"{p.get('pago') or ''} {p.get('nota') or ''}"
-            vio = re.search(r"adelant[oó]\s*(de\s*)?s/\s*\d|yape[oó]\s*s/\s*\d|mand[oó]\s*s/\s*\d|\bop\.?\s*[0-9A-Z]{4,}|captura (de|del) (pago|yape|plin|adelanto)|(yape|plin)\s*s/\s*\d{2,3}", txt, re.I)
-            falta = re.search(r"sin captura|falta[n]? (la |una )?captura|no (hay|mand[oó]|envi[oó]) (la |una )?captura|dijo que (ya )?(yape|pag|deposit)|sin (comprobante|constancia)|falta[n]? (el |la |su )?(dni|agencia|nombre)|sin (dni|agencia|datos)", txt, re.I)
-            if vio and not falta:
-                est = p["estado"] = "CONFIRMADO"
-                if "🚨" not in str(p.get("nota") or ""):
-                    p["nota"] = ("🚨 ATENCIÓN: adelanto visto (revisar monto) · " + str(p.get("nota") or "")).strip(" ·")
-                avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: provincia con adelanto visto → CONFIRMADO en rojo (regla del dueño 2026-11-09: el adelanto es la venta, sea S/10, S/20 o S/50).")
+        if promover_provincia(p):
+            est = "CONFIRMADO"
+            avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: provincia con adelanto visto → CONFIRMADO en rojo (regla del dueño 2026-11-09: el adelanto es la venta, sea S/10, S/20 o S/50).")
         if est == "CONFIRMADO" and p.get("destino") == "LIMA" and not p.get("tipo"):
             f = _pe.fecha_iso(p.get("fecha_entrega"), ref)
             if f and f > ref:
@@ -431,8 +440,13 @@ def conciliar_agenda(clave, hoy):
     trae lo que de verdad falta despachar (dueño 2026-11-09: traía 100+ pedidos ya entregados). Un fallo no frena el reporte."""
     import datetime as _dt
     try:
-        r = _post_asesor(clave, PEDIDOS_SHEET, {"conciliar": True})
-        print(f"🧹 Agenda: {r.get('marcados', 0)} fila(s) cerradas por boleta emitida" + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
+        total = 0
+        for _ in range(6):  # el Worker cierra hasta 40 filas por llamada
+            r = _post_asesor(clave, PEDIDOS_SHEET, {"conciliar": True})
+            total += int(r.get("marcados") or 0)
+            if r.get("error") or not r.get("restantes"):
+                break
+        print(f"🧹 Agenda: {total} fila(s) cerradas por boleta emitida" + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
     except Exception as err:  # noqa: BLE001
         print(f"⚠️ No se pudo conciliar la agenda con las boletas: {err}", flush=True)
     try:
@@ -666,6 +680,10 @@ def main():
                     or _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
             datos, dif = pedidos_estado.combinar(previo, datos)
             registro = dif
+            # La regla «provincia con adelanto = venta» también alcanza a lo que corridas anteriores dejaron POR VERIFICAR.
+            for _p in datos.get("pedidos", []):
+                if promover_provincia(_p):
+                    print(f"ℹ️ {_p.get('nombre') or _p.get('whatsapp')}: provincia con adelanto visto (ya registrado) → CONFIRMADO en rojo.", flush=True)
             print(f"Registro de pedidos {datos['fecha_objetivo']}: {len((previo or {}).get('pedidos', []))} ya reportados "
                   f"+ esta corrida = {len(datos['pedidos'])}", flush=True)
             for k, titulo in (("nuevos", "NUEVOS"), ("cambiados", "CAMBIARON"), ("quitados", "QUITADOS (con motivo)"),

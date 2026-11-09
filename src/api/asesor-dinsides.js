@@ -229,14 +229,19 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
       resumen.marcados++;
       const chat = await datosDelChat(env, ped.telefono).catch(() => null);
       if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, "dinsides_entregado").catch(() => null); resumen.etiquetados++; }
-    } else if ((clase === "anulado" || clase === "rechazado") && !/anulado|rechazado/.test(yaDice)) {
+    } else if (clase === "anulado" || clase === "rechazado") {
       // Un pedido anulado o rechazado en Dinsides ya no sale: su fila se cierra («Enviado») para que deje de aparecer en la
       // agenda pendiente (dueño 2026-11-09: la agenda traía 100+ pedidos ya resueltos). Solo si la fila es de esa misma entrega.
-      await marcarDinsidesEnHoja(env, fila.whatsapp, `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}`,
-        fila.fecha_entrega === ped.fecha_entrega ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "").catch(() => null);
-      resumen.marcados++;
-      const chat = await datosDelChat(env, ped.telefono).catch(() => null);
-      if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, `dinsides_${clase}`).catch(() => null); resumen.etiquetados++; }
+      const cerrar = fila.fecha_entrega === ped.fecha_entrega && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
+      const texto = /anulado|rechazado/.test(yaDice) ? fila.dinsides : `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}`;
+      if (!/anulado|rechazado/.test(yaDice) || cerrar) {
+        await marcarDinsidesEnHoja(env, fila.whatsapp, texto, cerrar).catch(() => null);
+        resumen.marcados++;
+      }
+      if (!/anulado|rechazado/.test(yaDice)) {
+        const chat = await datosDelChat(env, ped.telefono).catch(() => null);
+        if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, `dinsides_${clase}`).catch(() => null); resumen.etiquetados++; }
+      }
     }
   }
   resumen.total = lista.length;
