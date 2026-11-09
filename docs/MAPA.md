@@ -2214,3 +2214,11 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   por teléfono y fecha) y escribe la columna Dinsides y «Enviado»; corre en la Routine de envíos (A1) y cada noche en el reporte
   (`conciliar_agenda`). Provincia → la boleta emitida en «Boletas auto» (Routine de boletas) cierra la fila (`conciliar`). Lo que
   queda abierto es lo que de verdad falta despachar o lo que nadie cerró.
+
+## 2026-11-09 (madrugada 3) · Arranque: por ahora SOLO Dinsides; corrida extra del reporte
+
+- El dueño borró su Routine del link del Doc (`trig_01LrQ7TMN5dnhf9PMgszyU69`). Pidió una corrida extra del reporte para que les llegue
+  a las chicas (se disparó `trig_01MMWTgBTQ8aD1M1QM1xxGEc` con «Run now» y la indicación de no aplicar la compuerta «Sin novedad») y
+  que el registro de envíos arranque **solo con Dinsides (Lima)** para empezar; Shalom se suma cuando él lo diga. La Routine
+  `trig_01J7vAUuHMuVL7MCccFkGaP7` se disparó con «solo Lima: revisa TODOS los pedidos de Lima de la entrega, presenta las fichas y
+  espera el OK del dueño en la sesión». El reporte ya corre en una sola sesión fija (igual que boletas) desde el 2026-11-02.
