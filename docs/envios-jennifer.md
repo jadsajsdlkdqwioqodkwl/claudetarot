@@ -35,7 +35,7 @@ sesión («OK», correcciones, la clave del día). Las respuestas a los pendient
 2. Nunca se escribe al cliente. Nunca se inventa una dirección, un distrito, una agencia, un DNI, un monto ni una clave.
 3. Todo pedido se registra para el DÍA SIGUIENTE; el corte es a las 3:00 de la madrugada (hasta esa hora sigue siendo «la noche de
    ayer»). El sistema ya pone la fecha. Pasadas las 3:00 y hasta las 11:00, si el despacho de HOY todavía tiene pedidos de Lima sin
-   registrar (p. ej. el dueño dio el OK a las 3:20), el sistema se queda en HOY y lo dice en el RESUMEN («📆 Fecha … porque …»); no
+   registrar (CONFIRMADOS con dirección; p. ej. el dueño dio el OK a las 3:20), el sistema se queda en HOY y lo dice en el RESUMEN («📆 Fecha … porque …»); no
    saltes a mañana por tu cuenta. Si necesitas otra fecha, pásala: `presentar AAAA-MM-DD --pagina`. Si el cliente pidió otro día, va con esa fecha. Los domingos no se registra nada.
 4. El distrito de Lima es el del MAPA DE COBERTURA de Dinsides (el polígono donde cae el pin o la dirección ubicada). El sistema lo
    resuelve; solo cuando la dirección no se puede ubicar se pregunta.

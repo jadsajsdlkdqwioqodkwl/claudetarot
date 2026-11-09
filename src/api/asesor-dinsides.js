@@ -497,8 +497,9 @@ async function fechaPorDefecto(env) {
     const { pedidos } = await pedidosDelSistema(env, hoy);
     const reg = await registroDe(env, hoy);
     const hechos = new Set(reg.registros.filter((r) => !r.anulado).map((r) => n9(r.whatsapp)));
-    const sinRegistrar = pedidos.filter((p) => String(p.destino || "").toUpperCase() !== "PROVINCIA" && !hechos.has(n9(p.whatsapp)));
-    if (sinRegistrar.length) return { fecha: hoy, motivo: `el despacho de hoy ${hoy} todavía tiene ${sinRegistrar.length} pedido(s) de Lima sin registrar; mañana (${base}) se presenta cuando esto quede cerrado o pasadas las 11:00` };
+    // Solo cuentan los CONFIRMADOS (dirección dada): los INTENCION / POR_CONFIRMAR sin dirección no se van a registrar y no deben frenar el día siguiente.
+    const sinRegistrar = pedidos.filter((p) => String(p.destino || "").toUpperCase() !== "PROVINCIA" && String(p.estado || "").toUpperCase().startsWith("CONFIRMADO") && !hechos.has(n9(p.whatsapp)));
+    if (sinRegistrar.length) return { fecha: hoy, motivo: `el despacho de hoy ${hoy} todavía tiene ${sinRegistrar.length} pedido(s) de Lima CONFIRMADOS sin registrar; mañana (${base}) se presenta cuando queden registrados o pasadas las 11:00` };
   } catch (err) { console.error("dinsides: fecha por defecto", err.message); }
   return { fecha: base, motivo: null };
 }

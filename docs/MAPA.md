@@ -2412,7 +2412,7 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   Dante, July/Julia, Graciela, Mavel, Mane, Marikiño y Liliana con entrega 2026-11-12) y las etiquetas salieron con
   `etiquetas.py 2026-11-09 --subir` (10 de Lima: los 6 nuevos de hoy + Patricia, Maritza, Laura y María del Pilar ya registrados).
 - **Fecha por defecto (`fechaPorDefecto` en `src/api/asesor-dinsides.js`, ahora async):** pasadas las 3:00 y hasta las 11:00, si el
-  despacho de HOY todavía tiene pedidos de Lima sin registrar, la fecha se queda en HOY; la respuesta trae `fecha_motivo` y
+  despacho de HOY todavía tiene pedidos de Lima CONFIRMADOS sin registrar, la fecha se queda en HOY; la respuesta trae `fecha_motivo` y
   `presentar` lo imprime en el RESUMEN («📆 Fecha … porque …»). Las llamadas con `listado=1` no hacen esta lectura.
 - **`dinsides.py presentar --pagina`** (`--pdf` sigue siendo alias) deja SOLO la página de revisión; el PDF sale únicamente con
   `--imprimir` (dueño: «si ya vas a mandar página, ya no mandas el PDF»). Guarda el id en /tmp/dinsides/revision.json y
