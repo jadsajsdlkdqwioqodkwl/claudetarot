@@ -94,7 +94,9 @@ const filaDe = (p, fechaObjetivo, origen) => [
   p.kits === undefined || p.kits === null || p.kits === "" ? "1" : String(p.kits),
   String(p.empaque || ""),
   String(p.pago || ""),
-  String(p.nota || ""),
+  (() => { const dni = String(p.dni || "").replace(/\D/g, ""); const nota = String(p.nota || "");
+    // La hoja no tiene columna DNI: se guarda dentro de la nota («DNI 12345678») para que Shalom y la presentación lo recuperen (2026-11-09).
+    return dni && !nota.includes(dni) ? `${nota}${nota ? " · " : ""}DNI ${dni}` : nota; })(),
   String(origen || ""),
   fechaLima()
 ];

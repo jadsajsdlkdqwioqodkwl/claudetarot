@@ -96,7 +96,9 @@ A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 Sin cambios: `{"pedidos": []}` toma todos los listos. OJO: si `pedidos` trae algo, solo se toman esos WhatsApp; para que los listos
 también salgan, se incluyen con solo su whatsapp.
 
-A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py presentar --pdf`. Con `--pdf` el detalle completo (chats, Dinsides,
+A4 — PRESENTAR (obligatorio, UNA sola vez al final, cuando ya leíste los chats y agregaste lo que faltaba con `shalom.py agregar` o
+salida.json): `python3 scripts/asesor/dinsides.py presentar --pdf`. Si tuviste que agregar algo, vuelve a correrlo y pega SOLO la última
+salida (nunca dos presentaciones en el mismo mensaje). Si `python3` es 3.11 y falla, usa `python3.12` o `python3.13`. Con `--pdf` el detalle completo (chats, Dinsides,
 hoja, candidatos, chats de hoy) se sube a CRM → Reportes y en pantalla sale la VERSIÓN CORTA, que es lo que pegas en la sesión: por
 pedido la ETIQUETA (Dinsides: Negocio · ENTREGAR A · Teléfono · Producto · Cobrar · Distrito · Fecha Entrega · Detalle; Shalom:
 Destinatario · N°DOC · Destino · Mercadería · Adelanto/Saldo), su estado (✅ listo · ✅❓ listo pero confirmar · ❓ pendiente · ↩️ ya
@@ -113,6 +115,8 @@ mensaje: pásales la vista y lee con `chat` el que hable de dirección, pago, ag
 fuente con ✅ o ❌: reporte, hoja, Dinsides, boletas, chats). Si una fuente sale ❌, dilo en la primera línea de tu respuesta.
 Las líneas «🔎 VERIFICAR …» (Google Maps para cada dirección de Lima, agencia de Shalom para cada provincia) son para la asesora o el
 dueño: déjalas tal cual; una persona corrobora antes del OK porque cambiar una agencia o una dirección después cuesta tiempo y plata.
+Quien ya tiene BOLETA emitida o está ENTREGADO en Dinsides no es un pedido pendiente: no lo propongas ni lo listes como «sin DNI»;
+el sistema ya lo saca de Shalom y lo marca «ya atendido» en el CRM revisado. Si dudas, el 🧾 de cada bloque te lo dice.
 Tu respuesta en la sesión es ESA SALIDA PEGADA TAL CUAL (no la resumas, no la conviertas en tabla) más, debajo de cada bloque, UNA
 línea tuya «Lectura: …» cuando haga falta: lo que resolviste leyendo el chat (p. ej. «dirección en texto encontrada: …», o la
 secuencia «primero pidió X, después propuso Y, al final pagó y la asesora agendó Z → confirmar con el dueño»). Un LISTO con alerta

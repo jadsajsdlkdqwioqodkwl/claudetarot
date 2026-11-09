@@ -164,6 +164,15 @@ def pedir_worker(ruta, body=None):
             return {"error": f"http {e.code}"}
 
 
+def dni_de(p):
+    """DNI del pedido; si viene de la hoja (sin columna DNI) se saca de la nota («DNI 12345678»)."""
+    d = re.sub(r"\D", "", str(p.get("dni") or ""))
+    if d:
+        return d
+    m = re.search(r"DNI\D{0,12}(\d{8})\b", f"{p.get('nota') or ''} {p.get('direccion_o_agencia') or ''}", re.I)
+    return m.group(1) if m else ""
+
+
 def montos(p):
     """Adelanto y saldo de un pedido de provincia según el TEXTO del reporte (`pago`, `nota`, `empaque`): «Adelanto S/20; saldo S/69»,
     «Pagado S/89 (sin saldo)», «Adelanto S/10», «solo mazo S/69». Por defecto adelanto 20 y saldo = precio − adelanto.
@@ -335,7 +344,7 @@ def cmd_masivo(args):
             aviso.append("agencia dudosa: elegir entre las candidatas o preguntar al cliente")
             revisar.append(f"{p.get('nombre')} ({p.get('whatsapp')}): agencia dudosa para «{texto.strip()}» → " + (" | ".join(c["codigo"] for c in cand) if cand else "sin candidatas"))
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
-        dni = re.sub(r"\D", "", str(p.get("dni") or ""))
+        dni = dni_de(p)
         clave = "PENDIENTE (la da el dueño)"
         if p.get("_atrasado"):
             aviso.append(f"ATRASADO: previsto para {p.get('_fecha')} y sin boleta; confirmar que no salió por otro lado antes de mandarlo")

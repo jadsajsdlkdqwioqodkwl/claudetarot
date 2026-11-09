@@ -492,7 +492,7 @@ def _bloque(i, f, lista, boletas, corto=False):
     return "\n".join(out)
 
 
-def _provincia_pedidos(fecha, ag, cands):
+def _provincia_pedidos(fecha, ag, cands, boletas=None, lista=None):
     """Pedidos de provincia a presentar: estado del reporte + hoja (atrasados / correcciones) + candidatos del CRM que parecen provincia."""
     st, est = pedir(f"/ventas-estado?fecha={fecha}&tipo=pedidos")
     pedidos, vistos = [], set()
@@ -506,10 +506,13 @@ def _provincia_pedidos(fecha, ag, cands):
             if str(r.get("destino", "")).upper() != "PROVINCIA" or k in vistos or not (estd.startswith("CONFIRMADO") or "CORRECCION" in estd):
                 continue
             vistos.add(k); pedidos.append({**r, "_origen": f"hoja (previsto {r.get('fecha_entrega')}){' · CORRECCIÓN' if 'CORRECCION' in estd else ' · ATRASADO'}"})
+    boletas = boletas or {}; lista = lista or []
+    # Lo que ya tiene boleta (Shalom/Olva) o ya está entregado no es un pedido por despachar (caso Paola / Luzgardo, 2026-11-09).
+    pedidos = [p for p in pedidos if str(p.get("whatsapp") or "")[-9:] not in boletas]
     for c_ in cands:
         k = str(c_.get("whatsapp") or "")[-9:]
         senales = " ".join(str(x) for x in (c_.get("senales") or []))
-        if k in vistos or c_.get("atendido") or not (c_.get("parece_provincia") or re.search(r"shalom|olva|agencia", senales, re.I)):
+        if k in vistos or c_.get("atendido") or k in boletas or "ENTREGADO" in _estado_dinsides(lista, k) or not (c_.get("parece_provincia") or re.search(r"shalom|olva|agencia", senales, re.I)):
             continue
         vistos.add(k)
         pedidos.append({"nombre": c_.get("nombre"), "whatsapp": c_.get("whatsapp"), "vendedora": c_.get("asesora"), "direccion_o_agencia": senales[:160], "dni": "",
@@ -521,7 +524,7 @@ def _provincia_pedidos(fecha, ag, cands):
 def _bloque_shalom(i, p, lista, boletas, corto=False):
     import shalom as sh
     wa = str(p.get("whatsapp") or "")
-    dni = re.sub(r"\D", "", str(p.get("dni") or ""))
+    dni = sh.dni_de(p)
     texto = str(p.get("direccion_o_agencia") or "")
     primer = str(p.get("nombre") or "X").split()[0]
     if "olva" in f"{texto} {p.get('nota') or ''}".lower():
@@ -556,24 +559,77 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
     return "\n".join(out)
 
 
-def _html(titulo, secciones):
+CSS_PDF = """@page{size:A4;margin:10mm} body{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12px;color:#111;margin:0}
+h1{font-size:22px;margin:0 0 2px;color:#075E54} .sub{color:#666;margin:0 0 10px}
+h2{font-size:16px;border-bottom:2px solid #075E54;color:#075E54;margin:16px 0 6px;page-break-after:avoid}
+h2.rojo{color:#b91c1c;border-color:#dc2626} h2.amb{color:#854d0e;border-color:#ca8a04} h2.gris{color:#555;border-color:#999;font-size:14px}
+.cajas{display:flex;gap:8px;margin:6px 0 10px} .cajas div{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px} .cajas b{display:block;font-size:22px;color:#075E54} .cajas span{color:#555}
+.ped{border:1px solid #bbb;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid} .ped.listo{border-left:6px solid #075E54} .ped.conf{border-left:6px solid #ca8a04;background:#fffbeb} .ped.pend{border-left:6px solid #dc2626;background:#fff5f5} .ped.ya{border-left:6px solid #999;color:#444}
+.ped h3{margin:0 0 4px;font-size:14px} .ped .meta{color:#555;font-size:11px;margin-bottom:6px}
+table.et{border-collapse:collapse;width:100%;margin:4px 0} table.et th{background:#075E54;color:#fff;text-align:left;padding:3px 6px;width:150px;font-weight:600} table.et td{border:1px solid #bbb;padding:3px 6px}
+.ped.pend table.et th,.ped.conf table.et th{background:#444}
+.lin{margin:3px 0} .lin.ases{background:#fef9c3;padding:3px 6px;border-radius:4px;font-weight:600} .lin.ver{background:#e0f2fe;padding:3px 6px;border-radius:4px} .lin.blq{color:#b91c1c;font-weight:600} .lin.al{color:#7c2d12}
+.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10.5px;color:#333;background:#f6f6f6;padding:5px 7px;border-radius:4px;margin:4px 0;white-space:pre-wrap}
+ul.l{margin:4px 0 4px 18px;padding:0} ul.l li{margin:2px 0} pre{white-space:pre-wrap;font-family:inherit;margin:0}"""
+
+
+def _html(titulo, secciones, resumen=None):
+    """PDF con el estilo del reporte de ventas: una tarjeta por pedido (etiqueta en tabla, chat en gris, avisos en color)."""
     import html as _h
-    partes = [f"<h1>{_h.escape(titulo)}</h1>"]
+    E = _h.escape
+    partes = [f"<h1>{E(titulo)}</h1><p class=sub>Tarot Store Perú · generado por dinsides.py presentar</p>"]
+    if resumen:
+        partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
-        cuerpo = "\n".join(lineas)
-        clase = "rojo" if "PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t else ""
-        partes.append(f"<h2 class='{clase}'>{_h.escape(t)}</h2><pre>{_h.escape(cuerpo)}</pre>")
-    return ("<!doctype html><html><head><meta charset='utf-8'><style>body{font-family:Helvetica,Arial,sans-serif;font-size:10.5px;margin:18px}"
-            "h1{font-size:16px;margin:0 0 8px}h2{font-size:12.5px;background:#eee;padding:4px 6px;margin:14px 0 4px;border-left:4px solid #888}"
-            "h2.rojo{background:#fde8e8;border-color:#c00}pre{white-space:pre-wrap;font-family:Helvetica,Arial,sans-serif;font-size:10.5px;line-height:1.35;margin:0}"
-            "@page{size:A4;margin:12mm}</style></head><body>" + "".join(partes) + "</body></html>")
+        clase = "rojo" if ("PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t) else "amb" if ("confirmar" in t.lower() or "NO CERRADAS" in t) else "gris" if ("CHATS DE HOY" in t or "YA REGISTRADOS" in t) else ""
+        partes.append(f"<h2 class='{clase}'>{E(t)}</h2>")
+        bloques, actual = [], []
+        for ln in lineas:
+            if re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F|1\ufe0f\u20e3[0-9])", ln) and actual:
+                bloques.append(actual); actual = [ln]
+            else:
+                actual.append(ln)
+        if actual:
+            bloques.append(actual)
+        for b in bloques:
+            if not any(x.strip() for x in b):
+                continue
+            cab = b[0]
+            es_ped = bool(re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F)", cab))
+            if not es_ped:
+                partes.append("<pre>" + E("\n".join(x for x in b if x.strip())) + "</pre>"); continue
+            tipo = "ya" if "↩️" in cab else "pend" if "❓ PENDIENTE" in cab or "❓ " in cab and "✅" not in cab else "conf" if "✅❓" in cab else "listo"
+            filas, otros, chat = [], [], []
+            for x in b[1:]:
+                xs = x.strip()
+                if not xs: continue
+                if re.match(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|Destino|Mercadería|Adelanto):", xs):
+                    k, v = xs.split(":", 1); filas.append((k, v.strip()))
+                elif xs.startswith("🏷️ ETIQUETA") or xs.startswith("🗨️"):
+                    continue
+                elif re.match(r"^\d\d-\d\d \d\d:\d\d [CV]:", xs):
+                    chat.append(xs)
+                else:
+                    otros.append(xs)
+            html_b = [f"<div class='ped {tipo}'><h3>{E(cab)}</h3>"]
+            meta = [o for o in otros if o.startswith("👤")]
+            if meta: html_b.append(f"<div class=meta>{E(meta[0])}</div>")
+            if filas: html_b.append("<table class=et>" + "".join(f"<tr><th>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in filas) + "</table>")
+            for o in otros:
+                if o.startswith("👤"): continue
+                cl = "ases" if o.startswith("📣") else "ver" if o.startswith("🔎") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢")) else ""
+                html_b.append(f"<div class='lin {cl}'>{E(o)}</div>")
+            if chat: html_b.append("<div class=chat>" + E("\n".join(chat)) + "</div>")
+            html_b.append("</div>")
+            partes.append("".join(html_b))
+    return "<!doctype html><html><head><meta charset='utf-8'><style>" + CSS_PDF + "</style></head><body>" + "".join(partes) + "</body></html>"
 
 
-def _pdf_y_subir(titulo, secciones, nombre):
+def _pdf_y_subir(titulo, secciones, nombre, resumen=None):
     import base64, glob, shutil, subprocess, tempfile
     carpeta = tempfile.mkdtemp()
     ruta_html, ruta_pdf = os.path.join(carpeta, "p.html"), os.path.join(carpeta, nombre)
-    open(ruta_html, "w", encoding="utf-8").write(_html(titulo, secciones))
+    open(ruta_html, "w", encoding="utf-8").write(_html(titulo, secciones, resumen))
     chrome = next((c for c in glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome") + ["/opt/pw-browsers/chromium"] if os.path.exists(c)), None) \
         or shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome") or "chromium"
     subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={ruta_pdf}", ruta_html], check=True, capture_output=True)
@@ -614,14 +670,22 @@ def cmd_presentar(args):
             i += 1; L += [_bloque(i, f, lista, boletas), ""]; Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
         sec(f"✅ LIMA — PARA REGISTRAR EN DINSIDES con tu OK ({len(listos)})", L, Cc)
     if pend:
-        L, Cc = [], []
+        L, Cc, solo_info = [], [], 0
         for f in pend:
-            i += 1; L += [_bloque(i, f, lista, boletas), ""]; Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
+            i += 1; L += [_bloque(i, f, lista, boletas), ""]
+            c = f.get("campos") or {}
+            con_senal = bool(c.get("direccion") or c.get("coordenadas")) or bool(re.search(r"lima|provincia|separ|s[ií],? quiero|direcci|distrito|agencia", str(c.get("obs") or ""), re.I))
+            if con_senal:
+                Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
+            else:
+                solo_info += 1
+        if solo_info:
+            Cc.append(f"… y {solo_info} chat(s) que solo pidieron precio o información, sin destino ni dirección (lista completa en el PDF). Son para seguimiento de ventas, no pedidos.")
         sec(f"❓ LIMA — PENDIENTES, falta un dato ({len(pend)}; no se registran)", L, Cc)
     if ya:
         sec("↩️ LIMA — YA REGISTRADOS (no se tocan)", ["; ".join(f"{(x.get('campos') or {}).get('nombre')} ({x['ya_registrado'].get('modo')} #{x['ya_registrado'].get('nro') or '-'})" for x in ya)])
     # Shalom
-    prov = _provincia_pedidos(fecha, ag, cands)
+    prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
     L, Cc = [], []
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
@@ -641,7 +705,8 @@ def cmd_presentar(args):
         elif "REGISTRADO" in din or "RUTA" in din: ver = "↩️ YA EN DINSIDES"
         elif c_.get("parece_provincia") or re.search(r"shalom|olva|agencia", " ".join(str(x) for x in (c_.get("senales") or [])), re.I): ver = "🚚 PROVINCIA → está numerado en la sección SHALOM"
         else: ver = "👀 REVISAR: señal de compra sin pedido en el reporte, Dinsides, boletas ni memoria → leer el chat: Lima con dirección → salida.json; provincia → shalom.py agregar; no compró → decirlo"
-        L.append(f"- {c_.get('nombre')} · {wa} · {c_.get('asesora') or '-'}{' · COMPRA MARCADA' if c_.get('compra_marcada') else ''} · {ver}\n    Dinsides: {din} · Boleta: {bol}" + "".join(f"\n    chat: {re.sub(r'\s+', ' ', str(x))[:120]}" for x in (c_.get("senales") or [])[:2]))
+        senales_txt = "".join("\n    chat: " + re.sub(r"\s+", " ", str(x))[:120] for x in (c_.get("senales") or [])[:2])
+        L.append(f"- {c_.get('nombre')} · {wa} · {c_.get('asesora') or '-'}{' · COMPRA MARCADA' if c_.get('compra_marcada') else ''} · {ver}\n    Dinsides: {din} · Boleta: {bol}" + senales_txt)
     sec(f"🔎 CRM REVISADO: {len(cands)} chat(s) con señal de compra que el reporte NO trae (cruzados con Dinsides, boletas y memoria)", L or ["ninguno"], [x.split("\n")[0] for x in L] or ["ninguno"])
     # Otros días sin despachar
     en_fichas = {f.get("whatsapp", "")[-9:] for f in fichas}
@@ -689,7 +754,8 @@ def cmd_presentar(args):
          "Responde: «OK» (registra los LISTOS de Lima) · «OK Shalom» o «OK Shalom clave NNNN» (arma y sube el Excel) · correcciones: «Nombre: dirección …», «Nombre: distrito …», «Nombre: agencia …», «Nombre: cobrar 69», «Nombre: miércoles», «Nombre: motorizado», «Nombre no va»"]
     sec("✅ LISTA DE VERIFICACIÓN (fuentes leídas en esta corrida)", V)
     if con_pdf:
-        ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf")
+        resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Provincia (Shalom)", len(prov)), ("Correcciones", len(corr)), ("Chats de hoy", len(chats_hoy) if chats_hoy is not None else "?")]
+        ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf", resumen)
         C.insert(1, ("📄 DETALLE COMPLETO (chats, Dinsides, hoja, candidatos, chats de hoy)", [url]))
         for t, lineas in C:
             print(f"══════ {t} ══════"); print("\n".join(lineas)); print()

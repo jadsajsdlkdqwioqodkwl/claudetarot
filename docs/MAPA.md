@@ -2363,3 +2363,16 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   PENDIENTE (Abel) y `shalom.py agregar` (nuevo) los mete a la hoja como CONFIRMADO con los datos del chat; otros días separados en
   «confirmados sin despachar» y «ventas no cerradas» (menos peso: Jessica, William). `--pdf` sube el detalle completo (HTML → Chromium →
   PDF → CRM → Reportes) y en pantalla deja la versión corta con el link. `etiquetas.py FECHA --subir` después de registrar (A4b).
+
+## 2026-11-09 (madrugada 11) · PDF con el estilo del reporte, boletas fuera de Shalom, DNI que sobrevive a la hoja, texto corto de verdad
+
+- Quejas del dueño: el PDF de `presentar --pdf` era HTML sin estilo; una clienta con boleta emitida (Paola) y otro con boleta
+  (Luzgardo) salieron como «pendientes sin DNI» en Shalom; Elia y Abel salían «sin DNI» aunque el DNI estaba; el texto corto seguía
+  largo (20 pendientes que solo preguntaron precio) y la Routine pegó dos presentaciones; `python3` de la Routine es 3.11 y el script
+  usaba f-strings de 3.12.
+- Arreglos: `_html()` en `dinsides.py` usa el CSS del reporte de ventas (tarjeta por pedido con borde de color según estado, etiqueta
+  en tabla, chat en gris, avisos 📣/🔎/⛔ en color, cajas de resumen). `_provincia_pedidos()` excluye a quien tiene boleta o está
+  ENTREGADO (candidatos y filas). La hoja no tiene columna DNI: `filaDe` (Worker) guarda «DNI 12345678» dentro de la nota y
+  `shalom.dni_de()` lo recupera (masivo y presentación). Versión corta: pendientes solo si dijeron Lima/provincia/separar o tienen
+  dirección o pin; el resto se cuenta («N solo pidieron precio»). Sin backslashes en f-strings: compila en 3.11. `docs/envios-jennifer.md`:
+  presentar UNA vez al final y pegar solo la última; quien tiene boleta no se propone.
