@@ -562,25 +562,29 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
     return "\n".join(out)
 
 
-CSS_PDF = """@page{size:A4;margin:10mm} body{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111;margin:0}
-h1{font-size:22px;margin:0 0 2px;color:#075E54} .sub{color:#666;margin:0 0 10px}
-h2{font-size:16px;border-bottom:2px solid #075E54;color:#075E54;margin:16px 0 6px;page-break-after:avoid}
-h2.rojo{color:#b91c1c;border-color:#dc2626} h2.amb{color:#854d0e;border-color:#ca8a04} h2.gris{color:#555;border-color:#999;font-size:14px}
-.cajas{display:flex;gap:8px;margin:6px 0 10px} .cajas div{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px} .cajas b{display:block;font-size:22px;color:#075E54} .cajas span{color:#555}
-.ped{border:1px solid #bbb;border-radius:8px;padding:10px 12px;margin:8px 0;page-break-inside:avoid} .pagina .ped{page-break-before:always;min-height:240mm}
+CSS_PDF = """@page{size:A4;margin:10mm} *{box-sizing:border-box} html,body{max-width:100%;overflow-x:hidden}
+body{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111;margin:0;padding:0 10px;overflow-wrap:anywhere;word-break:break-word}
+a{color:#1d4ed8;overflow-wrap:anywhere}
+h1{font-size:20px;margin:6px 0 2px;color:#075E54} .sub{color:#666;margin:0 0 8px;font-size:11px}
+h2{font-size:15px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 6px;page-break-after:avoid}
+h2.rojo{color:#b91c1c;border-color:#dc2626} h2.amb{color:#854d0e;border-color:#ca8a04} h2.gris{color:#555;border-color:#999;font-size:13px}
+.cajas{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px} .cajas div{flex:1 1 30%;min-width:95px;border:1px solid #ddd;border-radius:6px;padding:5px 7px} .cajas b{display:block;font-size:20px;color:#075E54} .cajas span{color:#555;font-size:11px}
+.ped{border:1px solid #bbb;border-radius:8px;padding:9px 10px;margin:8px 0;page-break-inside:avoid;max-width:100%}
+.pagina .ped{page-break-before:always;page-break-inside:auto} .pagina .ped:first-of-type{page-break-before:auto}
 .ped.listo{border-left:8px solid #075E54} .ped.conf{border-left:8px solid #ca8a04;background:#fffbeb} .ped.pend{border-left:8px solid #dc2626;background:#fff5f5} .ped.ya{border-left:8px solid #999;color:#444}
-.ped h3{margin:0 0 4px;font-size:17px} .ped .meta{color:#555;font-size:11.5px;margin-bottom:8px}
-table.et{border-collapse:collapse;width:100%;margin:4px 0 8px} table.et th{background:#075E54;color:#fff;text-align:left;padding:5px 8px;width:160px;font-weight:600} table.et td{border:1px solid #bbb;padding:5px 8px;font-size:13px}
+.ped h3{margin:0 0 4px;font-size:16px;line-height:1.25} .ped .meta{color:#555;font-size:11px;margin-bottom:6px}
+table.et{border-collapse:collapse;width:100%;margin:4px 0 8px;table-layout:fixed} table.et th{background:#075E54;color:#fff;text-align:left;padding:4px 7px;width:34%;font-weight:600;font-size:12px} table.et td{border:1px solid #bbb;padding:4px 7px;font-size:12.5px}
 .ped.pend table.et th,.ped.conf table.et th{background:#444}
-.porque{background:#fde68a;border:2px solid #ca8a04;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:15px;font-weight:700;color:#78350f}
-.ver{background:#dbeafe;border:2px solid #2563eb;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:14px} .ver b{display:block;font-size:15px;color:#1e3a8a;margin-bottom:4px} .ver ol{margin:2px 0 0 18px;padding:0} .ver li{margin:3px 0}
-.lin{margin:4px 0} .lin.ases{background:#fef9c3;padding:4px 8px;border-radius:4px;font-weight:600} .lin.blq{color:#b91c1c;font-weight:700} .lin.al{color:#7c2d12}
-.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10.5px;color:#333;background:#f6f6f6;padding:6px 8px;border-radius:4px;margin:6px 0;white-space:pre-wrap} .chat b{color:#075E54}
-.notas{margin-top:10px;border:2px dashed #888;border-radius:6px;padding:8px 10px;min-height:38mm} .notas b{display:block;margin-bottom:4px;color:#333} .notas .opc{margin:4px 0 8px} .notas .opc span{display:inline-block;border:1.5px solid #555;border-radius:4px;padding:2px 10px;margin-right:10px}
-.notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0} .ctl label{border:1.5px solid #555;border-radius:6px;padding:4px 10px;cursor:pointer} .ctl input[type=radio]{margin-right:4px}
-.ctl textarea{width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px} .guardado{color:#075E54;font-weight:600;font-size:12px}
-.sticky{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:2px solid #075E54;z-index:2}
-ul.l{margin:4px 0 4px 18px;padding:0} ul.l li{margin:2px 0} pre{white-space:pre-wrap;font-family:inherit;margin:0}"""
+.porque{background:#fde68a;border:2px solid #ca8a04;border-radius:6px;padding:7px 9px;margin:8px 0;font-size:14px;font-weight:700;color:#78350f}
+.ver{background:#dbeafe;border:2px solid #2563eb;border-radius:6px;padding:7px 9px;margin:8px 0;font-size:13px} .ver b{display:block;font-size:14px;color:#1e3a8a;margin-bottom:3px} .ver ol{margin:2px 0 0 18px;padding:0} .ver li{margin:3px 0}
+.lin{margin:4px 0;font-size:12px} .lin.ases{background:#fef9c3;padding:4px 8px;border-radius:4px;font-weight:600} .lin.blq{color:#b91c1c;font-weight:700} .lin.al{color:#7c2d12}
+.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10px;color:#333;background:#f6f6f6;padding:6px 8px;border-radius:4px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere} .chat b{color:#075E54}
+.notas{margin-top:10px;border:2px dashed #888;border-radius:6px;padding:8px 10px} .notas b{display:block;margin-bottom:4px;color:#333;font-size:12px} .notas .opc{margin:4px 0 8px} .notas .opc span{display:inline-block;border:1.5px solid #555;border-radius:4px;padding:2px 10px;margin:0 8px 4px 0}
+.notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px} .ctl label{border:1.5px solid #555;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px} .ctl input[type=radio]{margin-right:4px}
+textarea.nota{width:100%;max-width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px;display:block} .guardado{color:#075E54;font-weight:600;font-size:12px}
+.sticky{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:2px solid #075E54;z-index:2;font-size:13px}
+pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:12px;overflow-wrap:anywhere}
+@media print{body{padding:0} .sticky{position:static} textarea,.ctl{display:none}}"""
 
 RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|Destino|Mercadería|Adelanto):")
 
@@ -645,7 +649,7 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
     for t, lineas in secciones:
         lineas = [l for x in lineas for l in str(x).split("\n")]
         clase = "rojo" if ("PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t) else "amb" if ("confirmar" in t.lower() or "NO CERRADAS" in t) else "gris" if ("CHATS DE HOY" in t or "YA REGISTRADOS" in t) else ""
-        pagina = "pagina" if re.search(r"PARA REGISTRAR|SHALOM|PENDIENTES, falta", t) else ""
+        pagina = "pagina" if re.search(r"PARA REGISTRAR|SHALOM", t) else ""
         partes.append(f"<div class='{pagina}'><h2 class='{clase}'>{E(t)}</h2>")
         bloques, actual = [], []
         for ln in lineas:
@@ -660,7 +664,8 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
                 continue
             cab = b_[0]
             if re.match(r"^(\d+\.|[0-9]\ufe0f?\u20e3|\U0001F51F)", cab) and len(b_) > 1:
-                partes.append(_tarjeta_html(cab, b_[1:], E, interactivo, pdf_pagina=bool(pagina) and not interactivo))
+                compacto = not any(RE_ETIQ.match(x.strip()) for x in b_[1:])  # pendiente sin datos de pedido: una línea + acción
+                partes.append(_tarjeta_html(cab, b_[1:], E, interactivo and not compacto, pdf_pagina=bool(pagina) and not interactivo and not compacto))
             elif (cab.startswith("🚨 ") or cab.startswith("· ")) and "OTROS DÍAS" in t:
                 wa = (re.search(r"(51\d{9})", cab) or [None, ""])[1]
                 partes.append(f"<div class='ped {'conf' if cab.startswith('🚨') else 'ya'}' data-wa='{E(wa)}'><h3>{E(cab)}</h3>" + "".join(f"<div class=lin>{E(x)}</div>" for x in b_[1:] if x.strip())
@@ -668,6 +673,8 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
                                  + "</div><textarea class=nota placeholder='Nota…'></textarea><div class=guardado></div>" if interactivo and wa else "") + "</div>")
             else:
                 partes.append("<pre>" + E("\n".join(x for x in b_ if x.strip())) + "</pre>")
+        if "PENDIENTES, falta" in t and not interactivo:
+            partes.append("<div class=notas><b>Notas sobre los pendientes (quién sí es venta, a quién pedirle el dato):</b><div class=lineas></div><div class=lineas></div><div class=lineas></div></div>")
         partes.append("</div>")
     js = ""
     if interactivo and revision:
