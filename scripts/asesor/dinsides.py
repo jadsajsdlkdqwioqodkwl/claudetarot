@@ -508,8 +508,10 @@ def _provincia_pedidos(fecha, ag, cands, boletas=None, lista=None):
                 continue
             vistos.add(k); pedidos.append({**r, "_origen": f"hoja (previsto {r.get('fecha_entrega')}){' · CORRECCIÓN' if 'CORRECCION' in estd else ' · ATRASADO'}"})
     boletas = boletas or {}; lista = lista or []
-    # Lo que ya tiene boleta (Shalom/Olva) o ya está entregado no es un pedido por despachar (caso Paola / Luzgardo, 2026-11-09).
-    pedidos = [p for p in pedidos if str(p.get("whatsapp") or "")[-9:] not in boletas]
+    # Lo que ya tiene boleta (Shalom/Olva), ya está entregado, o el equipo ya cerró en la hoja («sí … Shalom NNN (registrado a mano)»,
+    # «Motorizado externo …») no es un pedido por despachar (casos Paola / Luzgardo y los 7 de Shalom del 09-11).
+    cerrados = {str(x.get("whatsapp") or "")[-9:]: x for x in (ag.get("enviados_recientes") or [])}
+    pedidos = [p for p in pedidos if str(p.get("whatsapp") or "")[-9:] not in boletas and str(p.get("whatsapp") or "")[-9:] not in cerrados]
     for c_ in cands:
         k = str(c_.get("whatsapp") or "")[-9:]
         senales = " ".join(str(x) for x in (c_.get("senales") or []))
@@ -793,7 +795,9 @@ def cmd_presentar(args):
     L, Cc = [], []
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
-    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia confirmados."], Cc or ["Sin pedidos de provincia confirmados."])
+    ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta"))]
+    pie_sh = [f"Ya despachados o registrados a mano por el equipo (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
+    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", (L or ["Sin pedidos de provincia por despachar."]) + pie_sh, (Cc or ["Sin pedidos de provincia por despachar."]) + pie_sh)
     # Correcciones (datos que llegaron)
     corr = [x for x in (ag.get("hoy") or []) if "CORRECCION" in str(x.get("estado") or "").upper() or str(x.get("nota") or "").startswith("🚨 CORRECCIÓN")]
     if corr:

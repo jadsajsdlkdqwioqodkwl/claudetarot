@@ -242,6 +242,11 @@ export async function onRequestGet({ request, env }) {
     if (new URL(request.url).searchParams.get("boletas") === "1") {
       const b = await leerBoletas(env).catch(() => new Map());
       salida.boletas = [...b.entries()].map(([whatsapp, v]) => ({ whatsapp, ...v }));
+      // Filas cerradas hace poco (≤ 3 días): lo que el equipo ya despachó o registró a mano («sí … Shalom NNN», «Motorizado externo …»),
+      // para que la presentación no lo vuelva a proponer aunque el estado del reporte lo traiga (2026-11-09).
+      const desde = new Date(new Date(`${hoy}T00:00:00Z`).getTime() - 3 * 86400000).toISOString().slice(0, 10);
+      salida.enviados_recientes = filas.filter((f) => String(f[14] || "").trim() && (f[1] >= desde || /\b20\d\d-\d\d-\d\d\b/.test(String(f[14])) && String(f[14]).match(/\b(20\d\d-\d\d-\d\d)\b/)[1] >= desde))
+        .map((f) => ({ whatsapp: f[3], fecha_entrega: f[1], enviado: f[14], nombre: f[2] }));
     }
     return json(salida);
   } catch (err) {
