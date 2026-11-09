@@ -189,6 +189,23 @@ check("editar: Dinsides respondió 1, se mandó la fecha nueva y el código del 
 r = await pedir("POST", { accion: "editar", id: idGladys, cambios: { fecha_entrega: "2020-01-01" } });
 check("editar con fecha pasada se rechaza", r.status === 400);
 
+// 7b. Cruce con lo que el equipo ya tiene en Dinsides (caso Laura, dueño 2026-11-09): por teléfono y por nombre, sin duplicar.
+listadoFalso.find((x) => x.id_pedido === idGladys).seguimiento = "REGISTRADO"; // sigue abierto en Dinsides (el equipo lo reagendó)
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+let gl = r.json.pedidos.find((f) => f.whatsapp === "51957845104");
+check("ya abierto en Dinsides con el mismo teléfono → ya_registrado «en Dinsides (teléfono)», no listo, y avisa que está agendado para otra fecha",
+  gl && !gl.listo && gl.ya_registrado?.modo === "en Dinsides (teléfono)" && gl.ya_registrado.nro === idGladys && gl.alertas.some((a) => /YA AGENDADO en Dinsides para el/.test(a)), JSON.stringify(gl?.ya_registrado) + JSON.stringify(gl?.alertas));
+r = await pedir("POST", { accion: "quitar", fecha: FECHA, whatsapp: "51955555550", motivo: "prueba cruce por nombre" });
+const propio = listadoFalso.find((x) => x.telefono_destinatario === "955555550"); propio.seguimiento = "ANULADO- POR TIENDA"; // su propio pedido ya no está abierto
+listadoFalso.push({ id_pedido: "8800", nombre_destinataio: "Sin Distrito Pérez", telefono_destinatario: "900000001", nombre_distrito: "x", fecha_pedido: "2026-11-07 10:00:00", fecha_entrega: `${FECHA} 00:00:00`, seguimiento: "REGISTRADO", monto_cobrar: "89" });
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+let sd = r.json.pedidos.find((f) => f.whatsapp === "51955555550");
+check("otro teléfono pero mismo nombre (2 palabras) abierto en Dinsides → ya_registrado «en Dinsides (nombre)»", sd && !sd.listo && sd.ya_registrado?.modo === "en Dinsides (nombre)" && sd.ya_registrado.nro === "8800", JSON.stringify(sd?.ya_registrado));
+r = await pedir("POST", { accion: "registrar", fecha: FECHA, pedidos: [{ whatsapp: "51955555550" }] });
+check("registrar no lo duplica: va a no_van como ya registrado", r.json.registrados.length === 0 && r.json.no_van.some((x) => x.whatsapp === "51955555550" && x.ya_registrado), JSON.stringify(r.json.no_van).slice(0, 200));
+listadoFalso.find((x) => x.id_pedido === idGladys).seguimiento = "ENTREGADO";
+listadoFalso.splice(listadoFalso.findIndex((x) => x.id_pedido === "8800"), 1); propio.seguimiento = "REGISTRADO";
+
 // 8. sin credenciales: 503 con el script de consola
 const env2 = { ...env, DINSIDES_TLF: "", DINSIDES_CLAVE: "" };
 r2.delete(`dinsides/${FECHA}.json`); r2.delete("dinsides/indice.json");

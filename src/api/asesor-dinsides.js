@@ -138,13 +138,57 @@ function leerColumnaDinsides(texto) {
   return out;
 }
 
+/** Pedidos ABIERTOS en Dinsides (registrados, en ruta, reprogramados) cerca de la fecha: lo que el equipo ya registró a mano. */
+async function abiertosEnDinsides(env, fecha) {
+  if (!hayCredenciales(env)) return [];
+  try {
+    const { cookie } = await login(env);
+    const lista = await listado(env, cookie, { desde: sumarDias(fecha, -10), hasta: sumarDias(fecha, 30) });
+    return lista.filter((x) => claseSeguimiento(x.seguimiento) === "pendiente");
+  } catch (err) { console.error("dinsides abiertos:", err.message); return []; }
+}
+
+const tokensNombre = (n) => normalizar(n).replace(/\(.*?\)/g, " ").split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !/^(del|los|las|san|santa|sra|srta|cliente|regularizacion)$/.test(t));
+
+/**
+ * Cruce con Dinsides (dueño 2026-11-09, caso Laura): antes de registrar se busca por TELÉFONO y por NOMBRE entre los pedidos abiertos
+ * del negocio. Si ya está, no se crea otro: se devuelve como ya_registrado («en Dinsides») con su id y su fecha, y se avisa si la
+ * fecha es otra (reagendado) para que la Routine lo diga y, si hace falta, use `editar`.
+ */
+function cruzarConDinsides(f, abiertos) {
+  if (!abiertos?.length) return null;
+  const tel = n9(f.campos?.telefono) || n9(f.whatsapp);
+  const wa = n9(f.whatsapp);
+  let m = abiertos.find((x) => x.telefono === tel || x.telefono === wa);
+  let por = "teléfono";
+  if (!m) {
+    const mios = tokensNombre(f.campos?.nombre || "");
+    if (mios.length >= 2) {
+      m = abiertos.find((x) => { const t = tokensNombre(x.nombre); return t.filter((y) => mios.includes(y)).length >= 2; });
+      por = "nombre";
+    }
+  }
+  if (!m) return null;
+  return { modo: `en Dinsides (${por})`, nro: m.id_pedido, fecha: m.fecha_entrega, cuando: m.fecha_pedido,
+    detalle: `${m.nombre} · ${m.telefono} · ${m.distrito} · entrega ${m.fecha_entrega} · ${m.seguimiento} · S/${m.monto_cobrar}` };
+}
+
 async function armarTodo(env, fecha, correcciones = new Map()) {
   const { pedidos, hoja, conocidos } = await pedidosDelSistema(env, fecha);
   const reg = await registroDe(env, fecha);
   const idx = await indice(env);
   const registradosPorWa = new Map(reg.registros.filter((r) => !r.anulado).map((r) => [n9(r.whatsapp), r]));
+  const abiertos = await abiertosEnDinsides(env, fecha);
   const fechaObjetivo = fecha;
   const fichas = [];
+  const marcarCruce = async (f, cruce) => {
+    f.ya_registrado = cruce;
+    if (cruce.fecha && cruce.fecha !== f.campos.fecha_entrega) f.alertas.push(`YA AGENDADO en Dinsides para el ${cruce.fecha} (#${cruce.nro}), no para el ${f.campos.fecha_entrega}: si el cliente cambió la fecha, usar \`editar ${cruce.nro} fecha_entrega=${f.campos.fecha_entrega}\`; no se crea otro pedido`);
+    else f.alertas.push(`YA REGISTRADO en Dinsides por el equipo (#${cruce.nro}, ${cruce.modo}); no se repite`);
+    if (f.hoja && !/manual|registrad|entregado|anulado/i.test(f.hoja.dinsides || "")) {
+      await marcarDinsidesEnHoja(env, f.whatsapp, `manual #${cruce.nro} (equipo, entrega ${cruce.fecha})`, `Dinsides ${cruce.fecha}`).catch(() => null);
+    }
+  };
   for (const p of pedidos) {
     const k = n9(p.whatsapp);
     const destino = String(p.destino || "").toUpperCase();
@@ -174,8 +218,10 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     if (!destino) f.bloqueos.unshift("DESTINO sin definir en el reporte: confirmar que es Lima");
     if (col.omitir) f.bloqueos.unshift(`La hoja dice «${col.omitir}»: no se registra`);
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
+    const cruce = cruzarConDinsides(f, abiertos);
     if (col.hecho) f.ya_registrado = { modo: "manual (hoja)", detalle: col.hecho };
     else if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
+    else if (cruce) await marcarCruce(f, cruce);
     // La etiqueta del chat NO bloquea (un cliente puede volver a comprar; 2026-11-08): solo avisa. La memoria R2 (3 días) sí bloquea.
     else if (chat?.ya_etiquetado) f.alertas.push("el chat ya tiene la etiqueta dinsides_registrado (un pedido anterior); verificar que no sea repetido");
     f.listo = f.listo && !f.ya_registrado;
@@ -192,7 +238,9 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.whatsapp = "51" + k; f.conversation_id = chat?.conversation_id || null; f.asesora = chat?.asesora || ""; f.origen = "routine"; f.estado_reporte = base.estado;
     f.destino = "LIMA"; f.direcciones_chat = chat?.direcciones_chat || []; f.ubicacion = chat?.ubicacion ? { body: chat.ubicacion } : null; f.hoja = null; f.base = base;
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
+    const cruce = cruzarConDinsides(f, abiertos);
     if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
+    else if (cruce) await marcarCruce(f, cruce);
     else if (chat?.ya_etiquetado) f.alertas.push("el chat ya tiene la etiqueta dinsides_registrado (un pedido anterior); verificar que no sea repetido");
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);

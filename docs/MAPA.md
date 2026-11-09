@@ -2198,3 +2198,19 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   Mavel (NO COBRAR), Mane (solo mazo S/69).
 - **Etiquetas (pendiente, lo dijo el dueño):** motorizado aparte para clientes con hora específica (otro formato de etiqueta), formato
   de Olva, Shalom con el DNI abajo. Se ajusta `scripts/asesor/etiquetas.py` cuando el dueño pase los formatos.
+
+## 2026-11-09 (madrugada 2) · Cruce con Dinsides antes de registrar (caso Laura): por teléfono y por nombre
+
+- **Qué pasó:** Laura (Milagros Herrera) ya estaba registrada por el equipo en Dinsides para el lunes (reagendada) y la Routine la
+  registró otra vez como pedido nuevo (#2940740, anulado). El cruce solo miraba la memoria propia (R2, 3 días) y la columna Dinsides
+  de la hoja; lo que el equipo registra a mano en Dinsides no estaba en ninguna de las dos.
+- **Arreglo (`src/api/asesor-dinsides.js`):** `abiertosEnDinsides()` trae los pedidos abiertos del negocio (REGISTRADO / EN RUTA /
+  reprogramados, de 10 días antes a 30 después de la fecha) una vez por corrida; `cruzarConDinsides()` compara cada ficha por
+  TELÉFONO (el del pedido o el WhatsApp) y, si no, por NOMBRE (dos palabras de 3+ letras en común). Si existe: `ya_registrado` = «en
+  Dinsides (teléfono|nombre)» con #id, fecha y detalle; alerta «YA REGISTRADO por el equipo» o «YA AGENDADO para el DD … usar
+  `editar`» si la fecha es otra; la fila de la hoja queda «manual #id (equipo, entrega …)» y «Enviado = Dinsides fecha». `forzar`
+  no salta este cruce. Pruebas en `scripts/test-dinsides-api.mjs` (7b). `docs/envios-jennifer.md` A2 lo explica a la Routine.
+- **Cómo se autoactualiza la hoja (pregunta del dueño):** Lima → `estados` lee el historial de Dinsides (`pedido/getlistadoCliente`,
+  por teléfono y fecha) y escribe la columna Dinsides y «Enviado»; corre en la Routine de envíos (A1) y cada noche en el reporte
+  (`conciliar_agenda`). Provincia → la boleta emitida en «Boletas auto» (Routine de boletas) cierra la fila (`conciliar`). Lo que
+  queda abierto es lo que de verdad falta despachar o lo que nadie cerró.

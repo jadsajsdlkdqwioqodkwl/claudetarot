@@ -59,6 +59,10 @@ y busca en lo que escribió EL CLIENTE («C:»):
   `cobrar` (si el chat acordó otro monto o ya pagó) y `nota` (horario, piso, portero, «ya pagó», discreción).
 - Candidato de Lima confirmado (dio dirección) que el reporte no trae → se agrega a `pedidos` completo con `estado: "CONFIRMADO"`.
 - Lo que la hoja «Pedidos auto» ya diga en la columna Dinsides («ok», «distrito: …», «no», «manual …») se respeta.
+- YA AGENDADO / YA REGISTRADO (caso Laura, 2026-11-09): el sistema cruza cada pedido con los pedidos ABIERTOS de Dinsides por
+  teléfono y por nombre. Si ya existe, sale en YA REGISTRADOS con su #id y NO se crea otro; si está para otra fecha, la alerta dice
+  «YA AGENDADO … para el DD». En la presentación (A4) se informa «ya estaba agendado en Dinsides (#id, fecha X)»; si el cliente
+  cambió la fecha, con el OK se corre `python3 scripts/asesor/dinsides.py editar <id> fecha_entrega=AAAA-MM-DD`, nunca `registrar`.
 
 A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 `{"pedidos": [{"whatsapp": "51…", "distrito": "…", "direccion": "…", "coordenadas": "lat,lng", "nombre": "…", "nota": "…",
