@@ -501,12 +501,17 @@ def _provincia_pedidos(fecha, ag, cands, boletas=None, lista=None):
         k = str(p.get("whatsapp") or "")[-9:]
         if str(p.get("destino", "")).upper() == "PROVINCIA" and str(p.get("estado", "")).upper() == "CONFIRMADO" and k not in vistos:
             vistos.add(k); pedidos.append({**p, "_origen": f"reporte {fecha}"})
-    for grupo in ("atrasados", "hoy"):
+    # Provincia confirmado que sigue en la hoja sin «Enviado» va al Shalom de HOY aunque su fecha prevista sea otra (atrasado o
+    # «mañana»): Shalom despacha lo que haya listo. Caso Abel (2026-11-09): `shalom.py agregar` lo puso con entrega del día 10 y la
+    # sección Shalom del 09 no lo mostraba.
+    for grupo in ("atrasados", "hoy", "futuros", "sin_fecha"):
         for r in ag.get(grupo) or []:
             k = str(r.get("whatsapp") or "")[-9:]; estd = str(r.get("estado") or "").upper()
             if str(r.get("destino", "")).upper() != "PROVINCIA" or k in vistos or not (estd.startswith("CONFIRMADO") or "CORRECCION" in estd):
                 continue
-            vistos.add(k); pedidos.append({**r, "_origen": f"hoja (previsto {r.get('fecha_entrega')}){' · CORRECCIÓN' if 'CORRECCION' in estd else ' · ATRASADO'}"})
+            prev = str(r.get("fecha_entrega") or "")
+            etiq = " · CORRECCIÓN" if "CORRECCION" in estd else " · ATRASADO" if prev and prev < fecha else " · agregado hoy, sale en este despacho" if prev > fecha else ""
+            vistos.add(k); pedidos.append({**r, "_origen": f"hoja (previsto {prev or 'sin fecha'}){etiq}"})
     boletas = boletas or {}; lista = lista or []
     # Lo que ya tiene boleta (Shalom/Olva), ya está entregado, o el equipo ya cerró en la hoja («sí … Shalom NNN (registrado a mano)»,
     # «Motorizado externo …») no es un pedido por despachar (casos Paola / Luzgardo y los 7 de Shalom del 09-11).
@@ -797,8 +802,9 @@ def cmd_presentar(args):
     L, Cc = [], []
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
-    ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta"))]
-    pie_sh = [f"Ya despachados o registrados a mano por el equipo (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
+    ayer = (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()
+    ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta")) and (fecha in str(x.get("enviado") or "") or ayer in str(x.get("enviado") or ""))]
+    pie_sh = [f"Ya despachados o registrados a mano por el equipo el {ayer} o el {fecha} (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
     sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", (L or ["Sin pedidos de provincia por despachar."]) + pie_sh, (Cc or ["Sin pedidos de provincia por despachar."]) + pie_sh)
     if pend:
         L, Cc, solo_info = [], [], 0
@@ -822,10 +828,12 @@ def cmd_presentar(args):
             [f"🚨 {x.get('nombre')} · {x.get('whatsapp')} · {x.get('destino')} · venta {x.get('fecha_venta')} · fila {x.get('fila')} · {str(x.get('nota') or '')[:150]}\n    Dinsides: {_estado_dinsides(lista, x.get('whatsapp'))} · Boleta: {_boleta(boletas, x.get('whatsapp'))} · va en: {'Shalom de hoy' if x.get('destino') == 'PROVINCIA' else 'Dinsides de hoy'}" for x in corr])
     # Candidatos del CRM
     L = []
+    en_shalom = {str(p_.get("whatsapp") or "")[-9:] for p_ in prov}
     for c_ in cands:
         wa = str(c_.get("whatsapp") or "")
         din = _estado_dinsides(lista, wa); bol = _boleta(boletas, wa); at = c_.get("atendido") or {}
-        if at: ver = f"✔️ YA ATENDIDO ({at.get('modo')} {at.get('fecha')}{' #' + str(at.get('nro')) if at.get('nro') and at.get('nro') != 'MOTORIZADO' else ''})"
+        if wa[-9:] in en_shalom: ver = "🚚 PROVINCIA → ya está numerado en la sección SHALOM"
+        elif at: ver = f"✔️ YA ATENDIDO ({at.get('modo')} {at.get('fecha')}{' #' + str(at.get('nro')) if at.get('nro') and at.get('nro') != 'MOTORIZADO' else ''})"
         elif "ENTREGADO" in din or "BOLETA EMITIDA" in bol: ver = "✔️ YA ATENDIDO (no es pedido nuevo)"
         elif "REGISTRADO" in din or "RUTA" in din: ver = "↩️ YA EN DINSIDES"
         elif c_.get("parece_provincia") or re.search(r"shalom|olva|agencia", " ".join(str(x) for x in (c_.get("senales") or [])), re.I): ver = "🚚 PROVINCIA → está numerado en la sección SHALOM"

@@ -2421,3 +2421,7 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   Tarjeta: etiqueta → por qué confirmar → verificar → avisos → botones y notas → momentos clave del chat (14 líneas en el PDF, todas en la página).
 - **`docs/envios-jennifer.md`:** REGLA CERO (con cualquier mensaje después de presentar, primero `dinsides.py notas`), regla 3 con la
   fecha que no salta, A4 y A4c con `--pagina`. El aviso de la página ya no pide «revisa mis notas».
+- **Shalom toma todo provincia confirmado sin «Enviado»** (atrasados, hoy, futuros y sin fecha de la hoja), no solo los de la fecha
+  exacta: Abel (agregado a las 03:07 con entrega del día 10) no salía en el Shalom del 09. El CRM revisado dice «ya está numerado en
+  la sección SHALOM» cuando el candidato es ese mismo WhatsApp (Abel aparecía como «Alejandro · REVISAR»). El pie «ya despachados»
+  muestra solo lo cerrado ese día o el anterior (antes listaba 26 nombres).
