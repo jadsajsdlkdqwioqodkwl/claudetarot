@@ -103,6 +103,11 @@ LO QUE ESCRIBIÓ EL CLIENTE con fecha y hora (dirección, horas, fechas, pagos, 
 #… / abierto #…), su fila en la hoja, los ⛔ y las alertas, y la decisión. Después: los YA REGISTRADOS en una línea, el CRM
 revisado (candidatos que el reporte no trae) y los PEDIDOS PENDIENTES DE OTROS DÍAS CON MENSAJE NUEVO del cliente (datos que
 llegaron, cambios, reclamos).
+La salida termina con «💬 CHATS DE HOY» (todos los chats con mensaje del cliente hoy que no son pedido ni candidato, con su último
+mensaje: pásales la vista y lee con `chat` el que hable de dirección, pago, agencia o fecha) y con la «LISTA DE VERIFICACIÓN» (cada
+fuente con ✅ o ❌: reporte, hoja, Dinsides, boletas, chats). Si una fuente sale ❌, dilo en la primera línea de tu respuesta.
+Las líneas «🔎 VERIFICAR …» (Google Maps para cada dirección de Lima, agencia de Shalom para cada provincia) son para la asesora o el
+dueño: déjalas tal cual; una persona corrobora antes del OK porque cambiar una agencia o una dirección después cuesta tiempo y plata.
 Tu respuesta en la sesión es ESA SALIDA PEGADA TAL CUAL (no la resumas, no la conviertas en tabla) más, debajo de cada bloque, UNA
 línea tuya «Lectura: …» cuando haga falta: lo que resolviste leyendo el chat (p. ej. «dirección en texto encontrada: …», o la
 secuencia «primero pidió X, después propuso Y, al final pagó y la asesora agendó Z → confirmar con el dueño»). Un LISTO con alerta

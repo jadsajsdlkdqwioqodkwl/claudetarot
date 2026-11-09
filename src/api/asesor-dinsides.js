@@ -326,6 +326,22 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
   return resumen;
 }
 
+/** Todos los chats con mensaje del cliente desde el inicio del día de venta (hora Lima): para que la Routine y el dueño vean que se
+ *  revisaron TODOS los chats de hoy, no solo los del reporte (dueño 2026-11-09). Último mensaje del cliente y hora. */
+async function chatsDeHoy(env, fechaVenta) {
+  const desde = `${fechaVenta} 05:00:00`; // 00:00 Lima = 05:00 UTC
+  const { results } = await env.CRM_DB.prepare(
+    `SELECT c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre, conv.assigned_agent, conv.meta_tags, m.created_at, m.type, m.body,
+            (SELECT COUNT(*) FROM messages x WHERE x.conversation_id = m.conversation_id AND x.direction = 'in' AND x.created_at >= ?1) AS n_in
+     FROM messages m JOIN conversations conv ON conv.id = m.conversation_id JOIN contacts c ON c.id = conv.contact_id
+     WHERE m.direction = 'in' AND m.created_at >= ?1
+       AND m.id IN (SELECT MAX(id) FROM messages WHERE direction = 'in' AND created_at >= ?1 GROUP BY conversation_id)
+     ORDER BY m.created_at DESC LIMIT 150`
+  ).bind(desde).all();
+  return (results || []).map((r) => ({ whatsapp: r.wa_id, nombre: r.nombre, asesora: r.assigned_agent || "", compra_marcada: / purchase /.test(` ${r.meta_tags || ""} `),
+    mensajes_hoy: r.n_in, ultimo: r.created_at, texto: r.type === "location" ? "[UBICACIÓN]" : r.type === "image" ? "[imagen]" : String(r.body || "").replace(/\s+/g, " ").slice(0, 110) }));
+}
+
 /** Chats de la noche (y del día anterior) con pinta de pedido de Lima que el reporte no trae (pin, dirección en texto o compra marcada). */
 async function candidatosCrm(env, fechaVenta, conocidos) {
   const ini = new Date(`${fechaVenta}T00:00:00Z`).getTime() + LIMA_MS - 86400000;
@@ -490,8 +506,9 @@ export async function onRequestGet({ request, env }) {
     const conocidos = new Set([...delSistema, ...fichas.map((f) => n9(f.whatsapp)), ...registro.registros.map((r) => n9(r.whatsapp))]);
     const fechaVenta = sumarDias(fecha, -1);
     const candidatos = url.searchParams.get("candidatos") === "0" ? [] : await candidatosCrm(env, fechaVenta, conocidos);
+    const chatsHoy = url.searchParams.get("candidatos") === "0" ? [] : await chatsDeHoy(env, fechaVenta).catch((err) => { console.error("chats de hoy:", err.message); return null; });
     return json({
-      fecha, fecha_venta: fechaVenta, hoy: hoyLima(), credenciales: hayCredenciales(env),
+      fecha, fecha_venta: fechaVenta, hoy: hoyLima(), credenciales: hayCredenciales(env), chats_hoy: chatsHoy,
       resumen: { listos: fichas.filter((f) => f.listo).length, con_bloqueos: fichas.filter((f) => f.bloqueos.length && !f.ya_registrado).length,
         ya_registrados: fichas.filter((f) => f.ya_registrado).length, candidatos_crm: candidatos.length },
       pedidos: fichas, registrados: registro.registros, corridas: registro.corridas, candidatos_crm: candidatos

@@ -39,7 +39,7 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
         -> edita un pedido antes de la ruta. Campos: fecha_entrega=AAAA-MM-DD, direccion=…, distrito=Nombre, nombre=…, telefono=9…,
            cobrar=89, tipo_pago=YAPE, obs=…, producto=… (ej.: editar 2940714 fecha_entrega=2026-11-12 "obs=llamar antes").
 """
-import datetime as dt, json, os, re, sys, urllib.error, urllib.request
+import datetime as dt, json, os, re, sys, urllib.error, urllib.parse, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 API_BASE = os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor"
@@ -419,8 +419,12 @@ def _bloque(i, f, lista, boletas):
     out.append(f"🗨️ Lo que escribió el cliente ({cab}):")
     out += [f"    {h}" for h in hist] or ["    (nada relevante en los últimos 60 mensajes)"]
     out.append(f"🏷️ Dinsides: {_estado_dinsides(lista, tel, f.get('whatsapp', ''), *_telefonos_en(c.get('obs')), *_telefonos_en(c.get('direccion')))}")
+    primer = (c.get("nombre") or "X").split()[0]
     if any(a.startswith("DIRECCIÓN deducida del pin") for a in f.get("alertas", [])):
-        out.append(f"🔎 VERIFICAR EN GOOGLE MAPS (la asesora o el dueño): https://maps.google.com/?q={c.get('coordenadas')} → ¿la dirección de arriba coincide con el pin? Si no, escribe la correcta en el OK («{(c.get('nombre') or '').split()[0] if c.get('nombre') else 'X'}: dirección …»)")
+        out.append(f"🔎 VERIFICAR EN GOOGLE MAPS (la asesora o el dueño, antes del OK): https://maps.google.com/?q={c.get('coordenadas')} → ¿la dirección de arriba coincide con el pin? Si no, responde «{primer}: dirección …»")
+    elif c.get("direccion"):
+        q = urllib.parse.quote(f"{c.get('direccion')}, {c.get('distrito') or ''}, Lima")
+        out.append(f"🔎 VERIFICAR EN GOOGLE MAPS (la asesora o el dueño, antes del OK): https://maps.google.com/?q={q} → ¿existe y cae en {(c.get('distrito') or '').title()}? Si no, responde «{primer}: dirección …» o «{primer}: distrito …»")
     out.append(f"🧾 Boleta: {_boleta(boletas, f.get('whatsapp', ''))}")
     if f.get("hoja"):
         out.append(f"📄 Hoja «Pedidos auto»: fila {f['hoja'].get('fila')} · Dinsides: {f['hoja'].get('dinsides') or '—'} · Enviado: {f['hoja'].get('enviado') or '—'}")
@@ -484,6 +488,7 @@ def _presentar_shalom(fecha, ag, lista, boletas):
         print(f"👤 Cliente: {p.get('nombre')} · WhatsApp {wa} · DNI {dni or '—'} · asesora {p.get('vendedora') or '-'}")
         print(f"🏢 Agencia que escribió el cliente: {texto or '—'}")
         print(f"🎯 Agencia Shalom (campo del Excel): {agencia}")
+        print(f"🔎 VERIFICAR AGENCIA (la asesora o el dueño, antes del OK): busca «{texto[:60]}» en https://shalom.com.pe/agencias y confirma que es la de arriba; si no, responde «{str(p.get('nombre') or 'X').split()[0]}: agencia <nombre exacto de la agencia>». Cambiarla después cuesta tiempo y plata.")
         print(f"📦 Qué lleva: {p.get('kits') or 1} kit(s){' · ' + str(p.get('empaque')) if p.get('empaque') else ''}")
         print(f"💰 Adelanto S/{adelanto} · Saldo S/{saldo} · pago: {p.get('pago') or '—'}")
         print(f"📝 Nota: {p.get('nota') or '—'}")
@@ -577,6 +582,35 @@ def cmd_presentar(args):
                 print(f"🚨 {x.get('nombre')} · {x.get('whatsapp')} · {x.get('destino')} · venta {x.get('fecha_venta')} · fila {x.get('fila')} · {str(x.get('nota') or '')[:150]}")
                 print(f"    Dinsides: {_estado_dinsides(lista, x.get('whatsapp'))} · Boleta: {_boleta(boletas, x.get('whatsapp'))} · destino: {'Shalom de hoy (ATRASADO)' if x.get('destino') == 'PROVINCIA' else 'Dinsides de hoy'}")
     _presentar_shalom(fecha, ag if st3 == 200 else {}, lista, boletas)
+    # Todos los chats de hoy: los que no son ficha ni candidato se listan igual (con su último mensaje) para que la revisión sea completa.
+    chats_hoy = r.get("chats_hoy")
+    cubiertos = {f.get("whatsapp", "")[-9:] for f in fichas} | {str(c_.get("whatsapp") or "")[-9:] for c_ in cands}
+    if chats_hoy is None:
+        print("\n══════ ❌ CHATS DE HOY: el Worker NO pudo leerlos (revisar) ══════")
+    else:
+        otros = [x for x in chats_hoy if str(x.get("whatsapp") or "")[-9:] not in cubiertos]
+        print(f"\n══════ 💬 CHATS DE HOY: {len(chats_hoy)} con mensaje del cliente · {len(chats_hoy) - len(otros)} ya están arriba (pedidos o candidatos) · {len(otros)} restantes, aquí con su último mensaje ══════")
+        for x in otros[:60]:
+            print(f"- {x.get('nombre') or '(sin nombre)'} · {x.get('whatsapp')} · {x.get('asesora') or '-'} · {x.get('mensajes_hoy')} msj · último {str(x.get('ultimo') or '')[5:16]}: {x.get('texto') or ''}{' · COMPRA MARCADA' if x.get('compra_marcada') else ''}")
+        if len(otros) > 60:
+            print(f"  … y {len(otros) - 60} más (sin señal de compra; léelos con `chat <whatsapp> 20` si algo te llama la atención)")
+        print("→ Si alguno de estos habla de dirección, pago, agencia o fecha, léelo con `chat <whatsapp> 40` y decide (Lima a salida.json, provincia al Shalom, o no es pedido).")
+    # Lista de verificación: cada fuente con ✅ o ❌ y su número, para saber qué falló si algo falla.
+    est_ok = False
+    try:
+        st_e, est_ = pedir(f"/ventas-estado?fecha={fecha}&tipo=pedidos"); est_ok = st_e == 200
+        n_rep = len(((est_.get("estado") or {}).get("pedidos") or [])) if est_ok else 0
+        corridas = ((est_.get("estado") or {}).get("corridas") or []) if est_ok else []
+        ult = corridas[-1].get("cuando", "")[:16] if corridas else "—"
+    except Exception:  # noqa: BLE001
+        n_rep, ult = 0, "—"
+    abiertas = sum(len(ag.get(k) or []) for k in ("atrasados", "hoy", "futuros", "sin_fecha")) if st3 == 200 else 0
+    print("\n══════ LISTA DE VERIFICACIÓN (fuentes leídas en esta corrida) ══════")
+    print(f"{'✅' if est_ok else '❌'} Reporte de ventas (estado del despacho {fecha}): {n_rep} pedidos · última corrida {ult}")
+    print(f"{'✅' if st3 == 200 else '❌'} Hoja «Pedidos auto»: {abiertas} filas sin «Enviado» (hoy, atrasadas, futuras) · {len(boletas)} boletas emitidas en «Boletas auto»")
+    print(f"{'✅' if st2 == 200 else '❌'} Dinsides: {len(lista)} pedidos del negocio leídos · abiertos {sum(1 for x in lista if 'REGISTRADO' in str(x.get('seguimiento','')).upper() or 'RUTA' in str(x.get('seguimiento','')).upper())} · anulados {sum(1 for x in lista if 'ANULADO' in str(x.get('seguimiento','')).upper())} · entregados {sum(1 for x in lista if 'ENTREGADO' in str(x.get('seguimiento','')).upper())}")
+    print(f"{'✅' if chats_hoy is not None else '❌'} Chats de hoy: {len(chats_hoy) if chats_hoy is not None else '?'} con mensaje del cliente · CRM candidatos: {len(cands)} · chats de las fichas leídos (historial): {len(fichas)}")
+    print("✅ Cruces hechos: memoria del sistema (3 días) · Dinsides por teléfono, nombre y teléfonos alternos de la nota · boletas · hoja")
     print("\n✅ Verificado por el sistema en esta corrida: fichas armadas desde reporte + hoja + chat; cruce con Dinsides (abiertos y anulados) por teléfono y nombre;"
           f" CRM revisado ({len(cands)} candidatos); boletas leídas ({len(boletas)}); pedidos de otros días sin despachar revisados ({len(abiertos) if st3 == 200 else 'NO'}). Lo que falta: leer los ⛔ y decidir.")
 

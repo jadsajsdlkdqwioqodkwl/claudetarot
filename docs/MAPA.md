@@ -2335,3 +2335,15 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
 - **Textos:** el veredicto «👀 REVISAR» explica qué hacer (leer el chat: Lima → salida.json; provincia → Shalom; no compró → decirlo);
   todo cliente nombrado lleva su WhatsApp al lado. Un pedido de otro día (jueves) se registra ya en Dinsides con su fecha y se dice
   dónde queda guardado (Dinsides #id, hoja fila N, agenda del reporte).
+
+## 2026-11-09 (madrugada 9) · Lista de verificación por fuente, chats de hoy completos y «verificar» para la asesora
+
+- Pedido del dueño: que la presentación CONFIRME que se revisaron los chats de hoy, Dinsides, el reporte de ventas y la hoja, y que si
+  algo falla se sepa; y que, igual que con el pin, la asesora corrobore por sí misma la agencia de Shalom y la dirección de Lima.
+- `GET /api/asesor/dinsides?fecha=` devuelve `chats_hoy` (toda conversación con mensaje del cliente desde las 00:00 de Lima del día de
+  venta, con su último mensaje). `presentar` imprime «💬 CHATS DE HOY»: los que no son ficha ni candidato, con último mensaje, para que
+  la revisión sea completa y visible; y la «LISTA DE VERIFICACIÓN» con ✅/❌ y números por fuente (reporte: pedidos y última corrida;
+  hoja: filas abiertas y boletas; Dinsides: leídos/abiertos/anulados/entregados; chats de hoy; candidatos; cruces hechos).
+- Cada pedido de Lima lleva «🔎 VERIFICAR EN GOOGLE MAPS» (link al pin o a la búsqueda de la dirección y el distrito); cada pedido de
+  Shalom lleva «🔎 VERIFICAR AGENCIA» (buscar el texto del cliente en shalom.com.pe/agencias y confirmar la elegida). Formato de
+  corrección: «Nombre: dirección …», «Nombre: distrito …», «Nombre: agencia <nombre exacto>».
