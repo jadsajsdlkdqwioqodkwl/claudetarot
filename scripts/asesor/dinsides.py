@@ -364,7 +364,7 @@ def _fecha_pe(iso):
     return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}" if len(iso) == 10 else iso
 
 
-def _historial(wa, n=60, desde=""):
+def _historial(wa, n=120, desde=""):
     """Lo que escribió EL CLIENTE (con fecha y hora) que sirve para decidir, y las líneas de la vendedora que fijan algo."""
     st, r = pedir(f"/chat?telefono={wa[-9:]}&mensajes={n}&largo=1")
     if st != 200 or not r.get("encontrado"):
@@ -478,7 +478,7 @@ def _bloque(i, f, lista, boletas, corto=False):
     if not corto:
         cab, hist, _ = _historial(f.get("whatsapp", ""))
         out.append(f"🗨️ Lo que escribió el cliente ({cab}):")
-        out += [f"    {h}" for h in hist] or ["    (nada relevante en los últimos 60 mensajes)"]
+        out += [f"    {h}" for h in hist] or ["    (nada relevante en los últimos 120 mensajes)"]
         out.append(f"🏷️ Dinsides: {_estado_dinsides(lista, tel, f.get('whatsapp', ''), *_telefonos_en(c.get('obs')), *_telefonos_en(c.get('direccion')))}")
         out.append(f"🧾 Boleta: {_boleta(boletas, f.get('whatsapp', ''))}")
         if f.get("hoja"):
@@ -627,17 +627,18 @@ def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
         else:
             cl = "ases" if o.startswith("📣") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢", "🧾", "🏷️", "📄")) else ""
             h.append(f"<div class='lin {cl}'>{E(o)}</div>")
-    # Orden del dueño (2026-11-09): etiqueta → verificar → botones y notas → al final el log del chat (momentos clave).
+    # Orden del dueño (2026-11-09): etiqueta → verificar → NOTA (debajo del verificar) → botones «OK, va así…» (debajo de la nota) →
+    # al final los momentos clave del chat.
     if interactivo and wa:
-        h.append("<div class=ctl>"
+        h.append("<textarea class=nota placeholder='Nota: dirección correcta, agencia, monto, motorizado, otra fecha…'></textarea><div class=ctl>"
                  + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{t}</label>" for v, t in (("ok", "✅ OK, va así"), ("correccion", "✏️ Corrección"), ("no_va", "❌ No va"), ("ya_enviado", "📦 Ya se envió")))
-                 + f"</div><textarea class=nota placeholder='Nota: dirección correcta, agencia, monto, motorizado, otra fecha…'></textarea><div class=guardado></div>")
+                 + "</div><div class=guardado></div>")
     elif pdf_pagina:
-        h.append("<div class=notas><b>Notas de revisión (marca y escribe; Claude las lee cuando le escribas en la sesión):</b>"
-                 "<div class=opc><span>☐ OK, va así</span><span>☐ Corrección</span><span>☐ No va</span><span>☐ Ya se envió</span></div>"
-                 "<div class=lineas></div><div class=lineas></div></div>")
+        h.append("<div class=notas><b>Notas de revisión (escribe; Claude las lee cuando le escribas en la sesión):</b>"
+                 "<div class=lineas></div><div class=lineas></div>"
+                 "<div class=opc><span>☐ OK, va así</span><span>☐ Corrección</span><span>☐ No va</span><span>☐ Ya se envió</span></div></div>")
     if chat:
-        vis = chat if interactivo else chat[-14:]
+        vis = chat if interactivo else chat[-20:]
         h.append("<div class=chat><b class=tit>Momentos clave del chat</b><br>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in vis) + "</div>")
     h.append("</div>")
     return "".join(h)
@@ -817,8 +818,7 @@ def cmd_presentar(args):
         if solo_info:
             Cc.append(f"… y {solo_info} chat(s) que solo pidieron precio o información, sin destino ni dirección (lista completa en la página). Son para seguimiento de ventas, no pedidos.")
         sec(f"❓ LIMA — PENDIENTES, falta un dato ({len(pend)}; no se registran)", L, Cc)
-    if ya:
-        sec("↩️ LIMA — YA REGISTRADOS (no se tocan)", ["; ".join(f"{(x.get('campos') or {}).get('nombre')} ({x['ya_registrado'].get('modo')} #{x['ya_registrado'].get('nro') or '-'})" for x in ya)])
+    # Los YA REGISTRADOS no se listan (dueño 2026-11-09: «eso que quede para su memoria interna»); solo cuentan en el RESUMEN.
     # Correcciones (datos que llegaron)
     corr = [x for x in (ag.get("hoy") or []) if "CORRECCION" in str(x.get("estado") or "").upper() or str(x.get("nota") or "").startswith("🚨 CORRECCIÓN")]
     if corr:
@@ -862,12 +862,14 @@ def cmd_presentar(args):
         sec("❌ CHATS DE HOY: el Worker NO pudo leerlos", ["revisar"])
     else:
         otros = [x for x in chats_hoy if str(x.get("whatsapp") or "")[-9:] not in cubiertos]
-        L = [f"- {x.get('nombre') or '(sin nombre)'} · {x.get('whatsapp')} · {x.get('asesora') or '-'} · {x.get('mensajes_hoy')} msj · último {str(x.get('ultimo') or '')[5:16]}: {x.get('texto') or ''}{' · COMPRA MARCADA' if x.get('compra_marcada') else ''}" for x in otros[:80]]
-        if len(otros) > 80: L.append(f"… y {len(otros) - 80} más")
-        L.append("→ Si alguno habla de dirección, pago, agencia o fecha, léelo con `chat <whatsapp> 40` y decide.")
-        sec(f"💬 CHATS DE HOY: {len(chats_hoy)} con mensaje del cliente · {len(chats_hoy) - len(otros)} ya están arriba · {len(otros)} restantes con su último mensaje", L,
-            [f"{len(chats_hoy)} chats con mensaje hoy; {len(otros)} no son pedido ni candidato (lista completa en la página)."])
-    sec(f"🔎 CRM REVISADO: {len(cands)} chat(s) con señal de compra que el reporte NO trae (cruzados con Dinsides, boletas y memoria)", crm_largo, crm_corto)
+        # Solo los que hablan de dirección, pago, agencia, fecha o compra (dueño 2026-11-09: la lista completa «no me dice nada»).
+        con_senal = [x for x in otros if x.get("compra_marcada") or re.search(r"direcci|ubicaci|pin\b|yape|plin|pag[oó]|adelanto|agencia|shalom|olva|distrito|mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado", str(x.get("texto") or ""), re.I)]
+        if con_senal:
+            L = [f"- {x.get('nombre') or '(sin nombre)'} · {x.get('whatsapp')} · {x.get('asesora') or '-'} · {x.get('mensajes_hoy')} msj · último {str(x.get('ultimo') or '')[5:16]}: {x.get('texto') or ''}{' · COMPRA MARCADA' if x.get('compra_marcada') else ''}" for x in con_senal[:40]]
+            L.append("→ Léelo con `chat <whatsapp> 40` y decide (Lima con dirección → salida.json; provincia → shalom.py agregar).")
+            sec(f"💬 CHATS DE HOY QUE HABLAN DE DIRECCIÓN, PAGO, AGENCIA O FECHA y no son pedido ({len(con_senal)} de {len(chats_hoy)})", L)
+    if any("👀 REVISAR" in x for x in crm_largo):
+        sec(f"🔎 CRM: chats con señal de compra que el reporte NO trae y hay que leer", [x for x in crm_largo if "👀 REVISAR" in x], crm_corto)
     # Lista de verificación
     est_ok, n_rep, ult = False, 0, "—"
     try:

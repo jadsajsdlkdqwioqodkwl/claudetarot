@@ -115,7 +115,8 @@ salida (nunca dos presentaciones en el mismo mensaje). Si `python3` es 3.11 y fa
 Reportes y en pantalla sale la VERSIÓN CORTA, que es lo que pegas en la sesión. NO se genera PDF (dueño: «si ya vas a mandar página,
 ya no mandas el PDF»); solo si el dueño pide uno para imprimir agregas `--imprimir`. Orden de la salida (del dueño): Lima listos →
 Shalom → Lima pendientes (rojo) → ya registrados → correcciones → otros días → chats de hoy y CRM revisado (al final, en una línea:
-no suman). En cada tarjeta: etiqueta → verificar → botones y notas → al final los momentos clave del chat. Por
+no suman: salen solo si traen algo que leer). Los YA REGISTRADOS no se listan (solo cuentan en el RESUMEN). En cada tarjeta:
+etiqueta → verificar → nota → botones «OK, va así…» → al final los momentos clave del chat. Por
 pedido la ETIQUETA (Dinsides: Negocio · ENTREGAR A · Teléfono · Producto · Cobrar · Distrito · Fecha Entrega · Detalle; Shalom:
 Destinatario · N°DOC · Destino · Mercadería · Adelanto/Saldo), su estado (✅ listo · ✅❓ listo pero confirmar · ❓ pendiente · ↩️ ya
 registrado), la nota 📣 para la asesora (lo que NO va a Dinsides), la línea 🔎 VERIFICAR, correcciones, resumen de candidatos y chats

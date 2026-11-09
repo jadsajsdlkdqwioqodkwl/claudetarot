@@ -299,8 +299,12 @@ def cmd_masivo(args):
     # Provincia PENDIENTE en la hoja «Pedidos auto» (sin «Enviado», fecha de hoy o pasada, CONFIRMADO o corrección): pedidos que no
     # salieron en su día (DNI incompleto, agencia dudosa…) y que no están en el estado de esta fecha. Entran al masivo marcados como
     # ATRASADO para que no se queden en la hoja para siempre (dueño 2026-11-09, caso Elia Rita).
-    ag = pedir_worker(f"/pedidos-sheet?hoy={fecha}") or {}
-    for grupo in ("atrasados", "hoy"):
+    ag = pedir_worker(f"/pedidos-sheet?hoy={fecha}&boletas=1") or {}
+    # Lo que el equipo ya cerró en la hoja («sí … Shalom NNN (registrado a mano)», boleta emitida) NO entra al Excel aunque el estado
+    # del reporte lo siga trayendo como CONFIRMADO (2026-11-09: el masivo del 10 repitió a 5 que ya estaban registrados a mano).
+    cerrados = {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:] for x in (ag.get("enviados_recientes") or [])} | {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:] for x in (ag.get("boletas") or [])}
+    pedidos = [p for p in pedidos if re.sub(r"\D", "", str(p.get("whatsapp") or ""))[-9:] not in cerrados]
+    for grupo in ("atrasados", "hoy", "futuros", "sin_fecha"):
         for r in ag.get(grupo) or []:
             k = re.sub(r"\D", "", str(r.get("whatsapp") or ""))[-9:]
             est = str(r.get("estado") or "").upper()
@@ -309,8 +313,10 @@ def cmd_masivo(args):
             if "olva" in f"{r.get('direccion_o_agencia')} {r.get('nota')}".lower():
                 continue
             vistos.add(k)
-            pedidos.append({**r, "_fecha": r.get("fecha_entrega") or fecha, "_atrasado": True,
-                            "nota": f"ATRASADO (despacho previsto {r.get('fecha_entrega')}, sin boleta): " + str(r.get("nota") or "")})
+            prev = str(r.get("fecha_entrega") or "")
+            atras = bool(prev) and prev < fecha
+            pedidos.append({**r, "_fecha": prev or fecha, "_atrasado": atras,
+                            "nota": (f"ATRASADO (despacho previsto {prev}, sin boleta): " if atras else "") + str(r.get("nota") or "")})
     if not pedidos:
         sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)} ni pendientes en la hoja.")
     os.makedirs(os.path.dirname(os.path.abspath(salida)), exist_ok=True)

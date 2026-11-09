@@ -2438,3 +2438,17 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   «EMPAQUE: …» va en hasta 3 líneas (en una sola se superponía). Nuevo `GET /api/asesor/pedidos-sheet?enviadas=1` devuelve las filas
   cerradas completas de los últimos 3 días.
 - **Presentación:** se quitó el pie «Ya despachados o registrados a mano…» de Shalom (dueño: «está de más»).
+
+## 2026-11-09 (mañana 4) · Tarjeta: nota antes de los botones; sin «ya registrados» ni listas que no dicen nada; masivo sin repetidos; clave del día en Ventas
+
+- **Tarjeta de la presentación (dueño, tercera corrección):** etiqueta → verificar → NOTA → botones «OK, va así / Corrección / No va /
+  Ya se envió» → momentos clave del chat al final. `_historial` lee 120 mensajes (antes 60) y el PDF muestra 20 líneas (antes 14).
+- **Secciones:** ya no se lista «LIMA — YA REGISTRADOS» (queda en la memoria del sistema; el RESUMEN trae el conteo). «CHATS DE HOY» solo
+  sale si hay chats que hablen de dirección, pago, agencia, fecha o compra y no sean pedido; «CRM REVISADO» solo si hay «👀 REVISAR».
+- **`shalom.py masivo`:** excluye lo cerrado en la hoja (`enviados_recientes` y boletas) aunque el estado del reporte lo traiga como
+  CONFIRMADO (el masivo del 10 repitió a 5 que el equipo registró a mano el 09); toma también los «futuros» confirmados sin enviar
+  (Abel, previsto el 10, sale en el masivo del 09) y marca ATRASADO solo a los de fecha pasada.
+- **Datos (dueño, clave del día del 09-11):** la clave de Shalom quedó puesta en la hoja Ventas para Abel (Excel masivo, 1 fila:
+  `masivo-a44c9a3eb8434d36.xlsx`) y para los 7 que el equipo registró a mano (5 con `shalom.py clave … lote_mano.json`, 2 que entraron en
+  la primera corrida del masivo). El primer Excel subido (`masivo-8182a82cb5b4426d.xlsx`, 6 filas) tiene 5 repetidos: NO se sube a
+  Shalom. La clave no va en Telegram ni al cliente; solo en la referencia y en Ventas.
