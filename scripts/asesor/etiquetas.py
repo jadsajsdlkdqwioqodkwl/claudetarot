@@ -177,8 +177,8 @@ def etiqueta_shalom(c, x0, yb, d):
     agencia = str(d.get("agencia", "")); tam = ajustar(c, agencia, "Helvetica-Bold", 9.5, ancho)
     c.setFont("Helvetica-Bold", tam); c.drawString(x, y, agencia); y -= 3.6 * mm
     c.setFont("Helvetica", 6)
-    for ln in textwrap.wrap(str(d.get("direccion", "")), 64)[:2]:
-        c.drawString(x, y, ln); y -= 3 * mm
+    for ln in textwrap.wrap(str(d.get("direccion", "")), 50)[:3]:  # 50 por línea: con 64 se salía de la etiqueta (2026-11-09)
+        c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
     c.drawCentredString(x0 + cell_w / 2, yb + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
     cut(c, x0, yb, cell_w, cell_h)
@@ -314,6 +314,8 @@ def main():
         for p in r.get("pedidos", []):
             if "ANULADO" in str(p.get("seguimiento", "")).upper():
                 continue
+            if re.search(r"regularizaci", f"{p.get('nombre', '')} {p.get('observaciones', '')}", re.I):
+                continue  # registros de regularización (paquetes ya en Dinsides, devoluciones): no son cajas por recoger
             if "--entrega" in args:
                 if p.get("fecha_entrega") != fecha:
                     continue
