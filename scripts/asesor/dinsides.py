@@ -419,7 +419,7 @@ def _pregunta(f):
         if a.startswith("YA AGENDADO"):
             return "ya está agendado en Dinsides para otra fecha: ¿editar la fecha o dejarlo?"
     for a in f.get("alertas", []):
-        if a.startswith("PARA LA ASESORA"):
+        if a.startswith("PARA LA ASESORA") and not re.search(r"usar este|se usa|ya resuelto", a, re.I):  # lo ya resuelto no es pregunta
             return a.split(":", 1)[1].strip()[:140]
     return ""
 
