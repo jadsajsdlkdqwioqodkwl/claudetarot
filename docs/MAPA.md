@@ -2106,3 +2106,35 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   `docs/envios-jennifer.md` como prompt de su Project o de una Routine manual («Run now»), igual que las del dueño. Telegram sigue
   avisando al dueño desde el Worker (`dinsides.py telegram`, `shalom.py telegram`). Pendiente (idea, no hecho): una clave del asesor
   acotada solo a Dinsides/Shalom/lectura de chat/Reportes para no compartir la clave completa.
+
+## 2026-11-09 · Ciclo completo para la cuenta de Jennifer («INICIA» hace todo y presenta antes de registrar) + montos leídos del texto del reporte
+
+- **Qué pasó:** el Project de Jennifer recibió solo el link del Doc + «INICIA» y no hizo nada (el Doc decía que cada acción la
+  disparaba una orden explícita). Pedido del dueño: que trabaje solo, ciclo completo de una vez (Dinsides y luego Shalom), con la
+  regla de PRESENTAR la lista antes de registrar o subir, y con las notas completas (extras, catálogo, collares, descuentos).
+- **`docs/envios-jennifer.md` reescrito (y el Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c` regenerado con el mismo
+  texto):** el arranque dice que sin orden («INICIA», link, vacío, «Run now») se hace el CICLO COMPLETO; regla 1 nueva «Presentar
+  antes de registrar»: A4 = `registrar --simular` → tabla en la sesión (cliente · teléfono · distrito y fuente · dirección · qué
+  lleva · cobrar y forma · nota · fecha · LISTO/PENDIENTE con la pregunta exacta) + la misma por Telegram → DETENERSE hasta un «OK» o
+  correcciones en la sesión → A5 registra. Shalom igual: B1 `masivo` sin `--subir` → B2 tabla (DNI · agencia · bultos · qué lleva ·
+  adelanto · saldo · pendientes) + pedir la clave del día → B3 `--subir` con el OK (`--clave` solo si la escribieron). Regla 6 «Notas
+  completas» enumera los casos especiales que deben verse en la presentación y en la nota al courier.
+- **Montos (código, `src/lib/dinsides.js` → `armarPedido`):** antes `cobrar` salía del precio de lista por kits y solo «ya pagó … no
+  cobrar» daba NO COBRAR; con los textos reales de la hoja «Pedidos auto» fallaba: «Pagado S/89» se cobraba otra vez; «NO es kit: solo
+  mazo S/69, Yape contraentrega S/69» (kits 0) salía S/0 NO COBRAR; «Adelanto S/10; saldo S/79» cobraba 89. Ahora lee `pago`+`nota`:
+  «saldo S/N» → cobra N; «Pagado / pago completo / sin saldo» (sin adelanto pendiente) → NO COBRAR; «contraentrega / efectivo / Yape /
+  exacto S/N» → cobra N; «adelanto S/A» sin saldo escrito → lista − A con aviso; kits 0 sin monto en ningún lado → BLOQUEO «MONTO»
+  (no se inventa S/0); descuento/promo con precio de lista → aviso; `cobrar` explícito manda sobre el «pagado» del texto. La
+  observación que ve el motorizado lleva además el texto de pago cuando aporta (adelanto/saldo/pagado/efectivo). Pruebas nuevas en
+  `scripts/test-dinsides.mjs` (9 casos reales de la hoja).
+- **Shalom (`scripts/asesor/shalom.py` → `montos()`):** bug: `kits` 0 se leía como 1 (`p.get("kits") or 1`); ahora kits 0 saca el
+  precio del texto del empaque/pago («(S/59, solo el mazo)») o avisa «MONTO: no es un kit y el reporte no dice el precio»; «Pagado /
+  pago completo / sin saldo» → saldo 0; extra con precio en el empaque o descuento → aviso «MONTO: … confirmar el saldo» (entra a la
+  referencia y a la lista de pendientes). La referencia lleva «QUÉ LLEVA: <empaque>» delante de la nota. Un pedido kits 0 viaja como
+  1 bulto en el Excel.
+- **Revisión del reporte «Pedidos y ventas» para casos especiales (pedido del dueño):** los reporta bien en `empaque` (2 kits, solo
+  mazo, Gold, cuencos, collar extra, «VERIFICAR, prometió…») y los montos en `pago` como texto («Adelanto S/20; saldo S/69», «Pagado
+  S/129», «Yape contraentrega S/69»); los pedidos del catálogo y de la web entran como candidatos del control del sistema
+  (`control_ventas.py`) y la Routine los pone en `empaque`/`pago`. Lo que NO tiene el reporte es un campo numérico «cobrar/precio»
+  ni «descuento»: por eso el arreglo se hizo río abajo (leer el texto en Dinsides y Shalom). Si se quiere el campo estructurado,
+  hay que cambiar el prompt de la Routine del reporte desde su sesión fija (no desde aquí) y la columna del PDF en `enviar.py`.

@@ -110,3 +110,10 @@ Carpió (ver MAPA).
 - Pruebas: `node --no-warnings scripts/test-dinsides.mjs` (librería) y `scripts/test-dinsides-api.mjs` (endpoint con un Dinsides
   simulado: login, formulario, listado, memoria, idempotencia, sin credenciales). Las dos corren en `npm run check`.
 - Shalom (provincia) queda para después: misma idea (ficha desde el reporte + carga masiva de Shalom Pro), ver `docs/registro-pedidos.md`.
+
+## 2026-11-09 · Montos desde el texto del reporte
+
+`armarPedido` ya no supone el precio de lista: lee `pago` y `nota` («Adelanto S/20; saldo S/69» → cobra 69; «Pagado S/89» → NO
+COBRAR; «Yape contraentrega S/69» con `kits: 0` → cobra 69; adelanto sin saldo escrito → lista − adelanto con aviso; kits 0 sin monto
+→ bloqueo «MONTO»). `cobrar` explícito manda. La observación lleva el texto de pago cuando aporta. Casos reales en
+`scripts/test-dinsides.mjs`. El flujo de la operadora (presentar con `--simular` → OK → registrar) está en `docs/envios-jennifer.md`.

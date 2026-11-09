@@ -1441,3 +1441,9 @@ Jennifer corre el registro de envíos desde SU cuenta de Claude. No hay Routine 
 manual lleva solo el «arranque» que está en `docs/envios-jennifer.md` (sección «Arranque»); ese archivo es la fuente de verdad de los
 pasos (Dinsides A, Shalom B) y se mantiene desde el repo. Copia legible: Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
 (compartido con el correo del dueño y el correo de la empresa (el que usa Jennifer)). Cambios al flujo: se editan en el .md y se regenera el Doc.
+
+## 2026-11-09 · Cuenta de Jennifer: «INICIA» = ciclo completo con presentación previa
+
+El arranque de `docs/envios-jennifer.md` cambió: sin orden explícita (link, «INICIA», «Run now») se hace el ciclo completo
+Dinsides → Shalom; regla «Presentar antes de registrar» (A4/B2: tabla en la sesión y por Telegram, detenerse hasta el OK). El Google
+Doc se regeneró con el mismo texto. Las Routines del dueño (v3) no cambian.

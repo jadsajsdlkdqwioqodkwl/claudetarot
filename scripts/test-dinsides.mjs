@@ -109,6 +109,26 @@ p = D.armarPedido({ nombre: "Cecilia", whatsapp: "51996941086", direccion_o_agen
 check("«pagaría…; si no, cobrar al recibir» NO es pagado: se cobra S/89 YAPE", p.campos.tipo_pago === "YAPE" && p.campos.cobrar === "89" && p.campos.tipo_pedido === "CONTRAENTREGA", JSON.stringify(p.campos));
 check("el «VERIFICAR…» de enviar.py no entra al producto ni a la observación; solo avisa", p.campos.producto === "Kit Tarot de aprendizaje" && !/VERIFICAR/.test(p.campos.obs) && p.alertas.some((a) => /^EMPAQUE por verificar/.test(a)), JSON.stringify(p));
 
+// Montos que vienen en texto desde el reporte (casos reales de la hoja «Pedidos auto», 2026-11)
+p = D.armarPedido({ nombre: "Pagado", whatsapp: "51999195063", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/89", estado: "CONFIRMADO" }, ctx);
+check("«Pagado S/89» → NO COBRAR, S/0 (antes se cobraba de nuevo)", p.campos.tipo_pago === "NO COBRAR" && p.campos.cobrar === "0" && p.campos.tipo_pedido === "SOLO-ENTREGA-NO-COBRAR", JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Solo mazo", whatsapp: "51922792281", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, pago: "Yape contraentrega S/69", empaque: "NO es kit: solo mazo Tarot Rider Waite de aprendizaje S/69", estado: "CONFIRMADO" }, ctx);
+check("kits 0 con «contraentrega S/69» → se cobra S/69 YAPE (antes salía S/0 NO COBRAR)", p.listo && p.campos.cobrar === "69" && p.campos.tipo_pago === "YAPE" && /solo mazo/.test(p.campos.producto), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Solo mazo sin monto", whatsapp: "51922792282", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, empaque: "NO lleva kit: solo mazo", estado: "CONFIRMADO" }, ctx);
+check("kits 0 sin monto en ningún lado → BLOQUEO MONTO (no se inventa S/0)", !p.listo && p.bloqueos.some((b) => /^MONTO: no es un kit normal/.test(b)), JSON.stringify(p.bloqueos));
+p = D.armarPedido({ nombre: "Saldo", whatsapp: "51940435388", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Adelanto S/10; saldo S/79 contraentrega", estado: "CONFIRMADO" }, ctx);
+check("«Adelanto S/10; saldo S/79» → se cobra el saldo S/79 y la observación lo dice", p.campos.cobrar === "79" && p.campos.tipo_pago === "YAPE" && /Adelanto S\/10; saldo S\/79/.test(p.campos.obs), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Adelanto sin saldo", whatsapp: "51958345337", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 3, pago: "Adelanto S/100 Yape 11-01 22:47 (op. 346)", empaque: "3 kits (S/199) + cuencos tibetanos", estado: "CONFIRMADO" }, ctx);
+check("3 kits con adelanto S/100 y sin saldo escrito → lista − adelanto = S/99 con aviso", p.campos.cobrar === "99" && p.alertas.some((a) => /adelanto S\/100/.test(a)), JSON.stringify(p));
+p = D.armarPedido({ nombre: "Gold", whatsapp: "51997213231", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/129 por Yape", empaque: "NO es kit normal: lleva Tarot Gold Rider Waite S/129", estado: "CONFIRMADO" }, ctx);
+check("otro artículo ya pagado → NO COBRAR y el extra va en el producto", p.campos.cobrar === "0" && p.campos.tipo_pago === "NO COBRAR" && /Tarot Gold/.test(p.campos.producto), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Efectivo exacto", whatsapp: "51935760271", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Efectivo exacto S/89", estado: "CONFIRMADO" }, ctx);
+check("«Efectivo exacto S/89» → EFECTIVO S/89", p.campos.cobrar === "89" && p.campos.tipo_pago === "EFECTIVO", JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Descuento", whatsapp: "51935760272", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/79 con descuento", estado: "CONFIRMADO" }, ctx);
+check("monto negociado S/79 → se cobra S/79 y avisa que no es el de lista", p.campos.cobrar === "79" && p.alertas.some((a) => /distinto al de lista/.test(a)), JSON.stringify(p));
+p = D.armarPedido({ nombre: "Explícito", whatsapp: "51935760273", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/89", cobrar: 20, estado: "CONFIRMADO" }, ctx);
+check("`cobrar` explícito manda sobre el texto", p.campos.cobrar === "20" && p.campos.tipo_pago === "YAPE", JSON.stringify(p.campos));
+
 p = D.armarPedido({ nombre: "Pin y texto", whatsapp: "51993455129", direccion_o_agencia: "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco (pin -12.1651891,-76.9978476)", estado: "CONFIRMADO" }, ctx);
 check("al quitar el pin del texto no queda «(pin )» en la dirección", p.campos.direccion === "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco" && p.campos.coordenadas === "-12.1651891,-76.9978476", JSON.stringify(p.campos));
 

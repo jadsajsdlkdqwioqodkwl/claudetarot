@@ -55,3 +55,10 @@ protegido, sin comprobante, sin cobro seguro, clave de 4 dígitos) o pelearse co
 - `python3 scripts/asesor/shalom.py masivo [FECHA …] [--solo N] [--agencias ajustes.json] [--sin-ventas] [--subir] [--salida x.xlsx]`
 - `python3 scripts/asesor/shalom.py buscar "lo que escribió el cliente"` · `agencias [--actualizar]` · `telegram "texto"`
 - Primera subida real: 2026-11-08, archivo de 2 filas (Dhajyana → AV PARRA 379, Luzgardo → GARATEA), «2 envíos registrados».
+
+## 2026-11-09 · `montos()` corregido y referencia con «QUÉ LLEVA»
+
+`kits` 0 ya se lee como 0 (antes caía en 1): precio del texto del empaque o aviso «MONTO». «Pagado / pago completo / sin saldo» →
+saldo 0. Extra con precio o descuento → aviso «MONTO: … confirmar el saldo» (pendiente en la presentación). La referencia pone
+«QUÉ LLEVA: <empaque>» delante de la nota. Flujo con presentación previa (B1 sin `--subir` → B2 tabla → OK → B3) en
+`docs/envios-jennifer.md`.

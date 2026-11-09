@@ -325,30 +325,51 @@ export function armarPedido(pedido, ctx = {}) {
   if (empaque) { if (kits !== 0) producto += ` + Extra: ${empaque}`; alertas.push(`EMPAQUE: ${empaque}`); }
   if (kits > 1) alertas.push(`${kits} kits`);
 
-  // Cobro y método de pago.
+  // Cobro y método de pago. El reporte trae los montos en TEXTO (`pago`: «Adelanto S/20; saldo S/69», «Pagado S/129 por Yape»,
+  // «Yape contraentrega S/69», «Efectivo exacto S/89»): se leen de ahí; `cobrar` explícito (la Routine o una persona) manda sobre todo.
   const nota = SIN_EMOJI(p.nota);
-  const notaL = normalizar(`${p.pago || ""} ${nota}`);
+  const pagoTxt = SIN_EMOJI(p.pago);
+  const notaL = normalizar(`${pagoTxt} ${nota}`);
+  const num = (re, t = notaL) => { const m = t.match(re); return m ? Number(m[1]) : null; };
+  const saldoTxt = num(/saldo\D{0,14}(\d{2,3})/);
+  const adelantoTxt = num(/adelanto\D{0,14}(\d{2,3})/) ?? num(/s\/\s*(\d{2,3})\s*(?:de\s+)?adelanto/);
   let tipoPago = TIPOS_PAGO.includes(String(p.tipo_pago || "").toUpperCase()) ? String(p.tipo_pago).toUpperCase() : null;
   if (!tipoPago) {
-    // «Ya pagó … NO cobrar» → NO COBRAR. Pero «pagará por Yape; si no, cobrar al recibir» NO es pagado: se cobra.
-    const dicePagado = /ya pago\b|ya pagado|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)/.test(notaL);
-    const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL);
-    if (dicePagado && !diceQuePagara) tipoPago = "NO COBRAR";
+    // «Ya pagó … NO cobrar», «Pagado S/89», «pago completo» → NO COBRAR. Pero «pagará por Yape; si no, cobrar al recibir» NO es pagado,
+    // y «adelanto S/20 … saldo S/69» tampoco: se cobra el saldo.
+    const dicePagado = /ya pago\b|\bpagad[oa]\b|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)|sin saldo/.test(notaL);
+    const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL) && !/sin saldo/.test(notaL);
+    const quedaSaldo = (saldoTxt !== null && saldoTxt > 0) || (adelantoTxt !== null && !/sin saldo/.test(notaL) && !/pago (completo|todo|el total)/.test(notaL));
+    if (dicePagado && !diceQuePagara && !quedaSaldo) tipoPago = "NO COBRAR";
     else if (/tarjeta|\bpos\b/.test(notaL)) tipoPago = "POS";
     else if (/efectivo|cash|billete/.test(notaL)) tipoPago = "EFECTIVO";
     else if (/\bplin\b/.test(notaL) && !/\byape\b/.test(notaL)) tipoPago = "PLIN";
     else tipoPago = "YAPE";
   }
+  const lista = kits === 0 ? 0 : PRECIO_KITS[kits] || kits * PRECIO_KITS[1];
   let cobrar = p.cobrar !== undefined && p.cobrar !== null && p.cobrar !== "" ? Number(String(p.cobrar).replace(/[^\d.]/g, "")) : null;
   if (cobrar === null) {
-    if (p.tipo === "CAMBIO" || p.tipo === "REPOSICION" || kits === 0) cobrar = 0;
-    else cobrar = PRECIO_KITS[kits] || kits * PRECIO_KITS[1];
+    if (tipoPago === "NO COBRAR" || p.tipo === "CAMBIO" || p.tipo === "REPOSICION") cobrar = 0;
+    else if (saldoTxt !== null) { cobrar = saldoTxt; if (adelantoTxt !== null) alertas.push(`MONTO: adelanto S/${adelantoTxt}, al entregar se cobra el saldo S/${saldoTxt}`); }
+    else {
+      // Monto que dice el texto al lado de la forma de pago, sin contar el del adelanto.
+      const sinAdelanto = notaL.replace(/adelanto\D{0,14}\d{2,3}|s\/\s*\d{2,3}\s*(?:de\s+)?adelanto/g, " ");
+      const montoTxt = num(/(?:contraentrega|al recibir|cobrar|efectivo|yape|plin|tarjeta|pos|exacto|paga)\D{0,25}?s\/\s*(\d{2,3})/, sinAdelanto)
+        ?? num(/s\/\s*(\d{2,3})\D{0,25}?(?:contraentrega|al recibir|efectivo|exacto|al entregar)/, sinAdelanto);
+      if (adelantoTxt !== null && kits > 0) { cobrar = Math.max(0, lista - adelantoTxt); alertas.push(`MONTO: adelanto S/${adelantoTxt} sin saldo escrito; se cobra lista − adelanto = S/${cobrar}`); }
+      else if (montoTxt !== null) cobrar = montoTxt;
+      else if (kits === 0) { cobrar = num(/s\/\s*(\d{2,3})/, normalizar(empaque)) ?? num(/s\/\s*(\d{2,3})/); if (cobrar === null) { cobrar = 0; bloqueos.push("MONTO: no es un kit normal y el reporte no dice cuánto cobrar; ponlo en `cobrar` (0 si ya pagó)"); } }
+      else cobrar = lista;
+    }
   }
+  const cobrarExplicito = p.cobrar !== undefined && p.cobrar !== null && p.cobrar !== "";
+  if (tipoPago === "NO COBRAR" && cobrarExplicito && cobrar > 0 && !p.tipo_pago) { tipoPago = /efectivo/.test(notaL) ? "EFECTIVO" : "YAPE"; alertas.push(`MONTO: una persona puso cobrar S/${cobrar}; manda sobre el «pagado» del texto`); }
   if (tipoPago === "NO COBRAR") { if (cobrar) alertas.push(`NO COBRAR: la nota dice que ya pagó; S/${cobrar} pasa a 0`); cobrar = 0; }
-  if (cobrar === 0 && tipoPago !== "NO COBRAR") tipoPago = "NO COBRAR";
-  if (/descuento|rebaja|precio especial|promo/.test(notaL) && cobrar === (PRECIO_KITS[kits] || 0)) alertas.push("MONTO: la nota habla de descuento/promo y va el precio normal; confirmar cuánto se cobra");
+  if (cobrar === 0 && tipoPago !== "NO COBRAR" && !bloqueos.some((b) => /^MONTO/.test(b))) tipoPago = "NO COBRAR";
+  if (/descuento|rebaja|precio especial|promo|negociad/.test(notaL) && cobrar === lista) alertas.push("MONTO: la nota habla de descuento/promo y va el precio normal; confirmar cuánto se cobra");
   if (tipoPago !== "YAPE" && tipoPago !== "NO COBRAR") alertas.push(`PAGO: ${tipoPago}`);
-  if (cobrar && cobrar !== (PRECIO_KITS[kits] || 0)) alertas.push(`MONTO distinto al de lista: S/${cobrar}`);
+  if (cobrar && kits > 0 && cobrar !== lista && saldoTxt === null && adelantoTxt === null) alertas.push(`MONTO distinto al de lista (S/${lista}): S/${cobrar}`);
+  if (kits === 0 && cobrar) alertas.push(`MONTO: no es kit; se cobra S/${cobrar}`);
   const tipoPedido = tipoPago === "NO COBRAR" ? "SOLO-ENTREGA-NO-COBRAR" : "CONTRAENTREGA";
 
   const fe = fechaEntrega({ ahora: ctx.ahora, fecha_pedida: p.fecha_entrega, fecha_objetivo: ctx.fecha_objetivo });
@@ -357,7 +378,8 @@ export function armarPedido(pedido, ctx = {}) {
   if (String(p.destino || "").toUpperCase() === "PROVINCIA") bloqueos.push("DESTINO PROVINCIA: no va por Dinsides");
   if (/^\s*🚨/.test(String(p.nota || "")) || /urgente|reclamo/.test(notaL)) alertas.push("NOTA con 🚨: leerla antes de registrar");
 
-  const obs = [nota, kits > 1 || empaque ? `Paquete: ${producto}` : ""].filter(Boolean).join(". ").slice(0, 480);
+  const pagoUtil = pagoTxt && /adelanto|saldo|pagad|pago completo|efectivo|tarjeta|exacto|billete/i.test(pagoTxt) && !normalizar(nota).includes(normalizar(pagoTxt).slice(0, 25)) ? `Pago: ${pagoTxt}` : "";
+  const obs = [nota, pagoUtil, kits > 1 || empaque ? `Paquete: ${producto}` : ""].filter(Boolean).join(". ").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

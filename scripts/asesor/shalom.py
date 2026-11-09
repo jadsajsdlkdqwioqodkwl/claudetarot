@@ -155,17 +155,34 @@ def pedir_worker(ruta, body=None):
 
 
 def montos(p):
-    """Adelanto y saldo de un pedido de provincia según el reporte («Adelanto S/20; saldo S/69»); por defecto 20 y precio − 20."""
+    """Adelanto y saldo de un pedido de provincia según el TEXTO del reporte (`pago`, `nota`, `empaque`): «Adelanto S/20; saldo S/69»,
+    «Pagado S/89 (sin saldo)», «Adelanto S/10», «solo mazo S/69». Por defecto adelanto 20 y saldo = precio − adelanto.
+    Devuelve (adelanto, saldo, aviso): aviso no vacío cuando el monto hubo que suponerlo (kits 0 sin precio, extra sin monto)."""
     texto = f"{p.get('pago') or ''} {p.get('nota') or ''}"
-    kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
-    precio = {1: 89, 2: 149, 3: 199}.get(kits, 89 * kits)
-    m = re.search(r"adelanto\D{0,12}(\d{2,3})", texto, re.I) or re.search(r"(?:yape|plin)\s*s?/?\s*(\d{2,3})", texto, re.I)
+    empaque = str(p.get("empaque") or "")
+    kits = int(p.get("kits")) if str(p.get("kits")).isdigit() else 1   # 0 = no es kit (solo mazo, oráculo…)
+    aviso = ""
+    precio = {1: 89, 2: 149, 3: 199}.get(kits, 89 * kits) if kits else None
+    if kits == 0:  # no es kit (solo mazo, oráculo…): el precio sale del texto o se pregunta
+        m0 = re.search(r"s/\s*(\d{2,3})", empaque, re.I) or re.search(r"(?:total|precio|contraentrega|saldo|pag\w+)\D{0,14}(\d{2,3})", texto, re.I)
+        precio = int(m0.group(1)) if m0 else 0
+        aviso = "" if m0 else "MONTO: no es un kit y el reporte no dice el precio; confirmarlo"
+    elif re.search(r"descuento|rebaja|precio especial|promo|negociad", f"{texto} {empaque}", re.I):
+        aviso = "MONTO: habla de descuento/precio especial; confirmar el saldo"
+    elif re.search(r"\+|extra|cuenco|oráculo|oraculo|collar.*(s/|soles)|otro modelo|gold|rider", empaque, re.I) and re.search(r"s/\s*\d", empaque, re.I):
+        aviso = "MONTO: el empaque trae un extra con precio; confirmar el saldo"
+    m = re.search(r"adelanto\D{0,14}(\d{2,3})", texto, re.I) or re.search(r"s/\s*(\d{2,3})\s*(?:de\s+)?adelanto", texto, re.I) \
+        or re.search(r"(?:yape|plin)\s*s?/?\s*(\d{2,3})", texto, re.I)
     adelanto = int(m.group(1)) if m else 20
-    if re.search(r"pag[oó] (todo|completo|el total)|pago completo|s/\s*%d completo" % precio, texto, re.I):
-        adelanto = precio
-    m2 = re.search(r"saldo\D{0,12}(\d{2,3})", texto, re.I)
-    saldo = int(m2.group(1)) if m2 else max(0, precio - adelanto)
-    return adelanto, saldo
+    m2 = re.search(r"saldo\D{0,14}(\d{2,3})", texto, re.I)
+    if m2:
+        saldo = int(m2.group(1))
+    elif re.search(r"pag[oó] (todo|completo|el total)|pago completo|\bpagad[oa]\b|sin saldo|s/\s*%s completo" % (precio or 0), texto, re.I) \
+            and not re.search(r"adelanto", texto, re.I):
+        adelanto, saldo = precio, 0
+    else:
+        saldo = max(0, (precio or 0) - adelanto)
+    return adelanto, saldo, aviso
 
 
 def _xml_escape(t):
@@ -295,7 +312,9 @@ def cmd_masivo(args):
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
         dni = re.sub(r"\D", "", str(p.get("dni") or ""))
         clave = "PENDIENTE (la da el dueño)"
-        adelanto, saldo = montos(p)
+        adelanto, saldo, aviso_monto = montos(p)
+        if aviso_monto:
+            aviso.append(aviso_monto); revisar.append(f"{p.get('nombre')}: {aviso_monto}")
         if dni and destino:
             lote.append({"whatsapp": p.get("whatsapp"), "nombre": p.get("nombre"), "dni": dni, "tel": tel, "destino": destino, "adelanto": adelanto, "saldo": saldo})
         if con_ventas and dni and destino:
@@ -310,14 +329,15 @@ def cmd_masivo(args):
             aviso.append("sin DNI en el registro: pedirlo o buscarlo en el chat"); revisar.append(f"{p.get('nombre')}: sin DNI en el registro")
         elif len(dni) != 8:
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
-        kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
+        kits = int(p.get("kits")) if str(p.get("kits")).isdigit() else 1
+        kits_bultos = kits or 1   # «no es kit» (kits 0) igual viaja como 1 bulto
         # Al Excel solo entran las filas completas (DNI y agencia); las dudosas quedan en la referencia y en las preguntas.
         if dni and destino:
-            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits})
+            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits_bultos})
         else:
             aviso.append("NO entra al Excel hasta resolverlo")
         ref.append([len(filas_excel) + 1 if dni and destino else "—", p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), next((c["codigo"] for c in cand if c["agencia"] == destino), cand[0]["codigo"] if cand else ""), "sí" if destino else "NO",
-                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso), clave, adelanto, saldo])
+                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, ((f"QUÉ LLEVA: {p.get('empaque')} · " if p.get("empaque") else "") + str(p.get("nota") or ""))[:220], "; ".join(aviso), clave, adelanto, saldo])
         fila += 1
     for col, w in zip("ABCDEFGHIJKLMNO", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45, 14, 9, 9)):
         ref.column_dimensions[col].width = w
