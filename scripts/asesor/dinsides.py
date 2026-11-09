@@ -10,6 +10,8 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
            LISTOS (se registran solos), CON BLOQUEOS (dirección / distrito dudosos, zona roja, estado sin confirmar: los mira una
            persona o la Routine lee el chat y los corrige), YA REGISTRADOS y CANDIDATOS DEL CRM (chats con pin, dirección o compra
            marcada que el reporte no trae: la «cuarta corrida» para que nadie se quede fuera). Deja --dir/fichas.json.
+    python3 scripts/asesor/dinsides.py presentar [AAAA-MM-DD]       -> TODO lo que el dueño mira antes del OK, en su formato (fichas +
+                                                                        historial del chat + estado en Dinsides y en la hoja + CRM + pendientes con mensaje nuevo).
     python3 scripts/asesor/dinsides.py chat <whatsapp|conversation_id> [N]   -> los últimos N mensajes de un chat (para resolver una duda).
     python3 scripts/asesor/dinsides.py zona <lat,lng | link de Maps>         -> en qué zona del mapa de cobertura de Dinsides cae.
     python3 scripts/asesor/dinsides.py registrar [/tmp/dinsides/salida.json] [--simular] [--forzar]
@@ -37,7 +39,7 @@ y etiqueta `dinsides_registrado` en el chat; nunca se registra dos veces el mism
         -> edita un pedido antes de la ruta. Campos: fecha_entrega=AAAA-MM-DD, direccion=…, distrito=Nombre, nombre=…, telefono=9…,
            cobrar=89, tipo_pago=YAPE, obs=…, producto=… (ej.: editar 2940714 fecha_entrega=2026-11-12 "obs=llamar antes").
 """
-import datetime as dt, json, os, sys, urllib.error, urllib.request
+import datetime as dt, json, os, re, sys, urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 API_BASE = os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor"
@@ -338,11 +340,135 @@ def cmd_editar(args):
     print(json.dumps(r, ensure_ascii=False, indent=1))
 
 
+# ---------- presentar: lo que el dueño quiere ver antes de dar el OK (2026-11-09) ----------
+RE_RELEVANTE = re.compile(r"direcci|calle|\bav\b|\bjr\b|\bmz\b|\blt\b|dpto|depa|piso|referenc|frente|esquina|portero|timbre|hora|\bpm\b|\bam\b|mañana|tarde|noche|"
+                          r"lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|reprogram|cancel|anul|yape|plin|pag[oóa]|adelanto|efectivo|tarjeta|"
+                          r"separ|pedido|kit|mazo|collar|descuento|dni|agencia|\d{3,}", re.I)
+RE_VENDEDORA_UTIL = re.compile(r"agendad|queda|mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|horario|cobr|pag[oó] completo|sin cobrar", re.I)
+
+
+def _historial(wa, n=60):
+    """Lo que escribió EL CLIENTE (con fecha y hora) que sirve para decidir: dirección, hora, fecha, pago, cambios; y las líneas de la
+    vendedora que fijan algo (agendado, horario, cobro). Devuelve (encabezado, líneas)."""
+    st, r = pedir(f"/chat?telefono={wa[-9:]}&mensajes={n}&largo=1")
+    if st != 200 or not r.get("encontrado"):
+        return "chat no encontrado", []
+    cab = f"etiquetas: {r.get('etiquetas') or '-'} · ventana {r.get('ventana')}"
+    lineas = []
+    for m in r.get("mensajes", []):
+        quien = "C" if m.get("direction") == "in" else "V"
+        t = m.get("type")
+        cuerpo = m.get("body") or ""
+        if t == "location":
+            partes = str(cuerpo).split("|"); cuerpo = f"[UBICACIÓN] {partes[0]},{partes[1] if len(partes) > 1 else ''}"
+        elif t == "image":
+            cuerpo = "[imagen: captura/foto]"
+        elif t not in ("text", None):
+            continue
+        cuerpo = re.sub(r"\s+", " ", str(cuerpo)).strip()
+        if quien == "C" and (t in ("location", "image") or RE_RELEVANTE.search(cuerpo)):
+            lineas.append(f"{m.get('created_at', '')[5:16]} C: {cuerpo[:170]}")
+        elif quien == "V" and RE_VENDEDORA_UTIL.search(cuerpo) and not re.search(r"\[image\]|Hola bell|está en \*S/|Claro bell|incluye el mazo|motorizado se estará", cuerpo):
+            lineas.append(f"{m.get('created_at', '')[5:16]} V: {cuerpo[:140]}")
+    return cab, lineas[-12:]
+
+
+def _estado_dinsides(lista, tel, wa):
+    xs = [x for x in lista if x.get("telefono") in (tel, wa[-9:])]
+    if not xs:
+        return "sin pedido en Dinsides (ni abierto ni anulado)"
+    xs.sort(key=lambda x: x.get("fecha_pedido", ""), reverse=True)
+    return "; ".join(f"#{x['id_pedido']} {x['seguimiento']} (registrado {x['fecha_pedido'][:10]}, entrega {x['fecha_entrega']})" for x in xs[:3])
+
+
+def _bloque(i, f, lista):
+    c = f.get("campos") or {}
+    tel = c.get("telefono") or f.get("whatsapp", "")[-9:]
+    estado = "LISTO" if f.get("listo") else ("YA REGISTRADO" if f.get("ya_registrado") else "PENDIENTE")
+    fuentes = f.get("distrito_fuentes") or {}
+    fuente = "pin" if fuentes.get("pin") else "mapa (dirección ubicada)" if fuentes.get("geocodificado") else "texto" if fuentes.get("texto") else "—"
+    out = [f"{i}) {(c.get('nombre') or '').upper()} – {(c.get('distrito') or 'SIN DISTRITO').title()} · {estado}",
+           f"Cliente: {c.get('nombre')} · {tel} · WhatsApp {f.get('whatsapp')} · asesora {f.get('asesora') or '-'}",
+           f"Dirección: {c.get('direccion') or '— (sin dirección en texto)'}" + (f" · pin {c.get('coordenadas')}" if c.get("coordenadas") else ""),
+           f"Distrito Dinsides: {c.get('distrito') or '—'} (por {fuente})",
+           f"Producto: {c.get('producto')} | Cobrar: S/{c.get('cobrar')} {c.get('tipo_pago')} | Entrega: {c.get('fecha_entrega')} | Tipo: {c.get('tipo_pedido')}",
+           f"Nota que verá el motorizado: {c.get('obs') or '—'}"]
+    cab, hist = _historial(f.get("whatsapp", ""))
+    out.append(f"Lo que escribió el cliente ({cab}):")
+    out += [f"   {h}" for h in hist] or ["   (nada relevante en los últimos 60 mensajes)"]
+    out.append(f"Dinsides: {_estado_dinsides(lista, tel, f.get('whatsapp', ''))}")
+    if f.get("hoja"):
+        out.append(f"Hoja «Pedidos auto»: fila {f['hoja'].get('fila')} · Dinsides: {f['hoja'].get('dinsides') or '—'} · Enviado: {f['hoja'].get('enviado') or '—'}")
+    for b in f.get("bloqueos", []):
+        out.append(f"⛔ {b}")
+    for a in f.get("alertas", []):
+        out.append(f"· {a}")
+    if f.get("ya_registrado"):
+        out.append(f"↩️ Ya registrado: {json.dumps(f['ya_registrado'], ensure_ascii=False)[:160]}")
+    out.append("Decisión: " + ("se registra con el OK" if f.get("listo") else "no se toca (ya registrado)" if f.get("ya_registrado") else "PENDIENTE: resolver el ⛔ (leer el chat de arriba; si falta el dato, preguntar)"))
+    return "\n".join(out)
+
+
+def cmd_presentar(args):
+    """Imprime, en el formato que el dueño pidió, TODO lo que hay que mirar antes del OK: fichas completas con el historial del chat,
+    el estado en Dinsides y en la hoja; pendientes; ya registrados en una línea; candidatos del CRM; y los pedidos pendientes de otros
+    días cuyo cliente escribió (datos que llegaron). La Routine PEGA esta salida tal cual y solo agrega su lectura."""
+    fecha = fecha_arg(args)
+    st, r = pedir(f"/dinsides?fecha={fecha}" if fecha else "/dinsides")
+    salir_si_error(st, r)
+    fecha = r.get("fecha") or fecha
+    fichas = r.get("pedidos", [])
+    st2, l = pedir(f"/dinsides?listado=1&desde={(dt.date.fromisoformat(fecha) - dt.timedelta(days=12)).isoformat()}&hasta={(dt.date.fromisoformat(fecha) + dt.timedelta(days=30)).isoformat()}", timeout=240)
+    lista = l.get("pedidos", []) if st2 == 200 else []
+    listos = [f for f in fichas if f.get("listo")]
+    pend = [f for f in fichas if not f.get("listo") and not f.get("ya_registrado")]
+    ya = [f for f in fichas if f.get("ya_registrado")]
+    print(f"DINSIDES · entrega {fecha} · {len(listos)} para registrar · {len(pend)} pendientes · {len(ya)} ya registrados · Dinsides consultado: {'sí' if st2 == 200 else 'NO'} ({len(lista)} pedidos del negocio en el rango)\n")
+    i = 0
+    if listos:
+        print("══ PARA REGISTRAR (con el OK) ══")
+        for f in listos:
+            i += 1; print(_bloque(i, f, lista)); print()
+    if pend:
+        print("══ PENDIENTES (falta un dato o confirmación; NO se registran) ══")
+        for f in pend:
+            i += 1; print(_bloque(i, f, lista)); print()
+    if ya:
+        print("══ YA REGISTRADOS (no se tocan): " + "; ".join(f"{(x.get('campos') or {}).get('nombre')} ({x['ya_registrado'].get('modo')} #{x['ya_registrado'].get('nro') or '-'})" for x in ya) + "\n")
+    cands = r.get("candidatos_crm") or []
+    print(f"══ CRM REVISADO: {len(cands)} chat(s) con señal de compra que el reporte NO trae ══")
+    for c_ in cands:
+        print(f"- {c_.get('nombre')} · {c_.get('whatsapp')} · {c_.get('asesora') or '-'}{' · COMPRA MARCADA' if c_.get('compra_marcada') else ''}{' · parece PROVINCIA' if c_.get('parece_provincia') else ''}: " + " / ".join(str(x)[:90] for x in (c_.get("senales") or [])[:2]))
+    # Pedidos pendientes de otros días con mensaje nuevo del cliente (datos que llegaron, reclamos, cambios de fecha).
+    st3, ag = pedir(f"/pedidos-sheet?hoy={fecha}")
+    if st3 == 200:
+        en_fichas = {f.get("whatsapp", "")[-9:] for f in fichas}
+        # Solo los de OTROS días (atrasados y futuros): los de la fecha ya están en las fichas o en el Shalom del día.
+        abiertos = [x for k in ("atrasados", "futuros") for x in (ag.get(k) or []) if str(x.get("whatsapp") or "")[-9:] not in en_fichas]
+        con_msg = []
+        desde = (dt.datetime.now(LIMA) - dt.timedelta(hours=36)).strftime("%m-%d %H:%M")
+        for x in abiertos[:60]:
+            cab, hist = _historial(str(x.get("whatsapp") or ""), 20)
+            nuevos = [h for h in hist if h.startswith(" ") is False and h[:11] >= desde and " C: " in h]
+            if nuevos:
+                con_msg.append((x, nuevos))
+        print(f"\n══ PEDIDOS PENDIENTES DE OTROS DÍAS CON MENSAJE NUEVO DEL CLIENTE (últimas 36 h): {len(con_msg)} ══ (revisados {min(len(abiertos), 60)} pendientes de la hoja)")
+        for x, nuevos in con_msg:
+            print(f"- {x.get('nombre')} · {x.get('whatsapp')} · {x.get('destino')} · {x.get('estado')} · previsto {x.get('fecha_entrega')} · fila {x.get('fila')} · nota: {str(x.get('nota') or '')[:80]}")
+            for h in nuevos[-4:]:
+                print(f"     {h}")
+            print("     → si es el dato que faltaba o un cambio, decirlo al dueño con la decisión (Lima: agregar a salida.json; provincia: va al próximo Shalom)")
+    print("\nVerificaciones hechas por el sistema: fichas armadas desde el reporte + hoja + chat; cruce con Dinsides (abiertos y anulados) por teléfono y nombre;"
+          " CRM revisado (candidatos); pendientes de la hoja con mensaje nuevo. Lo que falta: leer los ⛔ y decidir.")
+
+
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
     if cmd == "preparar":
         cmd_preparar(resto)
+    elif cmd == "presentar":
+        cmd_presentar(resto)
     elif cmd == "chat" and resto:
         cmd_chat(*resto[:2])
     elif cmd == "zona" and resto:

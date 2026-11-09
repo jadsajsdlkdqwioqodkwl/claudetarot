@@ -2270,3 +2270,20 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   12–5 pm; la Routine la presenta como pregunta «¿Dinsides o motorizado de confianza?». Prueba en `test-dinsides.mjs`.
 - **Marcados hoy como enviados por motorizado (08-11):** Gladys Falcón, Ketty, Cecilia, Erlinda Munguia (según el mensaje que el dueño
   le mandó al motorizado); con eso Ketty deja de proponerse para el lunes.
+
+## 2026-11-09 (madrugada 6) · `dinsides.py presentar`: la presentación la arma el script, no la Routine
+
+- **Queja del dueño:** la Routine presentó resúmenes vagos y frases de proceso, no leyó los chats, no mandó Telegram, no explicó los
+  cambios de fecha de un cliente ni la corrección de datos de la clienta de provincia, ni dijo si revisó el CRM. Quiere cada pedido
+  como un bloque legible (como el mensaje del motorizado), con lo que escribió el cliente, el estado en Dinsides y la decisión final.
+- **Arreglo:** `python3 scripts/asesor/dinsides.py presentar [FECHA]` imprime por pedido: ficha completa, historial relevante del
+  cliente con fecha y hora (dirección, horas, fechas, pagos, cambios, capturas, pines) y las líneas de la asesora que fijan algo,
+  estado en Dinsides (sin pedido / ANULADO #… / abierto #…), fila de la hoja, ⛔ y alertas, decisión; luego YA REGISTRADOS en una
+  línea, CRM revisado (candidatos) y PEDIDOS PENDIENTES DE OTROS DÍAS CON MENSAJE NUEVO (hoja abierta de otros días × chat en 36 h).
+  La Routine pega esa salida tal cual y solo agrega «Lectura: …» por bloque y las líneas de verificación con números
+  (`docs/envios-jennifer.md` A4). Un LISTO con «HORA ESPECÍFICA» o 🚨 de fecha se presenta como pregunta, no como listo.
+- **Corrección hecha desde esta sesión:** la fila de la clienta de provincia cuyo DNI llegó completo el 07-11 quedó
+  CONFIRMADO / CORRECCIÓN con su DNI (upsert por el Worker): entra al próximo masivo de Shalom como ATRASADO.
+- **Pregunta del dueño (¿clonar cada vez es ineficiente?):** la Routine SÍ trabaja en una sola sesión fija (como boletas): cada «Run
+  now» o mensaje es un turno más del mismo chat. El clon ocurre solo la primera vez que nace el contenedor; después es `git fetch` +
+  `reset` (segundos). No es el cuello de botella; lo que falló fue la calidad de la respuesta, por eso la presentación es determinista.

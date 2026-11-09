@@ -87,19 +87,26 @@ A3 — /tmp/dinsides/salida.json con SOLO lo que se corrige o agrega:
 Sin cambios: `{"pedidos": []}` toma todos los listos. OJO: si `pedidos` trae algo, solo se toman esos WhatsApp; para que los listos
 también salgan, se incluyen con solo su whatsapp.
 
-A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py registrar /tmp/dinsides/salida.json --simular`
-Hace todo menos registrar e imprime «FICHAS COMPLETAS»: EXACTAMENTE lo que se mandaría a Dinsides, campo por campo (Tipo de
-pedido · Nombre · Teléfono · Fecha de entrega · Distrito · Dirección · Coordenadas · Producto · Cobrar S/ · Tipo de pago ·
-Observación). Preséntalas TAL CUAL en la sesión, una ficha por pedido, sin resumir ni cambiar nada (el dueño quiere ver
-exactamente lo que va a quedar en Dinsides), y debajo de cada una las alertas (·) del sistema. Los nombres del producto ya salen
-como los escribe el equipo: «Kit Tarot de aprendizaje», «2 Kits Tarot de aprendizaje», «Tarot de aprendizaje» (solo el mazo),
-«Tarot Gold Rider Waite», y «+ Extra: …» para lo extra; no los reescribas. Después de las fichas, los pendientes: una línea por
-pedido con «PENDIENTE: <pregunta exacta>»
-(«solo mandó el pin, ¿dirección en texto? [link]», «¿La Perla o Callao?», «¿ya confirmó?», «MONTO: no es kit, ¿cuánto se cobra?»).
-Debajo: lo que marcó `estados`; los YA REGISTRADOS en UNA sola línea compacta («Ya en Dinsides, no se tocan: Dante #…, July #…»;
-el dueño no quiere verlos como fichas), y los candidatos descartados con su motivo en una línea cada uno. Termina con:
-«Responde OK para registrar los LISTOS, o corrige (ej.: “Judith: Av. X 123, Comas” / “Pedro: cobrar 69” / “María no va”).»
-Manda la misma tabla al dueño: `python3 scripts/asesor/dinsides.py telegram "<tabla en texto, máximo 25 líneas>"`.
+A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py presentar` (y, si quieres comprobar el payload exacto,
+`registrar /tmp/dinsides/salida.json --simular`). `presentar` imprime, en el formato del dueño, UN bloque por pedido: ficha
+completa (cliente · teléfono · dirección · distrito y de dónde salió · producto · cobrar y forma · fecha · nota para el motorizado),
+LO QUE ESCRIBIÓ EL CLIENTE con fecha y hora (dirección, horas, fechas, pagos, cambios), su estado en Dinsides (sin pedido / ANULADO
+#… / abierto #…), su fila en la hoja, los ⛔ y las alertas, y la decisión. Después: los YA REGISTRADOS en una línea, el CRM
+revisado (candidatos que el reporte no trae) y los PEDIDOS PENDIENTES DE OTROS DÍAS CON MENSAJE NUEVO del cliente (datos que
+llegaron, cambios, reclamos).
+Tu respuesta en la sesión es ESA SALIDA PEGADA TAL CUAL (no la resumas, no la conviertas en tabla) más, debajo de cada bloque, UNA
+línea tuya «Lectura: …» cuando haga falta: lo que resolviste leyendo el chat (p. ej. «dirección en texto encontrada: …», o la
+secuencia «primero pidió X, después propuso Y, al final pagó y la asesora agendó Z → confirmar con el dueño»). Un LISTO con alerta
+«HORA ESPECÍFICA» o con nota 🚨 que hable de fecha NO se da por listo: va como PREGUNTA al dueño («¿lunes por Dinsides o
+miércoles?», «¿Dinsides 12–5 pm o motorizado?»).
+Para cada pendiente de otros días con mensaje nuevo, di qué llegó y la decisión (Lima → se agrega a salida.json; provincia → va al
+próximo Shalom; reclamo → al dueño). Termina SIEMPRE con estas líneas de verificación, con números reales:
+«Verificado: CRM revisado (N candidatos, M agregados) · Dinsides consultado (K abiertos, J anulados detectados) · pendientes de
+otros días con mensaje: X · Telegram enviado: sí/no». Y la frase: «Responde OK para registrar los LISTOS, o corrige (ej.: “Judith:
+Av. X 123, Comas” / “Pedro: cobrar 69” / “María no va” / “Mavel: miércoles”).»
+Manda lo mismo al dueño por Telegram: `python3 scripts/asesor/dinsides.py telegram "<los bloques, acortados a 30 líneas>"`.
+PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»), resúmenes sin datos, tablas que esconden la nota, decir
+«hay que verificar» sin haber leído el chat. Todo lo que afirmes sale de `presentar` o del chat, con fecha y hora.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
 
 A5 — Con la respuesta:
