@@ -570,7 +570,7 @@ h2{font-size:15px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 6p
 h2.rojo{color:#b91c1c;border-color:#dc2626} h2.amb{color:#854d0e;border-color:#ca8a04} h2.gris{color:#555;border-color:#999;font-size:13px}
 .cajas{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px} .cajas div{flex:1 1 30%;min-width:95px;border:1px solid #ddd;border-radius:6px;padding:5px 7px} .cajas b{display:block;font-size:20px;color:#075E54} .cajas span{color:#555;font-size:11px}
 .ped{border:1px solid #bbb;border-radius:8px;padding:9px 10px;margin:8px 0;page-break-inside:avoid;max-width:100%}
-.pagina .ped{page-break-before:always;page-break-inside:auto} .pagina .ped:first-of-type{page-break-before:auto}
+.pagina .ped{page-break-before:always;page-break-inside:auto} .pagina .ped:first-of-type{page-break-before:auto} .notas,.ver,.porque,table.et,.chat{page-break-inside:avoid}
 .ped.listo{border-left:8px solid #075E54} .ped.conf{border-left:8px solid #ca8a04;background:#fffbeb} .ped.pend{border-left:8px solid #dc2626;background:#fff5f5} .ped.ya{border-left:8px solid #999;color:#444}
 .ped h3{margin:0 0 4px;font-size:16px;line-height:1.25} .ped .meta{color:#555;font-size:11px;margin-bottom:6px}
 table.et{border-collapse:collapse;width:100%;margin:4px 0 8px;table-layout:fixed} table.et th{background:#075E54;color:#fff;text-align:left;padding:4px 7px;width:34%;font-weight:600;font-size:12px} table.et td{border:1px solid #bbb;padding:4px 7px;font-size:12.5px}
@@ -623,7 +623,8 @@ def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
             cl = "ases" if o.startswith("📣") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢", "🧾", "🏷️", "📄")) else ""
             h.append(f"<div class='lin {cl}'>{E(o)}</div>")
     if chat:
-        h.append("<div class=chat>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in chat) + "</div>")
+        vis = chat if interactivo else chat[-8:]
+        h.append("<div class=chat>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in vis) + "</div>")
     if interactivo and wa:
         h.append("<div class=ctl>"
                  + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{t}</label>" for v, t in (("ok", "✅ OK, va así"), ("correccion", "✏️ Corrección"), ("no_va", "❌ No va"), ("ya_enviado", "📦 Ya se envió")))
@@ -631,7 +632,7 @@ def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
     elif pdf_pagina:
         h.append("<div class=notas><b>Notas de revisión (marca y escribe; luego dile a Claude «revisa mis notas»):</b>"
                  "<div class=opc><span>☐ OK, va así</span><span>☐ Corrección</span><span>☐ No va</span><span>☐ Ya se envió</span></div>"
-                 "<div class=lineas></div><div class=lineas></div><div class=lineas></div></div>")
+                 "<div class=lineas></div><div class=lineas></div></div>")
     h.append("</div>")
     return "".join(h)
 
