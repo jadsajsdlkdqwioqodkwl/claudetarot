@@ -3,7 +3,7 @@
 > FUENTE DE VERDAD de las instrucciones. La Routine o el Project de Jennifer lleva solo el «arranque» de abajo; Claude clona el
 > repo y lee este archivo, así las mejoras entran solas sin tocar su prompt. Copia legible en Google Docs
 > («Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`, compartido con el
-> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-09.
+> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-09 (noche: fichas completas en A4).
 
 ## Arranque (lo único que va en la Routine o el Project de Jennifer)
 
@@ -67,9 +67,13 @@ Sin cambios: `{"pedidos": []}` toma todos los listos. OJO: si `pedidos` trae alg
 también salgan, se incluyen con solo su whatsapp.
 
 A4 — PRESENTAR (obligatorio): `python3 scripts/asesor/dinsides.py registrar /tmp/dinsides/salida.json --simular`
-Hace todo menos registrar. Con lo que imprime arma UNA tabla en la sesión, una fila por pedido, con estas columnas:
-`Cliente · Teléfono · Distrito (fuente: mapa/texto) · Dirección · Qué lleva (producto + extras) · Cobrar (S/ y forma: Yape /
-efectivo / POS / NO COBRAR) · Nota para el motorizado · Fecha · Estado`. Estado = «LISTO» o «PENDIENTE: <pregunta exacta>»
+Hace todo menos registrar e imprime «FICHAS COMPLETAS»: EXACTAMENTE lo que se mandaría a Dinsides, campo por campo (Tipo de
+pedido · Nombre · Teléfono · Fecha de entrega · Distrito · Dirección · Coordenadas · Producto · Cobrar S/ · Tipo de pago ·
+Observación). Preséntalas TAL CUAL en la sesión, una ficha por pedido, sin resumir ni cambiar nada (el dueño quiere ver
+exactamente lo que va a quedar en Dinsides), y debajo de cada una las alertas (·) del sistema. Los nombres del producto ya salen
+como los escribe el equipo: «Kit Tarot de aprendizaje», «2 Kits Tarot de aprendizaje», «Tarot de aprendizaje» (solo el mazo),
+«Tarot Gold Rider Waite», y «+ Extra: …» para lo extra; no los reescribas. Después de las fichas, los pendientes: una línea por
+pedido con «PENDIENTE: <pregunta exacta>»
 («solo mandó el pin, ¿dirección en texto? [link]», «¿La Perla o Callao?», «¿ya confirmó?», «MONTO: no es kit, ¿cuánto se cobra?»).
 Debajo: lo que marcó `estados`, los YA REGISTRADOS (no se tocan) y los candidatos descartados con su motivo. Termina con:
 «Responde OK para registrar los LISTOS, o corrige (ej.: “Judith: Av. X 123, Comas” / “Pedro: cobrar 69” / “María no va”).»
