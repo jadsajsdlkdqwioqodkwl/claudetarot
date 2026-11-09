@@ -2138,3 +2138,13 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   (`control_ventas.py`) y la Routine los pone en `empaque`/`pago`. Lo que NO tiene el reporte es un campo numérico «cobrar/precio»
   ni «descuento»: por eso el arreglo se hizo río abajo (leer el texto en Dinsides y Shalom). Si se quiere el campo estructurado,
   hay que cambiar el prompt de la Routine del reporte desde su sesión fija (no desde aquí) y la columna del PDF en `enviar.py`.
+
+
+## 2026-11-09 — Pago hecho: envíos normales; cobro con el bono (imagen) a provincia con saldo; reporte también a Jennifer
+- El dueño pagó el saldo de Meta el 8/11: desde las 23:52 UTC del 7/11 no hay fallos por pago; las plantillas vuelven a salir.
+- **Cobro con bono (dueño, 8/11):** 26 chats de provincia con `cobro_3x`, sin `saldo_pagado`, saldo > 0, sin Olva ni pausa, en
+  `scheduled_messages` (`batch_id` `bono-cobro-2026-11-09`, 9/11 11:00 Lima, `mandar_siempre` 1): `bono_saldo_shalom_img` («en su
+  agencia») a los 4 con boleta de hace 4 días o más, `bono_saldo_camino_img` («va en camino») a los 22 con boleta más reciente.
+  Si tocan «Sí, mi saldo», la respuesta automática de cobro les contesta con su saldo y el Yape.
+- **Reporte de pedidos y ventas por Telegram también a Jennifer:** `REPORTE_AGENTES` en wrangler.jsonc pasa de «danitza» a
+  «danitza,jennifer» (usuarios del CRM con Telegram vinculado; `chatsReporte` en asesor.js).
