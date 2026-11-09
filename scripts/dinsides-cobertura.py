@@ -46,8 +46,8 @@ def main():
         nota = re.sub("<[^>]+>", " ", d.group(1)).replace("\xa0", " ").strip() if d else ""
         nota = re.sub(r"\s+", " ", nota) or None
         if "<Polygon>" in p:
-            coords = re.search(r"<outerBoundaryIs>.*?<coordinates>(.*?)</coordinates>", p, re.S).group(1).split()
-            anillo = [[round(float(c.split(",")[1]), 4), round(float(c.split(",")[0]), 4)] for c in coords]
+            # Un Placemark puede ser un MultiGeometry con VARIOS polígonos (Carabayllo trae 3: una astilla de 4 puntos y dos zonas
+            # grandes). Antes se tomaba solo el primero y el pin de un cliente en Carabayllo salía «fuera del mapa» (dueño 2026-11-09).
             n = norm(nombre)
             if any(n.startswith(x) for x in NO_ENTREGA) or n == "gamarra":
                 clase, distrito = "no_entrega", ("gamarra" if n == "gamarra" else None)
@@ -55,7 +55,15 @@ def main():
                 clase, distrito = "punto_encuentro", None
             else:
                 clase, distrito = "entrega", MAPA.get(n, n)
-            poligonos.append({"nombre": nombre, "clase": clase, "distrito": distrito, "nota": nota, "anillo": anillo})
+            for poly in re.findall(r"<Polygon>(.*?)</Polygon>", p, re.S):
+                m = re.search(r"<outerBoundaryIs>.*?<coordinates>(.*?)</coordinates>", poly, re.S)
+                if not m:
+                    continue
+                coords = m.group(1).split()
+                anillo = [[round(float(c.split(",")[1]), 4), round(float(c.split(",")[0]), 4)] for c in coords]
+                if len(anillo) < 4:
+                    continue
+                poligonos.append({"nombre": nombre, "clase": clase, "distrito": distrito, "nota": nota, "anillo": anillo})
         elif "<Point>" in p:
             c = re.search(r"<coordinates>(.*?)</coordinates>", p, re.S).group(1).strip().split(",")
             puntos.append({"nombre": nombre, "nota": nota, "lat": round(float(c[1]), 5), "lng": round(float(c[0]), 5)})

@@ -274,7 +274,14 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
   let hoja = [];
   if (env.GOOGLE_SHEET_ID) { try { hoja = await filasPedidosAuto(env); } catch (err) { console.error("dinsides estados: hoja", err.message); } }
   const porTel = new Map();
-  for (const f of hoja) { const k = n9(f.whatsapp); if (k) (porTel.get(k) || porTel.set(k, []).get(k)).push(f); }
+  for (const f of hoja) {
+    const k = n9(f.whatsapp); if (k) (porTel.get(k) || porTel.set(k, []).get(k)).push(f);
+    // Teléfonos alternos escritos en la nota o la dirección («recibe Sra. Hildita +51993732417»): el equipo registra en Dinsides con
+    // el teléfono de quien recibe, y la fila de la hoja va por el WhatsApp del cliente (dueño 2026-11-09, caso Shei).
+    for (const m of `${f.nota || ""} ${f.direccion_o_agencia || ""}`.matchAll(/(?:\+?51\s?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})\b/g)) {
+      const alt = n9(m[1]); if (alt && alt !== k) (porTel.get(alt) || porTel.set(alt, []).get(alt)).push(f);
+    }
+  }
   const resumen = { entregados: [], anulados: [], rechazados: [], pendientes: [], otros: [], sin_fila_en_hoja: [], marcados: 0, etiquetados: 0 };
   for (const ped of lista) {
     const clase = claseSeguimiento(ped.seguimiento);

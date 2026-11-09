@@ -2314,3 +2314,24 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   (quedarán como atendidos cuando el Worker despliegue el cruce con la memoria); 17 pedidos de otros días sin despachar en la hoja, 6
   con mensajes del cliente posteriores a la venta (uno de Lima registrado en Dinsides para el lunes que escribió «no he recibido nada»,
   dos de provincia que dieron agencia/«separar» sin captura). Todo eso lo ve el dueño en la presentación, no tiene que abrir el CRM.
+
+## 2026-11-09 (madrugada 8) · Lima y Shalom en UN texto; Carabayllo estaba roto en el mapa; teléfonos alternos; Maps a verificar
+
+- **Shalom en la misma presentación:** `dinsides.py presentar` ahora termina con la sección «🚚 SHALOM (provincia)» (solo lectura): por
+  pedido, cliente · WhatsApp · DNI, agencia escrita por el cliente, agencia Shalom que calza (SEGURA / DUDOSA con candidatas), qué
+  lleva, adelanto y saldo, nota, boleta, Dinsides y chat; LISTO para el Excel o PENDIENTE (sin DNI, agencia o monto por confirmar).
+  Incluye los pendientes de la hoja (ATRASADO / CORRECCIÓN, p. ej. la clienta cuyo DNI llegó después). `shalom.py masivo --subir`
+  queda SOLO para después del «OK Shalom» (B3). Motivo: la sesión de la Routine no pudo correr `shalom.py masivo` (el clasificador de
+  permisos lo marcó «Modify Shared Resources», porque escribe en la hoja Ventas con `--clave`) y el dueño se quedó sin provincia;
+  además quiere UN texto con los dos couriers.
+- **Mapa de cobertura:** el Placemark CARABAYLLO del My Maps es un MultiGeometry con 3 polígonos; `scripts/dinsides-cobertura.py`
+  tomaba solo el primero (una astilla de 4 puntos) y un pin real de Carabayllo salía «fuera del mapa» (el dueño lo vio en verde).
+  Ahora toma todos los polígonos de cada Placemark; `src/lib/dinsides-cobertura.js` regenerado.
+- **Teléfonos alternos:** `estados` y `presentar` cruzan también con los teléfonos escritos en la nota o la dirección de la fila (el
+  equipo registra en Dinsides con el teléfono de quien recibe; caso Shei → «Sra. Hildita», ENTREGADO el 04-11), así la fila se cierra
+  y no sale como «sin pedido en Dinsides».
+- **Verificar en Google Maps:** toda dirección deducida del pin lleva en la presentación la línea «🔎 VERIFICAR EN GOOGLE MAPS» con el
+  link, para que la asesora o el dueño confirmen antes del OK (regla del dueño: el pin basta para agendar, pero una persona mira el mapa).
+- **Textos:** el veredicto «👀 REVISAR» explica qué hacer (leer el chat: Lima → salida.json; provincia → Shalom; no compró → decirlo);
+  todo cliente nombrado lleva su WhatsApp al lado. Un pedido de otro día (jueves) se registra ya en Dinsides con su fecha y se dice
+  dónde queda guardado (Dinsides #id, hoja fila N, agenda del reporte).

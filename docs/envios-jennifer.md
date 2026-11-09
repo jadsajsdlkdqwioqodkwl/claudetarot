@@ -56,7 +56,11 @@ A2 — Por cada bloqueado y cada candidato que no diga «parece PROVINCIA»: `py
 y busca en lo que escribió EL CLIENTE («C:»):
 - Dirección en texto → `direccion` completa con referencias, sin emojis. Solo pin → CON EL PIN BASTA (dueño 2026-11-09): el sistema arma la
   dirección desde el pin (OpenStreetMap) y el pedido queda LISTO con la alerta «DIRECCIÓN deducida del pin»; si el chat trae referencias,
-  agrégalas en `direccion`. Solo si el pin no se pudo convertir queda pendiente.
+  agrégalas en `direccion`. Solo si el pin no se pudo convertir queda pendiente. En la presentación, cada dirección deducida lleva la
+  línea «🔎 VERIFICAR EN GOOGLE MAPS»: pídele a la asesora (o al dueño) que abra el link y confirme que la dirección coincide con el pin
+  antes del OK; si no coincide, corrige con «X: dirección …».
+- Un pedido para otro día (p. ej. jueves) se registra YA en Dinsides con esa fecha y queda además en la hoja «Pedidos auto» (fila con su
+  fecha) y en la agenda del reporte de ese día: dilo en la presentación («queda agendado para el DD en Dinsides #id, hoja fila N»).
 - Distrito: con pin manda el mapa (`python3 scripts/asesor/dinsides.py zona <lat,lng>`); sin pin, el del desplegable si la dirección
   lo dice sin dudas; ambiguo («San Juan», «Lima», «Callao»), zona roja o punto de encuentro → pendiente.
 - POR_VERIFICAR o INTENCIÓN: si el cliente ya pasó su dirección, `estado: "CONFIRMADO"`; si no, pendiente.
@@ -110,6 +114,7 @@ próximo Shalom; reclamo → al dueño). Termina SIEMPRE con estas líneas de ve
 otros días con mensaje: X · Telegram enviado: sí/no». Y la frase: «Responde OK para registrar los LISTOS, o corrige (ej.: “Judith:
 Av. X 123, Comas” / “Pedro: cobrar 69” / “María no va” / “Mavel: miércoles”).»
 Manda lo mismo al dueño por Telegram: `python3 scripts/asesor/dinsides.py telegram "<los bloques, acortados a 30 líneas>"`.
+Cada vez que nombres a un cliente (pendiente, candidato, descartado) pon su WhatsApp al lado: «Jessica 51977777986», nunca solo el nombre.
 PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»), resúmenes sin datos, tablas que esconden la nota, decir
 «hay que verificar» sin haber leído el chat. Todo lo que afirmes sale de `presentar` o del chat, con fecha y hora.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
@@ -128,29 +133,25 @@ Otros comandos: `dinsides.py anular <id>` (antes de la ruta), `dinsides.py edita
 
 ### B. Shalom (provincia): Excel de envío masivo
 
-B1 — `rm -rf /tmp/shalom && python3 scripts/asesor/shalom.py masivo --salida /tmp/shalom/masivo.xlsx` (sin `--subir`: no sube nada).
-Sin pedidos de provincia confirmados → «Sin pedidos de provincia para mañana» y fin del ciclo. Lee las líneas ⚠️: «agencia dudosa»
-(con las candidatas), «sin DNI», «DNI de N dígitos», «MONTO: …», «va por OLVA», «ATRASADO: previsto para FECHA y sin boleta» (pedidos
-pendientes de la hoja que no salieron en su día, p. ej. por DNI incompleto: entran al Excel si ya tienen DNI y agencia; en la
-presentación se dicen aparte, con su fecha original).
-Por cada «agencia dudosa»: `python3 scripts/asesor/dinsides.py chat <whatsapp> 60` (avenida, local, distrito, ciudad que escribió el
-cliente) y `python3 scripts/asesor/shalom.py buscar "<ese texto>"`. Si una candidata calza sin duda, anótala con su NOMBRE DE AGENCIA
-(último tramo del código, p. ej. «AV PARRA 379») en /tmp/shalom/agencias.json: `{"51987654321": "AV PARRA 379"}` y vuelve a correr
-B1 con `--agencias /tmp/shalom/agencias.json`. Si no calza, queda pendiente.
+B1 — La presentación de provincia YA VIENE en la misma salida de `python3 scripts/asesor/dinsides.py presentar` (sección «🚚 SHALOM»):
+por pedido, cliente · WhatsApp · DNI, la agencia que escribió el cliente, la agencia de Shalom que calza (SEGURA o DUDOSA con las
+candidatas), qué lleva, adelanto y saldo, nota, boleta, estado en Dinsides y el chat; y si es LISTO para el Excel o PENDIENTE (sin DNI,
+agencia por confirmar, monto por confirmar). Incluye los pendientes de la hoja (ATRASADO / CORRECCIÓN: p. ej. la clienta cuyo DNI
+llegó después). Preséntala junto con Lima, en el mismo mensaje y en el mismo Telegram: el dueño quiere UN texto con los dos couriers.
+Para una agencia dudosa: `python3 scripts/asesor/dinsides.py chat <whatsapp> 60` y `python3 scripts/asesor/shalom.py buscar "<texto>"`;
+si calza sin duda, anótala en /tmp/shalom/agencias.json `{"51987654321": "AV PARRA 379"}` (nombre de agencia = último tramo del código).
+NO corras `shalom.py masivo` antes del OK: arma el Excel y, con `--subir`, lo publica; es el paso B3.
 
-B2 — PRESENTAR (obligatorio): UNA tabla en la sesión, una fila por envío:
-`Cliente · DNI · Agencia (código Shalom) · Bultos · Qué lleva (kits + extras) · Adelanto · Saldo · Nota · Estado`
-(«LISTO» o «PENDIENTE: ¿Av. 27 de Noviembre CO o Huaraz Independencia?» / «sin DNI» / «MONTO: …»). Debajo, cuántos entran al Excel
-y para qué fecha. Termina con: «Responde OK para subir el Excel. Si tienes la clave del día, escríbela: “OK clave NNNN”; sin clave,
-el Excel sube igual y las ventas de la hoja quedan sin clave hasta que la des.» Manda lo mismo al dueño con
-`python3 scripts/asesor/shalom.py telegram "<tabla en texto>"` (sin claves). Y DETENTE hasta que una persona conteste.
+B2 — El OK de provincia se pide en el mismo cierre: «Responde OK Shalom (o “OK Shalom clave NNNN” si tienes la clave del día) para armar y
+subir el Excel». Sin OK no se arma nada.
 
-B3 — Con la respuesta:
-- «OK» → `python3 scripts/asesor/shalom.py masivo --subir --salida /tmp/shalom/masivo.xlsx` (agrega `--agencias /tmp/shalom/agencias.json`
-  si hubo ajustes y `--clave NNNN` SOLO si la persona escribió la clave del día). Sube Excel + referencia a CRM → Reportes y muestra
-  los dos links. Al Excel solo entran las filas con DNI y agencia resueltos.
+B3 — Con «OK Shalom»: `python3 scripts/asesor/shalom.py masivo --subir --salida /tmp/shalom/masivo.xlsx` (agrega `--agencias
+/tmp/shalom/agencias.json` si hubo ajustes y `--clave NNNN` SOLO si la persona escribió la clave del día; sin clave no toca la hoja
+Ventas). Sube Excel + referencia a CRM → Reportes y muestra los dos links. Al Excel solo entran las filas con DNI y agencia resueltos;
+los atrasados de la hoja entran marcados. Si el permiso de la sesión bloquea el comando, dilo tal cual al dueño (él lo corre o ajusta el
+permiso); no insistas más de una vez.
 - Clave que llega después (o corrección) → `python3 scripts/asesor/shalom.py clave NNNN /tmp/shalom/lote.json`.
-- Agencia o DNI de un pendiente → agrégalo a agencias.json o corrige y repite B1→B2 solo con lo cambiado; con el OK, B3.
+- Agencia o DNI de un pendiente → agrégalo a agencias.json o corrige y repite B3; manda los links nuevos.
 - Cierra con: «Shalom Pro → Registro de envíos masivos → subir el Excel → Continuar → clave → Registrar envíos».
 
 ### C. Motorizado de confianza (domingos y horas específicas; solo con el OK del dueño)

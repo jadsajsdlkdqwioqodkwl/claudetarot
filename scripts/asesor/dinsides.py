@@ -383,6 +383,10 @@ def _historial(wa, n=60, desde=""):
     return cab, lineas[-12:], ultimo_cliente
 
 
+def _telefonos_en(texto):
+    return [re.sub(r"\D", "", m)[-9:] for m in re.findall(r"(?:\+?51\s?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})\b", str(texto or ""))]
+
+
 def _estado_dinsides(lista, *tels):
     tels = {str(t or "")[-9:] for t in tels if t}
     xs = [x for x in lista if x.get("telefono") in tels]
@@ -414,7 +418,9 @@ def _bloque(i, f, lista, boletas):
     cab, hist, _ = _historial(f.get("whatsapp", ""))
     out.append(f"🗨️ Lo que escribió el cliente ({cab}):")
     out += [f"    {h}" for h in hist] or ["    (nada relevante en los últimos 60 mensajes)"]
-    out.append(f"🏷️ Dinsides: {_estado_dinsides(lista, tel, f.get('whatsapp', ''))}")
+    out.append(f"🏷️ Dinsides: {_estado_dinsides(lista, tel, f.get('whatsapp', ''), *_telefonos_en(c.get('obs')), *_telefonos_en(c.get('direccion')))}")
+    if any(a.startswith("DIRECCIÓN deducida del pin") for a in f.get("alertas", [])):
+        out.append(f"🔎 VERIFICAR EN GOOGLE MAPS (la asesora o el dueño): https://maps.google.com/?q={c.get('coordenadas')} → ¿la dirección de arriba coincide con el pin? Si no, escribe la correcta en el OK («{(c.get('nombre') or '').split()[0] if c.get('nombre') else 'X'}: dirección …»)")
     out.append(f"🧾 Boleta: {_boleta(boletas, f.get('whatsapp', ''))}")
     if f.get("hoja"):
         out.append(f"📄 Hoja «Pedidos auto»: fila {f['hoja'].get('fila')} · Dinsides: {f['hoja'].get('dinsides') or '—'} · Enviado: {f['hoja'].get('enviado') or '—'}")
@@ -434,6 +440,59 @@ def _bloque(i, f, lista, boletas):
     else:
         out.append("❓ Decisión: PENDIENTE → resolver el ⛔ con el chat de arriba; si falta el dato, preguntar")
     return "\n".join(out)
+
+
+def _presentar_shalom(fecha, ag, lista, boletas):
+    """SHALOM (provincia) en el mismo texto, SOLO LECTURA: pedidos confirmados de provincia de la fecha (estado del reporte) + los pendientes
+    de la hoja (atrasados / correcciones), con DNI, agencia que el cliente escribió, agencia candidata de Shalom, adelanto/saldo, boleta y
+    chat. No arma el Excel ni toca la hoja Ventas: eso es `shalom.py masivo --subir` después del OK."""
+    try:
+        import shalom as sh
+    except Exception as err:  # noqa: BLE001
+        print(f"\n══════ 🚚 SHALOM (provincia): no se pudo cargar shalom.py ({err}) ══════"); return
+    st, est = pedir(f"/ventas-estado?fecha={fecha}&tipo=pedidos")
+    pedidos, vistos = [], set()
+    for p in ((est.get("estado") or {}).get("pedidos", []) if st == 200 else []):
+        k = str(p.get("whatsapp") or "")[-9:]
+        if str(p.get("destino", "")).upper() == "PROVINCIA" and str(p.get("estado", "")).upper() == "CONFIRMADO" and k not in vistos:
+            vistos.add(k); pedidos.append({**p, "_origen": f"reporte {fecha}"})
+    for grupo in ("atrasados", "hoy"):
+        for r in ag.get(grupo) or []:
+            k = str(r.get("whatsapp") or "")[-9:]; estd = str(r.get("estado") or "").upper()
+            if str(r.get("destino", "")).upper() != "PROVINCIA" or k in vistos or not (estd.startswith("CONFIRMADO") or "CORRECCION" in estd):
+                continue
+            vistos.add(k); pedidos.append({**r, "_origen": f"hoja (previsto {r.get('fecha_entrega')}){' · CORRECCIÓN' if 'CORRECCION' in estd else ' · ATRASADO'}"})
+    print(f"\n══════ 🚚 SHALOM (provincia) · despacho {fecha} · {len(pedidos)} pedido(s) confirmados (reporte + pendientes de la hoja) · solo lectura ══════")
+    if not pedidos:
+        print("Sin pedidos de provincia confirmados."); return
+    for i, p in enumerate(pedidos, 1):
+        wa = str(p.get("whatsapp") or "")
+        dni = re.sub(r"\D", "", str(p.get("dni") or ""))
+        texto = str(p.get("direccion_o_agencia") or "")
+        if "olva" in f"{texto} {p.get('nota') or ''}".lower():
+            print(f"{_num(i)} {str(p.get('nombre') or '').upper()} · {wa} · 🟠 OLVA (no entra al Excel de Shalom; se manda aparte) · {p.get('_origen')}"); continue
+        cand = sh.buscar(texto) if texto.strip() else []
+        adelanto, saldo, aviso = sh.montos(p)
+        cab, hist, _ = _historial(wa, 40)
+        agencia = f"{cand[0]['codigo']} ({'SEGURA' if cand[0].get('seguro') else 'DUDOSA: elegir entre ' + ' | '.join(c['codigo'] for c in cand[:3])})" if cand else "SIN CANDIDATA (preguntar la agencia)"
+        pend = []
+        if not dni: pend.append("sin DNI")
+        elif len(dni) != 8: pend.append(f"DNI de {len(dni)} dígitos")
+        if not cand or not cand[0].get("seguro"): pend.append("agencia por confirmar")
+        if aviso: pend.append(aviso)
+        print(f"{_num(i)} {str(p.get('nombre') or '').upper()} · {'✅ LISTO para el Excel' if not pend else '❓ PENDIENTE: ' + '; '.join(pend)} · {p.get('_origen')}")
+        print(f"👤 Cliente: {p.get('nombre')} · WhatsApp {wa} · DNI {dni or '—'} · asesora {p.get('vendedora') or '-'}")
+        print(f"🏢 Agencia que escribió el cliente: {texto or '—'}")
+        print(f"🎯 Agencia Shalom (campo del Excel): {agencia}")
+        print(f"📦 Qué lleva: {p.get('kits') or 1} kit(s){' · ' + str(p.get('empaque')) if p.get('empaque') else ''}")
+        print(f"💰 Adelanto S/{adelanto} · Saldo S/{saldo} · pago: {p.get('pago') or '—'}")
+        print(f"📝 Nota: {p.get('nota') or '—'}")
+        print(f"🧾 Boleta: {_boleta(boletas, wa)} · Dinsides: {_estado_dinsides(lista, wa)}")
+        print(f"🗨️ Lo que escribió el cliente ({cab}):")
+        for h in hist[-8:]:
+            print(f"    {h}")
+        print()
+    print("Con el OK («OK Shalom» o «OK Shalom clave NNNN») se corre `shalom.py masivo --subir` (y `--agencias` con las agencias que confirmes).")
 
 
 def cmd_presentar(args):
@@ -482,7 +541,7 @@ def cmd_presentar(args):
         elif c_.get("parece_provincia"):
             veredicto = "🚚 PROVINCIA → Shalom, no Dinsides"
         else:
-            veredicto = "👀 REVISAR: ¿es un pedido de Lima que falta?"
+            veredicto = "👀 REVISAR: tiene señal de compra pero no está en el reporte, ni en Dinsides, ni tiene boleta ni memoria → leer el chat: si es Lima con dirección, agregarlo a salida.json; si es provincia, va al Shalom; si no compró, decirlo"
         print(f"- {c_.get('nombre')} · {wa} · {c_.get('asesora') or '-'}{' · COMPRA MARCADA' if c_.get('compra_marcada') else ''} · {veredicto}")
         print(f"    Dinsides: {din} · Boleta: {bol}")
         for x in (c_.get("senales") or [])[:2]:
@@ -498,7 +557,7 @@ def cmd_presentar(args):
             fv = str(x.get("fecha_venta") or "")[5:10]
             cab, hist, ultimo = _historial(wa, 30, desde=fv)
             nuevos = [h for h in hist if " C: " in h and (not fv or h[:5] > fv)]
-            hallados.append((x, nuevos, _estado_dinsides(lista, wa), _boleta(boletas, wa), ultimo))
+            hallados.append((x, nuevos, _estado_dinsides(lista, wa, *_telefonos_en(x.get("nota")), *_telefonos_en(x.get("direccion_o_agencia"))), _boleta(boletas, wa), ultimo))
         con_msg = [h for h in hallados if h[1]]
         print(f"\n══════ PEDIDOS DE OTROS DÍAS AÚN SIN DESPACHAR ({len(abiertos)} en la hoja) · con mensajes del cliente después de la venta: {len(con_msg)} ══════")
         for x, nuevos, din, bol, ultimo in hallados:
@@ -517,6 +576,7 @@ def cmd_presentar(args):
             for x in corr:
                 print(f"🚨 {x.get('nombre')} · {x.get('whatsapp')} · {x.get('destino')} · venta {x.get('fecha_venta')} · fila {x.get('fila')} · {str(x.get('nota') or '')[:150]}")
                 print(f"    Dinsides: {_estado_dinsides(lista, x.get('whatsapp'))} · Boleta: {_boleta(boletas, x.get('whatsapp'))} · destino: {'Shalom de hoy (ATRASADO)' if x.get('destino') == 'PROVINCIA' else 'Dinsides de hoy'}")
+    _presentar_shalom(fecha, ag if st3 == 200 else {}, lista, boletas)
     print("\n✅ Verificado por el sistema en esta corrida: fichas armadas desde reporte + hoja + chat; cruce con Dinsides (abiertos y anulados) por teléfono y nombre;"
           f" CRM revisado ({len(cands)} candidatos); boletas leídas ({len(boletas)}); pedidos de otros días sin despachar revisados ({len(abiertos) if st3 == 200 else 'NO'}). Lo que falta: leer los ⛔ y decidir.")
 
