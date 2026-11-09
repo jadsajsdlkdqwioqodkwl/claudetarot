@@ -3,7 +3,7 @@
 > FUENTE DE VERDAD de las instrucciones. La Routine o el Project de Jennifer lleva solo el «arranque» de abajo; Claude clona el
 > repo y lee este archivo, así las mejoras entran solas sin tocar su prompt. Copia legible en Google Docs
 > («Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`, compartido con el
-> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-09 (noche: fichas completas en A4).
+> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-09 (madrugada: página de revisión sin PDF, notas se leen solas, Shalom antes que los pendientes de Lima).
 
 ## Arranque (lo único que va en la Routine o el Project de Jennifer)
 
@@ -20,6 +20,11 @@ API de Claude. Trabaja solo con python3 scripts/asesor/dinsides.py y python3 scr
 Nota (2026-11-09): el arranque sincroniza con `git merge --ff-only` (un `reset --hard` lo bloqueó el permiso de la sesión y la Routine
 leyó instrucciones viejas). Si la sincronización falla, dilo en la primera línea y sigue con lo que tengas.
 
+REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
+«registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:
+lee la última página de revisión que dejó `presentar`). Lo que el dueño marcó en la página vale igual que si lo hubiera escrito en la
+sesión: aplícalo (A4c) y recién después contestas. Nadie tiene que decirte «revisa mis notas».
+
 Cómo se usa: Jennifer (o el dueño) manda «INICIA» a su sesión (o la Routine manual hace «Run now»). Claude hace todo el ciclo
 solo, se detiene UNA vez por courier para presentar lo que va a registrar, y sigue cuando una persona responde en esa misma
 sesión («OK», correcciones, la clave del día). Las respuestas a los pendientes se escriben ahí y Claude termina el trabajo con ellas.
@@ -29,7 +34,9 @@ sesión («OK», correcciones, la clave del día). Las respuestas a los pendient
    antes la lista completa (paso A4 / B2) y sin que una persona haya respondido «OK» en la sesión. Sin OK, nada sale.
 2. Nunca se escribe al cliente. Nunca se inventa una dirección, un distrito, una agencia, un DNI, un monto ni una clave.
 3. Todo pedido se registra para el DÍA SIGUIENTE; el corte es a las 3:00 de la madrugada (hasta esa hora sigue siendo «la noche de
-   ayer»). El sistema ya pone la fecha. Si el cliente pidió otro día, va con esa fecha. Los domingos no se registra nada.
+   ayer»). El sistema ya pone la fecha. Pasadas las 3:00 y hasta las 11:00, si el despacho de HOY todavía tiene pedidos de Lima sin
+   registrar (p. ej. el dueño dio el OK a las 3:20), el sistema se queda en HOY y lo dice en el RESUMEN («📆 Fecha … porque …»); no
+   saltes a mañana por tu cuenta. Si necesitas otra fecha, pásala: `presentar AAAA-MM-DD --pagina`. Si el cliente pidió otro día, va con esa fecha. Los domingos no se registra nada.
 4. El distrito de Lima es el del MAPA DE COBERTURA de Dinsides (el polígono donde cae el pin o la dirección ubicada). El sistema lo
    resuelve; solo cuando la dirección no se puede ubicar se pregunta.
 5. Las claves de seguridad de Shalom son sagradas: solo existe la clave del día que da el dueño en la sesión. Nadie asigna otra.
@@ -97,13 +104,17 @@ Sin cambios: `{"pedidos": []}` toma todos los listos. OJO: si `pedidos` trae alg
 también salgan, se incluyen con solo su whatsapp.
 
 A4 — PRESENTAR (obligatorio, UNA sola vez al final, cuando ya leíste los chats y agregaste lo que faltaba con `shalom.py agregar` o
-salida.json): `python3 scripts/asesor/dinsides.py presentar --pdf`. Si tuviste que agregar algo, vuelve a correrlo y pega SOLO la última
-salida (nunca dos presentaciones en el mismo mensaje). Si `python3` es 3.11 y falla, usa `python3.12` o `python3.13`. Con `--pdf` el detalle completo (chats, Dinsides,
-hoja, candidatos, chats de hoy) se sube a CRM → Reportes y en pantalla sale la VERSIÓN CORTA, que es lo que pegas en la sesión: por
+salida.json): `python3 scripts/asesor/dinsides.py presentar --pagina`. Si tuviste que agregar algo, vuelve a correrlo y pega SOLO la última
+salida (nunca dos presentaciones en el mismo mensaje). Si `python3` es 3.11 y falla, usa `python3.12` o `python3.13`. Con `--pagina`
+(`--pdf` es lo mismo) el detalle completo (chats, Dinsides, hoja, candidatos, chats de hoy) se sube como PÁGINA DE REVISIÓN a CRM →
+Reportes y en pantalla sale la VERSIÓN CORTA, que es lo que pegas en la sesión. NO se genera PDF (dueño: «si ya vas a mandar página,
+ya no mandas el PDF»); solo si el dueño pide uno para imprimir agregas `--imprimir`. Orden de la salida (del dueño): Lima listos →
+Shalom → Lima pendientes (rojo) → ya registrados → correcciones → otros días → chats de hoy y CRM revisado (al final, en una línea:
+no suman). En cada tarjeta: etiqueta → verificar → botones y notas → al final los momentos clave del chat. Por
 pedido la ETIQUETA (Dinsides: Negocio · ENTREGAR A · Teléfono · Producto · Cobrar · Distrito · Fecha Entrega · Detalle; Shalom:
 Destinatario · N°DOC · Destino · Mercadería · Adelanto/Saldo), su estado (✅ listo · ✅❓ listo pero confirmar · ❓ pendiente · ↩️ ya
 registrado), la nota 📣 para la asesora (lo que NO va a Dinsides), la línea 🔎 VERIFICAR, correcciones, resumen de candidatos y chats
-de hoy, lista de verificación y el link del PDF. Sin `--pdf` imprime todo (y, si quieres comprobar el payload exacto,
+de hoy, lista de verificación y el link de la página. Sin `--pagina` imprime todo (y, si quieres comprobar el payload exacto,
 `registrar /tmp/dinsides/salida.json --simular`). `presentar` imprime, en el formato del dueño, UN bloque por pedido: ficha
 completa (cliente · teléfono · dirección · distrito y de dónde salió · producto · cobrar y forma · fecha · nota para el motorizado),
 LO QUE ESCRIBIÓ EL CLIENTE con fecha y hora (dirección, horas, fechas, pagos, cambios), su estado en Dinsides (sin pedido / ANULADO
@@ -138,9 +149,10 @@ Dinsides de esa entrega (formato Dinsides, 3×5; al pie de cada una va en letra 
 CRM → Reportes; da el link. Las de Shalom se imprimen cuando ya hay
 número de orden (boletas).
 
-A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pdf` también deja una PÁGINA DE REVISIÓN (link en la salida) donde
-el dueño o la asesora marcan por pedido OK / Corrección (con texto) / No va / Ya se envió, y se guarda sola. Cuando te digan
-«revisa mis notas» (o cuando llegue un OK), corre `python3 scripts/asesor/dinsides.py notas <id o link>`: te lista las decisiones.
+A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pagina` deja la PÁGINA DE REVISIÓN (link en la salida) donde
+el dueño o la asesora marcan por pedido OK / Corrección (con texto) / No va / Ya se envió, y se guarda sola. `presentar` guarda el id
+en /tmp/dinsides/revision.json; con CUALQUIER mensaje que llegue después (REGLA CERO), corre `python3 scripts/asesor/dinsides.py notas`
+(sin argumentos lee esa última página; también acepta `<id o link>`): te lista las decisiones.
 Aplica: OK → esos WhatsApp van a salida.json y se registran (A5); Corrección → aplica el texto (dirección, distrito, agencia, cobrar,
 fecha, «motorizado» → sección C) y vuelve a presentar SOLO esos; No va → `marcar <whatsapp> "" "no va: <motivo>"`; Ya se envió →
 `python3 scripts/asesor/reporte.py enviado <whatsapp> "sí <fecha> <courier> (según el dueño)"`. Para Shalom: OK → entra al Excel;

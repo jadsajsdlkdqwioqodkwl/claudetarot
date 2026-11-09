@@ -578,7 +578,7 @@ table.et{border-collapse:collapse;width:100%;margin:4px 0 8px;table-layout:fixed
 .porque{background:#fde68a;border:2px solid #ca8a04;border-radius:6px;padding:7px 9px;margin:8px 0;font-size:14px;font-weight:700;color:#78350f}
 .ver{background:#dbeafe;border:2px solid #2563eb;border-radius:6px;padding:7px 9px;margin:8px 0;font-size:13px} .ver b{display:block;font-size:14px;color:#1e3a8a;margin-bottom:3px} .ver ol{margin:2px 0 0 18px;padding:0} .ver li{margin:3px 0}
 .lin{margin:4px 0;font-size:12px} .lin.ases{background:#fef9c3;padding:4px 8px;border-radius:4px;font-weight:600} .lin.blq{color:#b91c1c;font-weight:700} .lin.al{color:#7c2d12}
-.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10px;color:#333;background:#f6f6f6;padding:6px 8px;border-radius:4px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere} .chat b{color:#075E54}
+.chat{font-family:'DejaVu Sans Mono',monospace;font-size:10px;color:#333;background:#f6f6f6;padding:6px 8px;border-radius:4px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere} .chat b{color:#075E54} .chat .tit{color:#666;font-family:sans-serif;letter-spacing:.3px}
 .notas{margin-top:10px;border:2px dashed #888;border-radius:6px;padding:8px 10px} .notas b{display:block;margin-bottom:4px;color:#333;font-size:12px} .notas .opc{margin:4px 0 8px} .notas .opc span{display:inline-block;border:1.5px solid #555;border-radius:4px;padding:2px 10px;margin:0 8px 4px 0}
 .notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px} .ctl label{border:1.5px solid #555;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px} .ctl input[type=radio]{margin-right:4px}
 textarea.nota{width:100%;max-width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px;display:block} .guardado{color:#075E54;font-weight:600;font-size:12px}
@@ -622,17 +622,18 @@ def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
         else:
             cl = "ases" if o.startswith("📣") else "blq" if o.startswith("⛔") else "al" if o.startswith(("⚠️", "📝", "🏢", "🧾", "🏷️", "📄")) else ""
             h.append(f"<div class='lin {cl}'>{E(o)}</div>")
-    if chat:
-        vis = chat if interactivo else chat[-8:]
-        h.append("<div class=chat>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in vis) + "</div>")
+    # Orden del dueño (2026-11-09): etiqueta → verificar → botones y notas → al final el log del chat (momentos clave).
     if interactivo and wa:
         h.append("<div class=ctl>"
                  + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{t}</label>" for v, t in (("ok", "✅ OK, va así"), ("correccion", "✏️ Corrección"), ("no_va", "❌ No va"), ("ya_enviado", "📦 Ya se envió")))
                  + f"</div><textarea class=nota placeholder='Nota: dirección correcta, agencia, monto, motorizado, otra fecha…'></textarea><div class=guardado></div>")
     elif pdf_pagina:
-        h.append("<div class=notas><b>Notas de revisión (marca y escribe; luego dile a Claude «revisa mis notas»):</b>"
+        h.append("<div class=notas><b>Notas de revisión (marca y escribe; Claude las lee cuando le escribas en la sesión):</b>"
                  "<div class=opc><span>☐ OK, va así</span><span>☐ Corrección</span><span>☐ No va</span><span>☐ Ya se envió</span></div>"
                  "<div class=lineas></div><div class=lineas></div></div>")
+    if chat:
+        vis = chat if interactivo else chat[-14:]
+        h.append("<div class=chat><b class=tit>Momentos clave del chat</b><br>" + "".join(("<b>" + E(c) + "</b><br>") if " C: " in c else (E(c) + "<br>") for c in vis) + "</div>")
     h.append("</div>")
     return "".join(h)
 
@@ -644,7 +645,7 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
     partes = [f"<h1>{E(titulo)}</h1><p class=sub>Tarot Store Perú · generado por dinsides.py presentar</p>"]
     if interactivo:
         partes.append("<div class=sticky>Marca en cada pedido <b>OK</b>, <b>Corrección</b> (y escribe qué), <b>No va</b> o <b>Ya se envió</b>. Se guarda solo. "
-                      "Cuando termines, dile a Claude en la sesión: <b>«revisa mis notas»</b>. <span id=total class=guardado></span></div>")
+                      "Cuando termines, escribe lo que sea en la sesión (p. ej. «listo»): Claude lee estas notas antes de responder. <span id=total class=guardado></span></div>")
     if resumen:
         partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
@@ -724,8 +725,12 @@ def cmd_notas(args):
     agrupado para actuar: los OK van a salida.json (registrar), los «no va» a `marcar`, los «ya se envió» a `reporte.py enviado`, y
     las correcciones se leen y se aplican (dirección, distrito, agencia, monto, fecha, motorizado)."""
     rid = re.sub(r"^.*/r/", "", args[0]).replace(".html", "") if args else ""
+    if not rid and os.path.exists("/tmp/dinsides/revision.json"):
+        ult = json.load(open("/tmp/dinsides/revision.json"))
+        rid = ult.get("id") or ""
+        print(f"(última página de revisión: {ult.get('url')} · despacho {ult.get('fecha')} · creada {ult.get('creada')})")
     if not rid:
-        sys.exit("Falta el id (o el link) de la página de revisión.")
+        sys.exit("Falta el id (o el link) de la página de revisión y no hay ninguna guardada en /tmp/dinsides/revision.json (corre antes `presentar --pagina`).")
     st, r = pedir(f"/revision?id={rid}")
     salir_si_error(st, r)
     if r.get("error"):
@@ -752,9 +757,11 @@ def cmd_notas(args):
 
 
 def cmd_presentar(args):
-    """TODO lo que hay que mirar antes del OK, en el formato del dueño. Con --pdf: el detalle completo va a un PDF en CRM → Reportes y
-    en pantalla sale la versión corta (etiquetas, preguntas, correcciones, lista de verificación y el link)."""
-    con_pdf = "--pdf" in args
+    """TODO lo que hay que mirar antes del OK, en el formato del dueño. Con --pagina (o --pdf, que es lo mismo): el detalle completo
+    va a la PÁGINA DE REVISIÓN en CRM → Reportes (marcar OK / corrección / no va por pedido) y en pantalla sale la versión corta.
+    El PDF para imprimir solo sale con --imprimir (dueño 2026-11-09: «si ya vas a mandar página, ya no mandas el PDF»)."""
+    con_pdf = "--pdf" in args or "--pagina" in args
+    con_impreso = "--imprimir" in args
     fecha = fecha_arg(args)
     st, r = pedir(f"/dinsides?fecha={fecha}" if fecha else "/dinsides")
     salir_si_error(st, r)
@@ -776,6 +783,8 @@ def cmd_presentar(args):
         S.append((titulo, lineas_largas)); C.append((titulo, lineas_largas if lineas_cortas is None else lineas_cortas))
 
     cab = [f"📦 Entrega {fecha} · Lima: {len(listos)} para registrar · {len(pend)} pendientes · {len(ya)} ya registrados · generado {ahora} (Lima)"]
+    if r.get("fecha_motivo"):
+        cab.append(f"📆 Fecha {fecha} porque {r['fecha_motivo']}.")
     sec("RESUMEN", cab)
     i = 0
     if listos:
@@ -783,6 +792,14 @@ def cmd_presentar(args):
         for f in listos:
             i += 1; L += [_bloque(i, f, lista, boletas), ""]; Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
         sec(f"✅ LIMA — PARA REGISTRAR EN DINSIDES con tu OK ({len(listos)})", L, Cc)
+    # Shalom va ANTES de los pendientes de Lima (dueño 2026-11-09: «los limas pendientes, en rojo, deben ir debajo de Shalom»)
+    prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
+    L, Cc = [], []
+    for j, p in enumerate(prov, 1):
+        L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
+    ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta"))]
+    pie_sh = [f"Ya despachados o registrados a mano por el equipo (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
+    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", (L or ["Sin pedidos de provincia por despachar."]) + pie_sh, (Cc or ["Sin pedidos de provincia por despachar."]) + pie_sh)
     if pend:
         L, Cc, solo_info = [], [], 0
         for f in pend:
@@ -794,18 +811,10 @@ def cmd_presentar(args):
             else:
                 solo_info += 1
         if solo_info:
-            Cc.append(f"… y {solo_info} chat(s) que solo pidieron precio o información, sin destino ni dirección (lista completa en el PDF). Son para seguimiento de ventas, no pedidos.")
+            Cc.append(f"… y {solo_info} chat(s) que solo pidieron precio o información, sin destino ni dirección (lista completa en la página). Son para seguimiento de ventas, no pedidos.")
         sec(f"❓ LIMA — PENDIENTES, falta un dato ({len(pend)}; no se registran)", L, Cc)
     if ya:
         sec("↩️ LIMA — YA REGISTRADOS (no se tocan)", ["; ".join(f"{(x.get('campos') or {}).get('nombre')} ({x['ya_registrado'].get('modo')} #{x['ya_registrado'].get('nro') or '-'})" for x in ya)])
-    # Shalom
-    prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
-    L, Cc = [], []
-    for j, p in enumerate(prov, 1):
-        L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
-    ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta"))]
-    pie_sh = [f"Ya despachados o registrados a mano por el equipo (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
-    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", (L or ["Sin pedidos de provincia por despachar."]) + pie_sh, (Cc or ["Sin pedidos de provincia por despachar."]) + pie_sh)
     # Correcciones (datos que llegaron)
     corr = [x for x in (ag.get("hoy") or []) if "CORRECCION" in str(x.get("estado") or "").upper() or str(x.get("nota") or "").startswith("🚨 CORRECCIÓN")]
     if corr:
@@ -823,7 +832,7 @@ def cmd_presentar(args):
         else: ver = "👀 REVISAR: señal de compra sin pedido en el reporte, Dinsides, boletas ni memoria → leer el chat: Lima con dirección → salida.json; provincia → shalom.py agregar; no compró → decirlo"
         senales_txt = "".join("\n    chat: " + re.sub(r"\s+", " ", str(x))[:120] for x in (c_.get("senales") or [])[:2])
         L.append(f"- {c_.get('nombre')} · {wa} · {c_.get('asesora') or '-'}{' · COMPRA MARCADA' if c_.get('compra_marcada') else ''} · {ver}\n    Dinsides: {din} · Boleta: {bol}" + senales_txt)
-    sec(f"🔎 CRM REVISADO: {len(cands)} chat(s) con señal de compra que el reporte NO trae (cruzados con Dinsides, boletas y memoria)", L or ["ninguno"], [x.split("\n")[0] for x in L] or ["ninguno"])
+    crm_largo, crm_corto = (L or ["ninguno"]), ([x.split("\n")[0] for x in L if "👀 REVISAR" in x] or [f"{len(cands)} candidato(s) cruzados; ninguno nuevo por leer (detalle en la página)."])
     # Otros días sin despachar
     en_fichas = {f.get("whatsapp", "")[-9:] for f in fichas}
     abiertos = [x for k in ("atrasados", "futuros") for x in (ag.get(k) or []) if str(x.get("whatsapp") or "")[-9:] not in en_fichas]
@@ -851,7 +860,8 @@ def cmd_presentar(args):
         if len(otros) > 80: L.append(f"… y {len(otros) - 80} más")
         L.append("→ Si alguno habla de dirección, pago, agencia o fecha, léelo con `chat <whatsapp> 40` y decide.")
         sec(f"💬 CHATS DE HOY: {len(chats_hoy)} con mensaje del cliente · {len(chats_hoy) - len(otros)} ya están arriba · {len(otros)} restantes con su último mensaje", L,
-            [f"{len(chats_hoy)} chats con mensaje hoy; {len(otros)} no son pedido ni candidato (lista completa en el PDF)."])
+            [f"{len(chats_hoy)} chats con mensaje hoy; {len(otros)} no son pedido ni candidato (lista completa en la página)."])
+    sec(f"🔎 CRM REVISADO: {len(cands)} chat(s) con señal de compra que el reporte NO trae (cruzados con Dinsides, boletas y memoria)", crm_largo, crm_corto)
     # Lista de verificación
     est_ok, n_rep, ult = False, 0, "—"
     try:
@@ -871,14 +881,18 @@ def cmd_presentar(args):
     sec("✅ LISTA DE VERIFICACIÓN (fuentes leídas en esta corrida)", V)
     if con_pdf:
         resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Provincia (Shalom)", len(prov)), ("Correcciones", len(corr)), ("Chats de hoy", len(chats_hoy) if chats_hoy is not None else "?")]
-        ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf", resumen)
         pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend] \
             + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov] \
             + [{"whatsapp": x.get("whatsapp"), "nombre": x.get("nombre"), "tipo": "otro_dia"} for x in abiertos[:60]]
         url_rev, rid = _pagina_revision(f"Revisión de envíos {fecha}", S, resumen, fecha, pedidos_rev)
-        C.insert(1, ("📝 PÁGINA DE REVISIÓN (marca OK / corrección / no va por pedido; se guarda sola) y 📄 PDF completo",
-                     [f"Revisar y marcar: {url_rev}", f"PDF para imprimir (una hoja por pedido, con casilla de notas): {url}",
-                      f"Cuando termines de marcar, escribe en la sesión «revisa mis notas» (Claude corre `dinsides.py notas {rid or '<id>'}`)."]))
+        links = [f"Revisar y marcar: {url_rev}", "Marca OK / corrección / no va en cada pedido; se guarda solo. Cuando termines, escribe cualquier cosa en la sesión: Claude lee las notas antes de responder."]
+        if con_impreso:
+            ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf", resumen)
+            links.insert(1, f"PDF para imprimir (una hoja por pedido, con casilla de notas): {url}")
+        if rid:
+            os.makedirs("/tmp/dinsides", exist_ok=True)
+            json.dump({"id": rid, "url": url_rev, "fecha": fecha, "creada": ahora}, open("/tmp/dinsides/revision.json", "w"), ensure_ascii=False, indent=1)
+        C.insert(1, ("📝 PÁGINA DE REVISIÓN", links))
         for t, lineas in C:
             print(f"══════ {t} ══════"); print("\n".join(lineas)); print()
     else:

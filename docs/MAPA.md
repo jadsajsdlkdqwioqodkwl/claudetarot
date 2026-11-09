@@ -2404,3 +2404,20 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   del comprobante: pendiente de que la Routine de boletas los guarde (hoy «Boletas auto» solo trae el número de orden).
 - **Pendiente que señaló el dueño:** las «recomendaciones del asesor» (mensajes sugeridos a las vendedoras) no se están mandando; hay
   que revisar la Routine del asesor / ✨ Sugerencias por separado.
+
+## 2026-11-09 (mañana 2) · Los 7 de Lima registrados con las notas de la página; fecha que no salta a mañana; página sin PDF; notas que se leen solas
+
+- **Datos:** el dueño marcó OK en la página de revisión de las 03:17 (despacho 2026-11-09) a 7 pedidos de Lima y la Routine, que ya
+  estaba en el día 10, no los vio. Se registraron desde esta sesión con `dinsides.py registrar` (Dinsides #2942804 a #2942810:
+  Dante, July/Julia, Graciela, Mavel, Mane, Marikiño y Liliana con entrega 2026-11-12) y las etiquetas salieron con
+  `etiquetas.py 2026-11-09 --subir` (10 de Lima: los 6 nuevos de hoy + Patricia, Maritza, Laura y María del Pilar ya registrados).
+- **Fecha por defecto (`fechaPorDefecto` en `src/api/asesor-dinsides.js`, ahora async):** pasadas las 3:00 y hasta las 11:00, si el
+  despacho de HOY todavía tiene pedidos de Lima sin registrar, la fecha se queda en HOY; la respuesta trae `fecha_motivo` y
+  `presentar` lo imprime en el RESUMEN («📆 Fecha … porque …»). Las llamadas con `listado=1` no hacen esta lectura.
+- **`dinsides.py presentar --pagina`** (`--pdf` sigue siendo alias) deja SOLO la página de revisión; el PDF sale únicamente con
+  `--imprimir` (dueño: «si ya vas a mandar página, ya no mandas el PDF»). Guarda el id en /tmp/dinsides/revision.json y
+  `dinsides.py notas` sin argumentos lee esa última página. Orden de secciones: Lima listos → Shalom → Lima pendientes → ya
+  registrados → correcciones → otros días → chats de hoy → CRM revisado (los dos últimos, en una línea en la versión corta).
+  Tarjeta: etiqueta → por qué confirmar → verificar → avisos → botones y notas → momentos clave del chat (14 líneas en el PDF, todas en la página).
+- **`docs/envios-jennifer.md`:** REGLA CERO (con cualquier mensaje después de presentar, primero `dinsides.py notas`), regla 3 con la
+  fecha que no salta, A4 y A4c con `--pagina`. El aviso de la página ya no pide «revisa mis notas».

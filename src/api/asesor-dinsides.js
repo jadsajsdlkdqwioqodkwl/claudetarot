@@ -481,7 +481,27 @@ async function comprobarConElMapa(fichas) {
   }
 }
 
-const fechaPorDefecto = () => fechaEntrega().fecha;
+/**
+ * Fecha por defecto (dueño, 2026-11-09 madrugada): hasta las 3:00 es «la noche de ayer» (entrega HOY). Después de las 3:00 la base
+ * pasa a mañana, PERO si el despacho de hoy todavía tiene pedidos de Lima sin registrar (el dueño dio el OK a las 3:20 y la Routine
+ * saltó al día 10, dejando a los 7 de Lima sin registrar), la fecha se queda en HOY hasta las 11:00 (Dinsides reparte de 12 a 5).
+ * Devuelve { fecha, motivo } para que la presentación diga por qué.
+ */
+async function fechaPorDefecto(env) {
+  const base = fechaEntrega().fecha;
+  const hoy = hoyLima();
+  if (base === hoy) return { fecha: base, motivo: null };
+  const hora = new Date(Date.now() - LIMA_MS).getUTCHours();
+  if (hora >= 11) return { fecha: base, motivo: null };
+  try {
+    const { pedidos } = await pedidosDelSistema(env, hoy);
+    const reg = await registroDe(env, hoy);
+    const hechos = new Set(reg.registros.filter((r) => !r.anulado).map((r) => n9(r.whatsapp)));
+    const sinRegistrar = pedidos.filter((p) => String(p.destino || "").toUpperCase() !== "PROVINCIA" && !hechos.has(n9(p.whatsapp)));
+    if (sinRegistrar.length) return { fecha: hoy, motivo: `el despacho de hoy ${hoy} todavía tiene ${sinRegistrar.length} pedido(s) de Lima sin registrar; mañana (${base}) se presenta cuando esto quede cerrado o pasadas las 11:00` };
+  } catch (err) { console.error("dinsides: fecha por defecto", err.message); }
+  return { fecha: base, motivo: null };
+}
 
 export async function onRequestGet({ request, env }) {
   const cortar = await puerta(request, env);
@@ -493,7 +513,8 @@ export async function onRequestGet({ request, env }) {
     if (!c) return json({ error: "zona debe ser lat,lng o un link de Maps con coordenadas." }, 400);
     return json({ coordenadas: c, zona: zonaDe(c.lat, c.lng) });
   }
-  const fecha = esIso(url.searchParams.get("fecha")) ? url.searchParams.get("fecha") : fechaPorDefecto();
+  const porDefecto = esIso(url.searchParams.get("fecha")) || url.searchParams.get("listado") === "1" ? null : await fechaPorDefecto(env);
+  const fecha = porDefecto ? porDefecto.fecha : esIso(url.searchParams.get("fecha")) ? url.searchParams.get("fecha") : fechaEntrega().fecha;
   try {
     if (url.searchParams.get("listado") === "1") {
       if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
@@ -508,7 +529,7 @@ export async function onRequestGet({ request, env }) {
     const candidatos = url.searchParams.get("candidatos") === "0" ? [] : await candidatosCrm(env, fechaVenta, conocidos);
     const chatsHoy = url.searchParams.get("candidatos") === "0" ? [] : await chatsDeHoy(env, fechaVenta).catch((err) => { console.error("chats de hoy:", err.message); return null; });
     return json({
-      fecha, fecha_venta: fechaVenta, hoy: hoyLima(), credenciales: hayCredenciales(env), chats_hoy: chatsHoy,
+      fecha, fecha_motivo: porDefecto?.motivo || null, fecha_venta: fechaVenta, hoy: hoyLima(), credenciales: hayCredenciales(env), chats_hoy: chatsHoy,
       resumen: { listos: fichas.filter((f) => f.listo).length, con_bloqueos: fichas.filter((f) => f.bloqueos.length && !f.ya_registrado).length,
         ya_registrados: fichas.filter((f) => f.ya_registrado).length, candidatos_crm: candidatos.length },
       pedidos: fichas, registrados: registro.registros, corridas: registro.corridas, candidatos_crm: candidatos
@@ -540,7 +561,7 @@ export async function onRequestPost({ request, env }) {
   if (cortar) return cortar;
   const p = await request.json().catch(() => null);
   if (!p?.accion) return json({ error: "Falta accion (probar | registrar | marcar | script | estados | anular | editar | quitar)." }, 400);
-  const fecha = esIso(p.fecha) ? p.fecha : fechaPorDefecto();
+  const fecha = esIso(p.fecha) ? p.fecha : (await fechaPorDefecto(env)).fecha;
   try {
     if (p.accion === "estados") {
       if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
