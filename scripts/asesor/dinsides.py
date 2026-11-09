@@ -804,7 +804,7 @@ def cmd_presentar(args):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
     ayer = (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()
     ya_desp = [x for x in (ag.get("enviados_recientes") or []) if any(k in str(x.get("enviado") or "") for k in ("Shalom", "Olva", "boleta")) and (fecha in str(x.get("enviado") or "") or ayer in str(x.get("enviado") or ""))]
-    pie_sh = [f"Ya despachados o registrados a mano por el equipo el {ayer} o el {fecha} (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
+    pie_sh = [f"· Ya despachados o registrados a mano por el equipo el {ayer} o el {fecha} (no van al Excel): " + "; ".join(f"{x.get('nombre')} ({str(x.get('enviado'))[:40]})" for x in ya_desp)] if ya_desp else []
     sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", (L or ["Sin pedidos de provincia por despachar."]) + pie_sh, (Cc or ["Sin pedidos de provincia por despachar."]) + pie_sh)
     if pend:
         L, Cc, solo_info = [], [], 0
