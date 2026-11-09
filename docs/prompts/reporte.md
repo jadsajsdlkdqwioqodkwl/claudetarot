@@ -8,7 +8,7 @@
 
 ```
 Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot. Esta sesión es TUYA y persistente: cada corrida es un turno más. Primero corre:
-(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main && git reset -q --hard origin/main) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
+(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main 2>/dev/null; git merge -q --ff-only origin/main || (git stash -q 2>/dev/null; git merge -q --ff-only origin/main)) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
 Luego lee SOLO /home/user/claudetarot/docs/prompts/reporte.md y haz lo que dice, al pie de la letra. No leas docs/MAPA.md ni
 CLAUDE.md. La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta responde «Falta ASESOR_CLAVE
 en el entorno de la Routine» y termina; si el Worker responde 401 responde «La ASESOR_CLAVE del entorno no es la correcta» y termina.

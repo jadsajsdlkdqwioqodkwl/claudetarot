@@ -2287,3 +2287,30 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
 - **Pregunta del dueño (¿clonar cada vez es ineficiente?):** la Routine SÍ trabaja en una sola sesión fija (como boletas): cada «Run
   now» o mensaje es un turno más del mismo chat. El clon ocurre solo la primera vez que nace el contenedor; después es `git fetch` +
   `reset` (segundos). No es el cuello de botella; lo que falló fue la calidad de la respuesta, por eso la presentación es determinista.
+
+## 2026-11-09 (madrugada 7) · Con el pin basta; candidatos cruzados con Dinsides y boletas; sincronización sin reset --hard
+
+- **Qué pasó:** la Routine presentó bullets en vez del bloque del dueño porque su sesión NO pudo actualizar el repo (`git reset --hard`
+  bloqueado por el permiso de esa sesión) y leyó instrucciones viejas; no cruzó los candidatos del CRM con Dinsides ni con las boletas
+  (dijo «Juan de Dios: stop» cuando Dinsides lo tiene ENTREGADO; dijo que una clienta de provincia «aún pregunta el adelanto» cuando ya
+  tenía boleta); dejó como pendientes a dos clientes que solo mandaron el pin; y no mostró la corrección de la clienta del DNI.
+- **Con el pin basta (regla del dueño):** `direccionesDesdePin()` en `src/api/asesor-dinsides.js`: si el cliente solo mandó su
+  ubicación, la dirección del campo de Dinsides se arma con OpenStreetMap (reverse: vía, número, zona, distrito) + «(ubicación enviada
+  por el cliente; ir al pin)», el bloqueo DIRECCIÓN desaparece y queda la alerta «DIRECCIÓN deducida del pin». El distrito sigue
+  saliendo del mapa de cobertura. Prueba actualizada en `test-dinsides-api.mjs` («Solo Pin» ahora es LISTO).
+- **`presentar` v2 (`scripts/asesor/dinsides.py`):** cada bloque va campo por campo de Dinsides con emojis (👤 📍 🗺️ 🏙️ 📦 💰 📅 📝), el
+  historial del chat 🗨️ con fecha y hora, 🏷️ estado en Dinsides, 🧾 boleta, 📄 fila de la hoja, ⛔/⚠️ y la decisión (✅ se registra ·
+  ❓ preguntar al dueño si hay HORA ESPECÍFICA o YA AGENDADO · ↩️ no se toca). Candidatos del CRM cruzados con Dinsides (ENTREGADO /
+  abierto) y con las boletas emitidas (`GET /api/asesor/pedidos-sheet?boletas=1`, nuevo): veredicto ✔️ YA ATENDIDO · ↩️ YA EN DINSIDES ·
+  🚚 PROVINCIA · 👀 REVISAR. Pedidos de otros días sin despachar: mensajes del cliente DESPUÉS de la fecha de venta (sin tope de horas),
+  con su estado en Dinsides y boleta; sección ✏️ CORRECCIONES para provincia de hoy con dato que llegó. Cierre «✅ Verificado por el
+  sistema» con números reales.
+- **Routine de envíos recreada** (`trig_01J7vAUuHMuVL7MCccFkGaP7` borrada): el arranque sincroniza con `git merge --ff-only` (y
+  `stash` si hiciera falta), comprueba el commit y exige pegar `presentar` tal cual. `docs/envios-jennifer.md` y
+  `docs/prompts/reporte.md` llevan el mismo arranque. Las Routines del reporte siguen con el arranque anterior (allí el reset no se
+  bloqueó); si algún día se bloquea, se recrean con este.
+- **Lo que mostró `presentar` esta noche (sin datos personales):** 5 listos (los anulados por el dueño), 2 preguntas (hora específica y
+  cambio de fecha), candidatos del CRM: 2 ya ENTREGADOS por Dinsides, 3 provincia, 4 de Lima atendidos el domingo por el motorizado
+  (quedarán como atendidos cuando el Worker despliegue el cruce con la memoria); 17 pedidos de otros días sin despachar en la hoja, 6
+  con mensajes del cliente posteriores a la venta (uno de Lima registrado en Dinsides para el lunes que escribió «no he recibido nada»,
+  dos de provincia que dieron agencia/«separar» sin captura). Todo eso lo ve el dueño en la presentación, no tiene que abrir el CRM.

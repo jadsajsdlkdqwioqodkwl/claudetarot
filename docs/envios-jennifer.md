@@ -9,13 +9,16 @@
 
 ```
 Trabajas para Tarot Store Perú en el repo jadsajsdlkdqwioqodkwl/claudetarot. Primero corre:
-(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main && git reset -q --hard origin/main) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
+(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main 2>/dev/null; git merge -q --ff-only origin/main || (git stash -q 2>/dev/null; git merge -q --ff-only origin/main)) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
 Luego lee SOLO /home/user/claudetarot/docs/envios-jennifer.md y haz lo que dice. Si el mensaje que te llegó no dice qué hacer
 (solo trae un link, «INICIA», «Run now» o está vacío), haz el CICLO COMPLETO de ese archivo (Dinsides y luego Shalom): nunca
 termines sin hacer nada. Si dice «solo Lima» o «solo Shalom», haz esa parte. La clave del asesor está en la variable de entorno
 ASESOR_CLAVE (no la imprimas); si falta o el Worker responde 401, dilo y termina. No hagas commits ni cambies código. No uses la
 API de Claude. Trabaja solo con python3 scripts/asesor/dinsides.py y python3 scripts/asesor/shalom.py desde /home/user/claudetarot.
 ```
+
+Nota (2026-11-09): el arranque sincroniza con `git merge --ff-only` (un `reset --hard` lo bloqueó el permiso de la sesión y la Routine
+leyó instrucciones viejas). Si la sincronización falla, dilo en la primera línea y sigue con lo que tengas.
 
 Cómo se usa: Jennifer (o el dueño) manda «INICIA» a su sesión (o la Routine manual hace «Run now»). Claude hace todo el ciclo
 solo, se detiene UNA vez por courier para presentar lo que va a registrar, y sigue cuando una persona responde en esa misma
@@ -51,7 +54,9 @@ escribe «Sin pedidos de Lima para registrar» y pasa a B.
 
 A2 — Por cada bloqueado y cada candidato que no diga «parece PROVINCIA»: `python3 scripts/asesor/dinsides.py chat <whatsapp> 60`
 y busca en lo que escribió EL CLIENTE («C:»):
-- Dirección en texto → `direccion` completa con referencias, sin emojis. Solo pin → pendiente (el bloqueo trae el link de Maps).
+- Dirección en texto → `direccion` completa con referencias, sin emojis. Solo pin → CON EL PIN BASTA (dueño 2026-11-09): el sistema arma la
+  dirección desde el pin (OpenStreetMap) y el pedido queda LISTO con la alerta «DIRECCIÓN deducida del pin»; si el chat trae referencias,
+  agrégalas en `direccion`. Solo si el pin no se pudo convertir queda pendiente.
 - Distrito: con pin manda el mapa (`python3 scripts/asesor/dinsides.py zona <lat,lng>`); sin pin, el del desplegable si la dirección
   lo dice sin dudas; ambiguo («San Juan», «Lima», «Callao»), zona roja o punto de encuentro → pendiente.
 - POR_VERIFICAR o INTENCIÓN: si el cliente ya pasó su dirección, `estado: "CONFIRMADO"`; si no, pendiente.

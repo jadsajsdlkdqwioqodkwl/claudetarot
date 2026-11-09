@@ -262,6 +262,8 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     f.listo = f.listo && !f.ya_registrado;
     fichas.push(f);
   }
+  // Con el pin basta (dueño 2026-11-09): si solo mandó su ubicación, la dirección se arma desde el pin y deja de ser bloqueo.
+  await direccionesDesdePin(fichas.filter((f) => !f.ya_registrado && f.campos.coordenadas && f.bloqueos.some((b) => /^DIRECCIÓN: el cliente solo mandó su ubicación/.test(b))));
   await comprobarConElMapa(fichas.filter((f) => !f.ya_registrado && (f.listo || f.bloqueos.some((b) => /^DISTRITO: /.test(b)))));
   return { fichas, registro: reg, conocidos };
 }
@@ -332,6 +334,8 @@ async function candidatosCrm(env, fechaVenta, conocidos) {
      ORDER BY m.id DESC LIMIT 400`
   ).bind(desde).all();
   const porWa = new Map();
+  const idxAtendidos = await indice(env).catch(() => ({}));
+  const atendido = (k) => { const x = idxAtendidos[k]; return x && Math.abs(new Date(x.fecha) - new Date(fechaVenta)) <= 3 * 86400000 ? x : null; };
   for (const r of results || []) {
     const k = n9(r.wa_id);
     if (!k || conocidos.has(k)) continue;
@@ -339,7 +343,7 @@ async function candidatosCrm(env, fechaVenta, conocidos) {
     const esPin = r.type === "location";
     if (!esPin && !(DIRECCION_RE.test(body) || /maps\.|goo\.gl/i.test(body))) continue;
     const c = porWa.get(k) || { whatsapp: r.wa_id, nombre: r.nombre, conversation_id: r.conversation_id, asesora: r.assigned_agent || "",
-      compra_marcada: / purchase /.test(` ${r.meta_tags || ""} `), senales: [] };
+      compra_marcada: / purchase /.test(` ${r.meta_tags || ""} `), senales: [], atendido: atendido(k) };
     if (c.senales.length < 3) c.senales.push(esPin ? `pin ${body.split("|").slice(0, 2).join(",")}` : body.slice(0, 160));
     porWa.set(k, c);
   }
@@ -351,7 +355,7 @@ async function candidatosCrm(env, fechaVenta, conocidos) {
   for (const r of compras || []) {
     const k = n9(r.wa_id);
     if (!k || conocidos.has(k)) continue;
-    const c = porWa.get(k) || { whatsapp: r.wa_id, nombre: r.nombre, conversation_id: r.conversation_id, asesora: r.assigned_agent || "", senales: [] };
+    const c = porWa.get(k) || { whatsapp: r.wa_id, nombre: r.nombre, conversation_id: r.conversation_id, asesora: r.assigned_agent || "", senales: [], atendido: atendido(k) };
     c.compra_marcada = true;
     porWa.set(k, c);
   }
@@ -385,6 +389,40 @@ async function geocodificar(direccion, distrito) {
  *    menciona X o Y); si no la reconoció (dirección mal ubicada), se queda X y se avisa.
  *  - Si la dirección no se pudo ubicar, el bloqueo sigue y se pregunta.
  */
+/** El cliente solo mandó el pin: Dinsides exige dirección en texto, así que se arma desde OpenStreetMap (reverse) y se avisa. */
+async function direccionDesdePin(lat, lng) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${lat}&lon=${lng}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "TarotStore-CRM/1.0 (registro de pedidos)", Accept: "application/json" }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const h = await res.json();
+    const a = h?.address || {};
+    const via = a.road || a.pedestrian || a.footway || a.residential || "";
+    const nro = a.house_number ? ` ${a.house_number}` : "";
+    const zona = a.neighbourhood || a.suburb || a.quarter || a.village || "";
+    const dist = a.city_district || a.town || a.city || "";
+    const partes = [via ? `${via}${nro}` : "", zona, dist].filter(Boolean);
+    if (!partes.length) return null;
+    return { texto: partes.join(", "), nombre: String(h.display_name || "").slice(0, 160) };
+  } catch { return null; }
+}
+
+async function direccionesDesdePin(fichas) {
+  let n = 0;
+  for (const f of fichas) {
+    const m = String(f.campos.coordenadas || "").match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/);
+    if (!m || f.campos.direccion || n >= 12) continue;
+    n++;
+    const d = await direccionDesdePin(m[1], m[2]);
+    if (!d) continue;
+    f.campos.direccion = `${d.texto} (ubicación enviada por el cliente; ir al pin)`.slice(0, 200);
+    f.bloqueos = f.bloqueos.filter((b) => !/^DIRECCIÓN: el cliente solo mandó su ubicación/.test(b));
+    f.alertas.push(`DIRECCIÓN deducida del pin (OpenStreetMap: «${d.nombre.slice(0, 90)}»); el motorizado debe ir al pin. Regla del dueño 2026-11-09: con el pin basta`);
+    f.listo = f.bloqueos.length === 0 && !f.ya_registrado;
+    await new Promise((r) => setTimeout(r, 1100));
+  }
+}
+
 async function comprobarConElMapa(fichas) {
   let n = 0;
   const RE_DISTRITO_BLOQUEO = /^DISTRITO: (no se deduce|la dirección nombra varios|«)/;

@@ -56,6 +56,9 @@ globalThis.fetch = async (url, init = {}) => {
   const u = String(url); const cookie = init.headers?.Cookie || "";
   llamadas.push({ url: u, method: init.method || "GET", body: init.body || "", cookie });
   const resp = (status, body, headers = {}) => new Response(body, { status, headers });
+  if (/nominatim\.openstreetmap\.org\/reverse/.test(u)) {
+    return resp(200, JSON.stringify({ display_name: "Av José Larco 1234, Miraflores, Lima, Perú", address: { road: "Avenida José Larco", house_number: "1234", suburb: "Miraflores", city: "Lima" } }));
+  }
   if (/nominatim\.openstreetmap\.org/.test(u)) {
     // «Urb Los Jardines» se ubica en el Parque Kennedy (polígono MIRAFLORES del mapa); lo demás no se ubica.
     if (/Jardines/.test(decodeURIComponent(u))) return resp(200, JSON.stringify([{ lat: "-12.1211", lon: "-77.0297", display_name: "Urb Los Jardines, Miraflores, Lima, Perú" }]));
@@ -115,13 +118,13 @@ check("GET responde 200 con la fecha pedida", r.status === 200 && r.json.fecha =
 const porWa = Object.fromEntries((r.json.pedidos || []).map((f) => [f.whatsapp, f]));
 check("provincia no aparece", !porWa["51966666660"]);
 check("Gladys está lista (Surco, 957845104, S/89 YAPE) con la dirección del chat a la vista", porWa["51957845104"]?.listo && porWa["51957845104"].campos.id_distrito === "150140" && porWa["51957845104"].direcciones_chat.length === 1, JSON.stringify(porWa["51957845104"]));
-check("Solo Pin: bloqueo de dirección, distrito deducido del pin del chat (Miraflores)", porWa["51999999990"] && !porWa["51999999990"].listo && porWa["51999999990"].campos.distrito === "miraflores"
-  && porWa["51999999990"].bloqueos.some((b) => /^DIRECCIÓN/.test(b)), JSON.stringify(porWa["51999999990"]?.bloqueos));
+check("Solo Pin: con el pin basta (dueño 2026-11-09): dirección deducida del pin, distrito del pin (Miraflores), LISTO con alerta", porWa["51999999990"] && porWa["51999999990"].listo && porWa["51999999990"].campos.distrito === "miraflores"
+  && /Avenida José Larco 1234.*ir al pin/.test(porWa["51999999990"].campos.direccion) && porWa["51999999990"].alertas.some((a) => /^DIRECCIÓN deducida del pin/.test(a)), JSON.stringify(porWa["51999999990"]));
 check("POR_VERIFICAR queda bloqueado", porWa["51977777770"] && porWa["51977777770"].bloqueos.some((b) => /^ESTADO POR_VERIFICAR/.test(b)));
 check("el chat con dirección que el reporte no trae sale como candidato del CRM", (r.json.candidatos_crm || []).some((c) => c.whatsapp === "51988888880" && /Jr Puno/.test(c.senales[0])), JSON.stringify(r.json.candidatos_crm));
 check("sin distrito en el texto, lo da el MAPA de cobertura ubicando la dirección (OpenStreetMap → polígono Miraflores)", porWa["51955555550"]?.listo && porWa["51955555550"].campos.distrito === "miraflores"
   && porWa["51955555550"].alertas.some((a) => /DISTRITO por el mapa de cobertura/.test(a)), JSON.stringify(porWa["51955555550"]));
-check("resumen: 2 listos, 2 con bloqueos", r.json.resumen.listos === 2 && r.json.resumen.con_bloqueos === 2, JSON.stringify(r.json.resumen));
+check("resumen: 3 listos (Gladys, Solo Pin por su pin, Sin distrito), 1 con bloqueos", r.json.resumen.listos === 3 && r.json.resumen.con_bloqueos === 1, JSON.stringify(r.json.resumen));
 
 // 2. zona
 r = await pedir("GET", null, "?zona=-12.1211,-77.0297");
@@ -134,7 +137,7 @@ check("probar: entra, lee el formulario (negocio 77, recojo en domicilio 3) y av
 
 // 4. simular (pedido de prueba sin crear nada)
 r = await pedir("POST", { accion: "registrar", fecha: FECHA, simular: true });
-check("simular: arma el payload de los listos (Gladys y Sin distrito) y no manda pedido/registro", r.json.simulado && r.json.payload.nombres.length === 2 && r.json.payload.id_distritos[0] === "150140"
+check("simular: arma el payload de los listos (Gladys, Solo Pin y Sin distrito) y no manda pedido/registro", r.json.simulado && r.json.payload.nombres.length === 3 && r.json.payload.id_distritos[0] === "150140"
   && r.json.payload.negocio === "77" && !llamadas.some((l) => l.url.endsWith("pedido/registro")), JSON.stringify(r.json.payload));
 
 // 5. registrar con una corrección para el pin (dirección escrita por la persona) y un pedido NUEVO que el reporte no traía (candidato del CRM)
@@ -212,7 +215,7 @@ r2.delete(`dinsides/${FECHA}.json`); r2.delete("dinsides/indice.json");
 sq.exec("UPDATE conversations SET meta_tags = NULL");
 let rr = await onRequestPost({ request: req("POST", { accion: "registrar", fecha: FECHA }), env: env2 });
 let j = await rr.json();
-check("sin credenciales: 503 sin_credenciales y el script para la consola", rr.status === 503 && j.error === "sin_credenciales" && /#id_distrito/.test(j.script) && j.listos.length === 2, JSON.stringify(j).slice(0, 200));
+check("sin credenciales: 503 sin_credenciales y el script para la consola", rr.status === 503 && j.error === "sin_credenciales" && /#id_distrito/.test(j.script) && j.listos.length === 3, JSON.stringify(j).slice(0, 200));
 
 // 9. clave incorrecta de Dinsides
 rr = await onRequestPost({ request: req("POST", { accion: "probar" }), env: { ...env, DINSIDES_CLAVE: "mala" } });

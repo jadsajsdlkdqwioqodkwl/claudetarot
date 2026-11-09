@@ -125,15 +125,21 @@ export async function upsertPedidosAuto(env, fechaObjetivo, origen, pedidos) {
 }
 
 /** Filas abiertas con boleta ya emitida («Boletas auto»: fecha, nombre, whatsapp, courier, nro, saldo, páginas, ventana) → Enviado. */
-async function conciliarConBoletas(env) {
+/** Boletas emitidas («Boletas auto»): la última por WhatsApp (9 dígitos) → { fecha, courier, nro }. Boleta = el paquete ya salió. */
+async function leerBoletas(env) {
   const boletas = (await getValues(env, "'Boletas auto'!A2:H").catch(() => [])) || [];
   const porWa = new Map();
   for (const b of boletas) {
     const k = n9(b[2]); if (!k) continue;
     const fecha = typeof b[0] === "number" ? serieAFecha(b[0], true) : String(b[0] || "");
     const prev = porWa.get(k);
-    if (!prev || fecha > prev.fecha) porWa.set(k, { fecha, courier: String(b[3] || ""), nro: String(b[4] || "") });
+    if (!prev || fecha > prev.fecha) porWa.set(k, { fecha, courier: String(b[3] || ""), nro: String(b[4] || ""), nombre: String(b[1] || "") });
   }
+  return porWa;
+}
+
+async function conciliarConBoletas(env) {
+  const porWa = await leerBoletas(env);
   const filas = await leerFilas(env);
   const marcados = [];
   for (let i = 0; i < filas.length; i++) {
@@ -229,7 +235,13 @@ export async function onRequestGet({ request, env }) {
       else if (f[1] === hoy) out.hoy_.push(r);
       else out.futuros.push(r);
     });
-    return json({ ok: true, hoy, atrasados: out.atrasados, hoy: out.hoy_, futuros: out.futuros, sin_fecha: out.sin_fecha, enviados: out.enviados });
+    const salida = { ok: true, hoy, atrasados: out.atrasados, hoy: out.hoy_, futuros: out.futuros, sin_fecha: out.sin_fecha, enviados: out.enviados };
+    // ?boletas=1: además la lista de boletas emitidas, para cruzar candidatos y pendientes (un cliente con boleta ya recibió su envío).
+    if (new URL(request.url).searchParams.get("boletas") === "1") {
+      const b = await leerBoletas(env).catch(() => new Map());
+      salida.boletas = [...b.entries()].map(([whatsapp, v]) => ({ whatsapp, ...v }));
+    }
+    return json(salida);
   } catch (err) {
     console.error("pedidos-sheet:", err.message);
     return json({ error: err.message }, 502);
