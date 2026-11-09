@@ -170,6 +170,18 @@ def normalizar_unificado(datos):
                 avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: destino {p.get('destino')!r} (debe ser LIMA o PROVINCIA) → sale como POR VERIFICAR.")
                 p["estado"], p["destino"] = ("POR_CONFIRMAR" if est in ("CONFIRMADO", "POR_CONFIRMAR") else est), p.get("destino") or "?"
                 p["nota"] = ("⚠️ sin destino claro · " + str(p.get("nota") or "")).strip(" ·")
+        if est == "POR_CONFIRMAR" and p.get("destino") == "PROVINCIA" and not p.get("tipo"):
+            # Regla del dueño (2026-11-09): en provincia el adelanto ES la venta, haya mandado S/10, S/20 o S/50. Si el reporte
+            # vio el pago (monto con operación, captura, «adelantó S/…») va CONFIRMADO en su sección, en rojo para mirarlo.
+            # Solo sigue POR VERIFICAR cuando NO hay captura/pago visto o faltan DNI/agencia.
+            txt = f"{p.get('pago') or ''} {p.get('nota') or ''}"
+            vio = re.search(r"adelant[oó]\s*(de\s*)?s/\s*\d|yape[oó]\s*s/\s*\d|mand[oó]\s*s/\s*\d|\bop\.?\s*[0-9A-Z]{4,}|captura (de|del) (pago|yape|plin|adelanto)|(yape|plin)\s*s/\s*\d{2,3}", txt, re.I)
+            falta = re.search(r"sin captura|falta[n]? (la |una )?captura|no (hay|mand[oó]|envi[oó]) (la |una )?captura|dijo que (ya )?(yape|pag|deposit)|sin (comprobante|constancia)|falta[n]? (el |la |su )?(dni|agencia|nombre)|sin (dni|agencia|datos)", txt, re.I)
+            if vio and not falta:
+                est = p["estado"] = "CONFIRMADO"
+                if "🚨" not in str(p.get("nota") or ""):
+                    p["nota"] = ("🚨 ATENCIÓN: adelanto visto (revisar monto) · " + str(p.get("nota") or "")).strip(" ·")
+                avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: provincia con adelanto visto → CONFIRMADO en rojo (regla del dueño 2026-11-09: el adelanto es la venta, sea S/10, S/20 o S/50).")
         if est == "CONFIRMADO" and p.get("destino") == "LIMA" and not p.get("tipo"):
             f = _pe.fecha_iso(p.get("fecha_entrega"), ref)
             if f and f > ref:
@@ -235,11 +247,21 @@ def armar_pdf(datos, carpeta):
             # desaparece de los reportes hasta que alguien lo marque como enviado (caso Katia Reyes, 2026-10-30).
             en_reporte = {prom.nueve(p.get("whatsapp")) for p in pedidos if prom.nueve(p.get("whatsapp"))}
             ag = datos.get("agenda_pendiente") or {}
-            filas_ag = []
+            filas_ag, viejos = [], 0
+            import datetime as _dt2
+            try:
+                limite = (_dt2.date.fromisoformat(str(datos.get("fecha_venta"))) - _dt2.timedelta(days=3)).isoformat()
+            except ValueError:
+                limite = ""
             for grupo, etiqueta in (("atrasados", "⚠️ ATRASADO (su fecha ya pasó y nadie lo marcó enviado)"), ("hoy", "HOY"),
                                     ("futuros", "futuro"), ("sin_fecha", "sin fecha")):
                 for r in ag.get(grupo) or []:
                     if prom.nueve(r.get("whatsapp")) in en_reporte and grupo != "atrasados":
+                        continue
+                    # Atrasados de hace más de 3 días: ya no se listan (el sistema cierra solo los que tienen boleta o estado final
+                    # en Dinsides; lo que queda es ruido de la hoja). Se cuentan y se avisa (dueño 2026-11-09).
+                    if grupo == "atrasados" and limite and str(r.get("fecha_entrega") or "") < limite:
+                        viejos += 1
                         continue
                     filas_ag.append(dict(r, _cuando=etiqueta, nota=("🚨 " if grupo == "atrasados" else "") + str(r.get("nota") or "")))
             if filas_ag or ag:
@@ -249,7 +271,9 @@ def armar_pdf(datos, carpeta):
                                                                        ("Dirección / Agencia", "direccion_o_agencia"), ("Kits", "kits"),
                                                                        ("📦 Empaque", "empaque"), ("Nota", "nota"), ("Fila", "fila")]) + "</div>"
                                  if filas_ag else "<p class=emp>No hay pedidos agendados pendientes.</p>")
-                              + "<p class=emp>Cuando un pedido de esta lista sale, escribe «sí» (o la fecha) en la columna <b>Enviado</b> de esa fila: deja de aparecer.</p>")
+                              + "<p class=emp>Cuando un pedido de esta lista sale, escribe «sí» (o la fecha) en la columna <b>Enviado</b> de esa fila: deja de aparecer. "
+                                "El sistema cierra solo los que ya tienen boleta (Shalom/Olva) o estado final en Dinsides.</p>"
+                              + (f"<p class=emp>Además hay {viejos} pedido(s) con fecha de hace más de 3 días sin «Enviado» en la hoja: no se listan aquí; revísalos en la pestaña «Pedidos auto».</p>" if viejos else ""))
     if unificado:
         desc = [d for d in (datos.get("descartados") or []) if isinstance(d, dict)]
         if desc:
@@ -394,6 +418,58 @@ def subir_reporte(clave, pdf_base64, nombre, titulo):
 PEDIDOS_SHEET = AVISOS.replace("/avisos", "/pedidos-sheet")
 
 
+def _post_asesor(clave, url, cuerpo, timeout=240):
+    req = urllib.request.Request(url, data=json.dumps(cuerpo, ensure_ascii=False).encode(),
+                                 headers={"Content-Type": "application/json", "x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def conciliar_agenda(clave, hoy):
+    """Antes de leer la agenda pendiente, cierra («Enviado») lo que ya consta como salido: filas con boleta emitida en «Boletas
+    auto» (Shalom/Olva) y pedidos de Lima con estado final en Dinsides (entregado / anulado / rechazado). Así la agenda solo
+    trae lo que de verdad falta despachar (dueño 2026-11-09: traía 100+ pedidos ya entregados). Un fallo no frena el reporte."""
+    import datetime as _dt
+    try:
+        r = _post_asesor(clave, PEDIDOS_SHEET, {"conciliar": True})
+        print(f"🧹 Agenda: {r.get('marcados', 0)} fila(s) cerradas por boleta emitida" + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
+    except Exception as err:  # noqa: BLE001
+        print(f"⚠️ No se pudo conciliar la agenda con las boletas: {err}", flush=True)
+    try:
+        d = _dt.date.fromisoformat(hoy)
+        r = _post_asesor(clave, AVISOS.replace("/avisos", "/dinsides"), {"accion": "estados", "desde": (d - _dt.timedelta(days=14)).isoformat(),
+                                                                       "hasta": (d + _dt.timedelta(days=1)).isoformat(), "marcar": True})
+        if r.get("error"):
+            print(f"⚠️ Dinsides estados: {r['error']}", flush=True)
+        else:
+            print(f"🧹 Dinsides: {len(r.get('entregados', []))} entregados · {len(r.get('anulados', []))} anulados · {len(r.get('rechazados', []))} rechazados · "
+                  f"{r.get('marcados', 0)} fila(s) marcadas en la hoja", flush=True)
+    except Exception as err:  # noqa: BLE001
+        print(f"⚠️ No se pudo leer el estado de Dinsides: {err}", flush=True)
+
+
+def marcar_compras(clave, datos):
+    """Venta confirmada (Lima con dirección / provincia con adelanto) que la asesora no marcó como compra en el CRM: la marca el
+    sistema (etiqueta purchase + Purchase a Meta), con permiso del dueño (2026-11-09). Solo pedidos CONFIRMADO u OTRO_DIA."""
+    sin = [x for x in (datos.get("sin_marcar_compra") or []) if isinstance(x, dict) and x.get("whatsapp")]
+    if not sin:
+        return
+    estado = {prom.nueve(p.get("whatsapp")): p for p in datos.get("pedidos", []) if prom.nueve(p.get("whatsapp"))}
+    hechos = []
+    for x in sin:
+        p = estado.get(prom.nueve(x.get("whatsapp")))
+        if not p or p.get("estado") not in ("CONFIRMADO", "OTRO_DIA") or (p.get("nombre") or "").upper() == "INCIDENCIA":
+            continue
+        valor = {0: 0, 1: 89, 2: 149, 3: 199}.get(num_kits(p), 89 * num_kits(p)) or 89
+        try:
+            r = _post_asesor(clave, AVISOS.replace("/avisos", "/marcar-compra"), {"whatsapp": x["whatsapp"], "valor": valor, "motivo": x.get("motivo") or "", "product_label": (p.get("_empaque") or "Kit Tarot de aprendizaje")[:120]}, timeout=60)
+            hechos.append(f"{p.get('nombre') or x['whatsapp']}: {'ya estaba' if r.get('ya_marcado') else 'marcada'}" + (f" (Meta: {r['meta']['error']})" if r.get("meta", {}).get("error") else ""))
+        except Exception as err:  # noqa: BLE001
+            hechos.append(f"{p.get('nombre') or x['whatsapp']}: no se pudo ({err})")
+    if hechos:
+        print("🛍️ Compras marcadas en el CRM (la asesora no las marcó): " + "; ".join(hechos), flush=True)
+
+
 def agenda_sheet(clave, hoy):
     """Pedidos de la pestaña «Pedidos auto» sin marcar «Enviado» (atrasados, de hoy, futuros, sin fecha). Un fallo no frena el reporte."""
     req = urllib.request.Request(f"{PEDIDOS_SHEET}?hoy={hoy}", headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
@@ -527,6 +603,7 @@ def main():
         for a in normalizar_unificado(datos):
             print("ℹ️ " + a.lstrip("- "), flush=True)
         if clave and not solo_mensajes:
+            conciliar_agenda(clave, datos["fecha_venta"])
             datos["agenda_pendiente"] = agenda_sheet(clave, datos["fecha_venta"])
 
     def cuadre_unificado(d):
@@ -663,6 +740,7 @@ def main():
                     r = guardar_en_sheet(clave, datos)
                     print(f"Hoja «Pedidos auto»: {r.get('nuevas', 0)} filas nuevas, {r.get('actualizadas', 0)} actualizadas"
                           + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
+                    marcar_compras(clave, datos)
             if estado_nuevo:
                 import ventas_estado
                 ventas_estado.guardar(clave, estado_nuevo.get("fecha_objetivo", ""), estado_nuevo)

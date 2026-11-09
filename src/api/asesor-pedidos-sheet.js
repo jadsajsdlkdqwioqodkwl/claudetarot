@@ -1,7 +1,8 @@
 /**
  * Pestaña «Pedidos auto» del libro de pedidos (GOOGLE_SHEET_ID): la memoria del reporte unificado de
  * pedidos y ventas, visible y editable por el equipo. Una fila por pedido; la columna «Enviado» la
- * marca a mano quien despacha y el sistema nunca la toca.
+ * marca a mano quien despacha, o el sistema cuando ya consta que salió: boleta emitida en «Boletas auto»
+ * (POST { conciliar: true }, 2026-11-09) o estado final en Dinsides (asesor-dinsides.js `estados`).
  *
  * POST /api/asesor/pedidos-sheet  { fecha_objetivo, origen, pedidos: [{ nombre, whatsapp, destino, estado,
  *      vendedora, direccion_o_agencia, kits, empaque, pago, nota, fecha_entrega, fecha_venta, tipo }] }
@@ -123,6 +124,30 @@ export async function upsertPedidosAuto(env, fechaObjetivo, origen, pedidos) {
   return { nuevas, actualizadas };
 }
 
+/** Filas abiertas con boleta ya emitida («Boletas auto»: fecha, nombre, whatsapp, courier, nro, saldo, páginas, ventana) → Enviado. */
+async function conciliarConBoletas(env) {
+  const boletas = (await getValues(env, "'Boletas auto'!A2:H").catch(() => [])) || [];
+  const porWa = new Map();
+  for (const b of boletas) {
+    const k = n9(b[2]); if (!k) continue;
+    const fecha = typeof b[0] === "number" ? serieAFecha(b[0], true) : String(b[0] || "");
+    const prev = porWa.get(k);
+    if (!prev || fecha > prev.fecha) porWa.set(k, { fecha, courier: String(b[3] || ""), nro: String(b[4] || "") });
+  }
+  const filas = await leerFilas(env);
+  const marcados = [];
+  for (let i = 0; i < filas.length; i++) {
+    const f = filas[i];
+    if (String(f[14] || "").trim()) continue;
+    const b = porWa.get(n9(f[3]));
+    // La boleta tiene que ser de ese pedido: emitida el día de la venta o después (una boleta vieja no cierra un pedido nuevo).
+    if (!b || (esIso(f[0]) && b.fecha.slice(0, 10) < f[0])) continue;
+    await updateValues(env, `${PESTAÑA}!O${i + 2}`, [[`sí ${b.fecha.slice(0, 10)} ${b.courier} ${b.nro} (boleta)`]]);
+    marcados.push({ fila: i + 2, nombre: f[2], whatsapp: f[3], courier: b.courier, nro: b.nro });
+  }
+  return { marcados: marcados.length, filas: marcados, boletas: porWa.size };
+}
+
 export async function onRequestPost({ request, env }) {
   const ip = request.headers.get("CF-Connecting-IP");
   if (!(await dentroDelLimiteAsesor(env, ip))) return json({ error: "Demasiados intentos." }, 429);
@@ -132,7 +157,13 @@ export async function onRequestPost({ request, env }) {
   const pedidos = Array.isArray(p?.pedidos) ? p.pedidos : [];
   const marcar = Array.isArray(p?.marcar) ? p.marcar : [];
   const fechaObjetivo = esIso(p?.fecha_objetivo) ? p.fecha_objetivo : "";
-  if (!marcar.length && (!pedidos.length || !fechaObjetivo)) return json({ error: "Faltan pedidos + fecha_objetivo (AAAA-MM-DD), o marcar." }, 400);
+  if (p?.conciliar) {
+    // { conciliar: true }: cierra («Enviado») las filas abiertas cuyo cliente ya tiene boleta en «Boletas auto» (Shalom / Olva:
+    // la boleta se genera cuando el paquete ya salió). Lo corre el reporte cada noche antes de armar la agenda pendiente
+    // (dueño 2026-11-09). Los pedidos de Lima los cierra `estados` de Dinsides. Nunca toca una fila ya marcada.
+    try { return json({ ok: true, ...(await conciliarConBoletas(env)) }); } catch (err) { return json({ error: err.message }, 502); }
+  }
+  if (!marcar.length && (!pedidos.length || !fechaObjetivo)) return json({ error: "Faltan pedidos + fecha_objetivo (AAAA-MM-DD), o marcar, o conciliar." }, 400);
   try {
     const filas = await leerFilas(env);
     // La fila abierta (sin «Enviado») de cada WhatsApp: la última, por si hubiera dos.

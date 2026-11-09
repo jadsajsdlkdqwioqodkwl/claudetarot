@@ -92,6 +92,26 @@ const AMBIGUOS = {
 export const TIPOS_PAGO = ["NO COBRAR", "EFECTIVO", "PLIN", "YAPE", "POS"];
 export const PRECIO_KITS = { 1: 89, 2: 149, 3: 199 };
 export const PRODUCTO = "Kit Tarot de aprendizaje";
+
+/**
+ * Producto como lo escribe el equipo en Dinsides + qué extra lleva. `empaque` es el texto del reporte (solo lo que NO es
+ * 1 kit normal). Un empaque que solo repite «2 kits» o «kit normal» no es extra. Con kits 0 (no es kit): el mazo solo es
+ * «Tarot de aprendizaje», el Gold es «Tarot Gold Rider Waite»; otra cosa va con el texto del reporte.
+ */
+export function nombreProducto(kits, empaque, tipo) {
+  const e = String(empaque || "").trim();
+  const eL = normalizar(e);
+  const soloKits = !e || /^(\d+\s*kits?( de aprendizaje| tarot)?(\s*\([^)]*\))?|kit normal.*)$/.test(eL) && !/\+|collar|mazo|oraculo|cuenco|vela|gold|modelo|(?<!sin )extra|regalo (extra|prometido)/.test(eL);
+  if (kits === 0) {
+    if (tipo === "CAMBIO" || tipo === "REPOSICION") return { producto: e ? `${tipo === "CAMBIO" ? "Cambio" : "Reposición"}: ${e}` : "Reposición / cambio", extra: e };
+    if (/gold/.test(eL)) return { producto: "Tarot Gold Rider Waite", extra: e };
+    if (/mazo|rider|tarot de aprendizaje|solo (el )?tarot/.test(eL)) return { producto: "Tarot de aprendizaje", extra: e };
+    return { producto: e || "Reposición / cambio", extra: e };
+  }
+  const base = kits > 1 ? `${kits} Kits Tarot de aprendizaje` : PRODUCTO;
+  if (soloKits) return { producto: base, extra: "" };
+  return { producto: `${base} + Extra: ${e}`, extra: e };
+}
 export const MEDIDAS_ESTANDAR = "30cmx15cmx20cm 1.5kg"; // tpaquete = 1 en el formulario
 const LIMA_MS = 5 * 3600 * 1000;
 
@@ -320,9 +340,10 @@ export function armarPedido(pedido, ctx = {}) {
   // «VERIFICAR, en el chat se le prometió: «…»» lo agrega enviar.py cuando ve una promesa sin confirmar: no es un extra decidido.
   // Se avisa (corto) y no se mete en el producto; si de verdad hay extra, la Routine lo pone en `empaque` con sus palabras.
   if (/^VERIFICAR|en el chat se le prometi/i.test(empaque)) { alertas.push(`EMPAQUE por verificar (enviar.py): ${empaque.slice(0, 160)}…`); empaque = ""; }
-  let producto = kits > 1 ? `${PRODUCTO} x${kits}` : PRODUCTO;
-  if (kits === 0) producto = empaque || "Reposición / cambio";
-  if (empaque) { if (kits !== 0) producto += ` + Extra: ${empaque}`; alertas.push(`EMPAQUE: ${empaque}`); }
+  // Nombres que el equipo usa en el campo «producto» de Dinsides (historial 2026-08 → 2026-11): «Kit Tarot de aprendizaje»,
+  // «2 Kits Tarot de aprendizaje», «Tarot de aprendizaje» (solo el mazo), «Tarot Gold Rider Waite»; lo extra va con «+ Extra: …».
+  const { producto, extra } = nombreProducto(kits, empaque, p.tipo);
+  if (extra) alertas.push(`EMPAQUE: ${extra}`);
   if (kits > 1) alertas.push(`${kits} kits`);
 
   // Cobro y método de pago. El reporte trae los montos en TEXTO (`pago`: «Adelanto S/20; saldo S/69», «Pagado S/129 por Yape»,
@@ -379,7 +400,8 @@ export function armarPedido(pedido, ctx = {}) {
   if (/^\s*🚨/.test(String(p.nota || "")) || /urgente|reclamo/.test(notaL)) alertas.push("NOTA con 🚨: leerla antes de registrar");
 
   const pagoUtil = pagoTxt && /adelanto|saldo|pagad|pago completo|efectivo|tarjeta|exacto|billete/i.test(pagoTxt) && !normalizar(nota).includes(normalizar(pagoTxt).slice(0, 25)) ? `Pago: ${pagoTxt}` : "";
-  const obs = [nota, pagoUtil, kits > 1 || empaque ? `Paquete: ${producto}` : ""].filter(Boolean).join(". ").slice(0, 480);
+  const paquete = extra || kits > 1 ? `Paquete: ${producto}${extra && !producto.includes(extra) ? ` (${extra})` : ""}` : "";
+  const obs = [nota, pagoUtil, paquete].filter(Boolean).join(". ").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

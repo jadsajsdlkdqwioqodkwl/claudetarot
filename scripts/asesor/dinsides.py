@@ -176,8 +176,16 @@ def _imprimir_resultado(r, carpeta):
     if r.get("simulado"):
         print(f"🧪 SIMULACIÓN: no se registró nada. Listado armado para {len(r.get('listos', []))} pedido(s); negocio {r.get('formulario', {}).get('negocio')}, "
               f"traslado {json.dumps(r.get('formulario', {}).get('recojo', {}), ensure_ascii=False)[:200]}")
+        print("FICHAS COMPLETAS (exactamente lo que se mandaría a Dinsides; preséntalas tal cual antes de registrar):")
         for x in r.get("listos", []):
-            print(f"   - {json.dumps(x.get('campos'), ensure_ascii=False)}")
+            c = x.get("campos") or {}
+            print(f"   ▶ {c.get('nombre')} · {x.get('whatsapp')}")
+            for k, et in (("tipo_pedido", "Tipo de pedido"), ("nombre", "Nombre"), ("telefono", "Teléfono"), ("fecha_entrega", "Fecha de entrega"),
+                          ("distrito", "Distrito"), ("direccion", "Dirección"), ("coordenadas", "Coordenadas"), ("producto", "Producto"),
+                          ("cobrar", "Cobrar S/"), ("tipo_pago", "Tipo de pago"), ("obs", "Observación")):
+                print(f"       {et}: {c.get(k) if c.get(k) not in (None, '') else '—'}")
+            for a in x.get("alertas", []):
+                print(f"       · {a}")
     for x in r.get("no_van", []):
         if x.get("ya_registrado"):
             print(f"↩️ Ya estaba registrado: {x.get('nombre')} · {x.get('whatsapp')} · {json.dumps(x['ya_registrado'], ensure_ascii=False)}")

@@ -92,7 +92,7 @@ p = D.armarPedido({ nombre: "Zona roja", whatsapp: "51999999996", direccion_o_ag
 check("pin en zona sin entregas → BLOQUEO ZONA ROJA", !p.listo && p.bloqueos.some((b) => /^ZONA ROJA/.test(b)), JSON.stringify(p.bloqueos));
 
 p = D.armarPedido({ nombre: "Dos kits", whatsapp: "51999999995", direccion_o_agencia: "Jr Puno 500, Cercado de Lima", kits: 2, empaque: "collar amuleto extra prometido", estado: "CONFIRMADO" }, ctx);
-check("2 kits + extra → producto con x2 y «+ Extra», S/149, alertas", p.listo && p.campos.producto === "Kit Tarot de aprendizaje x2 + Extra: collar amuleto extra prometido"
+check("2 kits + extra → producto con x2 y «+ Extra», S/149, alertas", p.listo && p.campos.producto === "2 Kits Tarot de aprendizaje + Extra: collar amuleto extra prometido"
   && p.campos.cobrar === "149" && p.alertas.some((a) => /^EMPAQUE/.test(a)), JSON.stringify(p));
 
 p = D.armarPedido({ nombre: "Dudoso", whatsapp: "51999999994", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", estado: "POR_VERIFICAR", nota: "dijo que yapeó sin captura" }, ctx);
@@ -113,7 +113,7 @@ check("el «VERIFICAR…» de enviar.py no entra al producto ni a la observació
 p = D.armarPedido({ nombre: "Pagado", whatsapp: "51999195063", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/89", estado: "CONFIRMADO" }, ctx);
 check("«Pagado S/89» → NO COBRAR, S/0 (antes se cobraba de nuevo)", p.campos.tipo_pago === "NO COBRAR" && p.campos.cobrar === "0" && p.campos.tipo_pedido === "SOLO-ENTREGA-NO-COBRAR", JSON.stringify(p.campos));
 p = D.armarPedido({ nombre: "Solo mazo", whatsapp: "51922792281", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, pago: "Yape contraentrega S/69", empaque: "NO es kit: solo mazo Tarot Rider Waite de aprendizaje S/69", estado: "CONFIRMADO" }, ctx);
-check("kits 0 con «contraentrega S/69» → se cobra S/69 YAPE (antes salía S/0 NO COBRAR)", p.listo && p.campos.cobrar === "69" && p.campos.tipo_pago === "YAPE" && /solo mazo/.test(p.campos.producto), JSON.stringify(p.campos));
+check("kits 0 con «contraentrega S/69» → se cobra S/69 YAPE y el producto es «Tarot de aprendizaje» (nombre del equipo)", p.listo && p.campos.cobrar === "69" && p.campos.tipo_pago === "YAPE" && p.campos.producto === "Tarot de aprendizaje" && /solo mazo/.test(p.campos.obs), JSON.stringify(p.campos));
 p = D.armarPedido({ nombre: "Solo mazo sin monto", whatsapp: "51922792282", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, empaque: "NO lleva kit: solo mazo", estado: "CONFIRMADO" }, ctx);
 check("kits 0 sin monto en ningún lado → BLOQUEO MONTO (no se inventa S/0)", !p.listo && p.bloqueos.some((b) => /^MONTO: no es un kit normal/.test(b)), JSON.stringify(p.bloqueos));
 p = D.armarPedido({ nombre: "Saldo", whatsapp: "51940435388", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Adelanto S/10; saldo S/79 contraentrega", estado: "CONFIRMADO" }, ctx);
@@ -122,6 +122,10 @@ p = D.armarPedido({ nombre: "Adelanto sin saldo", whatsapp: "51958345337", direc
 check("3 kits con adelanto S/100 y sin saldo escrito → lista − adelanto = S/99 con aviso", p.campos.cobrar === "99" && p.alertas.some((a) => /adelanto S\/100/.test(a)), JSON.stringify(p));
 p = D.armarPedido({ nombre: "Gold", whatsapp: "51997213231", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/129 por Yape", empaque: "NO es kit normal: lleva Tarot Gold Rider Waite S/129", estado: "CONFIRMADO" }, ctx);
 check("otro artículo ya pagado → NO COBRAR y el extra va en el producto", p.campos.cobrar === "0" && p.campos.tipo_pago === "NO COBRAR" && /Tarot Gold/.test(p.campos.producto), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Web 2 kits", whatsapp: "51958696861", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 2, pago: "Yape contraentrega S/149", empaque: "2 KITS (pedido web S/149)", estado: "CONFIRMADO" }, ctx);
+check("empaque que solo repite «2 kits» no es extra: producto «2 Kits Tarot de aprendizaje», S/149", p.campos.producto === "2 Kits Tarot de aprendizaje" && p.campos.cobrar === "149" && !p.alertas.some((a) => /^EMPAQUE/.test(a)), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Kit normal", whatsapp: "51959037748", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", empaque: "Kit normal (regalos del kit, sin extras)", estado: "CONFIRMADO" }, ctx);
+check("«Kit normal (sin extras)» no es extra", p.campos.producto === "Kit Tarot de aprendizaje" && !/Paquete/.test(p.campos.obs), JSON.stringify(p.campos));
 p = D.armarPedido({ nombre: "Efectivo exacto", whatsapp: "51935760271", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Efectivo exacto S/89", estado: "CONFIRMADO" }, ctx);
 check("«Efectivo exacto S/89» → EFECTIVO S/89", p.campos.cobrar === "89" && p.campos.tipo_pago === "EFECTIVO", JSON.stringify(p.campos));
 p = D.armarPedido({ nombre: "Descuento", whatsapp: "51935760272", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/79 con descuento", estado: "CONFIRMADO" }, ctx);
