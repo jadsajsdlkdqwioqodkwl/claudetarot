@@ -18,6 +18,11 @@ etiquetas en blanco, línea de corte, pie «Envía: 76250205» en las de Shalom)
                         "destino": "La Libertad - Sanchez Carrion - Huamachuco", "agencia": "Huamachuco", "direccion": "Jr. …"}]
                         (lo que imprime Shalom Pro; cuando Shalom se automatice saldrá solo de ahí).
         --olva f.json   lista [{"nombre": "…", "dni": "…", "telefono": "…", "destino": "CALLE MORAL 105, AREQUIPA"}]
+        --olva-hoja     además las etiquetas de OLVA de los pedidos de provincia confirmados (reporte del despacho + hoja «Pedidos
+                        auto») cuya agencia dice «Olva»: destinatario, DNI de la nota, teléfono y «Olva de destino» = la tienda o
+                        agente de https://www.olvacourier.com/ubicanos/ que calza con lo que escribió el cliente (data/olva-agencias.json).
+        Todas las etiquetas llevan la fecha del despacho (Lima: Fecha Entrega; Shalom y Olva: «Despacho dd/mm/aaaa») y el script avisa
+        si las de Lima no dicen todas la misma fecha (dueño, 2026-11-10).
         --sin-blancos   no rellena la última hoja con etiquetas en blanco.
         --subir         además guarda el PDF en CRM → Reportes (como los reportes) e imprime el link.
     Sin ASESOR_CLAVE solo arma Shalom y Olva desde los archivos (sin Lima).
@@ -51,6 +56,11 @@ def pedir(ruta):
         return json.load(r)
 
 
+def _fecha_pe(iso):
+    iso = str(iso or "")[:10]
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}" if len(iso) == 10 and iso[4] == "-" else iso
+
+
 def fecha_por_defecto():
     """Día de recojo: hasta las 6:00 todavía es el de hoy (Dinsides pasa ~8:00); después, mañana."""
     t = dt.datetime.now(LIMA)
@@ -67,6 +77,32 @@ def en_ciclo(fecha_pedido, recojo):
     return f"{(d - dt.timedelta(days=1)).isoformat()} 06:00:00" < fp <= f"{recojo} 06:00:00"
 
 
+def olva_de_hoja(recojo):
+    """Etiquetas de Olva: provincia CONFIRMADO con «Olva» en la agencia, del reporte del despacho y de la hoja (sin «Enviado»)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import olva as ov
+    vistos, out = set(), []
+    def agregar(f, origen):
+        wa = re.sub(r"\D", "", str(f.get("whatsapp") or ""))[-9:]
+        texto = f"{f.get('direccion_o_agencia') or ''} {f.get('nota') or ''}"
+        if not wa or wa in vistos or "olva" not in texto.lower() or str(f.get("destino") or "").upper() != "PROVINCIA" or not str(f.get("estado") or "").upper().startswith("CONFIRMADO"):
+            return
+        vistos.add(wa)
+        cand = ov.buscar(str(f.get("direccion_o_agencia") or ""))
+        a = cand[0] if cand else {}
+        dni = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
+        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
+                    "despacho": recojo, "_seguro": bool(a and a.get("seguro")), "_origen": origen})
+    est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
+    for f in ((est.get("estado") or {}).get("pedidos") or []):
+        agregar(f, "reporte")
+    r = pedir(f"/pedidos-sheet?hoy={recojo}") or {}
+    for k in ("atrasados", "hoy", "futuros"):
+        for f in r.get(k) or []:
+            agregar(f, f"hoja {k}")
+    return out
+
+
 def shalom_de_hoja(recojo):
     """Etiquetas de Shalom de lo registrado a mano por el equipo en este ciclo (hoja «Pedidos auto», columna Enviado)."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -77,13 +113,16 @@ def shalom_de_hoja(recojo):
     for f in r.get("enviadas") or []:
         env_ = str(f.get("enviado") or "")
         m = re.search(r"Shalom\s+(\d{6,})", env_)
-        if not m or "mano" not in env_.lower() or not (recojo in env_ or ayer in env_):
+        # Solo lo cerrado en ESTE ciclo (6:00 del día anterior → 6:00 del recojo, por la columna «actualizado» de la fila): lo del ciclo
+        # anterior ya se imprimió (2026-11-10: los 7 del día 9 volvían a salir).
+        act = str(f.get("actualizado") or "")[:16]
+        if not m or "mano" not in env_.lower() or not (f"{ayer} 06:00" < act <= f"{recojo} 06:00"):
             continue
         texto = str(f.get("direccion_o_agencia") or "")
         cand = sh.buscar(texto) if texto.strip() else []
         a = cand[0] if cand else {}
         dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
-        out.append({"orden": m.group(1), "codigo": "", "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
+        out.append({"orden": m.group(1), "codigo": "", "despacho": recojo, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
                     "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
                     "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
     return out
@@ -181,6 +220,8 @@ def etiqueta_shalom(c, x0, yb, d):
         c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
     c.drawCentredString(x0 + cell_w / 2, yb + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
+    if d.get("despacho"):
+        c.setFont("Helvetica", 6); c.drawRightString(R, yb + 1.6 * mm, f"Despacho {_fecha_pe(d['despacho'])}")
     cut(c, x0, yb, cell_w, cell_h)
     c.setLineWidth(.3); c.line(x0, yb + pie, x0 + cell_w, yb + pie)
 
@@ -198,7 +239,10 @@ def etiqueta_olva(c, x0, yb, d=None):
     yb2 = y_top - h
     p = 2.2 * mm; x = x0 + p; R = x0 + w - p; y = y_top - p - 2.6 * mm
     c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Destinatario:"); y -= 4 * mm
+    c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Destinatario:")
+    if d and d.get("despacho"):
+        c.setFont("Helvetica", 6.5); c.drawRightString(R, y, f"Despacho {_fecha_pe(d['despacho'])}")
+    y -= 4 * mm
     if d:
         nm = str(d["nombre"]).upper(); fs = ajustar(c, nm, "Helvetica-Bold", 9.5, R - x, 6.5)
         c.setFont("Helvetica-Bold", fs); c.drawString(x, y, nm); y -= 4.2 * mm
@@ -325,9 +369,18 @@ def main():
     items += sorted(lima, key=lambda e: e["datos"].get("distrito", ""))
     if "--olva" in args:
         for d in json.load(open(args[args.index("--olva") + 1])):
+            items.append({"tipo": "olva", "datos": {**d, "despacho": d.get("despacho") or fecha}})
+    if "--olva-hoja" in args and os.environ.get("ASESOR_CLAVE"):
+        for d in olva_de_hoja(fecha):
             items.append({"tipo": "olva", "datos": d})
+            if not d.get("_seguro"):
+                print(f"⚠️ Olva {d['nombre']}: «Olva de destino» no segura ({d.get('destino') or '?'}); revisar la etiqueta.")
+    # Todas las etiquetas del mismo despacho (dueño 2026-11-10): si las de Lima no dicen la misma fecha, se avisa.
+    fechas_lima = sorted({str(e["datos"].get("fecha_entrega") or "")[:10] for e in items if e["tipo"] == "lima"})
+    if len(fechas_lima) > 1:
+        print(f"⚠️ Las etiquetas de Lima no dicen todas la misma fecha: {', '.join(_fecha_pe(x) for x in fechas_lima)} (las de otro día Dinsides las guarda en su almacén)")
     if not items:
-        sys.exit(f"No hay etiquetas: nada registrado en Dinsides para el recojo del {fecha} (6:00 del día anterior a 6:00 de ese día) y no se pasaron --shalom ni --olva.")
+        sys.exit(f"No hay etiquetas: nada registrado en Dinsides para el recojo del {fecha} (6:00 del día anterior a 6:00 de ese día) y no se pasaron --shalom, --shalom-hoja, --olva ni --olva-hoja.")
     total, hojas = armar_pdf(items, salida, rellenar="--sin-blancos" not in args)
     reales = len(items)
     por_tipo = {t: sum(1 for e in items if e["tipo"] == t) for t in ("shalom", "lima", "olva")}

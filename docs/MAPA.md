@@ -2452,3 +2452,27 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   `masivo-a44c9a3eb8434d36.xlsx`) y para los 7 que el equipo registró a mano (5 con `shalom.py clave … lote_mano.json`, 2 que entraron en
   la primera corrida del masivo). El primer Excel subido (`masivo-8182a82cb5b4426d.xlsx`, 6 filas) tiene 5 repetidos: NO se sube a
   Shalom. La clave no va en Telegram ni al cliente; solo en la referencia y en Ventas.
+
+## 2026-11-10 (madrugada) · Olva en la presentación y en las etiquetas, chequeo del polígono, controles finales, pago YAPE por defecto, chat más largo
+
+- **Datos (dueño, página de revisión `revision-envios-2026-11-10-0006`):** 9 de Lima registrados en Dinsides para el despacho 2026-11-10
+  (#2945611 a #2945619; Tania → YAPE, Eilyn → EFECTIVO, Wilder → Bellavista, códigos de Dinsides 070102) y Yehinson cerrado en la hoja
+  como ya enviado. Excel masivo de Shalom del 10 con 1 fila (Soledad), SIN clave (el dueño no la dio aún; `shalom.py clave NNNN
+  /tmp/shalom/lote.json` cuando la dé). María Elena va por Olva (Puerto Maldonado).
+- **¿Por qué solo un Shalom el 10?** El estado del reporte del 10 trae 2 provincia CONFIRMADO (Soledad por Shalom, María Elena por
+  Olva), 1 POR_CONFIRMAR (pedido web sin adelanto) y 3 INTENCION; en la hoja, 4 POR_CONFIRMAR (sin agencia). Era domingo. No faltó nada.
+- **Olva:** `scripts/asesor/olva.py` (nuevo): `data/olva-agencias.json` bajado de olvacourier.com/ubicanos (admin-ajax
+  `get_olva_stores`, 432 tiendas y agentes), `buscar()` con el mismo criterio que `shalom.buscar` (+4 si el cliente nombró el distrito
+  completo; tiendas repetidas con dos nombres se cuentan una vez), `destino_de()` para la etiqueta. `dinsides.py presentar` separa
+  Olva de Shalom en su sección 🟠 OLVA (`_bloque_olva`: ETIQUETA OLVA + VERIFICAR OLVA). `etiquetas.py --olva-hoja` imprime la
+  etiqueta de Olva (reporte del despacho + hoja) con la «Olva de destino» elegida.
+- **Polígono:** `_poligono(f)` compara el polígono del mapa de Dinsides donde cae el pin con el distrito de la etiqueta; la ETIQUETA
+  muestra el nombre de Dinsides («BELLAVISTA - CALLAO») y cada listo con pin lleva la línea 🗺️ ✅/❌. Control en «CONTROLES FINALES».
+- **☑️ CONTROLES FINALES** (al final de `presentar`): ningún Lima de día anterior sin enviar · polígono revisado · reagendados ya en
+  Dinsides para hoy · agendados para más adelante en Dinsides y en la hoja (⏰ SALE MAÑANA) · provincia Shalom/Olva/sin agencia.
+- **Chat:** `_historial` deja TODO lo que escribió el cliente (menos saludos sueltos), 240 caracteres por línea, hasta 30 líneas; Shalom
+  y Olva leen 60 mensajes.
+- **Pago (`src/lib/dinsides.js`):** si el texto da varias formas de pago («Yape, efectivo o tarjeta al recibir»), va YAPE con alerta;
+  POS/EFECTIVO/PLIN solo cuando es lo único que dice (caso Tania).
+- **Etiquetas:** Shalom y Olva llevan «Despacho dd/mm/aaaa»; aviso si las de Lima no dicen todas la misma fecha. El «Código» de la
+  boleta de Shalom (4 letras) no está en ninguna fuente que leamos (solo en la boleta de Shalom Pro): queda en blanco.
