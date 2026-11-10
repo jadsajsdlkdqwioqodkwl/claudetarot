@@ -116,6 +116,11 @@ function fechaCorta(iso) {
   return d.toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// Cliente con «nombre de usuario» de WhatsApp: no comparte su número y el CRM lo conoce por un id («PE.1122…»).
+// Se le escribe igual que a cualquiera; el número hay que pedírselo en el chat.
+const sinNumero = (wa) => /[A-Za-z]/.test(String(wa || ""));
+const telDe = (wa) => (sinNumero(wa) ? "Sin número (usuario de WhatsApp)" : `+${wa}`);
+
 function escapar(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -2578,7 +2583,7 @@ function avisarLocalmente() {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
     if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
     const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : extractoMensaje(c.last_type, c.last_type === "location" || c.last_type === "contacts" ? c.last_body : "");
-    navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
+    navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || telDe(c.wa_id), {
       body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
       tag: `chat-${c.conversation_id}`,
       renotify: true,
@@ -3132,7 +3137,7 @@ async function pintarEjemplares() {
 }
 
 async function cambiarEstadoChat(c, accion) {
-  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  const nombre = c.contact_name || c.profile_name || telDe(c.wa_id);
   if (accion === "bloquear" && !confirm(`¿Bloquear a ${nombre}? No podrá escribirte por WhatsApp y su chat sale de la lista (lo ves en "Ocultos").`)) return false;
   try {
     const r = await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion }) });
@@ -3160,7 +3165,7 @@ let chatPrevisualizado = null;
 /** Los últimos mensajes (fotos incluidas) sin abrir el chat ni marcarlo leído. */
 async function previsualizarChat(c) {
   chatPrevisualizado = c;
-  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  const nombre = c.contact_name || c.profile_name || telDe(c.wa_id);
   $("#preview-titulo").textContent = nombre;
   pintarBotonesPreview();
   const cont = $("#preview-mensajes");
@@ -4018,7 +4023,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
+          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> ${escapar(telDe(c.wa_id))} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -10339,7 +10344,7 @@ async function pintarDetalle(c) {
     <button type="button" id="btn-cerrar-detalle" title="Cerrar">${icon("close")}</button>
     ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
-    <div class="tel-contacto">+${escapar(c.wa_id)}</div>
+    <div class="tel-contacto">${escapar(telDe(c.wa_id))}</div>
     ${lineaDe(c.linea_id) ? `<div class="tel-contacto">${icon("phone")} Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
     ${estado.conversaciones.filter((x) => x.wa_id === c.wa_id && x.conversation_id !== c.conversation_id).map((x) => `
       <button type="button" class="cancelar otro-chat" data-conv="${x.conversation_id}" style="width:100%;font-size:12px;margin-top:4px">${icon("chat")} Su chat de ${escapar(lineaDe(x.linea_id)?.nombre || "Tarot Store")}</button>`).join("")}
@@ -10549,7 +10554,7 @@ async function pintarLeadDetalle(c) {
   }
   if (estado.conversacionActivaId !== c.conversation_id) return;
   const esAdmin = estado.miRol === "admin";
-  const nombre = c.profile_name || `+${c.wa_id}`;
+  const nombre = c.profile_name || telDe(c.wa_id);
   const pasosTienda = pasosDeTienda(d, c);
   const tienda = tiendaDe(c);
 
@@ -10713,7 +10718,7 @@ let chatAsignando = null;
 
 async function abrirModalAsignar(c) {
   chatAsignando = c;
-  $("#asignar-contacto").textContent = c.profile_name || `+${c.wa_id}`;
+  $("#asignar-contacto").textContent = c.profile_name || telDe(c.wa_id);
   $("#asignar-lista").innerHTML = "Cargando…";
   $("#modal-asignar-fondo").classList.add("abierto");
   let agentes = [];

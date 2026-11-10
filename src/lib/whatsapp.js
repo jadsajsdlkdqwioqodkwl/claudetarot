@@ -13,6 +13,14 @@ function graphUrl(env, path) {
   return `${env.META_GRAPH_URL || "https://graph.facebook.com"}/${GRAPH_VERSION}/${path}`;
 }
 
+/**
+ * Clientes sin número (2026-11-10): quien usa «nombre de usuario» de WhatsApp no comparte su teléfono y Meta lo
+ * identifica con un id de negocio (BSUID, p. ej. «PE.1122042103891274»). El CRM guarda ese id donde iría el número
+ * (contacts.wa_id) y a esos chats se les escribe con `recipient` en vez de `to` (doc. oficial «Business-scoped user IDs»).
+ */
+export const esBsuid = (id) => /^[A-Z]{2}\.[A-Za-z0-9]+$/.test(String(id || ""));
+const destino = (waId) => (esBsuid(waId) ? { recipient_type: "individual", recipient: waId } : { to: waId });
+
 async function llamar(env, path, body) {
   const res = await fetch(graphUrl(env, path), {
     method: "POST",
@@ -50,7 +58,7 @@ export async function bloquearUsuario(env, waId, bloquear = true) {
   const res = await fetch(graphUrl(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/block_users`), {
     method: bloquear ? "POST" : "DELETE",
     headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ messaging_product: "whatsapp", block_users: [{ user: waId }] })
+    body: JSON.stringify({ messaging_product: "whatsapp", block_users: [esBsuid(waId) ? { user_id: waId } : { user: waId }] })
   });
   const datos = await res.json().catch(() => ({}));
   const fallo = datos?.error || datos?.block_users?.failed_users?.[0]?.errors?.[0];
@@ -62,7 +70,7 @@ export async function bloquearUsuario(env, waId, bloquear = true) {
 export async function enviarTexto(env, waId, texto, replyToWaMessageId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "text",
     text: { body: texto, preview_url: true },
     ...(replyToWaMessageId ? { context: { message_id: replyToWaMessageId } } : {})
@@ -90,7 +98,7 @@ export function limpiarBotones(lista) {
 export async function enviarBotones(env, waId, texto, botones, replyToWaMessageId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "interactive",
     interactive: {
       type: "button",
@@ -106,7 +114,7 @@ export async function enviarBotones(env, waId, texto, botones, replyToWaMessageI
 export async function enviarReaccion(env, waId, targetWaMessageId, emoji) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "reaction",
     reaction: { message_id: targetWaMessageId, emoji: emoji || "" }
   });
@@ -153,7 +161,7 @@ export async function enviarTemplate(env, waId, nombre, idioma, parametros, boto
 
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "template",
     template: { name: nombre, language: { code: idioma || "es" }, ...(components.length ? { components } : {}) }
   });
@@ -168,7 +176,7 @@ export async function enviarTemplate(env, waId, nombre, idioma, parametros, boto
 export async function enviarCatalogo(env, waId, texto, thumbnailRetailerId) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "interactive",
     interactive: {
       type: "catalog_message",
@@ -225,7 +233,7 @@ export async function catalogosConectados(env) {
 export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     messaging_product: "whatsapp",
-    to: waId,
+    ...destino(waId),
     type: "interactive",
     interactive: {
       type: "product",
@@ -238,7 +246,7 @@ export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
 
 /** Manda una imagen, video, documento o sticker ya subido a la Cloud API (ver subirMedia). */
 export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId, fileName) {
-  const cuerpo = { messaging_product: "whatsapp", to: waId, type };
+  const cuerpo = { messaging_product: "whatsapp", ...destino(waId), type };
   // Los stickers no aceptan caption — WhatsApp rechaza el mensaje si se lo
   // manda. Los documentos sí aceptan filename — sin esto, al cliente le
   // llega con un nombre genérico (o el hash del archivo) en vez de algo

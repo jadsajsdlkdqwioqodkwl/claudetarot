@@ -340,7 +340,10 @@ async function procesarCambio(envBase, db, value, origen) {
     return (a.type === "image" ? 0 : 1) - (b.type === "image" ? 0 : 1);
   });
   for (const msg of _msgs) {
-    const waId = msg.from;
+    // Cliente con «nombre de usuario» de WhatsApp: llega sin `from` (no comparte su número) y con su id de negocio en
+    // `from_user_id`. Del 1 al 10/11/2026 esos mensajes se perdían (241 personas); ahora abren su chat con ese id.
+    const userId = msg.from_user_id || (_msgs.length === 1 ? contactoMeta?.user_id : null) || null;
+    const waId = msg.from || userId;
     // Fotos de boleta y comandos que manda el dueño desde su número personal
     // al número empresa → staging; no se procesan como chat de cliente.
     if (esDueno(env, waId)) {
@@ -353,13 +356,11 @@ async function procesarCambio(envBase, db, value, origen) {
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
-    // 2026-11-03: llegan mensajes sin `from` (ids «wamid.HBgTUEUu…» = usuario con nombre de usuario de WhatsApp o id de
-    // negocio, sin número compartido). Sin número no hay chat que abrir: queda en webhook_errores con el motivo claro.
-    if (!waId) throw new Error("El mensaje llegó sin número de WhatsApp (usuario con nombre de usuario o id de negocio, no comparte su número): el CRM no puede abrir el chat.");
+    if (!waId) throw new Error("El mensaje llegó sin número ni id de WhatsApp: el CRM no puede abrir el chat (el mensaje completo queda guardado en webhook_errores.payload).");
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).
-    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, linea ? null : msg.referral);
+    const contacto = await obtenerOCrearContacto(db, msg.from || null, contactoMeta?.profile?.name, linea ? null : msg.referral, { userId, username: contactoMeta?.profile?.username || null });
     if (!linea && !contacto._isNew && !contacto.ctwa_clid && msg.referral?.ctwa_clid) {
       // Ya nos conocía por otra línea y ahora llega por un anuncio de Tarot Store.
       await guardarAnuncioDelContacto(db, contacto, msg.referral).catch((err) => console.error("Anuncio del contacto:", err.message));
@@ -416,9 +417,13 @@ async function procesarCambio(envBase, db, value, origen) {
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
     } catch (err) {
       console.error(`Webhook msg ${msg.id || "?"} de ${waId}: ${err.message}`);
-      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
-        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500))
+      // Se guarda el mensaje ENTERO tal como lo mandó Meta: lo que no se pudo procesar se puede recuperar después.
+      const payload = JSON.stringify({ msg, contacts: value.contacts || null, metadata: value.metadata || null }).slice(0, 20000);
+      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error, payload) VALUES (?, ?, ?, ?)")
+        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500), payload)
         .run()
+        .catch(() => db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
+          .bind(waId || null, msg.id || null, String(err.message).slice(0, 500)).run())
         .catch((e) => console.error("webhook_errores:", e.message));
       notificarTelegram(env, `⚠️ *Mensaje entrante no procesado*\n\nChat: ${waId || "?"}\nError: ${String(err.message).slice(0, 300).replace(/[_*`[]/g, "")}`).catch(() => {});
     }
@@ -443,9 +448,10 @@ async function procesarCambio(envBase, db, value, origen) {
 async function procesarLlamadas(env, db, value, origen) {
   const linea = await lineaDePhoneId(db, env, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
   for (const call of value.calls || []) {
-    const waId = call.from;
+    const userId = call.from_user_id || null;
+    const waId = call.from || userId;
     if (!waId) continue;
-    const contacto = await obtenerOCrearContacto(db, waId, null, null);
+    const contacto = await obtenerOCrearContacto(db, call.from || null, null, null, { userId });
     const conversacion = await obtenerOCrearConversacion(db, contacto.id, linea?.id || null);
 
     const estado = String(call.status || call.event || "").toLowerCase();

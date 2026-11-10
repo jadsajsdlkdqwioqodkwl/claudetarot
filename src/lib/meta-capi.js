@@ -44,7 +44,8 @@ export async function construirEventoCapi({ modo, waId, ctwaClid, wabaId, valor,
     if (!wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID.");
     user_data = { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid };
   } else {
-    const telefonoHash = waId ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
+    // Un cliente sin número (id de negocio «PE.123…») no tiene teléfono que mandar.
+    const telefonoHash = waId && !/[A-Za-z]/.test(String(waId)) ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
     const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
     const apellidoHash = lastName ? await sha256Hex(String(lastName).trim().toLowerCase()) : null;
     const emailHash = email ? await sha256Hex(String(email).trim().toLowerCase()) : null;
