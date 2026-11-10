@@ -15,7 +15,7 @@ import { onRequestPost as orderMasilla } from "./api/order-masilla.js";
 import { onRequestPost as orderEspada } from "./api/order-espada.js";
 import { RUTA_LARGA_CABLE, HOST_CABLE, HOST_CABLE_V2 } from "./lib/pedido-cable.js";
 import { RUTA_LARGA_MASILLA, HOST_MASILLA_V2 } from "./lib/pedido-masilla.js";
-import { HOST_ESPADA } from "./lib/pedido-espada.js";
+import { HOST_ESPADA, HOST_ESPADA_PS } from "./lib/pedido-espada.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
@@ -317,7 +317,7 @@ export default {
 
     // Versión 2 (hero en GIF) y la Espada Voladora: cada una con su dominio largo (sin «tarot»); `/` es la landing y `/gracias` su gracias.
     const hostV2 = new URL(request.url).hostname;
-    const carpetaV2 = hostV2 === HOST_CABLE_V2 ? "/cable-v2" : hostV2 === HOST_MASILLA_V2 ? "/masilla-v2" : hostV2 === HOST_ESPADA ? "/espada" : null;
+    const carpetaV2 = hostV2 === HOST_CABLE_V2 ? "/cable-v2" : hostV2 === HOST_MASILLA_V2 ? "/masilla-v2" : hostV2 === HOST_ESPADA ? "/espada" : hostV2 === HOST_ESPADA_PS ? "/espada-ps" : null;
     if (carpetaV2 && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
       const res = await env.ASSETS.fetch(new Request(new URL(pathname === "/" ? `${carpetaV2}/index.html` : `${carpetaV2}/gracias.html`, request.url), { method: "GET" }));
       const headers = new Headers(res.headers);

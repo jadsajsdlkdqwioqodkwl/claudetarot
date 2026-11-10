@@ -80,3 +80,22 @@ Se descartaron las fotos que muestran una mochila y un control de muñeca, que v
 - **Vuelve la barra fija** de abajo en la página (CTA con precio, siempre visible) y se quita lo «pegado» del botón dentro del formulario: ahora va en su lugar, al final de los campos (pedido del dueño). Lo anotado el 2026-11-05 sobre quitar la barra queda como historia.
 - **Fotos más livianas**: cada foto tiene versión de 480 y 800 px (`-480.webp`, `-800.webp`, el navegador elige con `srcset`) y miniatura de 128 px (`-t.webp`) para la tira de la galería, que antes bajaba la foto completa. Sellos del formulario a 800 px. La fuente Inter ya no bloquea el primer pintado (se carga aparte). Primera vista en celular: de ~190 KB a ~125 KB de fotos.
 - **Píxel**: los datos del cliente van limpios (sin tildes ni espacios) y con ciudad y región correctas: Lima → `lima`, provincia → la ciudad que escribió (antes se mandaba el distrito como ciudad). Lead y Purchase llevan además `order_id` (= el `eventID` del pedido).
+
+## Copia para Puerto Secreto (`/espada-ps/`, 2026-11-10)
+
+Pedido del dueño: «otra página igualita pero para Puerto Secreto y con el píxel de Puerto Secreto».
+
+- `public/espada-ps/index.html` y `gracias.html`: **idénticas** a `/espada/` (usan las mismas fotos de `/espada/img/`),
+  salvo el píxel **`1788156381816025`** (Puerto Secreto, el del Cable y la Masilla; `PIXEL_ESPADA_PS`), la gracias
+  `/espada-ps/gracias` (ruta absoluta), la clave `pedidoEspadaPS` y `tienda: 'ps'` en el pedido. `npm run check`
+  compara las dos páginas: si se cambia una, hay que cambiar la otra.
+- Mismo endpoint `/api/order-espada`, mismos precios y misma pestaña **Espada**: los pedidos de esta copia llevan
+  Detalle «Color dorado · Puerto Secreto», código `EP-…` (los de My World siguen con `ES-…`) y el aviso de Telegram
+  dice «(Puerto Secreto)».
+- Dominio: `https://puerto-secreto-espada-voladora-rc-control-remoto-envio-gratis.tarotperu.store` (`HOST_ESPADA_PS`),
+  hostname de Workers → `claudetarot`.
+- **Reglas de Cloudflare:** el plan admite 10 reglas de reescritura y ya había 10. Para hacer lugar, las 2 reglas de
+  la Espada (My World) se juntaron en una sola con reescritura dinámica: «Espada Voladora: / y /gracias ->
+  /espada/...» (`http.request.uri.path in {"/" "/gracias" "/gracias/"}` → `concat("/espada", http.request.uri.path)`);
+  la copia usa una igual hacia `/espada-ps`. Las de las otras landings no se tocaron. Si hace falta otro dominio
+  más, conviene juntar así cada par de reglas (cada landing con su `/` y su `/gracias` en una sola).

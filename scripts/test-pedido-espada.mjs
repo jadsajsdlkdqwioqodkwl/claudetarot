@@ -124,6 +124,9 @@ globalThis.fetch = async () => new Response("caído", { status: 500 });
 const rCaido = await onRequestPost(ctx(base, { ...env, GOOGLE_SHEET_ID: "NUEVO" }));
 check("si Sheets falla el pedido falla con 502", rCaido.status === 502);
 
+check("la copia de Puerto Secreto (tienda: ps) se marca en el Detalle", validate({ ...base, tienda: "ps" }).order.detalle === "Color dorado · Puerto Secreto" && validate(base).order.detalle === "Color dorado");
+check("una tienda desconocida no se marca", validate({ ...base, tienda: "otra" }).order.tienda === "");
+check("el aviso de Telegram dice Puerto Secreto en la copia", /Puerto Secreto/.test(mensajeEspadaNuevo({ ...validate({ ...base, tienda: "ps" }).order, fecha: "x" })));
 check("hay 3 packs con precio y 'viejo' mayor", Object.values(PACKS).every((p) => p.precio < p.viejo));
 check("el aviso de Telegram dice Espada Voladora y el pack", /Espada Voladora RC/.test(mensajeEspadaNuevo({ ...v.order, fecha: "x" })) && mensajeEspadaNuevo({ ...v.order, fecha: "x" }).includes("Pack Familia"));
 console.log(fallos ? `\n${fallos} fallos` : "\nTodo bien");
