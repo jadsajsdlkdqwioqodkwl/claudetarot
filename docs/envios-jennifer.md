@@ -159,8 +159,9 @@ ayer → 6:00 de hoy, con cualquier fecha de entrega: lo de otro día Dinsides l
 varias líneas, «EMPAQUE: …» (lo que lleva la caja). Con `--shalom-hoja` agrega las etiquetas de Shalom de lo que el equipo registró
 A MANO en Shalom Pro en este ciclo (orden, destinatario, DNI, destino y agencia; el «Código» de Shalom no se guarda y queda en blanco).
 Con `--olva-hoja` agrega las etiquetas de Olva (A6). Todas las etiquetas llevan la fecha del despacho (Lima: Fecha Entrega; Shalom y
-Olva: «Despacho dd/mm/aaaa») y el script avisa si las de Lima no dicen todas la misma fecha. El «Código» de 4 letras de la boleta de
-Shalom no está en ninguna fuente que leamos (solo en la boleta que imprime Shalom Pro): queda en blanco. Deja el PDF en CRM →
+Olva: «Despacho dd/mm/aaaa») y el script avisa si las de Lima no dicen todas la misma fecha. Las de Shalom llevan el «Código» de 4
+letras cuando está en la columna Enviado («cód XXXX», lo pasa el dueño con la captura de Shalom Pro) y, al pie, la nota «EMPAQUE: …».
+La hoja va con 4 mm de margen (lo mínimo que imprimen las impresoras) y las 5 filas reparten todo el alto. Deja el PDF en CRM →
 Reportes; da el link. Las de Shalom del Excel masivo las imprime Shalom Pro.
 
 A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pagina` deja la PÁGINA DE REVISIÓN (link en la salida) donde
@@ -194,13 +195,24 @@ tiene que ser una tienda o agente de https://www.olvacourier.com/ubicanos/ (list
 cliente. Olva no se registra en ningún sistema desde aquí: una persona lo lleva a la agencia; la etiqueta la imprime
 `etiquetas.py --olva-hoja` junto con las demás. Si la agencia no es segura, lo dice y una persona la confirma.
 
+**Clave de Olva (dueño, 2026-11-10):** la clave de recojo de Olva es SIEMPRE la misma. No se escribe en el repo ni en Telegram ni
+en un mensaje de la asesora: vive en la variable de entorno OLVA_CLAVE de la sesión de la Routine (la pone el dueño, como
+ASESOR_CLAVE). Al presentar un Olva listo, `python3 scripts/asesor/shalom.py clave "$OLVA_CLAVE" <lote.json>` deja su venta en la
+hoja Ventas con esa clave (es la que el CRM le manda al cliente cuando paga el saldo). Si la variable falta, dilo y no inventes una.
+**Shalom expira a las 24 h (dueño, 2026-11-10, caso Elia):** si el paquete no llega a la agencia en 24 h, Shalom anula la orden y hay
+que registrarla de nuevo (nuevo número y nuevo código). Cuando el dueño pase la captura con «N° de Orden» y «Cód.», cierra la fila
+con `reporte.py enviado <wa> "sí FECHA Shalom NNN cód XXXX (registrado a mano por el dueño)"` (si la fila ya estaba cerrada con la
+orden vieja, el Worker acepta `fila` en `marcar`): `etiquetas.py --shalom-hoja` lee de ahí el número y el código.
+
 ### A7. Controles finales (checkboxes del dueño, al final de `presentar`)
 La salida termina con «☑️ CONTROLES FINALES», calculados con datos reales (no se marcan a mano): ningún pedido de Lima de un
 día anterior sin enviar (hoja atrasados CONFIRMADO sin pedido en Dinsides) · polígono revisado (cada listo con pin: el polígono
 del mapa de Dinsides donde cae el pin coincide con el distrito de la etiqueta; si no, ❌ y se corrige antes del OK) · reagendados ya
 en Dinsides para hoy (no se tocan ni llevan etiqueta nueva) · agendados para más adelante en Dinsides y en la hoja (esa es la memoria
 entre sesiones; el que sale mañana aparece con ⏰ SALE MAÑANA y se registra ese día) · provincia: Shalom / Olva / sin agencia o sin
-adelanto. Si un control sale ❌, dilo en la primera línea de tu respuesta y resuélvelo (o pregunta) antes del OK.
+adelanto · Shalom registrados a mano sin boleta (❓ verificar en Shalom Pro que no expiró) · Dinsides con entrega pasada sin
+ENTREGADO · **fechas: cada pedido registrado en este despacho está en Dinsides con la misma fecha que se pidió** (200 % seguros).
+Si un control sale ❌, dilo en la primera línea de tu respuesta y resuélvelo (o pregunta) antes del OK.
 
 ### B. Shalom (provincia): Excel de envío masivo
 

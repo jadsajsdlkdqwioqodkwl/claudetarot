@@ -829,7 +829,7 @@ def cmd_presentar(args):
     fichas = r.get("pedidos", [])
     st2, l = pedir(f"/dinsides?listado=1&desde={(dt.date.fromisoformat(fecha) - dt.timedelta(days=12)).isoformat()}&hasta={(dt.date.fromisoformat(fecha) + dt.timedelta(days=30)).isoformat()}", timeout=240)
     lista = l.get("pedidos", []) if st2 == 200 else []
-    st3, ag = pedir(f"/pedidos-sheet?hoy={fecha}&boletas=1")
+    st3, ag = pedir(f"/pedidos-sheet?hoy={fecha}&boletas=1&enviadas=1")
     ag = ag if st3 == 200 else {}
     boletas = {str(b.get("whatsapp"))[-9:]: b for b in (ag.get("boletas") or [])}
     cands = r.get("candidatos_crm") or []
@@ -964,6 +964,24 @@ def cmd_presentar(args):
          f"☑️ Agendados para más adelante en Dinsides ({len(futuros_din)}; ya están en su almacén o salen en el recojo de hoy): " + ("; ".join(f"{x.get('nombre')} #{x.get('id_pedido')} → {str(x.get('fecha_entrega'))[:10]}{' ⏰ SALE MAÑANA' if str(x.get('fecha_entrega'))[:10] == manana else ''}" for x in futuros_din) or "ninguno"),
          f"☑️ Agendados para más adelante en la hoja, aún sin registrar ({len(futuros_hoja)}; memoria entre sesiones, se presentan el día anterior): " + ("; ".join(f"{x.get('nombre')} {x.get('whatsapp')} → {x.get('fecha_entrega')}{' ⏰ SALE MAÑANA: registrar hoy' if x.get('fecha_entrega') == manana else ''}" for x in futuros_hoja) or "ninguno"),
          f"☑️ Provincia: Shalom {len(prov)} · Olva {len(olva)} · sin agencia o sin adelanto (no entran): " + ("; ".join(f"{x.get('nombre')} {x.get('whatsapp')}" for k in ("atrasados", "hoy") for x in (ag.get(k) or []) if str(x.get('destino') or '').upper() == 'PROVINCIA' and str(x.get('estado') or '').upper().startswith('POR_CONFIRMAR')) or "ninguno")]
+    # Envíos que no salieron (dueño 2026-11-10, caso Elia: Shalom expira la orden a las 24 h si el paquete no se entrega en agencia;
+    # la Routine de boletas no la vio y nadie se enteró). Shalom registrado a mano sin boleta en «Boletas auto» → verificar en Shalom Pro.
+    hace3 = (dt.date.fromisoformat(fecha) - dt.timedelta(days=3)).isoformat()
+    sh_sin_boleta = [x for x in (ag.get("enviadas") or []) if re.search(r"Shalom\s+\d{6,}", str(x.get("enviado") or "")) and "mano" in str(x.get("enviado") or "").lower()
+                     and (re.search(r"(20\d\d-\d\d-\d\d)", str(x.get("enviado") or "")) or [None, ""])[1] >= hace3 and str(x.get("whatsapp") or "")[-9:] not in boletas]
+    din_atras = [x for x in lista if str(x.get("fecha_entrega") or "")[:10] < fecha and re.search("REGISTRADO|RUTA", str(x.get("seguimiento") or "").upper()) and not re.search("regularizaci", str(x.get("nombre") or ""), re.I)]
+    K.append(f"{'❓' if sh_sin_boleta else '✅'} Shalom registrados a mano (3 días) sin boleta en «Boletas auto»: " + ("; ".join(f"{x.get('nombre')} {x.get('whatsapp')} ({str(x.get('enviado'))[:34]})" for x in sh_sin_boleta) + " → verificar en Shalom Pro que no expiró (24 h) y que el paquete llegó a la agencia" if sh_sin_boleta else "ninguno"))
+    K.append(f"{'❌' if din_atras else '✅'} Dinsides: pedidos con fecha de entrega pasada que siguen REGISTRADO/RUTA (no entregados): " + ("; ".join(f"{x.get('nombre')} #{x.get('id_pedido')} ({str(x.get('fecha_entrega'))[:10]})" for x in din_atras) or "ninguno"))
+    # Último chequeo (dueño: «200 % seguros»): cada pedido registrado en este ciclo está en Dinsides con la MISMA fecha que se pidió.
+    por_id = {str(x.get("id_pedido")): x for x in lista}
+    fechas_ok, fechas_mal = [], []
+    for reg_ in (r.get("registrados") or []):
+        if reg_.get("anulado") or not reg_.get("nro"):
+            continue
+        d_ = por_id.get(str(reg_.get("nro")))
+        pedida = str(reg_.get("fecha_entrega") or "")[:10]; en_din = str((d_ or {}).get("fecha_entrega") or "")[:10]
+        (fechas_ok if d_ and pedida == en_din else fechas_mal).append(f"{reg_.get('nombre')} #{reg_.get('nro')}: pedida {_fecha_pe(pedida)} · Dinsides {_fecha_pe(en_din) if en_din else 'NO ESTÁ EN EL LISTADO'}")
+    K.append(f"{'✅' if not fechas_mal else '❌'} Fechas en Dinsides = fecha pedida ({len(fechas_ok)} de {len(fechas_ok) + len(fechas_mal)}): " + ("; ".join(fechas_mal) if fechas_mal else "; ".join(fechas_ok) or "nada registrado en este despacho"))
     sec("☑️ CONTROLES FINALES", K)
     if con_pdf:
         resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Shalom", len(prov)), ("Olva", len(olva)), ("Correcciones", len(corr))]

@@ -2477,3 +2477,19 @@ presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con lo
   POS/EFECTIVO/PLIN solo cuando es lo único que dice (caso Tania).
 - **Etiquetas:** Shalom y Olva llevan «Despacho dd/mm/aaaa»; aviso si las de Lima no dicen todas la misma fecha. El «Código» de la
   boleta de Shalom (4 letras) no está en ninguna fuente que leamos (solo en la boleta de Shalom Pro): queda en blanco.
+
+## 2026-11-10 (madrugada 2) · Claves del día, Shalom que expira, etiquetas al borde con código y empaque, controles de fechas y de envíos no salidos, permisos de la Routine
+
+- **Datos (dueño):** clave del día puesta en Ventas para Soledad (Shalom 103225078) y Elia (re-registrada por el dueño como
+  103225122 porque la orden 103056563 del 09 expiró: el equipo no llevó el paquete en 24 h). Soledad cerrada en la hoja con orden y
+  código; Elia se vuelve a marcar en su fila 99 con la orden nueva (`marcar` con `fila`). Las claves no se escriben en el repo.
+- **Clave de Olva:** fija (dueño). Vive en la variable de entorno OLVA_CLAVE de la sesión de la Routine; `docs/envios-jennifer.md` (A6)
+  dice cómo usarla. Nunca va a Telegram ni al cliente.
+- **Worker `pedidos-sheet` POST `marcar`:** acepta `fila` para volver a marcar una fila ya cerrada del mismo WhatsApp.
+- **`etiquetas.py`:** margen 4 mm y 5 filas que reparten todo el alto (A4 al borde); Shalom con «Código» (de «cód XXXX» en Enviado) y
+  nota «EMPAQUE: …» al pie; «Olva de destino» a 6,8 pt y 38 caracteres (se salía del margen).
+- **`presentar` → CONTROLES FINALES:** Shalom registrados a mano (3 días) sin boleta → ❓ verificar en Shalom Pro que no expiró;
+  Dinsides con entrega pasada aún REGISTRADO/RUTA; y «Fechas en Dinsides = fecha pedida» para cada registrado del despacho (200 %).
+  `presentar` pide la hoja con `enviadas=1`.
+- **`.claude/settings.json`:** permisos `Bash(python3 scripts/asesor/<shalom|olva|dinsides|etiquetas|motorizado|pedidos_estado|ventas_estado|imagenes|control_ventas>.py:*)`
+  para que la sesión de la Routine pueda correr el masivo de Shalom y los demás scripts sin que el clasificador los frene.

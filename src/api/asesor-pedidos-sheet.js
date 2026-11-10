@@ -186,8 +186,11 @@ export async function onRequestPost({ request, env }) {
       const hechos = [], sinFila = [];
       for (const m of marcar) {
         const k = n9(m.whatsapp);
-        if (!k || !abiertas.has(k)) { sinFila.push(m.whatsapp); continue; }
-        const i = abiertas.get(k);
+        // { fila } (2026-11-10): vuelve a marcar una fila YA cerrada de ese mismo WhatsApp (p. ej. el envío de Shalom expiró y el
+        // dueño lo registró de nuevo con otro número de orden). Solo si la fila es de ese cliente.
+        const filaDada = Number(m.fila) >= 2 && n9(filas[Number(m.fila) - 2]?.[3]) === k ? Number(m.fila) - 2 : null;
+        if (!k || (filaDada === null && !abiertas.has(k))) { sinFila.push(m.whatsapp); continue; }
+        const i = filaDada ?? abiertas.get(k);
         await updateValues(env, `${PESTAÑA}!O${i + 2}`, [[String(m.enviado || `sí ${fechaLima()}`)]]);
         hechos.push({ whatsapp: m.whatsapp, fila: i + 2, nombre: filas[i][2] });
         abiertas.delete(k);

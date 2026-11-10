@@ -39,10 +39,11 @@ REMITENTE = {"nombre": "MOISES EDUARD OLORTEGUI HUAMAN", "dni": "76250205", "tel
 NEGOCIO = "Tarot Store Peru"
 
 page_w, page_h = A4
-margin, gap, cols = 3 * mm, 1 * mm, 3
+# Bien pegado a los bordes de la A4 (dueño 2026-11-10): 4 mm de margen, lo mínimo que imprimen las impresoras caseras, y las 5 filas
+# reparten todo el alto.
+margin, gap, cols, rows = 4 * mm, 1 * mm, 3, 5
 cell_w = (page_w - 2 * margin - (cols - 1) * gap) / cols
-cell_h = 56 * mm
-rows = int((page_h - 2 * margin + gap) // (cell_h + gap))
+cell_h = (page_h - 2 * margin - (rows - 1) * gap) / rows
 per_page = rows * cols
 BLANK_H = 50 * mm
 
@@ -122,7 +123,10 @@ def shalom_de_hoja(recojo):
         cand = sh.buscar(texto) if texto.strip() else []
         a = cand[0] if cand else {}
         dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
-        out.append({"orden": m.group(1), "codigo": "", "despacho": recojo, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
+        cod = re.search(r"c[oó]d\.?\s*:?\s*([A-Z0-9]{4})\b", env_, re.I)
+        kits = str(f.get("kits") or "1").strip()
+        empaque = str(f.get("empaque") or "").strip() or (f"{kits} kits" if kits not in ("", "1") else "Kit normal (1)")
+        out.append({"orden": m.group(1), "codigo": cod.group(1).upper() if cod else "", "despacho": recojo, "empaque": empaque, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
                     "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
                     "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
     return out
@@ -197,9 +201,12 @@ def etiqueta_lima(c, x0, yb, d):
 
 
 def etiqueta_shalom(c, x0, yb, d):
-    """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía»."""
+    """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía» y, debajo,
+    la nota para el que empaca («EMPAQUE: …», dueño 2026-11-10)."""
     p = 2 * mm; x = x0 + p; R = x0 + cell_w - p; ancho = R - x
-    pie = 4.5 * mm; top = yb + cell_h
+    lineas_emp = textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or ""), 68)[:2] if d.get("empaque") else []
+    pie_emp = len(lineas_emp) * 2.5 * mm + (0.8 * mm if lineas_emp else 0)
+    pie = 4.5 * mm + pie_emp; top = yb + cell_h
     c.setFillColorRGB(.93, .96, .99); c.rect(x0 + .8 * mm, top - 12.5 * mm, cell_w - 1.6 * mm, 11.5 * mm, stroke=0, fill=1)
     c.setFillColorRGB(.1, .2, .45)
     y = top - p - 3.2 * mm
@@ -219,9 +226,13 @@ def etiqueta_shalom(c, x0, yb, d):
     for ln in textwrap.wrap(str(d.get("direccion", "")), 50)[:3]:  # 50 por línea: con 64 se salía de la etiqueta (2026-11-09)
         c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
-    c.drawCentredString(x0 + cell_w / 2, yb + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
+    c.drawCentredString(x0 + cell_w / 2, yb + pie_emp + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
     if d.get("despacho"):
-        c.setFont("Helvetica", 6); c.drawRightString(R, yb + 1.6 * mm, f"Despacho {_fecha_pe(d['despacho'])}")
+        c.setFont("Helvetica", 6); c.drawRightString(R, yb + pie_emp + 1.6 * mm, f"Despacho {_fecha_pe(d['despacho'])}")
+    if lineas_emp:
+        c.setFont("Helvetica-Bold", 5.2); ye = yb + 1 * mm
+        for ln in reversed(lineas_emp):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb, cell_w, cell_h)
     c.setLineWidth(.3); c.line(x0, yb + pie, x0 + cell_w, yb + pie)
 
@@ -250,8 +261,9 @@ def etiqueta_olva(c, x0, yb, d=None):
             c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, k)
             c.setFont("Helvetica", 7.5); c.drawString(x + c.stringWidth(k, "Helvetica-Bold", 7.5), y, str(v)); y -= 3.8 * mm
         c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Olva de destino:"); y -= 3.5 * mm
-        for ln in textwrap.wrap(str(d.get("destino", "")).upper(), 40)[:3]:
-            c.drawString(x, y, ln); y -= 3.3 * mm
+        c.setFont("Helvetica-Bold", 6.8)  # 6.8 pt y 38 caracteres: cabe en los 66 mm de la etiqueta (antes se salía del margen)
+        for ln in textwrap.wrap(str(d.get("destino", "")).upper(), 38)[:3]:
+            c.drawString(x, y, ln); y -= 3.1 * mm
     else:
         c.setLineWidth(.3); c.line(x, y, R, y); y -= 4.5 * mm
         for lb in ("DNI:", "Teléfono:", "Olva de destino:"):
