@@ -387,11 +387,13 @@ def _historial(wa, n=120, desde=""):
             ultimo_cliente = cuando
         if desde and cuando[:5] < desde:
             continue
-        if quien == "C" and (t in ("location", "image") or RE_RELEVANTE.search(cuerpo)):
-            lineas.append(f"{cuando} C: {cuerpo[:170]}")
+        # Dueño (2026-11-10): los momentos clave deben abarcar más. Va TODO lo que escribió el cliente (menos saludos sueltos) y las
+        # líneas de la vendedora que fijan algo (fecha, horario, cobro, comprobante), con más texto por línea.
+        if quien == "C" and (t in ("location", "image") or len(cuerpo) > 2) and not re.fullmatch(r"(hola|ok|okey|gracias|buenas( noches| tardes)?|buenos d[ií]as|si|sí|ya|listo|dale)[.! ]*", cuerpo, re.I):
+            lineas.append(f"{cuando} C: {cuerpo[:240]}")
         elif quien == "V" and RE_VENDEDORA_UTIL.search(cuerpo) and not re.search(r"\[image\]|Hola bell|está en \*S/|Claro bell|incluye el mazo|motorizado se estará", cuerpo):
-            lineas.append(f"{cuando} V: {cuerpo[:140]}")
-    return cab, lineas[-12:], ultimo_cliente
+            lineas.append(f"{cuando} V: {cuerpo[:200]}")
+    return cab, lineas[-30:], ultimo_cliente
 
 
 def _telefonos_en(texto):
@@ -425,16 +427,28 @@ def _pregunta(f):
     return ""
 
 
-def _tarjeta_dinsides(c):
+def _poligono(f):
+    """(nombre del polígono del mapa de Dinsides donde cae el pin, coincide con el distrito de la etiqueta) — None si no hay pin."""
+    c = f.get("campos") or {}
+    z = f.get("zona") or {}
+    if not c.get("coordenadas") or not z:
+        return None
+    nombre = (z.get("poligonos") or [z.get("nombre")])[0] or z.get("nombre") or "?"
+    return nombre, (not z.get("distrito") or normalizar_py(z.get("distrito")) == normalizar_py(c.get("distrito")))
+
+
+def _tarjeta_dinsides(c, f=None):
     """La etiqueta de Dinsides tal cual: lo que va al formulario (y lo que se imprime para la caja)."""
     det = f"{c.get('direccion') or ''}. {c.get('obs') or ''}".strip(". ").replace("..", ".")
+    pol = _poligono(f) if f else None
+    distrito = pol[0] if pol and pol[1] and " - " in str(pol[0]) else (c.get("distrito") or "").upper()  # «BELLAVISTA - CALLAO», como lo llama Dinsides
     out = ["🏷️ ETIQUETA DINSIDES (lo que va al formulario):",
            f"   Negocio: {NEGOCIO}",
            f"   ENTREGAR A: {(c.get('nombre') or '').upper()}",
            f"   Teléfono: {c.get('telefono') or ''}",
            f"   Producto: {c.get('producto') or ''}",
            f"   Cobrar: S/. {float(c.get('cobrar') or 0):.2f}" + (f" · {c.get('tipo_pago')}" if c.get("tipo_pago") not in (None, "", "YAPE") else "") + f" · {c.get('tipo_pedido') or ''}",
-           f"   Distrito: {(c.get('distrito') or '').title()}",
+           f"   Distrito: {distrito}",
            f"   Fecha Entrega: {_fecha_pe(c.get('fecha_entrega'))}",
            f"   Detalle: {det}"]
     if c.get("coordenadas"):
@@ -465,7 +479,10 @@ def _bloque(i, f, lista, boletas, corto=False):
     primer = (c.get("nombre") or "X").split()[0]
     out = [f"{_num(i)} {(c.get('nombre') or '').upper()} – {(c.get('distrito') or 'SIN DISTRITO').title()} · {estado}",
            f"👤 WhatsApp {f.get('whatsapp')} · asesora {f.get('asesora') or '-'} · distrito por {fuente}"]
-    out += _tarjeta_dinsides(c)
+    out += _tarjeta_dinsides(c, f)
+    pol = _poligono(f)
+    if pol:
+        out.append(f"🗺️ Polígono de Dinsides donde cae el pin: {pol[0]} → {'✅ coincide con el distrito de la etiqueta' if pol[1] else '❌ NO COINCIDE con el distrito de la etiqueta (' + str(c.get('distrito') or '?').upper() + '): corregir antes del OK'}")
     for a in f.get("alertas", []):
         if a.startswith("NOTA PARA LA ASESORA"):
             out.append(f"📣 {a}")
@@ -529,14 +546,51 @@ def _provincia_pedidos(fecha, ag, cands, boletas=None, lista=None):
     return pedidos
 
 
+def _es_olva(p):
+    return "olva" in f"{p.get('direccion_o_agencia') or ''} {p.get('nota') or ''}".lower()
+
+
+def _bloque_olva(i, p, lista, boletas, corto=False):
+    """Pedido que va por OLVA (dueño 2026-11-10: en grande, como otra venta; no se registra en ningún sistema, pero lleva etiqueta)."""
+    import olva as ov, shalom as sh
+    wa = str(p.get("whatsapp") or "")
+    dni = sh.dni_de(p)
+    texto = str(p.get("direccion_o_agencia") or "")
+    primer = str(p.get("nombre") or "X").split()[0]
+    cand = ov.buscar(texto) if texto.strip() else []
+    a = cand[0] if cand else {}
+    adelanto, saldo, aviso = sh.montos(p)
+    pend = []
+    if not dni: pend.append("sin DNI")
+    elif len(dni) != 8: pend.append(f"DNI de {len(dni)} dígitos")
+    if not a or not a.get("seguro"): pend.append("Olva de destino por confirmar")
+    estado = "✅ LISTO para la etiqueta" if not pend else "❓ PENDIENTE: " + "; ".join(pend)
+    out = [f"{_num(i)} {str(p.get('nombre') or '').upper()} · 🟠 OLVA · {estado} · {p.get('_origen')}",
+           f"👤 WhatsApp {wa} · asesora {p.get('vendedora') or '-'}",
+           "🏷️ ETIQUETA OLVA (se registra a mano en Olva; la etiqueta la imprime etiquetas.py --olva-hoja):",
+           f"   Destinatario: {str(p.get('nombre') or '').upper()}",
+           f"   DNI: {dni or '— (falta)'}",
+           f"   Teléfono: {wa[-9:]}",
+           f"   Olva de destino: {ov.destino_de(a) if a else '— (falta)'}" + (f" · {'SEGURA' if a.get('seguro') else 'DUDOSA, candidatas: ' + ' | '.join(c['nombre'] for c in cand[:3])}" if a else ""),
+           f"   Envía: {NEGOCIO} · Adelanto: S/{adelanto} · Saldo: S/{saldo}",
+           f"🏢 Lo que escribió el cliente de la agencia: {texto or '—'}",
+           f"🔎 VERIFICAR OLVA (asesora o dueño, antes del OK): busca «{texto[:60]}» en https://www.olvacourier.com/ubicanos/ y confirma que es «{a.get('nombre', '…')}»; si no: «{primer}: olva <nombre exacto>»."]
+    if p.get("nota"):
+        out.append(f"📝 Nota: {p.get('nota')}")
+    if not corto:
+        cab, hist, _ = _historial(wa, 60)
+        out.append(f"🧾 Boleta: {_boleta(boletas, wa)} · pago: {p.get('pago') or '—'}")
+        out.append(f"🗨️ Lo que escribió el cliente ({cab}):")
+        out += [f"    {h}" for h in hist]
+    return "\n".join(out)
+
+
 def _bloque_shalom(i, p, lista, boletas, corto=False):
     import shalom as sh
     wa = str(p.get("whatsapp") or "")
     dni = sh.dni_de(p)
     texto = str(p.get("direccion_o_agencia") or "")
     primer = str(p.get("nombre") or "X").split()[0]
-    if "olva" in f"{texto} {p.get('nota') or ''}".lower():
-        return f"{_num(i)} {str(p.get('nombre') or '').upper()} · WhatsApp {wa} · 🟠 OLVA (no entra al Excel de Shalom; se manda aparte) · {p.get('_origen')}"
     cand = sh.buscar(texto) if texto.strip() else []
     adelanto, saldo, aviso = sh.montos(p)
     pend = []
@@ -560,10 +614,10 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
     if p.get("nota"):
         out.append(f"📝 Nota: {p.get('nota')}")
     if not corto:
-        cab, hist, _ = _historial(wa, 40)
+        cab, hist, _ = _historial(wa, 60)
         out.append(f"🧾 Boleta: {_boleta(boletas, wa)} · Dinsides: {_estado_dinsides(lista, wa)} · pago: {p.get('pago') or '—'}")
         out.append(f"🗨️ Lo que escribió el cliente ({cab}):")
-        out += [f"    {h}" for h in hist[-8:]]
+        out += [f"    {h}" for h in hist]
     return "\n".join(out)
 
 
@@ -591,7 +645,7 @@ textarea.nota{width:100%;max-width:100%;min-height:60px;font:inherit;font-size:1
 pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:12px;overflow-wrap:anywhere}
 @media print{body{padding:0} .sticky{position:static} textarea,.ctl{display:none}}"""
 
-RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|Destino|Mercadería|Adelanto):")
+RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|DNI|Destino|Olva de destino|Envía|Mercadería|Adelanto):")
 
 
 def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
@@ -657,7 +711,7 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
     for t, lineas in secciones:
         lineas = [l for x in lineas for l in str(x).split("\n")]
         clase = "rojo" if ("PENDIENTE" in t or "CORRECCIONES" in t or "❌" in t) else "amb" if ("confirmar" in t.lower() or "NO CERRADAS" in t) else "gris" if ("CHATS DE HOY" in t or "YA REGISTRADOS" in t) else ""
-        pagina = "pagina" if re.search(r"PARA REGISTRAR|SHALOM", t) else ""
+        pagina = "pagina" if re.search(r"PARA REGISTRAR|SHALOM|OLVA", t) else ""
         partes.append(f"<div class='{pagina}'><h2 class='{clase}'>{E(t)}</h2>")
         bloques, actual = [], []
         for ln in lineas:
@@ -799,12 +853,19 @@ def cmd_presentar(args):
             i += 1; L += [_bloque(i, f, lista, boletas), ""]; Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
         sec(f"✅ LIMA — PARA REGISTRAR EN DINSIDES con tu OK ({len(listos)})", L, Cc)
     # Shalom va ANTES de los pendientes de Lima (dueño 2026-11-09: «los limas pendientes, en rojo, deben ir debajo de Shalom»)
-    prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
+    todos_prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
+    prov = [p for p in todos_prov if not _es_olva(p)]
+    olva = [p for p in todos_prov if _es_olva(p)]
     L, Cc = [], []
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
     # Sin pie de «ya despachados» (dueño 2026-11-09: «está de más»): lo cerrado en la hoja simplemente no aparece.
-    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por despachar."], Cc or ["Sin pedidos de provincia por despachar."])
+    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por Shalom."], Cc or ["Sin pedidos de provincia por Shalom."])
+    if olva:
+        L, Cc = [], []
+        for j, p in enumerate(olva, 1):
+            L += [_bloque_olva(j, p, lista, boletas), ""]; Cc += [_bloque_olva(j, p, lista, boletas, corto=True), ""]
+        sec(f"🟠 OLVA (provincia) · despacho {fecha} · {len(olva)} pedido(s) · se registra a mano en Olva y lleva su etiqueta (etiquetas.py --olva-hoja)", L, Cc)
     if pend:
         L, Cc, solo_info = [], [], 0
         for f in pend:
@@ -887,10 +948,28 @@ def cmd_presentar(args):
          "✅ Cruces: memoria del sistema (3 días) · Dinsides por teléfono, nombre y teléfonos alternos de la nota · boletas · hoja",
          "Responde: «OK» (registra los LISTOS de Lima) · «OK Shalom» o «OK Shalom clave NNNN» (arma y sube el Excel) · correcciones: «Nombre: dirección …», «Nombre: distrito …», «Nombre: agencia …», «Nombre: cobrar 69», «Nombre: miércoles», «Nombre: motorizado», «Nombre no va»"]
     sec("✅ LISTA DE VERIFICACIÓN (fuentes leídas en esta corrida)", V)
+    # Controles finales (dueño 2026-11-10): nada de otro día sin enviar, reagendados ya en Dinsides, agendados para más adelante
+    # (viven en Dinsides y en la hoja: esa es la memoria entre sesiones; el que sale mañana se avisa aquí un día antes).
+    manana = (dt.date.fromisoformat(fecha) + dt.timedelta(days=1)).isoformat()
+    en_dinsides = lambda wa: re.search(r"REGISTRADO|RUTA|ENTREGADO", _estado_dinsides(lista, wa, *_telefonos_en(wa)))
+    atras_lima = [x for x in (ag.get("atrasados") or []) if str(x.get("destino") or "").upper() == "LIMA" and str(x.get("estado") or "").upper().startswith("CONFIRMADO") and not en_dinsides(str(x.get("whatsapp") or ""))]
+    reag = [x for x in lista if str(x.get("fecha_entrega") or "")[:10] == fecha and "REGISTRADO" in str(x.get("seguimiento") or "").upper() and str(x.get("fecha_pedido") or "")[:10] < (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()]
+    futuros_din = [x for x in lista if str(x.get("fecha_entrega") or "")[:10] > fecha and re.search("REGISTRADO|RUTA", str(x.get("seguimiento") or "").upper()) and not re.search("regularizaci", str(x.get("nombre") or ""), re.I)]
+    futuros_hoja = [x for x in (ag.get("futuros") or []) if str(x.get("fecha_entrega") or "") > fecha and str(x.get("estado") or "").upper().startswith("CONFIRMADO")]
+    pol_mal = [f"{(f.get('campos') or {}).get('nombre')} {f.get('whatsapp')} (polígono {_poligono(f)[0]}, etiqueta {(f.get('campos') or {}).get('distrito')})" for f in listos if _poligono(f) and not _poligono(f)[1]]
+    con_pin = sum(1 for f in listos if _poligono(f))
+    K = [f"{'✅' if not atras_lima else '❌'} Ningún pedido de Lima de un día anterior quedó sin enviar" + ("" if not atras_lima else ": " + "; ".join(f"{x.get('nombre')} {x.get('whatsapp')} (previsto {x.get('fecha_entrega')}, fila {x.get('fila')})" for x in atras_lima)),
+         f"{'✅' if not pol_mal else '❌'} Polígono revisado: {con_pin} listo(s) con pin, {'todos coinciden con el distrito de la etiqueta' if not pol_mal else 'NO coinciden: ' + '; '.join(pol_mal)}",
+         f"☑️ Reagendados ya en Dinsides para hoy ({len(reag)}; no se tocan ni llevan etiqueta nueva): " + ("; ".join(f"{x.get('nombre')} #{x.get('id_pedido')}" for x in reag) or "ninguno"),
+         f"☑️ Agendados para más adelante en Dinsides ({len(futuros_din)}; ya están en su almacén o salen en el recojo de hoy): " + ("; ".join(f"{x.get('nombre')} #{x.get('id_pedido')} → {str(x.get('fecha_entrega'))[:10]}{' ⏰ SALE MAÑANA' if str(x.get('fecha_entrega'))[:10] == manana else ''}" for x in futuros_din) or "ninguno"),
+         f"☑️ Agendados para más adelante en la hoja, aún sin registrar ({len(futuros_hoja)}; memoria entre sesiones, se presentan el día anterior): " + ("; ".join(f"{x.get('nombre')} {x.get('whatsapp')} → {x.get('fecha_entrega')}{' ⏰ SALE MAÑANA: registrar hoy' if x.get('fecha_entrega') == manana else ''}" for x in futuros_hoja) or "ninguno"),
+         f"☑️ Provincia: Shalom {len(prov)} · Olva {len(olva)} · sin agencia o sin adelanto (no entran): " + ("; ".join(f"{x.get('nombre')} {x.get('whatsapp')}" for k in ("atrasados", "hoy") for x in (ag.get(k) or []) if str(x.get('destino') or '').upper() == 'PROVINCIA' and str(x.get('estado') or '').upper().startswith('POR_CONFIRMAR')) or "ninguno")]
+    sec("☑️ CONTROLES FINALES", K)
     if con_pdf:
-        resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Provincia (Shalom)", len(prov)), ("Correcciones", len(corr)), ("Chats de hoy", len(chats_hoy) if chats_hoy is not None else "?")]
+        resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Shalom", len(prov)), ("Olva", len(olva)), ("Correcciones", len(corr))]
         pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend] \
             + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov] \
+            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "olva"} for p_ in olva] \
             + [{"whatsapp": x.get("whatsapp"), "nombre": x.get("nombre"), "tipo": "otro_dia"} for x in abiertos[:60]]
         url_rev, rid = _pagina_revision(f"Revisión de envíos {fecha}", S, resumen, fecha, pedidos_rev)
         links = [f"Revisar y marcar: {url_rev}", "Marca OK / corrección / no va en cada pedido; se guarda solo. Cuando termines, escribe cualquier cosa en la sesión: Claude lee las notas antes de responder."]

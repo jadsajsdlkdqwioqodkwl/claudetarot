@@ -362,7 +362,11 @@ export function armarPedido(pedido, ctx = {}) {
     const dicePagado = /ya pago\b|\bpagad[oa]\b|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)|sin saldo/.test(notaL);
     const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL) && !/sin saldo/.test(notaL);
     const quedaSaldo = (saldoTxt !== null && saldoTxt > 0) || (adelantoTxt !== null && !/sin saldo/.test(notaL) && !/pago (completo|todo|el total)/.test(notaL));
+    // Si el texto da VARIAS opciones («Yape, efectivo exacto o tarjeta al recibir»), el cliente no eligió: va YAPE, el defecto del
+    // dueño (2026-11-10, caso Tania: salía POS). POS / EFECTIVO / PLIN solo cuando es lo único que dice.
+    const variasOpciones = /\byape\b/.test(notaL) && /tarjeta|\bpos\b|efectivo|cash|\bplin\b/.test(notaL);
     if (dicePagado && !diceQuePagara && !quedaSaldo) tipoPago = "NO COBRAR";
+    else if (variasOpciones) { tipoPago = "YAPE"; alertas.push("PAGO: el texto da varias formas de pago; va YAPE (defecto) salvo que el cliente diga otra"); }
     else if (/tarjeta|\bpos\b/.test(notaL)) tipoPago = "POS";
     else if (/efectivo|cash|billete/.test(notaL)) tipoPago = "EFECTIVO";
     else if (/\bplin\b/.test(notaL) && !/\byape\b/.test(notaL)) tipoPago = "PLIN";

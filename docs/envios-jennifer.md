@@ -48,7 +48,9 @@ sesión («OK», correcciones, la clave del día). Las respuestas a los pendient
    Nunca van en Telegram ni en respuestas: solo en el archivo de referencia.
 6. **Notas completas.** Todo lo que no sea «1 kit normal a S/89» se ve en la presentación y en la nota que llega al courier:
    2 o más kits, mazo u oráculo extra, otro modelo (Gold, Rider en español…), pedido del catálogo, collar o regalo prometido, lo que
-   NO lleva (`kits: 0`), descuento o precio negociado, adelanto y saldo, «ya pagó», horario, piso, portero, discreción. El reporte
+   NO lleva (`kits: 0`), descuento o precio negociado, adelanto y saldo, «ya pagó», horario, piso, portero, discreción. **Forma de
+   pago: si el cliente no la dijo, es YAPE** (dueño 2026-11-10); «Yape, efectivo o tarjeta al recibir» = varias opciones = YAPE.
+   POS o EFECTIVO solo cuando el cliente lo pidió. El reporte
    trae los montos en texto («Adelanto S/20; saldo S/69», «Pagado S/89», «Yape contraentrega S/69»): el sistema los lee y calcula
    lo que se cobra; si hay duda lo marca con «MONTO» y se pregunta. Precio de lista: 1 kit S/89, 2 kits S/149, 3 kits S/199.
 7. Herramientas: SOLO `python3 scripts/asesor/dinsides.py …` y `python3 scripts/asesor/shalom.py …` desde /home/user/claudetarot.
@@ -150,13 +152,16 @@ PROHIBIDO: frases de proceso («Estoy corriendo el ciclo…», «Sigo con…»),
 «hay que verificar» sin haber leído el chat. Todo lo que afirmes sale de `presentar` o del chat, con fecha y hora.
 Y DETENTE: no registres nada hasta que una persona conteste en la sesión.
 
-A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py --subir --shalom-hoja` (sin fecha:
+A4b — ETIQUETAS PARA LAS CAJAS: después de registrar (A5), `python3 scripts/asesor/etiquetas.py --subir --shalom-hoja --olva-hoja` (sin fecha:
 el script elige solo el día de recojo; hasta las 6:00 es hoy) imprime las etiquetas de Lima de lo REGISTRADO en este ciclo (6:00 de
 ayer → 6:00 de hoy, con cualquier fecha de entrega: lo de otro día Dinsides lo guarda en su almacén) y NO las de ciclos anteriores
 (ya están en el almacén de Dinsides; el dueño no las quiere otra vez). Formato Dinsides, 3×5; al pie de cada una, en letra chica y
 varias líneas, «EMPAQUE: …» (lo que lleva la caja). Con `--shalom-hoja` agrega las etiquetas de Shalom de lo que el equipo registró
 A MANO en Shalom Pro en este ciclo (orden, destinatario, DNI, destino y agencia; el «Código» de Shalom no se guarda y queda en blanco).
-Deja el PDF en CRM → Reportes; da el link. Las de Shalom del Excel masivo las imprime Shalom Pro.
+Con `--olva-hoja` agrega las etiquetas de Olva (A6). Todas las etiquetas llevan la fecha del despacho (Lima: Fecha Entrega; Shalom y
+Olva: «Despacho dd/mm/aaaa») y el script avisa si las de Lima no dicen todas la misma fecha. El «Código» de 4 letras de la boleta de
+Shalom no está en ninguna fuente que leamos (solo en la boleta que imprime Shalom Pro): queda en blanco. Deja el PDF en CRM →
+Reportes; da el link. Las de Shalom del Excel masivo las imprime Shalom Pro.
 
 A4c — LAS NOTAS DEL DUEÑO (página de revisión): `presentar --pagina` deja la PÁGINA DE REVISIÓN (link en la salida) donde
 el dueño o la asesora marcan por pedido OK / Corrección (con texto) / No va / Ya se envió, y se guarda sola. `presentar` guarda el id
@@ -180,6 +185,22 @@ A5 — Con la respuesta:
 
 Otros comandos: `dinsides.py anular <id>` (antes de la ruta), `dinsides.py editar <id> fecha_entrega=… distrito=… direccion=…`,
 `dinsides.py listado` (historial), `dinsides.py quitar <whatsapp> [fecha]` (si el panel dice otra cosa que la memoria).
+
+### A6. Olva (provincia que va por Olva, no por Shalom)
+Los pedidos de provincia cuya agencia dice «Olva» salen en `presentar` en su propia sección 🟠 OLVA, en grande, como otra venta
+(dueño 2026-11-10): ETIQUETA OLVA (Destinatario · DNI · Teléfono · Olva de destino · Envía) y 🔎 VERIFICAR OLVA. La «Olva de destino»
+tiene que ser una tienda o agente de https://www.olvacourier.com/ubicanos/ (lista en `data/olva-agencias.json`, se actualiza con
+`python3 scripts/asesor/olva.py actualizar`; `olva.py buscar "texto"` muestra las candidatas) y calzar con lo que escribió el
+cliente. Olva no se registra en ningún sistema desde aquí: una persona lo lleva a la agencia; la etiqueta la imprime
+`etiquetas.py --olva-hoja` junto con las demás. Si la agencia no es segura, lo dice y una persona la confirma.
+
+### A7. Controles finales (checkboxes del dueño, al final de `presentar`)
+La salida termina con «☑️ CONTROLES FINALES», calculados con datos reales (no se marcan a mano): ningún pedido de Lima de un
+día anterior sin enviar (hoja atrasados CONFIRMADO sin pedido en Dinsides) · polígono revisado (cada listo con pin: el polígono
+del mapa de Dinsides donde cae el pin coincide con el distrito de la etiqueta; si no, ❌ y se corrige antes del OK) · reagendados ya
+en Dinsides para hoy (no se tocan ni llevan etiqueta nueva) · agendados para más adelante en Dinsides y en la hoja (esa es la memoria
+entre sesiones; el que sale mañana aparece con ⏰ SALE MAÑANA y se registra ese día) · provincia: Shalom / Olva / sin agencia o sin
+adelanto. Si un control sale ❌, dilo en la primera línea de tu respuesta y resuélvelo (o pregunta) antes del OK.
 
 ### B. Shalom (provincia): Excel de envío masivo
 
