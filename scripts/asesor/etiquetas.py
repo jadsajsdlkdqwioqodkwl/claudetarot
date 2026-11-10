@@ -117,7 +117,8 @@ def shalom_de_hoja(recojo):
         # Solo lo cerrado en ESTE ciclo (6:00 del día anterior → 6:00 del recojo, por la columna «actualizado» de la fila): lo del ciclo
         # anterior ya se imprimió (2026-11-10: los 7 del día 9 volvían a salir).
         act = str(f.get("actualizado") or "")[:16]
-        if not m or "mano" not in env_.lower() or not (f"{ayer} 06:00" < act <= f"{recojo} 06:00"):
+        # … o la fila dice la fecha del recojo en «Enviado» (una fila cerrada que se volvió a marcar no cambia «actualizado»).
+        if not m or "mano" not in env_.lower() or not (f"{ayer} 06:00" < act <= f"{recojo} 06:00" or recojo in env_):
             continue
         texto = str(f.get("direccion_o_agencia") or "")
         cand = sh.buscar(texto) if texto.strip() else []
