@@ -86,5 +86,27 @@ await llega({ userId: undefined, texto: "sin nada" });
 const e = uno("SELECT * FROM webhook_errores ORDER BY id DESC LIMIT 1");
 check("lo que no se puede procesar queda con el mensaje entero (payload)", /sin nada/.test(e?.payload || ""), JSON.stringify(e));
 
+// 7. Recuperar a los que se perdieron antes del arreglo: el id sale del wa_message_id; a los de las últimas 24 h, bienvenida.
+{
+  const { onRequestPost: recuperar, bsuidDeWamid } = await import("../src/api/asesor-recuperar.js");
+  const wamid = (id) => "wamid." + Buffer.from(`\x1c\x18\x13${id}\x15\x14\x00\x12\x18 ABCDEF`, "latin1").toString("base64");
+  check("saca el id de negocio del id del mensaje real de Meta", bsuidDeWamid("wamid.HBgTUEUuMTEyMjA0MjEwMzg5MTI3NBUUABIYIEFDRTUwNkU5QzUwRkNENkJEOTZCNkQ5MUE4QkQ2QUVFAA==") === "PE.1122042103891274");
+  sq.exec("DELETE FROM webhook_errores");
+  const ins = sq.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error, created_at) VALUES (NULL, ?, 'sin número', datetime('now', ?))");
+  ins.run(wamid("PE.7001"), "-2 hours"); ins.run(wamid("PE.7001"), "-1 hours"); ins.run(wamid("PE.7002"), "-30 hours");
+  sq.prepare("INSERT INTO welcome_steps (step_order, title, body) VALUES (1, 'Saludo', 'Hola, bienvenida')").run();
+  env.ASESOR_CLAVE = "clave-de-prueba-del-asesor-123456";
+  env.ASESOR_CLAVE_SHA256 = (await import("node:crypto")).createHash("sha256").update(env.ASESOR_CLAVE).digest("hex");
+  enviados.length = 0;
+  const pedir = async (body) => (await recuperar({ request: new Request("https://x/api/asesor/recuperar", { method: "POST", body: JSON.stringify(body), headers: { "x-asesor-clave": env.ASESOR_CLAVE } }), env })).json();
+  const r = await pedir({ horas: 48 });
+  check("recupera a las 2 personas (3 mensajes), sin fallos", r.personas === 2 && r.recuperados?.length === 2 && !r.fallidos.length, JSON.stringify(r));
+  check("la bienvenida sale solo a quien escribió hace menos de 24 h, con `recipient`", enviados.filter((e) => e.type === "text").length === 1 && enviados.find((e) => e.type === "text")?.recipient === "PE.7001", JSON.stringify(enviados));
+  const cv = uno("SELECT cv.unread_count, cv.last_inbound_at, m.body FROM contacts c JOIN conversations cv ON cv.contact_id = c.id JOIN messages m ON m.conversation_id = cv.id AND m.direction = 'in' WHERE c.wa_id = 'PE.7001'");
+  check("el chat queda con la nota en lugar de lo que escribió", /2 mensajes/.test(cv?.body || ""), JSON.stringify(cv));
+  const r2 = await pedir({ horas: 48 });
+  check("no repite: la segunda llamada no crea ni manda nada", r2.recuperados.length === 0 && r2.ya_tenian_chat === 2 && enviados.filter((e) => e.type === "text").length === 1, JSON.stringify(r2));
+}
+
 console.log(fallas ? `\n${fallas} falla(s)` : "\nTodo bien");
 process.exit(fallas ? 1 : 0);

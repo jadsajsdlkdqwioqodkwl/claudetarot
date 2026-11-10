@@ -14,6 +14,7 @@
  *    ventana) y decide a quién mandarle el mismo rescate 1; sale solo (/api/asesor/rescates).
  */
 
+import { idWa } from "./whatsapp.js";
 import { obtenerAjuste, guardarAjuste } from "./crm-db.js";
 import { listarLineas } from "./lineas.js";
 import { planesDe, marcaDeLinea, IDIOMA_PLAN, PREFIJO_PLAN, textoDePaso, RESCATE_CATALOGO } from "./planes-plantilla.js";
@@ -146,7 +147,7 @@ export async function rescateUnoPorAsesor(env, items) {
   const cuando = new Date(Date.now() + 10 * 60000).toISOString();
   const hace24h = new Date(Date.now() - 24 * 3600000).toISOString().slice(0, 19).replace("T", " ");
   for (const it of items.slice(0, 15)) {
-    const wa = String(it?.whatsapp || "").replace(/\D/g, "");
+    const wa = idWa(it?.whatsapp);
     const rechazar = (razon) => rechazados.push({ whatsapp: wa, razon });
     if (!wa) { rechazar("falta whatsapp"); continue; }
     const c = await db.prepare(

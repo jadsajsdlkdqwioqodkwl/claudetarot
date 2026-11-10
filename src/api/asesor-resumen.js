@@ -18,6 +18,7 @@
  * Opcional, por correo (resumenSemanal en ASESOR.gs).
  */
 
+import { idWa } from "../lib/whatsapp.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor, pruebasDeMensajes } from "./asesor.js";
 import { MIN_USOS } from "../lib/crm-variantes.js";
 import { escaparHtml } from "../lib/telegram.js";
@@ -50,7 +51,7 @@ export async function onRequestPostAnalisis({ request, env }) {
   const origen = corto(p?.origen, 60) || "asesor";
   const res = { guardados: 0, sin_chat: [] };
   for (const c of (Array.isArray(p?.chats) ? p.chats : []).slice(0, 200)) {
-    const wa = String(c?.whatsapp || "").replace(/\D/g, "");
+    const wa = idWa(c?.whatsapp);
     const conv = wa.length >= 9 && await env.CRM_DB.prepare(
       `SELECT conv.id, conv.assigned_agent FROM conversations conv JOIN contacts ct ON ct.id = conv.contact_id
        WHERE ct.wa_id LIKE ? ORDER BY conv.last_message_at DESC LIMIT 1`

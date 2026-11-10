@@ -28,6 +28,7 @@
  * conversación más reciente de ese contacto.
  */
 
+import { idWa } from "../lib/whatsapp.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { mandarTexto, mandarMediaPorId, pausaEnvio, mandarConEscribiendo } from "../lib/crm-send.js";
 import { agregarEtiquetaMeta, registrarMensajeSaliente } from "../lib/crm-db.js";
@@ -213,7 +214,7 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: !ventas.error, staging_id: s.id, ventas }, ventas.error ? 422 : 200);
   }
 
-  let waIdNorm = String(p.wa_id || "").replace(/\D/g, "") || null;
+  let waIdNorm = idWa(p.wa_id) || null;
   // Número peruano de 9 dígitos: agregar código de país
   if (waIdNorm?.length === 9) waIdNorm = "51" + waIdNorm;
   const conv = await resolverConversacion(

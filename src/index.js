@@ -135,6 +135,7 @@ import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestPost as asesorRecuperarPost } from "./api/asesor-recuperar.js";
 import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
 import { onRequestPost as asesorBoletasLogPost } from "./api/asesor-boletas-log.js";
 import { onRequestGet as asesorPedidosSheetGet, onRequestPost as asesorPedidosSheetPost } from "./api/asesor-pedidos-sheet.js";
@@ -189,6 +190,7 @@ const ROUTES = {
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/rescates": { POST: asesorRescatesPost },
+  "/api/asesor/recuperar": { POST: asesorRecuperarPost },
   "/api/asesor/boletas_staging": { GET: asesorBoletasGet, PATCH: asesorBoletasPatch },
   "/api/asesor/mandar": { POST: asesorMandarPost },
   "/api/asesor/resumen": { GET: asesorResumenGet },

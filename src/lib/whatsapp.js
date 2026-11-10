@@ -19,6 +19,8 @@ function graphUrl(env, path) {
  * (contacts.wa_id) y a esos chats se les escribe con `recipient` en vez de `to` (doc. oficial «Business-scoped user IDs»).
  */
 export const esBsuid = (id) => /^[A-Z]{2}\.[A-Za-z0-9]+$/.test(String(id || ""));
+/** El identificador de un chat tal como lo escribe una persona o el asesor: un id de negocio se deja igual; un número, solo dígitos. */
+export const idWa = (x) => { const t = String(x ?? "").trim(); return esBsuid(t) ? t : t.replace(/\D/g, ""); };
 const destino = (waId) => (esBsuid(waId) ? { recipient_type: "individual", recipient: waId } : { to: waId });
 
 async function llamar(env, path, body) {
