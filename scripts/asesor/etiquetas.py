@@ -212,7 +212,10 @@ def etiqueta_shalom(c, x0, yb, d):
     c.setFillColorRGB(.1, .2, .45)
     y = top - p - 3.2 * mm
     c.setFont("Helvetica-Bold", 8.5); c.drawString(x, y, f"N° de Orden: {d.get('orden', '')}"); y -= 4.6 * mm
-    c.drawString(x, y, f"Código: {d.get('codigo', '')}"); y -= 6.5 * mm
+    c.drawString(x, y, f"Código: {d.get('codigo', '')}")
+    if d.get("despacho"):  # la fecha va en el encabezado azul: en el pie chocaba con «Envía» (2026-11-10)
+        c.setFont("Helvetica", 6.5); c.drawRightString(R, y, f"Despacho {_fecha_pe(d['despacho'])}")
+    y -= 6.5 * mm
     c.setFillColorRGB(.35, .35, .35); c.setFont("Helvetica", 6.5); c.drawString(x, y, "Destinatario:"); y -= 3.6 * mm
     c.setFillColorRGB(.1, .1, .1)
     nombre = str(d.get("destinatario", "")); tam = ajustar(c, nombre, "Helvetica-Bold", 9.5, ancho)
@@ -228,8 +231,6 @@ def etiqueta_shalom(c, x0, yb, d):
         c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
     c.drawCentredString(x0 + cell_w / 2, yb + pie_emp + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
-    if d.get("despacho"):
-        c.setFont("Helvetica", 6); c.drawRightString(R, yb + pie_emp + 1.6 * mm, f"Despacho {_fecha_pe(d['despacho'])}")
     if lineas_emp:
         c.setFont("Helvetica-Bold", 5.2); ye = yb + 1 * mm
         for ln in reversed(lineas_emp):
