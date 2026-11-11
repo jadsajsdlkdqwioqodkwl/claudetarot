@@ -340,7 +340,7 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
     if (!fila) { if (clase !== "anulado") resumen.sin_fila_en_hoja.push(item); continue; }
     if (!marcar) continue;
     const yaDice = String(fila.dinsides || "").toLowerCase();
-    if (clase === "pendiente" && !String(fila.enviado || "").trim() && !yaDice.includes(`#${ped.id_pedido}`)) {
+    if (clase === "pendiente" && !String(fila.enviado || "").trim() && fila.fecha_entrega === ped.fecha_entrega) {
       // Ya está registrado en Dinsides (en su almacén o por recoger) y la fila sigue abierta: típico de un agendado que el reporte
       // volvió a escribir. Se cierra para que no salga como pendiente (dueño 2026-11-11, caso Sandra: «ya estaba registrada»).
       await marcarDinsidesEnHoja(env, fila.whatsapp, `registrado #${ped.id_pedido} (entrega ${ped.fecha_entrega})`, `Dinsides ${ped.fecha_entrega}`, fila.fila).catch(() => null);

@@ -302,6 +302,7 @@ def armar_pdf(datos, carpeta):
             # fechas pasadas), aunque ninguna corrida de hoy lo haya vuelto a ver. Así un pedido para dentro de un mes no
             # desaparece de los reportes hasta que alguien lo marque como enviado (caso Katia Reyes, 2026-10-30).
             en_reporte = {prom.nueve(p.get("whatsapp")) for p in pedidos if prom.nueve(p.get("whatsapp"))}
+            ya_en_courier = {prom.nueve(p.get("whatsapp")) for p in (ya_registrados if unificado else [])}
             ag = datos.get("agenda_pendiente") or {}
             filas_ag, viejos, sin_conf_ag = [], 0, []
             import datetime as _dt2
@@ -313,6 +314,9 @@ def armar_pdf(datos, carpeta):
                                     ("futuros", "futuro"), ("sin_fecha", "sin fecha")):
                 for r in ag.get(grupo) or []:
                     if prom.nueve(r.get("whatsapp")) in en_reporte and grupo != "atrasados":
+                        continue
+                    # Ya registrado o entregado en el courier: no es un pendiente aunque su fila de la hoja siga abierta.
+                    if prom.nueve(r.get("whatsapp")) in ya_en_courier or re.search(r"Dinsides (registrado|ENTREGADO)", (datos.get("envios_hechos") or {}).get(prom.nueve(r.get("whatsapp")) or "-", "")):
                         continue
                     # Atrasados de hace más de 3 días: ya no se listan (el sistema cierra solo los que tienen boleta o estado final
                     # en Dinsides; lo que queda es ruido de la hoja). Se cuentan y se avisa (dueño 2026-11-09).
