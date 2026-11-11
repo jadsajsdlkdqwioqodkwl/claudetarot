@@ -2566,3 +2566,25 @@ su pedido anterior entregado: queda para el equipo de reposiciones (regla nueva)
 - Resultado de la revisada (ventas del 10/11): las 23 ventas que conoce el CRM están en el reporte; Lima 13 registradas hoy + 4 ya
   en el almacén de Dinsides; provincia 6 Shalom + 1 Olva. Sin registrar por falta de dato: Antonella Prado (dirección, 14/11), Joan
   (dirección, 16/11). No es venta: Jennifer Figuera (pedido web sin adelanto; el reporte la puso CONFIRMADO con «adelanto visto»).
+
+## 2026-11-11 (03:00–04:00) — 2.ª vuelta del dueño: reporte sin secciones duplicadas, reagendados arriba, WhatsApp obligatorio en la etiqueta, botón Actualizar
+
+Lo que dijo el dueño al ver las muestras: la revisión de envíos está bien (los que ya pagaron y les falta un dato SON venta y van
+ahí); el reporte de ventas no: correcciones, «salen en este despacho» y pedidos web duplican (van dentro de Lima / Provincia, que es
+«lo confirmado que sale mañana sí o sí», no solo las ventas de hoy); «kits a despachar 26» contaba pedidos de otra fecha; los
+reagendados (Nohemi) deben ser prioridad y llegarle a él y a la revisión; toda etiqueta debe decir «escribirle al cliente por
+WhatsApp» con el número; faltaba EMPAQUE en Olva y un botón de actualizar en la página.
+- `enviar.py armar_pdf` (unificado): CORRECCION y AGENDADO se pliegan en Lima / Provincia (`_tipo_orig`); CONFIRMADO con otra fecha
+  pasa a «Otros días»; sin sección de correcciones, de «salen en este despacho» ni de pedidos web; cajas nuevas («Kits que salen en
+  este despacho», «Ya registrados en el courier»); la agenda de la hoja se parte en «🚨 REAGENDAR O REGISTRAR — avisar a Moi»
+  (confirmados y OTRO_DIA, con columna Envío) y «De otros días, sin confirmar» (al final). Los agendados no cuentan como venta de hoy
+  en «Ventas por vendedora».
+- `src/lib/dinsides.js`: `lineaWhatsapp` → toda observación empieza con «Escribir al cliente por WhatsApp: 9… (o 9…)». `etiquetas.py`
+  `detalle_lima` la imprime siempre (WhatsApp del chat desde la memoria de registros + teléfono de Dinsides). Olva con «EMPAQUE».
+  «PALABRA: instrucción» ya no se parte.
+- **Hecho en Dinsides (a pedido del dueño):** se editó la observación de los 18 pedidos abiertos (13 del 11/11, Sandra, Samantha,
+  Keyla, María del Pilar y Liliana) con la nota nueva; los 18 respondieron OK.
+- Revisión de envíos: sección «AGENDADOS Y POR REAGENDAR» (ventas de otros días sin salir + lo agendado en Dinsides para más
+  adelante, con «Reagendar / registrar», «Sigue igual», «Ya se envió», «No va») y botón «Actualizar chats y notas»
+  (`POST /api/revision/nota {leer, chats}`: últimos 25 mensajes de cada pedido de la revisión, en vivo; guarda `pidio_actualizar`,
+  que `dinsides.py notas` muestra). El botón no busca pedidos nuevos: eso es `presentar --pagina`.

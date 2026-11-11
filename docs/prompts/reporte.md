@@ -49,6 +49,16 @@ duda: la duda va en `nota` y el pedido sale igual.
    «Confirmar: …» (el sistema la saca de la etiqueta y se la muestra a la asesora). Lo que se empaca va en `empaque`, con el NOMBRE
    del producto cuando no es el kit («Cuenco tibetano 13 cm + mazo Tarot Rider Waite de aprendizaje»), nunca «reposición / cambio»
    si es una venta.
+7. **Sin secciones duplicadas (dueño, 2.ª vuelta del 11/11):** «Lima» y «Provincia» son TODO lo confirmado que sale en este
+   despacho, no solo las ventas de hoy. Una corrección («aclaró que paga en efectivo», llegó el DNI) o un agendado que sale mañana
+   sigue yendo con `tipo` CORRECCION / AGENDADO (el sistema lo necesita), pero el PDF lo pone en su fila de Lima o Provincia; ya no
+   hay sección de correcciones, ni de «salen en este despacho», ni de pedidos web. Un pedido de la web que es venta va como
+   cualquier otro en `pedidos`; sin adelanto (provincia) o sin dirección (Lima) NO es CONFIRMADO: va POR_VERIFICAR (caso Jennifer
+   Figuera, pedido web sin adelanto que salió como confirmado).
+8. **Reagendados = prioridad.** Una venta de otro día que no ha salido (viajó, pidió otra fecha, quedó pendiente) va OTRO_DIA con su
+   `fecha_entrega` y nota «🚨 REAGENDAR: …» con lo que pidió el cliente; sale arriba, en «REAGENDAR O REGISTRAR — avisar a Moi», y en
+   la revisión de envíos. Si ya está en Dinsides con otra fecha, dilo en la nota («en Dinsides #id para el DD»): Moi le escribe a
+   Dinsides.
 6. Provincia con 2 o más kits: viaja en UN paquete XS (lo calcula el sistema); tú solo pones `kits`.
 
 ### CRITERIO (liberal: lo verifica una persona)

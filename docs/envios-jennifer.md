@@ -54,6 +54,20 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
    (cuenta de `registrar` = cuenta de Lima en `etiquetas.py`), cada provincia con adelanto de hoy está en Shalom u Olva o es una
    pregunta, y lo agendado para otro día que ya está en Dinsides no se vuelve a registrar.
 
+10. **Agendados y por reagendar (dueño 2026-11-11, caso Nohemi):** toda venta de otro día que todavía no sale (dio dirección o
+    adelanto y pidió otra fecha, viajó, quedó pendiente) y todo lo ya agendado en Dinsides para más adelante va en la página, en
+    «AGENDADOS Y POR REAGENDAR», y es prioridad: nunca queda solo al final de un reporte. La asesora marca «Reagendar / registrar»
+    con la fecha, «Sigue igual», «Ya se envió» o «No va». Con «Reagendar»: si NO está en Dinsides, se registra con esa fecha (A5); si
+    YA está en Dinsides, primero `dinsides.py editar <id> fecha_entrega=AAAA-MM-DD`; si Dinsides no lo acepta (ya está en su
+    almacén o en ruta), dilo en la sesión como «AVISAR A MOI: escribirle a Dinsides para mover #id al DD» y mándalo también con
+    `dinsides.py telegram "…"`. Los que tienen adelanto y les falta la dirección (Antonella, Joan) son VENTA: hay que conseguir el
+    dato; van en «falta un dato» con la pregunta exacta para el cliente.
+11. **Botón «Actualizar» de la página:** trae en vivo los últimos mensajes de cada pedido de la página (resalta lo que el cliente
+    escribió después) y las notas. No puede buscar pedidos nuevos: eso lo haces tú al correr otra vez `presentar --pagina`.
+    `dinsides.py notas` te avisa si tocaron «Actualizar» (línea 🔄): en ese caso vuelve a presentar antes de responder.
+12. **Toda etiqueta de Lima lleva en «Detalle» «Escribir al cliente por WhatsApp: 9…»** (el WhatsApp del chat y, si es otro, el
+    teléfono de quien recibe). Lo pone el sistema al registrar; no lo borres al corregir una nota. Las de Olva también llevan «EMPAQUE».
+
 REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
 «registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:
 lee la última página de revisión que dejó `presentar`). Lo que el dueño marcó en la página vale igual que si lo hubiera escrito en la

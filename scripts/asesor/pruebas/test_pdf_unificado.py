@@ -42,10 +42,10 @@ with tempfile.TemporaryDirectory() as d:
     assert pdf.endswith("pedidos-y-ventas-2026-10-15-2230.pdf"), pdf
     html = open(os.path.join(d, "pedidos.html")).read()
     assert "Pedidos y ventas · 22:30 · ventas del 2026-10-14 · despacho del 2026-10-15" in html
-    assert "Ventas por vendedora" in html and "✅ Lima — confirmados (2)" in html and "✅ Provincia — confirmados (1)" in html
+    assert "Ventas por vendedora" in html and "✅ Lima — confirmados que salen en este despacho (2)" in html and "✅ Provincia — confirmados que salen en este despacho (1)" in html
     assert "POR VERIFICAR — huele a venta" in html and "Verificar Demo" in html and "Sin Destino Demo" in html
-    assert "📅 Otros días (2)" in html, "el OTRO_DIA de la muestra + el Lima movido"
-    assert "AGENDA PENDIENTE" in html and "Katia Demo" in html and "ATRASADO" in html and "Futuro Demo" in html
+    assert "📅 Otros días — ya confirmados, con otra fecha de entrega (2)" in html, "el OTRO_DIA de la muestra + el Lima movido"
+    assert "REAGENDAR O REGISTRAR" in html and "Katia Demo" in html and "ATRASADO" in html and "Futuro Demo" in html
     assert html.count("Otro Dia Demo") == 1, "un pedido que ya está en el reporte no se repite en la agenda (salvo atrasado)"
     assert "Descartados con motivo" in html and "No Es Demo" in html and "preguntó precio y no siguió" in html
     assert "EL CRM TIENE COMO VENTA Y EL REPORTE NO LO EXPLICA" in html and "51955555555" in html
@@ -62,7 +62,7 @@ with tempfile.TemporaryDirectory() as d:
     html = open(os.path.join(d, "pedidos.html")).read()
     assert "PARA EL QUE EMPACA" not in html and "INCIDENCIAS" not in html and "Repo Demo" not in html and "Saldo Demo" not in html
     assert "<th>Envío</th>" in html and "Dinsides registrado #123" in html and "por registrar" in html
-    assert html.index("Ventas por vendedora") < html.index("Lima — confirmados"), "las ventas van primero"
+    assert html.index("Ventas por vendedora") < html.index("Lima — confirmados") and "CORRECCIONES Y DATOS" not in html and "Pedidos de la web" not in html and "SALEN EN ESTE DESPACHO:" not in html, "las ventas van primero"
     pdf_d, resumen_d = enviar.armar_pdf_dueno(dict(con), d)
     hd = open(os.path.join(d, "dueno.html")).read()
     assert pdf_d.endswith("saldos-y-reposiciones-2026-10-14.pdf") and os.path.getsize(pdf_d) > 1000

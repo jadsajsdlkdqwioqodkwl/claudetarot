@@ -66,7 +66,9 @@ TITULOS = {
     ("POR_CONFIRMAR", None): "🟡 Por confirmar", ("OTRO_DIA", None): "📅 Otros días", ("INTENCION", None): "🔥 Intención de compra",
 }
 # Reporte unificado «Pedidos y ventas» (2026-11-02): criterio liberal, lo dudoso sale como POR VERIFICAR y nada se descarta en silencio.
-TITULOS_UNIFICADO = {**TITULOS, ("POR_CONFIRMAR", None): "🟡 POR VERIFICAR — huele a venta: confírmalo en el chat antes de empacar"}
+TITULOS_UNIFICADO = {("CONFIRMADO", "LIMA"): "✅ Lima — confirmados que salen en este despacho", ("CONFIRMADO", "PROVINCIA"): "✅ Provincia — confirmados que salen en este despacho",
+                     ("OTRO_DIA", None): "📅 Otros días — ya confirmados, con otra fecha de entrega",
+                     ("POR_CONFIRMAR", None): "🟡 POR VERIFICAR — huele a venta: confírmalo en el chat antes de empacar", ("INTENCION", None): "🔥 Intención de compra"}
 ESTADOS_SINONIMOS = {"POR_VERIFICAR": "POR_CONFIRMAR", "VERIFICAR": "POR_CONFIRMAR", "CONFIRMADA": "CONFIRMADO", "AGENDADO": "OTRO_DIA",
                      "OTRO_DÍA": "OTRO_DIA", "INTENCIÓN": "INTENCION", "DESCARTADO": "DESCARTADO"}
 # Lo que sale el día del despacho sin ser venta nueva: cambio, reposición o un
@@ -219,13 +221,21 @@ def armar_pdf(datos, carpeta):
     cols = [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Teléfono recibe", "telefono"), ("DNI", "dni"),
             ("Dirección / Agencia", "direccion_o_agencia"), ("Courier", "courier"), ("Kits", "kits"),
             ("📦 Empaque (extras)", "_empaque"), ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
-    partes = []
+    partes, cola = [], []
     unificado = datos.get("tipo_reporte") == "unificado"
     if unificado:
         # Dueño 2026-11-11: este es un reporte de VENTAS para Jennifer, Dani y Moi. Reposiciones y cambios (los despacha otro
         # equipo), incidencias y saldos van en el reporte «Saldos y reposiciones», solo para el dueño (armar_pdf_dueno). La sección
         # «Para el que empaca» se quitó: el empaque va impreso en cada etiqueta.
         pedidos = [p for p in pedidos if not es_repo(p)]
+        # Dueño 2026-11-11 (2.ª vuelta): «Lima» y «Provincia» no son solo las ventas de hoy: son TODO lo confirmado que tiene que
+        # salir en este despacho. Una corrección («aclaró que paga en efectivo») o un agendado de otro día que sale hoy va en su
+        # fila de Lima o Provincia, no en una sección aparte (se duplicaba). Lo confirmado para otra fecha va a «Otros días».
+        for p in pedidos:
+            if str(p.get("tipo") or "").upper().replace("Ó", "O") in ("CORRECCION", "AGENDADO"):
+                p["_tipo_orig"], p["tipo"] = p.get("tipo"), ""
+            if p.get("estado") == "CONFIRMADO" and str(p.get("fecha_entrega") or "") not in ("", fecha):
+                p["estado"] = "OTRO_DIA"
         envios = datos.get("envios_hechos") or {}
         for p in pedidos:
             hecho = envios.get(prom.nueve(p.get("whatsapp")) or "-")
@@ -279,7 +289,7 @@ def armar_pdf(datos, carpeta):
             # desaparece de los reportes hasta que alguien lo marque como enviado (caso Katia Reyes, 2026-10-30).
             en_reporte = {prom.nueve(p.get("whatsapp")) for p in pedidos if prom.nueve(p.get("whatsapp"))}
             ag = datos.get("agenda_pendiente") or {}
-            filas_ag, viejos = [], 0
+            filas_ag, viejos, sin_conf_ag = [], 0, []
             import datetime as _dt2
             try:
                 limite = (_dt2.date.fromisoformat(str(datos.get("fecha_venta"))) - _dt2.timedelta(days=3)).isoformat()
@@ -295,16 +305,23 @@ def armar_pdf(datos, carpeta):
                     if grupo == "atrasados" and limite and str(r.get("fecha_entrega") or "") < limite:
                         viejos += 1
                         continue
-                    filas_ag.append(dict(r, _cuando=etiqueta, nota=("🚨 " if grupo == "atrasados" else "") + str(r.get("nota") or "")))
+                    fila_ag = dict(r, _cuando=etiqueta, nota=("🚨 " if grupo == "atrasados" else "") + str(r.get("nota") or ""),
+                                   _envio=(datos.get("envios_hechos") or {}).get(prom.nueve(r.get("whatsapp")) or "-") or "por registrar")
+                    # Lo que ya es venta (confirmado o agendado) es PRIORIDAD: hay que registrarlo o reagendarlo y avisar a Moi (caso
+                    # Nohemi: dirección y pin desde el 31/10, viajó, sin registrar). Lo no confirmado va aparte, con menos peso.
+                    (filas_ag if str(r.get("estado") or "").upper().startswith(("CONFIRMADO", "OTRO_DIA")) else sin_conf_ag).append(fila_ag)
+            if sin_conf_ag:
+                cola.append(f"<h2>🗒️ De otros días, sin confirmar ({len(sin_conf_ag)}) — solo si el cliente vuelve a escribir</h2>"
+                            + tabla(sin_conf_ag, [("Entrega", "fecha_entrega"), ("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Destino", "destino"), ("Nota", "nota"), ("Fila", "fila")]))
             if filas_ag or ag:
-                partes.append(f"<h2 class=esp>📌 AGENDA PENDIENTE — pedidos de otros días sin marcar «Enviado» en la hoja «Pedidos auto» ({len(filas_ag)})</h2>"
+                partes.append(f"<h2 class=inc>🚨 REAGENDAR O REGISTRAR — ventas de otros días que todavía no salen ({len(filas_ag)}): avisar a Moi</h2>"
                               + ("<div class=esp>" + tabla(filas_ag, [("Cuándo", "_cuando"), ("Entrega", "fecha_entrega"), ("Cliente", "nombre"),
-                                                                       ("WhatsApp", "whatsapp"), ("Destino", "destino"), ("Estado", "estado"),
+                                                                       ("WhatsApp", "whatsapp"), ("Destino", "destino"), ("Estado", "estado"), ("Envío", "_envio"),
                                                                        ("Dirección / Agencia", "direccion_o_agencia"), ("Kits", "kits"),
                                                                        ("📦 Empaque", "empaque"), ("Nota", "nota"), ("Fila", "fila")]) + "</div>"
-                                 if filas_ag else "<p class=emp>No hay pedidos agendados pendientes.</p>")
-                              + "<p class=emp>Cuando un pedido de esta lista sale, escribe «sí» (o la fecha) en la columna <b>Enviado</b> de esa fila: deja de aparecer. "
-                                "El sistema cierra solo los que ya tienen boleta (Shalom/Olva) o estado final en Dinsides.</p>"
+                                 if filas_ag else "<p class=emp>No hay ventas de otros días pendientes de salir.</p>")
+                              + "<p class=emp>Cada uno necesita una decisión: registrarlo con su fecha, reagendarlo (si ya está en Dinsides, Moi le escribe a Dinsides) o darlo de baja. "
+                                "El sistema cierra solo los que ya tienen boleta (Shalom/Olva) o están registrados o entregados en Dinsides.</p>"
                               + (f"<p class=emp>Además hay {viejos} pedido(s) con fecha de hace más de 3 días sin «Enviado» en la hoja: no se listan aquí; revísalos en la pestaña «Pedidos auto».</p>" if viejos else ""))
     if unificado:
         desc = [d for d in (datos.get("descartados") or []) if isinstance(d, dict)]
@@ -313,7 +330,9 @@ def armar_pdf(datos, carpeta):
                           + tabla(desc, [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Por qué no cuenta", "motivo")]))
     # Todos los formularios de la página de las últimas 24 h, hayan terminado o no
     # en venta (GET /api/asesor/pedidos-web; main() los trae y los deja en datos).
-    web = datos.get("pedidos_web") or []
+    partes += cola
+    # Dueño 2026-11-11: en el unificado no hay sección de pedidos web; el que compró ya está en Lima o Provincia.
+    web = [] if unificado else (datos.get("pedidos_web") or [])
     if web:
         compraron = sum(1 for w in web if w.get("resultado") == "COMPRÓ")
         partes.append(f"<h2 class=web>🌐 Pedidos de la web — últimas 24 h ({len(web)}; compraron {compraron})</h2>"
@@ -322,7 +341,7 @@ def armar_pdf(datos, carpeta):
                                                         ("Producto", "producto"), ("Total S/", "total"),
                                                         ("Resultado", "resultado")]) + "</div>")
     conf = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
-    kits = sum(num_kits(p) for p in conf)
+    kits = sum(num_kits(p) for p in conf)  # en el unificado: solo lo que sale en ESTE despacho (lo de otra fecha ya pasó a «Otros días»)
     cuenta = lambda f: sum(1 for p in pedidos if f(p))
     normal = lambda est, des=None: lambda p: not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des)
     cajas = [("Kits a despachar", kits),
@@ -333,7 +352,11 @@ def armar_pdf(datos, carpeta):
              ("Otros días", cuenta(normal("OTRO_DIA"))),
              ("Intención", cuenta(normal("INTENCION"))),
              *([] if unificado else [("Incidencias", len(incidencias))]),
-             ("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))]
+             *([] if unificado else [("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))])]
+    if unificado:
+        cajas = [("Kits que salen en este despacho", kits), ("Lima", cuenta(normal("CONFIRMADO", "LIMA"))), ("Provincia", cuenta(normal("CONFIRMADO", "PROVINCIA"))),
+                 ("Ya registrados en el courier", sum(1 for p in conf if p.get("_envio") and p.get("_envio") != "por registrar")),
+                 ("Otros días", cuenta(normal("OTRO_DIA"))), ("Por verificar", cuenta(normal("POR_CONFIRMAR"))), ("Intención", cuenta(normal("INTENCION")))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
     es_ventas = datos.get("tipo_reporte") in ("ventas", "unificado")
@@ -347,6 +370,8 @@ def armar_pdf(datos, carpeta):
         for p in pedidos:
             if p.get("estado") not in ("CONFIRMADO", "OTRO_DIA") or p.get("tipo") in ("CAMBIO", "REPOSICION"):
                 continue
+            if str(p.get("_tipo_orig") or "").upper() == "AGENDADO":
+                continue  # venta de otro día que sale en este despacho: ya se contó el día que se vendió
             nom = p.get("vendedora") or "(sin vendedora)"
             v = por.setdefault(nom, {"Vendedora": nom, "lima": 0, "prov": 0, "otro": 0, "total": 0, "kits": 0})
             v["lima" if p.get("destino") == "LIMA" else "prov"] += 1

@@ -92,7 +92,30 @@ export async function onRequestPostNota({ request, env }) {
   if (!RE_ID.test(id) || !p?.token) return json({ error: "Faltan id o token." }, 400);
   const d = await leer(env, id);
   if (!d || d.token !== String(p.token)) return json({ error: "Revisión no válida." }, 403);
-  if (p.leer) return json({ ok: true, notas: d.notas || {}, actualizado: d.actualizado || d.creado || "" });
+  if (p.leer) {
+    const salida = { ok: true, notas: d.notas || {}, actualizado: d.actualizado || d.creado || "" };
+    // { chats: true }: botón «Actualizar» de la página. Los últimos mensajes de CADA pedido de esta revisión (solo esos WhatsApp),
+    // leídos en vivo del CRM, y queda anotado que la asesora pidió actualizar (lo ve Claude con `dinsides.py notas`).
+    if (p.chats && env.CRM_DB) {
+      salida.chats = {};
+      for (const ped of (d.pedidos || []).slice(0, 40)) {
+        const wa = String(ped.whatsapp || "").replace(/\D/g, "");
+        if (wa.length < 9) continue;
+        try {
+          const { results } = await env.CRM_DB.prepare(
+            `SELECT m.direction, m.type, m.body, m.created_at FROM messages m JOIN conversations conv ON conv.id = m.conversation_id JOIN contacts c ON c.id = conv.contact_id
+             WHERE substr(c.wa_id, -9) = ? AND m.type IN ('text', 'location', 'image', 'contacts', 'audio') ORDER BY m.id DESC LIMIT 25`
+          ).bind(wa.slice(-9)).all();
+          salida.chats[wa] = (results || []).reverse().map((m) => ({ t: String(m.created_at || "").slice(0, 16), q: m.direction === "in" ? "C" : "V",
+            b: m.type === "location" ? "[UBICACIÓN] " + String(m.body || "").split("|").slice(0, 2).join(",") : m.type === "image" ? "[imagen]" : m.type === "audio" ? "[audio]"
+              : String(m.body || "").replace(/\s+/g, " ").slice(0, 260) }));
+        } catch (err) { console.error("revision chats:", err.message); }
+      }
+      d.pidio_actualizar = ahoraLima();
+      await escribir(env, id, d);
+    }
+    return json(salida);
+  }
   const wa = String(p.whatsapp || "").replace(/\D/g, "");
   if (!wa) return json({ error: "Falta whatsapp." }, 400);
   const decision = ["ok", "correccion", "no_va", "ya_enviado", "pendiente", ""].includes(String(p.decision || "")) ? String(p.decision || "") : "";

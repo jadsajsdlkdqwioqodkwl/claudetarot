@@ -254,16 +254,26 @@ export function notaParaMotorizado(texto, telefono = "") {
   const quedan = [];
   // Se parte por «.» y «;» (no por la coma: «Dpto 102, dejar en recepción» es una sola indicación) y por paréntesis de aclaración.
   const frases = String(texto || "").replace(/\(([^)]*)\)/g, (m, d) => (RE_NOTA_PAGO.test(d) || RE_NOTA_PIN.test(d) || RE_NOTA_INTERNA.test(d) ? " " : m))
-    .split(/(?<=[.;:])\s+|\s+·\s+/).map((x) => x.replace(/^[\s,;:.·-]+|[\s,;:·-]+$/g, "").trim()).filter(Boolean);
-  for (const f of frases) {
+    .split(/(?<=[.;:])\s+|\s+·\s+/).map((x) => x.replace(/^[\s,;:.·-]+|[\s,;·-]+$/g, "").trim()).filter(Boolean);
+  // «DISCRECIÓN: que no toque el timbre»: el «:» parte la frase (para poder soltar «…: NO cobrar»), pero si las dos mitades quedan se
+  // vuelven a unir con «: ».
+  for (const f0 of frases) {
+    const f = f0.replace(/:$/, "");
     const sinTel = f.replace(/(?:\+?51[\s-]?)?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}/g, (m) => (telefono && m.replace(/\D/g, "").slice(-9) === String(telefono) ? "" : m));
     if (RE_NOTA_PAGO.test(f)) fuera.pago.push(f);
     else if (RE_NOTA_PIN.test(f)) fuera.pin.push(f);
     else if (RE_NOTA_INTERNA.test(f)) fuera.interno.push(f);
     else if (sinTel !== f && /^(dio su |su )?(tel[eé]fono|tel|cel|celular|n[uú]mero)?( de contacto)?\W*$/i.test(sinTel.trim())) continue;
-    else quedan.push(f.replace(/\.$/, ""));
+    else quedan.push(f.replace(/\.$/, "") + (f0.endsWith(":") ? ":" : ""));
   }
-  return { nota: quedan.join(". ").replace(/\s+/g, " ").trim(), fuera };
+  return { nota: quedan.join(". ").replace(/:\. /g, ": ").replace(/:$/, "").replace(/\s+/g, " ").trim(), fuera };
+}
+
+/** «Escribir al cliente por WhatsApp: 9XXXXXXXX (o 9YYYYYYYY)»: el WhatsApp del chat y, si es otro, el teléfono de quien recibe. */
+export function lineaWhatsapp(whatsapp, telefono = "") {
+  const wa = String(whatsapp || "").replace(/\D/g, "").slice(-9);
+  const nums = [...new Set([/^9\d{8}$/.test(wa) && !/^PE\./i.test(String(whatsapp || "")) ? wa : "", /^9\d{8}$/.test(String(telefono)) ? String(telefono) : ""].filter(Boolean))];
+  return nums.length ? `Escribir al cliente por WhatsApp: ${nums.join(" o ")}` : "";
 }
 
 const LINK_RE = /https?:\/\/\S+|maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+/gi;
@@ -460,7 +470,9 @@ export function armarPedido(pedido, ctx = {}) {
   // caja), ni apuntes internos («confirmar, escribió dos versiones», «cliente sin número en el CRM»).
   const { nota: operativo, fuera } = notaParaMotorizado(frases.filter((x) => !RE_ASESORA.test(x)).join(" "), telefono);
   if (paraAsesora.length || fuera.interno.length) alertas.push(`NOTA PARA LA ASESORA (no se escribe en el formulario de Dinsides): ${[...paraAsesora, ...fuera.interno].join(" ").slice(0, 240)}`);
-  const obs = [operativo, paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
+  // OBLIGATORIO en toda etiqueta (dueño 2026-11-11): «Escribir al cliente por WhatsApp» con su número (y el de quien recibe si es
+  // otro): los motorizados no siempre escriben al WhatsApp y el cliente no contesta llamadas de números desconocidos.
+  const obs = [lineaWhatsapp(p.whatsapp, telefono), operativo, paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

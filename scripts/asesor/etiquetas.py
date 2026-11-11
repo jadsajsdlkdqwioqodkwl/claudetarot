@@ -92,7 +92,7 @@ def olva_de_hoja(recojo):
         cand = ov.buscar(str(f.get("direccion_o_agencia") or ""))
         a = cand[0] if cand else {}
         dni = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
-        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
+        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "empaque": empaque_shalom(f.get("kits"), f.get("empaque")), "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
                     "despacho": recojo, "_seguro": bool(a and a.get("seguro")), "_origen": origen})
     est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
     for f in ((est.get("estado") or {}).get("pedidos") or []):
@@ -146,15 +146,30 @@ def nota_motorizado(texto, telefono=""):
     malo = lambda t: RE_NOTA_PAGO.search(t) or RE_NOTA_PIN.search(t) or RE_NOTA_INTERNA.search(t)
     texto = re.sub(r"\(([^)]*)\)", lambda m: " " if malo(m.group(1)) else m.group(0), str(texto or ""))
     quedan = []
-    for f in re.split(r"(?<=[.;:])\s+|\s+·\s+", texto):
-        f = f.strip(" ,;:.·-")
+    for f0 in re.split(r"(?<=[.;:])\s+|\s+·\s+", texto):
+        dos = f0.rstrip().endswith(":")  # «DISCRECIÓN: que no toque…»: si las dos mitades quedan, se unen con «: »
+        f = f0.strip(" ,;:.·-")
         if not f or malo(f):
             continue
         sin_tel = re.sub(r"(?:\+?51[\s-]?)?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}", lambda m: "" if telefono and re.sub(r"\D", "", m.group(0))[-9:] == str(telefono) else m.group(0), f)
         if sin_tel != f and re.fullmatch(r"(dio su |su )?(tel[eé]fono|tel|cel|celular|n[uú]mero)?( de contacto)?\W*", sin_tel.strip(), re.I):
             continue
-        quedan.append(f)
-    return re.sub(r"\s+", " ", ". ".join(quedan)).strip()
+        quedan.append(f + (":" if dos else ""))
+    return re.sub(r"\s+", " ", ". ".join(quedan).replace(":. ", ": ")).strip().rstrip(":")
+
+
+def detalle_lima(d):
+    """El «Detalle» de la etiqueta de Lima: SIEMPRE empieza con «Escribir al cliente por WhatsApp: …» (dueño 2026-11-11) y sigue
+    con la nota del motorizado. Si la observación de Dinsides ya trae esa línea (pedidos registrados desde hoy) no se repite."""
+    obs = re.sub(r"\s*Paquete:[^.]+\.?", "", str(d.get("observaciones", "") or ""))
+    m = re.search(r"Escribir al cliente por WhatsApp:\s*([\d o]+)", obs)
+    nums = re.findall(r"9\d{8}", m.group(1)) if m else []
+    obs = re.sub(r"Escribir al cliente por WhatsApp:\s*[\d o]+\.?", "", obs)
+    for n in (re.sub(r"\D", "", str(d.get("_whatsapp") or ""))[-9:], str(d.get("telefono") or "")):
+        if re.fullmatch(r"9\d{8}", n) and n not in nums:
+            nums.append(n)
+    linea = f"Escribir al cliente por WhatsApp: {' o '.join(nums)}" if nums else ""
+    return ". ".join(x for x in (linea, nota_motorizado(obs, d.get("telefono"))) if x)
 
 
 def empaque_shalom(kits, empaque=""):
@@ -184,7 +199,7 @@ def completar_empaque_shalom(items, recojo):
     for d in items:
         if d.get("empaque"):
             continue
-        f = por_dni.get(str(d.get("doc") or ""), {})
+        f = por_dni.get(str(d.get("doc") or d.get("dni") or ""), {})
         d["empaque"] = empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else "")
 
 
@@ -242,11 +257,11 @@ def etiqueta_lima(c, x0, yb, d):
     # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
     lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
     pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
-    if nota_motorizado(re.sub(r"\s*Paquete:[^.]+\.?", "", obs), d.get("telefono")):
+    if detalle_lima(d):
         c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
         c.setFont("Helvetica", 6.3)
         restante = int((y - yb - p - pie) / (6.3 * 1.3))
-        for ln in textwrap.wrap(nota_motorizado(re.sub(r"\s*Paquete:[^.]+\.?", "", obs), d.get("telefono")), 62)[:max(0, restante)]:
+        for ln in textwrap.wrap(detalle_lima(d), 62)[:max(0, restante)]:
             c.drawString(x, y, ln); y -= 6.3 * 1.3
     if lineas_emp:
         c.setFont("Helvetica-Bold", 5.2)
@@ -331,6 +346,10 @@ def etiqueta_olva(c, x0, yb, d=None):
     c.setFont("Helvetica", 6.8)
     for t in (f"Nombre: {REMITENTE['nombre']}", f"DNI: {REMITENTE['dni']}", f"TEL: {REMITENTE['tel']}"):
         c.drawString(x, y, t); y -= 3.1 * mm
+    if d:  # nota para el que empaca, como en Shalom y Lima (dueño 2026-11-11: las de Olva no la traían)
+        c.setFont("Helvetica-Bold", 5.2); ye = yb2 + 1 * mm
+        for ln in reversed(textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb2, w, h)
 
 
@@ -426,8 +445,18 @@ def main():
         r = pedir("/dinsides?listado=1")  # el filtro por fecha de Dinsides es por fecha de REGISTRO; aquí se filtra por fecha de ENTREGA
     except urllib.error.HTTPError as err:
         sys.exit(f"El Worker respondió {err.code} al pedir el listado de Dinsides.")
+    wa_por_id = {}
+    if r:
+        try:  # el WhatsApp del chat de cada pedido (Dinsides guarda el teléfono de quien recibe, que puede ser otro)
+            for dia in {fecha, (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()}:
+                for x in (pedir(f"/dinsides?fecha={dia}&candidatos=0") or {}).get("registrados") or []:
+                    if x.get("nro"):
+                        wa_por_id[str(x["nro"])] = x.get("whatsapp") or ""
+        except Exception:  # noqa: BLE001
+            pass
     if r:
         for p in r.get("pedidos", []):
+            p["_whatsapp"] = wa_por_id.get(str(p.get("id_pedido")), "")
             if "ANULADO" in str(p.get("seguimiento", "")).upper():
                 continue
             if re.search(r"regularizaci", f"{p.get('nombre', '')} {p.get('observaciones', '')}", re.I):
@@ -455,7 +484,10 @@ def main():
                 e["datos"]["detalle"] = emp[0].upper() + emp[1:]
     items += sorted(lima, key=lambda e: e["datos"].get("distrito", ""))
     if "--olva" in args:
-        for d in json.load(open(args[args.index("--olva") + 1])):
+        de_olva = json.load(open(args[args.index("--olva") + 1]))
+        if os.environ.get("ASESOR_CLAVE"):
+            completar_empaque_shalom(de_olva, fecha)
+        for d in de_olva:
             items.append({"tipo": "olva", "datos": {**d, "despacho": d.get("despacho") or fecha}})
     if "--olva-hoja" in args and os.environ.get("ASESOR_CLAVE"):
         for d in olva_de_hoja(fecha):
