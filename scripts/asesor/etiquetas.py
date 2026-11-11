@@ -176,7 +176,7 @@ def empaque_shalom(kits, empaque=""):
     """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): 1 kit normal,
     «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
     kits = int(kits) if str(kits).strip().isdigit() else 1
-    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("Kit Tarot de aprendizaje (1 kit normal)" if kits == 1 else "NO es kit")
+    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("Kit Tarot de aprendizaje (1 kit completo)" if kits == 1 else "NO es kit")
     extra = " · ".join(t for t in re.split(r"\s+·\s+", str(empaque or "").strip()) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
     if extra and re.fullmatch(r"\d+\s*kits?\b.*|kit normal.*", extra, re.I) and "+" not in extra:
         extra = ""

@@ -59,6 +59,14 @@ duda: la duda va en `nota` y el pedido sale igual.
    `fecha_entrega` y nota «🚨 REAGENDAR: …» con lo que pidió el cliente; sale arriba, en «REAGENDAR O REGISTRAR — avisar a Moi», y en
    la revisión de envíos. Si ya está en Dinsides con otra fecha, dilo en la nota («en Dinsides #id para el DD»): Moi le escribe a
    Dinsides.
+9. **El reporte es la «revisión de envíos 2» (3.ª vuelta del dueño, 11/11).** LIMA = quien ya dio su dirección y FALTA registrar en
+   Dinsides. PROVINCIA = quien ya dio su adelanto, tenga o no sus datos (son clientes: hay que conseguirles el dato). Los de otra
+   fecha de entrega también van ahí (el sistema les pone «📅 ENTREGA EL …»). Lo que YA está registrado en el courier baja solo a
+   «Ya registrados», al final, con su check: no lo repitas ni lo marques como pendiente. Sin adelanto (provincia) o sin dirección
+   (Lima) NO es CONFIRMADO, aunque sea un pedido de la web: POR_VERIFICAR, y en la nota di qué falta sin escribir «adelanto S/20»
+   como si se hubiera pagado.
+10. `nota` lleva TODO lo importante para el motorizado, no solo el contacto: «dejar en recepción», «portería», «Dpto 102», «tocar el
+   timbre B», «entregar a Luciana», horario. Si el cliente lo escribió junto con la dirección, repítelo en `nota`.
 6. Provincia con 2 o más kits: viaja en UN paquete XS (lo calcula el sistema); tú solo pones `kits`.
 
 ### CRITERIO (liberal: lo verifica una persona)

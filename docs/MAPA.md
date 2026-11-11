@@ -2588,3 +2588,22 @@ WhatsApp» con el número; faltaba EMPAQUE en Olva y un botón de actualizar en 
   adelante, con «Reagendar / registrar», «Sigue igual», «Ya se envió», «No va») y botón «Actualizar chats y notas»
   (`POST /api/revision/nota {leer, chats}`: últimos 25 mensajes de cada pedido de la revisión, en vivo; guarda `pidio_actualizar`,
   que `dinsides.py notas` muestra). El botón no busca pedidos nuevos: eso es `presentar --pagina`.
+
+## 2026-11-11 (04:00–05:00) — 3.ª vuelta del dueño: el reporte es la «revisión de envíos 2»; página sin botón; indicaciones de la dirección al Detalle
+
+- **Reporte (`enviar.py armar_pdf`, unificado):** «LIMA — por registrar en Dinsides (ya dieron su dirección)» y «PROVINCIA — por
+  registrar (ya dieron su adelanto)» traen SOLO lo que falta registrar, incluidos los de otra fecha (nota «📅 ENTREGA EL …»; ya no
+  hay sección «Otros días» salvo sin destino). Lo ya registrado en el courier (Sandra, Samantha…) baja a «☑️ Ya registrados en el
+  courier», al final, con ✔. «Ventas por vendedora» sigue contando todo. Cajas: Lima por registrar, Provincia por registrar, Ya
+  registrados, Kits por registrar, Por verificar, Intención.
+- **Falso «adelanto visto (revisar monto)»** (Jennifer Figuera, pedido web sin pago): `promover_provincia` leía «falta confirmar
+  agencia, DNI y adelanto S/20» como un adelanto. Ahora «falta … adelanto», «sin pago», «no ha pagado», «pendiente de pago» lo frenan.
+- **Página de revisión:** se quitó el botón «Actualizar chats y notas» de la interfaz (decisión del dueño; el endpoint
+  `leer + chats` de `revision.js` queda sin uso desde la página) y va una nota fija «escribe “actualiza” en la sesión de Claude».
+  «AGENDADOS Y POR REAGENDAR» ya no lista lo agendado en Dinsides para más adelante (Liliana, Wilder): solo lo no registrado.
+- **Detalle con las indicaciones de la dirección** (`indicacionesDeDireccion` en `src/lib/dinsides.js`): «(dejar en recepción)»,
+  «(Dpto 102; o dejar en recepción y avisar)», «(dejar en portería)» pasan al Detalle, porque la etiqueta no imprime la dirección.
+  Hecho en Dinsides para Selene #2948455, Rosa #2948452 y Luciana #2948456. Producto de Cristofer #2948449 corregido con `editar`.
+- **Etiquetas:** «1 kit completo» en lugar de «1 kit normal».
+- **Arroba de WhatsApp (clientes sin número):** el webhook ya lee `profile.username` y `obtenerOCrearContacto` lo guardaría, pero la
+  tabla `contacts` de producción no tiene las columnas `user_id` / `username` (migración 0077 sin aplicar): hoy no se guarda.

@@ -269,6 +269,16 @@ export function notaParaMotorizado(texto, telefono = "") {
   return { nota: quedan.join(". ").replace(/:\. /g, ": ").replace(/:$/, "").replace(/\s+/g, " ").trim(), fuera };
 }
 
+const RE_INDICACION = /dpto|departamento|dejar|recepci[oó]n|porter[ií]a|portero|vigilan|conserje|timbre|tocar|llamar|avisar|entregar a|preguntar por|no subir|bajar[aá]?|\bpiso\b|interior|oficina|tienda|stand|puesto/i;
+/** Indicaciones de entrega escritas dentro de la dirección, entre paréntesis o tras «;»: «(Dpto 102; o dejar en recepción y avisar)». */
+export function indicacionesDeDireccion(direccion) {
+  const out = [];
+  for (const m of String(direccion || "").matchAll(/\(([^)]{4,160})\)/g)) {
+    for (const t of m[1].split(/;\s*/)) { const x = t.replace(/^\s*o\s+/i, "").trim(); if (RE_INDICACION.test(x) && !RE_NOTA_PIN.test(x)) out.push(x.charAt(0).toUpperCase() + x.slice(1)); }
+  }
+  return out;
+}
+
 /** «Escribir al cliente por WhatsApp: 9XXXXXXXX (o 9YYYYYYYY)»: el WhatsApp del chat y, si es otro, el teléfono de quien recibe. */
 export function lineaWhatsapp(whatsapp, telefono = "") {
   const wa = String(whatsapp || "").replace(/\D/g, "").slice(-9);
@@ -472,7 +482,10 @@ export function armarPedido(pedido, ctx = {}) {
   if (paraAsesora.length || fuera.interno.length) alertas.push(`NOTA PARA LA ASESORA (no se escribe en el formulario de Dinsides): ${[...paraAsesora, ...fuera.interno].join(" ").slice(0, 240)}`);
   // OBLIGATORIO en toda etiqueta (dueño 2026-11-11): «Escribir al cliente por WhatsApp» con su número (y el de quien recibe si es
   // otro): los motorizados no siempre escriben al WhatsApp y el cliente no contesta llamadas de números desconocidos.
-  const obs = [lineaWhatsapp(p.whatsapp, telefono), operativo, paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
+  // Lo importante para el motorizado que quedó escrito en la DIRECCIÓN (la etiqueta no imprime la dirección): «dejar en recepción»,
+  // «portería», «avisar al dpto 102», «tocar el timbre B»… también va al Detalle (dueño 2026-11-11).
+  const deDireccion = indicacionesDeDireccion(direccion).filter((x) => !normalizar(operativo).includes(normalizar(x)));
+  const obs = [lineaWhatsapp(p.whatsapp, telefono), [operativo, ...deDireccion].filter(Boolean).join(". "), paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

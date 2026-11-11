@@ -650,8 +650,6 @@ table.et{border-collapse:collapse;width:100%;margin:4px 0 8px;table-layout:fixed
 .notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px} .ctl label{border:1.5px solid #555;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px} .ctl input[type=radio]{margin-right:4px}
 textarea.nota{width:100%;max-width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px;display:block} .guardado{color:#075E54;font-weight:600;font-size:12px}
 .nuevo{background:#dc2626;color:#fff;border-radius:4px;padding:1px 7px;font-size:12px;vertical-align:middle}
-#act{font:inherit;font-size:14px;font-weight:700;padding:7px 14px;border:2px solid #075E54;border-radius:8px;background:#075E54;color:#fff;cursor:pointer;margin-top:6px}
-.chat .fresco{background:#fef08a}
 .sticky{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:2px solid #075E54;z-index:2;font-size:13px}
 pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:12px;overflow-wrap:anywhere}
 @media print{body{padding:0} .sticky{position:static} textarea,.ctl{display:none}}"""
@@ -724,7 +722,7 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
         partes.append("<div class=sticky>Marca en cada pedido <b>OK</b>, <b>Corrección</b> (y escribe qué), <b>No va</b> o <b>Ya se envió</b>. Se guarda solo. "
                       "Este link es el mismo todo el día: si pides «actualiza» en la sesión, recarga esta página y lo que ya marcaste sigue ahí; lo que entró después sale con la marca NUEVO y lo ya registrado desaparece. "
                       "Cuando termines, escribe «listo» en la sesión. <span id=total class=guardado></span><br>"
-                      "<button id=act type=button>Actualizar chats y notas</button> <span id=actinfo class=guardado></span></div>")
+                      "<b>¿Entraron más ventas? Escribe «actualiza» en la sesión de Claude y recarga esta página</b> (el link es el mismo).</div>")
     if resumen:
         partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
@@ -751,7 +749,7 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
                 wa = (re.search(r"(51\d{9})", cab) or [None, ""])[1]
                 partes.append(f"<div class='ped {'conf' if cab.startswith('🚨') else 'ya'}' data-wa='{E(wa)}'><h3>{E(cab)}</h3>" + "".join(f"<div class=lin>{E(x)}</div>" for x in b_[1:] if x.strip())
                               + ("<div class=ctl>" + "".join(f"<label><input type=radio name='d-{E(wa)}' value='{v}'>{tt}</label>" for v, tt in (("correccion", "📅 Reagendar / registrar (escribe la fecha)"), ("pendiente", "⏳ Sigue igual"), ("ya_enviado", "📦 Ya se envió"), ("no_va", "❌ No va")))
-                                 + "</div><textarea class=nota placeholder='Fecha nueva, dirección, o lo que haya que decirle a Moi…'></textarea><div class=guardado></div><div class=chat hidden></div>" if interactivo and wa else "") + "</div>")
+                                 + "</div><textarea class=nota placeholder='Fecha nueva, dirección, o lo que haya que decirle a Moi…'></textarea><div class=guardado></div>" if interactivo and wa else "") + "</div>")
             else:
                 partes.append("<pre>" + E("\n".join(x for x in b_ if x.strip())) + "</pre>")
         if "PENDIENTES, falta" in t and not interactivo:
@@ -768,18 +766,6 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
               "function pintar(){document.querySelectorAll('.ped[data-wa]').forEach(p=>{const wa=p.dataset.wa;if(prev[wa]){const r=p.querySelector(`input[value='${prev[wa].decision}']`);if(r)r.checked=true;const t=p.querySelector('textarea.nota');if(t&&document.activeElement!==t)t.value=prev[wa].texto||'';}});}pintar();"
               # Al abrir (o recargar) se traen las notas guardadas: lo marcado nunca se pierde aunque la página se haya regenerado.
               "fetch(REV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:REV.id,token:REV.token,leer:true})}).then(x=>x.json()).then(x=>{if(x.ok){prev=x.notas||{};pintar();document.getElementById('total').textContent='Notas guardadas: '+Object.keys(prev).length;}}).catch(()=>{});"
-              # Botón «Actualizar» (dueño 2026-11-11): trae del CRM, en vivo, los últimos mensajes de cada pedido de la página y las notas
-              # guardadas; resalta lo que el cliente escribió después de generar la página y deja pedida la actualización para Claude.
-              "const GEN=" + json.dumps(dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M")) + ";"
-              "function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}"
-              "document.getElementById('act').addEventListener('click',()=>{const i=document.getElementById('actinfo');i.textContent='actualizando…';"
-              "fetch(REV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:REV.id,token:REV.token,leer:true,chats:true})}).then(x=>x.json()).then(x=>{"
-              "if(!x.ok){i.textContent='error: '+(x.error||'');return;}prev=x.notas||{};pintar();let nuevos=0;"
-              "document.querySelectorAll('.ped[data-wa]').forEach(p=>{const ms=(x.chats||{})[p.dataset.wa];if(!ms||!ms.length)return;let c=p.querySelector('.chat');"
-              "if(!c){c=document.createElement('div');c.className='chat';p.appendChild(c);}c.hidden=false;"
-              "c.innerHTML='<b class=tit>Chat en vivo (últimos mensajes)</b><br>'+ms.map(m=>{const f=m.q==='C'&&m.t>GEN;if(f)nuevos++;const l=esc(m.t.slice(5)+' '+m.q+': '+m.b);return (f?'<span class=fresco>':'')+(m.q==='C'?'<b>'+l+'</b>':l)+(f?'</span>':'')+'<br>';}).join('');});"
-              "i.textContent='Actualizado '+new Date().toLocaleTimeString()+' · '+(nuevos?nuevos+' mensaje(s) nuevo(s) de clientes, en amarillo':'sin mensajes nuevos de estos clientes')+'. Para traer pedidos NUEVOS, escribe «actualiza» en la sesión de Claude y recarga esta página.';"
-              "}).catch(()=>{i.textContent='sin conexión, reintenta';});});"
               "document.querySelectorAll('.ped[data-wa]').forEach(p=>{"
               "p.querySelectorAll('input[type=radio]').forEach(i=>i.addEventListener('change',()=>guardar(p)));const t=p.querySelector('textarea.nota');if(t){let h;t.addEventListener('input',()=>{clearTimeout(h);h=setTimeout(()=>guardar(p),900);});}});</script>")
     return "<!doctype html><html lang=es><head><meta charset='utf-8'><meta name=viewport content='width=device-width,initial-scale=1'><title>" + E(titulo) + "</title><style>" + CSS_PDF + "</style></head><body>" + "".join(partes) + js + "</body></html>"
@@ -973,9 +959,9 @@ def cmd_presentar(args):
     # A la página de la asesora (dueño 2026-11-11): las ventas de otros días que aún no salen y lo ya agendado en Dinsides para más
     # adelante. Cada una pide una decisión; si hay que mover una fecha que ya está en Dinsides, Moi le escribe a Dinsides.
     fut_din = [x for x in lista if str(x.get("fecha_entrega") or "")[:10] > fecha and re.search("REGISTRADO|RUTA", str(x.get("seguimiento") or "").upper()) and not re.search("regularizaci", str(x.get("nombre") or ""), re.I)]
-    L_re = [l for l, _ in conf] + [f"· {x.get('nombre')} · 51{x.get('telefono')} · LIMA · ya está en Dinsides #{x.get('id_pedido')} para el {_fecha_pe(x.get('fecha_entrega'))}"
-                                    f"\n    No hay que registrarlo. Si el cliente pide otra fecha: marca Reagendar y escribe la fecha; Moi le escribe a Dinsides." for x in fut_din]
-    reagendar_rev += [{"whatsapp": f"51{x.get('telefono')}", "nombre": x.get("nombre"), "tipo": "otro_dia"} for x in fut_din]
+    # Lo que YA está agendado en Dinsides para más adelante (Liliana, Wilder) NO va a la página (dueño 2026-11-11, 3.ª vuelta: «solo
+    # Nohemi debería estar ahí»): está registrado y no pide ninguna decisión. Solo va lo que todavía no sale ni está registrado.
+    L_re = [l for l, _ in conf]
     if L_re:
         P.append((f"📅 AGENDADOS Y POR REAGENDAR — ventas de OTROS DÍAS que todavía no salen ({len(L_re)}): hay que avisar a Moi", L_re))
     sec(f"🟡 VENTAS NO CERRADAS DE OTROS DÍAS ({len(noconf)}) — solo dieron agencia o intención, sin pago (menos peso; se mira si escriben)",

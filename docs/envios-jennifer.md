@@ -62,9 +62,11 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
     almacén o en ruta), dilo en la sesión como «AVISAR A MOI: escribirle a Dinsides para mover #id al DD» y mándalo también con
     `dinsides.py telegram "…"`. Los que tienen adelanto y les falta la dirección (Antonella, Joan) son VENTA: hay que conseguir el
     dato; van en «falta un dato» con la pregunta exacta para el cliente.
-11. **Botón «Actualizar» de la página:** trae en vivo los últimos mensajes de cada pedido de la página (resalta lo que el cliente
-    escribió después) y las notas. No puede buscar pedidos nuevos: eso lo haces tú al correr otra vez `presentar --pagina`.
-    `dinsides.py notas` te avisa si tocaron «Actualizar» (línea 🔄): en ese caso vuelve a presentar antes de responder.
+11. **Actualizar = escribir «actualiza» en la sesión.** La página ya no tiene botón (el dueño lo quitó el 2026-11-11: no vale gastar
+    para traer más líneas del chat, que se ven en el CRM); lleva una nota fija: «¿Entraron más ventas? Escribe “actualiza” en la
+    sesión de Claude y recarga esta página». Cuando te escriban «actualiza», corre `presentar --pagina` y responde con el mismo link.
+    En «AGENDADOS Y POR REAGENDAR» va solo lo que todavía NO está registrado (Nohemi); lo ya agendado en Dinsides para más adelante
+    (Liliana, Wilder) no se muestra.
 12. **Toda etiqueta de Lima lleva en «Detalle» «Escribir al cliente por WhatsApp: 9…»** (el WhatsApp del chat y, si es otro, el
     teléfono de quien recibe). Lo pone el sistema al registrar; no lo borres al corregir una nota. Las de Olva también llevan «EMPAQUE».
 
