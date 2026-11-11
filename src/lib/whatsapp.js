@@ -336,7 +336,8 @@ export async function urlDeMedia(env, mediaId) {
  * marca (URO, "WSP API 2DA ECOMMERCE"), que llega al mismo webhook.
  */
 export async function firmaValida(env, cuerpoCrudo, firmaHeader) {
-  const secretos = [env.WHATSAPP_APP_SECRET, env.WHATSAPP_APP_SECRET_2].filter(Boolean);
+  // META_APP_SECRET: la app del webhook de comentarios de Facebook/Instagram, si es otra (2026-11-11).
+  const secretos = [env.WHATSAPP_APP_SECRET, env.WHATSAPP_APP_SECRET_2, env.META_APP_SECRET].filter(Boolean);
   if (!secretos.length) return true; // no configurado: no se bloquea, pero conviene ponerlo
   if (!firmaHeader || !firmaHeader.startsWith("sha256=")) return false;
   const esperado = firmaHeader.slice("sha256=".length);

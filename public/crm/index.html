@@ -762,6 +762,37 @@
     <div id="lista-bulk-batches">Cargando…</div>
 
     <hr />
+    <h2>Comentarios de Facebook e Instagram</h2>
+    <p class="ayuda-modal">Cuando alguien comenta un post o anuncio con una de estas palabras, se le responde el comentario y le llega un mensaje privado con la info del kit. Si después escribe por mensaje directo, le llega la foto del kit una vez. Gratis (Messenger e Instagram no cobran por mensaje).</p>
+    <div id="redes-estado" class="ayuda-modal">Cargando…</div>
+    <details id="redes-conexion">
+      <summary class="ayuda-modal">Conexión con Meta (una sola vez)</summary>
+      <p class="ayuda-modal">Pasos completos en docs/redes.md. En la app de Meta, Webhooks: URL <b id="redes-webhook-url"></b> y token de verificación <b id="redes-verify"></b>, objetos «Page» (feed, messages) e «Instagram» (comments, messages).</p>
+      <label class="ayuda-modal">Token de la página (del usuario del sistema; se guarda y no se vuelve a mostrar):</label>
+      <input type="password" id="redes-token" autocomplete="off" />
+      <label class="ayuda-modal">Clave secreta de la app (solo si NO es la misma app de WhatsApp):</label>
+      <input type="password" id="redes-app-secret" autocomplete="off" />
+      <button class="cancelar" id="redes-suscribir" type="button" style="width:100%;margin:6px 0 10px">Suscribir la página a la app</button>
+    </details>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:10px">
+      <span class="interruptor"><input type="checkbox" id="redes-activo" /><span></span></span> Responder comentarios solos
+    </label>
+    <label class="ayuda-modal" style="display:flex;align-items:center;gap:10px">
+      <span class="interruptor"><input type="checkbox" id="redes-facebook" /><span></span></span> Facebook
+      <span class="interruptor"><input type="checkbox" id="redes-instagram" /><span></span></span> Instagram
+    </label>
+    <label class="ayuda-modal">Palabras clave (una por línea; sin tildes ni mayúsculas, da igual):</label>
+    <textarea id="redes-palabras" rows="5"></textarea>
+    <label class="ayuda-modal">Respuesta pública al comentario:</label>
+    <textarea id="redes-comentario" rows="2"></textarea>
+    <label class="ayuda-modal">Mensaje privado:</label>
+    <textarea id="redes-dm" rows="8"></textarea>
+    <label class="ayuda-modal">Foto que se manda si la persona escribe por mensaje directo (link https; vacío = no se manda):</label>
+    <input type="url" id="redes-imagen" />
+    <button class="crear" id="redes-guardar" type="button" style="width:100%">Guardar</button>
+    <div id="redes-ultimos" style="margin-top:8px"></div>
+
+    <hr />
     <h2>Chats ejemplares</h2>
     <p class="ayuda-modal">Banco de conocimiento del equipo: chats que muestran cómo se resolvió un caso (un cliente desconfiado que al final compró, uno que pide el pedido para hoy). Se guardan desde el menú ⋯ de cada chat con un título y notas; el asesor los lee como ejemplo.</p>
     <div id="lista-ejemplares">Cargando…</div>

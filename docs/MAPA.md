@@ -2667,3 +2667,34 @@ empaca, en la etiqueta. No salía por dos fallas: (1) `promesas.RE_PROMESA` no r
   para lo ya registrado.
 - Del despacho del 11/11 lo tenían ofrecido: Ana María Yamunaqué, Zandy Zambrano, Miguel Ángel Machaca (Alicia), Roseli Álvarez
   (Shalom) y Luciana Gamarra (Lima); pendientes de registrar: Antonella Prado y Joan. Sus etiquetas originales no lo decían.
+## 2026-11-11 — Respuesta automática a comentarios de Facebook e Instagram
+- Comentario con palabra clave → respuesta pública («¡Hola! ✨ Te envíe los detalles 📩📩») + UN mensaje privado (private
+  reply) con la info del kit, la web y el WhatsApp; si después escribe por DM, la foto del kit una vez
+  (`public/redes/kit-tarot.jpg`). Gratis (Messenger/IG no cobran por mensaje). Detalle, límites de Meta y pasos de
+  conexión en `docs/redes.md`.
+- Código: `src/lib/redes.js` (lógica), `src/api/meta-webhook.js` (`GET/POST /api/meta/webhook`, firma con
+  `firmaValida`, que ahora también acepta `META_APP_SECRET`), `src/api/crm/redes.js` (`/api/crm/redes`, solo admin),
+  panel en Herramientas. Token de la página, clave de la app y token de verificación se guardan desde el panel
+  (`crm_settings`), así el dueño no entra a Cloudflare; nunca se devuelven al navegador.
+- Migración `0078_redes_comentarios.sql` aplicada en D1 el 2026-11-11. Prueba: `scripts/test-redes.mjs` (en `npm run check`).
+- **Pendiente del dueño:** conectar la página (token con permisos, webhooks de la app, revisión de Meta para acceso
+  avanzado). Hasta entonces no se responde nada.
+
+## 2026-11-11 — «Reportar venta» de clientes con nombre de usuario de WhatsApp (Meta rechazaba el evento)
+- **Qué pasó:** Carmela Fonseca (Jennifer), y antes un chat de Mayra (conv 5153) y uno de Fandio (conv 5146), escriben con
+  **nombre de usuario de WhatsApp**: Meta no manda su número (`wa_id` = id de negocio «PE.…», migración 0077). El evento
+  manual iba solo con el nombre y Meta lo rechazaba («insufficient customer information»). Cada vendedora lo intentó
+  2–3 veces. La venta sí quedó marcada en el CRM (etiqueta `purchase`), pero en `capi_events` quedó `fallido` y **las
+  comisiones solo cuentan `enviado`**: esas 3 ventas no sumaban comisión.
+- **Arreglo (sin tocar el camino de los clientes con número):** `capi-send.js` busca el celular que el cliente escribió
+  en el chat (`celularDeTexto` en `src/lib/meta-capi.js`: 9 dígitos que empiezan con 9, con o sin +51) y lo manda como
+  `ph`, más `external_id` (hash del id de negocio). Si no hay celular, NO se le manda a Meta algo que va a rechazar: queda
+  `omitido` y la vendedora ve «Venta guardada en el CRM. A Meta no se le avisó…» en vez del error rojo.
+- Comisiones (`src/lib/comisiones.js`) y toques (`src/lib/toques.js`) cuentan `enviado` y `omitido` (una venta es venta
+  aunque Meta no la reciba). Los `fallido` siguen sin contar (son reintentos con error).
+- **Las 3 ventas de arriba:** los tres chats tienen el celular escrito; hay que darle «Reportar venta» UNA vez más a cada
+  una (Jennifer: Carmela; Mayra: conv 5153; Fandio: conv 5146) para que llegue a Meta y cuente en comisiones. No se tocaron
+  los registros a mano para no duplicar comisiones.
+- Prueba: `scripts/test-capi-sin-numero.mjs` (en `npm run check`).
+- Redes (mismo día): el dueño eligió «solo el texto»: la foto por DM queda apagada de fábrica (`imagen_url` vacío en
+  `POR_DEFECTO`, `src/lib/redes.js`); se prende poniendo el link en el panel.

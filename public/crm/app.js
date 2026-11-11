@@ -1303,6 +1303,7 @@ $("#btn-admin").addEventListener("click", () => {
   cargarPausa();
   pintarPlanesPorAprobar();
   pintarEjemplares();
+  pintarRedes();
   pintarFlujos();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";
@@ -3118,6 +3119,63 @@ async function pintarFlujos() {
   });
 }
 
+/* Comentarios de Facebook e Instagram (dueño, 2026-11-11; src/lib/redes.js). */
+async function pintarRedes() {
+  const estadoRedes = $("#redes-estado");
+  if (!estadoRedes) return;
+  try {
+    const d = await pedir("/api/crm/redes");
+    const c = d.config;
+    $("#redes-activo").checked = Boolean(c.activo);
+    $("#redes-facebook").checked = c.facebook !== false;
+    $("#redes-instagram").checked = c.instagram !== false;
+    $("#redes-palabras").value = (c.palabras || []).join("\n");
+    $("#redes-comentario").value = c.comentario || "";
+    $("#redes-dm").value = c.dm || "";
+    $("#redes-imagen").value = c.imagen_url || "";
+    $("#redes-webhook-url").textContent = d.webhook?.url || "";
+    $("#redes-verify").textContent = d.webhook?.verify_token || "";
+    $("#redes-token").value = "";
+    $("#redes-token").placeholder = d.token ? "Guardado (escribe uno nuevo solo para cambiarlo)" : "Pega aquí el token de la página";
+    $("#redes-app-secret").value = "";
+    $("#redes-app-secret").placeholder = d.app_secret ? "Guardada" : "Vacío = usa la de la app de WhatsApp";
+    if (!d.token) $("#redes-conexion").open = true;
+    const h = d.hoy || {};
+    estadoRedes.innerHTML = !d.token
+      ? `${icon("alertCircle")} Falta conectar la página: pega su token en «Conexión con Meta» (pasos en docs/redes.md). Mientras tanto no se responde nada.`
+      : d.error_token ? `${icon("alertCircle")} El token de la página no funciona: ${escapar(d.error_token)}`
+      : `${icon("check")} Conectado a ${escapar(d.cuentas?.page_name || "la página")}${d.cuentas?.ig_id ? " e Instagram" : " (sin Instagram vinculado)"} · últimas 24 h: ${h.vistos || 0} comentarios, ${h.respondidos || 0} respondidos, ${h.dm || 0} mensajes privados, ${h.imagenes || 0} fotos`;
+    $("#redes-ultimos").innerHTML = (d.ultimos || []).length ? d.ultimos.map((x) => `<div class="sub" style="margin:2px 0">${icon(x.palabra ? (x.dm_enviado ? "check" : "alertCircle") : "chat")} ${escapar(fechaCorta(x.created_at))} · ${escapar(x.plataforma)} · ${escapar(x.autor || "")}: «${escapar(String(x.texto || "").slice(0, 80))}»${x.palabra ? ` · palabra «${escapar(x.palabra)}»${x.respondido ? " · respondido" : ""}${x.dm_enviado ? " · mensaje privado" : ""}${x.imagen_enviada ? " · foto" : ""}` : " · sin palabra clave"}${x.error ? ` · ${escapar(x.error)}` : ""}</div>`).join("") : `<div class="sin-ad">Todavía no llegó ningún comentario.</div>`;
+  } catch (err) {
+    estadoRedes.textContent = err.message;
+  }
+}
+$("#redes-guardar")?.addEventListener("click", async (e) => {
+  const boton = e.currentTarget;
+  boton.disabled = true;
+  try {
+    await pedir("/api/crm/redes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      activo: $("#redes-activo").checked, facebook: $("#redes-facebook").checked, instagram: $("#redes-instagram").checked,
+      palabras: $("#redes-palabras").value.split("\n"), comentario: $("#redes-comentario").value, dm: $("#redes-dm").value, imagen_url: $("#redes-imagen").value.trim(),
+      token: $("#redes-token").value.trim() || undefined, app_secret: $("#redes-app-secret").value.trim() || undefined
+    }) });
+    await pintarRedes();
+    alert("Guardado.");
+  } catch (err) { alert(err.message); }
+  boton.disabled = false;
+});
+
+$("#redes-suscribir")?.addEventListener("click", async (e) => {
+  const boton = e.currentTarget;
+  boton.disabled = true;
+  try {
+    const r = await pedir("/api/crm/redes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "suscribir" }) });
+    alert(`Listo: ${r.page_name || "la página"} quedó suscrita${r.ig_id ? " (con su Instagram)" : " (no encontré un Instagram vinculado a la página)"}.`);
+    await pintarRedes();
+  } catch (err) { alert(err.message); }
+  boton.disabled = false;
+});
+
 async function pintarEjemplares() {
   const cont = $("#lista-ejemplares");
   if (!cont) return;
@@ -4739,9 +4797,10 @@ function formVenta(c, alTerminar) {
       ponerEtiquetaLocal(c, "purchase");
       document.querySelectorAll(".accion-venta").forEach((b) => b.classList.add("enviado"));
       estadoEl.className = "pm-estado ok";
-      estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
+      // Cliente con nombre de usuario de WhatsApp y sin celular en el chat: la venta queda guardada, a Meta no se le avisa (2026-11-11).
+      estadoEl.textContent = r.modo === "omitido" ? r.aviso : r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
       actualizarHistorialCapi(c.conversation_id);
-      setTimeout(() => { if (pop.isConnected) alTerminar(); }, 1600);
+      setTimeout(() => { if (pop.isConnected) alTerminar(); }, r.modo === "omitido" ? 6000 : 1600);
     } catch (err) {
       estadoEl.className = "pm-estado error";
       estadoEl.textContent = err.message;
@@ -4777,7 +4836,7 @@ async function actualizarHistorialCapi(conversationId) {
       ? `<div class="ayuda-modal" style="margin-bottom:4px">Enviados antes:</div>` + events.map((e) => `
         <div style="font-size:11px;color:var(--gris);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--borde)">
           <span>${fechaCorta(e.created_at)} · ${escapar(NOMBRE_EVENTO_META[e.event_name] || e.event_name || "Venta")}${e.mode === "anuncio" ? " (anuncio)" : ""}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
-          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : "✗"}</span>
+          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : e.status === "omitido" ? "var(--gris)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : e.status === "omitido" ? "solo CRM" : "✗"}</span>
         </div>`).join("")
       : "";
   } catch { /* silencioso */ }
