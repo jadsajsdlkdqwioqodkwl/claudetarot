@@ -54,7 +54,11 @@ const igAntes = llamadas.length;
 await procesarWebhookRedes(env, ig("IGC2", { id: "IG1", username: "tarotstore" }, "info"));
 check("Instagram: nunca a la propia cuenta", llamadas.length === igAntes);
 
-// 3. Escribe por DM después: foto una sola vez.
+// 3. Escribe por DM después: de fábrica no se manda foto («solo el texto», dueño 2026-11-11); con link, una sola vez.
+const dm0 = llamadas.length;
+await procesarWebhookRedes(env, { object: "instagram", entry: [{ messaging: [{ sender: { id: "IGU1" }, recipient: { id: "IG1" }, message: { text: "hola" } }] }] });
+check("de fábrica, si escribe por DM no se manda foto (solo el texto)", llamadas.length === dm0);
+await guardarConfig(db, { imagen_url: "https://kit-tarot-para-principiantes.tarotperu.store/redes/kit-tarot.jpg" });
 const dm = (sender) => ({ object: "instagram", entry: [{ messaging: [{ sender: { id: sender }, recipient: { id: "IG1" }, message: { text: "hola" } }] }] });
 await procesarWebhookRedes(env, dm("IGU1"));
 check("si escribe por DM, le llega la foto del kit", llamadas.some((l) => l.cuerpo.recipient?.id === "IGU1" && l.cuerpo.message?.attachment?.type === "image"));

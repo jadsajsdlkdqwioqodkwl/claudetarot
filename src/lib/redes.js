@@ -30,7 +30,9 @@ export const POR_DEFECTO = {
   ],
   comentario: "¡Hola! ✨ Te envíe los detalles 📩📩",
   dm: "¡Hola! Gracias por escribirnos ✨ ✨ \n\nEl Kit Tarot de aprendizaje le incluye todo lo necesario: Tarot Rider-Waite con significados, Manual, Mantel de lectura y collar tarot para protección a S/95 con envío gratis a todo Lima y provincia ☺✨ OFERTA ESPECIAL solo por esta semana con bonos adicionales (Clases grabadas de Tarot y material original imprimible)\n\nPuedes hacer tu pedido directamente en nuestra web:\n👉 https://kit-tarot-para-principiantes.tarotperu.store/\n\nO escríbenos a nuestro Whatsapp dado que no se brindará respuestas por este medio: +51 927 066 862 \n\nhttps://wa.me/51927066862?text=hola%20vengo%20de%20sus%20redes%2C%20me%20interesa%20m%C3%A1s%20informaci%C3%B3n",
-  imagen_url: "https://kit-tarot-para-principiantes.tarotperu.store/redes/kit-tarot.jpg"
+  // Dueño, 2026-11-11: «solo el texto». La foto por DM queda apagada (vacío); se prende poniendo el link en el panel
+  // (la del kit está en https://kit-tarot-para-principiantes.tarotperu.store/redes/kit-tarot.jpg).
+  imagen_url: ""
 };
 
 /** Minúsculas, sin tildes y sin signos: «¿Cuánto?» → «cuanto». */

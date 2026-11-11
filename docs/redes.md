@@ -8,7 +8,8 @@
    (precio, info, cuánto, me interesa, DM, envío…; la lista se edita en el panel).
 2. Se le **responde el comentario** en público: «¡Hola! ✨ Te envíe los detalles 📩📩».
 3. Le llega **un mensaje privado** (private reply) con la info del kit, la web y el WhatsApp.
-4. Si después escribe por mensaje directo, le llega **la foto del kit** una sola vez (`public/redes/kit-tarot.jpg`).
+4. (Apagado de fábrica desde el 2026-11-11, el dueño eligió «solo el texto».) Si se pone el link de la foto en el panel
+   y la persona escribe por mensaje directo, le llega **la foto del kit** una sola vez (`public/redes/kit-tarot.jpg`).
 
 Todo editable en el panel: prender/apagar (y por red), palabras, los dos textos y la foto. El panel muestra los últimos
 30 comentarios vistos y qué se hizo con cada uno.

@@ -4797,9 +4797,10 @@ function formVenta(c, alTerminar) {
       ponerEtiquetaLocal(c, "purchase");
       document.querySelectorAll(".accion-venta").forEach((b) => b.classList.add("enviado"));
       estadoEl.className = "pm-estado ok";
-      estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
+      // Cliente con nombre de usuario de WhatsApp y sin celular en el chat: la venta queda guardada, a Meta no se le avisa (2026-11-11).
+      estadoEl.textContent = r.modo === "omitido" ? r.aviso : r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
       actualizarHistorialCapi(c.conversation_id);
-      setTimeout(() => { if (pop.isConnected) alTerminar(); }, 1600);
+      setTimeout(() => { if (pop.isConnected) alTerminar(); }, r.modo === "omitido" ? 6000 : 1600);
     } catch (err) {
       estadoEl.className = "pm-estado error";
       estadoEl.textContent = err.message;
@@ -4835,7 +4836,7 @@ async function actualizarHistorialCapi(conversationId) {
       ? `<div class="ayuda-modal" style="margin-bottom:4px">Enviados antes:</div>` + events.map((e) => `
         <div style="font-size:11px;color:var(--gris);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--borde)">
           <span>${fechaCorta(e.created_at)} · ${escapar(NOMBRE_EVENTO_META[e.event_name] || e.event_name || "Venta")}${e.mode === "anuncio" ? " (anuncio)" : ""}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
-          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : "✗"}</span>
+          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : e.status === "omitido" ? "var(--gris)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : e.status === "omitido" ? "solo CRM" : "✗"}</span>
         </div>`).join("")
       : "";
   } catch { /* silencioso */ }

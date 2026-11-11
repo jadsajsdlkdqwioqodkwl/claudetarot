@@ -38,20 +38,40 @@ async function sha256Hex(texto) {
 const esClicReal = (ctwaClid) => Boolean(ctwaClid) && !String(ctwaClid).startsWith("SIMULADO");
 
 /** Arma el cuerpo del evento — función pura, sin red. */
-export async function construirEventoCapi({ modo, waId, ctwaClid, wabaId, valor, moneda, eventName, eventId, contentName, firstName, lastName, email, testEventCode }) {
+/**
+ * Celular peruano escrito en un texto («teléfono..924543668», «+51 924 543 668») → «51924543668», o null (2026-11-11).
+ * Para clientes con nombre de usuario de WhatsApp: Meta no manda su número, pero muchos lo escriben en el chat.
+ */
+export function celularDeTexto(texto) {
+  const m = [...String(texto || "").matchAll(/(?:\+?51[\s.-]*)?(9\d{2})[\s.-]*(\d{3})[\s.-]*(\d{3})(?!\d)/g)];
+  const ultimo = m.filter((x) => !/\d/.test(String(texto)[x.index - 1] || "")).pop();
+  return ultimo ? `51${ultimo[1]}${ultimo[2]}${ultimo[3]}` : null;
+}
+
+export async function construirEventoCapi({ modo, waId, ctwaClid, wabaId, valor, moneda, eventName, eventId, contentName, firstName, lastName, email, testEventCode, telefono }) {
   let user_data;
   if (modo === "anuncio") {
     if (!wabaId) throw new Error("Falta WHATSAPP_BUSINESS_ACCOUNT_ID.");
     user_data = { whatsapp_business_account_id: String(wabaId), ctwa_clid: ctwaClid };
   } else {
     // Un cliente sin número (id de negocio «PE.123…») no tiene teléfono que mandar.
-    const telefonoHash = waId && !/[A-Za-z]/.test(String(waId)) ? await sha256Hex(String(waId).replace(/\D/g, "")) : null;
+    const sinNumero = Boolean(waId) && /[A-Za-z]/.test(String(waId));
+    // Sin número (id de negocio): el celular que el cliente escribió en el chat, si lo hay (2026-11-11).
+    const numero = waId && !sinNumero ? String(waId).replace(/\D/g, "") : telefono ? String(telefono).replace(/\D/g, "") : null;
+    const telefonoHash = numero ? await sha256Hex(numero) : null;
     const nombreHash = firstName ? await sha256Hex(String(firstName).trim().toLowerCase()) : null;
     const apellidoHash = lastName ? await sha256Hex(String(lastName).trim().toLowerCase()) : null;
     const emailHash = email ? await sha256Hex(String(email).trim().toLowerCase()) : null;
     if (!telefonoHash && !nombreHash && !emailHash) throw new Error("Necesita al menos el WhatsApp, el nombre o el email del contacto para poder mandarlo.");
+    // Solo el nombre: Meta lo rechaza siempre («customer information … so broad»). Se avisa claro y no se manda.
+    if (!telefonoHash && !emailHash) {
+      const e = new Error("SIN_DATOS_PARA_META: el cliente escribe con nombre de usuario de WhatsApp (sin número) y no hay un celular suyo en el chat.");
+      e.sinDatos = true;
+      throw e;
+    }
     user_data = {
       ...(telefonoHash ? { ph: [telefonoHash] } : {}),
+      ...(sinNumero ? { external_id: [await sha256Hex(String(waId))] } : {}),
       ...(nombreHash ? { fn: [nombreHash] } : {}),
       ...(apellidoHash ? { ln: [apellidoHash] } : {}),
       ...(emailHash ? { em: [emailHash] } : {})
@@ -148,10 +168,10 @@ async function datasetDeWaba(env) {
  * Devuelve { modo, eventName, respuesta, aviso } — `aviso` explica por qué
  * un contacto con ctwa_clid terminó yendo como manual.
  */
-export async function reportarEventoMeta(env, { tipo, waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode }) {
+export async function reportarEventoMeta(env, { tipo, waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode, telefono }) {
   const nombres = EVENTOS[tipo];
   if (!nombres) throw new Error(`Tipo de evento desconocido: ${tipo}`);
-  const base = { waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode };
+  const base = { waId, ctwaClid, valor, moneda, eventId, contentName, firstName, lastName, email, testEventCode, telefono };
 
   let aviso = null;
   if (esClicReal(ctwaClid)) {

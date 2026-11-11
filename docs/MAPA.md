@@ -2666,3 +2666,22 @@ A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usu
 - Migración `0078_redes_comentarios.sql` aplicada en D1 el 2026-11-11. Prueba: `scripts/test-redes.mjs` (en `npm run check`).
 - **Pendiente del dueño:** conectar la página (token con permisos, webhooks de la app, revisión de Meta para acceso
   avanzado). Hasta entonces no se responde nada.
+
+## 2026-11-11 — «Reportar venta» de clientes con nombre de usuario de WhatsApp (Meta rechazaba el evento)
+- **Qué pasó:** Carmela Fonseca (Jennifer), y antes un chat de Mayra (conv 5153) y uno de Fandio (conv 5146), escriben con
+  **nombre de usuario de WhatsApp**: Meta no manda su número (`wa_id` = id de negocio «PE.…», migración 0077). El evento
+  manual iba solo con el nombre y Meta lo rechazaba («insufficient customer information»). Cada vendedora lo intentó
+  2–3 veces. La venta sí quedó marcada en el CRM (etiqueta `purchase`), pero en `capi_events` quedó `fallido` y **las
+  comisiones solo cuentan `enviado`**: esas 3 ventas no sumaban comisión.
+- **Arreglo (sin tocar el camino de los clientes con número):** `capi-send.js` busca el celular que el cliente escribió
+  en el chat (`celularDeTexto` en `src/lib/meta-capi.js`: 9 dígitos que empiezan con 9, con o sin +51) y lo manda como
+  `ph`, más `external_id` (hash del id de negocio). Si no hay celular, NO se le manda a Meta algo que va a rechazar: queda
+  `omitido` y la vendedora ve «Venta guardada en el CRM. A Meta no se le avisó…» en vez del error rojo.
+- Comisiones (`src/lib/comisiones.js`) y toques (`src/lib/toques.js`) cuentan `enviado` y `omitido` (una venta es venta
+  aunque Meta no la reciba). Los `fallido` siguen sin contar (son reintentos con error).
+- **Las 3 ventas de arriba:** los tres chats tienen el celular escrito; hay que darle «Reportar venta» UNA vez más a cada
+  una (Jennifer: Carmela; Mayra: conv 5153; Fandio: conv 5146) para que llegue a Meta y cuente en comisiones. No se tocaron
+  los registros a mano para no duplicar comisiones.
+- Prueba: `scripts/test-capi-sin-numero.mjs` (en `npm run check`).
+- Redes (mismo día): el dueño eligió «solo el texto»: la foto por DM queda apagada de fábrica (`imagen_url` vacío en
+  `POR_DEFECTO`, `src/lib/redes.js`); se prende poniendo el link en el panel.
