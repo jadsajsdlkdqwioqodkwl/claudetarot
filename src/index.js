@@ -73,6 +73,7 @@ import { onRequestGet as crmExperimentosGet, onRequestPost as crmExperimentosPos
 import { onRequestGet as crmEjemplaresGet, onRequestPost as crmEjemplaresPost, onRequestDelete as crmEjemplaresDelete } from "./api/crm/ejemplares.js";
 import { onRequestGet as crmRecursosGet, onRequestPost as crmRecursosPost, onRequestPatch as crmRecursosPatch, onRequestDelete as crmRecursosDelete } from "./api/crm/recursos.js";
 import { avisarSinRespuesta } from "./lib/crm-avisos.js";
+import { onRequestGet as asesorEntregaGet, guardarArchivosEntrantesPendientes } from "./api/asesor-entrega.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
 import { onRequestPost as crmWelcomeSendPost } from "./api/crm/welcome-send.js";
 import {
@@ -177,6 +178,7 @@ const ROUTES = {
   "/api/asesor/pedidos-sheet": { GET: asesorPedidosSheetGet, POST: asesorPedidosSheetPost },
   "/api/asesor/marcar-compra": { POST: asesorMarcarCompraPost },
   "/api/asesor/revision": { GET: asesorRevisionGet, POST: asesorRevisionPost },
+  "/api/asesor/entrega": { GET: asesorEntregaGet },
   "/api/revision/nota": { POST: revisionNotaPost, OPTIONS: revisionNotaPost },
   "/api/asesor/dinsides": { GET: asesorDinsidesGet, POST: asesorDinsidesPost },
   "/api/asesor/plantillas-meta": { GET: asesorPlantillasGet, POST: asesorPlantillasPost },
@@ -373,6 +375,7 @@ export default {
       ctx.waitUntil(exportarChatsASheets(env));
       // Aviso al dueño por Telegram si hay chats sin responder y nadie del equipo contesta (dueño, 2026-11-04).
       ctx.waitUntil(avisarSinRespuesta(env).catch((err) => console.error("Aviso sin respuesta:", err.message)));
+      ctx.waitUntil(guardarArchivosEntrantesPendientes(env).catch((err) => console.error("Archivos entrantes pendientes:", err.message)));
       ctx.waitUntil(reflotarSugerencia(env).catch((err) => console.error("Reflotar sugerencia:", err.message)));
       return;
     }

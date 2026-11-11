@@ -454,6 +454,17 @@ h2.web{{color:#1d4ed8;border-color:#2563eb}} div.web th{{background:#2563eb}}</s
     return ruta_pdf, kits
 
 
+def salud_whatsapp(clave, fecha):
+    """Entregas y entradas de WhatsApp del día (GET /api/asesor/entrega): cuántos mensajes salieron, cuántos no entregó Meta y por
+    qué, cuántos entraron y cuántos no se pudieron procesar. Un fallo no frena el reporte."""
+    try:
+        req = urllib.request.Request(AVISOS.replace("/avisos", f"/entrega?fecha={fecha}"), headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.load(r)
+    except Exception as err:  # noqa: BLE001
+        return {"error": str(err)}
+
+
 def armar_pdf_dueno(datos, carpeta):
     """Reporte «Saldos y reposiciones», SOLO para el dueño (2026-11-11), una vez al cierre de la noche: saldos cobrados hoy (por el
     medio que sea: Yape, Plin, depósito BCP, un tercero), reposiciones y cambios (los despacha otro equipo, no Dinsides),
@@ -504,6 +515,23 @@ def armar_pdf_dueno(datos, carpeta):
     partes.append(f"<h2>🧹 Lo que el sistema ya resolvió solo (últimos 14 días en Dinsides; {len(filas)})</h2>"
                   + (tabla(filas, [("Estado", "que"), ("Cliente", "nombre"), ("Teléfono", "tel"), ("Detalle", "detalle")]) if filas else "<p class=emp>Sin datos de Dinsides en esta corrida.</p>")
                   + (f"<p class=emp>Además, {viejos_entregados} entregados de días anteriores (no se listan).</p>" if viejos_entregados else ""))
+    # Salud de WhatsApp del día (dueño 2026-11-11): lo que Meta no entregó y lo que no pudo entrar.
+    ent = datos.get("_entrega") or {}
+    linea_wa = ""
+    if ent.get("ok"):
+        sa, en = ent.get("salientes") or {}, ent.get("entrantes") or {}
+        motivos = [dict(m, _pl=f"{m.get('plantillas', 0)} plantillas") for m in sa.get("por_motivo") or []]
+        bloque = (f"<p class=emp>Salieron <b>{sa.get('total', 0)}</b> mensajes ({sa.get('plantillas', 0)} plantillas); Meta NO entregó <b>{sa.get('fallidos', 0)}</b>. "
+                  f"Entraron <b>{en.get('mensajes', 0)}</b> mensajes de {en.get('chats', 0)} chats; NO se pudieron procesar <b>{en.get('no_procesados', 0)}</b>"
+                  f"{'; archivos de clientes aún sin guardar: ' + str(en.get('archivos_sin_guardar')) if en.get('archivos_sin_guardar') else ''}.</p>")
+        if motivos:
+            bloque += tabla(motivos, [("Por qué no se entregó", "motivo"), ("Mensajes", "mensajes"), ("De ellos", "_pl")])
+        if en.get("errores"):
+            bloque += "<div class=inc>" + tabla(en["errores"], [("Mensaje entrante que no se pudo procesar (queda guardado para recuperarlo)", "error"), ("Veces", "n"), ("Personas", "personas")]) + "</div>"
+        partes.insert(1, f"<h2{' class=inc' if en.get('no_procesados') else ''}>📶 WhatsApp hoy — entregas y entradas</h2>" + bloque)
+        linea_wa = f"\n📶 WhatsApp: {sa.get('fallidos', 0)} de {sa.get('total', 0)} no entregados por Meta · entrantes sin procesar: {en.get('no_procesados', 0)}"
+    elif ent.get("error"):
+        partes.insert(1, f"<h2>📶 WhatsApp hoy</h2><p class=emp>No se pudo leer la entrega del día: {e(ent['error'])}</p>")
     doc = f"""<!doctype html><meta charset=utf-8><style>
 @page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111}}
 h1{{font-size:24px;margin:0}} h2{{font-size:17px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}} .sub{{color:#666;margin:2px 0 10px}}
@@ -524,7 +552,7 @@ h2.esp{{color:#9a3412;border-color:#ea580c}} div.esp th{{background:#ea580c}} di
     subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={ruta_pdf}", ruta_html], check=True, capture_output=True)
     resumen = (f"🔒 Saldos y reposiciones {datos.get('fecha_venta') or ''} (solo Moi)\n💰 Saldos cobrados: {len(saldos)} · S/{total:.0f}\n"
                f"♻️ Reposiciones y cambios: {len(repos)} · 🚨 Incidencias: {len(inc)}\n"
-               f"🧹 Dinsides: {len(res.get('entregados') or [])} entregados · {len(res.get('anulados') or [])} anulados · {len(res.get('rechazados') or [])} rechazados · motorizado externo: {len(res.get('cerradas_por_nota') or [])}")
+               f"🧹 Dinsides: {len(res.get('entregados') or [])} entregados · {len(res.get('anulados') or [])} anulados · {len(res.get('rechazados') or [])} rechazados · motorizado externo: {len(res.get('cerradas_por_nota') or [])}") + linea_wa
     return ruta_pdf, resumen
 
 
@@ -880,6 +908,7 @@ def main():
                                      f"{'Pedidos y ventas' if unificado else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             print(f"REPORTE PDF: {link}")
             if unificado and "--dueno" in args:  # muestra del reporte del dueño: se sube a CRM → Reportes, no avisa a nadie
+                datos["_entrega"] = salud_whatsapp(clave, datos.get("fecha_venta", ""))
                 pdf_d, _ = armar_pdf_dueno(datos, carpeta)
                 with open(pdf_d, "rb") as fh:
                     print("REPORTE DEL DUEÑO (PDF, sin Telegram): " + subir_reporte(clave, base64.b64encode(fh.read()).decode(), os.path.basename(pdf_d), f"Saldos y reposiciones {datos.get('fecha_venta', '')} (solo Moi)"))
@@ -918,7 +947,7 @@ def main():
             if registro is not None:
                 import pedidos_estado
                 # Lo que no es memoria del día (agenda leída de la hoja, formularios web, cuadre) no se guarda en el registro.
-                guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar", "_resuelto", "envios_hechos")}
+                guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar", "_resuelto", "envios_hechos", "_entrega")}
                 origen_reg = str(datos.get("origen", "asesor"))
                 if datos.get("hora") and str(datos["hora"]) not in origen_reg:
                     origen_reg += f" {datos['hora']}"
@@ -996,6 +1025,7 @@ def main():
         total["fallidos"] += r.get("fallidos", [])
     if unificado and not solo_mensajes and es_cierre(datos, args):
         try:
+            datos["_entrega"] = salud_whatsapp(clave, datos.get("fecha_venta", ""))
             pdf_d, resumen_d = armar_pdf_dueno(datos, carpeta)
             with open(pdf_d, "rb") as fh:
                 b64 = base64.b64encode(fh.read()).decode()

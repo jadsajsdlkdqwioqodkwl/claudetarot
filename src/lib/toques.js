@@ -284,6 +284,7 @@ export async function procesarToques(env) {
     const lista = await candidatos(db, id, def, cupo + 2, ctx.lineaId);
     if (!lista.length) continue;
     const destinos = def.por_destino ? await destinosDeChats(db, lista.map((c) => c.id)).catch(() => ({})) : {};
+    const noMarketing = new Set(((await db.prepare("SELECT id FROM conversations WHERE (' ' || COALESCE(meta_tags, '') || ' ') LIKE '% no_marketing %'").all().catch(() => ({ results: [] }))).results || []).map((r) => r.id));
     const aprobadas = {};
     const plantillaDe = async (variante) => {
       if (!(variante in aprobadas)) {
@@ -302,6 +303,8 @@ export async function procesarToques(env) {
         await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'control')").bind(c.id, id).run();
         continue;
       }
+      // Se dio de baja del marketing: los toques (todos son marketing) ya no le salen (dueño 2026-11-11).
+      if (noMarketing.has(c.id)) continue;
       const variante = def.por_destino && def[destinos[c.id]] ? destinos[c.id] : "general";
       const aprobada = await plantillaDe(variante);
       if (!aprobada) continue; // en revisión: se reintenta en la próxima pasada

@@ -2636,3 +2636,20 @@ A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usu
   Meta (131049), 470 por el problema de pago (resuelto el 7/11), 118 «número en un experimento» (130472), 20 fuera de la ventana de
   24 h, 17 no entregables, 6 bajas de marketing. Y 10 de 445 archivos entrantes (fotos, audios) sin descargar. Pendientes de decidir.
 - El arranque del Project / Routine de envíos NO cambió: sigue leyendo `docs/envios-jennifer.md` de `main`.
+
+## 2026-11-11 (06:00–06:30) — Sin marketing a quien se dio de baja; salud de WhatsApp en el reporte del dueño; archivos entrantes se guardan solos
+
+- **`no_marketing` se respeta** (decisión del dueño): `crm-cron.js` cancela la plantilla programada si es de categoría MARKETING y el
+  chat tiene `no_marketing` (queda en `envio_errores`); `toques.js` salta esos chats. Las de servicio (aviso de envío, recojo,
+  cobro) siguen saliendo. `plantillaAprobada` ahora guarda y devuelve `categoria` (9.º campo del caché `plantilla_estado:*`).
+- **`GET /api/asesor/entrega?fecha=`** (`src/api/asesor-entrega.js`): salientes del día, no entregados por motivo, entrantes, mensajes
+  entrantes no procesados (`webhook_errores`) y archivos sin guardar. `enviar.py salud_whatsapp` lo pone en el PDF «Saldos y
+  reposiciones» (sección «📶 WhatsApp hoy») y en su resumen de Telegram.
+- **Archivos entrantes** (`guardarArchivosEntrantesPendientes`, cron de 10 min, 3 por pasada): audios, fotos, videos y documentos que
+  nadie abrió se bajan de WhatsApp y se guardan en R2 (antes solo al abrirlos). El que Meta ya no sirve queda `media_key = 'expirado'`.
+  Los 10 pendientes eran 9 audios y 1 PDF que nadie había abierto.
+- **Error del 6/11 02:08 UTC** (`webhook_ultimo_error`: «D1_ERROR: internal error»): fallo interno de la base de Cloudflare durante un
+  aviso; no hay forma de saber qué traía (entonces no se guardaba el mensaje entero; desde la migración 0077 sí).
+- **Routines:** no se cambió ningún prompt de Routine. Las dos del reporte (`trig_01MMWTgBTQ8aD1M1QM1xxGEc` 21:45 · 23:45 y
+  `trig_01CwAvLG544pJd3FkAGu9Pf7` 22:30) y la de envíos (`trig_01Fq74icnRhUnmQ4SoJvcrh7`) solo llevan el arranque que sincroniza
+  `main` y lee `docs/prompts/reporte.md` / `docs/envios-jennifer.md`: los cambios de hoy entran solos.

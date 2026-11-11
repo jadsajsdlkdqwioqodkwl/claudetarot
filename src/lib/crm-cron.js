@@ -231,6 +231,16 @@ export async function procesarSeguimientosVencidos(env) {
             .bind(new Date(Date.now() + 30 * 60 * 1000).toISOString(), s.id).run();
           continue;
         }
+        // El cliente eligió no recibir marketing (etiqueta `no_marketing`: aviso `user_preferences` de Meta o error 131050): las
+        // plantillas de MARKETING ya no se le mandan (dueño 2026-11-11). Las de servicio (aviso de envío, recojo, cobro) sí salen.
+        if (aprobada.categoria === "MARKETING" && / no_marketing /.test(` ${s.meta_tags || ""} `)) {
+          await env.CRM_DB.batch([
+            env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'cancelado' WHERE id = ?").bind(s.id),
+            env.CRM_DB.prepare("INSERT INTO envio_errores (scheduled_message_id, conversation_id, wa_id, error) VALUES (?, ?, ?, ?)")
+              .bind(s.id, s.conv_id || null, s.wa_id || null, "No salió: el cliente eligió no recibir mensajes de marketing (no_marketing).")
+          ]).catch((e) => console.error("no_marketing:", e.message));
+          continue;
+        }
         // Tantas variables como pide el texto aprobado en Meta: si la plantilla se editó (p. ej. el
         // rescate_lead_1 sin nombre ni producto), las guardadas al programarla sobran o faltan y Meta
         // rechaza el envío. Las que faltan se completan con el nombre y el producto por defecto.
