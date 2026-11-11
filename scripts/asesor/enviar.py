@@ -123,6 +123,10 @@ def revisar_promesas(datos, carpeta, clave):
     avisos = []
     for p in pedidos:
         lista = todas.get(prom.nueve(p.get("whatsapp"))) or todas.get(prom.nueve(p.get("telefono"))) or []
+        # Collar amuleto extra ofrecido en el chat: va FIRME en el empaque (dueño 2026-11-11), no como «verificar».
+        if p.get("estado") in ("CONFIRMADO", "OTRO_DIA") and prom.collar_extra(lista) and not re.search(r"collar[^·]*(extra|adicional)|(extra|adicional)[^·]*collar|2 collares", str(p.get("empaque") or ""), re.I):
+            p["empaque"] = (str(p.get("empaque") or "").strip() + " " if str(p.get("empaque") or "").strip() else "") + prom.TEXTO_COLLAR
+            avisos.append(f"- {p.get('nombre') or p.get('whatsapp')}: se agregó al empaque «{prom.TEXTO_COLLAR}» (se lo ofrecieron: {prom.collar_extra(lista)[:60]}…)")
         faltan = prom.falta_en_empaque(lista, empaque(p))
         if not faltan:
             continue

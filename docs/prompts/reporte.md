@@ -67,6 +67,10 @@ duda: la duda va en `nota` y el pedido sale igual.
    como si se hubiera pagado.
 10. `nota` lleva TODO lo importante para el motorizado, no solo el contacto: «dejar en recepción», «portería», «Dpto 102», «tocar el
    timbre B», «entregar a Luciana», horario. Si el cliente lo escribió junto con la dirección, repítelo en `nota`.
+11. **Collar amuleto EXTRA ofrecido = se empaca (dueño, 11/11, caso Alicia).** Si en el chat el equipo le ofreció un collar amuleto
+   extra (seguimiento «le obsequiaremos además un COLLAR AMULETO … EXTRA», «collar amuleto … GRATIS», compensación por demora) y
+   el cliente compra, pon en `empaque` «+ 1 COLLAR AMULETO EXTRA». Si se te pasa, el sistema lo agrega solo y lo imprime en la
+   etiqueta («EMPAQUE: … + 1 COLLAR AMULETO EXTRA»).
 6. Provincia con 2 o más kits: viaja en UN paquete XS (lo calcula el sistema); tú solo pones `kits`.
 
 ### CRITERIO (liberal: lo verifica una persona)

@@ -2653,3 +2653,17 @@ A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usu
 - **Routines:** no se cambió ningún prompt de Routine. Las dos del reporte (`trig_01MMWTgBTQ8aD1M1QM1xxGEc` 21:45 · 23:45 y
   `trig_01CwAvLG544pJd3FkAGu9Pf7` 22:30) y la de envíos (`trig_01Fq74icnRhUnmQ4SoJvcrh7`) solo llevan el arranque que sincroniza
   `main` y lee `docs/prompts/reporte.md` / `docs/envios-jennifer.md`: los cambios de hoy entran solos.
+
+## 2026-11-11 (tarde) — Collar amuleto EXTRA ofrecido en el chat: firme en el empaque y en la etiqueta
+
+Dueño (caso Alicia / Miguel Ángel Machaca, 51912911740): a quien se le ofreció un collar extra y compra, tiene que salirle al que
+empaca, en la etiqueta. No salía por dos fallas: (1) `promesas.RE_PROMESA` no reconocía «COLLAR AMULETO de carta de Tarot EXTRA»
+(hay palabras entre «collar» y «extra») y sí tomaba como promesa el mensaje de precio («Le incluye el mazo completo…»), así que el
+«⚠️ VERIFICAR» citaba ruido; (2) las etiquetas quitan los «VERIFICAR».
+- `promesas.py`: `RE_COLLAR_EXTRA`, `RE_KIT_NORMAL`, `collar_extra(lineas)`, `TEXTO_COLLAR`.
+- `enviar.py revisar_promesas`: en pedidos CONFIRMADO / OTRO_DIA agrega al `empaque` «+ 1 COLLAR AMULETO EXTRA (se le ofreció en
+  el chat)» (firme, no «verificar»).
+- `etiquetas.py con_collar_extra`: al imprimir mira las promesas de 30 días y lo agrega a «EMPAQUE» en Lima, Shalom y Olva, también
+  para lo ya registrado.
+- Del despacho del 11/11 lo tenían ofrecido: Ana María Yamunaqué, Zandy Zambrano, Miguel Ángel Machaca (Alicia), Roseli Álvarez
+  (Shalom) y Luciana Gamarra (Lima); pendientes de registrar: Antonella Prado y Joan. Sus etiquetas originales no lo decían.

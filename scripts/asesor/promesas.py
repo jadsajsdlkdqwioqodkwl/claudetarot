@@ -44,6 +44,28 @@ RE_ENVIO_GRATIS = re.compile(
     re.I,
 )
 
+# El collar amuleto EXTRA que ofrecen los seguimientos («le obsequiaremos además un 🎁 *COLLAR AMULETO de carta de Tarot EXTRA*
+# adicional al que ya viene…»). Regla del dueño (2026-11-11, caso Alicia): a quien se le ofreció y compra, SE LE EMPACA; va firme en
+# el empaque y en la etiqueta, no como «verificar». Antes esta frase ni se detectaba (entre «collar» y «extra» hay otras palabras).
+RE_COLLAR_EXTRA = re.compile(r"collar\W+amuleto[^.\n]{0,60}?\b(extra|adicional)\b|collar\w*\W+(extra|adicional)\b|\b(otro|segundo|2|dos)\W+collar"
+                             r"|collar\W+amuleto\W+(de\W+carta\W+de\W+tarot\W+)?(totalmente\W+)?gratis", re.I)
+# El mensaje de precio describe el kit normal («Le incluye el mazo completo de 78 cartas… regalos adicionales»): no es promesa.
+RE_KIT_NORMAL = re.compile(r"le incluye el mazo completo[^\n]*|incluye manual y los \*?regalos adicionales\*?[^\n]*", re.I)
+
+
+def collar_extra(lineas):
+    """La línea («MM-DD HH:MM V(quién): …») en la que el equipo le ofreció un collar amuleto extra, o None."""
+    for l in lineas or []:
+        if " C: " in l[:22]:
+            continue
+        if RE_COLLAR_EXTRA.search(RE_KIT_NORMAL.sub(" ", l)):
+            return l
+    return None
+
+
+TEXTO_COLLAR = "+ 1 COLLAR AMULETO EXTRA (se le ofreció en el chat)"
+
+
 # Para saber si el `empaque` ya cubre la promesa.
 COSAS = ["collar", "dije", "mazo", "oráculo", "oraculo", "carta", "pulsera", "bolsita", "tapete", "cristal",
          "piedra", "vela", "incienso", "sahumerio", "amuleto"]
@@ -57,7 +79,10 @@ def nueve(wa):
 
 
 def es_promesa(texto):
-    t = re.sub(r"\s+", " ", str(texto or ""))
+    t = RE_KIT_NORMAL.sub(" ", re.sub(r"[ \t]+", " ", str(texto or "")))
+    t = re.sub(r"\s+", " ", t)
+    if RE_COLLAR_EXTRA.search(t):
+        return True
     if not RE_PROMESA.search(t):
         return False
     # Solo "gratis" por el envío gratis no es promesa de producto.

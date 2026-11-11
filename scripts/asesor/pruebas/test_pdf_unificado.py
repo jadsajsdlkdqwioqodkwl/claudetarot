@@ -77,4 +77,9 @@ with tempfile.TemporaryDirectory() as d:
 import enviar as _e
 _p = {"estado": "POR_VERIFICAR", "destino": "PROVINCIA", "nota": "Pedido de la web de ayer sin chat; falta confirmar agencia, DNI y adelanto S/20", "pago": "Pedido web S/95; sin pago visto"}
 assert not _e.promover_provincia(_p) and _p["estado"] == "POR_VERIFICAR", "«falta … adelanto» no es adelanto visto"
+import promesas as _pr
+_of = "11-09 15:50 V(Seguimiento automático): Hola, bell@ Si aún desea aprovechar la promoción, *separando tu pedido HOY* le obsequiaremos además un 🎁 *COLLAR AMULETO de carta de Tarot EXTRA* adicional al que ya viene con su Kit"
+assert _pr.es_promesa(_of) and _pr.collar_extra([_of]), "el collar amuleto EXTRA de los seguimientos se detecta"
+assert not _pr.es_promesa("está en *S/89 todo el kit* Le incluye el mazo completo de 78 cartas con los significados, además incluye manual y los *regalos adicionales*"), "el mensaje de precio (kit normal) no es promesa"
+assert not _pr.collar_extra(["11-09 10:00 C: quiero otro collar"]), "lo que pide el cliente no es una oferta del equipo"
 print("OK: PDF unificado de pedidos y ventas; ventas y pedidos intactos")

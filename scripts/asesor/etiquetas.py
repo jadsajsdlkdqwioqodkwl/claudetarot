@@ -92,7 +92,7 @@ def olva_de_hoja(recojo):
         cand = ov.buscar(str(f.get("direccion_o_agencia") or ""))
         a = cand[0] if cand else {}
         dni = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
-        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "empaque": empaque_shalom(f.get("kits"), f.get("empaque")), "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
+        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "empaque": con_collar_extra(empaque_shalom(f.get("kits"), f.get("empaque")), wa), "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
                     "despacho": recojo, "_seguro": bool(a and a.get("seguro")), "_origen": origen})
     est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
     for f in ((est.get("estado") or {}).get("pedidos") or []):
@@ -126,7 +126,7 @@ def shalom_de_hoja(recojo):
         dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
         cod = re.search(r"c[oó]d\.?\s*:?\s*([A-Z0-9]{4})\b", env_, re.I)
         kits = str(f.get("kits") or "1").strip()
-        empaque = empaque_shalom(kits, f.get("empaque"))
+        empaque = con_collar_extra(empaque_shalom(kits, f.get("empaque")), f.get("whatsapp"))
         out.append({"orden": m.group(1), "codigo": cod.group(1).upper() if cod else "", "despacho": recojo, "empaque": empaque, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
                     "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
                     "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
@@ -172,6 +172,26 @@ def detalle_lima(d):
     return ". ".join(x for x in (linea, nota_motorizado(obs, d.get("telefono"))) if x)
 
 
+_PROMESAS = None
+
+
+def con_collar_extra(empaque, *telefonos):
+    """Si al cliente se le ofreció en el chat un collar amuleto EXTRA (seguimientos del equipo), la etiqueta lo dice (dueño
+    2026-11-11, caso Alicia): «+ 1 COLLAR AMULETO EXTRA». Se mira al imprimir, así también vale para lo ya registrado."""
+    global _PROMESAS
+    import promesas as prom
+    if _PROMESAS is None:
+        _PROMESAS = prom.traer(os.environ.get("ASESOR_CLAVE", ""), 30) if os.environ.get("ASESOR_CLAVE") else {}
+    emp = str(empaque or "")
+    if re.search(r"collar[^·]*(extra|adicional)|(extra|adicional)[^·]*collar", emp, re.I):
+        return emp
+    for t in telefonos:
+        k = prom.nueve(t)
+        if k and prom.collar_extra(_PROMESAS.get(k)):
+            return (emp + " " if emp else "") + prom.TEXTO_COLLAR
+    return emp
+
+
 def empaque_shalom(kits, empaque=""):
     """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): 1 kit normal,
     «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
@@ -200,7 +220,7 @@ def completar_empaque_shalom(items, recojo):
         if d.get("empaque"):
             continue
         f = por_dni.get(str(d.get("doc") or d.get("dni") or ""), {})
-        d["empaque"] = empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else "")
+        d["empaque"] = con_collar_extra(empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else ""), (f or {}).get("whatsapp"), d.get("telefono"))
 
 
 # ---------- dibujo ----------
@@ -253,7 +273,7 @@ def etiqueta_lima(c, x0, yb, d):
     # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie (del producto de Dinsides: «Kit Tarot de
     # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).
     paq = re.search(r"Paquete:\s*([^.]+)", obs)
-    empaque = (paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip()
+    empaque = con_collar_extra((paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip(), d.get("_whatsapp"), d.get("telefono"))
     # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
     lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
     pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
