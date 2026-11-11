@@ -43,7 +43,7 @@ Recetas: solo las filas que indica INSTR 06 para tu comando (la pestaña tiene s
 |---|---|---|
 | ALIBABA | Tandas de 4 filas, un subagente tras otro (comparten el Chrome) | `Recetas!D36` + `E30` (scripts) |
 | FILTRA | Tandas de 4 productos, hasta 3 a la vez (Meta MCP y Firecrawl no comparten navegador) | `Recetas!D37` |
-| RANKEA | Principal hace el triage; hasta 3 subagentes puntúan tandas de 8 grupos | INSTR 06 §3.2 |
+| RANKEA | Principal hace solo el triage; hasta 3 subagentes pre-chequean y puntúan tandas de 8 grupos (por defecto) | `Recetas!D39` + INSTR 03 |
 | BUSCA | **Sin subagentes**: dos subagentes en PiPiAds pagarían los mismos productos dos veces | — |
 
 Reglas de tanda: el subagente escribe solo las celdas de **sus** filas en Productos y devuelve una línea por producto; el principal escribe Chequeo Meta, Excluidos, Sesiones y Mejoras en lote y asigna los IDs.
