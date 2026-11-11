@@ -280,9 +280,12 @@ export function indicacionesDeDireccion(direccion) {
 }
 
 /** «Escribir al cliente por WhatsApp: 9XXXXXXXX (o 9YYYYYYYY)»: el WhatsApp del chat y, si es otro, el teléfono de quien recibe. */
-export function lineaWhatsapp(whatsapp, telefono = "") {
+export function lineaWhatsapp(whatsapp, telefono = "", username = "") {
   const wa = String(whatsapp || "").replace(/\D/g, "").slice(-9);
-  const nums = [...new Set([/^9\d{8}$/.test(wa) && !/^PE\./i.test(String(whatsapp || "")) ? wa : "", /^9\d{8}$/.test(String(telefono)) ? String(telefono) : ""].filter(Boolean))];
+  const nums = [...new Set([/^9\d{8}$/.test(wa) && !/^[A-Z]{2}\./i.test(String(whatsapp || "")) ? wa : "", /^9\d{8}$/.test(String(telefono)) ? String(telefono) : ""].filter(Boolean))];
+  // Cliente con nombre de usuario de WhatsApp (dueño 2026-11-11): también su @usuario, que es como se le encuentra en WhatsApp.
+  const arroba = String(username || "").replace(/^@/, "").trim();
+  if (arroba) nums.push(`@${arroba}`);
   return nums.length ? `Escribir al cliente por WhatsApp: ${nums.join(" o ")}` : "";
 }
 
@@ -485,7 +488,7 @@ export function armarPedido(pedido, ctx = {}) {
   // Lo importante para el motorizado que quedó escrito en la DIRECCIÓN (la etiqueta no imprime la dirección): «dejar en recepción»,
   // «portería», «avisar al dpto 102», «tocar el timbre B»… también va al Detalle (dueño 2026-11-11).
   const deDireccion = indicacionesDeDireccion(direccion).filter((x) => !normalizar(operativo).includes(normalizar(x)));
-  const obs = [lineaWhatsapp(p.whatsapp, telefono), [operativo, ...deDireccion].filter(Boolean).join(". "), paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
+  const obs = [lineaWhatsapp(p.whatsapp, telefono, p.username), [operativo, ...deDireccion].filter(Boolean).join(". "), paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

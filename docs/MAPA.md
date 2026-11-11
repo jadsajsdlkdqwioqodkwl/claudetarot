@@ -2607,3 +2607,32 @@ WhatsApp» con el número; faltaba EMPAQUE en Olva y un botón de actualizar en 
 - **Etiquetas:** «1 kit completo» en lugar de «1 kit normal».
 - **Arroba de WhatsApp (clientes sin número):** el webhook ya lee `profile.username` y `obtenerOCrearContacto` lo guardaría, pero la
   tabla `contacts` de producción no tiene las columnas `user_id` / `username` (migración 0077 sin aplicar): hoy no se guarda.
+
+## 2026-11-11 (05:00–06:00) — Migración 0077 aplicada, @usuario en el Detalle y auditoría del webhook de WhatsApp contra la documentación oficial
+
+A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usuario y nadie me lo dijo; revisa cualquier punto ciego»).
+- **Migración 0077 aplicada a producción** (API de D1, con permiso del dueño): `contacts.user_id`, `contacts.username`,
+  `idx_contacts_user_id`, `webhook_errores.payload`. Desde ahora se guarda el @usuario y el id de negocio de cada cliente, y todo
+  mensaje que falle queda ENTERO en `webhook_errores.payload` (antes solo quedaba el error).
+- **@usuario en la etiqueta:** `lineaWhatsapp(whatsapp, telefono, username)` → «Escribir al cliente por WhatsApp: 9… o @usuario»;
+  `datosDelChat` trae `username`.
+- **Auditoría del webhook** (doc. oficial: developers.facebook.com → WhatsApp → Webhooks «overview», «messages» y «Business-scoped
+  user IDs», actualizadas el 2026-11-04). Datos mirados: `webhook_errores` (309 filas, todas del 1 al 10/11: 255 «sin número» + 54
+  `D1_TYPE_ERROR` con `wa_id` nulo, que son el mismo problema; ninguna después del arreglo del 10/11 20:04 UTC) y los estados de lo
+  enviado. Huecos cerrados en `src/api/whatsapp-webhook.js`:
+  1. **Campos del webhook que no son `messages` ni `calls` se descartaban en silencio.** Ahora `procesarOtroCampo`: guarda el último
+     de cada tipo en `crm_settings` (`webhook_campo_<campo>`) y manda a Telegram los de cuenta (alertas, infracciones, plantilla
+     rechazada / pausada / recategorizada, calidad y límite del número, seguridad). `user_preferences` (baja o alta de marketing)
+     etiqueta el chat `no_marketing`. Solo llegan los campos a los que la app está suscrita en Meta (pendiente: verificarlo en el
+     panel; el token de Meta vive en el Worker).
+  2. **Respuestas interactivas que no eran botón ni lista entraban como texto vacío** (formulario `nfm_reply`, permiso de llamada):
+     ahora entran con su contenido. Un tipo de mensaje desconocido ya no entra vacío.
+  3. **El perfil del remitente se tomaba siempre de `contacts[0]`**: en un aviso con mensajes de varias personas, el nombre y el
+     @usuario podían ser de otro. Ahora se cruza por `wa_id` / `user_id`.
+  4. **Producto del catálogo desde el que escribió** (`context.referred_product`): se agrega al mensaje.
+  5. **@usuario e id de negocio también desde los avisos de entregado / leído**, y el error 131050 («el cliente eligió no recibir
+     marketing») etiqueta el chat `no_marketing`.
+- **Hallazgos que NO son del webhook (salientes, 1–10/11):** 884 plantillas no entregadas por el límite de marketing por usuario de
+  Meta (131049), 470 por el problema de pago (resuelto el 7/11), 118 «número en un experimento» (130472), 20 fuera de la ventana de
+  24 h, 17 no entregables, 6 bajas de marketing. Y 10 de 445 archivos entrantes (fotos, audios) sin descargar. Pendientes de decidir.
+- El arranque del Project / Routine de envíos NO cambió: sigue leyendo `docs/envios-jennifer.md` de `main`.

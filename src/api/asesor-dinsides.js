@@ -76,7 +76,7 @@ async function datosDelChat(env, whatsapp) {
   const wa = n9(whatsapp);
   if (!wa) return null;
   const conv = await env.CRM_DB.prepare(
-    `SELECT conv.id, conv.assigned_agent, conv.meta_tags, c.wa_id, COALESCE(c.name, c.profile_name, '') AS nombre
+    `SELECT conv.id, conv.assigned_agent, conv.meta_tags, c.wa_id, c.username, COALESCE(c.name, c.profile_name, '') AS nombre
      FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE substr(c.wa_id, -9) = ? ORDER BY conv.id DESC LIMIT 1`
   ).bind(wa).first();
   if (!conv) return null;
@@ -90,7 +90,7 @@ async function datosDelChat(env, whatsapp) {
     .filter((b) => b.length >= 8 && (DIRECCION_RE.test(b) || /maps\.|goo\.gl|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/i.test(b)))
     .reverse().slice(-6).map((b) => b.slice(0, 220));
   return {
-    conversation_id: conv.id, asesora: conv.assigned_agent || "", nombre_crm: conv.nombre, etiquetas: conv.meta_tags || "",
+    conversation_id: conv.id, asesora: conv.assigned_agent || "", nombre_crm: conv.nombre, etiquetas: conv.meta_tags || "", username: conv.username || "",
     ubicacion: pin?.body || "", ubicacion_cuando: pin?.created_at || "", direcciones_chat: direcciones,
     ya_etiquetado: / dinsides_registrado /.test(` ${conv.meta_tags || ""} `)
   };
@@ -238,7 +238,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     const col = leerColumnaDinsides(fila?.dinsides);
     const corr = correcciones.get(k) || {};
     const base = {
-      ...p, nombre: corr.nombre || p.nombre || chat?.nombre_crm || "", ubicacion: chat?.ubicacion || "",
+      ...p, nombre: corr.nombre || p.nombre || chat?.nombre_crm || "", ubicacion: chat?.ubicacion || "", username: chat?.username || "",
       direccion_o_agencia: corr.direccion || col.direccion || (fila?.direccion_o_agencia && fila.direccion_o_agencia !== p.direccion_o_agencia && fila.actualizado > (p.actualizado || "") ? fila.direccion_o_agencia : p.direccion_o_agencia),
       distrito: corr.distrito || col.distrito || p.distrito || "", coordenadas: corr.coordenadas || col.coordenadas || p.coordenadas || "",
       telefono: corr.telefono || p.telefono || "", cobrar: corr.cobrar ?? p.cobrar, tipo_pago: corr.tipo_pago || p.tipo_pago,
@@ -273,7 +273,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     if (fichas.some((f) => n9(f.whatsapp) === k) || !(corr.direccion || corr.distrito || corr.nombre)) continue;
     const chat = await datosDelChat(env, k).catch(() => null);
     const base = { whatsapp: "51" + k, nombre: corr.nombre || chat?.nombre_crm || "", direccion_o_agencia: corr.direccion || "", distrito: corr.distrito || "",
-      coordenadas: corr.coordenadas || "", ubicacion: chat?.ubicacion || "", telefono: corr.telefono || "", cobrar: corr.cobrar, tipo_pago: corr.tipo_pago,
+      coordenadas: corr.coordenadas || "", ubicacion: chat?.ubicacion || "", username: chat?.username || "", telefono: corr.telefono || "", cobrar: corr.cobrar, tipo_pago: corr.tipo_pago,
       nota: corr.nota || "", fecha_entrega: corr.fecha_entrega || "", kits: corr.kits, empaque: corr.empaque, estado: corr.estado || "CONFIRMADO", destino: "LIMA" };
     const f = armarPedido(base, { fecha_objetivo: fechaObjetivo });
     f.whatsapp = "51" + k; f.conversation_id = chat?.conversation_id || null; f.asesora = chat?.asesora || ""; f.origen = "routine"; f.estado_reporte = base.estado;
