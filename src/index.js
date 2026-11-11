@@ -22,6 +22,8 @@ import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
 import { onRequestGet as waWebhookGet, onRequestPost as waWebhookPost } from "./api/whatsapp-webhook.js";
+import { onRequestGet as metaWebhookGet, onRequestPost as metaWebhookPost } from "./api/meta-webhook.js";
+import { onRequestGet as crmRedesGet, onRequestPatch as crmRedesPatch, onRequestPost as crmRedesPost } from "./api/crm/redes.js";
 import { onRequestPost as crmLogin } from "./api/crm/login.js";
 import { onRequestPost as crmLogout } from "./api/crm/logout.js";
 import { onRequestGet as crmSession } from "./api/crm/session.js";
@@ -164,6 +166,8 @@ const ROUTES = {
   "/api/seguimiento": { GET: seguimiento },
 
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
+  "/api/meta/webhook": { GET: metaWebhookGet, POST: metaWebhookPost },
+  "/api/crm/redes": { GET: crmRedesGet, PATCH: crmRedesPatch, POST: crmRedesPost },
   // El mismo webhook en otra URL, para la cuenta de WhatsApp de otra marca
   // (override_callback_uri): un destino nuevo no hereda la cola que Meta
   // frena tras rechazos viejos.

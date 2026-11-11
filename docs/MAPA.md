@@ -2653,3 +2653,16 @@ A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usu
 - **Routines:** no se cambió ningún prompt de Routine. Las dos del reporte (`trig_01MMWTgBTQ8aD1M1QM1xxGEc` 21:45 · 23:45 y
   `trig_01CwAvLG544pJd3FkAGu9Pf7` 22:30) y la de envíos (`trig_01Fq74icnRhUnmQ4SoJvcrh7`) solo llevan el arranque que sincroniza
   `main` y lee `docs/prompts/reporte.md` / `docs/envios-jennifer.md`: los cambios de hoy entran solos.
+
+## 2026-11-11 — Respuesta automática a comentarios de Facebook e Instagram
+- Comentario con palabra clave → respuesta pública («¡Hola! ✨ Te envíe los detalles 📩📩») + UN mensaje privado (private
+  reply) con la info del kit, la web y el WhatsApp; si después escribe por DM, la foto del kit una vez
+  (`public/redes/kit-tarot.jpg`). Gratis (Messenger/IG no cobran por mensaje). Detalle, límites de Meta y pasos de
+  conexión en `docs/redes.md`.
+- Código: `src/lib/redes.js` (lógica), `src/api/meta-webhook.js` (`GET/POST /api/meta/webhook`, firma con
+  `firmaValida`, que ahora también acepta `META_APP_SECRET`), `src/api/crm/redes.js` (`/api/crm/redes`, solo admin),
+  panel en Herramientas. Token de la página, clave de la app y token de verificación se guardan desde el panel
+  (`crm_settings`), así el dueño no entra a Cloudflare; nunca se devuelven al navegador.
+- Migración `0078_redes_comentarios.sql` aplicada en D1 el 2026-11-11. Prueba: `scripts/test-redes.mjs` (en `npm run check`).
+- **Pendiente del dueño:** conectar la página (token con permisos, webhooks de la app, revisión de Meta para acceso
+  avanzado). Hasta entonces no se responde nada.
