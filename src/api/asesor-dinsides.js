@@ -96,6 +96,27 @@ async function datosDelChat(env, whatsapp) {
   };
 }
 
+/**
+ * Otros teléfonos que aparecen en el chat del cliente (contacto compartido, «llamen al 9…», el número de quien recibe). El equipo
+ * registra en Dinsides con el teléfono de quien recibe, y la fila de la hoja va por el WhatsApp del cliente (dueño 2026-11-11, caso
+ * Claudia de Blue Day Spa: estaba ENTREGADO a nombre de Flor, con el número del contacto que compartió).
+ */
+async function telefonosDelChat(env, whatsapp) {
+  const wa = n9(whatsapp);
+  if (!wa) return [];
+  try {
+    const { results } = await env.CRM_DB.prepare(
+      `SELECT m.body FROM messages m JOIN conversations conv ON conv.id = m.conversation_id JOIN contacts c ON c.id = conv.contact_id
+       WHERE substr(c.wa_id, -9) = ? AND m.direction = 'in' AND m.type IN ('contacts', 'text') AND m.created_at >= ? ORDER BY m.id DESC LIMIT 200`
+    ).bind(wa, sqlFecha(new Date(Date.now() - 30 * 86400000))).all();
+    const tels = new Set();
+    for (const m of results || []) {
+      for (const x of String(m.body || "").matchAll(/(?:\+?51[\s-]?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})(?!\d)/g)) { const t = n9(x[1]); if (t && t !== wa) tels.add(t); }
+    }
+    return [...tels].slice(0, 8);
+  } catch (err) { console.error("dinsides telefonosDelChat:", err.message); return []; }
+}
+
 /** Pedidos de Lima para esa fecha de entrega: registro del reporte (pedidos-estado) + filas de la hoja «Pedidos auto». */
 async function pedidosDelSistema(env, fecha) {
   const estado = await leerJson(env, `pedidos-estado/${fecha}.json`, null);
@@ -156,11 +177,11 @@ const tokensNombre = (n) => normalizar(n).replace(/\(.*?\)/g, " ").split(/[^a-z0
  * del negocio. Si ya está, no se crea otro: se devuelve como ya_registrado («en Dinsides») con su id y su fecha, y se avisa si la
  * fecha es otra (reagendado) para que la Routine lo diga y, si hace falta, use `editar`.
  */
-function cruzarConDinsides(f, abiertos) {
+function cruzarConDinsides(f, abiertos, otrosTelefonos = []) {
   if (!abiertos?.length) return null;
   const tel = n9(f.campos?.telefono) || n9(f.whatsapp);
   const wa = n9(f.whatsapp);
-  let m = abiertos.find((x) => x.telefono === tel || x.telefono === wa);
+  let m = abiertos.find((x) => x.telefono === tel || x.telefono === wa) || abiertos.find((x) => otrosTelefonos.includes(x.telefono));
   let por = "teléfono";
   if (!m) {
     const mios = tokensNombre(f.campos?.nombre || "");
@@ -209,6 +230,9 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     const k = n9(p.whatsapp);
     const destino = String(p.destino || "").toUpperCase();
     if (destino === "PROVINCIA") continue;
+    // Reposiciones y cambios los despacha un equipo aparte, no Dinsides (dueño 2026-11-11): no son fichas ni van a la revisión de
+    // envíos; quedan en el reporte «Saldos y reposiciones» del dueño.
+    if (/^(REPOSICION|REPOSICIÓN|CAMBIO)$/i.test(String(p.tipo || ""))) continue;
     const chat = await datosDelChat(env, k).catch(() => null);
     const fila = hoja.get(k);
     const col = leerColumnaDinsides(fila?.dinsides);
@@ -234,7 +258,7 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     if (!destino) f.bloqueos.unshift("DESTINO sin definir en el reporte: confirmar que es Lima");
     if (col.omitir) f.bloqueos.unshift(`La hoja dice «${col.omitir}»: no se registra`);
     const ya = registradosPorWa.get(k) || (idx[k] && Math.abs(new Date(idx[k].fecha) - new Date(fecha)) <= 3 * 86400000 ? idx[k] : null);
-    const cruce = cruzarConDinsides(f, abiertos);
+    const cruce = cruzarConDinsides(f, abiertos, ya || col.hecho ? [] : await telefonosDelChat(env, k));
     if (reanulados.includes(k)) f.alertas.push("ESTABA REGISTRADO pero en Dinsides figura ANULADO (lo anuló el equipo): vuelve a estar pendiente; con el OK se registra de nuevo");
     if (col.hecho) f.ya_registrado = { modo: "manual (hoja)", detalle: col.hecho };
     else if (ya) f.ya_registrado = { modo: ya.modo, cuando: ya.cuando, fecha: ya.fecha || fecha, nro: ya.nro || "" };
@@ -282,7 +306,20 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
       const alt = n9(m[1]); if (alt && alt !== k) (porTel.get(alt) || porTel.set(alt, []).get(alt)).push(f);
     }
   }
-  const resumen = { entregados: [], anulados: [], rechazados: [], pendientes: [], otros: [], sin_fila_en_hoja: [], marcados: 0, etiquetados: 0 };
+  // Filas ABIERTAS: además, los teléfonos que aparecen en su chat (contacto compartido, número de quien recibe) y lo que la nota ya
+  // dice que salió por motorizado externo (dueño 2026-11-11: Claudia/Flor y Carmen salían como «sin despachar»).
+  const abiertas = hoja.filter((f) => !String(f.enviado || "").trim() && n9(f.whatsapp)).slice(-80);
+  const cerradasPorNota = [];
+  for (const f of abiertas) {
+    const k = n9(f.whatsapp);
+    if (marcar && /motorizado (externo|de confianza)|indrive|in drive/i.test(String(f.nota || "")) && /entregad|se entreg[oó]|ya (sali[oó]|se envi[oó])/i.test(String(f.nota || ""))) {
+      await marcarDinsidesEnHoja(env, f.whatsapp, f.dinsides || "motorizado externo (según la nota)", `Motorizado externo ${f.fecha_entrega || ""}`.trim()).catch(() => null);
+      cerradasPorNota.push({ nombre: f.nombre, whatsapp: f.whatsapp, fila: f.fila, motivo: "motorizado externo (según la nota)" });
+      continue;
+    }
+    for (const alt of await telefonosDelChat(env, k)) if (!(porTel.get(alt) || []).includes(f)) (porTel.get(alt) || porTel.set(alt, []).get(alt)).push(f);
+  }
+  const resumen = { entregados: [], anulados: [], rechazados: [], pendientes: [], otros: [], sin_fila_en_hoja: [], marcados: cerradasPorNota.length, etiquetados: 0, cerradas_por_nota: cerradasPorNota };
   for (const ped of lista) {
     const clase = claseSeguimiento(ped.seguimiento);
     // Un pedido anulado no marca la fila si ese mismo teléfono tiene otro pedido vigente para la misma entrega (duplicado anulado).
@@ -291,14 +328,24 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
       continue;
     }
     const filas = porTel.get(ped.telefono) || [];
-    const fila = filas.find((f) => f.fecha_entrega === ped.fecha_entrega) || filas.find((f) => !f.enviado) || filas[filas.length - 1] || null;
+    // La fila cuyo WhatsApp ES el teléfono de Dinsides manda sobre las que solo lo mencionan en su chat o en su nota.
+    const propias = filas.filter((f) => n9(f.whatsapp) === ped.telefono);
+    // Una fila que solo menciona ese teléfono (chat o nota) vale si su venta no es posterior al registro en Dinsides: así un pedido
+    // viejo entregado al contacto compartido no cierra una compra nueva del mismo cliente.
+    const cand = propias.length ? propias : filas.filter((f) => !f.fecha_venta || !ped.fecha_pedido || String(f.fecha_venta).slice(0, 10) <= String(ped.fecha_pedido).slice(0, 10));
+    const fila = cand.find((f) => f.fecha_entrega === ped.fecha_entrega) || cand.find((f) => !f.enviado) || cand[cand.length - 1] || null;
     const item = { id_pedido: ped.id_pedido, nombre: ped.nombre, telefono: ped.telefono, distrito: ped.distrito, fecha_entrega: ped.fecha_entrega, seguimiento: ped.seguimiento,
-      monto: ped.monto_cobrar, fila_hoja: fila?.fila || null, dinsides_hoja: fila?.dinsides || "" };
+      monto: ped.monto_cobrar, fila_hoja: fila?.fila || null, dinsides_hoja: fila?.dinsides || "", whatsapp_hoja: fila?.whatsapp || "" };
     (resumen[{ entregado: "entregados", anulado: "anulados", rechazado: "rechazados", pendiente: "pendientes" }[clase] || "otros"]).push(item);
     if (!fila) { if (clase !== "anulado") resumen.sin_fila_en_hoja.push(item); continue; }
     if (!marcar) continue;
     const yaDice = String(fila.dinsides || "").toLowerCase();
-    if (clase === "entregado" && !/entregado/.test(yaDice)) {
+    if (clase === "pendiente" && !String(fila.enviado || "").trim() && !yaDice.includes(`#${ped.id_pedido}`)) {
+      // Ya está registrado en Dinsides (en su almacén o por recoger) y la fila sigue abierta: típico de un agendado que el reporte
+      // volvió a escribir. Se cierra para que no salga como pendiente (dueño 2026-11-11, caso Sandra: «ya estaba registrada»).
+      await marcarDinsidesEnHoja(env, fila.whatsapp, `registrado #${ped.id_pedido} (entrega ${ped.fecha_entrega})`, `Dinsides ${ped.fecha_entrega}`).catch(() => null);
+      resumen.marcados++;
+    } else if (clase === "entregado" && (!/entregado/.test(yaDice) || !String(fila.enviado || "").trim())) {
       await marcarDinsidesEnHoja(env, fila.whatsapp, `entregado ${ped.fecha_entrega} #${ped.id_pedido}`, `Dinsides entregado ${ped.fecha_entrega}`).catch(() => null);
       resumen.marcados++;
       const chat = await datosDelChat(env, ped.telefono).catch(() => null);
@@ -310,7 +357,8 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
       // Routine lo vuelvan a ver (dueño 2026-11-09: «si está anulado hay que reagendarlo, debe reflotar»). Solo cierra la fila lo que el
       // cliente rechazó o no quiso.
       const porTienda = /POR TIENDA/i.test(String(ped.seguimiento || ""));
-      const cerrar = !porTienda && fila.fecha_entrega === ped.fecha_entrega && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
+      const cerca = Math.abs(new Date(fila.fecha_entrega || ped.fecha_entrega) - new Date(ped.fecha_entrega)) <= 3 * 86400000; // la fila puede decir un día antes o después
+      const cerrar = !porTienda && cerca && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
       const texto = /anulado|rechazado/.test(yaDice) ? fila.dinsides : `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}${porTienda ? " → sigue pendiente: volver a registrar si el pedido sigue vigente" : ""}`;
       if (!/anulado|rechazado/.test(yaDice) || cerrar) {
         await marcarDinsidesEnHoja(env, fila.whatsapp, texto, cerrar).catch(() => null);

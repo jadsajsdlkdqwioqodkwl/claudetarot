@@ -5,6 +5,13 @@
  * POST /api/asesor/revision          (x-asesor-clave) { id, token, fecha, pedidos: [{ whatsapp, nombre, tipo }] } → crea el registro.
  * GET  /api/asesor/revision?id=      (x-asesor-clave) → { id, fecha, pedidos, notas: { whatsapp: { decision, texto, cuando } } }
  * POST /api/revision/nota            (público, con el token que lleva la página) { id, token, whatsapp, decision, texto } → guarda.
+ *
+ * LINK FIJO POR DÍA (dueño 2026-11-11: «esta revisión es fija; si la quiere actualizar pierde su progreso»):
+ * POST /api/asesor/revision { dia: true, fecha, pedidos }            → crea o reutiliza la revisión `envios-FECHA` (mismo token y mismo
+ *      link todo el día), conserva las notas (van por WhatsApp del pedido, no por página) y dice cuáles pedidos son NUEVOS.
+ * POST /api/asesor/revision { dia: true, fecha, pagina: "<id>.html" } → apunta el link fijo a la última página generada.
+ * GET  /r/envios-FECHA-<clave>   (público, clave imposible de adivinar) → sirve esa última página (reportes.js → paginaDelDia).
+ * POST /api/revision/nota { …, leer: true }                           → las notas guardadas (la página las pinta al abrir).
  * Nada de esto escribe a clientes ni registra pedidos: solo guarda lo que la persona marcó. Memoria: R2 revision/<id>.json.
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
@@ -20,11 +27,49 @@ export async function onRequestPostRevision({ request, env }) {
   if (!(await dentroDelLimiteAsesor(env, request.headers.get("CF-Connecting-IP")))) return json({ error: "Demasiados intentos." }, 429);
   if (!(await autorizadoAsesor(request, env))) return json({ error: "No autorizado." }, 401);
   const p = await request.json().catch(() => null);
+  if (p?.dia) return revisionDelDia(request, env, p);
   const id = String(p?.id || "").replace(/\.html$/, "");
   if (!RE_ID.test(id) || !p?.token || !Array.isArray(p?.pedidos)) return json({ error: "Faltan id, token o pedidos." }, 400);
   const prev = (await leer(env, id).catch(() => null)) || {};
   await escribir(env, id, { id, token: String(p.token), fecha: p.fecha || "", creado: prev.creado || ahoraLima(), pedidos: p.pedidos.slice(0, 200), notas: prev.notas || {} });
   return json({ ok: true, id });
+}
+
+const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const n9 = (v) => String(v || "").replace(/\D/g, "").slice(-9);
+
+/** Revisión única del despacho de una fecha: mismo link y mismas notas aunque la página se regenere diez veces. */
+async function revisionDelDia(request, env, p) {
+  const fecha = String(p.fecha || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta fecha AAAA-MM-DD." }, 400);
+  const id = `envios-${fecha}`;
+  const prev = (await leer(env, id).catch(() => null)) || null;
+  const d = prev || { id, fecha, token: hex(18), clave: hex(8), creado: ahoraLima(), pedidos: [], notas: {}, vistos: {} };
+  d.vistos = d.vistos || {};
+  let nuevos = [];
+  if (Array.isArray(p.pedidos)) {
+    const ped = p.pedidos.slice(0, 200);
+    // NUEVO = no estaba en ninguna versión anterior de la página de hoy (en la primera versión nada es «nuevo»).
+    nuevos = prev ? ped.filter((x) => n9(x.whatsapp) && !d.vistos[n9(x.whatsapp)]).map((x) => String(x.whatsapp)) : [];
+    for (const x of ped) if (n9(x.whatsapp) && !d.vistos[n9(x.whatsapp)]) d.vistos[n9(x.whatsapp)] = ahoraLima();
+    d.pedidos = ped;
+    d.versiones = (d.versiones || 0) + 1;
+  }
+  if (p.pagina && /^[a-z0-9-]{8,120}\.html$/.test(String(p.pagina))) d.pagina = String(p.pagina);
+  d.actualizado = ahoraLima();
+  await escribir(env, id, d);
+  return json({ ok: true, id, token: d.token, notas: d.notas || {}, nuevos, versiones: d.versiones || 1, url: `${new URL(request.url).origin}/r/${id}-${d.clave}` });
+}
+
+/** GET /r/envios-FECHA-<clave>: la última página de revisión de ese despacho (la llama reportes.js). */
+export async function paginaDelDia(env, ruta) {
+  const m = /^(envios-\d{4}-\d{2}-\d{2})-([a-f0-9]{16})$/.exec(String(ruta || ""));
+  if (!m || !env.CRM_MEDIA) return null;
+  const d = await leer(env, m[1]).catch(() => null);
+  if (!d || d.clave !== m[2] || !d.pagina) return null;
+  const obj = await env.CRM_MEDIA.get(`reportes/${d.pagina}`);
+  if (!obj) return null;
+  return new Response(obj.body, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
 }
 
 export async function onRequestGetRevision({ request, env }) {
@@ -47,6 +92,7 @@ export async function onRequestPostNota({ request, env }) {
   if (!RE_ID.test(id) || !p?.token) return json({ error: "Faltan id o token." }, 400);
   const d = await leer(env, id);
   if (!d || d.token !== String(p.token)) return json({ error: "Revisión no válida." }, 403);
+  if (p.leer) return json({ ok: true, notas: d.notas || {}, actualizado: d.actualizado || d.creado || "" });
   const wa = String(p.whatsapp || "").replace(/\D/g, "");
   if (!wa) return json({ error: "Falta whatsapp." }, 400);
   const decision = ["ok", "correccion", "no_va", "ya_enviado", "pendiente", ""].includes(String(p.decision || "")) ? String(p.decision || "") : "";

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import control_ventas as cv
 
 API = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/ventas-estado"
-CLAVES_LISTA = ("incidencias", "no_cuentan", "sin_marcar_compra", "lineas_revisadas", "descartados")
+CLAVES_LISTA = ("incidencias", "no_cuentan", "sin_marcar_compra", "lineas_revisadas", "descartados", "saldos")  # saldos: se suman en la noche para el reporte del dueño (2026-11-11)
 
 
 def _pedir(clave, fecha, cuerpo=None):

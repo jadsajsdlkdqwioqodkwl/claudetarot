@@ -1,4 +1,4 @@
-# Prompt de la Routine «Reporte de pedidos y ventas» (v2, 2026-11-09)
+# Prompt de la Routine «Reporte de pedidos y ventas» (v3, 2026-11-11; v2 del 2026-11-09)
 
 > FUENTE DE VERDAD del prompt. La Routine solo lleva el «arranque» de abajo; en cada corrida clona o actualiza el repo y lee
 > este archivo. Cambiar el reporte = editar este archivo (y anotarlo en `docs/MAPA.md`); la Routine no se toca.
@@ -18,7 +18,7 @@ API de Claude. Lee cada archivo una sola vez. Borra /tmp/reporte/salida.json de 
 
 ## REPORTE DE PEDIDOS Y VENTAS (corridas 21:45 · 22:30 · 23:45, hora de Lima)
 
-Un solo reporte para Moi y Danitza: las VENTAS DE HOY (por vendedora) y los PEDIDOS QUE SALEN MAÑANA. Cada corrida de la noche
+Un solo reporte para Moi, Danitza y Jennifer: las VENTAS DE HOY (por vendedora) y los PEDIDOS QUE SALEN MAÑANA. Cada corrida de la noche
 suma a la anterior; la memoria (registro por fecha de despacho + pestaña «Pedidos auto» del libro «Pedidos Tarot Kit») la guarda
 el sistema, no tú.
 
@@ -26,6 +26,30 @@ el sistema, no tú.
 lo son y los que huelen a venta.** Cada chat de hoy con señal de compra termina en `pedidos` con algún estado (CONFIRMADO,
 POR_VERIFICAR, OTRO_DIA, INTENCION) o en DESCARTADO con motivo. Nunca descartes nada en silencio; nunca dejes un chat fuera por
 duda: la duda va en `nota` y el pedido sale igual.
+
+### LO QUE CAMBIÓ EL 2026-11-11 (v3, dueño): es un reporte de VENTAS, y mira el courier
+1. **Es un reporte de ventas** para Moi, Danitza y Jennifer: ventas de hoy por vendedora y pedidos por registrar. Ya no lleva la
+   sección «para el que empaca» (el empaque va impreso en cada etiqueta), ni incidencias, ni reposiciones o cambios.
+2. **Reposiciones, cambios, incidencias y saldos cobrados** los sigues reportando igual (`tipo` REPOSICION / CAMBIO, `incidencias`,
+   `saldos`), pero el sistema los saca del PDF del equipo y los manda en otro PDF, «Saldos y reposiciones», SOLO a Moi, una vez por
+   noche (corrida 23:45). Las reposiciones las despacha otro equipo, no Dinsides: nunca las pongas como pedido normal.
+3. **SALDOS: todo pago de saldo va en `saldos`**, lo pague quien lo pague y por donde sea (Yape, Plin, depósito o transferencia BCP,
+   un familiar, agente): `{whatsapp, nombre, codigo, monto, motivo}` con el monto visto y cómo pagó («depósito BCP 18:19, la
+   vendedora ya le dio la clave»). Caso real: César Augusto pagó S/69 por BCP y no salió en ningún reporte.
+4. **MIRA EL COURIER antes de decir que algo falta.** `preparar` trae `dinsides`: lo REGISTRADO por entregar (ya está en el almacén
+   de Dinsides o sale en el recojo), lo ENTREGADO y lo ANULADO o RECHAZADO, por teléfono. Un pedido que está ahí NO es pendiente, ni
+   «sin entregar», ni incidencia (caso real: Sandra, registrada el 10 para el 11, salió como «no entregada» y confundió a todos).
+   Ojo: Dinsides puede tener el teléfono de quien recibe (un contacto compartido en el chat), no el WhatsApp del cliente: búscalo
+   también por los otros números que aparecen en el chat. Un cliente con ANULADO en Dinsides no es venta pendiente salvo que haya
+   vuelto a pedir. El PDF lleva la columna «Envío» (la pone el sistema): tú no la escribes.
+5. **`nota` es SOLO para el motorizado**: cómo contactar (otro número, «escribir por WhatsApp»), a quién entregar, dónde dejarlo
+   (recepción, portería, piso), horario. NO pongas ahí pagos («ya pagó S/89», «paga en efectivo», «NO cobrar»: eso va en `pago`),
+   ni pines o coordenadas (la etiqueta va pegada a la caja), ni apuntes tuyos («confirmar, escribió dos versiones», «cliente sin
+   número en el CRM», horas en que escribió). Una duda que una persona debe resolver va como frase aparte que empiece con
+   «Confirmar: …» (el sistema la saca de la etiqueta y se la muestra a la asesora). Lo que se empaca va en `empaque`, con el NOMBRE
+   del producto cuando no es el kit («Cuenco tibetano 13 cm + mazo Tarot Rider Waite de aprendizaje»), nunca «reposición / cambio»
+   si es una venta.
+6. Provincia con 2 o más kits: viaja en UN paquete XS (lo calcula el sistema); tú solo pones `kits`.
 
 ### CRITERIO (liberal: lo verifica una persona)
 - CONFIRMADO Lima = el cliente pasó su dirección (calle y referencia, o pin).
@@ -82,19 +106,23 @@ NUNCA va como INTENCION ni DESCARTADO («ya había comprado»): su compra sigue 
    - EMPAQUE: el que empaca asume 1 kit normal. Todo lo distinto va en `empaque`: 2 kits, mazo u oráculo extra, otro modelo (Gold,
      Rider en español…), pedido del catálogo, collar o regalo prometido (líneas «📦 PROMETIDO» y mensajes V(auto: …) del día 7),
      lo que NO lleva (`kits: 0`, p. ej. «NO es kit: solo mazo Tarot Rider Waite de aprendizaje S/69»). Con precio cuando lo haya.
-   - NOTA: lo operativo para el que entrega (horario pedido, piso, portero, «llamar antes», discreción, «ya pagó») y lo que haya que
-     revisar. Lo que pida atención empieza con «🚨 ».
+   - NOTA: SOLO lo que necesita el motorizado para entregar (otro número de contacto, a quién entregar, piso, portero, «llamar
+     antes», horario pedido, discreción). Sin pagos, sin pin, sin apuntes internos (regla 5 de la v3, arriba). Lo que una persona
+     debe resolver: «Confirmar: …». Lo que pida atención empieza con «🚨 ».
    - CUADRE: cada candidato de `control.candidatos` debe estar en `pedidos`, en `no_cuentan` con motivo concreto, o ya en
      ya_registrado. Lo que no expliques sale arriba del PDF en rojo.
    - META **(v2)**: si es venta según el criterio y el `embudo` del chat NO tiene `purchase`, va en `sin_marcar_compra`. El sistema la
      marca como compra en el CRM y le avisa a Meta (permiso del dueño 2026-11-09): tú solo la listas con el motivo.
-   - Captura de pago del saldo (Shalom) → `saldos`. Nunca marques pagado tú.
+   - Pago del saldo (captura de Yape o Plin, voucher de depósito BCP, o la vendedora que le da la clave tras «ya pagué») → `saldos`,
+     con monto y cómo pagó. Sale en el reporte del dueño. Nunca marques pagado tú.
 4) `python3 scripts/asesor/reporte.py enviar /tmp/reporte/salida.json`. Lee lo que imprime: avisos ℹ️ (destino, fecha, «provincia
    con adelanto visto → CONFIRMADO»), «⚠️ VERIFICAR» (promesas sin poner en `empaque`), «suenan a bot», «🧹 Agenda» (lo que el
    sistema cerró solo) y «🛍️ Compras marcadas». Si hay que corregir, corrige salida.json y vuelve a mandar (como mucho 2 veces).
    Si el envío falla por el Worker: `python3 scripts/asesor/reporte.py aviso "qué falló, en una línea"` y termina.
-5) Respuesta final (máximo 8 líneas): corrida y fechas; ventas de hoy por vendedora (Lima / provincia); pedidos para mañana
-   (confirmados, en rojo por revisar, por verificar, otros días, intención); agenda pendiente; capturas miradas; cuadre con el CRM;
-   compras marcadas; link del PDF.
+   En la corrida de las 23:45 `enviar` arma además el PDF «Saldos y reposiciones» y lo manda solo a Moi (línea «REPORTE DEL DUEÑO»).
+   Si esa línea no sale en la última corrida de la noche: `python3 scripts/asesor/reporte.py enviar /tmp/reporte/salida.json --dueno`.
+5) Respuesta final (máximo 8 líneas): corrida y fechas; ventas de hoy por vendedora (Lima / provincia); pedidos por registrar
+   (confirmados, en rojo por revisar, por verificar, otros días, intención) y cuántos ya están registrados en el courier; saldos
+   cobrados y reposiciones (solo el número: el detalle va a Moi); capturas miradas; cuadre con el CRM; compras marcadas; link del PDF.
 
 Nunca mandes mensajes a clientes ni propongas textos. No hables de costos en dinero.

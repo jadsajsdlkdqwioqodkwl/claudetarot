@@ -129,6 +129,26 @@ def cmd_preparar(args):
     except (OSError, ValueError):
         out["agenda_con_movimiento"] = []
 
+    # 3c. EL COURIER (dueño 2026-11-11: «el reporte no revisó el portal de Dinsides»: decía que el pedido de Sandra no estaba
+    # entregado cuando ya estaba registrado). Lo que Dinsides tiene de los últimos días, por teléfono: lo REGISTRADO (en su almacén
+    # o por recoger, con su fecha de entrega), lo ENTREGADO y lo ANULADO / RECHAZADO. La Routine NO da por «sin enviar» ni «sin
+    # entregar» nada que salga aquí; lo que ya está registrado no se vuelve a reportar como pendiente.
+    try:
+        d0 = dt.date.fromisoformat(fecha_venta)
+        st_d, din = pedir("/dinsides", "POST", {"accion": "estados", "desde": (d0 - dt.timedelta(days=7)).isoformat(), "hasta": (d0 + dt.timedelta(days=1)).isoformat(), "marcar": True}, timeout=240)
+        if st_d == 200 and not din.get("error"):
+            fmt = lambda x: f"{x.get('nombre')} · {x.get('telefono')} · #{x.get('id_pedido')} · entrega {x.get('fecha_entrega')} · {x.get('seguimiento')}" + (f" · fila {x.get('fila_hoja')}" if x.get("fila_hoja") else "")
+            out["dinsides"] = {"registrados_por_entregar": [fmt(x) for x in din.get("pendientes") or []],
+                               "entregados": [fmt(x) for x in (din.get("entregados") or [])[:60]],
+                               "anulados_o_rechazados": [fmt(x) for x in (din.get("anulados") or []) + (din.get("rechazados") or [])],
+                               "cerrados_por_motorizado_externo": [f"{x.get('nombre')} · {x.get('whatsapp')} · fila {x.get('fila')}" for x in din.get("cerradas_por_nota") or []],
+                               "instruccion": "Fuente de verdad de Lima. Un pedido que está aquí como registrado o entregado NO es pendiente ni incidencia; "
+                                              "el teléfono de Dinsides puede ser el de quien recibe (contacto compartido en el chat), no el WhatsApp del cliente."}
+        else:
+            out["dinsides"] = {"error": din.get("error") or st_d}
+    except Exception as err:  # noqa: BLE001
+        out["dinsides"] = {"error": str(err)}
+
     # 4. Capturas (Yape/Plin, DNI, ubicación) para mirarlas con Read.
     r = subprocess.run([sys.executable, os.path.join(AQUI, "imagenes.py"), carpeta, "--max", str(max_img)], capture_output=True, text=True)
     try:

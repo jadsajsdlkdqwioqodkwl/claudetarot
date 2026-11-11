@@ -197,12 +197,17 @@ export async function onRequestPost({ request, env }) {
       }
       if (!pedidos.length) return json({ ok: true, marcados: hechos, sin_fila: sinFila });
     }
-    let nuevas = 0, actualizadas = 0;
+    let nuevas = 0, actualizadas = 0, yaCerradas = 0;
     const nuevasFilas = [];
+    // El MISMO pedido ya cerrado (mismo WhatsApp y misma fecha de entrega, con «Enviado»: registrado en Dinsides, con boleta, por
+    // motorizado…) no vuelve a abrirse como fila nueva cada vez que el reporte lo repite (2026-11-11, caso Sandra: agendada y
+    // registrada el 10, el reporte del 10 le creó otra fila abierta y salía como pendiente). Un cambio o reposición sí es otra fila.
+    const cerradas = new Set(filas.filter((f) => String(f[14] || "").trim() && n9(f[3])).map((f) => `${n9(f[3])}|${f[1]}`));
     for (const ped of pedidos) {
       if ((ped.nombre || "").toUpperCase() === "INCIDENCIA") continue;
       const k = n9(ped.whatsapp);
       const fila = filaDe(ped, fechaObjetivo, p.origen);
+      if (k && !abiertas.has(k) && cerradas.has(`${k}|${fila[1]}`) && !/CAMBIO|REPOSICI/i.test(String(ped.tipo || ""))) { yaCerradas++; continue; }
       if (k && abiertas.has(k)) {
         const i = abiertas.get(k);
         if (!fila[0]) fila[0] = filas[i][0]; // la fecha de venta no se pierde si esta corrida no la trajo
@@ -215,7 +220,7 @@ export async function onRequestPost({ request, env }) {
       }
     }
     if (nuevasFilas.length) await appendRowsTo(env, env.GOOGLE_SHEET_ID, PESTAÑA, nuevasFilas);
-    return json({ ok: true, nuevas, actualizadas });
+    return json({ ok: true, nuevas, actualizadas, ya_cerradas: yaCerradas });
   } catch (err) {
     console.error("pedidos-sheet:", err.message);
     return json({ error: err.message }, 502);

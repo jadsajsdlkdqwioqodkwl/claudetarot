@@ -123,3 +123,21 @@ COBRAR; «Yape contraentrega S/69» con `kits: 0` → cobra 69; adelanto sin sal
 `nombreProducto()` en `src/lib/dinsides.js`; `registrar --simular` imprime las fichas completas (11 campos) que la Routine de envíos
 presenta antes de registrar (`docs/envios-jennifer.md`, A4). `estados` cierra «Enviado» de las filas anuladas/rechazadas de la misma
 entrega. Routine única de envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7`.
+
+## 2026-11-11 · Nota del motorizado, nombre del producto, cruce por teléfonos del chat, reposiciones fuera, link fijo de revisión
+
+- **Detalle = nota para el motorizado** (`notaParaMotorizado` en `src/lib/dinsides.js`; `nota_motorizado` en `etiquetas.py` limpia
+  también lo ya registrado): quedan contacto alterno, a quién entregar, dónde dejarlo y horario; salen pagos («ya pagó 89», «paga en
+  efectivo», «NO cobrar»: ya van en Cobrar y tipo de pago), pines y coordenadas, y apuntes internos («confirmar, escribió dos
+  versiones», «cliente sin número en el CRM»), que pasan a la alerta «NOTA PARA LA ASESORA». Ya no se agrega «Pago: …» a la observación.
+- **Producto con su nombre**: un `empaque` con «VERIFICAR, en el chat se le prometió…» pegado ya no se borra entero (por eso el
+  cuenco + mazo de Cristofer salió «Reposición / cambio»); con `kits: 0` el producto es el texto del empaque sin «NO es kit:» ni
+  precios. `etiquetas.py` corrige en la impresión los ya registrados como «Reposición / cambio» con el empaque del reporte.
+- **Cruce con Dinsides por los teléfonos del chat** (`telefonosDelChat`): contacto compartido y números que escribió el cliente
+  (30 días), en `armarTodo` y en `estados` (caso Claudia de Blue Day Spa, entregada a nombre de Flor con otro número).
+- **Reposiciones y cambios** (`tipo` REPOSICION / CAMBIO): no son ficha de Dinsides (los despacha otro equipo).
+- **Revisión de envíos con link fijo por despacho**: `revision/envios-FECHA.json` en R2 (token y clave estables, notas por
+  WhatsApp, `vistos` para marcar NUEVO, `pagina` = última página subida); `GET /r/envios-FECHA-<clave>` sirve la última página;
+  la página pide sus notas al abrir (`POST /api/revision/nota {leer: true}`). `presentar --pagina` sube a la página SOLO Lima para
+  registrar, Shalom, Olva y «falta un dato»; el resto queda en la pantalla de la Routine.
+- **Etiquetas de Shalom**: siempre «EMPAQUE: …» (`empaque_shalom`); con `--shalom datos.json` se completa por DNI desde el reporte.

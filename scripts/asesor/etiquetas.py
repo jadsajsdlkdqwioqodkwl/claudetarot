@@ -126,11 +126,66 @@ def shalom_de_hoja(recojo):
         dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
         cod = re.search(r"c[oó]d\.?\s*:?\s*([A-Z0-9]{4})\b", env_, re.I)
         kits = str(f.get("kits") or "1").strip()
-        empaque = str(f.get("empaque") or "").strip() or (f"{kits} kits" if kits not in ("", "1") else "Kit normal (1)")
+        empaque = empaque_shalom(kits, f.get("empaque"))
         out.append({"orden": m.group(1), "codigo": cod.group(1).upper() if cod else "", "despacho": recojo, "empaque": empaque, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
                     "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
                     "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
     return out
+
+
+RE_NOTA_PAGO = re.compile(r"ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia", re.I)
+RE_NOTA_PIN = re.compile(r"\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl", re.I)
+RE_NOTA_INTERNA = re.compile(r"confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b", re.I)
+
+
+def nota_motorizado(texto, telefono=""):
+    """La nota que lee el MOTORIZADO en la etiqueta (dueño 2026-11-11): cómo contactar, a quién entregar, dónde dejarlo, horario.
+    Sin pagos («ya pagó 89», «cobrar 0»: ya va en Cobrar), sin pines ni coordenadas (la etiqueta va pegada a la caja) y sin apuntes
+    internos («confirmar, escribió dos versiones»). Es la misma regla de `notaParaMotorizado` en src/lib/dinsides.js; aquí limpia
+    también lo que se registró en Dinsides antes de esa regla."""
+    malo = lambda t: RE_NOTA_PAGO.search(t) or RE_NOTA_PIN.search(t) or RE_NOTA_INTERNA.search(t)
+    texto = re.sub(r"\(([^)]*)\)", lambda m: " " if malo(m.group(1)) else m.group(0), str(texto or ""))
+    quedan = []
+    for f in re.split(r"(?<=[.;:])\s+|\s+·\s+", texto):
+        f = f.strip(" ,;:.·-")
+        if not f or malo(f):
+            continue
+        sin_tel = re.sub(r"(?:\+?51[\s-]?)?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}", lambda m: "" if telefono and re.sub(r"\D", "", m.group(0))[-9:] == str(telefono) else m.group(0), f)
+        if sin_tel != f and re.fullmatch(r"(dio su |su )?(tel[eé]fono|tel|cel|celular|n[uú]mero)?( de contacto)?\W*", sin_tel.strip(), re.I):
+            continue
+        quedan.append(f)
+    return re.sub(r"\s+", " ", ". ".join(quedan)).strip()
+
+
+def empaque_shalom(kits, empaque=""):
+    """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): 1 kit normal,
+    «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
+    kits = int(kits) if str(kits).strip().isdigit() else 1
+    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("Kit Tarot de aprendizaje (1 kit normal)" if kits == 1 else "NO es kit")
+    extra = " · ".join(t for t in re.split(r"\s+·\s+", str(empaque or "").strip()) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
+    if extra and re.fullmatch(r"\d+\s*kits?\b.*|kit normal.*", extra, re.I) and "+" not in extra:
+        extra = ""
+    return f"{base} · {extra}" if extra else base
+
+
+def completar_empaque_shalom(items, recojo):
+    """Las etiquetas de Shalom que vienen de un archivo (--shalom) no traen empaque: se busca por DNI en el reporte del despacho y en
+    la hoja «Pedidos auto». Si no aparece, va 1 kit normal."""
+    por_dni = {}
+    try:
+        est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
+        r = pedir(f"/pedidos-sheet?hoy={recojo}&enviadas=1") or {}
+    except Exception:  # noqa: BLE001
+        est, r = {}, {}
+    for f in ((est.get("estado") or {}).get("pedidos") or []) + [x for k in ("atrasados", "hoy", "futuros", "enviadas") for x in (r.get(k) or [])]:
+        m = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
+        if m and m.group(1) not in por_dni:
+            por_dni[m.group(1)] = f
+    for d in items:
+        if d.get("empaque"):
+            continue
+        f = por_dni.get(str(d.get("doc") or ""), {})
+        d["empaque"] = empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else "")
 
 
 # ---------- dibujo ----------
@@ -187,11 +242,11 @@ def etiqueta_lima(c, x0, yb, d):
     # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
     lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
     pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
-    if obs:
+    if nota_motorizado(re.sub(r"\s*Paquete:[^.]+\.?", "", obs), d.get("telefono")):
         c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
         c.setFont("Helvetica", 6.3)
         restante = int((y - yb - p - pie) / (6.3 * 1.3))
-        for ln in textwrap.wrap(re.sub(r"\s*Paquete:[^.]+\.?", "", obs).strip(), 62)[:max(0, restante)]:
+        for ln in textwrap.wrap(nota_motorizado(re.sub(r"\s*Paquete:[^.]+\.?", "", obs), d.get("telefono")), 62)[:max(0, restante)]:
             c.drawString(x, y, ln); y -= 6.3 * 1.3
     if lineas_emp:
         c.setFont("Helvetica-Bold", 5.2)
@@ -205,7 +260,7 @@ def etiqueta_shalom(c, x0, yb, d):
     """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía» y, debajo,
     la nota para el que empaca («EMPAQUE: …», dueño 2026-11-10)."""
     p = 2 * mm; x = x0 + p; R = x0 + cell_w - p; ancho = R - x
-    lineas_emp = textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or ""), 68)[:2] if d.get("empaque") else []
+    lineas_emp = textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]
     pie_emp = len(lineas_emp) * 2.5 * mm + (0.8 * mm if lineas_emp else 0)
     pie = 4.5 * mm + pie_emp; top = yb + cell_h
     c.setFillColorRGB(.93, .96, .99); c.rect(x0 + .8 * mm, top - 12.5 * mm, cell_w - 1.6 * mm, 11.5 * mm, stroke=0, fill=1)
@@ -356,8 +411,11 @@ def main():
     salida = args[args.index("--salida") + 1] if "--salida" in args else f"/tmp/etiquetas/etiquetas-{fecha}.pdf"
     items = []
     if "--shalom" in args:
-        for d in json.load(open(args[args.index("--shalom") + 1])):
-            items.append({"tipo": "shalom", "datos": d})
+        de_archivo = json.load(open(args[args.index("--shalom") + 1]))
+        if os.environ.get("ASESOR_CLAVE"):
+            completar_empaque_shalom(de_archivo, fecha)
+        for d in de_archivo:
+            items.append({"tipo": "shalom", "datos": {**d, "despacho": d.get("despacho") or fecha}})
     if "--shalom-hoja" in args and os.environ.get("ASESOR_CLAVE"):
         for d in shalom_de_hoja(fecha):
             items.append({"tipo": "shalom", "datos": d})
@@ -380,6 +438,21 @@ def main():
             elif not en_ciclo(p.get("fecha_pedido"), fecha):
                 continue  # registrado en otro ciclo: ya está (o estará) en el almacén de Dinsides
             lima.append({"tipo": "lima", "datos": {**p, "tipo_pago": ""}})
+    # Un pedido registrado como «Reposición / cambio» sin serlo (2026-11-11, cuenco + mazo de Cristofer): la etiqueta dice el nombre
+    # de lo que va, tomado del empaque del reporte de ese despacho.
+    genericos = [e for e in lima if re.fullmatch(r"\s*Reposici[oó]n / cambio\s*", str(e["datos"].get("detalle") or ""), re.I)]
+    for fe in sorted({str(e["datos"].get("fecha_entrega") or "")[:10] for e in genericos}):
+        try:
+            est = pedir(f"/ventas-estado?fecha={fe}&tipo=pedidos") or {}
+        except Exception:  # noqa: BLE001
+            est = {}
+        por_tel = {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:]: x for x in ((est.get("estado") or {}).get("pedidos") or [])}
+        for e in genericos:
+            x = por_tel.get(str(e["datos"].get("telefono") or ""))
+            emp = " · ".join(t for t in re.split(r"\s+·\s+", str((x or {}).get("empaque") or "")) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
+            emp = re.sub(r"\s*\(\s*S/\s*\d+[^)]*\)", "", re.sub(r"^\W*no es (un )?kit\s*[:;,.-]?\s*", "", emp, flags=re.I)).strip()
+            if emp:
+                e["datos"]["detalle"] = emp[0].upper() + emp[1:]
     items += sorted(lima, key=lambda e: e["datos"].get("distrito", ""))
     if "--olva" in args:
         for d in json.load(open(args[args.index("--olva") + 1])):

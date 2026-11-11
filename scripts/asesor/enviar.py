@@ -80,6 +80,7 @@ ESPECIALES = {"CAMBIO": "🔁 Cambio", "REPOSICION": "♻️ Reposición", "AGEN
 ENVIO = re.compile(r"reposici|repon[eé]|cambi(o|ar) (de|el|la|por)|motoriz|devoluci|llev[aá](r|rle|rsela)\b"
                    r"|falt\w* (la |el |una |un )?(carta|mazo|collar|manual|tapete|kit)", re.I)
 especial = lambda p: str(p.get("tipo") or "").upper().replace("Ó", "O") in ESPECIALES
+es_repo = lambda p: str(p.get("tipo") or "").upper().replace("Ó", "O") in ("CAMBIO", "REPOSICION")
 e = lambda s: html.escape(str(s if s is not None else ""))
 num_kits = lambda p: 1 if p.get("kits") in (None, "") else int(p.get("kits"))
 
@@ -219,14 +220,26 @@ def armar_pdf(datos, carpeta):
             ("Dirección / Agencia", "direccion_o_agencia"), ("Courier", "courier"), ("Kits", "kits"),
             ("📦 Empaque (extras)", "_empaque"), ("Pago", "pago"), ("Fecha", "fecha_entrega"), ("Nota", "nota")]
     partes = []
+    unificado = datos.get("tipo_reporte") == "unificado"
+    if unificado:
+        # Dueño 2026-11-11: este es un reporte de VENTAS para Jennifer, Dani y Moi. Reposiciones y cambios (los despacha otro
+        # equipo), incidencias y saldos van en el reporte «Saldos y reposiciones», solo para el dueño (armar_pdf_dueno). La sección
+        # «Para el que empaca» se quitó: el empaque va impreso en cada etiqueta.
+        pedidos = [p for p in pedidos if not es_repo(p)]
+        envios = datos.get("envios_hechos") or {}
+        for p in pedidos:
+            hecho = envios.get(prom.nueve(p.get("whatsapp")) or "-")
+            p["_envio"] = (hecho if hecho else "por registrar") if p.get("estado") in ("CONFIRMADO", "OTRO_DIA") or especial(p) else ""
+        cols = cols[:5] + [("Envío", "_envio")] + cols[5:]
     # Primero, para el que empaca: todo lo que sale y NO es 1 kit normal.
     salen = [p for p in pedidos if p.get("estado") == "CONFIRMADO" or especial(p)]
     raros = [p for p in salen if p["_empaque"]]
-    partes.append("<h2 class=emp>📦 PARA EL QUE EMPACA — lo que NO es 1 kit normal "
-                  f"({len(raros)} de {len(salen)} pedidos que salen)</h2>"
-                  + ("<div class=emp>" + tabla(raros, [("Cliente", "nombre"), ("Destino", "destino"), ("Kits", "kits"),
-                                                       ("Qué agregar / quitar", "_empaque")]) + "</div>" if raros else "")
-                  + "<p class=emp>Todos los demás pedidos que salen llevan <b>1 kit normal</b>, sin nada extra.</p>")
+    if not unificado:
+        partes.append("<h2 class=emp>📦 PARA EL QUE EMPACA — lo que NO es 1 kit normal "
+                      f"({len(raros)} de {len(salen)} pedidos que salen)</h2>"
+                      + ("<div class=emp>" + tabla(raros, [("Cliente", "nombre"), ("Destino", "destino"), ("Kits", "kits"),
+                                                           ("Qué agregar / quitar", "_empaque")]) + "</div>" if raros else "")
+                      + "<p class=emp>Todos los demás pedidos que salen llevan <b>1 kit normal</b>, sin nada extra.</p>")
     # Segundo, las incidencias: en cuadro grande y rojo, no en letra chica al final.
     # Las que piden mandar algo (reposición, cambio, motorizado) van primero.
     inc_filas = [{"texto": str(p.get("nota") or "").lstrip("🚨 ").strip(), "whatsapp": p.get("whatsapp", "")}
@@ -238,7 +251,7 @@ def armar_pdf(datos, carpeta):
         f["envio"] = "🛵 SÍ — mandar motorizado / agregar al despacho" if ENVIO.search(f["texto"]) else ""
         f["texto"] = "🚨 " + f["texto"]
     inc_filas.sort(key=lambda f: not f["envio"])
-    if inc_filas:
+    if inc_filas and not unificado:
         partes.append(f"<h2 class=inc>🚨🚨 ATENCIÓN — INCIDENCIAS ({len(inc_filas)})</h2><div class=inc>"
                       + tabla(inc_filas, [("Qué pasa / qué hacer", "texto"), ("¿Requiere envío?", "envio"),
                                           ("WhatsApp", "whatsapp")]) + "</div>")
@@ -250,12 +263,12 @@ def armar_pdf(datos, carpeta):
                       + "<div class=inc>" + tabla(correcciones, [("Destino", "destino"), ("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("DNI", "dni"),
                                                                     ("Dirección / Agencia", "direccion_o_agencia"), ("Kits", "kits"), ("📦 Qué lleva", "_empaque"),
                                                                     ("Pago", "pago"), ("Qué llegó / qué corregir", "nota")]) + "</div>")
-    unificado = datos.get("tipo_reporte") == "unificado"
     for (estado, destino), titulo in (TITULOS_UNIFICADO if unificado else TITULOS).items():
         if estado == "POR_CONFIRMAR" and esp:
-            partes.append(f"<h2 class=esp>🚨 SALEN EN ESTE DESPACHO: cambios, reposiciones y agendados de otros días ({len(esp)})</h2>"
+            partes.append(f"<h2 class=esp>{'📌 TAMBIÉN SALEN EN ESTE DESPACHO: agendados de otros días' if unificado else '🚨 SALEN EN ESTE DESPACHO: cambios, reposiciones y agendados de otros días'} ({len(esp)})</h2>"
                           + "<div class=esp>" + tabla(esp, [("Tipo", "tipo"), ("Destino", "destino"), ("Cliente", "nombre"),
                                                             ("WhatsApp", "whatsapp"), ("Dirección / Agencia", "direccion_o_agencia"),
+                                                            *([("Envío", "_envio")] if unificado else []),
                                                             ("Kits", "kits"), ("📦 Qué lleva", "_empaque"), ("Nota", "nota")]) + "</div>")
         filas = [p for p in pedidos if not especial(p) and p.get("estado") == estado and (destino is None or p.get("destino") == destino)]
         if filas:
@@ -315,11 +328,11 @@ def armar_pdf(datos, carpeta):
     cajas = [("Kits a despachar", kits),
              ("Lima confirmados", cuenta(normal("CONFIRMADO", "LIMA"))),
              ("Provincia confirmados", cuenta(normal("CONFIRMADO", "PROVINCIA"))),
-             ("Cambios / reposiciones / agendados", len(esp)),
+             ("Agendados y correcciones" if unificado else "Cambios / reposiciones / agendados", len(esp)),
              ("Por confirmar", cuenta(normal("POR_CONFIRMAR"))),
              ("Otros días", cuenta(normal("OTRO_DIA"))),
              ("Intención", cuenta(normal("INTENCION"))),
-             ("Incidencias", len(incidencias)),
+             *([] if unificado else [("Incidencias", len(incidencias))]),
              ("Pedidos web (24 h)", len(datos.get("pedidos_web") or []))]
     resumen = "<div class=cajas>" + "".join(f"<div><b>{v}</b><span>{e(k)}</span></div>" for k, v in cajas) + "</div>"
     origen = datos.get("origen", "asesor")
@@ -394,6 +407,78 @@ h2.web{{color:#1d4ed8;border-color:#2563eb}} div.web th{{background:#2563eb}}</s
     return ruta_pdf, kits
 
 
+def armar_pdf_dueno(datos, carpeta):
+    """Reporte «Saldos y reposiciones», SOLO para el dueño (2026-11-11), una vez al cierre de la noche: saldos cobrados hoy (por el
+    medio que sea: Yape, Plin, depósito BCP, un tercero), reposiciones y cambios (los despacha otro equipo, no Dinsides),
+    incidencias, y lo que el sistema resolvió solo (entregados, anulados, rechazados, motorizado externo, boletas). Nada de esto va
+    al reporte de ventas del equipo ni a la revisión de envíos de la asesora. Devuelve (ruta_pdf, resumen) o (None, "")."""
+    todos = datos.get("pedidos", [])
+    saldos = [x for x in (datos.get("saldos") or []) if isinstance(x, dict)]
+    repos = [dict(p, _empaque=empaque(p), tipo=ESPECIALES.get(str(p.get("tipo")).upper().replace("Ó", "O"), p.get("tipo"))) for p in todos
+             if es_repo(p) and (p.get("nombre") or "").upper() != "INCIDENCIA"]
+    inc = [str(p.get("nota") or "").strip() for p in todos if (p.get("nombre") or "").upper() == "INCIDENCIA" and str(p.get("nota") or "").strip()]
+    inc += [str(i).strip() for i in (datos.get("incidencias") or []) if str(i).strip() and str(i).strip() not in inc]
+    res = datos.get("_resuelto") or {}
+    partes = []
+    def monto(x):
+        try:
+            return float(re.sub(r"[^\d.]", "", str(x.get("monto") or "")) or 0)
+        except ValueError:
+            return 0.0
+    total = sum(monto(x) for x in saldos)
+    partes.append(f"<h2>💰 Saldos cobrados hoy ({len(saldos)}) · total S/{total:.0f}</h2>"
+                  + (tabla(saldos, [("Cliente", "nombre"), ("WhatsApp", "whatsapp"), ("Código", "codigo"), ("Monto S/", "monto"), ("Cómo pagó / qué se vio", "motivo")])
+                     if saldos else "<p class=emp>El reporte no vio ningún pago de saldo hoy.</p>"))
+    partes.append(f"<h2 class=esp>♻️ Reposiciones y cambios ({len(repos)}) — los despacha el equipo de reposiciones, no Dinsides</h2>"
+                  + ("<div class=esp>" + tabla(repos, [("Tipo", "tipo"), ("Destino", "destino"), ("Cliente", "nombre"), ("WhatsApp", "whatsapp"),
+                                                       ("Dirección / Agencia", "direccion_o_agencia"), ("📦 Qué llevar", "_empaque"), ("Nota", "nota")]) + "</div>"
+                     if repos else "<p class=emp>Ninguna.</p>"))
+    if inc:
+        partes.append(f"<h2 class=inc>🚨 Incidencias ({len(inc)})</h2><div class=inc>" + tabla([{"texto": t} for t in inc], [("Qué pasa / qué hacer", "texto")]) + "</div>")
+    filas = []
+    for k, titulo in (("entregados", "Entregado (Dinsides)"), ("pendientes", "Registrado, por entregar (Dinsides)"), ("anulados", "Anulado (Dinsides)"), ("rechazados", "Rechazado (Dinsides)")):
+        for x in res.get(k) or []:
+            filas.append({"que": titulo, "nombre": x.get("nombre"), "tel": x.get("telefono"), "detalle": f"#{x.get('id_pedido')} · {x.get('distrito') or ''} · entrega {x.get('fecha_entrega')} · {x.get('seguimiento') or ''} · S/{x.get('monto')}"})
+    for x in res.get("cerradas_por_nota") or []:
+        filas.append({"que": "Motorizado externo", "nombre": x.get("nombre"), "tel": x.get("whatsapp"), "detalle": f"fila {x.get('fila')} cerrada: {x.get('motivo')}"})
+    for x in res.get("boletas") or []:
+        filas.append({"que": "Boleta emitida (provincia)", "nombre": x.get("nombre"), "tel": x.get("whatsapp"), "detalle": f"{x.get('courier') or ''} {x.get('nro') or ''} · fila {x.get('fila')} cerrada"})
+    orden = {"Anulado (Dinsides)": 0, "Rechazado (Dinsides)": 1, "Motorizado externo": 2, "Registrado, por entregar (Dinsides)": 3, "Boleta emitida (provincia)": 4, "Entregado (Dinsides)": 5}
+    filas.sort(key=lambda f: orden.get(f["que"], 9))
+    partes.append(f"<h2>🧹 Lo que el sistema ya resolvió solo (últimos 14 días en Dinsides; {len(filas)})</h2>"
+                  + (tabla(filas, [("Estado", "que"), ("Cliente", "nombre"), ("Teléfono", "tel"), ("Detalle", "detalle")]) if filas else "<p class=emp>Sin datos de Dinsides en esta corrida.</p>"))
+    doc = f"""<!doctype html><meta charset=utf-8><style>
+@page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111}}
+h1{{font-size:24px;margin:0}} h2{{font-size:17px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}} .sub{{color:#666;margin:2px 0 10px}}
+table{{border-collapse:collapse;width:100%;counter-reset:n}} tr{{page-break-inside:avoid}}
+th{{background:#075E54;color:#fff;text-align:left;padding:5px 6px}} td{{border:1px solid #bbb;padding:5px 6px;vertical-align:top}}
+td.n::before{{counter-increment:n;content:counter(n)}} p.emp{{margin:4px 0 8px;font-size:14px}}
+h2.inc{{color:#b91c1c;border-color:#dc2626}} div.inc th{{background:#dc2626}} div.inc td{{background:#fee2e2}}
+h2.esp{{color:#9a3412;border-color:#ea580c}} div.esp th{{background:#ea580c}} div.esp td{{background:#ffedd5}}</style>
+<h1>Saldos y reposiciones · {e(datos.get('fecha_venta') or datos.get('fecha_objetivo') or '')}</h1>
+<p class=sub>Tarot Store Perú · solo para Moi · generado por {e(datos.get('origen', 'asesor'))}</p>{''.join(partes)}"""
+    nombre = f"saldos-y-reposiciones-{datos.get('fecha_venta') or datos.get('fecha_objetivo') or ''}"
+    ruta_html, ruta_pdf = os.path.join(carpeta, "dueno.html"), os.path.join(carpeta, nombre + ".pdf")
+    with open(ruta_html, "w") as fh:
+        fh.write(doc)
+    import shutil
+    chrome = next((c for c in glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome") + ["/opt/pw-browsers/chromium"]
+                   if os.path.exists(c)), None) or shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome") or "chromium"
+    subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={ruta_pdf}", ruta_html], check=True, capture_output=True)
+    resumen = (f"🔒 Saldos y reposiciones {datos.get('fecha_venta') or ''} (solo Moi)\n💰 Saldos cobrados: {len(saldos)} · S/{total:.0f}\n"
+               f"♻️ Reposiciones y cambios: {len(repos)} · 🚨 Incidencias: {len(inc)}\n"
+               f"🧹 Dinsides: {len(res.get('entregados') or [])} entregados · {len(res.get('anulados') or [])} anulados · {len(res.get('rechazados') or [])} rechazados · motorizado externo: {len(res.get('cerradas_por_nota') or [])}")
+    return ruta_pdf, resumen
+
+
+def es_cierre(datos, args):
+    """El reporte del dueño sale UNA vez por noche, en la última corrida (23:45), o cuando se pide con --dueno."""
+    if "--dueno" in args:
+        return True
+    m = re.search(r"(\d{1,2})[:h](\d{2})", str(datos.get("hora") or ""))
+    return bool(m) and (int(m.group(1)), int(m.group(2))) >= (23, 30) or bool(m) and int(m.group(1)) < 3
+
+
 AVISOS = "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor/avisos"
 SUGERENCIAS = AVISOS.replace("/avisos", "/sugerencias")
 PEDIDOS_WEB = AVISOS.replace("/avisos", "/pedidos-web")
@@ -449,11 +534,13 @@ def conciliar_agenda(clave, hoy):
     auto» (Shalom/Olva) y pedidos de Lima con estado final en Dinsides (entregado / anulado / rechazado). Así la agenda solo
     trae lo que de verdad falta despachar (dueño 2026-11-09: traía 100+ pedidos ya entregados). Un fallo no frena el reporte."""
     import datetime as _dt
+    resuelto = {"boletas": [], "entregados": [], "anulados": [], "rechazados": [], "cerradas_por_nota": [], "pendientes": []}
     try:
         total = 0
         for _ in range(6):  # el Worker cierra hasta 40 filas por llamada
             r = _post_asesor(clave, PEDIDOS_SHEET, {"conciliar": True})
             total += int(r.get("marcados") or 0)
+            resuelto["boletas"] += r.get("filas") or []
             if r.get("error") or not r.get("restantes"):
                 break
         print(f"🧹 Agenda: {total} fila(s) cerradas por boleta emitida" + (f" (error: {r['error']})" if r.get("error") else ""), flush=True)
@@ -466,10 +553,13 @@ def conciliar_agenda(clave, hoy):
         if r.get("error"):
             print(f"⚠️ Dinsides estados: {r['error']}", flush=True)
         else:
+            for k in ("entregados", "anulados", "rechazados", "cerradas_por_nota", "pendientes"):
+                resuelto[k] = r.get(k) or []
             print(f"🧹 Dinsides: {len(r.get('entregados', []))} entregados · {len(r.get('anulados', []))} anulados · {len(r.get('rechazados', []))} rechazados · "
                   f"{r.get('marcados', 0)} fila(s) marcadas en la hoja", flush=True)
     except Exception as err:  # noqa: BLE001
         print(f"⚠️ No se pudo leer el estado de Dinsides: {err}", flush=True)
+    return resuelto
 
 
 def marcar_compras(clave, datos):
@@ -496,7 +586,7 @@ def marcar_compras(clave, datos):
 
 def agenda_sheet(clave, hoy):
     """Pedidos de la pestaña «Pedidos auto» sin marcar «Enviado» (atrasados, de hoy, futuros, sin fecha). Un fallo no frena el reporte."""
-    req = urllib.request.Request(f"{PEDIDOS_SHEET}?hoy={hoy}", headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
+    req = urllib.request.Request(f"{PEDIDOS_SHEET}?hoy={hoy}&enviadas=1", headers={"x-asesor-clave": clave, "User-Agent": "tarot-asesor/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.load(r)
@@ -627,8 +717,18 @@ def main():
         for a in normalizar_unificado(datos):
             print("ℹ️ " + a.lstrip("- "), flush=True)
         if clave and not solo_mensajes:
-            conciliar_agenda(clave, datos["fecha_venta"])
+            datos["_resuelto"] = conciliar_agenda(clave, datos["fecha_venta"])
             datos["agenda_pendiente"] = agenda_sheet(clave, datos["fecha_venta"])
+            # Cómo va el envío de cada venta (dueño 2026-11-11: el reporte debe mirar el courier): lo que Dinsides tiene abierto o
+            # entregado y lo que la hoja ya cerró (Shalom con orden, boleta, motorizado). Sale en la columna «Envío».
+            hechos = {}
+            for x in (datos["agenda_pendiente"].get("enviadas") or []):
+                hechos[prom.nueve(x.get("whatsapp")) or "-"] = str(x.get("enviado") or "")[:60]
+            for k, txt in (("pendientes", "Dinsides registrado"), ("entregados", "Dinsides ENTREGADO"), ("anulados", "Dinsides ANULADO"), ("rechazados", "Dinsides RECHAZADO")):
+                for x in datos["_resuelto"].get(k) or []:
+                    for tel in {str(x.get("telefono") or "")[-9:], prom.nueve(x.get("whatsapp_hoja")) or ""} - {""}:
+                        hechos[tel] = f"{txt} #{x.get('id_pedido')} (entrega {x.get('fecha_entrega')})"
+            datos["envios_hechos"] = hechos
 
     def cuadre_unificado(d):
         """Cuadre con el CRM DESPUÉS de sumar lo registrado (así lo explicado en corridas anteriores cuenta; 2026-11-02:
@@ -736,7 +836,7 @@ def main():
         cuerpo["resumen"] = ((f"🧭 Pedidos y ventas {datos.get('hora') or ''} — ventas del {datos.get('fecha_venta', '')} · despacho del {datos.get('fecha_objetivo', '')}\n"
                               if unificado else f"🧭 Asesor — {'ventas' if ventas else 'pedidos para'} {datos.get('fecha_objetivo', '')}\n")
                              + f"✅ Lima: {cuenta('CONFIRMADO', 'LIMA')} · Provincia: {cuenta('CONFIRMADO', 'PROVINCIA')} · {kits} kits\n"
-                             + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) else "")
+                             + (f"🔁 Cambios / reposiciones / agendados de otros días: {sum(1 for p in ped if especial(p))}\n" if any(especial(p) for p in ped) and not unificado else "")
                              + f"🟡 Por {'verificar' if unificado else 'confirmar'}: {cuenta('POR_CONFIRMAR')} · 📅 Otros días: {cuenta('OTRO_DIA')}\n"
                              + ((f"📌 Agenda pendiente (hoja «Pedidos auto»): {pendientes_ag}" + (f" · ⚠️ atrasados: {len(ag['atrasados'])}" if ag.get("atrasados") else "") + "\n"
                                  + (f"🗂️ Descartados con motivo: {len(datos.get('descartados') or [])}\n" if datos.get("descartados") else "")
@@ -757,7 +857,7 @@ def main():
             if registro is not None:
                 import pedidos_estado
                 # Lo que no es memoria del día (agenda leída de la hoja, formularios web, cuadre) no se guarda en el registro.
-                guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar")}
+                guardable = {k: v for k, v in datos.items() if k not in ("agenda_pendiente", "pedidos_web", "sin_explicar", "_resuelto", "envios_hechos")}
                 origen_reg = str(datos.get("origen", "asesor"))
                 if datos.get("hora") and str(datos["hora"]) not in origen_reg:
                     origen_reg += f" {datos['hora']}"
@@ -833,6 +933,16 @@ def main():
         r = al_worker(clave, aviso)
         total["enviados"] += r.get("enviados", 0)
         total["fallidos"] += r.get("fallidos", [])
+    if unificado and not solo_mensajes and es_cierre(datos, args):
+        try:
+            pdf_d, resumen_d = armar_pdf_dueno(datos, carpeta)
+            with open(pdf_d, "rb") as fh:
+                b64 = base64.b64encode(fh.read()).decode()
+            link_d = subir_reporte(clave, b64, os.path.basename(pdf_d), f"Saldos y reposiciones {datos.get('fecha_venta', '')} (solo Moi)")
+            r = al_worker(clave, {"pdf_base64": b64, "pdf_nombre": os.path.basename(pdf_d), "resumen": resumen_d + f"\n📄 {link_d}", "solo_dueno": True})
+            print(f"REPORTE DEL DUEÑO (saldos y reposiciones, solo Moi): {link_d} · Telegram: {r.get('a_dueno', 0)}", flush=True)
+        except Exception as err:  # noqa: BLE001
+            print(f"⚠️ No se pudo armar o mandar el reporte del dueño (saldos y reposiciones): {err}", flush=True)
     print(json.dumps(total, ensure_ascii=False))
 
 

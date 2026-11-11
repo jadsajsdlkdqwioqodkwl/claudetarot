@@ -585,6 +585,14 @@ def _bloque_olva(i, p, lista, boletas, corto=False):
     return "\n".join(out)
 
 
+def _mercaderia(p):
+    """1 kit = 1 PAQUETE XXS; 2 o más kits = UN PAQUETE XS (dueño 2026-11-11). «Qué lleva» sin los «VERIFICAR…» de enviar.py."""
+    kits = int(p.get("kits")) if str(p.get("kits") or "").isdigit() else 1
+    lleva = " · ".join(t for t in re.split(r"\s+·\s+", str(p.get("empaque") or "").strip()) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
+    base = f"1 PAQUETE XS con {kits} kits" if kits >= 2 else "1 PAQUETE XXS (1 kit)" if kits == 1 else "1 PAQUETE XXS (no es kit)"
+    return base + (f" · Qué lleva: {lleva}" if lleva else "")
+
+
 def _bloque_shalom(i, p, lista, boletas, corto=False):
     import shalom as sh
     wa = str(p.get("whatsapp") or "")
@@ -607,7 +615,7 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
            f"   Destinatario: {str(p.get('nombre') or '').upper()}",
            f"   N°DOC: {dni or '— (falta)'}",
            f"   Destino (código Shalom): {codigo or '— (falta)'}" + (f" · {'SEGURA' if cand and cand[0].get('seguro') else 'DUDOSA, candidatas: ' + ' | '.join(c['codigo'] for c in cand[:3])}" if cand else ""),
-           f"   Mercadería: PAQUETE XXS · Cantidad: {p.get('kits') or 1}" + (f" · Qué lleva: {p.get('empaque')}" if p.get("empaque") else ""),
+           f"   Mercadería: {_mercaderia(p)}",
            f"   Adelanto: S/{adelanto} · Saldo: S/{saldo} · Clave: la del día (la da el dueño)",
            f"🏢 Lo que escribió el cliente de la agencia: {texto or '—'}",
            f"🔎 VERIFICAR AGENCIA (asesora o dueño, antes del OK): busca «{texto[:60]}» en https://shalom.com.pe/agencias y confirma que es «{codigo.split(' / ')[-1] if codigo else '…'}»; si no: «{primer}: agencia <nombre exacto>». Cambiarla después cuesta tiempo y plata."]
@@ -641,9 +649,12 @@ table.et{border-collapse:collapse;width:100%;margin:4px 0 8px;table-layout:fixed
 .notas{margin-top:10px;border:2px dashed #888;border-radius:6px;padding:8px 10px} .notas b{display:block;margin-bottom:4px;color:#333;font-size:12px} .notas .opc{margin:4px 0 8px} .notas .opc span{display:inline-block;border:1.5px solid #555;border-radius:4px;padding:2px 10px;margin:0 8px 4px 0}
 .notas .lineas{border-bottom:1px solid #bbb;height:7mm} .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px} .ctl label{border:1.5px solid #555;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px} .ctl input[type=radio]{margin-right:4px}
 textarea.nota{width:100%;max-width:100%;min-height:60px;font:inherit;font-size:13px;padding:6px;border:1px solid #888;border-radius:6px;display:block} .guardado{color:#075E54;font-weight:600;font-size:12px}
+.nuevo{background:#dc2626;color:#fff;border-radius:4px;padding:1px 7px;font-size:12px;vertical-align:middle}
 .sticky{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:2px solid #075E54;z-index:2;font-size:13px}
 pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:12px;overflow-wrap:anywhere}
 @media print{body{padding:0} .sticky{position:static} textarea,.ctl{display:none}}"""
+
+NUEVOS = set()  # WhatsApp (9 dígitos) de los pedidos que no estaban en la versión anterior de la página de hoy
 
 RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|DNI|Destino|Olva de destino|Envía|Mercadería|Adelanto):")
 
@@ -665,7 +676,11 @@ def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
             meta = xs
         else:
             otros.append(xs)
-    h = [f"<div class='ped {tipo}' data-wa='{E(wa)}'><h3>{E(cab)}</h3>"]
+    if interactivo:
+        # La asesora solo necesita lo que decide (dueño 2026-11-11): fuera las líneas de control interno.
+        otros = [o for o in otros if not o.startswith(("🏷️ Dinsides:", "🧾 Boleta:", "📄 Hoja", "↩️", "⚠️ EMPAQUE por verificar"))]
+    nuevo = "<span class=nuevo>NUEVO</span> " if interactivo and wa and wa[-9:] in NUEVOS else ""
+    h = [f"<div class='ped {tipo}' data-wa='{E(wa)}'><h3>{nuevo}{E(cab)}</h3>"]
     if meta: h.append(f"<div class=meta>{E(meta)}</div>")
     m = re.search(r"✅❓ LISTO, pero confirmar(?: antes del OK)?: (.+)$", cab)
     if m: h.append(f"<div class=porque>⚠️ POR QUÉ HAY QUE CONFIRMAR: {E(m.group(1))}</div>")
@@ -705,7 +720,8 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
     partes = [f"<h1>{E(titulo)}</h1><p class=sub>Tarot Store Perú · generado por dinsides.py presentar</p>"]
     if interactivo:
         partes.append("<div class=sticky>Marca en cada pedido <b>OK</b>, <b>Corrección</b> (y escribe qué), <b>No va</b> o <b>Ya se envió</b>. Se guarda solo. "
-                      "Cuando termines, escribe lo que sea en la sesión (p. ej. «listo»): Claude lee estas notas antes de responder. <span id=total class=guardado></span></div>")
+                      "Este link es el mismo todo el día: si pides «actualiza» en la sesión, recarga esta página y lo que ya marcaste sigue ahí; lo que entró después sale con la marca NUEVO y lo ya registrado desaparece. "
+                      "Cuando termines, escribe «listo» en la sesión. <span id=total class=guardado></span></div>")
     if resumen:
         partes.append("<div class=cajas>" + "".join(f"<div><b>{E(str(v))}</b><span>{E(k)}</span></div>" for k, v in resumen) + "</div>")
     for t, lineas in secciones:
@@ -740,13 +756,16 @@ def _html(titulo, secciones, resumen=None, interactivo=False, revision=None):
         partes.append("</div>")
     js = ""
     if interactivo and revision:
-        js = ("<script>const REV=" + json.dumps({"token": revision["token"], "api": revision["api"]}) + ";REV.id=location.pathname.split('/').pop().replace('.html','');"
-              "const prev=" + json.dumps(revision.get("notas") or {}) + ";"
+        js = ("<script>const REV=" + json.dumps({"token": revision["token"], "api": revision["api"]}) + ";REV.id=" + json.dumps(revision.get("id") or "") + "||location.pathname.split('/').pop().replace('.html','');"
+              "let prev=" + json.dumps(revision.get("notas") or {}) + ";"
               "function guardar(p){const wa=p.dataset.wa;const r=p.querySelector('input[type=radio]:checked');const t=p.querySelector('textarea.nota');"
               "const g=p.querySelector('.guardado');g.textContent='guardando…';"
               "fetch(REV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:REV.id,token:REV.token,whatsapp:wa,decision:r?r.value:'',texto:t?t.value:''})})"
               ".then(x=>x.json()).then(x=>{g.textContent=x.ok?('guardado ✓ ('+x.guardadas+' notas)'):('error: '+(x.error||''));document.getElementById('total').textContent=x.ok?('Notas guardadas: '+x.guardadas):'';}).catch(()=>{g.textContent='sin conexión, reintenta';});}"
-              "document.querySelectorAll('.ped[data-wa]').forEach(p=>{const wa=p.dataset.wa;if(prev[wa]){const r=p.querySelector(`input[value='${prev[wa].decision}']`);if(r)r.checked=true;const t=p.querySelector('textarea.nota');if(t)t.value=prev[wa].texto||'';}"
+              "function pintar(){document.querySelectorAll('.ped[data-wa]').forEach(p=>{const wa=p.dataset.wa;if(prev[wa]){const r=p.querySelector(`input[value='${prev[wa].decision}']`);if(r)r.checked=true;const t=p.querySelector('textarea.nota');if(t&&document.activeElement!==t)t.value=prev[wa].texto||'';}});}pintar();"
+              # Al abrir (o recargar) se traen las notas guardadas: lo marcado nunca se pierde aunque la página se haya regenerado.
+              "fetch(REV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:REV.id,token:REV.token,leer:true})}).then(x=>x.json()).then(x=>{if(x.ok){prev=x.notas||{};pintar();document.getElementById('total').textContent='Notas guardadas: '+Object.keys(prev).length;}}).catch(()=>{});"
+              "document.querySelectorAll('.ped[data-wa]').forEach(p=>{"
               "p.querySelectorAll('input[type=radio]').forEach(i=>i.addEventListener('change',()=>guardar(p)));const t=p.querySelector('textarea.nota');if(t){let h;t.addEventListener('input',()=>{clearTimeout(h);h=setTimeout(()=>guardar(p),900);});}});</script>")
     return "<!doctype html><html lang=es><head><meta charset='utf-8'><meta name=viewport content='width=device-width,initial-scale=1'><title>" + E(titulo) + "</title><style>" + CSS_PDF + "</style></head><body>" + "".join(partes) + js + "</body></html>"
 
@@ -764,20 +783,23 @@ def _pdf_y_subir(titulo, secciones, nombre, resumen=None):
 
 
 def _pagina_revision(titulo, secciones, resumen, fecha, pedidos_rev):
-    """Sube la página interactiva a CRM → Reportes y registra la revisión (id + token) en el Worker. Devuelve (url, id)."""
-    import base64, secrets
-    token = secrets.token_urlsafe(18)
+    """Página de revisión con LINK FIJO por despacho (dueño 2026-11-11): la revisión `envios-FECHA` guarda las notas por pedido, así
+    que regenerar la página no pierde lo marcado; el mismo link muestra siempre la última versión. Devuelve (url, id)."""
+    import base64
     api = (os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor").replace("/api/asesor", "/api/revision/nota")
+    st0, r0 = pedir("/revision", "POST", {"dia": True, "fecha": fecha, "pedidos": pedidos_rev})
+    if st0 != 200 or not r0.get("token"):
+        return f"(no se pudo abrir la revisión del día: {st0} {str(r0)[:80]})", ""
+    NUEVOS.clear(); NUEVOS.update(str(w)[-9:] for w in (r0.get("nuevos") or []))
     nombre = f"revision-envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.html"
-    html = _html(titulo, secciones, resumen, interactivo=True, revision={"token": token, "api": api})
+    html = _html(titulo, secciones, resumen, interactivo=True, revision={"token": r0["token"], "api": api, "id": r0["id"], "notas": r0.get("notas") or {}})
     st, r = pedir("/reporte", "POST", {"archivo_base64": base64.b64encode(html.encode("utf-8")).decode(), "nombre": nombre, "titulo": titulo}, timeout=180)
     if st != 200:
         return f"(no se pudo subir la página: {st} {str(r)[:80]})", ""
-    rid = str(r.get("id") or "").replace(".html", "")
-    st2, r2 = pedir("/revision", "POST", {"id": rid, "token": token, "fecha": fecha, "pedidos": pedidos_rev})
+    st2, r2 = pedir("/revision", "POST", {"dia": True, "fecha": fecha, "pagina": r.get("id")})
     if st2 != 200:
-        return f"{r.get('url')} (la revisión no se pudo registrar: {st2} {str(r2)[:80]})", rid
-    return r.get("url"), rid
+        return f"{r.get('url')} (el link fijo no se pudo actualizar: {st2} {str(r2)[:80]})", r0["id"]
+    return r2.get("url") or r0.get("url"), r0["id"]
 
 
 def cmd_notas(args):
@@ -838,9 +860,15 @@ def cmd_presentar(args):
     ya = [f for f in fichas if f.get("ya_registrado")]
     ahora = dt.datetime.now(LIMA).strftime("%Y-%m-%d %H:%M")
     S, C = [], []  # secciones completas (PDF / pantalla larga) y cortas (pantalla con --pdf)
+    # P = lo ÚNICO que va a la página de la asesora (dueño 2026-11-11): Lima para registrar, Shalom, Olva y lo que tiene pedido pero
+    # le falta un dato. Entregados, registrados, anulados, otros días, chats y controles NO van ahí: son trabajo de Claude (pantalla)
+    # y del reporte «Saldos y reposiciones» del dueño.
+    P = []
 
-    def sec(titulo, lineas_largas, lineas_cortas=None):
+    def sec(titulo, lineas_largas, lineas_cortas=None, pagina=None):
         S.append((titulo, lineas_largas)); C.append((titulo, lineas_largas if lineas_cortas is None else lineas_cortas))
+        if pagina is not None:
+            P.append((titulo, pagina if isinstance(pagina, list) else lineas_largas))
 
     cab = [f"📦 Entrega {fecha} · Lima: {len(listos)} para registrar · {len(pend)} pendientes · {len(ya)} ya registrados · generado {ahora} (Lima)"]
     if r.get("fecha_motivo"):
@@ -851,7 +879,7 @@ def cmd_presentar(args):
         L, Cc = [], []
         for f in listos:
             i += 1; L += [_bloque(i, f, lista, boletas), ""]; Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
-        sec(f"✅ LIMA — PARA REGISTRAR EN DINSIDES con tu OK ({len(listos)})", L, Cc)
+        sec(f"✅ LIMA — PARA REGISTRAR EN DINSIDES con tu OK ({len(listos)})", L, Cc, pagina=True)
     # Shalom va ANTES de los pendientes de Lima (dueño 2026-11-09: «los limas pendientes, en rojo, deben ir debajo de Shalom»)
     todos_prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
     prov = [p for p in todos_prov if not _es_olva(p)]
@@ -860,18 +888,21 @@ def cmd_presentar(args):
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
     # Sin pie de «ya despachados» (dueño 2026-11-09: «está de más»): lo cerrado en la hoja simplemente no aparece.
-    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por Shalom."], Cc or ["Sin pedidos de provincia por Shalom."])
+    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por Shalom."], Cc or ["Sin pedidos de provincia por Shalom."], pagina=True if prov else None)
     if olva:
         L, Cc = [], []
         for j, p in enumerate(olva, 1):
             L += [_bloque_olva(j, p, lista, boletas), ""]; Cc += [_bloque_olva(j, p, lista, boletas, corto=True), ""]
-        sec(f"🟠 OLVA (provincia) · despacho {fecha} · {len(olva)} pedido(s) · se registra a mano en Olva y lleva su etiqueta (etiquetas.py --olva-hoja)", L, Cc)
+        sec(f"🟠 OLVA (provincia) · despacho {fecha} · {len(olva)} pedido(s) · se registra a mano en Olva y lleva su etiqueta (etiquetas.py --olva-hoja)", L, Cc, pagina=True)
     if pend:
-        L, Cc, solo_info = [], [], 0
+        L, Cc, solo_info, Lp, pend_pagina = [], [], 0, [], []
         for f in pend:
             i += 1; L += [_bloque(i, f, lista, boletas), ""]
             c = f.get("campos") or {}
             con_senal = bool(c.get("direccion") or c.get("coordenadas")) or bool(re.search(r"lima|provincia|separ|s[ií],? quiero|direcci|distrito|agencia", str(c.get("obs") or ""), re.I))
+            # A la página solo va lo que ya es pedido (dirección, pin o confirmado) y le falta un dato; la intención sin datos no.
+            if (c.get("direccion") or c.get("coordenadas") or str(f.get("estado_reporte") or "").upper().startswith(("CONFIRMADO", "OTRO_DIA"))) and str(f.get("estado_reporte") or "").upper() != "INTENCION":
+                Lp += [L[-2], ""]; pend_pagina.append(f)
             if con_senal:
                 Cc += [_bloque(i, f, lista, boletas, corto=True), ""]
             else:
@@ -879,6 +910,8 @@ def cmd_presentar(args):
         if solo_info:
             Cc.append(f"… y {solo_info} chat(s) que solo pidieron precio o información, sin destino ni dirección (lista completa en la página). Son para seguimiento de ventas, no pedidos.")
         sec(f"❓ LIMA — PENDIENTES, falta un dato ({len(pend)}; no se registran)", L, Cc)
+        if Lp:
+            P.append((f"❓ LIMA — FALTA UN DATO ({len(pend_pagina)}): pídeselo al cliente y escríbelo en la nota", Lp))
     # Los YA REGISTRADOS no se listan (dueño 2026-11-09: «eso que quede para su memoria interna»); solo cuentan en el RESUMEN.
     # Correcciones (datos que llegaron)
     corr = [x for x in (ag.get("hoy") or []) if "CORRECCION" in str(x.get("estado") or "").upper() or str(x.get("nota") or "").startswith("🚨 CORRECCIÓN")]
@@ -984,13 +1017,16 @@ def cmd_presentar(args):
     K.append(f"{'✅' if not fechas_mal else '❌'} Fechas en Dinsides = fecha pedida ({len(fechas_ok)} de {len(fechas_ok) + len(fechas_mal)}): " + ("; ".join(fechas_mal) if fechas_mal else "; ".join(fechas_ok) or "nada registrado en este despacho"))
     sec("☑️ CONTROLES FINALES", K)
     if con_pdf:
-        resumen = [("Lima para registrar", len(listos)), ("Lima pendientes", len(pend)), ("Ya registrados", len(ya)), ("Shalom", len(prov)), ("Olva", len(olva)), ("Correcciones", len(corr))]
-        pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend] \
+        pend_pag = locals().get("pend_pagina") or []
+        resumen = [("Lima para registrar", len(listos)), ("Shalom", len(prov)), ("Olva", len(olva)), ("Falta un dato", len(pend_pag))]
+        pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend_pag] \
             + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov] \
-            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "olva"} for p_ in olva] \
-            + [{"whatsapp": x.get("whatsapp"), "nombre": x.get("nombre"), "tipo": "otro_dia"} for x in abiertos[:60]]
-        url_rev, rid = _pagina_revision(f"Revisión de envíos {fecha}", S, resumen, fecha, pedidos_rev)
-        links = [f"Revisar y marcar: {url_rev}", "Marca OK / corrección / no va en cada pedido; se guarda solo. Cuando termines, escribe cualquier cosa en la sesión: Claude lee las notas antes de responder."]
+            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "olva"} for p_ in olva]
+        if not P:
+            P.append(("Nada por registrar", ["No hay pedidos de Lima, Shalom ni Olva por registrar en este momento."]))
+        url_rev, rid = _pagina_revision(f"Revisión de envíos {fecha}", P, resumen, fecha, pedidos_rev)
+        links = [f"Revisar y marcar (link fijo de este despacho; es el mismo en cada actualización): {url_rev}",
+                 "La página trae SOLO lo que se registra (Lima, Shalom, Olva) y lo que tiene pedido pero le falta un dato. Lo marcado se guarda por pedido: volver a correr `presentar --pagina` no borra nada; lo nuevo sale con la marca NUEVO."]
         if con_impreso:
             ruta, url = _pdf_y_subir(f"Envíos {fecha} — presentación completa", S, f"envios-{fecha}-{dt.datetime.now(LIMA).strftime('%H%M')}.pdf", resumen)
             links.insert(1, f"PDF para imprimir (una hoja por pedido, con casilla de notas): {url}")

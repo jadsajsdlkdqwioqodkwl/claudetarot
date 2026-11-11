@@ -51,6 +51,24 @@ with tempfile.TemporaryDirectory() as d:
     assert "EL CRM TIENE COMO VENTA Y EL REPORTE NO LO EXPLICA" in html and "51955555555" in html
     assert html.index("NO LO EXPLICA") < html.index("Ventas por vendedora"), "lo que el CRM no explica va arriba del todo"
     assert kits == 4, kits
+    # Dueño 2026-11-11: reporte de VENTAS. Sin «para el que empaca», sin incidencias ni reposiciones (van al reporte del dueño),
+    # y con la columna «Envío» (lo que ya está registrado en el courier no sale como pendiente).
+    con = dict(datos, saldos=[{"nombre": "Saldo Demo", "whatsapp": "51911111111", "monto": 69, "motivo": "depósito BCP 18:19"}],
+               incidencias=["🚨 Incidencia Demo: caja golpeada"], envios_hechos={"900000001": "Dinsides registrado #123 (entrega 2026-10-15)"},
+               _resuelto={"entregados": [{"nombre": "Entregado Demo", "telefono": "922222222", "id_pedido": "9", "fecha_entrega": "2026-10-14", "seguimiento": "ENTREGADO", "monto": "89"}],
+                          "cerradas_por_nota": [{"nombre": "Moto Demo", "whatsapp": "51933333333", "fila": 44, "motivo": "motorizado externo (según la nota)"}]})
+    con["pedidos"] = con["pedidos"] + [{"estado": "CONFIRMADO", "tipo": "REPOSICION", "destino": "LIMA", "nombre": "Repo Demo", "vendedora": "Mayra", "whatsapp": "51944444444", "kits": 0, "empaque": "collar amuleto extra", "nota": "🚨 llevarle el collar"}]
+    enviar.armar_pdf(dict(con), d)
+    html = open(os.path.join(d, "pedidos.html")).read()
+    assert "PARA EL QUE EMPACA" not in html and "INCIDENCIAS" not in html and "Repo Demo" not in html and "Saldo Demo" not in html
+    assert "<th>Envío</th>" in html and "Dinsides registrado #123" in html and "por registrar" in html
+    assert html.index("Ventas por vendedora") < html.index("Lima — confirmados"), "las ventas van primero"
+    pdf_d, resumen_d = enviar.armar_pdf_dueno(dict(con), d)
+    hd = open(os.path.join(d, "dueno.html")).read()
+    assert pdf_d.endswith("saldos-y-reposiciones-2026-10-14.pdf") and os.path.getsize(pdf_d) > 1000
+    assert "Saldos cobrados hoy (1) · total S/69" in hd and "Saldo Demo" in hd and "Repo Demo" in hd and "Incidencia Demo" in hd
+    assert "Entregado Demo" in hd and "Moto Demo" in hd and "solo Moi" in resumen_d
+    assert enviar.es_cierre({"hora": "23:45"}, []) and not enviar.es_cierre({"hora": "22:30"}, []) and enviar.es_cierre({"hora": "21:45"}, ["--dueno"])
     # El PDF de ventas y el de pedidos siguen igual.
     p2, _ = enviar.armar_pdf(dict(base), d)
     assert p2.endswith("ventas-2026-10-14-2100.pdf")

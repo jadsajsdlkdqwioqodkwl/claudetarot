@@ -3,7 +3,8 @@
 > FUENTE DE VERDAD de las instrucciones. La Routine o el Project de Jennifer lleva solo el «arranque» de abajo; Claude clona el
 > repo y lee este archivo, así las mejoras entran solas sin tocar su prompt. Copia legible en Google Docs
 > («Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`, compartido con el
-> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-09 (madrugada: página de revisión sin PDF, notas se leen solas, Shalom antes que los pendientes de Lima).
+> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-11 (link fijo por día, página solo con lo que se registra, nota del motorizado limpia, reposiciones fuera,
+> 2+ kits = 1 paquete XS). Antes: 2026-11-09 (madrugada: página de revisión sin PDF, notas se leen solas, Shalom antes que los pendientes de Lima).
 
 ## Arranque (lo único que va en la Routine o el Project de Jennifer)
 
@@ -19,6 +20,39 @@ API de Claude. Trabaja solo con python3 scripts/asesor/dinsides.py y python3 scr
 
 Nota (2026-11-09): el arranque sincroniza con `git merge --ff-only` (un `reset --hard` lo bloqueó el permiso de la sesión y la Routine
 leyó instrucciones viejas). Si la sincronización falla, dilo en la primera línea y sigue con lo que tengas.
+
+## LO QUE CAMBIÓ EL 2026-11-11 (dueño: «más fácil para Jennifer; que la IA haga el trabajo pesado»). MANDA sobre lo de abajo si se contradicen
+
+1. **La página de revisión tiene UN link fijo por despacho** (`…/r/envios-AAAA-MM-DD-<clave>`). Cada `presentar --pagina` actualiza
+   ESE MISMO link; lo que la asesora marcó (OK / corrección / no va / ya se envió y su nota) se guarda por pedido y NO se pierde.
+   Si te escriben «actualiza» (o llegó algo nuevo), vuelve a correr `python3 scripts/asesor/dinsides.py presentar --pagina` y
+   responde con el mismo link: lo nuevo aparece con la marca NUEVO y lo ya registrado desaparece solo.
+2. **La página trae SOLO lo que la asesora registra**: Lima para registrar, Shalom, Olva, y «falta un dato» (pedidos con dirección o
+   pago a los que les falta algo, con lo que hay que pedirle al cliente). NO trae entregados, registrados, anulados, motorizado
+   externo, pedidos de otros días, chats de hoy ni controles: eso lo lees TÚ en la pantalla (la salida de `presentar`) y lo resuelves
+   tú; lo que el dueño deba saber le llega en su reporte «Saldos y reposiciones». No se lo cuentes a la asesora.
+3. **Tu respuesta en la sesión es CORTA** (ya no se pega la salida completa): el link fijo, una línea con los números («Lima 11 ·
+   Shalom 6 · Olva 1 · falta un dato 2»), y SOLO las preguntas que una persona debe contestar (una línea cada una, con nombre y
+   WhatsApp). Si un control de la pantalla sale ❌ y no lo puedes resolver tú, es una pregunta más. Cierra con: «Marca en la página y
+   escríbeme “listo”; o responde OK / OK Shalom».
+4. **Trabajo pesado antes de presentar** (tú, no la asesora): corre `dinsides.py estados` (ahora cruza Dinsides también con los
+   teléfonos que aparecen en el chat —contacto compartido, número de quien recibe— y cierra solo en la hoja lo ENTREGADO, lo
+   ANULADO o RECHAZADO, lo que ya está REGISTRADO y lo que la nota dice que salió por motorizado externo). Lee los chats de los
+   bloqueados, de los candidatos del CRM y de «chats de hoy» con señal, y agrega o corrige en salida.json. Solo llega a la página lo
+   que de verdad necesita un OK o un dato.
+5. **Reposiciones y cambios NO van por aquí** (los despacha otro equipo): el sistema ya no arma ficha de Dinsides para `tipo`
+   REPOSICION / CAMBIO ni los pone en la página. No los registres ni los presentes.
+6. **Detalle = nota para el motorizado.** El sistema deja solo cómo contactar, a quién entregar, dónde dejarlo y el horario; quita
+   pagos («ya pagó 89», «cobrar 0»: eso va en Cobrar y tipo de pago), pines y coordenadas, y apuntes internos. Si al corregir escribes
+   una `nota`, respeta lo mismo. El producto lleva el NOMBRE de lo que va («Cuenco tibetano 13 cm + mazo Tarot Rider Waite de
+   aprendizaje»), nunca «Reposición / cambio» en una venta.
+7. **Shalom: 2 o más kits = UN paquete XS, cantidad 1** (no N paquetes XXS). 1 kit = 1 paquete XXS. Lo pone el sistema en el Excel
+   masivo y en la presentación; en el registro a mano, igual.
+8. **Etiquetas:** todas las de Shalom llevan «EMPAQUE: …» (1 kit normal, «3 KITS (Paquete XS)», extras). Si pasas las de Shalom por
+   archivo (`--shalom datos.json`) y no pones `empaque`, el script lo busca por DNI en el reporte; puedes ponerlo tú en cada ítem.
+9. **Última revisada del despacho (antes de dar por cerrado el ciclo):** todo lo REGISTRADO en Dinsides en este ciclo tiene etiqueta
+   (cuenta de `registrar` = cuenta de Lima en `etiquetas.py`), cada provincia con adelanto de hoy está en Shalom u Olva o es una
+   pregunta, y lo agendado para otro día que ya está en Dinsides no se vuelve a registrar.
 
 REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
 «registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:

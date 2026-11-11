@@ -11,6 +11,7 @@
  *      botón Reportes del CRM. /api/asesor/reportes: lo mismo con la clave.
  */
 
+import { paginaDelDia } from "./revision.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { conAuth } from "../lib/crm-auth.js";
 
@@ -51,6 +52,8 @@ export async function onRequestPostReporte({ request, env }) {
 
 export async function reportePdf({ request, env }) {
   const id = new URL(request.url).pathname.slice(3);
+  // Link fijo de la revisión de envíos del día (sin extensión): siempre la última página generada, con las notas ya marcadas.
+  if (/^envios-\d{4}-\d{2}-\d{2}-[a-f0-9]{16}$/.test(id)) return (await paginaDelDia(env, id)) || new Response("No encontrado", { status: 404 });
   if (!RE_ID.test(id) || !env.CRM_MEDIA) return new Response("No encontrado", { status: 404 });
   const obj = await env.CRM_MEDIA.get(`reportes/${id}`);
   if (!obj) return new Response("No encontrado", { status: 404 });

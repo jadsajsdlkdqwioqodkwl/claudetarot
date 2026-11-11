@@ -42,7 +42,8 @@ De dónde sale cada columna del Excel (el masivo NO autocompleta nada por DNI, a
   TELF. DESTINATARIO = el WhatsApp del cliente (9 dígitos) salvo que haya dado otro número para recoger.
   ORIGEN = CHORRILLOS CO (de donde salen los paquetes). DESTINO = la agencia de Shalom tal como la llama Shalom Pro (último tramo del
   código «DEP / PROV / DIST / AGENCIA»), elegida con `buscar` a partir de lo que escribió el cliente («Shalom Av. Parra, Arequipa»).
-  MERCADERIA = PAQUETE XXS (la medida más barata, S/8; las medidas y el peso los calcula la plantilla). CANTIDAD = kits del pedido.
+  MERCADERIA = PAQUETE XXS (la medida más barata, S/8; las medidas y el peso los calcula la plantilla), CANTIDAD 1. Con 2 o más kits:
+  UN solo PAQUETE XS, cantidad 1 (dueño 2026-11-11), nunca N paquetes XXS.
   CONTACTO, TELF. CONTACTO, NRO GRR y COBRO SEGURO quedan vacíos (sin cobro seguro, regla del dueño).
 """
 import datetime as dt, json, os, re, shutil, sys, unicodedata, urllib.request
@@ -376,10 +377,11 @@ def cmd_masivo(args):
         elif len(dni) != 8:
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
         kits = int(p.get("kits")) if str(p.get("kits")).isdigit() else 1
-        kits_bultos = kits or 1   # «no es kit» (kits 0) igual viaja como 1 bulto
+        # Dueño 2026-11-11: 2 o más kits viajan en UN paquete XS (no N paquetes XXS). 1 kit (o «no es kit») = 1 paquete XXS.
+        mercaderia, kits_bultos = ("PAQUETE XS", 1) if kits >= 2 else ("PAQUETE XXS", 1)
         # Al Excel solo entran las filas completas (DNI y agencia); las dudosas quedan en la referencia y en las preguntas.
         if dni and destino:
-            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits_bultos})
+            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": mercaderia, "cantidad": kits_bultos})
         else:
             aviso.append("NO entra al Excel hasta resolverlo")
         ref.append([len(filas_excel) + 1 if dni and destino else "—", p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), next((c["codigo"] for c in cand if c["agencia"] == destino), cand[0]["codigo"] if cand else ""), "sí" if destino else "NO",
@@ -391,7 +393,7 @@ def cmd_masivo(args):
     salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
     wb_ref.save(salida_ref)
     json.dump({"fecha": fecha, "clave": clave_dia, "lote": lote}, open(os.path.join(os.path.dirname(os.path.abspath(salida)), "lote.json"), "w"), ensure_ascii=False, indent=1)
-    print(f"{salida} · {len(filas_excel)} fila(s) en el Excel de {fila - 2} pedido(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
+    print(f"{salida} · {len(filas_excel)} fila(s) en el Excel de {fila - 2} pedido(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}; 1 kit = PAQUETE XXS, 2 o más kits = 1 PAQUETE XS)")
     print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas, CLAVE); NO se sube a Shalom")
     if con_ventas:
         print(f"Ventas en la hoja Ventas con la clave del día: {sum(1 for c in claves.values() if c == clave_dia)} de {len(lote)} (CLAVE MASIVA en Shalom Pro).")

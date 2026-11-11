@@ -74,3 +74,23 @@ Telegram: la Routine solo reenvía si corrigió algo (máximo 2 veces).
 Prompt v2 en `docs/prompts/reporte.md` (las Routines solo llevan el arranque). Cambios en `enviar.py`: `promover_provincia()`,
 `conciliar_agenda()` (boletas emitidas + estados de Dinsides, también a mano con `reporte.py conciliar`), atrasados de más de 3 días
 fuera de la tabla, `marcar_compras()` vía `/api/asesor/marcar-compra`. Detalle y motivos en `docs/MAPA.md` (2026-11-09 madrugada).
+
+## 2026-11-11 · v3: reporte de VENTAS (Moi, Danitza, Jennifer), courier a la vista y PDF aparte «Saldos y reposiciones» solo para Moi
+
+Pedido del dueño: «no es un reporte de incidencias ni de reposiciones: es un reporte de ventas»; «que revise el portal del courier»;
+«si un pedido ya está registrado, que ya no lo muestre».
+- **PDF del equipo** (`armar_pdf`, unificado): ventas por vendedora arriba; confirmados Lima / provincia con la columna **«Envío»**
+  (Dinsides registrado / ENTREGADO / ANULADO #id, Shalom con orden, motorizado, o «por registrar»); sin «para el que empaca» (va en
+  las etiquetas), sin incidencias, sin reposiciones ni cambios.
+- **PDF del dueño** (`armar_pdf_dueno`, «saldos-y-reposiciones-FECHA.pdf», Telegram `solo_dueno`): saldos cobrados hoy con total,
+  reposiciones y cambios, incidencias y «lo que el sistema ya resolvió solo» (entregados, registrados, anulados, rechazados,
+  motorizado externo, boletas). Sale en la corrida de las 23:45 (`es_cierre`: hora ≥ 23:30 o antes de las 3:00) o con `--dueno`.
+  `saldos` ahora se suma entre corridas (`CLAVES_LISTA` de `ventas_estado.py`).
+- **Courier**: `reporte.py preparar` trae `dinsides` (registrados por entregar, entregados, anulados o rechazados, cerrados por
+  motorizado externo) y corre `estados` con marcado. `estados` (Worker) cruza también por los teléfonos del chat (contacto
+  compartido), cierra la fila de lo que ya está REGISTRADO, de lo anulado aunque la fila diga un día de diferencia (±3) y de lo que
+  la nota dice que salió por motorizado externo. La hoja ya no reabre una fila para un pedido cerrado con la misma fecha de entrega
+  (`ya_cerradas`), que era por lo que una agendada ya registrada volvía a salir como pendiente.
+- Prompt v3 en `docs/prompts/reporte.md` (saldos por cualquier medio, `nota` solo para el motorizado, mirar `dinsides`).
+- Jennifer recibe el PDF del equipo por Telegram: `REPORTE_AGENTES = "danitza,jennifer"` y su usuario del CRM tiene Telegram vinculado
+  (verificado el 2026-11-11).

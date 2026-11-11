@@ -2513,3 +2513,40 @@ Dueño: «sube a main; a los 19 de las últimas 24 h mándales la secuencia de b
 - **`POST /api/asesor/recuperar`** (`src/api/asesor-recuperar.js`, clave del asesor): `{ horas, max, bienvenida, probar }`. Lee `webhook_errores` sin número, saca el id de negocio de cada `wa_message_id` (`bsuidDeWamid`), abre el chat con una nota en lugar del mensaje perdido («[Escribió N mensajes que el CRM no pudo guardar…]», con la hora de su último mensaje) y, si escribió hace menos de 23,5 h, le manda la secuencia de bienvenida y programa su seguimiento de interesados (como a todo chat nuevo). De a `max` por llamada; no repite (quien ya tiene chat se salta). `probar: true` solo cuenta.
 - **Asesor y chats sin número:** `idWa()` en `whatsapp.js` (un id de negocio se deja igual; un número, solo dígitos) reemplaza el «solo dígitos» en `asesor.js` (sugerencias, preguntas, saldos, envíos a varios), `asesor-mandar.js`, `asesor-resumen.js` y `rescate-lead.js`: una recomendación, plantilla sugerida o rescate con `whatsapp: "PE.1122…"` llega a su chat. Lo demás ya existía y no se tocó: el reflote cada 10 min de la recomendación sin respuesta (`reflotarSugerencia`, cron `*/10`), la plantilla que propone el asesor (`plantilla` en la sugerencia) y «Ya respondí» / «Descartar». Los scripts de reportes en Python (ventas, pedidos, Shalom, Dinsides) siguen cruzando por los últimos 9 dígitos del celular: un pedido de un chat sin número necesita que la vendedora le pida el número.
 - Prueba: `scripts/test-sin-numero.mjs` suma la recuperación (id desde un wamid real, bienvenida solo dentro de 24 h, no repite).
+
+
+## 2026-11-11 (madrugada) — Reporte de ventas de verdad, revisión de envíos simple con link fijo, etiquetas limpias, PDF «Saldos y reposiciones» solo para Moi
+
+Pedido del dueño (con las etiquetas del 11/11 a la vista): el reporte confundía (Sandra «sin entregar» estando registrada; Claudia
+de Blue Day Spa «sin despachar» estando entregada a nombre de Flor; Carmen por motorizado externo; anulados que seguían saliendo;
+Pamela repetida en «correcciones»; César Augusto pagó su saldo por BCP y no salió), la revisión era difícil para Jennifer, y las
+etiquetas traían pagos, pines y apuntes internos en «Detalle», «Reposición / cambio» como producto y las de provincia sin empaque.
+Decisiones del dueño (preguntadas en la sesión): reposiciones las hace otro equipo y no son prioridad; saldos y reposiciones en
+un reporte aparte SOLO para Moi al cierre (23:45); a la asesora solo le interesa lo que registra (Lima, Shalom, Olva); link fijo por
+día para la revisión; «para el que empaca» se quita del reporte; Shalom con 2 o más kits = 1 paquete XS.
+
+Qué se conecta con qué (nuevo o cambiado):
+- `scripts/asesor/enviar.py`: `armar_pdf` (unificado sin empaque / incidencias / reposiciones, columna «Envío»), `armar_pdf_dueno` +
+  `es_cierre` (PDF «Saldos y reposiciones», `solo_dueno`), `conciliar_agenda` devuelve lo resuelto, `agenda_sheet` pide `enviadas=1`.
+  `ventas_estado.CLAVES_LISTA` suma `saldos`.
+- `scripts/asesor/reporte.py preparar`: bloque `dinsides` (estado real del courier) para la Routine.
+- `src/api/asesor-dinsides.js`: `telefonosDelChat`, `cruzarConDinsides(…, otrosTelefonos)`, `cruzarEstados` (teléfonos del chat,
+  cierre de REGISTRADO, anulado ±3 días, `cerradas_por_nota` motorizado externo, `whatsapp_hoja`), reposiciones y cambios fuera de
+  las fichas.
+- `src/api/asesor-pedidos-sheet.js`: el upsert no reabre un pedido ya cerrado con la misma entrega (`ya_cerradas`).
+- `src/lib/dinsides.js`: `notaParaMotorizado`, `nombreProducto` (kits 0 con nombre real), el «VERIFICAR…» solo quita su tramo.
+- `src/api/revision.js` + `src/api/reportes.js`: revisión del día (`envios-FECHA`), `paginaDelDia`, `/r/envios-FECHA-<clave>`,
+  `leer: true`.
+- `scripts/asesor/dinsides.py presentar --pagina`: página P (solo lo que se registra), `_pagina_revision` con link fijo, marca
+  NUEVO, `_mercaderia` (XS).
+- `scripts/asesor/etiquetas.py`: `nota_motorizado`, `empaque_shalom`, `completar_empaque_shalom`, producto real en genéricos.
+- `scripts/asesor/shalom.py masivo`: 2+ kits → `PAQUETE XS` × 1.
+- Prompts: `docs/prompts/reporte.md` (v3) y `docs/envios-jennifer.md` («Lo que cambió el 2026-11-11»). Las Routines no se tocaron
+  (leen esos archivos de `main`): los cambios valen cuando esta rama llegue a `main`.
+- Pruebas: `scripts/test-dinsides.mjs` (nota del motorizado, producto), `scripts/asesor/pruebas/test_pdf_unificado.py` (PDF del
+  equipo y del dueño).
+
+Hallazgo de la revisada del 11/11 (no se tocó nada en Dinsides): 13 de 13 registros de Lima con etiqueta y fecha 11/11; 6 Shalom y 1
+Olva con etiqueta; ya en el almacén de Dinsides para hoy Sandra #2945616, Samantha Cassina #2945617, Keyla Vásquez #2945614 y María
+del Pilar Mendoza #2939521; la reposición del collar de July (51940435388) no se registró en Dinsides porque el sistema la cruzó con
+su pedido anterior entregado: queda para el equipo de reposiciones (regla nueva).
