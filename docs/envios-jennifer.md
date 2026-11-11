@@ -70,6 +70,20 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
 12. **Toda etiqueta de Lima lleva en «Detalle» «Escribir al cliente por WhatsApp: 9…»** (el WhatsApp del chat y, si es otro, el
     teléfono de quien recibe). Lo pone el sistema al registrar; no lo borres al corregir una nota. Las de Olva también llevan «EMPAQUE».
 
+13. **LA CLAVE DEL DÍA VA AL CRM, Y SE COMPRUEBA (dueño 2026-11-11: «le pasó la clave a Claude, Claude dijo “ya está” y en el CRM no
+    aparecía»).** Cuando en la sesión te den la clave de recojo del día (4 dígitos), corre SIEMPRE
+    `python3 scripts/asesor/shalom.py clave NNNN` (sin fecha toma el despacho en curso; con otra fecha: `clave NNNN AAAA-MM-DD`).
+    Funciona aunque NO haya habido Excel masivo (envíos registrados a mano en Shalom Pro): toma los envíos de provincia del despacho
+    de la hoja «Pedidos auto». Pone la clave en la FICHA del cliente del CRM («Clave Shalom», deja su cobro por aprobar) y en su venta
+    de la hoja Ventas, e imprime por cliente «✅ CRM: clave puesta» o qué falló, y al final «CLAVE EN EL CRM: N de M».
+    - Tu respuesta es esa lista pegada tal cual (no lleva la clave). PROHIBIDO responder «listo» o «ya está» si no corriste el comando
+      o si N < M: di exactamente quién quedó sin clave y por qué.
+    - «⚠️ ya tenía OTRA clave»: es de un pedido anterior; pregunta antes de cambiarla (`--pisar --solo 51…`).
+    - Los de OLVA llevan la clave de Olva: `python3 scripts/asesor/shalom.py clave "$OLVA_CLAVE" --olva --solo 51…`.
+    - Para comprobar sin cambiar nada: `python3 scripts/asesor/shalom.py clave ver [AAAA-MM-DD]`.
+    - La clave NUNCA se le manda al cliente, ni va en Telegram, ni la repites en tus respuestas: es distinta del «Código» de 4 letras
+      de la boleta. Solo vive en el CRM y en la hoja Ventas; el CRM se la da al cliente cuando paga su saldo.
+
 REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
 «registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:
 lee la última página de revisión que dejó `presentar`). Lo que el dueño marcó en la página vale igual que si lo hubiera escrito en la

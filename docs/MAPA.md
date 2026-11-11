@@ -2698,3 +2698,18 @@ empaca, en la etiqueta. No salía por dos fallas: (1) `promesas.RE_PROMESA` no r
 - Prueba: `scripts/test-capi-sin-numero.mjs` (en `npm run check`).
 - Redes (mismo día): el dueño eligió «solo el texto»: la foto por DM queda apagada de fábrica (`imagen_url` vacío en
   `POR_DEFECTO`, `src/lib/redes.js`); se prende poniendo el link en el panel.
+
+## 2026-11-11 (noche) — La clave de recojo del día ahora sí queda en el CRM, y Claude lo comprueba
+
+Dueño: Jennifer le dio la clave del día al Claude de envíos, Claude respondió que ya estaba, y en el CRM no aparecía «Clave Shalom».
+Causa: `shalom.py clave` (y `poner_clave`) solo escribían la clave en la hoja **Ventas**; la ficha del cliente del CRM
+(`contacts.shalom_code`) solo se escribía desde la interfaz (`PATCH /api/crm/contacts`). Además `clave` exigía `/tmp/shalom/lote.json`
+(solo existe si se corrió el Excel masivo): con envíos registrados a mano en Shalom Pro, salía con error y no hacía nada.
+- `POST /api/asesor/ventas { accion: "clave_crm", whatsapp, clave?, pisar? }` (`src/api/asesor-ventas.js`, `claveEnCrm`): guarda la
+  clave en `contacts.shalom_code` y deja el cobro POR APROBAR en cada chat (`activarCobroPorCodigo`, igual que cuando una vendedora
+  la escribe en el perfil). No pisa una clave distinta sin `pisar`. Nunca devuelve la clave; sin `clave` solo dice si la tiene.
+- `scripts/asesor/shalom.py clave NNNN [lote.json] [FECHA] [--pisar] [--solo …] [--olva]` y `clave ver [FECHA]`: toma el lote del
+  Excel masivo y, si no hubo, los envíos de provincia del despacho en la hoja «Pedidos auto» (`_lote_de_hoja`); pone la clave en el
+  CRM y en la hoja Ventas; imprime por cliente el resultado (sin la clave) y «CLAVE EN EL CRM: N de M».
+- `docs/envios-jennifer.md` regla 13: correr siempre el comando al recibir la clave, pegar la lista, prohibido decir «listo» sin ella.
+- La clave sigue siendo secreta: no va a clientes, a Telegram ni a las respuestas de Claude.

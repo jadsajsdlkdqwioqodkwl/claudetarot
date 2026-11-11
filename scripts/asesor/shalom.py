@@ -423,22 +423,95 @@ def poner_clave(dni, tel, clave, adelanto, saldo, notas=""):
     return {"ok": True, "existia": existia, "codigo": v.get("codigo")}
 
 
+def clave_crm(tel, clave="", pisar=False):
+    """La clave en la FICHA del cliente del CRM (lo que el equipo ve como «Clave Shalom»). Sin clave solo consulta.
+    El Worker nunca devuelve la clave: solo si quedó puesta."""
+    cuerpo = {"accion": "clave_crm", "whatsapp": re.sub(r"\D", "", str(tel or ""))[-9:]}
+    if clave:
+        cuerpo["clave"] = clave
+    if pisar:
+        cuerpo["pisar"] = True
+    return pedir_worker("/ventas", cuerpo)
+
+
+def _lote_de_hoja(fecha):
+    """Los envíos de provincia de este despacho cuando NO hubo Excel masivo (el equipo los registró a mano en Shalom Pro): filas de
+    «Pedidos auto» cerradas en este ciclo con «Shalom NNN», más las de provincia CONFIRMADAS aún abiertas de esa fecha."""
+    r = pedir_worker(f"/pedidos-sheet?hoy={fecha}&enviadas=1") or {}
+    ayer = (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()
+    lote, vistos = [], set()
+    def agregar(f):
+        tel = re.sub(r"\D", "", str(f.get("whatsapp") or ""))[-9:]
+        if not tel or tel in vistos or str(f.get("destino") or "").upper() != "PROVINCIA":
+            return
+        vistos.add(tel)
+        adelanto, saldo, _ = montos(f)
+        olva = "olva" in f"{f.get('direccion_o_agencia') or ''} {f.get('enviado') or ''}".lower()
+        lote.append({"nombre": f.get("nombre"), "dni": dni_de(f), "tel": tel, "adelanto": adelanto, "saldo": saldo, "destino": str(f.get("direccion_o_agencia") or "")[:60], "olva": olva})
+    for f in r.get("enviadas") or []:
+        env_ = str(f.get("enviado") or "")
+        act = str(f.get("actualizado") or "")[:16]
+        if re.search(r"Shalom\s+\d{6,}|Olva", env_, re.I) and (f"{ayer} 06:00" < act or fecha in env_ or str(f.get("fecha_entrega") or "") == fecha):
+            agregar(f)
+    for k in ("hoy", "atrasados"):
+        for f in r.get(k) or []:
+            if str(f.get("estado") or "").upper().startswith("CONFIRMADO") and (k == "hoy" or str(f.get("fecha_entrega") or "") >= ayer):
+                agregar(f)
+    return lote
+
+
 def cmd_clave(args):
-    clave = args[0]
-    if not re.fullmatch(r"\d{4}", clave):
-        sys.exit("La clave debe ser de 4 dígitos.")
+    """clave NNNN [lote.json] [AAAA-MM-DD] [--pisar] [--solo 51…,51…]: pone la clave de recojo del día en la FICHA del CRM de cada
+    cliente del despacho (y en su venta de la hoja Ventas). Sin lote.json (no hubo Excel masivo) toma los envíos del despacho de la
+    hoja «Pedidos auto». Imprime por cliente si quedó en el CRM; NUNCA imprime la clave. `clave ver [FECHA]` solo consulta."""
+    solo_ver = args[0] == "ver"
+    clave = "" if solo_ver else args[0]
+    if not solo_ver and not re.fullmatch(r"\d{4}", clave):
+        sys.exit("La clave debe ser de 4 dígitos (o usa `clave ver`).")
     ruta = next((a for a in args[1:] if a.endswith(".json")), "/tmp/shalom/lote.json")
-    if not os.path.exists(ruta):
-        sys.exit(f"No existe {ruta}: primero corre `masivo`.")
-    lote = json.load(open(ruta))
-    ok = 0
-    for f in lote.get("lote", []):
-        r = poner_clave(f["dni"], f["tel"], clave, f.get("adelanto", 20), f.get("saldo", 69), f"{f.get('nombre') or ''} · {f.get('destino') or ''}"[:80])
-        print(f"{'✅' if r.get('ok') else '❌'} {f.get('nombre')} · DNI {f['dni']} · {'ya existía, clave corregida' if r.get('existia') else 'venta creada'}{' · ' + r['error'] if r.get('error') else ''}")
-        ok += bool(r.get("ok"))
-    lote["clave"] = clave
-    json.dump(lote, open(ruta, "w"), ensure_ascii=False, indent=1)
-    print(f"Clave del día puesta en {ok} de {len(lote.get('lote', []))} ventas. En Shalom Pro: CLAVE MASIVA.")
+    fecha = next((a for a in args[1:] if len(a) == 10 and a[4] == "-"), None)
+    if not fecha:
+        t = dt.datetime.now(LIMA); fecha = (t.date() if t.hour < 6 else t.date() + dt.timedelta(days=1)).isoformat()
+    lote_json = json.load(open(ruta)) if os.path.exists(ruta) else None
+    lote = list((lote_json or {}).get("lote") or [])
+    en_lote = {re.sub(r"\D", "", str(f.get("tel") or ""))[-9:] for f in lote}
+    de_hoja = [f for f in _lote_de_hoja(fecha) if f["tel"] not in en_lote]
+    lote += de_hoja
+    if "--solo" in args:
+        quienes = {re.sub(r"\D", "", x)[-9:] for x in args[args.index("--solo") + 1].split(",")}
+        lote = [f for f in lote if re.sub(r"\D", "", str(f.get("tel") or ""))[-9:] in quienes]
+    if not lote:
+        sys.exit(f"No encontré envíos de provincia para el despacho del {fecha} (ni lote.json ni filas de «Pedidos auto»). Pasa la fecha: `clave NNNN AAAA-MM-DD`, o los WhatsApp: `--solo 51…,51…`.")
+    print(f"Despacho {fecha} · {len(lote)} envío(s) de provincia ({len(lote) - len(de_hoja)} del Excel masivo, {len(de_hoja)} de la hoja «Pedidos auto»)")
+    ok_crm = 0
+    for f in lote:
+        nombre = f.get("nombre") or f.get("tel")
+        if f.get("olva") and not solo_ver and "--olva" not in args:
+            print(f"🟠 {nombre} · {f.get('tel')} · va por OLVA: su clave es la de Olva (`shalom.py clave \"$OLVA_CLAVE\" --solo {f.get('tel')} --olva`); no se le pone la de Shalom")
+            continue
+        c = clave_crm(f.get("tel"), clave, "--pisar" in args)
+        if c.get("sin_chat"):
+            estado_crm = "❌ CRM: no hay chat con ese número"
+        elif c.get("tenia_otra"):
+            estado_crm = "⚠️ CRM: ya tenía OTRA clave (pedido anterior); no se cambió. Si corresponde: repite con --pisar --solo " + str(f.get("tel"))
+        elif c.get("tiene_clave"):
+            estado_crm = "✅ CRM: clave puesta" + (" (ya estaba)" if c.get("ya_estaba") else "") if not solo_ver else "✅ CRM: tiene clave"
+            ok_crm += 1
+        elif c.get("error"):
+            estado_crm = f"❌ CRM: {c['error']}"
+        else:
+            estado_crm = "❌ CRM: SIN clave"
+        estado_ventas = ""
+        if not solo_ver and f.get("dni") and not f.get("olva"):
+            r = poner_clave(f["dni"], f["tel"], clave, f.get("adelanto", 20), f.get("saldo", 69), f"{f.get('nombre') or ''} · {f.get('destino') or ''}"[:80])
+            estado_ventas = " · " + ("✅ hoja Ventas" if r.get("ok") else f"❌ hoja Ventas: {r.get('error')}")
+        elif not solo_ver and not f.get("dni"):
+            estado_ventas = " · ⚠️ hoja Ventas: sin DNI en el registro, no se creó la venta"
+        print(f"{nombre} · {f.get('tel')} · {estado_crm}{estado_ventas}")
+    if lote_json is not None and not solo_ver:
+        lote_json["clave"] = clave
+        json.dump(lote_json, open(ruta, "w"), ensure_ascii=False, indent=1)
+    print(f"\nCLAVE EN EL CRM: {ok_crm} de {len(lote)}." + ("" if ok_crm == len(lote) else " ⛔ NO digas que está listo: resuelve los que faltan o dilo tal cual."))
 
 
 def cmd_agregar(args):
