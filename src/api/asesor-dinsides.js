@@ -343,10 +343,10 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
     if (clase === "pendiente" && !String(fila.enviado || "").trim() && !yaDice.includes(`#${ped.id_pedido}`)) {
       // Ya está registrado en Dinsides (en su almacén o por recoger) y la fila sigue abierta: típico de un agendado que el reporte
       // volvió a escribir. Se cierra para que no salga como pendiente (dueño 2026-11-11, caso Sandra: «ya estaba registrada»).
-      await marcarDinsidesEnHoja(env, fila.whatsapp, `registrado #${ped.id_pedido} (entrega ${ped.fecha_entrega})`, `Dinsides ${ped.fecha_entrega}`).catch(() => null);
+      await marcarDinsidesEnHoja(env, fila.whatsapp, `registrado #${ped.id_pedido} (entrega ${ped.fecha_entrega})`, `Dinsides ${ped.fecha_entrega}`, fila.fila).catch(() => null);
       resumen.marcados++;
     } else if (clase === "entregado" && (!/entregado/.test(yaDice) || !String(fila.enviado || "").trim())) {
-      await marcarDinsidesEnHoja(env, fila.whatsapp, `entregado ${ped.fecha_entrega} #${ped.id_pedido}`, `Dinsides entregado ${ped.fecha_entrega}`).catch(() => null);
+      await marcarDinsidesEnHoja(env, fila.whatsapp, `entregado ${ped.fecha_entrega} #${ped.id_pedido}`, `Dinsides entregado ${ped.fecha_entrega}`, fila.fila).catch(() => null);
       resumen.marcados++;
       const chat = await datosDelChat(env, ped.telefono).catch(() => null);
       if (chat?.conversation_id) { await agregarEtiquetaMeta(env.CRM_DB, chat.conversation_id, "dinsides_entregado").catch(() => null); resumen.etiquetados++; }
@@ -361,7 +361,7 @@ async function cruzarEstados(env, cookie, { desde, hasta, marcar }) {
       const cerrar = !porTienda && cerca && !String(fila.enviado || "").trim() ? `no salió: Dinsides ${clase} ${ped.fecha_entrega}` : "";
       const texto = /anulado|rechazado/.test(yaDice) ? fila.dinsides : `${clase} ${ped.fecha_entrega} #${ped.id_pedido}: ${ped.seguimiento}${porTienda ? " → sigue pendiente: volver a registrar si el pedido sigue vigente" : ""}`;
       if (!/anulado|rechazado/.test(yaDice) || cerrar) {
-        await marcarDinsidesEnHoja(env, fila.whatsapp, texto, cerrar).catch(() => null);
+        await marcarDinsidesEnHoja(env, fila.whatsapp, texto, cerrar, fila.fila).catch(() => null);
         resumen.marcados++;
       }
       if (!/anulado|rechazado/.test(yaDice)) {
@@ -384,7 +384,7 @@ async function chatsDeHoy(env, fechaVenta) {
      FROM messages m JOIN conversations conv ON conv.id = m.conversation_id JOIN contacts c ON c.id = conv.contact_id
      WHERE m.direction = 'in' AND m.created_at >= ?1
        AND m.id IN (SELECT MAX(id) FROM messages WHERE direction = 'in' AND created_at >= ?1 GROUP BY conversation_id)
-     ORDER BY m.created_at DESC LIMIT 150`
+     ORDER BY m.created_at DESC LIMIT 600`
   ).bind(desde).all();
   return (results || []).map((r) => ({ whatsapp: r.wa_id, nombre: r.nombre, asesora: r.assigned_agent || "", compra_marcada: / purchase /.test(` ${r.meta_tags || ""} `),
     mensajes_hoy: r.n_in, ultimo: r.created_at, texto: r.type === "location" ? "[UBICACIÓN]" : r.type === "image" ? "[imagen]" : String(r.body || "").replace(/\s+/g, " ").slice(0, 110) }));

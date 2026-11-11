@@ -59,6 +59,10 @@ def cuadrar(control, datos):
     marcadas = {n9(p.get("whatsapp")) for p in datos.get("sin_marcar_compra", [])}
     for p in datos.get("pedidos", []):
         wa = n9(p.get("whatsapp"))
+        # Un AGENDADO es la venta de OTRO día que sale en este despacho, y una reposición o cambio no es venta: no se les pide compra
+        # de hoy en el CRM (2026-11-11: Sandra y Samantha, agendadas del 9, salían arriba en rojo como «el reporte no lo explica»).
+        if str(p.get("tipo") or "").upper().replace("Ó", "O") in ("AGENDADO", "REPOSICION", "CAMBIO"):
+            continue
         if p.get("estado") == "CONFIRMADO" and wa and wa not in conocidos and wa not in marcadas:
             problemas.append(f"- {wa}: lo pones CONFIRMADO pero el CRM no tiene compra ni pedido suyo ese día; si es venta real, ponlo en `sin_marcar_compra`; si no, cámbialo de estado.")
     import datetime as dt

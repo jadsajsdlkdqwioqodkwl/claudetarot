@@ -67,12 +67,15 @@ export async function filasPedidosAuto(env) {
  * Escribe la columna «Dinsides» (y, si se pide, «Enviado») en la fila abierta de ese WhatsApp. Si no hay fila abierta,
  * usa la última fila de ese WhatsApp; si no existe ninguna, lo dice (`sin_fila`). Pone el encabezado P1 si faltaba.
  */
-export async function marcarDinsidesEnHoja(env, whatsapp, textoDinsides, enviado = "") {
+export async function marcarDinsidesEnHoja(env, whatsapp, textoDinsides, enviado = "", filaNum = 0) {
   if (!env.GOOGLE_SHEET_ID) return { sin_fila: true, error: "Falta GOOGLE_SHEET_ID." };
   const filas = await leerFilas(env);
   const k = n9(whatsapp);
   let i = -1;
-  filas.forEach((f, j) => { if (n9(f[3]) === k && !String(f[14] || "").trim()) i = j; });
+  // `filaNum` (2026-11-11): la fila exacta que eligió quien llama, si es de ese WhatsApp. Sin esto, con dos filas del mismo cliente se
+  // marcaba otra y la elegida quedaba abierta para siempre (cada corrida la «marcaba» de nuevo).
+  if (Number(filaNum) >= 2 && n9(filas[Number(filaNum) - 2]?.[3]) === k) i = Number(filaNum) - 2;
+  if (i < 0) filas.forEach((f, j) => { if (n9(f[3]) === k && !String(f[14] || "").trim()) i = j; });
   if (i < 0) filas.forEach((f, j) => { if (n9(f[3]) === k) i = j; });
   if (i < 0) return { sin_fila: true, whatsapp };
   const cab = await getValues(env, `${PESTAÑA}!${ULTIMA}1`).catch(() => []);

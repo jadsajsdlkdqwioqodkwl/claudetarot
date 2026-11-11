@@ -2550,3 +2550,19 @@ Hallazgo de la revisada del 11/11 (no se tocó nada en Dinsides): 13 de 13 regis
 Olva con etiqueta; ya en el almacén de Dinsides para hoy Sandra #2945616, Samantha Cassina #2945617, Keyla Vásquez #2945614 y María
 del Pilar Mendoza #2939521; la reposición del collar de July (51940435388) no se registró en Dinsides porque el sistema la cruzó con
 su pedido anterior entregado: queda para el equipo de reposiciones (regla nueva).
+
+## 2026-11-11 (02:30–03:00) — Pasó a `main`; última revisada del despacho y tres huecos cerrados
+
+- La rama se unió a `main` con permiso del dueño (deploy automático). Etiquetas del 11/11 regeneradas con las reglas nuevas
+  (20: Shalom 6, Lima 13, Olva 1) y muestras del reporte de ventas nuevo y de «Saldos y reposiciones» subidas a CRM → Reportes con
+  `enviar.py --solo-pdf --dueno` (no avisa a nadie; `--dueno` junto a `--solo-pdf` sube también el PDF del dueño).
+- **Hueco 1: «chats de hoy» cortaba en 150** (`chatsDeHoy`, `LIMIT 150`): el 10/11 hubo 212 chats con mensaje y los 55 más
+  tempranos no entraban a la revisión. Ahora `LIMIT 600`. Revisados a mano los 55: ninguna venta perdida.
+- **Hueco 2: el cuadre marcaba en rojo a los AGENDADOS** («lo pones CONFIRMADO pero el CRM no tiene compra ese día»): un agendado es
+  la venta de otro día; `control_ventas.cuadrar` ya no lo exige (tampoco a reposiciones y cambios).
+- **Hueco 3: marcas que no pegaban**: `marcarDinsidesEnHoja` acepta la fila exacta (`filaNum`); con dos filas del mismo cliente
+  marcaba otra y la elegida seguía abierta en cada corrida.
+- El PDF del dueño lista de lo ENTREGADO solo los últimos 2 días (lo demás se cuenta).
+- Resultado de la revisada (ventas del 10/11): las 23 ventas que conoce el CRM están en el reporte; Lima 13 registradas hoy + 4 ya
+  en el almacén de Dinsides; provincia 6 Shalom + 1 Olva. Sin registrar por falta de dato: Antonella Prado (dirección, 14/11), Joan
+  (dirección, 16/11). No es venta: Jennifer Figuera (pedido web sin adelanto; el reporte la puso CONFIRMADO con «adelanto visto»).

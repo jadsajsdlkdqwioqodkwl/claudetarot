@@ -435,9 +435,18 @@ def armar_pdf_dueno(datos, carpeta):
                      if repos else "<p class=emp>Ninguna.</p>"))
     if inc:
         partes.append(f"<h2 class=inc>🚨 Incidencias ({len(inc)})</h2><div class=inc>" + tabla([{"texto": t} for t in inc], [("Qué pasa / qué hacer", "texto")]) + "</div>")
-    filas = []
+    filas, viejos_entregados = [], 0
+    import datetime as _dt3
+    try:
+        corte_entregados = (_dt3.date.fromisoformat(str(datos.get("fecha_venta"))) - _dt3.timedelta(days=1)).isoformat()
+    except ValueError:
+        corte_entregados = ""
     for k, titulo in (("entregados", "Entregado (Dinsides)"), ("pendientes", "Registrado, por entregar (Dinsides)"), ("anulados", "Anulado (Dinsides)"), ("rechazados", "Rechazado (Dinsides)")):
         for x in res.get(k) or []:
+            # De lo entregado solo lo de los últimos 2 días (lo demás es historia y alargaba el PDF a 110 filas).
+            if k == "entregados" and str(x.get("fecha_entrega") or "") < corte_entregados:
+                viejos_entregados += 1
+                continue
             filas.append({"que": titulo, "nombre": x.get("nombre"), "tel": x.get("telefono"), "detalle": f"#{x.get('id_pedido')} · {x.get('distrito') or ''} · entrega {x.get('fecha_entrega')} · {x.get('seguimiento') or ''} · S/{x.get('monto')}"})
     for x in res.get("cerradas_por_nota") or []:
         filas.append({"que": "Motorizado externo", "nombre": x.get("nombre"), "tel": x.get("whatsapp"), "detalle": f"fila {x.get('fila')} cerrada: {x.get('motivo')}"})
@@ -446,7 +455,8 @@ def armar_pdf_dueno(datos, carpeta):
     orden = {"Anulado (Dinsides)": 0, "Rechazado (Dinsides)": 1, "Motorizado externo": 2, "Registrado, por entregar (Dinsides)": 3, "Boleta emitida (provincia)": 4, "Entregado (Dinsides)": 5}
     filas.sort(key=lambda f: orden.get(f["que"], 9))
     partes.append(f"<h2>🧹 Lo que el sistema ya resolvió solo (últimos 14 días en Dinsides; {len(filas)})</h2>"
-                  + (tabla(filas, [("Estado", "que"), ("Cliente", "nombre"), ("Teléfono", "tel"), ("Detalle", "detalle")]) if filas else "<p class=emp>Sin datos de Dinsides en esta corrida.</p>"))
+                  + (tabla(filas, [("Estado", "que"), ("Cliente", "nombre"), ("Teléfono", "tel"), ("Detalle", "detalle")]) if filas else "<p class=emp>Sin datos de Dinsides en esta corrida.</p>")
+                  + (f"<p class=emp>Además, {viejos_entregados} entregados de días anteriores (no se listan).</p>" if viejos_entregados else ""))
     doc = f"""<!doctype html><meta charset=utf-8><style>
 @page{{size:A4 landscape;margin:10mm}} body{{font-family:'Noto Sans','DejaVu Sans',sans-serif;font-size:12.5px;color:#111}}
 h1{{font-size:24px;margin:0}} h2{{font-size:17px;border-bottom:2px solid #075E54;color:#075E54;margin:14px 0 4px}} .sub{{color:#666;margin:2px 0 10px}}
@@ -822,6 +832,10 @@ def main():
                 link = subir_reporte(clave, base64.b64encode(fh.read()).decode(), os.path.basename(pdf),
                                      f"{'Pedidos y ventas' if unificado else 'Pedidos'} {datos.get('fecha_objetivo', '')} · {datos.get('origen', 'asesor')}")
             print(f"REPORTE PDF: {link}")
+            if unificado and "--dueno" in args:  # muestra del reporte del dueño: se sube a CRM → Reportes, no avisa a nadie
+                pdf_d, _ = armar_pdf_dueno(datos, carpeta)
+                with open(pdf_d, "rb") as fh:
+                    print("REPORTE DEL DUEÑO (PDF, sin Telegram): " + subir_reporte(clave, base64.b64encode(fh.read()).decode(), os.path.basename(pdf_d), f"Saldos y reposiciones {datos.get('fecha_venta', '')} (solo Moi)"))
         return
     ped = datos.get("pedidos", [])
     cuenta = lambda est, des=None: sum(1 for p in ped if not especial(p) and p.get("estado") == est and (des is None or p.get("destino") == des))
