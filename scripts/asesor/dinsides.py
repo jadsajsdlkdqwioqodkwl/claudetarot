@@ -884,11 +884,14 @@ def cmd_presentar(args):
     todos_prov = _provincia_pedidos(fecha, ag, cands, boletas, lista)
     prov = [p for p in todos_prov if not _es_olva(p)]
     olva = [p for p in todos_prov if _es_olva(p)]
-    L, Cc = [], []
+    L, Cc, Lp_prov = [], [], []
     for j, p in enumerate(prov, 1):
         L += [_bloque_shalom(j, p, lista, boletas), ""]; Cc += [_bloque_shalom(j, p, lista, boletas, corto=True), ""]
+        # Un candidato del CRM (sin adelanto ni datos confirmados) lo resuelve Claude leyendo el chat: no va a la página de la asesora.
+        if not p.get("_crm"):
+            Lp_prov += [L[-2], ""]
     # Sin pie de «ya despachados» (dueño 2026-11-09: «está de más»): lo cerrado en la hoja simplemente no aparece.
-    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por Shalom."], Cc or ["Sin pedidos de provincia por Shalom."], pagina=True if prov else None)
+    sec(f"🚚 SHALOM (provincia) · despacho {fecha} · {len(prov)} pedido(s) por despachar (reporte + hoja + CRM) · el Excel se arma con «OK Shalom»", L or ["Sin pedidos de provincia por Shalom."], Cc or ["Sin pedidos de provincia por Shalom."], pagina=Lp_prov or None)
     if olva:
         L, Cc = [], []
         for j, p in enumerate(olva, 1):
@@ -1018,9 +1021,9 @@ def cmd_presentar(args):
     sec("☑️ CONTROLES FINALES", K)
     if con_pdf:
         pend_pag = locals().get("pend_pagina") or []
-        resumen = [("Lima para registrar", len(listos)), ("Shalom", len(prov)), ("Olva", len(olva)), ("Falta un dato", len(pend_pag))]
+        resumen = [("Lima para registrar", len(listos)), ("Shalom", sum(1 for p_ in prov if not p_.get("_crm"))), ("Olva", len(olva)), ("Falta un dato", len(pend_pag))]
         pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend_pag] \
-            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov] \
+            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov if not p_.get("_crm")] \
             + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "olva"} for p_ in olva]
         if not P:
             P.append(("Nada por registrar", ["No hay pedidos de Lima, Shalom ni Olva por registrar en este momento."]))
