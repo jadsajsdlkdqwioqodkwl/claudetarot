@@ -67,7 +67,9 @@ export function validate(payload) {
       pack,
       etiqueta,
       // Un solo color (dueño, 2026-11-05): dorado.
-      detalle: "Color dorado",
+      tienda: payload.tienda === "ps" ? "ps" : "",
+      // La copia de Puerto Secreto (/espada-ps/) se marca para saber de qué página vino.
+      detalle: payload.tienda === "ps" ? "Color dorado · Puerto Secreto" : "Color dorado",
       cantidad,
       total: precio,
 
@@ -83,7 +85,7 @@ export const filaDePedidoEspada = filaDePedidoMasilla;
 export function mensajeEspadaNuevo(order) {
   const l = (t) => String(t ?? "").replace(/[_*`[]/g, "");
   return (
-    `⚔️ *¡Nuevo pedido: Espada Voladora RC!* ⚔️\n\n` +
+    `⚔️ *¡Nuevo pedido: Espada Voladora RC${order.tienda === "ps" ? " (Puerto Secreto)" : ""}!* ⚔️\n\n` +
     `🕐 *Hora:* ${l(order.fecha)}\n` +
     `👤 *Nombre:* ${l(order.nombre)}\n` +
     `📱 *WhatsApp:* +${order.telefono}\n` +
@@ -142,7 +144,7 @@ export async function onRequestPost(context) {
     );
   }
 
-  order.eventId = makeEventId().replace(/^TK-/, "ES-");
+  order.eventId = makeEventId().replace(/^TK-/, order.tienda === "ps" ? "EP-" : "ES-");
   order.fecha = fechaLima();
 
   let fila;

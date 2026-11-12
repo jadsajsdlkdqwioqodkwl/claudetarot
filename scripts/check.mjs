@@ -1249,6 +1249,31 @@ check("las letras de columna llegan hasta la última de la hoja",
   check("espada: no queda texto en inglés quemado en la página",
     !/\b(Add to cart|Buy now|Free shipping|Sold out|Verified Buyer|Flying Sword)\b/i.test(es + gr));
 }
+/* Copia de la Espada para Puerto Secreto (/espada-ps/): igual a /espada/ salvo el píxel (el de Puerto Secreto),
+   la gracias propia y la marca de tienda. Lo importante: que ningún evento se vaya a otro píxel. */
+{
+  const ps = readFileSync(join(root, "public/espada-ps/index.html"), "utf8");
+  const gr = readFileSync(join(root, "public/espada-ps/gracias.html"), "utf8");
+  const base = readFileSync(join(root, "public/espada/index.html"), "utf8");
+  const idx = readFileSync(join(root, "src/index.js"), "utf8");
+  const { PIXEL_ESPADA_PS, HOST_ESPADA_PS } = await import(join(root, "src/lib/pedido-espada.js"));
+  const dato = (html, k) => (new RegExp(`var ${k} = '([^']*)'`).exec(html) || [])[1];
+  check("espada-ps: el píxel de la página, el de gracias y PIXEL_ESPADA_PS son el de Puerto Secreto (1788156381816025)",
+    dato(ps, "PIXEL_ID") === PIXEL_ESPADA_PS && dato(gr, "PIXEL_ID") === PIXEL_ESPADA_PS && PIXEL_ESPADA_PS === "1788156381816025");
+  const otros = [...(ps + gr).matchAll(/\b\d{15,16}\b/g)].map((m) => m[0]).filter((n) => n !== PIXEL_ESPADA_PS);
+  check("espada-ps: ningún otro píxel en la página ni en gracias (ni el de My World ni el de Tarot)", !otros.length, otros.join(", "));
+  check("espada-ps: fbq('init') usa solo PIXEL_ID", [...(ps + gr).matchAll(/fbq\('init',\s*([^,)]+)/g)].every((m) => m[1].trim() === "PIXEL_ID"));
+  check("espada-ps: gracias es SIEMPRE /espada-ps/gracias y la clave de sessionStorage es propia",
+    ps.includes("location.href = '/espada-ps/gracias?v=' + encodeURIComponent(total);") &&
+    ps.includes("sessionStorage.setItem('pedidoEspadaPS'") && gr.includes("sessionStorage.getItem('pedidoEspadaPS')"));
+  check("espada-ps: el pedido va a /api/order-espada marcado tienda: 'ps'", ps.includes("'/api/order-espada'") && ps.includes("tienda: 'ps'"));
+  const norm = (h) => h.replace(/\/\* ── (Datos que NO|Copia de \/espada\/)[\s\S]*?var WA_NUMERO[^\n]*\n/, "").replace(/espada-ps/g, "espada")
+    .replace(/pedidoEspadaPS/g, "pedidoEspada").replace(", tienda: 'ps'", "");
+  check("espada-ps: es igual a /espada/ salvo píxel, gracias y tienda (si cambias una, cambia la otra)", norm(ps) === norm(base));
+  check("espada-ps: el dominio largo es válido, no dice «tarot» y el Worker lo atiende",
+    HOST_ESPADA_PS.split(".")[0].length <= 63 && !/tarot/i.test(HOST_ESPADA_PS.split(".")[0]) && idx.includes('hostV2 === HOST_ESPADA_PS ? "/espada-ps"'));
+  check("espada-ps: _headers no solapa reglas de /espada-ps/", !/^\/espada-ps\/\*\s*$/m.test(headers));
+}
 /* Versión 2 de las landings del Cable y de la Masilla (hero en GIF, /cable-v2/ y /masilla-v2/). */
 {
   const idx = readFileSync(join(root, "src/index.js"), "utf8");

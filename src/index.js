@@ -15,13 +15,15 @@ import { onRequestPost as orderMasilla } from "./api/order-masilla.js";
 import { onRequestPost as orderEspada } from "./api/order-espada.js";
 import { RUTA_LARGA_CABLE, HOST_CABLE, HOST_CABLE_V2 } from "./lib/pedido-cable.js";
 import { RUTA_LARGA_MASILLA, HOST_MASILLA_V2 } from "./lib/pedido-masilla.js";
-import { HOST_ESPADA } from "./lib/pedido-espada.js";
+import { HOST_ESPADA, HOST_ESPADA_PS } from "./lib/pedido-espada.js";
 import { onRequestPost as upsell } from "./api/upsell.js";
 import { onRequestGet as diag } from "./api/diag.js";
 import { onRequestPost as setup } from "./api/setup.js";
 import { onRequestGet as seguimiento } from "./api/seguimiento.js";
 import { onRequestGet as voucher } from "./api/voucher.js";
 import { onRequestGet as waWebhookGet, onRequestPost as waWebhookPost } from "./api/whatsapp-webhook.js";
+import { onRequestGet as metaWebhookGet, onRequestPost as metaWebhookPost } from "./api/meta-webhook.js";
+import { onRequestGet as crmRedesGet, onRequestPatch as crmRedesPatch, onRequestPost as crmRedesPost } from "./api/crm/redes.js";
 import { onRequestPost as crmLogin } from "./api/crm/login.js";
 import { onRequestPost as crmLogout } from "./api/crm/logout.js";
 import { onRequestGet as crmSession } from "./api/crm/session.js";
@@ -73,6 +75,7 @@ import { onRequestGet as crmExperimentosGet, onRequestPost as crmExperimentosPos
 import { onRequestGet as crmEjemplaresGet, onRequestPost as crmEjemplaresPost, onRequestDelete as crmEjemplaresDelete } from "./api/crm/ejemplares.js";
 import { onRequestGet as crmRecursosGet, onRequestPost as crmRecursosPost, onRequestPatch as crmRecursosPatch, onRequestDelete as crmRecursosDelete } from "./api/crm/recursos.js";
 import { avisarSinRespuesta } from "./lib/crm-avisos.js";
+import { onRequestGet as asesorEntregaGet, guardarArchivosEntrantesPendientes } from "./api/asesor-entrega.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
 import { onRequestPost as crmWelcomeSendPost } from "./api/crm/welcome-send.js";
 import {
@@ -135,9 +138,12 @@ import { vigilarPlantillas } from "./lib/plantillas-propuestas.js";
 import { rescate7Dias } from "./lib/rescate-lead.js";
 import { reflotarSugerencia } from "./lib/crm-sugerencias.js";
 import { onRequestPost as asesorRescatesPost } from "./api/asesor-rescates.js";
+import { onRequestPost as asesorRecuperarPost } from "./api/asesor-recuperar.js";
 import { onRequestGet as asesorBoletasGet, onRequestPatch as asesorBoletasPatch } from "./api/asesor-boletas.js";
 import { onRequestPost as asesorBoletasLogPost } from "./api/asesor-boletas-log.js";
 import { onRequestGet as asesorPedidosSheetGet, onRequestPost as asesorPedidosSheetPost } from "./api/asesor-pedidos-sheet.js";
+import { onRequestPost as asesorMarcarCompraPost } from "./api/asesor-marcar-compra.js";
+import { onRequestPostRevision as asesorRevisionPost, onRequestGetRevision as asesorRevisionGet, onRequestPostNota as revisionNotaPost } from "./api/revision.js";
 import { onRequestGet as asesorDinsidesGet, onRequestPost as asesorDinsidesPost } from "./api/asesor-dinsides.js";
 import { onRequestGet as asesorPlantillasGet, onRequestPost as asesorPlantillasPost } from "./api/asesor-plantillas.js";
 import { onRequestPost as asesorProgramarPlanPost } from "./api/asesor-programar-plan.js";
@@ -160,6 +166,8 @@ const ROUTES = {
   "/api/seguimiento": { GET: seguimiento },
 
   "/api/whatsapp/webhook": { GET: waWebhookGet, POST: waWebhookPost },
+  "/api/meta/webhook": { GET: metaWebhookGet, POST: metaWebhookPost },
+  "/api/crm/redes": { GET: crmRedesGet, PATCH: crmRedesPatch, POST: crmRedesPost },
   // El mismo webhook en otra URL, para la cuenta de WhatsApp de otra marca
   // (override_callback_uri): un destino nuevo no hereda la cola que Meta
   // frena tras rechazos viejos.
@@ -172,6 +180,10 @@ const ROUTES = {
   "/api/asesor/buscar-nombre": { GET: asesorBuscarNombreGet },
   "/api/asesor/boletas-log": { POST: asesorBoletasLogPost },
   "/api/asesor/pedidos-sheet": { GET: asesorPedidosSheetGet, POST: asesorPedidosSheetPost },
+  "/api/asesor/marcar-compra": { POST: asesorMarcarCompraPost },
+  "/api/asesor/revision": { GET: asesorRevisionGet, POST: asesorRevisionPost },
+  "/api/asesor/entrega": { GET: asesorEntregaGet },
+  "/api/revision/nota": { POST: revisionNotaPost, OPTIONS: revisionNotaPost },
   "/api/asesor/dinsides": { GET: asesorDinsidesGet, POST: asesorDinsidesPost },
   "/api/asesor/plantillas-meta": { GET: asesorPlantillasGet, POST: asesorPlantillasPost },
   "/api/asesor/programar-plan": { POST: asesorProgramarPlanPost },
@@ -184,6 +196,7 @@ const ROUTES = {
   "/api/asesor/anuncios": { GET: asesorAnunciosGet },
   "/api/asesor/analisis": { POST: asesorAnalisisPost },
   "/api/asesor/rescates": { POST: asesorRescatesPost },
+  "/api/asesor/recuperar": { POST: asesorRecuperarPost },
   "/api/asesor/boletas_staging": { GET: asesorBoletasGet, PATCH: asesorBoletasPatch },
   "/api/asesor/mandar": { POST: asesorMandarPost },
   "/api/asesor/resumen": { GET: asesorResumenGet },
@@ -312,7 +325,7 @@ export default {
 
     // Versión 2 (hero en GIF) y la Espada Voladora: cada una con su dominio largo (sin «tarot»); `/` es la landing y `/gracias` su gracias.
     const hostV2 = new URL(request.url).hostname;
-    const carpetaV2 = hostV2 === HOST_CABLE_V2 ? "/cable-v2" : hostV2 === HOST_MASILLA_V2 ? "/masilla-v2" : hostV2 === HOST_ESPADA ? "/espada" : null;
+    const carpetaV2 = hostV2 === HOST_CABLE_V2 ? "/cable-v2" : hostV2 === HOST_MASILLA_V2 ? "/masilla-v2" : hostV2 === HOST_ESPADA ? "/espada" : hostV2 === HOST_ESPADA_PS ? "/espada-ps" : null;
     if (carpetaV2 && (pathname === "/" || pathname === "/gracias" || pathname === "/gracias/")) {
       const res = await env.ASSETS.fetch(new Request(new URL(pathname === "/" ? `${carpetaV2}/index.html` : `${carpetaV2}/gracias.html`, request.url), { method: "GET" }));
       const headers = new Headers(res.headers);
@@ -366,6 +379,7 @@ export default {
       ctx.waitUntil(exportarChatsASheets(env));
       // Aviso al dueño por Telegram si hay chats sin responder y nadie del equipo contesta (dueño, 2026-11-04).
       ctx.waitUntil(avisarSinRespuesta(env).catch((err) => console.error("Aviso sin respuesta:", err.message)));
+      ctx.waitUntil(guardarArchivosEntrantesPendientes(env).catch((err) => console.error("Archivos entrantes pendientes:", err.message)));
       ctx.waitUntil(reflotarSugerencia(env).catch((err) => console.error("Reflotar sugerencia:", err.message)));
       return;
     }

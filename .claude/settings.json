@@ -50,7 +50,16 @@
       "Bash(python3 scripts/asesor/reporte.py:*)",
       "Bash(python3 scripts/asesor/preparar.py:*)",
       "Bash(python3 scripts/asesor/contexto.py:*)",
-      "Bash(python3 scripts/asesor/memoria.py:*)"
+      "Bash(python3 scripts/asesor/memoria.py:*)",
+      "Bash(python3 scripts/asesor/shalom.py:*)",
+      "Bash(python3 scripts/asesor/olva.py:*)",
+      "Bash(python3 scripts/asesor/dinsides.py:*)",
+      "Bash(python3 scripts/asesor/etiquetas.py:*)",
+      "Bash(python3 scripts/asesor/motorizado.py:*)",
+      "Bash(python3 scripts/asesor/pedidos_estado.py:*)",
+      "Bash(python3 scripts/asesor/ventas_estado.py:*)",
+      "Bash(python3 scripts/asesor/imagenes.py:*)",
+      "Bash(python3 scripts/asesor/control_ventas.py:*)"
     ]
   }
 }

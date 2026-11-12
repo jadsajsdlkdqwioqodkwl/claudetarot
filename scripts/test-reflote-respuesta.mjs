@@ -2,7 +2,8 @@
  * Reflote por falta de respuesta, «Falta respuesta / Atendido» y el banner de la recomendación (dueño, 2026-11-06,
  * a partir del chat +51 969 799 398). SQLite real con las migraciones. `node scripts/test-reflote-respuesta.mjs`
  * (también la corre `npm run check`).
- *   1. Un chat donde el cliente calló (el último mensaje es nuestro) NO sube por su recomendación.
+ *   1. (2026-11-12) Una recomendación por pasada, cada una una sola vez; el que tiene falta de respuesta va primero y el
+ *      que calló sube en la pasada siguiente (antes no subía nunca).
  *   2. Un chat donde el cliente escribió y después solo salieron seguimientos automáticos SÍ tiene «Falta respuesta»
  *      y su recomendación lo sube; «Ya respondí» (atendido) lo apaga.
  *   3. Si una persona le contestó, ya no falta respuesta.
@@ -53,10 +54,18 @@ check("cliente al que una persona le contestó: no le falta respuesta", !falta(3
 check("lead viejo con un envío masivo después: sigue la regla de antes (no se prende)", !falta(4));
 check("la bienvenida cuenta como respuesta", !falta(5));
 
-const subidos = await reflotarSugerencia({ CRM_DB: db, HORARIO_ENVIO: "0:00-24:00" });
-check("el reflote sube SOLO el chat con falta de respuesta (no el que calló ni el ya contestado)", JSON.stringify(subidos) === "[2]", JSON.stringify(subidos));
+// Dueño, 2026-11-12: una recomendación por pasada (cada 10 min), cada una UNA sola vez; primero la que tiene falta de respuesta.
+const envR = { CRM_DB: db, HORARIO_ENVIO: "0:00-24:00" };
+const subidos = await reflotarSugerencia(envR);
+check("la primera pasada sube UN solo chat: el que tiene falta de respuesta va primero", JSON.stringify(subidos) === "[2]", JSON.stringify(subidos));
 const sub1 = sq.prepare("SELECT reflotada_at FROM asesor_sugerencias WHERE conversation_id = 1").get();
-check("la recomendación del que calló sigue pendiente y sin reflotar (se ve en el chat, no sube la bandeja)", sub1.reflotada_at === null);
+check("la recomendación del que calló espera su turno (todavía sin reflotar)", sub1.reflotada_at === null);
+const segunda = await reflotarSugerencia(envR);
+check("la pasada siguiente sube la de ventana de 24 h abierta (el texto sale gratis)", JSON.stringify(segunda) === "[3]", JSON.stringify(segunda));
+const tercera = await reflotarSugerencia(envR);
+check("después sube la del que calló (ventana cerrada): también es un cliente con interés", JSON.stringify(tercera) === "[1]", JSON.stringify(tercera));
+const cuarta = await reflotarSugerencia(envR);
+check("cada recomendación sube UNA sola vez: ya no queda ninguna por subir", JSON.stringify(cuarta) === "[]", JSON.stringify(cuarta));
 
 // «Ya respondí» (accion atendido) apaga la etiqueta; un mensaje nuevo del cliente la prende otra vez.
 sq.prepare("UPDATE conversations SET atendido_at = datetime('now') WHERE id = 2").run();

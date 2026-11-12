@@ -1434,3 +1434,42 @@ PASO 4 — Cuando te respondan en esta sesión
 - Si te dan la clave del día (o la corrigen): `python3 scripts/asesor/shalom.py clave NNNN /tmp/shalom/lote.json` y confirma cuántas ventas quedaron con ella.
 - Si te dan la agencia o el DNI de un pendiente: agrégalo a /tmp/shalom/agencias.json (o corrige el dato) y vuelve a correr el PASO 2 con `--subir` (y `--clave` si ya la tienes); manda los links nuevos. Nunca inventes una agencia ni un DNI.
 ```
+
+## 2026-11-08 (noche 4) · Instrucciones para la cuenta de Jennifer (opción 2 de tercerización)
+
+Jennifer corre el registro de envíos desde SU cuenta de Claude. No hay Routine nueva en la cuenta del dueño. Su Project o Routine
+manual lleva solo el «arranque» que está en `docs/envios-jennifer.md` (sección «Arranque»); ese archivo es la fuente de verdad de los
+pasos (Dinsides A, Shalom B) y se mantiene desde el repo. Copia legible: Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
+(compartido con el correo del dueño y el correo de la empresa (el que usa Jennifer)). Cambios al flujo: se editan en el .md y se regenera el Doc.
+
+## 2026-11-09 · Cuenta de Jennifer: «INICIA» = ciclo completo con presentación previa
+
+El arranque de `docs/envios-jennifer.md` cambió: sin orden explícita (link, «INICIA», «Run now») se hace el ciclo completo
+Dinsides → Shalom; regla «Presentar antes de registrar» (A4/B2: tabla en la sesión y por Telegram, detenerse hasta el OK). El Google
+Doc se regeneró con el mismo texto. Las Routines del dueño (v3) no cambian.
+
+## 2026-11-09 (madrugada) · Reporte v2 y Routine única de envíos: prompts en el repo, Routines con arranque corto
+
+- Reporte «Pedidos y ventas»: `trig_01MMWTgBTQ8aD1M1QM1xxGEc` (21:45 · 23:45) y `trig_01CwAvLG544pJd3FkAGu9Pf7` (22:30), sesión fija
+  `session_017wTF8ZruCb5hT61H2LkhRX`. Prompt = «Arranque» de `docs/prompts/reporte.md` (ahí está el prompt v2 completo). Borrada la
+  v1 de las 22:30; la v1 de 21:45·23:45 (`trig_016KfxjJWbHhxrEehCxH9Mri`) quedó apagada y renombrada.
+- Envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7` «Envíos — Dinsides y Shalom (manual · Run now · presenta antes de registrar)», sesión fija
+  `session_017wTF8ckoBNtwk4nSxvvFzk`. Prompt = «Arranque» de `docs/envios-jennifer.md`. Borradas las dos manuales v3 (Dinsides,
+  Shalom). La Routine `trig_01LrQ7TMN5dnhf9PMgszyU69` del dueño (link del Doc) la borra él desde la app.
+- Para cambiar cualquiera de estas Routines: editar el archivo del repo, nunca el prompt de la Routine.
+
+
+## 2026-11-12 — Asesor — mensajes: prompt en el repo (`docs/prompts/asesor-mensajes.md`) y modelo fijo Sonnet
+`trig_01PN2ZZaL1MzG9AMB8Nj6PoS` («Asesor — mensajes (10:00 · 15:00 · 19:00)», `CRON_TZ=America/Lima 0 10,15,19 * * *`, mismos
+conectores). Pedido del dueño: «que el prompt de esa rutina esté en el repositorio y que el prompt de la rutina sea una dirección
+a ese repositorio». La corrida del 11/11 19:09 (Lima) salió con Fable (la Routine no tenía modelo fijo): ahora `model:
+claude-sonnet-5-5`. El prompt completo (v2) vive en `docs/prompts/asesor-mensajes.md`; el v1 es el de la entrada del 2026-11-07
+de arriba. Cambios de la v2: explica que cada recomendación se reflota en el chat (una cada 10 min, una sola vez, cajita con
+Enviar / Ya respondí / Descartar), un mensaje por chat listo para mandar, todos los chats con interés (no solo los ⭐) y una
+respuesta final de 6 líneas. Prompt vigente de la Routine (el arranque):
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot. Primero corre:
+(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main 2>/dev/null; git merge -q --ff-only origin/main || (git stash -q 2>/dev/null; git merge -q --ff-only origin/main)) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
+Luego lee /home/user/claudetarot/docs/prompts/asesor-mensajes.md y haz lo que dice, al pie de la letra. No uses gh ni add_repo. No leas docs/MAPA.md. La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta responde «Falta ASESOR_CLAVE en el entorno de la Routine» y termina; si el Worker responde 401 responde «La ASESOR_CLAVE del entorno no es la correcta» y termina. No hagas commits ni cambies código. No uses la API de Claude. Nunca le escribes a un cliente.
+```

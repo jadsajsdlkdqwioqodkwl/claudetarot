@@ -2097,3 +2097,662 @@ Pedido del dueño: «todos los agentes, ahora y a futuro, deben ver lo mismo que
   - **30 ventas confirmadas sin marcar como compra en 2 semanas (18 de margiory, 3 de carmen)**: baja todos los porcentajes y le quita a Meta la señal de compra. La conversión real estimada en 7 días es ~9,5 % (8,3 % marcado).
   - En ~40 % de los chats perdidos de Jennifer y Fandio nunca se pidió el cierre.
 - Plan: compra automática al mandar la confirmación o despachar la boleta, aviso de «dijo su destino sin pedido de cierre», presupuesto a los anuncios que venden, «Precio?» nuevo, provincia en 2 tiempos, seguimientos de 3 toques y textos nuevos. Nada implementado: espera las respuestas del dueño (sección 7 del PDF).
+## 2026-11-08 (noche 4) · Tercerización opción 2 (decisión del dueño): Jennifer corre el registro de envíos en su propia cuenta de Claude
+
+- **Decisión del dueño:** opción 2. Jennifer usa su propio Project / Routine de Claude con la MISMA clave del asesor (`ASESOR_CLAVE`
+  en su entorno, el dueño se la pasa fuera del repo). Nada cambia en el Worker ni en las Routines del dueño (las de Dinsides y Shalom
+  v3 siguen vivas en su sesión fija; ver `docs/routines.md`).
+- **Fuente de verdad de las instrucciones: `docs/envios-jennifer.md`** (nuevo). Lleva (a) el «arranque»: el ÚNICO texto que va en el
+  Project o Routine de Jennifer, que clona/actualiza el repo y le dice a Claude que lea ese archivo; (b) reglas fijas del dueño;
+  (c) pasos A (Dinsides) y B (Shalom) con los mismos comandos de los prompts v3 y la vuelta de respuestas en la sesión (PASO 6 / PASO 4).
+  Así Jennifer NUNCA edita su prompt: cualquier mejora se hace en ese archivo del repo y entra sola en la siguiente corrida.
+- **Copia legible en Google Docs:** «Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`
+  (https://docs.google.com/document/d/1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c/edit), dueño: la cuenta de Google del dueño,
+  compartido como editor con el correo de la empresa (el que usa Jennifer). Se regenera desde el .md cuando cambie
+  (conector de Google Docs, nunca a mano). No es la fuente: si el Doc y el .md difieren, manda el .md.
+- **La hoja de pedidos («Pedidos Tarot Kit» → pestaña «Pedidos auto», gid 1131206013):** su dueño YA es la cuenta de Google del dueño
+  (también editores: las tres vendedoras y la cuenta de servicio del Worker
+  (la misma de siempre)). Link directo:
+  https://docs.google.com/spreadsheets/d/1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc/edit#gid=1131206013 . **Falta** agregar a
+  el correo de la empresa (el que usa Jennifer) como editor: el conector de Drive de esta sesión no tiene permiso para compartir ese archivo (lo intentó el
+  2026-11-08 y Google respondió «The caller does not have permission»); lo comparte el dueño desde Compartir en la hoja.
+- **Qué necesita Jennifer en su cuenta:** (1) acceso al repo (ya lo tiene); (2) variable `ASESOR_CLAVE` en el entorno de su sesión de
+  Claude Code (misma clave del asesor; la pone ella, el dueño se la dicta fuera de la sesión); (3) el «arranque» de
+  `docs/envios-jennifer.md` como prompt de su Project o de una Routine manual («Run now»), igual que las del dueño. Telegram sigue
+  avisando al dueño desde el Worker (`dinsides.py telegram`, `shalom.py telegram`). Pendiente (idea, no hecho): una clave del asesor
+  acotada solo a Dinsides/Shalom/lectura de chat/Reportes para no compartir la clave completa.
+
+## 2026-11-09 · Ciclo completo para la cuenta de Jennifer («INICIA» hace todo y presenta antes de registrar) + montos leídos del texto del reporte
+
+- **Qué pasó:** el Project de Jennifer recibió solo el link del Doc + «INICIA» y no hizo nada (el Doc decía que cada acción la
+  disparaba una orden explícita). Pedido del dueño: que trabaje solo, ciclo completo de una vez (Dinsides y luego Shalom), con la
+  regla de PRESENTAR la lista antes de registrar o subir, y con las notas completas (extras, catálogo, collares, descuentos).
+- **`docs/envios-jennifer.md` reescrito (y el Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c` regenerado con el mismo
+  texto):** el arranque dice que sin orden («INICIA», link, vacío, «Run now») se hace el CICLO COMPLETO; regla 1 nueva «Presentar
+  antes de registrar»: A4 = `registrar --simular` → tabla en la sesión (cliente · teléfono · distrito y fuente · dirección · qué
+  lleva · cobrar y forma · nota · fecha · LISTO/PENDIENTE con la pregunta exacta) + la misma por Telegram → DETENERSE hasta un «OK» o
+  correcciones en la sesión → A5 registra. Shalom igual: B1 `masivo` sin `--subir` → B2 tabla (DNI · agencia · bultos · qué lleva ·
+  adelanto · saldo · pendientes) + pedir la clave del día → B3 `--subir` con el OK (`--clave` solo si la escribieron). Regla 6 «Notas
+  completas» enumera los casos especiales que deben verse en la presentación y en la nota al courier.
+- **Montos (código, `src/lib/dinsides.js` → `armarPedido`):** antes `cobrar` salía del precio de lista por kits y solo «ya pagó … no
+  cobrar» daba NO COBRAR; con los textos reales de la hoja «Pedidos auto» fallaba: «Pagado S/89» se cobraba otra vez; «NO es kit: solo
+  mazo S/69, Yape contraentrega S/69» (kits 0) salía S/0 NO COBRAR; «Adelanto S/10; saldo S/79» cobraba 89. Ahora lee `pago`+`nota`:
+  «saldo S/N» → cobra N; «Pagado / pago completo / sin saldo» (sin adelanto pendiente) → NO COBRAR; «contraentrega / efectivo / Yape /
+  exacto S/N» → cobra N; «adelanto S/A» sin saldo escrito → lista − A con aviso; kits 0 sin monto en ningún lado → BLOQUEO «MONTO»
+  (no se inventa S/0); descuento/promo con precio de lista → aviso; `cobrar` explícito manda sobre el «pagado» del texto. La
+  observación que ve el motorizado lleva además el texto de pago cuando aporta (adelanto/saldo/pagado/efectivo). Pruebas nuevas en
+  `scripts/test-dinsides.mjs` (9 casos reales de la hoja).
+- **Shalom (`scripts/asesor/shalom.py` → `montos()`):** bug: `kits` 0 se leía como 1 (`p.get("kits") or 1`); ahora kits 0 saca el
+  precio del texto del empaque/pago («(S/59, solo el mazo)») o avisa «MONTO: no es un kit y el reporte no dice el precio»; «Pagado /
+  pago completo / sin saldo» → saldo 0; extra con precio en el empaque o descuento → aviso «MONTO: … confirmar el saldo» (entra a la
+  referencia y a la lista de pendientes). La referencia lleva «QUÉ LLEVA: <empaque>» delante de la nota. Un pedido kits 0 viaja como
+  1 bulto en el Excel.
+- **Revisión del reporte «Pedidos y ventas» para casos especiales (pedido del dueño):** los reporta bien en `empaque` (2 kits, solo
+  mazo, Gold, cuencos, collar extra, «VERIFICAR, prometió…») y los montos en `pago` como texto («Adelanto S/20; saldo S/69», «Pagado
+  S/129», «Yape contraentrega S/69»); los pedidos del catálogo y de la web entran como candidatos del control del sistema
+  (`control_ventas.py`) y la Routine los pone en `empaque`/`pago`. Lo que NO tiene el reporte es un campo numérico «cobrar/precio»
+  ni «descuento»: por eso el arreglo se hizo río abajo (leer el texto en Dinsides y Shalom). Si se quiere el campo estructurado,
+  hay que cambiar el prompt de la Routine del reporte desde su sesión fija (no desde aquí) y la columna del PDF en `enviar.py`.
+
+
+## 2026-11-09 — Pago hecho: envíos normales; cobro con el bono (imagen) a provincia con saldo; reporte también a Jennifer
+- El dueño pagó el saldo de Meta el 8/11: desde las 23:52 UTC del 7/11 no hay fallos por pago; las plantillas vuelven a salir.
+- **Cobro con bono (dueño, 8/11):** 26 chats de provincia con `cobro_3x`, sin `saldo_pagado`, saldo > 0, sin Olva ni pausa, en
+  `scheduled_messages` (`batch_id` `bono-cobro-2026-11-09`, 9/11 11:00 Lima, `mandar_siempre` 1): `bono_saldo_shalom_img` («en su
+  agencia») a los 4 con boleta de hace 4 días o más, `bono_saldo_camino_img` («va en camino») a los 22 con boleta más reciente.
+  Si tocan «Sí, mi saldo», la respuesta automática de cobro les contesta con su saldo y el Yape.
+- **Reporte de pedidos y ventas por Telegram también a Jennifer:** `REPORTE_AGENTES` en wrangler.jsonc pasa de «danitza» a
+  «danitza,jennifer» (usuarios del CRM con Telegram vinculado; `chatsReporte` en asesor.js).
+
+## 2026-11-09 (madrugada) · Reporte v2 (adelanto = venta), agenda que se limpia sola, compras marcadas por el sistema, una sola Routine de envíos con presentación previa
+
+Pedido del dueño (noche del 2026-11-08): (1) ver TODOS los pedidos sin excepción (venta, casi venta, huele a venta); (2) el
+reporte de ventas bien: en provincia el adelanto ES la venta (S/10, S/20 o S/50) y va en su sección en rojo, no en POR VERIFICAR;
+la «agenda pendiente» traía 109 pedidos ya entregados (Katia Reyes) y confundía al Claude de Dinsides; si una venta no está marcada
+como compra en el CRM, que la marque el sistema (permiso dado); (3) que el Project/Routine de envíos trabaje solo, ciclo completo,
+presentando EXACTAMENTE lo que va a poner en Dinsides antes de registrar, con los nombres de producto del equipo.
+
+- **Prompts en el repo, Routines con «arranque» corto (decisión, recomendado al dueño en vez del Google Doc):** la Routine solo
+  clona/actualiza el repo y lee un archivo; cambiar el flujo = editar el archivo. `docs/prompts/reporte.md` (reporte v2) y
+  `docs/envios-jennifer.md` (envíos). El Google Doc `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c` queda como copia de lectura (se
+  anotó dentro que no manda). Motivo: el Project de Jennifer leyó el Doc una sola vez al inicio de la sesión y luego no lo volvía a
+  leer; la Routine del dueño `trig_01LrQ7TMN5dnhf9PMgszyU69` «REGISTRO DE PEDIDOS (DINSIDES Y SHALOM)» (creada por él desde la
+  app con el link del Doc como prompt, sin sesión fija) registró 5 pedidos el 2026-11-08 23:08 sin presentar. **Esa Routine no se
+  pudo borrar desde aquí (la creó la app, no un agente): el dueño la borra en https://claude.ai/code/routines/trig_01LrQ7TMN5dnhf9PMgszyU69.**
+- **Routines del reporte recreadas** (la API no deja editar el prompt desde otra sesión): borrada `trig_017dC3qg4T65tGRG7JXcq2hE`
+  (22:30 v1); `trig_016KfxjJWbHhxrEehCxH9Mri` (21:45·23:45 v1) NO se dejó borrar (clasificador) y quedó APAGADA y renombrada
+  «[APAGADA 2026-11-09, la reemplaza la v2] …». Nuevas, misma sesión fija `session_017wTF8ZruCb5hT61H2LkhRX`:
+  `trig_01MMWTgBTQ8aD1M1QM1xxGEc` «Reporte de pedidos y ventas (21:45 · 23:45)» y `trig_01CwAvLG544pJd3FkAGu9Pf7` «… (22:30)», prompt
+  = arranque de `docs/prompts/reporte.md`. Prompt v1 completo sigue en `docs/routines.md` (2026-11-02).
+- **Routine única de envíos:** borradas `trig_01SQ3ENu3TfYbZrc3qyeksU4` (Dinsides manual v3) y `trig_013nuA3ZdCtxtkVNbJPvMxox`
+  (Shalom manual v3); nueva `trig_01J7vAUuHMuVL7MCccFkGaP7` «Envíos — Dinsides y Shalom (manual · Run now · presenta antes de
+  registrar)», misma sesión fija `session_017wTF8ckoBNtwk4nSxvvFzk`, prompt = arranque de `docs/envios-jennifer.md` (+ «si es una
+  respuesta a algo que presentaste, sigue A5/B3»). El simulacro `trig_014Vk7mWt2DwJkv4SxVHK23z` se conserva. El mismo arranque
+  sirve para la cuenta de Jennifer.
+- **Reporte (`scripts/asesor/enviar.py`):** `promover_provincia()`: POR_VERIFICAR de provincia con pago visto («adelantó S/…»,
+  monto con operación, captura) → CONFIRMADO con nota «🚨 ATENCIÓN: adelanto visto (revisar monto)» (fila roja); se aplica a lo
+  nuevo y a lo ya registrado en la noche (casos reales del 2026-11-08: Luiz Alberto S/50 y Katherin S/10 estaban en POR VERIFICAR).
+  Sigue POR VERIFICAR solo sin captura/pago visto o si faltan DNI/agencia. `conciliar_agenda()` antes de leer la agenda: POST
+  `/api/asesor/pedidos-sheet {conciliar: true}` (cierra «Enviado» en filas con boleta en «Boletas auto», 40 por llamada) y
+  `/api/asesor/dinsides {accion: estados}` (14 días). En el PDF los atrasados de más de 3 días no se listan: se cuentan y se avisa.
+  `marcar_compras()`: por cada `sin_marcar_compra` con pedido CONFIRMADO/OTRO_DIA → POST `/api/asesor/marcar-compra` (nuevo,
+  `src/api/asesor-marcar-compra.js`: etiqueta `purchase` + Purchase a Meta por CAPI con la línea del chat, igual que el botón de la
+  bolsa; autorizado por el dueño 2026-11-09). `reporte.py conciliar` lo corre a mano. Prueba: `test_pdf_unificado.py` sigue OK.
+- **Limpieza hecha hoy en «Pedidos auto»:** antes 123 filas sin «Enviado»; tras `estados` (64 entregados, 12 anulados) y la
+  conciliación con boletas quedan 43 abiertas (12 de hoy, 10 futuras, 21 atrasadas; de esas, 16 de los últimos 3 días). Dinsides
+  `estados` ahora también cierra la fila de un pedido anulado/rechazado de esa misma entrega aunque la columna Dinsides ya lo dijera.
+  Dinsides tiene 16 pedidos ENTREGADOS (2026-10-30 → 11-07) sin fila en la hoja (anteriores a la hoja o con otro teléfono): no afectan.
+- **Dinsides (`src/lib/dinsides.js`):** `nombreProducto()`: «Kit Tarot de aprendizaje», «N Kits Tarot de aprendizaje», «Tarot de
+  aprendizaje» (kits 0, solo el mazo), «Tarot Gold Rider Waite», cambio/reposición con su texto; «+ Extra: …» solo cuando el
+  empaque trae algo más que repetir «N kits» o «kit normal». Es lo que el equipo escribía a mano (historial de Dinsides) y lo que
+  el viejo prompt del Project prescribía. `dinsides.py registrar --simular` imprime «FICHAS COMPLETAS» (los 11 campos que van a
+  Dinsides); `docs/envios-jennifer.md` A4 exige presentarlas tal cual.
+- **Pendientes de esta noche (entrega 2026-11-09) que la Routine debe preguntar:** Marikiño (solo mazo S/69) mandó solo
+  el pin (-11.855,-77.050, Carabayllo, fuera del mapa de cobertura) sin dirección en texto; Liliana Oviedo (entrega
+  12-11) solo pin. Los 5 registrados a las 23:08 por la Routine del dueño (#2941859–#2941863) quedan: Dante, July/Julia, Graciela,
+  Mavel (NO COBRAR), Mane (solo mazo S/69).
+- **Etiquetas (pendiente, lo dijo el dueño):** motorizado aparte para clientes con hora específica (otro formato de etiqueta), formato
+  de Olva, Shalom con el DNI abajo. Se ajusta `scripts/asesor/etiquetas.py` cuando el dueño pase los formatos.
+
+## 2026-11-09 (madrugada 2) · Cruce con Dinsides antes de registrar (caso Laura): por teléfono y por nombre
+
+- **Qué pasó:** Laura (Milagros Herrera) ya estaba registrada por el equipo en Dinsides para el lunes (reagendada) y la Routine la
+  registró otra vez como pedido nuevo (#2940740, anulado). El cruce solo miraba la memoria propia (R2, 3 días) y la columna Dinsides
+  de la hoja; lo que el equipo registra a mano en Dinsides no estaba en ninguna de las dos.
+- **Arreglo (`src/api/asesor-dinsides.js`):** `abiertosEnDinsides()` trae los pedidos abiertos del negocio (REGISTRADO / EN RUTA /
+  reprogramados, de 10 días antes a 30 después de la fecha) una vez por corrida; `cruzarConDinsides()` compara cada ficha por
+  TELÉFONO (el del pedido o el WhatsApp) y, si no, por NOMBRE (dos palabras de 3+ letras en común). Si existe: `ya_registrado` = «en
+  Dinsides (teléfono|nombre)» con #id, fecha y detalle; alerta «YA REGISTRADO por el equipo» o «YA AGENDADO para el DD … usar
+  `editar`» si la fecha es otra; la fila de la hoja queda «manual #id (equipo, entrega …)» y «Enviado = Dinsides fecha». `forzar`
+  no salta este cruce. Pruebas en `scripts/test-dinsides-api.mjs` (7b). `docs/envios-jennifer.md` A2 lo explica a la Routine.
+- **Cómo se autoactualiza la hoja (pregunta del dueño):** Lima → `estados` lee el historial de Dinsides (`pedido/getlistadoCliente`,
+  por teléfono y fecha) y escribe la columna Dinsides y «Enviado»; corre en la Routine de envíos (A1) y cada noche en el reporte
+  (`conciliar_agenda`). Provincia → la boleta emitida en «Boletas auto» (Routine de boletas) cierra la fila (`conciliar`). Lo que
+  queda abierto es lo que de verdad falta despachar o lo que nadie cerró.
+
+## 2026-11-09 (madrugada 3) · Arranque: por ahora SOLO Dinsides; corrida extra del reporte
+
+- El dueño borró su Routine del link del Doc (`trig_01LrQ7TMN5dnhf9PMgszyU69`). Pidió una corrida extra del reporte para que les llegue
+  a las chicas (se disparó `trig_01MMWTgBTQ8aD1M1QM1xxGEc` con «Run now» y la indicación de no aplicar la compuerta «Sin novedad») y
+  que el registro de envíos arranque **solo con Dinsides (Lima)** para empezar; Shalom se suma cuando él lo diga. La Routine
+  `trig_01J7vAUuHMuVL7MCccFkGaP7` se disparó con «solo Lima: revisa TODOS los pedidos de Lima de la entrega, presenta las fichas y
+  espera el OK del dueño en la sesión». El reporte ya corre en una sola sesión fija (igual que boletas) desde el 2026-11-02.
+
+## 2026-11-09 (madrugada 4) · Correcciones arriba del todo, pendientes de la hoja con movimiento, atrasados de provincia al masivo, Shalom sin rastreo público
+
+- **Caso que lo motivó:** Elia Rita (provincia, adelanto 06-11) no salió porque su DNI estaba incompleto; la vendedora se lo pidió y
+  ella lo mandó completo el 07-11, pero en el reporte quedó abajo (POR VERIFICAR / atrasados) y nadie lo vio. Regla del dueño: ese
+  tipo de casos (dato que faltaba, corrección, pedido pendiente al que el cliente escribe) va ARRIBA DEL TODO, aunque sea falsa alarma.
+- **Reporte:** `reporte.py preparar` cruza la agenda abierta de la hoja con los chats que se movieron en la ventana
+  (`/tmp/reporte/meta.json`) → `agenda_con_movimiento` + instrucción. `docs/prompts/reporte.md` tiene la sección «PRIORIDAD CERO»:
+  esos chats se leen primero y salen como `tipo: "CORRECCION"` (CONFIRMADO, datos nuevos, nota «🚨 …») o como incidencia; un
+  cliente con pedido pendiente nunca va como INTENCION ni DESCARTADO. `enviar.py`: `ESPECIALES["CORRECCION"]` y una sección roja al
+  inicio del PDF «PRIMERO: CORRECCIONES Y DATOS QUE LLEGARON»; la fila de la hoja se actualiza (upsert por WhatsApp).
+- **Shalom masivo (`shalom.py masivo`):** además del estado de la fecha, toma de la hoja (`/pedidos-sheet?hoy=`) los provincia
+  CONFIRMADO/corrección sin «Enviado» de hoy o atrasados (sin boleta), marcados «ATRASADO (despacho previsto FECHA)» en la referencia
+  y en los avisos; Olva se salta. Así un pedido que no salió en su día por DNI incompleto entra al siguiente Excel.
+- **Envíos (`docs/envios-jennifer.md`):** YA REGISTRADOS en una sola línea compacta (el dueño no quiere verlos como fichas); paso
+  A2b «última revisada» de los chats con intención / por verificar y candidatos buscando datos que llegaron, pedidos pendientes con
+  mensaje y ventas salvables (como PENDIENTE con la pregunta exacta; nunca escribe al cliente); domingos: Dinsides no reparte, sale
+  motorizado externo (se presenta la lista igual, no se registra en Dinsides); B1 explica los «ATRASADO».
+- **Primera corrida de la Routine única de envíos (2026-11-09 ~00:10):** presentó la ficha completa de Ketty (Barranco, NO COBRAR,
+  pidió confirmar el Plin), pendientes Marikiño y Liliana (solo pin), lista de ya registrados, descartados con motivo; Shalom en pausa
+  por orden del dueño. No registró nada: espera el OK en su sesión. Funcionó como se pidió.
+- **Rastreo de Shalom (pregunta del dueño):** el bundle de shalom.com.pe/rastrea llama a `/rastrea/buscar`, `/rastrea/estados`,
+  `/rastrea/comprobante` con cabecera `X-Auth-Token` que sale de `/pro/login` + reCAPTCHA v3 («login_rastrea_pro»). Es decir: el
+  rastreo público exige iniciar sesión Pro desde un navegador con captcha; no se puede desde el Worker ni desde un script. Pro
+  (pro.shalom.pe) además responde 403 a lo que no es navegador y solo lista lo pendiente. Lo que sí tenemos: «Boletas auto» (boleta =
+  salió), hoja Ventas (clave, saldo, pagado) y los chats (cliente confirma recojo). Si el dueño quiere estados reales de Shalom, la
+  vía es un navegador con sesión (Cowork / Chrome del dueño) una vez al día; queda anotado, no implementado.
+
+## 2026-11-09 (madrugada 5) · Anulados por el equipo vuelven a estar pendientes; motorizado de confianza; hora específica
+
+- **Qué pasó:** el dueño anuló en el panel de Dinsides los 5 pedidos del lunes que su Routine (la del Doc) había registrado sin
+  presentar (Mane, Mavel, Graciela, July, Dante). La Routine de envíos los siguió dando por «ya registrados» porque solo miraba la
+  memoria R2. Además, los 4 de Lima del domingo 08-11 (Gladys, Ketty, Cecilia, Erlinda) salieron por el motorizado de confianza y el
+  sistema no lo sabía: Ketty se iba a registrar para el lunes.
+- **Anulados (`src/api/asesor-dinsides.js`):** `abiertosEnDinsides()` trae también los ANULADOS; en `armarTodo` toda memoria con `nro`
+  que Dinsides tenga ANULADO (y sin otro pedido abierto de ese teléfono) se marca `anulado` en R2 y en el índice, y la ficha vuelve a
+  estar pendiente con la alerta «ESTABA REGISTRADO pero en Dinsides figura ANULADO…». `estados`: «ANULADO- POR TIENDA» (lo anulamos
+  nosotros) ya NO cierra la fila de la hoja: queda abierta con «→ sigue pendiente: volver a registrar si el pedido sigue vigente», para
+  que el reporte y la Routine lo refloten; solo cierra lo que el cliente rechazó / no desea.
+- **Motorizado de confianza (`scripts/asesor/motorizado.py`, nuevo):** mensaje para el WhatsApp del motorizado (formato del dueño:
+  numerado, cliente · teléfono, dirección, referencia, horario, producto, COBRAR/NO COBRAR, discreción, Maps), etiquetas PDF formato
+  Dinsides (reusa `etiquetas.py`), `--subir` a Reportes y `--marcar` (acción `marcar` con nro «MOTORIZADO»: memoria + hoja «Enviado =
+  Motorizado externo FECHA», el Worker lo distingue por el texto). Sección C en `docs/envios-jennifer.md`. Boletas del motorizado:
+  pendiente, el dueño pasará el formato.
+- **Hora específica (`src/lib/dinsides.js`):** alerta «HORA ESPECÍFICA pedida (…)» cuando la nota pide una hora fuera de la ventana
+  12–5 pm; la Routine la presenta como pregunta «¿Dinsides o motorizado de confianza?». Prueba en `test-dinsides.mjs`.
+- **Marcados hoy como enviados por motorizado (08-11):** Gladys Falcón, Ketty, Cecilia, Erlinda Munguia (según el mensaje que el dueño
+  le mandó al motorizado); con eso Ketty deja de proponerse para el lunes.
+
+## 2026-11-09 (madrugada 6) · `dinsides.py presentar`: la presentación la arma el script, no la Routine
+
+- **Queja del dueño:** la Routine presentó resúmenes vagos y frases de proceso, no leyó los chats, no mandó Telegram, no explicó los
+  cambios de fecha de un cliente ni la corrección de datos de la clienta de provincia, ni dijo si revisó el CRM. Quiere cada pedido
+  como un bloque legible (como el mensaje del motorizado), con lo que escribió el cliente, el estado en Dinsides y la decisión final.
+- **Arreglo:** `python3 scripts/asesor/dinsides.py presentar [FECHA]` imprime por pedido: ficha completa, historial relevante del
+  cliente con fecha y hora (dirección, horas, fechas, pagos, cambios, capturas, pines) y las líneas de la asesora que fijan algo,
+  estado en Dinsides (sin pedido / ANULADO #… / abierto #…), fila de la hoja, ⛔ y alertas, decisión; luego YA REGISTRADOS en una
+  línea, CRM revisado (candidatos) y PEDIDOS PENDIENTES DE OTROS DÍAS CON MENSAJE NUEVO (hoja abierta de otros días × chat en 36 h).
+  La Routine pega esa salida tal cual y solo agrega «Lectura: …» por bloque y las líneas de verificación con números
+  (`docs/envios-jennifer.md` A4). Un LISTO con «HORA ESPECÍFICA» o 🚨 de fecha se presenta como pregunta, no como listo.
+- **Corrección hecha desde esta sesión:** la fila de la clienta de provincia cuyo DNI llegó completo el 07-11 quedó
+  CONFIRMADO / CORRECCIÓN con su DNI (upsert por el Worker): entra al próximo masivo de Shalom como ATRASADO.
+- **Pregunta del dueño (¿clonar cada vez es ineficiente?):** la Routine SÍ trabaja en una sola sesión fija (como boletas): cada «Run
+  now» o mensaje es un turno más del mismo chat. El clon ocurre solo la primera vez que nace el contenedor; después es `git fetch` +
+  `reset` (segundos). No es el cuello de botella; lo que falló fue la calidad de la respuesta, por eso la presentación es determinista.
+
+## 2026-11-09 (madrugada 7) · Con el pin basta; candidatos cruzados con Dinsides y boletas; sincronización sin reset --hard
+
+- **Qué pasó:** la Routine presentó bullets en vez del bloque del dueño porque su sesión NO pudo actualizar el repo (`git reset --hard`
+  bloqueado por el permiso de esa sesión) y leyó instrucciones viejas; no cruzó los candidatos del CRM con Dinsides ni con las boletas
+  (dijo «Juan de Dios: stop» cuando Dinsides lo tiene ENTREGADO; dijo que una clienta de provincia «aún pregunta el adelanto» cuando ya
+  tenía boleta); dejó como pendientes a dos clientes que solo mandaron el pin; y no mostró la corrección de la clienta del DNI.
+- **Con el pin basta (regla del dueño):** `direccionesDesdePin()` en `src/api/asesor-dinsides.js`: si el cliente solo mandó su
+  ubicación, la dirección del campo de Dinsides se arma con OpenStreetMap (reverse: vía, número, zona, distrito) + «(ubicación enviada
+  por el cliente; ir al pin)», el bloqueo DIRECCIÓN desaparece y queda la alerta «DIRECCIÓN deducida del pin». El distrito sigue
+  saliendo del mapa de cobertura. Prueba actualizada en `test-dinsides-api.mjs` («Solo Pin» ahora es LISTO).
+- **`presentar` v2 (`scripts/asesor/dinsides.py`):** cada bloque va campo por campo de Dinsides con emojis (👤 📍 🗺️ 🏙️ 📦 💰 📅 📝), el
+  historial del chat 🗨️ con fecha y hora, 🏷️ estado en Dinsides, 🧾 boleta, 📄 fila de la hoja, ⛔/⚠️ y la decisión (✅ se registra ·
+  ❓ preguntar al dueño si hay HORA ESPECÍFICA o YA AGENDADO · ↩️ no se toca). Candidatos del CRM cruzados con Dinsides (ENTREGADO /
+  abierto) y con las boletas emitidas (`GET /api/asesor/pedidos-sheet?boletas=1`, nuevo): veredicto ✔️ YA ATENDIDO · ↩️ YA EN DINSIDES ·
+  🚚 PROVINCIA · 👀 REVISAR. Pedidos de otros días sin despachar: mensajes del cliente DESPUÉS de la fecha de venta (sin tope de horas),
+  con su estado en Dinsides y boleta; sección ✏️ CORRECCIONES para provincia de hoy con dato que llegó. Cierre «✅ Verificado por el
+  sistema» con números reales.
+- **Routine de envíos recreada** (`trig_01J7vAUuHMuVL7MCccFkGaP7` borrada): el arranque sincroniza con `git merge --ff-only` (y
+  `stash` si hiciera falta), comprueba el commit y exige pegar `presentar` tal cual. `docs/envios-jennifer.md` y
+  `docs/prompts/reporte.md` llevan el mismo arranque. Las Routines del reporte siguen con el arranque anterior (allí el reset no se
+  bloqueó); si algún día se bloquea, se recrean con este.
+- **Lo que mostró `presentar` esta noche (sin datos personales):** 5 listos (los anulados por el dueño), 2 preguntas (hora específica y
+  cambio de fecha), candidatos del CRM: 2 ya ENTREGADOS por Dinsides, 3 provincia, 4 de Lima atendidos el domingo por el motorizado
+  (quedarán como atendidos cuando el Worker despliegue el cruce con la memoria); 17 pedidos de otros días sin despachar en la hoja, 6
+  con mensajes del cliente posteriores a la venta (uno de Lima registrado en Dinsides para el lunes que escribió «no he recibido nada»,
+  dos de provincia que dieron agencia/«separar» sin captura). Todo eso lo ve el dueño en la presentación, no tiene que abrir el CRM.
+
+## 2026-11-09 (madrugada 8) · Lima y Shalom en UN texto; Carabayllo estaba roto en el mapa; teléfonos alternos; Maps a verificar
+
+- **Shalom en la misma presentación:** `dinsides.py presentar` ahora termina con la sección «🚚 SHALOM (provincia)» (solo lectura): por
+  pedido, cliente · WhatsApp · DNI, agencia escrita por el cliente, agencia Shalom que calza (SEGURA / DUDOSA con candidatas), qué
+  lleva, adelanto y saldo, nota, boleta, Dinsides y chat; LISTO para el Excel o PENDIENTE (sin DNI, agencia o monto por confirmar).
+  Incluye los pendientes de la hoja (ATRASADO / CORRECCIÓN, p. ej. la clienta cuyo DNI llegó después). `shalom.py masivo --subir`
+  queda SOLO para después del «OK Shalom» (B3). Motivo: la sesión de la Routine no pudo correr `shalom.py masivo` (el clasificador de
+  permisos lo marcó «Modify Shared Resources», porque escribe en la hoja Ventas con `--clave`) y el dueño se quedó sin provincia;
+  además quiere UN texto con los dos couriers.
+- **Mapa de cobertura:** el Placemark CARABAYLLO del My Maps es un MultiGeometry con 3 polígonos; `scripts/dinsides-cobertura.py`
+  tomaba solo el primero (una astilla de 4 puntos) y un pin real de Carabayllo salía «fuera del mapa» (el dueño lo vio en verde).
+  Ahora toma todos los polígonos de cada Placemark; `src/lib/dinsides-cobertura.js` regenerado.
+- **Teléfonos alternos:** `estados` y `presentar` cruzan también con los teléfonos escritos en la nota o la dirección de la fila (el
+  equipo registra en Dinsides con el teléfono de quien recibe; caso Shei → «Sra. Hildita», ENTREGADO el 04-11), así la fila se cierra
+  y no sale como «sin pedido en Dinsides».
+- **Verificar en Google Maps:** toda dirección deducida del pin lleva en la presentación la línea «🔎 VERIFICAR EN GOOGLE MAPS» con el
+  link, para que la asesora o el dueño confirmen antes del OK (regla del dueño: el pin basta para agendar, pero una persona mira el mapa).
+- **Textos:** el veredicto «👀 REVISAR» explica qué hacer (leer el chat: Lima → salida.json; provincia → Shalom; no compró → decirlo);
+  todo cliente nombrado lleva su WhatsApp al lado. Un pedido de otro día (jueves) se registra ya en Dinsides con su fecha y se dice
+  dónde queda guardado (Dinsides #id, hoja fila N, agenda del reporte).
+
+## 2026-11-09 (madrugada 9) · Lista de verificación por fuente, chats de hoy completos y «verificar» para la asesora
+
+- Pedido del dueño: que la presentación CONFIRME que se revisaron los chats de hoy, Dinsides, el reporte de ventas y la hoja, y que si
+  algo falla se sepa; y que, igual que con el pin, la asesora corrobore por sí misma la agencia de Shalom y la dirección de Lima.
+- `GET /api/asesor/dinsides?fecha=` devuelve `chats_hoy` (toda conversación con mensaje del cliente desde las 00:00 de Lima del día de
+  venta, con su último mensaje). `presentar` imprime «💬 CHATS DE HOY»: los que no son ficha ni candidato, con último mensaje, para que
+  la revisión sea completa y visible; y la «LISTA DE VERIFICACIÓN» con ✅/❌ y números por fuente (reporte: pedidos y última corrida;
+  hoja: filas abiertas y boletas; Dinsides: leídos/abiertos/anulados/entregados; chats de hoy; candidatos; cruces hechos).
+- Cada pedido de Lima lleva «🔎 VERIFICAR EN GOOGLE MAPS» (link al pin o a la búsqueda de la dirección y el distrito); cada pedido de
+  Shalom lleva «🔎 VERIFICAR AGENCIA» (buscar el texto del cliente en shalom.com.pe/agencias y confirmar la elegida). Formato de
+  corrección: «Nombre: dirección …», «Nombre: distrito …», «Nombre: agencia <nombre exacto>».
+
+## 2026-11-09 (madrugada 10) · Presentación en formato etiqueta, PDF completo + texto corto, nota operativa vs nota para la asesora
+
+- Pedido del dueño: la respuesta debe mostrar lo que irá en cada campo del formulario (formato de la etiqueta de Dinsides y de Shalom),
+  con ✅ listo, ✅❓ listo-pero-confirmar y ❓ pendiente; el link de Maps solo cuando el cliente mandó pin; Abel (provincia que venía
+  del CRM) numerado en Shalom; la nota al repartidor sin «también pidió reprogramar»; todo el detalle en un PDF porque el texto es muy
+  largo; y las etiquetas para las cajas reutilizando ese formato.
+- `src/lib/dinsides.js`: la observación de Dinsides lleva solo lo operativo; las frases de decisión (reprogramar, confirmar fecha,
+  preguntar, verificar…) salen como alerta «PARA LA ASESORA (no va a Dinsides)». Prueba en `test-dinsides.mjs`.
+- `dinsides.py presentar [--pdf]` (reescrito): por pedido la «🏷️ ETIQUETA DINSIDES» (Negocio, ENTREGAR A, Teléfono, Producto,
+  Cobrar, Distrito, Fecha Entrega, Detalle, Coordenadas) o la «🏷️ ETIQUETA SHALOM» (Destinatario, N°DOC, Destino/código, Mercadería,
+  Adelanto/Saldo, clave del día); estado ✅ / ✅❓ (con la pregunta corta) / ❓ / ↩️; 📣 nota para la asesora; 🔎 VERIFICAR con link solo
+  si hay pin, si no «busca en Google Maps “dirección, distrito”»; Shalom incluye los candidatos del CRM que parecen provincia como
+  PENDIENTE (Abel) y `shalom.py agregar` (nuevo) los mete a la hoja como CONFIRMADO con los datos del chat; otros días separados en
+  «confirmados sin despachar» y «ventas no cerradas» (menos peso: Jessica, William). `--pdf` sube el detalle completo (HTML → Chromium →
+  PDF → CRM → Reportes) y en pantalla deja la versión corta con el link. `etiquetas.py FECHA --subir` después de registrar (A4b).
+
+## 2026-11-09 (madrugada 11) · PDF con el estilo del reporte, boletas fuera de Shalom, DNI que sobrevive a la hoja, texto corto de verdad
+
+- Quejas del dueño: el PDF de `presentar --pdf` era HTML sin estilo; una clienta con boleta emitida (Paola) y otro con boleta
+  (Luzgardo) salieron como «pendientes sin DNI» en Shalom; Elia y Abel salían «sin DNI» aunque el DNI estaba; el texto corto seguía
+  largo (20 pendientes que solo preguntaron precio) y la Routine pegó dos presentaciones; `python3` de la Routine es 3.11 y el script
+  usaba f-strings de 3.12.
+- Arreglos: `_html()` en `dinsides.py` usa el CSS del reporte de ventas (tarjeta por pedido con borde de color según estado, etiqueta
+  en tabla, chat en gris, avisos 📣/🔎/⛔ en color, cajas de resumen). `_provincia_pedidos()` excluye a quien tiene boleta o está
+  ENTREGADO (candidatos y filas). La hoja no tiene columna DNI: `filaDe` (Worker) guarda «DNI 12345678» dentro de la nota y
+  `shalom.dni_de()` lo recupera (masivo y presentación). Versión corta: pendientes solo si dijeron Lima/provincia/separar o tienen
+  dirección o pin; el resto se cuenta («N solo pidieron precio»). Sin backslashes en f-strings: compila en 3.11. `docs/envios-jennifer.md`:
+  presentar UNA vez al final y pegar solo la última; quien tiene boleta no se propone.
+
+## 2026-11-09 (mañana) · Página de revisión interactiva, PDF una hoja por pedido, agencias por nivel, nota del empaque en la etiqueta
+
+- Pedidos del dueño tras la corrida de la madrugada (que él mismo calificó de bien, salvo la agencia de Sachaca): que pueda marcar en
+  cada pedido «OK / corrección / no va» y escribir notas, y que Claude las lea («revisa mis notas»); cada pedido en una hoja con su casilla
+  de notas; «verificar» como llamada a la acción con dos pasos (¿existe la calle/pin? ¿Dinsides o motorizado?); el «por qué confirmar»
+  más grande; el log del chat con lo clave (agencia, dirección); sin «agendado desde el reporte…» ni «no mañana» en la observación del
+  motorizado; sin la columna «último mensaje»; nota chica para el que empaca al pie de cada etiqueta; y que los 7 de Shalom que el
+  equipo registró a mano hoy no vuelvan a salir.
+- **Página de revisión:** `presentar --pdf` sube además `/r/revision-envios-FECHA-HHMM-<id>.html` (reportes.js acepta .html) con la
+  misma tarjeta por pedido + radios OK / Corrección / No va / Ya se envió + nota; se guarda sola en `POST /api/revision/nota` (público,
+  con el token de la página; la página lee su id de su URL) → R2 `revision/<id>.json`; `src/api/revision.js` (nuevo) +
+  `POST/GET /api/asesor/revision` (clave del asesor). `dinsides.py notas <id|link>` lista las decisiones agrupadas y deja
+  /tmp/dinsides/notas.json; `docs/envios-jennifer.md` A4c dice cómo aplicarlas. Los pedidos de otros días también llevan radios
+  (ya se envió / sigue pendiente / no va).
+- **PDF:** una tarjeta por página en las secciones de pedidos, cuadro ámbar «POR QUÉ HAY QUE CONFIRMAR», cuadro azul «VERIFICAR ANTES
+  DEL OK» con dos pasos y link, chat con las líneas del cliente en negrita, casilla de notas punteada con opciones ☐ para marcar a mano.
+- **Agencias Shalom (`shalom.buscar`):** cada palabra puntúa una sola vez por el nivel más profundo que calza (distrito 5 > provincia 3 >
+  departamento 2). Antes «Sachaca, Arequipa» empataba con todas las agencias de Arequipa y ganaba la primera por alfabeto; ahora sale
+  VARIANTE UCHUMAYO CO (la que usó el equipo). Lista de agencias actualizada desde la API (566).
+- **Datos:** los 7 de provincia que el equipo registró hoy en Shalom Pro (Leny, Antony, Juan Guevara, Richer, Luiz, Katherin, Elia)
+  quedaron cerrados en la hoja con su número de orden («sí 2026-11-09 Shalom NNN (registrado a mano)»): el próximo Excel lleva solo
+  los que faltan (Abel).
+- **Etiquetas (`etiquetas.py`):** al pie de cada etiqueta de Lima, en letra chica, «EMPAQUE: …» (lo que lleva la caja, del producto o
+  del «Paquete: …» de la observación). Las de Shalom en el formato de Shalom (orden, código) necesitan el número de orden y el código
+  del comprobante: pendiente de que la Routine de boletas los guarde (hoy «Boletas auto» solo trae el número de orden).
+- **Pendiente que señaló el dueño:** las «recomendaciones del asesor» (mensajes sugeridos a las vendedoras) no se están mandando; hay
+  que revisar la Routine del asesor / ✨ Sugerencias por separado.
+
+## 2026-11-09 (mañana 2) · Los 7 de Lima registrados con las notas de la página; fecha que no salta a mañana; página sin PDF; notas que se leen solas
+
+- **Datos:** el dueño marcó OK en la página de revisión de las 03:17 (despacho 2026-11-09) a 7 pedidos de Lima y la Routine, que ya
+  estaba en el día 10, no los vio. Se registraron desde esta sesión con `dinsides.py registrar` (Dinsides #2942804 a #2942810:
+  Dante, July/Julia, Graciela, Mavel, Mane, Marikiño y Liliana con entrega 2026-11-12) y las etiquetas salieron con
+  `etiquetas.py 2026-11-09 --subir` (10 de Lima: los 6 nuevos de hoy + Patricia, Maritza, Laura y María del Pilar ya registrados).
+- **Fecha por defecto (`fechaPorDefecto` en `src/api/asesor-dinsides.js`, ahora async):** pasadas las 3:00 y hasta las 11:00, si el
+  despacho de HOY todavía tiene pedidos de Lima CONFIRMADOS sin registrar, la fecha se queda en HOY; la respuesta trae `fecha_motivo` y
+  `presentar` lo imprime en el RESUMEN («📆 Fecha … porque …»). Las llamadas con `listado=1` no hacen esta lectura.
+- **`dinsides.py presentar --pagina`** (`--pdf` sigue siendo alias) deja SOLO la página de revisión; el PDF sale únicamente con
+  `--imprimir` (dueño: «si ya vas a mandar página, ya no mandas el PDF»). Guarda el id en /tmp/dinsides/revision.json y
+  `dinsides.py notas` sin argumentos lee esa última página. Orden de secciones: Lima listos → Shalom → Lima pendientes → ya
+  registrados → correcciones → otros días → chats de hoy → CRM revisado (los dos últimos, en una línea en la versión corta).
+  Tarjeta: etiqueta → por qué confirmar → verificar → avisos → botones y notas → momentos clave del chat (14 líneas en el PDF, todas en la página).
+- **`docs/envios-jennifer.md`:** REGLA CERO (con cualquier mensaje después de presentar, primero `dinsides.py notas`), regla 3 con la
+  fecha que no salta, A4 y A4c con `--pagina`. El aviso de la página ya no pide «revisa mis notas».
+- **Shalom toma todo provincia confirmado sin «Enviado»** (atrasados, hoy, futuros y sin fecha de la hoja), no solo los de la fecha
+  exacta: Abel (agregado a las 03:07 con entrega del día 10) no salía en el Shalom del 09. El CRM revisado dice «ya está numerado en
+  la sección SHALOM» cuando el candidato es ese mismo WhatsApp (Abel aparecía como «Alejandro · REVISAR»). El pie «ya despachados»
+  muestra solo lo cerrado ese día o el anterior (antes listaba 26 nombres).
+
+## 2026-11-09 (mañana 3) · Etiquetas por ciclo de recojo, corte real a las 6:00, Shalom a mano en las etiquetas, EMPAQUE en varias líneas
+
+- **Cómo trabaja Dinsides (dueño):** se registra para hoy hasta las 6:00; Dinsides pasa ~8:00 y se lleva TODO lo registrado que aún no
+  tiene en su almacén (lo de otro día lo guarda hasta su fecha); lo de días anteriores ya está en su almacén. Anotado en
+  `docs/envios-jennifer.md` (regla 3 y A4b). `fechaPorDefecto` (Worker) se queda en hoy hasta las 6:00 (antes 11:00).
+- **`etiquetas.py`:** elige por CICLO DE REGISTRO (`fecha_pedido` de Dinsides entre las 6:00 del día anterior y las 6:00 del día de
+  recojo), no por fecha de entrega; fecha por defecto = día de recojo (hoy hasta las 6:00). `--entrega` conserva el filtro viejo.
+  `--shalom-hoja` agrega las etiquetas de Shalom de lo registrado a mano («sí FECHA Shalom NNN (registrado a mano)» en la hoja) con
+  orden, destinatario, DNI de la nota, destino y agencia (`shalom.buscar`); el «Código» de Shalom queda en blanco porque no se guarda.
+  «EMPAQUE: …» va en hasta 3 líneas (en una sola se superponía). Nuevo `GET /api/asesor/pedidos-sheet?enviadas=1` devuelve las filas
+  cerradas completas de los últimos 3 días.
+- **Presentación:** se quitó el pie «Ya despachados o registrados a mano…» de Shalom (dueño: «está de más»).
+
+## 2026-11-09 (mañana 4) · Tarjeta: nota antes de los botones; sin «ya registrados» ni listas que no dicen nada; masivo sin repetidos; clave del día en Ventas
+
+- **Tarjeta de la presentación (dueño, tercera corrección):** etiqueta → verificar → NOTA → botones «OK, va así / Corrección / No va /
+  Ya se envió» → momentos clave del chat al final. `_historial` lee 120 mensajes (antes 60) y el PDF muestra 20 líneas (antes 14).
+- **Secciones:** ya no se lista «LIMA — YA REGISTRADOS» (queda en la memoria del sistema; el RESUMEN trae el conteo). «CHATS DE HOY» solo
+  sale si hay chats que hablen de dirección, pago, agencia, fecha o compra y no sean pedido; «CRM REVISADO» solo si hay «👀 REVISAR».
+- **`shalom.py masivo`:** excluye lo cerrado en la hoja (`enviados_recientes` y boletas) aunque el estado del reporte lo traiga como
+  CONFIRMADO (el masivo del 10 repitió a 5 que el equipo registró a mano el 09); toma también los «futuros» confirmados sin enviar
+  (Abel, previsto el 10, sale en el masivo del 09) y marca ATRASADO solo a los de fecha pasada.
+- **Datos (dueño, clave del día del 09-11):** la clave de Shalom quedó puesta en la hoja Ventas para Abel (Excel masivo, 1 fila:
+  `masivo-a44c9a3eb8434d36.xlsx`) y para los 7 que el equipo registró a mano (5 con `shalom.py clave … lote_mano.json`, 2 que entraron en
+  la primera corrida del masivo). El primer Excel subido (`masivo-8182a82cb5b4426d.xlsx`, 6 filas) tiene 5 repetidos: NO se sube a
+  Shalom. La clave no va en Telegram ni al cliente; solo en la referencia y en Ventas.
+- 2026-11-10 · **Copia de la Espada Voladora para Puerto Secreto (`/espada-ps/`)**, pedido del dueño: misma página que `/espada/` pero con el píxel de Puerto Secreto `1788156381816025` y dominio propio `puerto-secreto-espada-voladora-rc-control-remoto-envio-gratis.tarotperu.store`. Mismo endpoint y pestaña «Espada»; sus pedidos van marcados (Detalle «Color dorado · Puerto Secreto», código `EP-…`, Telegram «(Puerto Secreto)»). Cloudflare: el límite es 10 reglas de reescritura; las 2 de la Espada (My World) se juntaron en 1 dinámica y la copia usa otra igual (las demás reglas no se tocaron). Detalle en `docs/espada.md`.
+
+## 2026-11-10 (madrugada) · Olva en la presentación y en las etiquetas, chequeo del polígono, controles finales, pago YAPE por defecto, chat más largo
+
+- **Datos (dueño, página de revisión `revision-envios-2026-11-10-0006`):** 9 de Lima registrados en Dinsides para el despacho 2026-11-10
+  (#2945611 a #2945619; Tania → YAPE, Eilyn → EFECTIVO, Wilder → Bellavista, códigos de Dinsides 070102) y Yehinson cerrado en la hoja
+  como ya enviado. Excel masivo de Shalom del 10 con 1 fila (Soledad), SIN clave (el dueño no la dio aún; `shalom.py clave NNNN
+  /tmp/shalom/lote.json` cuando la dé). María Elena va por Olva (Puerto Maldonado).
+- **¿Por qué solo un Shalom el 10?** El estado del reporte del 10 trae 2 provincia CONFIRMADO (Soledad por Shalom, María Elena por
+  Olva), 1 POR_CONFIRMAR (pedido web sin adelanto) y 3 INTENCION; en la hoja, 4 POR_CONFIRMAR (sin agencia). Era domingo. No faltó nada.
+- **Olva:** `scripts/asesor/olva.py` (nuevo): `data/olva-agencias.json` bajado de olvacourier.com/ubicanos (admin-ajax
+  `get_olva_stores`, 432 tiendas y agentes), `buscar()` con el mismo criterio que `shalom.buscar` (+4 si el cliente nombró el distrito
+  completo; tiendas repetidas con dos nombres se cuentan una vez), `destino_de()` para la etiqueta. `dinsides.py presentar` separa
+  Olva de Shalom en su sección 🟠 OLVA (`_bloque_olva`: ETIQUETA OLVA + VERIFICAR OLVA). `etiquetas.py --olva-hoja` imprime la
+  etiqueta de Olva (reporte del despacho + hoja) con la «Olva de destino» elegida.
+- **Polígono:** `_poligono(f)` compara el polígono del mapa de Dinsides donde cae el pin con el distrito de la etiqueta; la ETIQUETA
+  muestra el nombre de Dinsides («BELLAVISTA - CALLAO») y cada listo con pin lleva la línea 🗺️ ✅/❌. Control en «CONTROLES FINALES».
+- **☑️ CONTROLES FINALES** (al final de `presentar`): ningún Lima de día anterior sin enviar · polígono revisado · reagendados ya en
+  Dinsides para hoy · agendados para más adelante en Dinsides y en la hoja (⏰ SALE MAÑANA) · provincia Shalom/Olva/sin agencia.
+- **Chat:** `_historial` deja TODO lo que escribió el cliente (menos saludos sueltos), 240 caracteres por línea, hasta 30 líneas; Shalom
+  y Olva leen 60 mensajes.
+- **Pago (`src/lib/dinsides.js`):** si el texto da varias formas de pago («Yape, efectivo o tarjeta al recibir»), va YAPE con alerta;
+  POS/EFECTIVO/PLIN solo cuando es lo único que dice (caso Tania).
+- **Etiquetas:** Shalom y Olva llevan «Despacho dd/mm/aaaa»; aviso si las de Lima no dicen todas la misma fecha. El «Código» de la
+  boleta de Shalom (4 letras) no está en ninguna fuente que leamos (solo en la boleta de Shalom Pro): queda en blanco.
+
+## 2026-11-10 (madrugada 2) · Claves del día, Shalom que expira, etiquetas al borde con código y empaque, controles de fechas y de envíos no salidos, permisos de la Routine
+
+- **Datos (dueño):** clave del día puesta en Ventas para Soledad (Shalom 103225078) y Elia (re-registrada por el dueño como
+  103225122 porque la orden 103056563 del 09 expiró: el equipo no llevó el paquete en 24 h). Soledad cerrada en la hoja con orden y
+  código; Elia se vuelve a marcar en su fila 99 con la orden nueva (`marcar` con `fila`). Las claves no se escriben en el repo.
+- **Clave de Olva:** fija (dueño). Vive en la variable de entorno OLVA_CLAVE de la sesión de la Routine; `docs/envios-jennifer.md` (A6)
+  dice cómo usarla. Nunca va a Telegram ni al cliente.
+- **Worker `pedidos-sheet` POST `marcar`:** acepta `fila` para volver a marcar una fila ya cerrada del mismo WhatsApp.
+- **`etiquetas.py`:** margen 4 mm y 5 filas que reparten todo el alto (A4 al borde); Shalom con «Código» (de «cód XXXX» en Enviado) y
+  nota «EMPAQUE: …» al pie; «Olva de destino» a 6,8 pt y 38 caracteres (se salía del margen).
+- **`presentar` → CONTROLES FINALES:** Shalom registrados a mano (3 días) sin boleta → ❓ verificar en Shalom Pro que no expiró;
+  Dinsides con entrega pasada aún REGISTRADO/RUTA; y «Fechas en Dinsides = fecha pedida» para cada registrado del despacho (200 %).
+  `presentar` pide la hoja con `enviadas=1`.
+- **`.claude/settings.json`:** permisos `Bash(python3 scripts/asesor/<shalom|olva|dinsides|etiquetas|motorizado|pedidos_estado|ventas_estado|imagenes|control_ventas>.py:*)`
+  para que la sesión de la Routine pueda correr el masivo de Shalom y los demás scripts sin que el clasificador los frene.
+
+## 2026-11-10 — Mensajes que no entraban: clientes con «nombre de usuario» de WhatsApp (sin número)
+Pedido del dueño: «hay chats que entran de afuera (link del perfil, Instagram) y no llegan al CRM; quiero que entre y salga todo».
+- **Causa (medida en D1, tabla `webhook_errores`):** del 1 al 10/11 el webhook botó **307 mensajes de 241 personas** (todas de Perú, 15 a 34 personas nuevas por día; antes del 1/11 la tabla no existía, así que no hay cuenta). Son usuarios que activaron el «nombre de usuario» de WhatsApp: Meta ya no manda su número (`from` y `wa_id` vienen vacíos) salvo que el negocio haya hablado con ellos en los últimos 30 días; manda solo su id de negocio (BSUID, p. ej. `PE.1122042103891274`, en `from_user_id` / `contacts[].user_id`). El CRM exigía número y los descartaba («El mensaje llegó sin número de WhatsApp…», antes «D1_TYPE_ERROR undefined», ver 2026-11-03). Por eso fallaban sobre todo los que llegan «de afuera» (nunca habían hablado con el número); a los de anuncio con nombre de usuario les pasaba igual. Doc. oficial leída el 10/11: developers.facebook.com → «Business-scoped user IDs».
+- **Arreglo:** el id de negocio ocupa el lugar del número (`contacts.wa_id`) hasta que el cliente lo comparta.
+  - `src/api/whatsapp-webhook.js`: `waId = msg.from || msg.from_user_id`; pasa `userId` y `@usuario` a `obtenerOCrearContacto`; lo mismo en llamadas. Lo que no se pueda procesar guarda el mensaje ENTERO en `webhook_errores.payload` (antes solo el motivo: el contenido se perdía para siempre).
+  - `src/lib/crm-db.js` `obtenerOCrearContacto(db, waId, nombre, referral, { userId, username })`: busca por número, luego por `user_id`; si un chat sin número llega después con número, ese mismo chat pasa a tenerlo (no se duplica); un cliente de siempre que llega sin número cae en su chat de siempre. Funciona con o sin la migración 0077.
+  - `src/lib/whatsapp.js`: `esBsuid()` y `destino()`: a un id de negocio se le escribe con `recipient` (no `to`) en texto, botones, reacción, plantilla, catálogo, producto y media; bloquear usa `user_id`. `meta-capi.js`: no manda como teléfono un id de negocio.
+  - `public/crm/app.js` (`telDe`, `sinNumero`) y `crm-push.js`: esos chats muestran «Sin número (usuario de WhatsApp)» en vez de «+PE.11…». La vendedora le pide el número en el chat cuando lo necesita (Shalom, Dinsides).
+  - `migrations/0077_contactos_sin_numero.sql`: `contacts.user_id`, `contacts.username`, índice, `webhook_errores.payload`. **PENDIENTE de aplicar en D1** (el control de permisos de la sesión bloqueó el cambio en producción el 10/11; el código no depende de ella para recibir y responder).
+  - Prueba `scripts/test-sin-numero.mjs` (en `npm run check`): webhook real + SQLite: entra sin número, mismo chat al repetir, se une al compartir número, envíos con `recipient`, payload guardado.
+- **Límites conocidos:** las rutas del asesor que identifican el chat por número (`/api/asesor/*`, rescates, sugerencias por `whatsapp`) no alcanzan a los chats sin número: se atienden a mano en el CRM. Meta ofrece un botón `REQUEST_CONTACT_INFO` (plantilla o interactivo) para pedir el número con un toque: no se implementó, queda como opción.
+- **Los 241 ya perdidos:** su id se puede sacar del `wa_message_id` guardado (viene dentro, en base64), pero el texto no. 19 escribieron en las últimas 24 h (ventana abierta). No se recrearon sus chats: queda a decisión del dueño.
+- **Salientes revisados (no son falla del CRM):** del 4 al 10/11 los «fallidos» son de Meta: 874 «healthy ecosystem engagement» (tope de marketing por usuario), 469 «Business eligibility payment issue» el 7/11 (pago de la cuenta, ver entrada del 7/11), ~115 «number is part of an experiment». Casi todos del plan «Interesado · semana gratis». `envio_errores`: 419 de 432 son «pasaron más de 24 h» (seguimientos de texto fuera de ventana).
+
+### 2026-11-10 (tarde) — Subido a `main`, recuperación de los perdidos y asesor para chats sin número
+Dueño: «sube a main; a los 19 de las últimas 24 h mándales la secuencia de bienvenida; las recomendaciones del asesor también para ellos».
+- **`POST /api/asesor/recuperar`** (`src/api/asesor-recuperar.js`, clave del asesor): `{ horas, max, bienvenida, probar }`. Lee `webhook_errores` sin número, saca el id de negocio de cada `wa_message_id` (`bsuidDeWamid`), abre el chat con una nota en lugar del mensaje perdido («[Escribió N mensajes que el CRM no pudo guardar…]», con la hora de su último mensaje) y, si escribió hace menos de 23,5 h, le manda la secuencia de bienvenida y programa su seguimiento de interesados (como a todo chat nuevo). De a `max` por llamada; no repite (quien ya tiene chat se salta). `probar: true` solo cuenta.
+- **Asesor y chats sin número:** `idWa()` en `whatsapp.js` (un id de negocio se deja igual; un número, solo dígitos) reemplaza el «solo dígitos» en `asesor.js` (sugerencias, preguntas, saldos, envíos a varios), `asesor-mandar.js`, `asesor-resumen.js` y `rescate-lead.js`: una recomendación, plantilla sugerida o rescate con `whatsapp: "PE.1122…"` llega a su chat. Lo demás ya existía y no se tocó: el reflote cada 10 min de la recomendación sin respuesta (`reflotarSugerencia`, cron `*/10`), la plantilla que propone el asesor (`plantilla` en la sugerencia) y «Ya respondí» / «Descartar». Los scripts de reportes en Python (ventas, pedidos, Shalom, Dinsides) siguen cruzando por los últimos 9 dígitos del celular: un pedido de un chat sin número necesita que la vendedora le pida el número.
+- Prueba: `scripts/test-sin-numero.mjs` suma la recuperación (id desde un wamid real, bienvenida solo dentro de 24 h, no repite).
+
+
+## 2026-11-11 (madrugada) — Reporte de ventas de verdad, revisión de envíos simple con link fijo, etiquetas limpias, PDF «Saldos y reposiciones» solo para Moi
+
+Pedido del dueño (con las etiquetas del 11/11 a la vista): el reporte confundía (Sandra «sin entregar» estando registrada; Claudia
+de Blue Day Spa «sin despachar» estando entregada a nombre de Flor; Carmen por motorizado externo; anulados que seguían saliendo;
+Pamela repetida en «correcciones»; César Augusto pagó su saldo por BCP y no salió), la revisión era difícil para Jennifer, y las
+etiquetas traían pagos, pines y apuntes internos en «Detalle», «Reposición / cambio» como producto y las de provincia sin empaque.
+Decisiones del dueño (preguntadas en la sesión): reposiciones las hace otro equipo y no son prioridad; saldos y reposiciones en
+un reporte aparte SOLO para Moi al cierre (23:45); a la asesora solo le interesa lo que registra (Lima, Shalom, Olva); link fijo por
+día para la revisión; «para el que empaca» se quita del reporte; Shalom con 2 o más kits = 1 paquete XS.
+
+Qué se conecta con qué (nuevo o cambiado):
+- `scripts/asesor/enviar.py`: `armar_pdf` (unificado sin empaque / incidencias / reposiciones, columna «Envío»), `armar_pdf_dueno` +
+  `es_cierre` (PDF «Saldos y reposiciones», `solo_dueno`), `conciliar_agenda` devuelve lo resuelto, `agenda_sheet` pide `enviadas=1`.
+  `ventas_estado.CLAVES_LISTA` suma `saldos`.
+- `scripts/asesor/reporte.py preparar`: bloque `dinsides` (estado real del courier) para la Routine.
+- `src/api/asesor-dinsides.js`: `telefonosDelChat`, `cruzarConDinsides(…, otrosTelefonos)`, `cruzarEstados` (teléfonos del chat,
+  cierre de REGISTRADO, anulado ±3 días, `cerradas_por_nota` motorizado externo, `whatsapp_hoja`), reposiciones y cambios fuera de
+  las fichas.
+- `src/api/asesor-pedidos-sheet.js`: el upsert no reabre un pedido ya cerrado con la misma entrega (`ya_cerradas`).
+- `src/lib/dinsides.js`: `notaParaMotorizado`, `nombreProducto` (kits 0 con nombre real), el «VERIFICAR…» solo quita su tramo.
+- `src/api/revision.js` + `src/api/reportes.js`: revisión del día (`envios-FECHA`), `paginaDelDia`, `/r/envios-FECHA-<clave>`,
+  `leer: true`.
+- `scripts/asesor/dinsides.py presentar --pagina`: página P (solo lo que se registra), `_pagina_revision` con link fijo, marca
+  NUEVO, `_mercaderia` (XS).
+- `scripts/asesor/etiquetas.py`: `nota_motorizado`, `empaque_shalom`, `completar_empaque_shalom`, producto real en genéricos.
+- `scripts/asesor/shalom.py masivo`: 2+ kits → `PAQUETE XS` × 1.
+- Prompts: `docs/prompts/reporte.md` (v3) y `docs/envios-jennifer.md` («Lo que cambió el 2026-11-11»). Las Routines no se tocaron
+  (leen esos archivos de `main`): los cambios valen cuando esta rama llegue a `main`.
+- Pruebas: `scripts/test-dinsides.mjs` (nota del motorizado, producto), `scripts/asesor/pruebas/test_pdf_unificado.py` (PDF del
+  equipo y del dueño).
+
+Hallazgo de la revisada del 11/11 (no se tocó nada en Dinsides): 13 de 13 registros de Lima con etiqueta y fecha 11/11; 6 Shalom y 1
+Olva con etiqueta; ya en el almacén de Dinsides para hoy Sandra #2945616, Samantha Cassina #2945617, Keyla Vásquez #2945614 y María
+del Pilar Mendoza #2939521; la reposición del collar de July (51940435388) no se registró en Dinsides porque el sistema la cruzó con
+su pedido anterior entregado: queda para el equipo de reposiciones (regla nueva).
+
+## 2026-11-11 (02:30–03:00) — Pasó a `main`; última revisada del despacho y tres huecos cerrados
+
+- La rama se unió a `main` con permiso del dueño (deploy automático). Etiquetas del 11/11 regeneradas con las reglas nuevas
+  (20: Shalom 6, Lima 13, Olva 1) y muestras del reporte de ventas nuevo y de «Saldos y reposiciones» subidas a CRM → Reportes con
+  `enviar.py --solo-pdf --dueno` (no avisa a nadie; `--dueno` junto a `--solo-pdf` sube también el PDF del dueño).
+- **Hueco 1: «chats de hoy» cortaba en 150** (`chatsDeHoy`, `LIMIT 150`): el 10/11 hubo 212 chats con mensaje y los 55 más
+  tempranos no entraban a la revisión. Ahora `LIMIT 600`. Revisados a mano los 55: ninguna venta perdida.
+- **Hueco 2: el cuadre marcaba en rojo a los AGENDADOS** («lo pones CONFIRMADO pero el CRM no tiene compra ese día»): un agendado es
+  la venta de otro día; `control_ventas.cuadrar` ya no lo exige (tampoco a reposiciones y cambios).
+- **Hueco 3: marcas que no pegaban**: `marcarDinsidesEnHoja` acepta la fila exacta (`filaNum`); con dos filas del mismo cliente
+  marcaba otra y la elegida seguía abierta en cada corrida.
+- El PDF del dueño lista de lo ENTREGADO solo los últimos 2 días (lo demás se cuenta).
+- Resultado de la revisada (ventas del 10/11): las 23 ventas que conoce el CRM están en el reporte; Lima 13 registradas hoy + 4 ya
+  en el almacén de Dinsides; provincia 6 Shalom + 1 Olva. Sin registrar por falta de dato: Antonella Prado (dirección, 14/11), Joan
+  (dirección, 16/11). No es venta: Jennifer Figuera (pedido web sin adelanto; el reporte la puso CONFIRMADO con «adelanto visto»).
+
+## 2026-11-11 (03:00–04:00) — 2.ª vuelta del dueño: reporte sin secciones duplicadas, reagendados arriba, WhatsApp obligatorio en la etiqueta, botón Actualizar
+
+Lo que dijo el dueño al ver las muestras: la revisión de envíos está bien (los que ya pagaron y les falta un dato SON venta y van
+ahí); el reporte de ventas no: correcciones, «salen en este despacho» y pedidos web duplican (van dentro de Lima / Provincia, que es
+«lo confirmado que sale mañana sí o sí», no solo las ventas de hoy); «kits a despachar 26» contaba pedidos de otra fecha; los
+reagendados (Nohemi) deben ser prioridad y llegarle a él y a la revisión; toda etiqueta debe decir «escribirle al cliente por
+WhatsApp» con el número; faltaba EMPAQUE en Olva y un botón de actualizar en la página.
+- `enviar.py armar_pdf` (unificado): CORRECCION y AGENDADO se pliegan en Lima / Provincia (`_tipo_orig`); CONFIRMADO con otra fecha
+  pasa a «Otros días»; sin sección de correcciones, de «salen en este despacho» ni de pedidos web; cajas nuevas («Kits que salen en
+  este despacho», «Ya registrados en el courier»); la agenda de la hoja se parte en «🚨 REAGENDAR O REGISTRAR — avisar a Moi»
+  (confirmados y OTRO_DIA, con columna Envío) y «De otros días, sin confirmar» (al final). Los agendados no cuentan como venta de hoy
+  en «Ventas por vendedora».
+- `src/lib/dinsides.js`: `lineaWhatsapp` → toda observación empieza con «Escribir al cliente por WhatsApp: 9… (o 9…)». `etiquetas.py`
+  `detalle_lima` la imprime siempre (WhatsApp del chat desde la memoria de registros + teléfono de Dinsides). Olva con «EMPAQUE».
+  «PALABRA: instrucción» ya no se parte.
+- **Hecho en Dinsides (a pedido del dueño):** se editó la observación de los 18 pedidos abiertos (13 del 11/11, Sandra, Samantha,
+  Keyla, María del Pilar y Liliana) con la nota nueva; los 18 respondieron OK.
+- Revisión de envíos: sección «AGENDADOS Y POR REAGENDAR» (ventas de otros días sin salir + lo agendado en Dinsides para más
+  adelante, con «Reagendar / registrar», «Sigue igual», «Ya se envió», «No va») y botón «Actualizar chats y notas»
+  (`POST /api/revision/nota {leer, chats}`: últimos 25 mensajes de cada pedido de la revisión, en vivo; guarda `pidio_actualizar`,
+  que `dinsides.py notas` muestra). El botón no busca pedidos nuevos: eso es `presentar --pagina`.
+
+## 2026-11-11 (04:00–05:00) — 3.ª vuelta del dueño: el reporte es la «revisión de envíos 2»; página sin botón; indicaciones de la dirección al Detalle
+
+- **Reporte (`enviar.py armar_pdf`, unificado):** «LIMA — por registrar en Dinsides (ya dieron su dirección)» y «PROVINCIA — por
+  registrar (ya dieron su adelanto)» traen SOLO lo que falta registrar, incluidos los de otra fecha (nota «📅 ENTREGA EL …»; ya no
+  hay sección «Otros días» salvo sin destino). Lo ya registrado en el courier (Sandra, Samantha…) baja a «☑️ Ya registrados en el
+  courier», al final, con ✔. «Ventas por vendedora» sigue contando todo. Cajas: Lima por registrar, Provincia por registrar, Ya
+  registrados, Kits por registrar, Por verificar, Intención.
+- **Falso «adelanto visto (revisar monto)»** (Jennifer Figuera, pedido web sin pago): `promover_provincia` leía «falta confirmar
+  agencia, DNI y adelanto S/20» como un adelanto. Ahora «falta … adelanto», «sin pago», «no ha pagado», «pendiente de pago» lo frenan.
+- **Página de revisión:** se quitó el botón «Actualizar chats y notas» de la interfaz (decisión del dueño; el endpoint
+  `leer + chats` de `revision.js` queda sin uso desde la página) y va una nota fija «escribe “actualiza” en la sesión de Claude».
+  «AGENDADOS Y POR REAGENDAR» ya no lista lo agendado en Dinsides para más adelante (Liliana, Wilder): solo lo no registrado.
+- **Detalle con las indicaciones de la dirección** (`indicacionesDeDireccion` en `src/lib/dinsides.js`): «(dejar en recepción)»,
+  «(Dpto 102; o dejar en recepción y avisar)», «(dejar en portería)» pasan al Detalle, porque la etiqueta no imprime la dirección.
+  Hecho en Dinsides para Selene #2948455, Rosa #2948452 y Luciana #2948456. Producto de Cristofer #2948449 corregido con `editar`.
+- **Etiquetas:** «1 kit completo» en lugar de «1 kit normal».
+- **Arroba de WhatsApp (clientes sin número):** el webhook ya lee `profile.username` y `obtenerOCrearContacto` lo guardaría, pero la
+  tabla `contacts` de producción no tiene las columnas `user_id` / `username` (migración 0077 sin aplicar): hoy no se guarda.
+
+## 2026-11-11 (05:00–06:00) — Migración 0077 aplicada, @usuario en el Detalle y auditoría del webhook de WhatsApp contra la documentación oficial
+
+A pedido del dueño («hemos estado sin recibir a los clientes con nombre de usuario y nadie me lo dijo; revisa cualquier punto ciego»).
+- **Migración 0077 aplicada a producción** (API de D1, con permiso del dueño): `contacts.user_id`, `contacts.username`,
+  `idx_contacts_user_id`, `webhook_errores.payload`. Desde ahora se guarda el @usuario y el id de negocio de cada cliente, y todo
+  mensaje que falle queda ENTERO en `webhook_errores.payload` (antes solo quedaba el error).
+- **@usuario en la etiqueta:** `lineaWhatsapp(whatsapp, telefono, username)` → «Escribir al cliente por WhatsApp: 9… o @usuario»;
+  `datosDelChat` trae `username`.
+- **Auditoría del webhook** (doc. oficial: developers.facebook.com → WhatsApp → Webhooks «overview», «messages» y «Business-scoped
+  user IDs», actualizadas el 2026-11-04). Datos mirados: `webhook_errores` (309 filas, todas del 1 al 10/11: 255 «sin número» + 54
+  `D1_TYPE_ERROR` con `wa_id` nulo, que son el mismo problema; ninguna después del arreglo del 10/11 20:04 UTC) y los estados de lo
+  enviado. Huecos cerrados en `src/api/whatsapp-webhook.js`:
+  1. **Campos del webhook que no son `messages` ni `calls` se descartaban en silencio.** Ahora `procesarOtroCampo`: guarda el último
+     de cada tipo en `crm_settings` (`webhook_campo_<campo>`) y manda a Telegram los de cuenta (alertas, infracciones, plantilla
+     rechazada / pausada / recategorizada, calidad y límite del número, seguridad). `user_preferences` (baja o alta de marketing)
+     etiqueta el chat `no_marketing`. Solo llegan los campos a los que la app está suscrita en Meta (pendiente: verificarlo en el
+     panel; el token de Meta vive en el Worker).
+  2. **Respuestas interactivas que no eran botón ni lista entraban como texto vacío** (formulario `nfm_reply`, permiso de llamada):
+     ahora entran con su contenido. Un tipo de mensaje desconocido ya no entra vacío.
+  3. **El perfil del remitente se tomaba siempre de `contacts[0]`**: en un aviso con mensajes de varias personas, el nombre y el
+     @usuario podían ser de otro. Ahora se cruza por `wa_id` / `user_id`.
+  4. **Producto del catálogo desde el que escribió** (`context.referred_product`): se agrega al mensaje.
+  5. **@usuario e id de negocio también desde los avisos de entregado / leído**, y el error 131050 («el cliente eligió no recibir
+     marketing») etiqueta el chat `no_marketing`.
+- **Hallazgos que NO son del webhook (salientes, 1–10/11):** 884 plantillas no entregadas por el límite de marketing por usuario de
+  Meta (131049), 470 por el problema de pago (resuelto el 7/11), 118 «número en un experimento» (130472), 20 fuera de la ventana de
+  24 h, 17 no entregables, 6 bajas de marketing. Y 10 de 445 archivos entrantes (fotos, audios) sin descargar. Pendientes de decidir.
+- El arranque del Project / Routine de envíos NO cambió: sigue leyendo `docs/envios-jennifer.md` de `main`.
+
+## 2026-11-11 (06:00–06:30) — Sin marketing a quien se dio de baja; salud de WhatsApp en el reporte del dueño; archivos entrantes se guardan solos
+
+- **`no_marketing` se respeta** (decisión del dueño): `crm-cron.js` cancela la plantilla programada si es de categoría MARKETING y el
+  chat tiene `no_marketing` (queda en `envio_errores`); `toques.js` salta esos chats. Las de servicio (aviso de envío, recojo,
+  cobro) siguen saliendo. `plantillaAprobada` ahora guarda y devuelve `categoria` (9.º campo del caché `plantilla_estado:*`).
+- **`GET /api/asesor/entrega?fecha=`** (`src/api/asesor-entrega.js`): salientes del día, no entregados por motivo, entrantes, mensajes
+  entrantes no procesados (`webhook_errores`) y archivos sin guardar. `enviar.py salud_whatsapp` lo pone en el PDF «Saldos y
+  reposiciones» (sección «📶 WhatsApp hoy») y en su resumen de Telegram.
+- **Archivos entrantes** (`guardarArchivosEntrantesPendientes`, cron de 10 min, 3 por pasada): audios, fotos, videos y documentos que
+  nadie abrió se bajan de WhatsApp y se guardan en R2 (antes solo al abrirlos). El que Meta ya no sirve queda `media_key = 'expirado'`.
+  Los 10 pendientes eran 9 audios y 1 PDF que nadie había abierto.
+- **Error del 6/11 02:08 UTC** (`webhook_ultimo_error`: «D1_ERROR: internal error»): fallo interno de la base de Cloudflare durante un
+  aviso; no hay forma de saber qué traía (entonces no se guardaba el mensaje entero; desde la migración 0077 sí).
+- **Routines:** no se cambió ningún prompt de Routine. Las dos del reporte (`trig_01MMWTgBTQ8aD1M1QM1xxGEc` 21:45 · 23:45 y
+  `trig_01CwAvLG544pJd3FkAGu9Pf7` 22:30) y la de envíos (`trig_01Fq74icnRhUnmQ4SoJvcrh7`) solo llevan el arranque que sincroniza
+  `main` y lee `docs/prompts/reporte.md` / `docs/envios-jennifer.md`: los cambios de hoy entran solos.
+
+## 2026-11-11 (tarde) — Collar amuleto EXTRA ofrecido en el chat: firme en el empaque y en la etiqueta
+
+Dueño (caso Alicia / Miguel Ángel Machaca, 51912911740): a quien se le ofreció un collar extra y compra, tiene que salirle al que
+empaca, en la etiqueta. No salía por dos fallas: (1) `promesas.RE_PROMESA` no reconocía «COLLAR AMULETO de carta de Tarot EXTRA»
+(hay palabras entre «collar» y «extra») y sí tomaba como promesa el mensaje de precio («Le incluye el mazo completo…»), así que el
+«⚠️ VERIFICAR» citaba ruido; (2) las etiquetas quitan los «VERIFICAR».
+- `promesas.py`: `RE_COLLAR_EXTRA`, `RE_KIT_NORMAL`, `collar_extra(lineas)`, `TEXTO_COLLAR`.
+- `enviar.py revisar_promesas`: en pedidos CONFIRMADO / OTRO_DIA agrega al `empaque` «+ 1 COLLAR AMULETO EXTRA (se le ofreció en
+  el chat)» (firme, no «verificar»).
+- `etiquetas.py con_collar_extra`: al imprimir mira las promesas de 30 días y lo agrega a «EMPAQUE» en Lima, Shalom y Olva, también
+  para lo ya registrado.
+- Del despacho del 11/11 lo tenían ofrecido: Ana María Yamunaqué, Zandy Zambrano, Miguel Ángel Machaca (Alicia), Roseli Álvarez
+  (Shalom) y Luciana Gamarra (Lima); pendientes de registrar: Antonella Prado y Joan. Sus etiquetas originales no lo decían.
+## 2026-11-11 — Respuesta automática a comentarios de Facebook e Instagram
+- Comentario con palabra clave → respuesta pública («¡Hola! ✨ Te envíe los detalles 📩📩») + UN mensaje privado (private
+  reply) con la info del kit, la web y el WhatsApp; si después escribe por DM, la foto del kit una vez
+  (`public/redes/kit-tarot.jpg`). Gratis (Messenger/IG no cobran por mensaje). Detalle, límites de Meta y pasos de
+  conexión en `docs/redes.md`.
+- Código: `src/lib/redes.js` (lógica), `src/api/meta-webhook.js` (`GET/POST /api/meta/webhook`, firma con
+  `firmaValida`, que ahora también acepta `META_APP_SECRET`), `src/api/crm/redes.js` (`/api/crm/redes`, solo admin),
+  panel en Herramientas. Token de la página, clave de la app y token de verificación se guardan desde el panel
+  (`crm_settings`), así el dueño no entra a Cloudflare; nunca se devuelven al navegador.
+- Migración `0078_redes_comentarios.sql` aplicada en D1 el 2026-11-11. Prueba: `scripts/test-redes.mjs` (en `npm run check`).
+- **Pendiente del dueño:** conectar la página (token con permisos, webhooks de la app, revisión de Meta para acceso
+  avanzado). Hasta entonces no se responde nada.
+
+## 2026-11-11 — «Reportar venta» de clientes con nombre de usuario de WhatsApp (Meta rechazaba el evento)
+- **Qué pasó:** Carmela Fonseca (Jennifer), y antes un chat de Mayra (conv 5153) y uno de Fandio (conv 5146), escriben con
+  **nombre de usuario de WhatsApp**: Meta no manda su número (`wa_id` = id de negocio «PE.…», migración 0077). El evento
+  manual iba solo con el nombre y Meta lo rechazaba («insufficient customer information»). Cada vendedora lo intentó
+  2–3 veces. La venta sí quedó marcada en el CRM (etiqueta `purchase`), pero en `capi_events` quedó `fallido` y **las
+  comisiones solo cuentan `enviado`**: esas 3 ventas no sumaban comisión.
+- **Arreglo (sin tocar el camino de los clientes con número):** `capi-send.js` busca el celular que el cliente escribió
+  en el chat (`celularDeTexto` en `src/lib/meta-capi.js`: 9 dígitos que empiezan con 9, con o sin +51) y lo manda como
+  `ph`, más `external_id` (hash del id de negocio). Si no hay celular, NO se le manda a Meta algo que va a rechazar: queda
+  `omitido` y la vendedora ve «Venta guardada en el CRM. A Meta no se le avisó…» en vez del error rojo.
+- Comisiones (`src/lib/comisiones.js`) y toques (`src/lib/toques.js`) cuentan `enviado` y `omitido` (una venta es venta
+  aunque Meta no la reciba). Los `fallido` siguen sin contar (son reintentos con error).
+- **Las 3 ventas de arriba:** los tres chats tienen el celular escrito; hay que darle «Reportar venta» UNA vez más a cada
+  una (Jennifer: Carmela; Mayra: conv 5153; Fandio: conv 5146) para que llegue a Meta y cuente en comisiones. No se tocaron
+  los registros a mano para no duplicar comisiones.
+- Prueba: `scripts/test-capi-sin-numero.mjs` (en `npm run check`).
+- Redes (mismo día): el dueño eligió «solo el texto»: la foto por DM queda apagada de fábrica (`imagen_url` vacío en
+  `POR_DEFECTO`, `src/lib/redes.js`); se prende poniendo el link en el panel.
+
+## 2026-11-11 (noche) — La clave de recojo del día ahora sí queda en el CRM, y Claude lo comprueba
+
+Dueño: Jennifer le dio la clave del día al Claude de envíos, Claude respondió que ya estaba, y en el CRM no aparecía «Clave Shalom».
+Causa: `shalom.py clave` (y `poner_clave`) solo escribían la clave en la hoja **Ventas**; la ficha del cliente del CRM
+(`contacts.shalom_code`) solo se escribía desde la interfaz (`PATCH /api/crm/contacts`). Además `clave` exigía `/tmp/shalom/lote.json`
+(solo existe si se corrió el Excel masivo): con envíos registrados a mano en Shalom Pro, salía con error y no hacía nada.
+- `POST /api/asesor/ventas { accion: "clave_crm", whatsapp, clave?, pisar? }` (`src/api/asesor-ventas.js`, `claveEnCrm`): guarda la
+  clave en `contacts.shalom_code` y deja el cobro POR APROBAR en cada chat (`activarCobroPorCodigo`, igual que cuando una vendedora
+  la escribe en el perfil). No pisa una clave distinta sin `pisar`. Nunca devuelve la clave; sin `clave` solo dice si la tiene.
+- `scripts/asesor/shalom.py clave NNNN [lote.json] [FECHA] [--pisar] [--solo …] [--olva]` y `clave ver [FECHA]`: toma el lote del
+  Excel masivo y, si no hubo, los envíos de provincia del despacho en la hoja «Pedidos auto» (`_lote_de_hoja`); pone la clave en el
+  CRM y en la hoja Ventas; imprime por cliente el resultado (sin la clave) y «CLAVE EN EL CRM: N de M».
+- `docs/envios-jennifer.md` regla 13: correr siempre el comando al recibir la clave, pegar la lista, prohibido decir «listo» sin ella.
+- La clave sigue siendo secreta: no va a clientes, a Telegram ni a las respuestas de Claude.
+
+## 2026-11-12 — Recomendaciones del asesor: una cada 10 min, una sola vez; prompt del asesor en el repo
+
+Dueño: «nadie abre la estrellita (✨ Sugerencias); las recomendaciones deben reflotarse en el chat, una cada 10 minutos, una
+sola vez; la asesora manda el mensaje o marca que ya se envió y ya está. Es para los clientes que tuvieron interés». Y: «la rutina
+del asesor estaba con Fable».
+- **Por qué no se veían:** desde el 2026-11-06 («Reflote solo por falta de respuesta», más arriba) `reflotarSugerencia` solo subía
+  un chat si al cliente le faltaba respuesta. Casi todas las recomendaciones son de clientes que callaron tras nuestro mensaje
+  (47 de 48 el 6/11), así que casi ninguna subía y solo se veían en ✨ Sugerencias, que nadie abre.
+- **Ahora (`reflotarSugerencia`, `src/lib/crm-sugerencias.js`, cron de 10 min de `index.js`):** sube **UN** chat por pasada
+  (`POR_PASADA = 1`) y cada recomendación **una sola vez** (`reflotada_at IS NULL`; se quitó el «vuelve a subir tras 3 h»,
+  `VUELVE_A_SUBIR_H`). Ya no exige «Falta respuesta»: solo ordena. Orden: primero falta de respuesta (`FALTA_RESPUESTA`), luego
+  ventana de 24 h abierta, luego la más antigua. Siguen igual: solo `seguimiento` (y `sin_pregunta` con el ajuste
+  `sin_pregunta_auto`, ventana abierta), solo las de los últimos 3 días, no de madrugada (`HORARIO_ENVIO`), no chats bloqueados,
+  y con plantilla ya mandada espera a que el cliente conteste. La regla del 2026-11-06 queda reemplazada en ese punto (el resto
+  de esa entrada —«Falta respuesta / Ya respondí», banner con ventana cerrada— sigue vigente).
+- **La cajita en el chat ya existía** (`actualizarRecomendacionChat`, `public/crm/app.js`, banner «Recomendación del asesor»):
+  texto editable, «Enviar» (o «Mandar la plantilla» con la ventana cerrada), «Ya respondí» (cierra la recomendación) y
+  «Descartar». No se tocó.
+- **Routine del asesor** (`trig_01PN2ZZaL1MzG9AMB8Nj6PoS`, «Asesor — mensajes (10:00 · 15:00 · 19:00)»): la corrida del
+  2026-11-11 19:09 (Lima) corrió con Fable porque la Routine no tenía modelo fijo y tomó el predeterminado de la cuenta; quedó con
+  modelo fijo `claude-sonnet-5-5`. Su prompt ahora es solo un **arranque** que clona/actualiza el repo y lee
+  **`docs/prompts/asesor-mensajes.md`** (fuente de verdad, igual que el reporte con `docs/prompts/reporte.md`): cambiar el asesor =
+  editar ese archivo. v2 del prompt: explica que lo que propone se reflota en el chat (un mensaje por chat, listo para mandar,
+  `motivo` corto) y que todo chat con interés lleva su seguimiento, no solo los «⭐ POSIBLE VENTA». Horario y conectores sin
+  cambio. Nunca le escribe a un cliente (todo pasa por `enviar.py --solo-mensajes`). Prompt v1 en `docs/routines.md`.
+- Pruebas: `scripts/test-reflote-respuesta.mjs` y `scripts/test-sugerencias.mjs` (en `npm run check`): una por pasada, el que
+  calló también sube, cada una una sola vez.

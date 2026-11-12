@@ -116,6 +116,11 @@ function fechaCorta(iso) {
   return d.toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// Cliente con «nombre de usuario» de WhatsApp: no comparte su número y el CRM lo conoce por un id («PE.1122…»).
+// Se le escribe igual que a cualquiera; el número hay que pedírselo en el chat.
+const sinNumero = (wa) => /[A-Za-z]/.test(String(wa || ""));
+const telDe = (wa) => (sinNumero(wa) ? "Sin número (usuario de WhatsApp)" : `+${wa}`);
+
 function escapar(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -1298,6 +1303,7 @@ $("#btn-admin").addEventListener("click", () => {
   cargarPausa();
   pintarPlanesPorAprobar();
   pintarEjemplares();
+  pintarRedes();
   pintarFlujos();
   $("#bulk-numeros").value = "";
   $("#bulk-resultado").textContent = "";
@@ -2578,7 +2584,7 @@ function avisarLocalmente() {
     if ((c.unread_count || 0) <= (previos.get(c.conversation_id) || 0)) continue;
     if (!document.hidden && c.conversation_id === estado.conversacionActivaId) continue;
     const cuerpo = c.last_type === "text" || !c.last_type ? (c.last_body || "Mensaje nuevo") : extractoMensaje(c.last_type, c.last_type === "location" || c.last_type === "contacts" ? c.last_body : "");
-    navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || `+${c.wa_id}`, {
+    navigator.serviceWorker?.getRegistration("/crm/").then((reg) => reg?.showNotification(c.profile_name || telDe(c.wa_id), {
       body: cuerpo.length > 120 ? cuerpo.slice(0, 120) + "…" : cuerpo,
       tag: `chat-${c.conversation_id}`,
       renotify: true,
@@ -3113,6 +3119,63 @@ async function pintarFlujos() {
   });
 }
 
+/* Comentarios de Facebook e Instagram (dueño, 2026-11-11; src/lib/redes.js). */
+async function pintarRedes() {
+  const estadoRedes = $("#redes-estado");
+  if (!estadoRedes) return;
+  try {
+    const d = await pedir("/api/crm/redes");
+    const c = d.config;
+    $("#redes-activo").checked = Boolean(c.activo);
+    $("#redes-facebook").checked = c.facebook !== false;
+    $("#redes-instagram").checked = c.instagram !== false;
+    $("#redes-palabras").value = (c.palabras || []).join("\n");
+    $("#redes-comentario").value = c.comentario || "";
+    $("#redes-dm").value = c.dm || "";
+    $("#redes-imagen").value = c.imagen_url || "";
+    $("#redes-webhook-url").textContent = d.webhook?.url || "";
+    $("#redes-verify").textContent = d.webhook?.verify_token || "";
+    $("#redes-token").value = "";
+    $("#redes-token").placeholder = d.token ? "Guardado (escribe uno nuevo solo para cambiarlo)" : "Pega aquí el token de la página";
+    $("#redes-app-secret").value = "";
+    $("#redes-app-secret").placeholder = d.app_secret ? "Guardada" : "Vacío = usa la de la app de WhatsApp";
+    if (!d.token) $("#redes-conexion").open = true;
+    const h = d.hoy || {};
+    estadoRedes.innerHTML = !d.token
+      ? `${icon("alertCircle")} Falta conectar la página: pega su token en «Conexión con Meta» (pasos en docs/redes.md). Mientras tanto no se responde nada.`
+      : d.error_token ? `${icon("alertCircle")} El token de la página no funciona: ${escapar(d.error_token)}`
+      : `${icon("check")} Conectado a ${escapar(d.cuentas?.page_name || "la página")}${d.cuentas?.ig_id ? " e Instagram" : " (sin Instagram vinculado)"} · últimas 24 h: ${h.vistos || 0} comentarios, ${h.respondidos || 0} respondidos, ${h.dm || 0} mensajes privados, ${h.imagenes || 0} fotos`;
+    $("#redes-ultimos").innerHTML = (d.ultimos || []).length ? d.ultimos.map((x) => `<div class="sub" style="margin:2px 0">${icon(x.palabra ? (x.dm_enviado ? "check" : "alertCircle") : "chat")} ${escapar(fechaCorta(x.created_at))} · ${escapar(x.plataforma)} · ${escapar(x.autor || "")}: «${escapar(String(x.texto || "").slice(0, 80))}»${x.palabra ? ` · palabra «${escapar(x.palabra)}»${x.respondido ? " · respondido" : ""}${x.dm_enviado ? " · mensaje privado" : ""}${x.imagen_enviada ? " · foto" : ""}` : " · sin palabra clave"}${x.error ? ` · ${escapar(x.error)}` : ""}</div>`).join("") : `<div class="sin-ad">Todavía no llegó ningún comentario.</div>`;
+  } catch (err) {
+    estadoRedes.textContent = err.message;
+  }
+}
+$("#redes-guardar")?.addEventListener("click", async (e) => {
+  const boton = e.currentTarget;
+  boton.disabled = true;
+  try {
+    await pedir("/api/crm/redes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      activo: $("#redes-activo").checked, facebook: $("#redes-facebook").checked, instagram: $("#redes-instagram").checked,
+      palabras: $("#redes-palabras").value.split("\n"), comentario: $("#redes-comentario").value, dm: $("#redes-dm").value, imagen_url: $("#redes-imagen").value.trim(),
+      token: $("#redes-token").value.trim() || undefined, app_secret: $("#redes-app-secret").value.trim() || undefined
+    }) });
+    await pintarRedes();
+    alert("Guardado.");
+  } catch (err) { alert(err.message); }
+  boton.disabled = false;
+});
+
+$("#redes-suscribir")?.addEventListener("click", async (e) => {
+  const boton = e.currentTarget;
+  boton.disabled = true;
+  try {
+    const r = await pedir("/api/crm/redes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "suscribir" }) });
+    alert(`Listo: ${r.page_name || "la página"} quedó suscrita${r.ig_id ? " (con su Instagram)" : " (no encontré un Instagram vinculado a la página)"}.`);
+    await pintarRedes();
+  } catch (err) { alert(err.message); }
+  boton.disabled = false;
+});
+
 async function pintarEjemplares() {
   const cont = $("#lista-ejemplares");
   if (!cont) return;
@@ -3132,7 +3195,7 @@ async function pintarEjemplares() {
 }
 
 async function cambiarEstadoChat(c, accion) {
-  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  const nombre = c.contact_name || c.profile_name || telDe(c.wa_id);
   if (accion === "bloquear" && !confirm(`¿Bloquear a ${nombre}? No podrá escribirte por WhatsApp y su chat sale de la lista (lo ves en "Ocultos").`)) return false;
   try {
     const r = await pedir("/api/crm/chat-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: c.conversation_id, accion }) });
@@ -3160,7 +3223,7 @@ let chatPrevisualizado = null;
 /** Los últimos mensajes (fotos incluidas) sin abrir el chat ni marcarlo leído. */
 async function previsualizarChat(c) {
   chatPrevisualizado = c;
-  const nombre = c.contact_name || c.profile_name || `+${c.wa_id}`;
+  const nombre = c.contact_name || c.profile_name || telDe(c.wa_id);
   $("#preview-titulo").textContent = nombre;
   pintarBotonesPreview();
   const cont = $("#preview-mensajes");
@@ -4018,7 +4081,7 @@ function pintarChatBase(c) {
         ${avatarHtml(nombre)}
         <div>
           <div class="nombre">${escapar(nombre)}</div>
-          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> +${escapar(c.wa_id)} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
+          <div class="tel"><span class="marca-chat">${NOMBRE_MARCA[marcaDeChat(c)]}</span> ${escapar(telDe(c.wa_id))} <span id="reloj-chat" class="reloj"></span> <span id="estado-resp-chat"></span></div>
         </div>
       </div>
       <div class="acciones-chat">
@@ -4734,9 +4797,10 @@ function formVenta(c, alTerminar) {
       ponerEtiquetaLocal(c, "purchase");
       document.querySelectorAll(".accion-venta").forEach((b) => b.classList.add("enviado"));
       estadoEl.className = "pm-estado ok";
-      estadoEl.textContent = r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
+      // Cliente con nombre de usuario de WhatsApp y sin celular en el chat: la venta queda guardada, a Meta no se le avisa (2026-11-11).
+      estadoEl.textContent = r.modo === "omitido" ? r.aviso : r.modo === "anuncio" ? "✓ Enviado a Meta (vinculado al anuncio)" : "✓ Enviado a Meta";
       actualizarHistorialCapi(c.conversation_id);
-      setTimeout(() => { if (pop.isConnected) alTerminar(); }, 1600);
+      setTimeout(() => { if (pop.isConnected) alTerminar(); }, r.modo === "omitido" ? 6000 : 1600);
     } catch (err) {
       estadoEl.className = "pm-estado error";
       estadoEl.textContent = err.message;
@@ -4772,7 +4836,7 @@ async function actualizarHistorialCapi(conversationId) {
       ? `<div class="ayuda-modal" style="margin-bottom:4px">Enviados antes:</div>` + events.map((e) => `
         <div style="font-size:11px;color:var(--gris);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--borde)">
           <span>${fechaCorta(e.created_at)} · ${escapar(NOMBRE_EVENTO_META[e.event_name] || e.event_name || "Venta")}${e.mode === "anuncio" ? " (anuncio)" : ""}${e.product_label ? ` · ${escapar(e.product_label)}` : ""}</span>
-          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : "✗"}</span>
+          <span style="color:${e.status === "enviado" ? "var(--verde-osc)" : e.status === "omitido" ? "var(--gris)" : "var(--peligro)"}" title="${escapar(e.error || "")}">${e.value ? `${e.value} ${escapar(e.currency)} ` : ""}${e.status === "enviado" ? "✓" : e.status === "omitido" ? "solo CRM" : "✗"}</span>
         </div>`).join("")
       : "";
   } catch { /* silencioso */ }
@@ -10339,7 +10403,7 @@ async function pintarDetalle(c) {
     <button type="button" id="btn-cerrar-detalle" title="Cerrar">${icon("close")}</button>
     ${avatarHtml(nombre)}
     <div class="nombre-contacto">${escapar(nombre)}</div>
-    <div class="tel-contacto">+${escapar(c.wa_id)}</div>
+    <div class="tel-contacto">${escapar(telDe(c.wa_id))}</div>
     ${lineaDe(c.linea_id) ? `<div class="tel-contacto">${icon("phone")} Escribió a ${escapar(lineaDe(c.linea_id).nombre)}</div>` : ""}
     ${estado.conversaciones.filter((x) => x.wa_id === c.wa_id && x.conversation_id !== c.conversation_id).map((x) => `
       <button type="button" class="cancelar otro-chat" data-conv="${x.conversation_id}" style="width:100%;font-size:12px;margin-top:4px">${icon("chat")} Su chat de ${escapar(lineaDe(x.linea_id)?.nombre || "Tarot Store")}</button>`).join("")}
@@ -10549,7 +10613,7 @@ async function pintarLeadDetalle(c) {
   }
   if (estado.conversacionActivaId !== c.conversation_id) return;
   const esAdmin = estado.miRol === "admin";
-  const nombre = c.profile_name || `+${c.wa_id}`;
+  const nombre = c.profile_name || telDe(c.wa_id);
   const pasosTienda = pasosDeTienda(d, c);
   const tienda = tiendaDe(c);
 
@@ -10713,7 +10777,7 @@ let chatAsignando = null;
 
 async function abrirModalAsignar(c) {
   chatAsignando = c;
-  $("#asignar-contacto").textContent = c.profile_name || `+${c.wa_id}`;
+  $("#asignar-contacto").textContent = c.profile_name || telDe(c.wa_id);
   $("#asignar-lista").innerHTML = "Cargando…";
   $("#modal-asignar-fondo").classList.add("abierto");
   let agentes = [];

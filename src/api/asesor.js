@@ -22,6 +22,7 @@
  *     mensajes: [{ whatsapp, nombre, motivo, mensaje }] }
  */
 
+import { idWa } from "../lib/whatsapp.js";
 import { limpiarBotones, listarTemplates } from "../lib/whatsapp.js";
 import { llamarTelegram, escaparHtml } from "../lib/telegram.js";
 import { notificarRecomendaciones } from "../lib/crm-avisos.js";
@@ -270,7 +271,7 @@ export async function onRequestPostSugerencias({ request, env }) {
     // La clave de retiro de Shalom (shalom_code, 4 dígitos) NUNCA va en una sugerencia: si el texto la lleva, se rechaza
     // (dueño, 2026-11-04). Se revisa contra la clave del contacto al que va dirigida.
     {
-      const waG = String(s?.whatsapp || "").replace(/\D/g, "");
+      const waG = idWa(s?.whatsapp);
       const convG = waG ? await convDe(env, waG).catch(() => null) : null;
       const claveG = String(convG?.shalom_code || "").trim();
       const textosG = [s?.texto, s?.mensaje, ...(Array.isArray(s?.pasos) ? s.pasos.map((x) => x?.texto ?? x?.mensaje) : [])].filter(Boolean).map(String);
@@ -307,7 +308,7 @@ export async function onRequestPostSugerencias({ request, env }) {
       ).bind(texto).first();
       if (repetida) continue;
       const opciones = (Array.isArray(s.opciones) ? s.opciones : []).map((o) => String(o || "").trim().slice(0, 200)).filter(Boolean).slice(0, 4);
-      const wa = String(s.whatsapp || "").replace(/\D/g, "");
+      const wa = idWa(s.whatsapp);
       const conv = wa ? await convDe(env, wa) : null;
       await env.CRM_DB.prepare(
         "INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, texto, texto_original, motivo, idea, origen) VALUES ('pregunta', ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -318,7 +319,7 @@ export async function onRequestPostSugerencias({ request, env }) {
 
     if (s.tipo === "saldo") {
       let codigo = String(s.codigo || "").trim().toUpperCase();
-      const wa = String(s.whatsapp || "").replace(/\D/g, "");
+      const wa = idWa(s.whatsapp);
       const conv = await convDe(env, wa);
       // Si el asesor no sabe el código, se busca su venta abierta por el celular en la hoja Ventas.
       if (!/^TS-[A-Z0-9-]{3,24}$/.test(codigo) && wa.length >= 9) {
@@ -351,7 +352,7 @@ export async function onRequestPostSugerencias({ request, env }) {
       if (igual) continue;
       const candidatos = [];
       for (const d of (Array.isArray(s.destinatarios) ? s.destinatarios : []).slice(0, 50)) {
-        const wa = String(d?.whatsapp || "").replace(/\D/g, "");
+        const wa = idWa(d?.whatsapp);
         const conv = await convDe(env, wa);
         if (conv) candidatos.push({ conversation_id: conv.id, wa_id: wa, nombre: String(d.nombre || "").slice(0, 80) });
         else if (wa) res.sin_chat.push(wa);
@@ -385,7 +386,7 @@ export async function onRequestPostSugerencias({ request, env }) {
       .map((x) => String(x || "").trim().slice(0, 160)).filter(Boolean).slice(0, 5);
     const adjuntar = adjuntarLista.length ? JSON.stringify(adjuntarLista) : null;
     const plantillaSug = String(s.plantilla || "").trim().replace(/[^a-z0-9_]/gi, "").slice(0, 120) || null;
-    const wa = String(s.whatsapp || "").replace(/\D/g, "");
+    const wa = idWa(s.whatsapp);
     const conv = await convDe(env, wa);
     if (!conv) {
       res.sin_chat.push(wa);

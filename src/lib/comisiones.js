@@ -96,7 +96,8 @@ export async function calcularQuincena(db, quincenaId) {
      JOIN conversations conv ON conv.id = e.conversation_id
      JOIN contacts c ON c.id = conv.contact_id
      LEFT JOIN comision_ajustes a ON a.capi_event_id = e.id
-     WHERE e.event_name = 'Purchase' AND e.status = 'enviado'
+     -- 'omitido' (2026-11-11): venta de un cliente con nombre de usuario de WhatsApp que no se pudo avisar a Meta: igual es venta.
+     WHERE e.event_name = 'Purchase' AND e.status IN ('enviado', 'omitido')
        AND e.created_at >= datetime(?, '-1 day') AND e.created_at <= datetime(?, '+2 days')
      ORDER BY e.created_at`
   ).bind(q.desde, q.hasta).all();

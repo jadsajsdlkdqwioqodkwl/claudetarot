@@ -13,7 +13,7 @@
  */
 
 import { conAuth } from "../../lib/crm-auth.js";
-import { reportarEventoMeta, EVENTOS } from "../../lib/meta-capi.js";
+import { celularDeTexto, reportarEventoMeta, EVENTOS } from "../../lib/meta-capi.js";
 import { envDeConversacion } from "../../lib/lineas.js";
 import { registrarEventoCapi, agregarEtiquetaMeta } from "../../lib/crm-db.js";
 
@@ -96,10 +96,20 @@ async function post({ request, env, agent }) {
 
   await agregarEtiquetaMeta(env.CRM_DB, conversationId, EVENTOS[tipo].etiqueta);
 
+  // Cliente con nombre de usuario de WhatsApp (sin número): el celular que escribió en el chat (2026-11-11).
+  let telefono = null;
+  if (waId && /[A-Za-z]/.test(String(waId))) {
+    const { results: textos } = await env.CRM_DB.prepare(
+      "SELECT body FROM messages WHERE conversation_id = ? AND direction = 'in' AND type = 'text' AND body IS NOT NULL ORDER BY id DESC LIMIT 200"
+    ).bind(conversationId).all().catch(() => ({ results: [] }));
+    for (const t of textos || []) { telefono = celularDeTexto(t.body); if (telefono) break; }
+  }
+
   try {
     // Al dataset/píxel de la línea del chat (URO no reporta al de Tarot Store).
     const r = await reportarEventoMeta(await envDeConversacion(env, conversationId), {
       tipo,
+      telefono,
       waId,
       ctwaClid,
       valor,
@@ -120,6 +130,12 @@ async function post({ request, env, agent }) {
     await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "enviado", createdBy, eventName: r.eventName, modo: r.modo, error: r.aviso });
     return json({ ok: true, modo: r.modo, event_name: r.eventName, aviso: r.aviso, meta_response: r.respuesta });
   } catch (err) {
+    // Sin número ni celular en el chat: la venta YA quedó marcada en el CRM; a Meta no se le manda algo que va a
+    // rechazar. No es un error para la vendedora (2026-11-11, chat de Carmela Fonseca).
+    if (err.sinDatos) {
+      await registrarEventoCapi(env.CRM_DB, { conversationId, orderId, productLabel, valor, moneda, status: "omitido", createdBy, eventName: tipo === "venta" ? "Purchase" : "Lead", error: err.message.slice(0, 500) });
+      return json({ ok: true, modo: "omitido", aviso: "Venta guardada en el CRM. A Meta no se le avisó: el cliente escribe con nombre de usuario de WhatsApp y no dejó su celular en el chat. Si lo escribe después, se puede volver a reportar." });
+    }
     if (orderId) {
       await env.CRM_DB.prepare("UPDATE catalog_orders SET capi_status = 'fallido' WHERE id = ?").bind(orderId).run();
     }

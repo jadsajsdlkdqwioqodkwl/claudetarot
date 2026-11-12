@@ -39,7 +39,7 @@ const NO_ES_RESPUESTA = (m) => `(${m}.type = 'template' OR substr(COALESCE(${m}.
  * NO cuenta como respuesta (antes la etiqueta se apagaba sola con cualquier plantilla del plan); eso aplica a lo
  * que escribió en los últimos 3 días; en chats más viejos sigue la regla de antes (cualquier salida lo apaga), para
  * no llenar de etiquetas los leads viejos que recibieron un envío masivo.
- * Es también la ÚNICA razón para reflotar una recomendación del asesor (reflotarSugerencia).
+ * Desde el 2026-11-12 ya no es condición para reflotar una recomendación: solo le da prioridad (reflotarSugerencia).
  */
 export const FALTA_RESPUESTA = (conv) => `(${conv}.last_inbound_at IS NOT NULL
   AND (${conv}.atendido_at IS NULL OR ${conv}.atendido_at < ${conv}.last_inbound_at)
@@ -75,47 +75,38 @@ export async function limpiarSugerenciasViejas(db, env = null) {
 }
 
 /**
- * Cada 10 min (cron) sube a la bandeja las recomendaciones pendientes del asesor, para que las vendedoras
- * las vean poco a poco y no de golpe: hasta POR_PASADA chats por pasada, primero las que nunca subieron
- * (la más antigua primero) y, si no queda ninguna, vuelve a subir UNA que sigue pendiente y subió hace más
- * de VUELVE_A_SUBIR_H horas (nadie la atendió). Dentro del chat se ve el mensaje recomendado, editable,
- * con «Enviar» y «Descartar». No sube de madrugada (horario de envío). Devuelve los ids reflotados.
- * Dueño, 2026-11-06: se reflota por FALTA DE RESPUESTA, nunca por falta de seguimiento (los seguimientos ya son
- * automáticos). Solo sube un chat cuya recomendación está pendiente Y el cliente escribió sin que nadie le contestara
- * (FALTA_RESPUESTA). Si el último mensaje es nuestro y el cliente calló, la recomendación igual se ve en el chat
- * (banner) y en ✨ Sugerencias, pero el chat no sube. «Ya respondí» (atendido) lo saca.
+ * Cada 10 min (cron) sube a la bandeja UNA recomendación pendiente del asesor, y cada recomendación sube UNA sola vez
+ * (`reflotada_at`). Dentro del chat se ve el mensaje recomendado, editable, con «Enviar», «Ya respondí» y «Descartar».
+ * No sube de madrugada (horario de envío). Devuelve los ids reflotados.
+ * Historia: 2026-10-17 subían hasta 3 por pasada y volvían a subir cada 3 h; 2026-11-06 solo por FALTA DE RESPUESTA
+ * (casi ninguna subía: 47 de 48 eran de clientes que callaron). Dueño, 2026-11-12: «nadie abre la estrellita; las
+ * recomendaciones deben reflotarse en el chat, una cada 10 minutos, una sola vez; la asesora manda el mensaje o marca
+ * que ya se envió y ya está». Orden: primero los chats a los que les falta respuesta (FALTA_RESPUESTA), luego los de
+ * ventana de 24 h abierta (el texto sale gratis) y, entre iguales, la recomendación más antigua (solo las de 3 días).
+ * Si ya se le mandó la plantilla (2026-11-07), espera: sube solo cuando el cliente escribe DESPUÉS de esa plantilla.
  */
-const POR_PASADA = 3;
-const VUELVE_A_SUBIR_H = 3;
+const POR_PASADA = 1;
 export async function reflotarSugerencia(env) {
   const db = env.CRM_DB;
   if (!db || enSilencio(Date.now(), env.HORARIO_ENVIO)) return [];
   await limpiarSugerenciasViejas(db).catch((err) => console.error("Limpiar sugerencias:", err.message));
-  // «Sin pregunta» (dueño, 2026-11-06): APAGADO. Con los seguimientos automáticos en todos los chats ya no hay «falta de
-  // seguimiento»; el chat sube solo por falta de respuesta o por una recomendación del asesor. Ajuste `sin_pregunta_auto` = 1 lo prende.
+  // «Sin pregunta» (dueño, 2026-11-06): APAGADO. Ajuste `sin_pregunta_auto` = 1 lo prende (y entonces también reflota,
+  // solo con la ventana de 24 h abierta: es para escribirle ya).
   const sinPregunta = await db.prepare("SELECT value FROM crm_settings WHERE key = 'sin_pregunta_auto'").first().catch(() => null);
   if (sinPregunta?.value === "1") await sugerirSinPregunta(db).catch((err) => console.error("Sugerir sin pregunta:", err.message));
-  // Dueño, 2026-11-06: la recomendación sube el chat aunque la ventana de 24 h ya haya cerrado (antes esos chats solo se
-  // veían en ✨ Sugerencias); en ese caso el banner del chat la ofrece como plantilla. «Sin pregunta» sigue pidiendo ventana
-  // abierta (es para escribirle ya). Solo recomendaciones de los últimos 3 días: las viejas no vuelven a subir (una que esperaba respuesta a su plantilla cuenta desde que salió la plantilla).
-  // Si ya se le mandó la plantilla (2026-11-07), espera: sube solo cuando el cliente escribe DESPUÉS de esa plantilla.
-  // Con «sin pregunta» apagado (lo normal) solo reflotan las recomendaciones del asesor, y solo por falta de respuesta (FALTA_RESPUESTA).
-  const VENTANA = `${sinPregunta?.value === "1" ? "(s.tipo = 'seguimiento' OR conv.last_inbound_at >= datetime('now', '-24 hours'))" : "s.tipo = 'seguimiento'"} AND ${FALTA_RESPUESTA("conv")}
-    AND (s.plantilla_enviada_at IS NULL OR conv.last_inbound_at > s.plantilla_enviada_at)`;
-  let { results } = await db.prepare(
+  const TIPO = sinPregunta?.value === "1"
+    ? "(s.tipo = 'seguimiento' OR (s.tipo = 'sin_pregunta' AND conv.last_inbound_at >= datetime('now', '-24 hours')))"
+    : "s.tipo = 'seguimiento'";
+  const { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at IS NULL AND conv.blocked = 0
-       AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days') AND ${VENTANA}
-     ORDER BY s.created_at ASC, s.id ASC LIMIT ?`
+     WHERE s.estado = 'pendiente' AND ${TIPO} AND s.reflotada_at IS NULL AND conv.blocked = 0
+       AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days')
+       AND (s.plantilla_enviada_at IS NULL OR conv.last_inbound_at > s.plantilla_enviada_at)
+     ORDER BY CASE WHEN ${FALTA_RESPUESTA("conv")} THEN 0 ELSE 1 END,
+              CASE WHEN conv.last_inbound_at >= datetime('now', '-24 hours') THEN 0 ELSE 1 END,
+              s.created_at ASC, s.id ASC
+     LIMIT ?`
   ).bind(POR_PASADA).all();
-  if (!results.length) {
-    ({ results } = await db.prepare(
-      `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
-       WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'sin_pregunta') AND s.reflotada_at < datetime('now', ?) AND conv.blocked = 0
-         AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days') AND ${VENTANA}
-       ORDER BY s.reflotada_at ASC LIMIT 1`
-    ).bind(`-${VUELVE_A_SUBIR_H} hours`).all());
-  }
   if (!results.length) return [];
   await db.batch(results.flatMap((s) => [
     db.prepare("UPDATE asesor_sugerencias SET reflotada_at = datetime('now') WHERE id = ?").bind(s.id),

@@ -26,6 +26,7 @@ import { getValues, updateValues } from "../lib/google-sheets.js";
 import { COLUMNAS_VENTA, RANGO_DATOS_VENTA, ESTADOS_ENVIO, ENVIOS, nuevoCodigo, indiceVenta, letraVenta, esCodigo, claveDe, clavesShalom, elegirClaveShalom, contieneCodigo } from "../lib/ventas.js";
 import { hojaVentas, olvidarCache } from "../lib/ventas-hoja.js";
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
+import { activarCobroPorCodigo } from "../lib/planes-plantilla.js";
 
 const SITIO = "https://kit-tarot-para-principiantes.tarotperu.store";
 const MAX_IMAGEN = 6 * 1024 * 1024;
@@ -265,6 +266,37 @@ export async function sincronizarSaldosPagados(env) {
   return { marcadas };
 }
 
+/**
+ * { accion: "clave_crm", whatsapp, clave?, pisar? } — la clave de recojo de Shalom / Olva en la FICHA del cliente del CRM
+ * (`contacts.shalom_code`, lo que la vendedora ve en el chat como «Clave Shalom»). Antes `shalom.py clave` solo la escribía en la
+ * hoja Ventas y en el CRM no aparecía (dueño 2026-11-11: «le pasó la clave a Claude, Claude dijo que ya estaba y en el CRM no salía»).
+ * Hace lo mismo que cuando una vendedora la escribe en el perfil: guarda la clave y deja el cobro del saldo POR APROBAR en cada
+ * chat (nunca sale solo desde aquí). Sin `clave` solo consulta. La respuesta NUNCA lleva la clave: solo si quedó puesta.
+ * La clave no se le manda al cliente desde aquí ni se escribe en Telegram.
+ */
+async function claveEnCrm(env, p) {
+  const wa = String(p.whatsapp || "").replace(/\D/g, "").slice(-9);
+  if (wa.length !== 9) return json({ error: "Falta whatsapp (9 dígitos)." }, 400);
+  const c = await env.CRM_DB.prepare("SELECT id, wa_id, shalom_code, COALESCE(name, profile_name, '') AS nombre FROM contacts WHERE substr(wa_id, -9) = ? ORDER BY id DESC LIMIT 1").bind(wa).first();
+  if (!c) return json({ ok: false, sin_chat: true, whatsapp: wa });
+  const tenia = String(c.shalom_code || "").trim();
+  const clave = String(p.clave || "").trim();
+  if (!clave) return json({ ok: true, whatsapp: wa, nombre: c.nombre, tiene_clave: Boolean(tenia) });
+  if (!/^\d{4}$/.test(clave)) return json({ error: "La clave debe ser de 4 dígitos." }, 400);
+  if (tenia === clave) return json({ ok: true, whatsapp: wa, nombre: c.nombre, tiene_clave: true, ya_estaba: true });
+  // Ya tiene OTRA clave (un pedido anterior, o la de Olva): no se pisa sola; quien llama decide con `pisar`.
+  if (tenia && !p.pisar) return json({ ok: false, whatsapp: wa, nombre: c.nombre, tiene_clave: true, tenia_otra: true });
+  await env.CRM_DB.prepare("UPDATE contacts SET shalom_code = ?, updated_at = datetime('now') WHERE id = ?").bind(clave, c.id).run();
+  const { results: chats } = await env.CRM_DB.prepare("SELECT id FROM conversations WHERE contact_id = ?").bind(c.id).all();
+  let cobro = 0;
+  for (const ch of chats || []) {
+    const r = await activarCobroPorCodigo(env, ch.id, clave, { estado: "por_aprobar", quien: "Asesor (clave del día)" }).catch(() => ({}));
+    if (r.pasos) cobro++;
+  }
+  const leida = await env.CRM_DB.prepare("SELECT shalom_code FROM contacts WHERE id = ?").bind(c.id).first();
+  return json({ ok: String(leida?.shalom_code || "") === clave, whatsapp: wa, nombre: c.nombre, tiene_clave: String(leida?.shalom_code || "") === clave, cambiada: Boolean(tenia), cobro_por_aprobar: cobro });
+}
+
 export async function onRequestPost({ request, env }) {
   const ip = request.headers.get("CF-Connecting-IP");
   if (!(await dentroDelLimiteAsesor(env, ip))) return json({ error: "Demasiados intentos." }, 429);
@@ -274,6 +306,7 @@ export async function onRequestPost({ request, env }) {
     if (p?.accion === "crear") return await crear(env, p);
     if (p?.accion === "boleta") return await actualizar(env, p, true);
     if (p?.accion === "estado") return await actualizar(env, p, false);
+    if (p?.accion === "clave_crm") return await claveEnCrm(env, p);
   } catch (err) {
     console.error("Asesor ventas:", err.message);
     return json({ error: err.message }, 502);

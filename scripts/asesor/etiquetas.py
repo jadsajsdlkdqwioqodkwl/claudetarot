@@ -4,18 +4,30 @@ el mismo formato del Project «Etiquetas de pedidos en PDF» que usaba el dueño
 etiquetas en blanco, línea de corte, pie «Envía: 76250205» en las de Shalom).
 
     ASESOR_CLAVE=... python3 scripts/asesor/etiquetas.py [AAAA-MM-DD] [--shalom datos.json] [--olva datos.json] [--salida /tmp/etiquetas.pdf] [--subir]
-        AAAA-MM-DD      fecha de ENTREGA de los pedidos de Lima (por defecto mañana, como la Routine de Dinsides). Las etiquetas
-                        de Lima salen solas del historial de Dinsides (`GET /api/asesor/dinsides?listado=1`): ID PEDIDO, Negocio,
+        AAAA-MM-DD      día de RECOJO de Dinsides (por defecto hoy antes de las 6:00, si no mañana). Salen las etiquetas de Lima de lo
+                        REGISTRADO en ese ciclo (desde las 6:00 del día anterior hasta las 6:00 de ese día), sea cual sea su fecha de
+                        entrega: Dinsides pasa a las ~8:00, se lleva todo lo registrado que aún no tiene en su almacén y guarda lo de
+                        otros días hasta su fecha (dueño, 2026-11-09). Lo registrado en ciclos anteriores ya está en su almacén y NO se
+                        vuelve a imprimir. Datos del historial de Dinsides (`GET /api/asesor/dinsides?listado=1`): ID PEDIDO, Negocio,
                         ENTREGAR A, Teléfono, Producto, Cobrar, Distrito, Fecha Entrega, Detalle (observaciones). Los ANULADOS no salen.
+        --entrega       (modo viejo) filtrar por fecha de ENTREGA en vez de por ciclo de registro.
+        --shalom-hoja   además las etiquetas de Shalom de lo que el equipo registró A MANO en Shalom Pro en ese ciclo (hoja «Pedidos
+                        auto», «Enviado» = «sí FECHA Shalom NNN (registrado a mano)»): orden, destinatario, DNI de la nota, destino y
+                        agencia (data/shalom-agencias.json). El «Código» que imprime Shalom no se guarda: queda en blanco para escribirlo.
         --shalom f.json lista [{"orden": "103026403", "codigo": "7D9K", "destinatario": "…", "doc": "42371371",
                         "destino": "La Libertad - Sanchez Carrion - Huamachuco", "agencia": "Huamachuco", "direccion": "Jr. …"}]
                         (lo que imprime Shalom Pro; cuando Shalom se automatice saldrá solo de ahí).
         --olva f.json   lista [{"nombre": "…", "dni": "…", "telefono": "…", "destino": "CALLE MORAL 105, AREQUIPA"}]
+        --olva-hoja     además las etiquetas de OLVA de los pedidos de provincia confirmados (reporte del despacho + hoja «Pedidos
+                        auto») cuya agencia dice «Olva»: destinatario, DNI de la nota, teléfono y «Olva de destino» = la tienda o
+                        agente de https://www.olvacourier.com/ubicanos/ que calza con lo que escribió el cliente (data/olva-agencias.json).
+        Todas las etiquetas llevan la fecha del despacho (Lima: Fecha Entrega; Shalom y Olva: «Despacho dd/mm/aaaa») y el script avisa
+        si las de Lima no dicen todas la misma fecha (dueño, 2026-11-10).
         --sin-blancos   no rellena la última hoja con etiquetas en blanco.
         --subir         además guarda el PDF en CRM → Reportes (como los reportes) e imprime el link.
     Sin ASESOR_CLAVE solo arma Shalom y Olva desde los archivos (sin Lima).
 """
-import base64, datetime as dt, json, os, sys, textwrap, urllib.error, urllib.request
+import base64, datetime as dt, json, os, re, sys, textwrap, urllib.error, urllib.request
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -27,10 +39,11 @@ REMITENTE = {"nombre": "MOISES EDUARD OLORTEGUI HUAMAN", "dni": "76250205", "tel
 NEGOCIO = "Tarot Store Peru"
 
 page_w, page_h = A4
-margin, gap, cols = 3 * mm, 1 * mm, 3
+# Bien pegado a los bordes de la A4 (dueño 2026-11-10): 4 mm de margen, lo mínimo que imprimen las impresoras caseras, y las 5 filas
+# reparten todo el alto.
+margin, gap, cols, rows = 4 * mm, 1 * mm, 3, 5
 cell_w = (page_w - 2 * margin - (cols - 1) * gap) / cols
-cell_h = 56 * mm
-rows = int((page_h - 2 * margin + gap) // (cell_h + gap))
+cell_h = (page_h - 2 * margin - (rows - 1) * gap) / rows
 per_page = rows * cols
 BLANK_H = 50 * mm
 
@@ -44,10 +57,170 @@ def pedir(ruta):
         return json.load(r)
 
 
+def _fecha_pe(iso):
+    iso = str(iso or "")[:10]
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}" if len(iso) == 10 and iso[4] == "-" else iso
+
+
 def fecha_por_defecto():
+    """Día de recojo: hasta las 6:00 todavía es el de hoy (Dinsides pasa ~8:00); después, mañana."""
     t = dt.datetime.now(LIMA)
-    base = t.date() if t.hour < 3 else t.date() + dt.timedelta(days=1)
+    base = t.date() if t.hour < 6 else t.date() + dt.timedelta(days=1)
     return base.isoformat()
+
+
+def en_ciclo(fecha_pedido, recojo):
+    """¿Se registró entre las 6:00 del día anterior y las 6:00 del día de recojo? (fecha_pedido de Dinsides: 'AAAA-MM-DD HH:MM:SS')."""
+    fp = str(fecha_pedido or "")[:19]
+    if len(fp) < 16:
+        return False
+    d = dt.date.fromisoformat(recojo)
+    return f"{(d - dt.timedelta(days=1)).isoformat()} 06:00:00" < fp <= f"{recojo} 06:00:00"
+
+
+def olva_de_hoja(recojo):
+    """Etiquetas de Olva: provincia CONFIRMADO con «Olva» en la agencia, del reporte del despacho y de la hoja (sin «Enviado»)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import olva as ov
+    vistos, out = set(), []
+    def agregar(f, origen):
+        wa = re.sub(r"\D", "", str(f.get("whatsapp") or ""))[-9:]
+        texto = f"{f.get('direccion_o_agencia') or ''} {f.get('nota') or ''}"
+        if not wa or wa in vistos or "olva" not in texto.lower() or str(f.get("destino") or "").upper() != "PROVINCIA" or not str(f.get("estado") or "").upper().startswith("CONFIRMADO"):
+            return
+        vistos.add(wa)
+        cand = ov.buscar(str(f.get("direccion_o_agencia") or ""))
+        a = cand[0] if cand else {}
+        dni = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
+        out.append({"nombre": f.get("nombre"), "dni": dni.group(1) if dni else "", "telefono": wa, "empaque": con_collar_extra(empaque_shalom(f.get("kits"), f.get("empaque")), wa), "destino": ov.destino_de(a) if a else str(f.get("direccion_o_agencia") or ""),
+                    "despacho": recojo, "_seguro": bool(a and a.get("seguro")), "_origen": origen})
+    est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
+    for f in ((est.get("estado") or {}).get("pedidos") or []):
+        agregar(f, "reporte")
+    r = pedir(f"/pedidos-sheet?hoy={recojo}") or {}
+    for k in ("atrasados", "hoy", "futuros"):
+        for f in r.get(k) or []:
+            agregar(f, f"hoja {k}")
+    return out
+
+
+def shalom_de_hoja(recojo):
+    """Etiquetas de Shalom de lo registrado a mano por el equipo en este ciclo (hoja «Pedidos auto», columna Enviado)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import shalom as sh
+    r = pedir(f"/pedidos-sheet?hoy={recojo}&enviadas=1") or {}
+    ayer = (dt.date.fromisoformat(recojo) - dt.timedelta(days=1)).isoformat()
+    out = []
+    for f in r.get("enviadas") or []:
+        env_ = str(f.get("enviado") or "")
+        m = re.search(r"Shalom\s+(\d{6,})", env_)
+        # Solo lo cerrado en ESTE ciclo (6:00 del día anterior → 6:00 del recojo, por la columna «actualizado» de la fila): lo del ciclo
+        # anterior ya se imprimió (2026-11-10: los 7 del día 9 volvían a salir).
+        act = str(f.get("actualizado") or "")[:16]
+        # … o la fila dice la fecha del recojo en «Enviado» (una fila cerrada que se volvió a marcar no cambia «actualizado»).
+        if not m or "mano" not in env_.lower() or not (f"{ayer} 06:00" < act <= f"{recojo} 06:00" or recojo in env_):
+            continue
+        texto = str(f.get("direccion_o_agencia") or "")
+        cand = sh.buscar(texto) if texto.strip() else []
+        a = cand[0] if cand else {}
+        dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
+        cod = re.search(r"c[oó]d\.?\s*:?\s*([A-Z0-9]{4})\b", env_, re.I)
+        kits = str(f.get("kits") or "1").strip()
+        empaque = con_collar_extra(empaque_shalom(kits, f.get("empaque")), f.get("whatsapp"))
+        out.append({"orden": m.group(1), "codigo": cod.group(1).upper() if cod else "", "despacho": recojo, "empaque": empaque, "destinatario": str(f.get("nombre") or "").upper(), "doc": dni.group(1) if dni else "",
+                    "destino": f"{a.get('departamento', '')} - {a.get('provincia', '')} - {a.get('distrito', '')}" if a else texto[:60],
+                    "agencia": a.get("agencia", "") if a else "", "direccion": a.get("direccion", "") if a else "", "_seguro": bool(a and a.get("seguro"))})
+    return out
+
+
+RE_NOTA_PAGO = re.compile(r"ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia", re.I)
+RE_NOTA_PIN = re.compile(r"\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl", re.I)
+RE_NOTA_INTERNA = re.compile(r"confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b", re.I)
+
+
+def nota_motorizado(texto, telefono=""):
+    """La nota que lee el MOTORIZADO en la etiqueta (dueño 2026-11-11): cómo contactar, a quién entregar, dónde dejarlo, horario.
+    Sin pagos («ya pagó 89», «cobrar 0»: ya va en Cobrar), sin pines ni coordenadas (la etiqueta va pegada a la caja) y sin apuntes
+    internos («confirmar, escribió dos versiones»). Es la misma regla de `notaParaMotorizado` en src/lib/dinsides.js; aquí limpia
+    también lo que se registró en Dinsides antes de esa regla."""
+    malo = lambda t: RE_NOTA_PAGO.search(t) or RE_NOTA_PIN.search(t) or RE_NOTA_INTERNA.search(t)
+    texto = re.sub(r"\(([^)]*)\)", lambda m: " " if malo(m.group(1)) else m.group(0), str(texto or ""))
+    quedan = []
+    for f0 in re.split(r"(?<=[.;:])\s+|\s+·\s+", texto):
+        dos = f0.rstrip().endswith(":")  # «DISCRECIÓN: que no toque…»: si las dos mitades quedan, se unen con «: »
+        f = f0.strip(" ,;:.·-")
+        if not f or malo(f):
+            continue
+        sin_tel = re.sub(r"(?:\+?51[\s-]?)?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}", lambda m: "" if telefono and re.sub(r"\D", "", m.group(0))[-9:] == str(telefono) else m.group(0), f)
+        if sin_tel != f and re.fullmatch(r"(dio su |su )?(tel[eé]fono|tel|cel|celular|n[uú]mero)?( de contacto)?\W*", sin_tel.strip(), re.I):
+            continue
+        quedan.append(f + (":" if dos else ""))
+    return re.sub(r"\s+", " ", ". ".join(quedan).replace(":. ", ": ")).strip().rstrip(":")
+
+
+def detalle_lima(d):
+    """El «Detalle» de la etiqueta de Lima: SIEMPRE empieza con «Escribir al cliente por WhatsApp: …» (dueño 2026-11-11) y sigue
+    con la nota del motorizado. Si la observación de Dinsides ya trae esa línea (pedidos registrados desde hoy) no se repite."""
+    obs = re.sub(r"\s*Paquete:[^.]+\.?", "", str(d.get("observaciones", "") or ""))
+    m = re.search(r"Escribir al cliente por WhatsApp:\s*([\d o]+)", obs)
+    nums = re.findall(r"9\d{8}", m.group(1)) if m else []
+    obs = re.sub(r"Escribir al cliente por WhatsApp:\s*[\d o]+\.?", "", obs)
+    for n in (re.sub(r"\D", "", str(d.get("_whatsapp") or ""))[-9:], str(d.get("telefono") or "")):
+        if re.fullmatch(r"9\d{8}", n) and n not in nums:
+            nums.append(n)
+    linea = f"Escribir al cliente por WhatsApp: {' o '.join(nums)}" if nums else ""
+    return ". ".join(x for x in (linea, nota_motorizado(obs, d.get("telefono"))) if x)
+
+
+_PROMESAS = None
+
+
+def con_collar_extra(empaque, *telefonos):
+    """Si al cliente se le ofreció en el chat un collar amuleto EXTRA (seguimientos del equipo), la etiqueta lo dice (dueño
+    2026-11-11, caso Alicia): «+ 1 COLLAR AMULETO EXTRA». Se mira al imprimir, así también vale para lo ya registrado."""
+    global _PROMESAS
+    import promesas as prom
+    if _PROMESAS is None:
+        _PROMESAS = prom.traer(os.environ.get("ASESOR_CLAVE", ""), 30) if os.environ.get("ASESOR_CLAVE") else {}
+    emp = str(empaque or "")
+    if re.search(r"collar[^·]*(extra|adicional)|(extra|adicional)[^·]*collar", emp, re.I):
+        return emp
+    for t in telefonos:
+        k = prom.nueve(t)
+        if k and prom.collar_extra(_PROMESAS.get(k)):
+            return (emp + " " if emp else "") + prom.TEXTO_COLLAR
+    return emp
+
+
+def empaque_shalom(kits, empaque=""):
+    """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): 1 kit normal,
+    «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
+    kits = int(kits) if str(kits).strip().isdigit() else 1
+    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("Kit Tarot de aprendizaje (1 kit completo)" if kits == 1 else "NO es kit")
+    extra = " · ".join(t for t in re.split(r"\s+·\s+", str(empaque or "").strip()) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
+    if extra and re.fullmatch(r"\d+\s*kits?\b.*|kit normal.*", extra, re.I) and "+" not in extra:
+        extra = ""
+    return f"{base} · {extra}" if extra else base
+
+
+def completar_empaque_shalom(items, recojo):
+    """Las etiquetas de Shalom que vienen de un archivo (--shalom) no traen empaque: se busca por DNI en el reporte del despacho y en
+    la hoja «Pedidos auto». Si no aparece, va 1 kit normal."""
+    por_dni = {}
+    try:
+        est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
+        r = pedir(f"/pedidos-sheet?hoy={recojo}&enviadas=1") or {}
+    except Exception:  # noqa: BLE001
+        est, r = {}, {}
+    for f in ((est.get("estado") or {}).get("pedidos") or []) + [x for k in ("atrasados", "hoy", "futuros", "enviadas") for x in (r.get(k) or [])]:
+        m = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
+        if m and m.group(1) not in por_dni:
+            por_dni[m.group(1)] = f
+    for d in items:
+        if d.get("empaque"):
+            continue
+        f = por_dni.get(str(d.get("doc") or d.get("dni") or ""), {})
+        d["empaque"] = con_collar_extra(empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else ""), (f or {}).get("whatsapp"), d.get("telefono"))
 
 
 # ---------- dibujo ----------
@@ -97,24 +270,42 @@ def etiqueta_lima(c, x0, yb, d):
         fe = f"{fe[8:10]}/{fe[5:7]}/{fe[0:4]}"
     y -= campo(c, x, y, "Fecha Entrega:", fe, ancho, negrita_valor=True)
     obs = str(d.get("observaciones", "") or "").strip()
-    if obs:
+    # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie (del producto de Dinsides: «Kit Tarot de
+    # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).
+    paq = re.search(r"Paquete:\s*([^.]+)", obs)
+    empaque = con_collar_extra((paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip(), d.get("_whatsapp"), d.get("telefono"))
+    # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
+    lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
+    pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
+    if detalle_lima(d):
         c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
         c.setFont("Helvetica", 6.3)
-        restante = int((y - yb - p) / (6.3 * 1.3))
-        for ln in textwrap.wrap(obs, 62)[:max(0, restante)]:
+        restante = int((y - yb - p - pie) / (6.3 * 1.3))
+        for ln in textwrap.wrap(detalle_lima(d), 62)[:max(0, restante)]:
             c.drawString(x, y, ln); y -= 6.3 * 1.3
+    if lineas_emp:
+        c.setFont("Helvetica-Bold", 5.2)
+        ye = yb + p + 0.4 * mm
+        for ln in reversed(lineas_emp):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb, cell_w, cell_h)
 
 
 def etiqueta_shalom(c, x0, yb, d):
-    """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía»."""
+    """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía» y, debajo,
+    la nota para el que empaca («EMPAQUE: …», dueño 2026-11-10)."""
     p = 2 * mm; x = x0 + p; R = x0 + cell_w - p; ancho = R - x
-    pie = 4.5 * mm; top = yb + cell_h
+    lineas_emp = textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]
+    pie_emp = len(lineas_emp) * 2.5 * mm + (0.8 * mm if lineas_emp else 0)
+    pie = 4.5 * mm + pie_emp; top = yb + cell_h
     c.setFillColorRGB(.93, .96, .99); c.rect(x0 + .8 * mm, top - 12.5 * mm, cell_w - 1.6 * mm, 11.5 * mm, stroke=0, fill=1)
     c.setFillColorRGB(.1, .2, .45)
     y = top - p - 3.2 * mm
     c.setFont("Helvetica-Bold", 8.5); c.drawString(x, y, f"N° de Orden: {d.get('orden', '')}"); y -= 4.6 * mm
-    c.drawString(x, y, f"Código: {d.get('codigo', '')}"); y -= 6.5 * mm
+    c.drawString(x, y, f"Código: {d.get('codigo', '')}")
+    if d.get("despacho"):  # la fecha va en el encabezado azul: en el pie chocaba con «Envía» (2026-11-10)
+        c.setFont("Helvetica", 6.5); c.drawRightString(R, y, f"Despacho {_fecha_pe(d['despacho'])}")
+    y -= 6.5 * mm
     c.setFillColorRGB(.35, .35, .35); c.setFont("Helvetica", 6.5); c.drawString(x, y, "Destinatario:"); y -= 3.6 * mm
     c.setFillColorRGB(.1, .1, .1)
     nombre = str(d.get("destinatario", "")); tam = ajustar(c, nombre, "Helvetica-Bold", 9.5, ancho)
@@ -126,10 +317,14 @@ def etiqueta_shalom(c, x0, yb, d):
     agencia = str(d.get("agencia", "")); tam = ajustar(c, agencia, "Helvetica-Bold", 9.5, ancho)
     c.setFont("Helvetica-Bold", tam); c.drawString(x, y, agencia); y -= 3.6 * mm
     c.setFont("Helvetica", 6)
-    for ln in textwrap.wrap(str(d.get("direccion", "")), 64)[:2]:
-        c.drawString(x, y, ln); y -= 3 * mm
+    for ln in textwrap.wrap(str(d.get("direccion", "")), 50)[:3]:  # 50 por línea: con 64 se salía de la etiqueta (2026-11-09)
+        c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
-    c.drawCentredString(x0 + cell_w / 2, yb + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
+    c.drawCentredString(x0 + cell_w / 2, yb + pie_emp + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
+    if lineas_emp:
+        c.setFont("Helvetica-Bold", 5.2); ye = yb + 1 * mm
+        for ln in reversed(lineas_emp):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb, cell_w, cell_h)
     c.setLineWidth(.3); c.line(x0, yb + pie, x0 + cell_w, yb + pie)
 
@@ -147,7 +342,10 @@ def etiqueta_olva(c, x0, yb, d=None):
     yb2 = y_top - h
     p = 2.2 * mm; x = x0 + p; R = x0 + w - p; y = y_top - p - 2.6 * mm
     c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Destinatario:"); y -= 4 * mm
+    c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Destinatario:")
+    if d and d.get("despacho"):
+        c.setFont("Helvetica", 6.5); c.drawRightString(R, y, f"Despacho {_fecha_pe(d['despacho'])}")
+    y -= 4 * mm
     if d:
         nm = str(d["nombre"]).upper(); fs = ajustar(c, nm, "Helvetica-Bold", 9.5, R - x, 6.5)
         c.setFont("Helvetica-Bold", fs); c.drawString(x, y, nm); y -= 4.2 * mm
@@ -155,8 +353,9 @@ def etiqueta_olva(c, x0, yb, d=None):
             c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, k)
             c.setFont("Helvetica", 7.5); c.drawString(x + c.stringWidth(k, "Helvetica-Bold", 7.5), y, str(v)); y -= 3.8 * mm
         c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Olva de destino:"); y -= 3.5 * mm
-        for ln in textwrap.wrap(str(d.get("destino", "")).upper(), 40)[:3]:
-            c.drawString(x, y, ln); y -= 3.3 * mm
+        c.setFont("Helvetica-Bold", 6.8)  # 6.8 pt y 38 caracteres: cabe en los 66 mm de la etiqueta (antes se salía del margen)
+        for ln in textwrap.wrap(str(d.get("destino", "")).upper(), 38)[:3]:
+            c.drawString(x, y, ln); y -= 3.1 * mm
     else:
         c.setLineWidth(.3); c.line(x, y, R, y); y -= 4.5 * mm
         for lb in ("DNI:", "Teléfono:", "Olva de destino:"):
@@ -167,6 +366,10 @@ def etiqueta_olva(c, x0, yb, d=None):
     c.setFont("Helvetica", 6.8)
     for t in (f"Nombre: {REMITENTE['nombre']}", f"DNI: {REMITENTE['dni']}", f"TEL: {REMITENTE['tel']}"):
         c.drawString(x, y, t); y -= 3.1 * mm
+    if d:  # nota para el que empaca, como en Shalom y Lima (dueño 2026-11-11: las de Olva no la traían)
+        c.setFont("Helvetica-Bold", 5.2); ye = yb2 + 1 * mm
+        for ln in reversed(textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]):
+            c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb2, w, h)
 
 
@@ -247,24 +450,76 @@ def main():
     salida = args[args.index("--salida") + 1] if "--salida" in args else f"/tmp/etiquetas/etiquetas-{fecha}.pdf"
     items = []
     if "--shalom" in args:
-        for d in json.load(open(args[args.index("--shalom") + 1])):
+        de_archivo = json.load(open(args[args.index("--shalom") + 1]))
+        if os.environ.get("ASESOR_CLAVE"):
+            completar_empaque_shalom(de_archivo, fecha)
+        for d in de_archivo:
+            items.append({"tipo": "shalom", "datos": {**d, "despacho": d.get("despacho") or fecha}})
+    if "--shalom-hoja" in args and os.environ.get("ASESOR_CLAVE"):
+        for d in shalom_de_hoja(fecha):
             items.append({"tipo": "shalom", "datos": d})
+            if not d.get("_seguro"):
+                print(f"⚠️ Shalom {d['orden']} {d['destinatario']}: agencia no segura ({d.get('agencia') or '?'}); revisar la etiqueta.")
     lima = []
     try:
         r = pedir("/dinsides?listado=1")  # el filtro por fecha de Dinsides es por fecha de REGISTRO; aquí se filtra por fecha de ENTREGA
     except urllib.error.HTTPError as err:
         sys.exit(f"El Worker respondió {err.code} al pedir el listado de Dinsides.")
+    wa_por_id = {}
+    if r:
+        try:  # el WhatsApp del chat de cada pedido (Dinsides guarda el teléfono de quien recibe, que puede ser otro)
+            for dia in {fecha, (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()}:
+                for x in (pedir(f"/dinsides?fecha={dia}&candidatos=0") or {}).get("registrados") or []:
+                    if x.get("nro"):
+                        wa_por_id[str(x["nro"])] = x.get("whatsapp") or ""
+        except Exception:  # noqa: BLE001
+            pass
     if r:
         for p in r.get("pedidos", []):
-            if p.get("fecha_entrega") != fecha or "ANULADO" in str(p.get("seguimiento", "")).upper():
+            p["_whatsapp"] = wa_por_id.get(str(p.get("id_pedido")), "")
+            if "ANULADO" in str(p.get("seguimiento", "")).upper():
                 continue
+            if re.search(r"regularizaci", f"{p.get('nombre', '')} {p.get('observaciones', '')}", re.I):
+                continue  # registros de regularización (paquetes ya en Dinsides, devoluciones): no son cajas por recoger
+            if "--entrega" in args:
+                if p.get("fecha_entrega") != fecha:
+                    continue
+            elif not en_ciclo(p.get("fecha_pedido"), fecha):
+                continue  # registrado en otro ciclo: ya está (o estará) en el almacén de Dinsides
             lima.append({"tipo": "lima", "datos": {**p, "tipo_pago": ""}})
+    # Un pedido registrado como «Reposición / cambio» sin serlo (2026-11-11, cuenco + mazo de Cristofer): la etiqueta dice el nombre
+    # de lo que va, tomado del empaque del reporte de ese despacho.
+    genericos = [e for e in lima if re.fullmatch(r"\s*Reposici[oó]n / cambio\s*", str(e["datos"].get("detalle") or ""), re.I)]
+    for fe in sorted({str(e["datos"].get("fecha_entrega") or "")[:10] for e in genericos}):
+        try:
+            est = pedir(f"/ventas-estado?fecha={fe}&tipo=pedidos") or {}
+        except Exception:  # noqa: BLE001
+            est = {}
+        por_tel = {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:]: x for x in ((est.get("estado") or {}).get("pedidos") or [])}
+        for e in genericos:
+            x = por_tel.get(str(e["datos"].get("telefono") or ""))
+            emp = " · ".join(t for t in re.split(r"\s+·\s+", str((x or {}).get("empaque") or "")) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
+            emp = re.sub(r"\s*\(\s*S/\s*\d+[^)]*\)", "", re.sub(r"^\W*no es (un )?kit\s*[:;,.-]?\s*", "", emp, flags=re.I)).strip()
+            if emp:
+                e["datos"]["detalle"] = emp[0].upper() + emp[1:]
     items += sorted(lima, key=lambda e: e["datos"].get("distrito", ""))
     if "--olva" in args:
-        for d in json.load(open(args[args.index("--olva") + 1])):
+        de_olva = json.load(open(args[args.index("--olva") + 1]))
+        if os.environ.get("ASESOR_CLAVE"):
+            completar_empaque_shalom(de_olva, fecha)
+        for d in de_olva:
+            items.append({"tipo": "olva", "datos": {**d, "despacho": d.get("despacho") or fecha}})
+    if "--olva-hoja" in args and os.environ.get("ASESOR_CLAVE"):
+        for d in olva_de_hoja(fecha):
             items.append({"tipo": "olva", "datos": d})
+            if not d.get("_seguro"):
+                print(f"⚠️ Olva {d['nombre']}: «Olva de destino» no segura ({d.get('destino') or '?'}); revisar la etiqueta.")
+    # Todas las etiquetas del mismo despacho (dueño 2026-11-10): si las de Lima no dicen la misma fecha, se avisa.
+    fechas_lima = sorted({str(e["datos"].get("fecha_entrega") or "")[:10] for e in items if e["tipo"] == "lima"})
+    if len(fechas_lima) > 1:
+        print(f"⚠️ Las etiquetas de Lima no dicen todas la misma fecha: {', '.join(_fecha_pe(x) for x in fechas_lima)} (las de otro día Dinsides las guarda en su almacén)")
     if not items:
-        sys.exit(f"No hay etiquetas: Dinsides no tiene pedidos con entrega {fecha} y no se pasaron --shalom ni --olva.")
+        sys.exit(f"No hay etiquetas: nada registrado en Dinsides para el recojo del {fecha} (6:00 del día anterior a 6:00 de ese día) y no se pasaron --shalom, --shalom-hoja, --olva ni --olva-hoja.")
     total, hojas = armar_pdf(items, salida, rellenar="--sin-blancos" not in args)
     reales = len(items)
     por_tipo = {t: sum(1 for e in items if e["tipo"] == t) for t in ("shalom", "lima", "olva")}

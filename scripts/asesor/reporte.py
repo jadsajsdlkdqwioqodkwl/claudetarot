@@ -14,6 +14,7 @@ del libro «Pedidos Tarot Kit». La Routine solo corre estos subcomandos (nada d
     python3 scripts/asesor/reporte.py chat <whatsapp|id> [N] -> los últimos N mensajes de un chat (para verificar una duda).
     python3 scripts/asesor/reporte.py aviso "texto"           -> aviso corto al dueño (Telegram) cuando el reporte no pudo salir.
     python3 scripts/asesor/reporte.py enviado <whatsapp> ["sí 2026-11-02 Shalom"]
+    python3 scripts/asesor/reporte.py conciliar          (cierra en la hoja lo que ya salió: boletas emitidas + estados de Dinsides)
         -> marca «Enviado» en la fila abierta de ese cliente en «Pedidos auto» (deja de salir en la agenda). Lo usará la
            Routine de estados de envío (docs/estados-envio.md); una persona puede escribirlo a mano en la hoja.
 
@@ -22,7 +23,7 @@ Criterio LIBERAL (dueño): el reporte lo verifica una persona. Todo lo que huela
 revisó y no es (sale listado, nunca se esconde). Un pedido para otro día queda agendado y aparece en cada reporte hasta
 que alguien escriba en la columna «Enviado» de la hoja.
 """
-import datetime as dt, json, math, os, subprocess, sys, urllib.error, urllib.request
+import datetime as dt, json, math, os, re, subprocess, sys, urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
@@ -111,6 +112,42 @@ def cmd_preparar(args):
     except (ValueError, json.JSONDecodeError):
         out["chats"] = {"error": (r.stderr or r.stdout)[-400:]}
     out["chats"]["modo"] = f"solo chats con movimiento en las últimas {horas} h (desde el corte anterior)" if horas else "hoy y ayer completos (primera corrida de la noche)"
+
+    # 3b. PRIORIDAD (dueño 2026-11-09): pedidos PENDIENTES de la hoja (sin «Enviado») cuyo cliente escribió en esta ventana. Casi
+    # siempre es el dato que faltaba (DNI, agencia, dirección), el pago del saldo o un reclamo. La Routine los lee PRIMERO y los
+    # manda como `tipo: "CORRECCION"` (salen arriba del PDF) o como incidencia; nunca abajo con las intenciones.
+    try:
+        meta = json.load(open(os.path.join(carpeta, "meta.json")))
+        movidos = {str(k)[-9:] for k in meta}
+        n9 = lambda v: re.sub(r"\D", "", str(v or ""))[-9:]
+        out["agenda_con_movimiento"] = [f"{r.get('fecha_entrega')} · {r.get('nombre')} · {r.get('whatsapp')} · {r.get('destino')} · {r.get('estado')} · fila {r.get('fila')} · nota: {str(r.get('nota') or '')[:90]}"
+                                        for k in ("atrasados", "hoy", "futuros", "sin_fecha") for r in (ag.get(k) or []) if st == 200 and n9(r.get("whatsapp")) in movidos]
+        if out["agenda_con_movimiento"]:
+            out["agenda_con_movimiento_instruccion"] = ("LÉELOS PRIMERO: son pedidos que NO han salido y cuyo cliente escribió. Si llegó el dato que faltaba o una "
+                                                        "corrección → en `pedidos` con `tipo: \"CORRECCION\"`, estado CONFIRMADO, los datos nuevos y nota «🚨 …»; "
+                                                        "si es reclamo → `incidencias`. Salen arriba del PDF.")
+    except (OSError, ValueError):
+        out["agenda_con_movimiento"] = []
+
+    # 3c. EL COURIER (dueño 2026-11-11: «el reporte no revisó el portal de Dinsides»: decía que el pedido de Sandra no estaba
+    # entregado cuando ya estaba registrado). Lo que Dinsides tiene de los últimos días, por teléfono: lo REGISTRADO (en su almacén
+    # o por recoger, con su fecha de entrega), lo ENTREGADO y lo ANULADO / RECHAZADO. La Routine NO da por «sin enviar» ni «sin
+    # entregar» nada que salga aquí; lo que ya está registrado no se vuelve a reportar como pendiente.
+    try:
+        d0 = dt.date.fromisoformat(fecha_venta)
+        st_d, din = pedir("/dinsides", "POST", {"accion": "estados", "desde": (d0 - dt.timedelta(days=7)).isoformat(), "hasta": (d0 + dt.timedelta(days=1)).isoformat(), "marcar": True}, timeout=240)
+        if st_d == 200 and not din.get("error"):
+            fmt = lambda x: f"{x.get('nombre')} · {x.get('telefono')} · #{x.get('id_pedido')} · entrega {x.get('fecha_entrega')} · {x.get('seguimiento')}" + (f" · fila {x.get('fila_hoja')}" if x.get("fila_hoja") else "")
+            out["dinsides"] = {"registrados_por_entregar": [fmt(x) for x in din.get("pendientes") or []],
+                               "entregados": [fmt(x) for x in (din.get("entregados") or [])[:60]],
+                               "anulados_o_rechazados": [fmt(x) for x in (din.get("anulados") or []) + (din.get("rechazados") or [])],
+                               "cerrados_por_motorizado_externo": [f"{x.get('nombre')} · {x.get('whatsapp')} · fila {x.get('fila')}" for x in din.get("cerradas_por_nota") or []],
+                               "instruccion": "Fuente de verdad de Lima. Un pedido que está aquí como registrado o entregado NO es pendiente ni incidencia; "
+                                              "el teléfono de Dinsides puede ser el de quien recibe (contacto compartido en el chat), no el WhatsApp del cliente."}
+        else:
+            out["dinsides"] = {"error": din.get("error") or st_d}
+    except Exception as err:  # noqa: BLE001
+        out["dinsides"] = {"error": str(err)}
 
     # 4. Capturas (Yape/Plin, DNI, ubicación) para mirarlas con Read.
     r = subprocess.run([sys.executable, os.path.join(AQUI, "imagenes.py"), carpeta, "--max", str(max_img)], capture_output=True, text=True)
@@ -213,6 +250,11 @@ def main():
         cmd_chat(*resto[:2])
     elif cmd == "enviado" and resto:
         cmd_enviado(resto)
+    elif cmd == "conciliar":
+        # Cierra en «Pedidos auto» lo que ya consta como salido (boletas emitidas, estados finales de Dinsides). Lo mismo que hace
+        # enviar.py antes de armar la agenda; a mano sirve para limpiar la hoja (dueño 2026-11-09).
+        import enviar
+        enviar.conciliar_agenda(clave(), (dt.datetime.now(LIMA) - dt.timedelta(hours=3)).date().isoformat())
     elif cmd == "aviso" and resto:
         cmd_aviso(" ".join(resto))
     else:

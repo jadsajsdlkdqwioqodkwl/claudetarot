@@ -29,7 +29,7 @@ export async function notificarMensajeNuevo(env, conversacion, contacto, { type,
   const soloTelegram = agentesTelegram.filter((a) => a.notify_channel === "telegram");
   const pushes = suscripciones.filter((s) => !soloTelegram.some((a) => esLaAsesora(a, s.agent_name)));
 
-  const titulo = contacto.profile_name || `+${contacto.wa_id}`;
+  const titulo = contacto.profile_name || (/[A-Za-z]/.test(contacto.wa_id) ? "Cliente sin número" : `+${contacto.wa_id}`);
   const cuerpoCompleto = (body && String(body).trim()) || RESUMENES[type] || "Mensaje nuevo";
   const cuerpo = cuerpoCompleto.length > 120 ? cuerpoCompleto.slice(0, 120) + "…" : cuerpoCompleto;
 

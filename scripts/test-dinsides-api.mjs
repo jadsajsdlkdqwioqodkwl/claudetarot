@@ -56,6 +56,9 @@ globalThis.fetch = async (url, init = {}) => {
   const u = String(url); const cookie = init.headers?.Cookie || "";
   llamadas.push({ url: u, method: init.method || "GET", body: init.body || "", cookie });
   const resp = (status, body, headers = {}) => new Response(body, { status, headers });
+  if (/nominatim\.openstreetmap\.org\/reverse/.test(u)) {
+    return resp(200, JSON.stringify({ display_name: "Av José Larco 1234, Miraflores, Lima, Perú", address: { road: "Avenida José Larco", house_number: "1234", suburb: "Miraflores", city: "Lima" } }));
+  }
   if (/nominatim\.openstreetmap\.org/.test(u)) {
     // «Urb Los Jardines» se ubica en el Parque Kennedy (polígono MIRAFLORES del mapa); lo demás no se ubica.
     if (/Jardines/.test(decodeURIComponent(u))) return resp(200, JSON.stringify([{ lat: "-12.1211", lon: "-77.0297", display_name: "Urb Los Jardines, Miraflores, Lima, Perú" }]));
@@ -115,13 +118,13 @@ check("GET responde 200 con la fecha pedida", r.status === 200 && r.json.fecha =
 const porWa = Object.fromEntries((r.json.pedidos || []).map((f) => [f.whatsapp, f]));
 check("provincia no aparece", !porWa["51966666660"]);
 check("Gladys está lista (Surco, 957845104, S/89 YAPE) con la dirección del chat a la vista", porWa["51957845104"]?.listo && porWa["51957845104"].campos.id_distrito === "150140" && porWa["51957845104"].direcciones_chat.length === 1, JSON.stringify(porWa["51957845104"]));
-check("Solo Pin: bloqueo de dirección, distrito deducido del pin del chat (Miraflores)", porWa["51999999990"] && !porWa["51999999990"].listo && porWa["51999999990"].campos.distrito === "miraflores"
-  && porWa["51999999990"].bloqueos.some((b) => /^DIRECCIÓN/.test(b)), JSON.stringify(porWa["51999999990"]?.bloqueos));
+check("Solo Pin: con el pin basta (dueño 2026-11-09): dirección deducida del pin, distrito del pin (Miraflores), LISTO con alerta", porWa["51999999990"] && porWa["51999999990"].listo && porWa["51999999990"].campos.distrito === "miraflores"
+  && /Avenida José Larco 1234.*ir al pin/.test(porWa["51999999990"].campos.direccion) && porWa["51999999990"].alertas.some((a) => /^DIRECCIÓN deducida del pin/.test(a)), JSON.stringify(porWa["51999999990"]));
 check("POR_VERIFICAR queda bloqueado", porWa["51977777770"] && porWa["51977777770"].bloqueos.some((b) => /^ESTADO POR_VERIFICAR/.test(b)));
 check("el chat con dirección que el reporte no trae sale como candidato del CRM", (r.json.candidatos_crm || []).some((c) => c.whatsapp === "51988888880" && /Jr Puno/.test(c.senales[0])), JSON.stringify(r.json.candidatos_crm));
 check("sin distrito en el texto, lo da el MAPA de cobertura ubicando la dirección (OpenStreetMap → polígono Miraflores)", porWa["51955555550"]?.listo && porWa["51955555550"].campos.distrito === "miraflores"
   && porWa["51955555550"].alertas.some((a) => /DISTRITO por el mapa de cobertura/.test(a)), JSON.stringify(porWa["51955555550"]));
-check("resumen: 2 listos, 2 con bloqueos", r.json.resumen.listos === 2 && r.json.resumen.con_bloqueos === 2, JSON.stringify(r.json.resumen));
+check("resumen: 3 listos (Gladys, Solo Pin por su pin, Sin distrito), 1 con bloqueos", r.json.resumen.listos === 3 && r.json.resumen.con_bloqueos === 1, JSON.stringify(r.json.resumen));
 
 // 2. zona
 r = await pedir("GET", null, "?zona=-12.1211,-77.0297");
@@ -134,7 +137,7 @@ check("probar: entra, lee el formulario (negocio 77, recojo en domicilio 3) y av
 
 // 4. simular (pedido de prueba sin crear nada)
 r = await pedir("POST", { accion: "registrar", fecha: FECHA, simular: true });
-check("simular: arma el payload de los listos (Gladys y Sin distrito) y no manda pedido/registro", r.json.simulado && r.json.payload.nombres.length === 2 && r.json.payload.id_distritos[0] === "150140"
+check("simular: arma el payload de los listos (Gladys, Solo Pin y Sin distrito) y no manda pedido/registro", r.json.simulado && r.json.payload.nombres.length === 3 && r.json.payload.id_distritos[0] === "150140"
   && r.json.payload.negocio === "77" && !llamadas.some((l) => l.url.endsWith("pedido/registro")), JSON.stringify(r.json.payload));
 
 // 5. registrar con una corrección para el pin (dirección escrita por la persona) y un pedido NUEVO que el reporte no traía (candidato del CRM)
@@ -189,13 +192,30 @@ check("editar: Dinsides respondió 1, se mandó la fecha nueva y el código del 
 r = await pedir("POST", { accion: "editar", id: idGladys, cambios: { fecha_entrega: "2020-01-01" } });
 check("editar con fecha pasada se rechaza", r.status === 400);
 
+// 7b. Cruce con lo que el equipo ya tiene en Dinsides (caso Laura, dueño 2026-11-09): por teléfono y por nombre, sin duplicar.
+listadoFalso.find((x) => x.id_pedido === idGladys).seguimiento = "REGISTRADO"; // sigue abierto en Dinsides (el equipo lo reagendó)
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+let gl = r.json.pedidos.find((f) => f.whatsapp === "51957845104");
+check("ya abierto en Dinsides con el mismo teléfono → ya_registrado «en Dinsides (teléfono)», no listo, y avisa que está agendado para otra fecha",
+  gl && !gl.listo && gl.ya_registrado?.modo === "en Dinsides (teléfono)" && gl.ya_registrado.nro === idGladys && gl.alertas.some((a) => /YA AGENDADO en Dinsides para el/.test(a)), JSON.stringify(gl?.ya_registrado) + JSON.stringify(gl?.alertas));
+r = await pedir("POST", { accion: "quitar", fecha: FECHA, whatsapp: "51955555550", motivo: "prueba cruce por nombre" });
+const propio = listadoFalso.find((x) => x.telefono_destinatario === "955555550"); propio.seguimiento = "ANULADO- POR TIENDA"; // su propio pedido ya no está abierto
+listadoFalso.push({ id_pedido: "8800", nombre_destinataio: "Sin Distrito Pérez", telefono_destinatario: "900000001", nombre_distrito: "x", fecha_pedido: "2026-11-07 10:00:00", fecha_entrega: `${FECHA} 00:00:00`, seguimiento: "REGISTRADO", monto_cobrar: "89" });
+r = await pedir("GET", null, `?fecha=${FECHA}&candidatos=0`);
+let sd = r.json.pedidos.find((f) => f.whatsapp === "51955555550");
+check("otro teléfono pero mismo nombre (2 palabras) abierto en Dinsides → ya_registrado «en Dinsides (nombre)»", sd && !sd.listo && sd.ya_registrado?.modo === "en Dinsides (nombre)" && sd.ya_registrado.nro === "8800", JSON.stringify(sd?.ya_registrado));
+r = await pedir("POST", { accion: "registrar", fecha: FECHA, pedidos: [{ whatsapp: "51955555550" }] });
+check("registrar no lo duplica: va a no_van como ya registrado", r.json.registrados.length === 0 && r.json.no_van.some((x) => x.whatsapp === "51955555550" && x.ya_registrado), JSON.stringify(r.json.no_van).slice(0, 200));
+listadoFalso.find((x) => x.id_pedido === idGladys).seguimiento = "ENTREGADO";
+listadoFalso.splice(listadoFalso.findIndex((x) => x.id_pedido === "8800"), 1); propio.seguimiento = "REGISTRADO";
+
 // 8. sin credenciales: 503 con el script de consola
 const env2 = { ...env, DINSIDES_TLF: "", DINSIDES_CLAVE: "" };
 r2.delete(`dinsides/${FECHA}.json`); r2.delete("dinsides/indice.json");
 sq.exec("UPDATE conversations SET meta_tags = NULL");
 let rr = await onRequestPost({ request: req("POST", { accion: "registrar", fecha: FECHA }), env: env2 });
 let j = await rr.json();
-check("sin credenciales: 503 sin_credenciales y el script para la consola", rr.status === 503 && j.error === "sin_credenciales" && /#id_distrito/.test(j.script) && j.listos.length === 2, JSON.stringify(j).slice(0, 200));
+check("sin credenciales: 503 sin_credenciales y el script para la consola", rr.status === 503 && j.error === "sin_credenciales" && /#id_distrito/.test(j.script) && j.listos.length === 3, JSON.stringify(j).slice(0, 200));
 
 // 9. clave incorrecta de Dinsides
 rr = await onRequestPost({ request: req("POST", { accion: "probar" }), env: { ...env, DINSIDES_CLAVE: "mala" } });

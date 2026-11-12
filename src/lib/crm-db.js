@@ -9,11 +9,27 @@ import { limpiarBotones } from "./whatsapp.js";
 // created_by del recojo en Shalom (planes-plantilla.js: PREFIJO_PLAN + título del plan).
 const ORIGEN_COBRO_SHALOM = "Plan con plantilla · Recojo en Shalom";
 
-export async function obtenerOCrearContacto(db, waId, profileName, referral) {
-  const existente = await db
+export async function obtenerOCrearContacto(db, waId, profileName, referral, { userId = null, username = null } = {}) {
+  // Cliente con «nombre de usuario» de WhatsApp: Meta no manda su número, solo su id de negocio (BSUID). Ese id
+  // ocupa el lugar del número hasta que lo comparta (ver esBsuid en whatsapp.js).
+  const telefono = waId || null;
+  waId = telefono || userId;
+  if (!waId) throw new Error("Contacto sin número ni id de WhatsApp.");
+  let existente = await db
     .prepare("SELECT * FROM contacts WHERE wa_id = ?")
     .bind(waId)
     .first();
+  // El mismo cliente, visto antes con otro identificador (primero sin número y ahora con él, o al revés).
+  if (!existente && userId) {
+    // (.catch: sin la migración 0077 no existe user_id; el chat sin número se reconoce igual por wa_id.)
+    existente = (await db.prepare("SELECT * FROM contacts WHERE user_id = ? ORDER BY id LIMIT 1").bind(userId).first().catch(() => null))
+      || (telefono ? await db.prepare("SELECT * FROM contacts WHERE wa_id = ?").bind(userId).first() : null);
+    if (existente && telefono && existente.wa_id !== telefono && /[A-Za-z]/.test(existente.wa_id)) {
+      // Ya compartió su número: el chat que estaba sin número pasa a tenerlo.
+      await db.prepare("UPDATE contacts SET wa_id = ?, updated_at = datetime('now') WHERE id = ?").bind(telefono, existente.id).run();
+      existente.wa_id = telefono;
+    }
+  }
   if (existente) {
     if (profileName && profileName !== existente.profile_name) {
       await db
@@ -21,33 +37,44 @@ export async function obtenerOCrearContacto(db, waId, profileName, referral) {
         .bind(profileName, existente.id)
         .run();
     }
+    if ((userId && userId !== existente.user_id) || (username && username !== existente.username)) {
+      await db.prepare("UPDATE contacts SET user_id = COALESCE(?, user_id), username = COALESCE(?, username) WHERE id = ?")
+        .bind(userId, username, existente.id).run().catch((e) => console.error("Id de WhatsApp del contacto:", e.message));
+    }
     return { ...existente, _isNew: false };
   }
 
   // El `referral` solo viene en el primer mensaje si el chat empezó desde un
   // anuncio "Click to WhatsApp" — así queda guardado desde el primer contacto,
   // que es el único momento en que WhatsApp lo manda.
-  let insertado;
-  try {
-    insertado = await db
+  const datos = [
+    waId,
+    profileName || null,
+    referral?.ctwa_clid || null,
+    referral?.source_type || null,
+    referral?.source_id || null,
+    referral?.source_url || null,
+    referral?.headline || null,
+    referral?.body || null,
+    referral?.media_type || null
+  ];
+  const insertar = (conId) =>
+    db
       .prepare(
         `INSERT INTO contacts
-          (wa_id, profile_name, first_seen_at, ctwa_clid, ad_source_type, ad_source_id, ad_source_url, ad_headline, ad_body, ad_media_type)
-         VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)
+          (wa_id, profile_name, first_seen_at, ctwa_clid, ad_source_type, ad_source_id, ad_source_url, ad_headline, ad_body, ad_media_type${conId ? ", user_id, username" : ""})
+         VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?${conId ? ", ?, ?" : ""})
          RETURNING *`
       )
-      .bind(
-        waId,
-        profileName || null,
-        referral?.ctwa_clid || null,
-        referral?.source_type || null,
-        referral?.source_id || null,
-        referral?.source_url || null,
-        referral?.headline || null,
-        referral?.body || null,
-        referral?.media_type || null
-      )
+      .bind(...datos, ...(conId ? [userId, username] : []))
       .first();
+  let insertado;
+  try {
+    // Sin la migración 0077 (user_id, username) el contacto se crea igual, como antes.
+    insertado = await insertar(true).catch((e) => {
+      if (/no such column|no column named/i.test(e.message)) return insertar(false);
+      throw e;
+    });
   } catch (e) {
     // Race condition: dos webhooks paralelos para el mismo número nuevo — el segundo
     // ve UNIQUE constraint en wa_id. Reobtenemos el que ya quedó insertado.

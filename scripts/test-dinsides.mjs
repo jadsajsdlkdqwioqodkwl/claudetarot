@@ -92,7 +92,7 @@ p = D.armarPedido({ nombre: "Zona roja", whatsapp: "51999999996", direccion_o_ag
 check("pin en zona sin entregas → BLOQUEO ZONA ROJA", !p.listo && p.bloqueos.some((b) => /^ZONA ROJA/.test(b)), JSON.stringify(p.bloqueos));
 
 p = D.armarPedido({ nombre: "Dos kits", whatsapp: "51999999995", direccion_o_agencia: "Jr Puno 500, Cercado de Lima", kits: 2, empaque: "collar amuleto extra prometido", estado: "CONFIRMADO" }, ctx);
-check("2 kits + extra → producto con x2 y «+ Extra», S/149, alertas", p.listo && p.campos.producto === "Kit Tarot de aprendizaje x2 + Extra: collar amuleto extra prometido"
+check("2 kits + extra → producto con x2 y «+ Extra», S/149, alertas", p.listo && p.campos.producto === "2 Kits Tarot de aprendizaje + Extra: collar amuleto extra prometido"
   && p.campos.cobrar === "149" && p.alertas.some((a) => /^EMPAQUE/.test(a)), JSON.stringify(p));
 
 p = D.armarPedido({ nombre: "Dudoso", whatsapp: "51999999994", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", estado: "POR_VERIFICAR", nota: "dijo que yapeó sin captura" }, ctx);
@@ -109,6 +109,41 @@ p = D.armarPedido({ nombre: "Cecilia", whatsapp: "51996941086", direccion_o_agen
 check("«pagaría…; si no, cobrar al recibir» NO es pagado: se cobra S/89 YAPE", p.campos.tipo_pago === "YAPE" && p.campos.cobrar === "89" && p.campos.tipo_pedido === "CONTRAENTREGA", JSON.stringify(p.campos));
 check("el «VERIFICAR…» de enviar.py no entra al producto ni a la observación; solo avisa", p.campos.producto === "Kit Tarot de aprendizaje" && !/VERIFICAR/.test(p.campos.obs) && p.alertas.some((a) => /^EMPAQUE por verificar/.test(a)), JSON.stringify(p));
 
+// Montos que vienen en texto desde el reporte (casos reales de la hoja «Pedidos auto», 2026-11)
+p = D.armarPedido({ nombre: "Pagado", whatsapp: "51999195063", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/89", estado: "CONFIRMADO" }, ctx);
+check("«Pagado S/89» → NO COBRAR, S/0 (antes se cobraba de nuevo)", p.campos.tipo_pago === "NO COBRAR" && p.campos.cobrar === "0" && p.campos.tipo_pedido === "SOLO-ENTREGA-NO-COBRAR", JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Solo mazo", whatsapp: "51922792281", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, pago: "Yape contraentrega S/69", empaque: "NO es kit: solo mazo Tarot Rider Waite de aprendizaje S/69", estado: "CONFIRMADO" }, ctx);
+check("kits 0 con «contraentrega S/69» → se cobra S/69 YAPE y el producto es «Tarot de aprendizaje» (nombre del equipo)", p.listo && p.campos.cobrar === "69" && p.campos.tipo_pago === "YAPE" && p.campos.producto === "Tarot de aprendizaje" && /solo mazo/.test(p.campos.obs), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Solo mazo sin monto", whatsapp: "51922792282", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 0, empaque: "NO lleva kit: solo mazo", estado: "CONFIRMADO" }, ctx);
+check("kits 0 sin monto en ningún lado → BLOQUEO MONTO (no se inventa S/0)", !p.listo && p.bloqueos.some((b) => /^MONTO: no es un kit normal/.test(b)), JSON.stringify(p.bloqueos));
+p = D.armarPedido({ nombre: "Saldo", whatsapp: "51940435388", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Adelanto S/10; saldo S/79 contraentrega", estado: "CONFIRMADO" }, ctx);
+check("«Adelanto S/10; saldo S/79» → se cobra el saldo S/79 y el pago NO va en la nota del motorizado (dueño 2026-11-11)", p.campos.cobrar === "79" && p.campos.tipo_pago === "YAPE" && !/adelanto|saldo|S\//i.test(p.campos.obs), JSON.stringify(p.campos));
+// La nota del motorizado (dueño 2026-11-11): cómo contactar y dónde dejarlo; sin pagos, pines ni apuntes internos. Casos reales del 11/11.
+const nm = (t, tel) => D.notaParaMotorizado(t, tel).nota;
+check("nota: «ya pagó … NO cobrar» no va; el DNI de quien recibe sí", nm("Ya pagó S/89 por Yape (17:23, op 22639565, «Tarot Luciana»): NO cobrar. DNI de quien recibe 76163841. Pago: Pagado S/89", "982824025") === "DNI de quien recibe 76163841");
+check("nota: «paga con Yape» fuera, el teléfono de contacto queda", nm("Tel de contacto 978319291; paga con Yape", "976373863") === "Tel de contacto 978319291");
+check("nota: pin y coordenadas fuera (la etiqueta va pegada a la caja)", nm("Paga en efectivo. Pin del cliente (12°13'43.3\"S 76°55'01.0\"W), Villa El Salvador 4.ª etapa. Pago: Efectivo contraentrega S/89", "986421918") === "");
+check("nota: apuntes internos fuera («confirmar, escribió dos versiones», «sin número en el CRM», el mismo teléfono de la etiqueta)",
+  !/confirmar|versiones/.test(nm("Paga en efectivo; tel 921374691 (confirmar, escribió dos versiones)", "921374791")) && nm("Cliente sin número en el CRM (usa nombre de usuario de WhatsApp); cel 987213507", "987213507") === "" && nm("Dio su teléfono 935484310", "935484310") === "");
+check("nota: lo que sirve para entregar queda", nm("Dejar en recepción y avisar al Dpto 102. Llamar antes de llegar", "9") === "Dejar en recepción y avisar al Dpto 102. Llamar antes de llegar" && nm("Contacto «El Papi» +51 991204483", "991204483") === "Contacto «El Papi» +51 991204483");
+p = D.armarPedido({ nombre: "Cristofer", whatsapp: "51913097200", direccion_o_agencia: "Boulevard de Magdalena, Galería Malena, oficina 223, Magdalena del Mar", kits: 0, pago: "Efectivo contraentrega S/141 (cuenco S/72 + mazo S/69)",
+  empaque: "NO es kit: Cuenco tibetano de sanación sonora 13 cm (S/72) + mazo Tarot Rider Waite de aprendizaje (S/69) · VERIFICAR, en el chat se le prometió: «11-10 08:32 V(Jennifer): Claro»", nota: "Pide la entrega el miércoles en la tarde; paga en efectivo", estado: "CONFIRMADO" }, ctx);
+check("otro artículo con «VERIFICAR…» pegado: el producto es el NOMBRE de lo que va (no «Reposición / cambio»), S/141 EFECTIVO", p.campos.producto === "Cuenco tibetano de sanación sonora 13 cm + mazo Tarot Rider Waite de aprendizaje" && p.campos.cobrar === "141" && p.campos.tipo_pago === "EFECTIVO" && !/paga|S\//.test(p.campos.obs.split("Paquete:")[0]), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Adelanto sin saldo", whatsapp: "51958345337", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 3, pago: "Adelanto S/100 Yape 11-01 22:47 (op. 346)", empaque: "3 kits (S/199) + cuencos tibetanos", estado: "CONFIRMADO" }, ctx);
+check("3 kits con adelanto S/100 y sin saldo escrito → lista − adelanto = S/99 con aviso", p.campos.cobrar === "99" && p.alertas.some((a) => /adelanto S\/100/.test(a)), JSON.stringify(p));
+p = D.armarPedido({ nombre: "Gold", whatsapp: "51997213231", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/129 por Yape", empaque: "NO es kit normal: lleva Tarot Gold Rider Waite S/129", estado: "CONFIRMADO" }, ctx);
+check("otro artículo ya pagado → NO COBRAR y el extra va en el producto", p.campos.cobrar === "0" && p.campos.tipo_pago === "NO COBRAR" && /Tarot Gold/.test(p.campos.producto), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Web 2 kits", whatsapp: "51958696861", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", kits: 2, pago: "Yape contraentrega S/149", empaque: "2 KITS (pedido web S/149)", estado: "CONFIRMADO" }, ctx);
+check("empaque que solo repite «2 kits» no es extra: producto «2 Kits Tarot de aprendizaje», S/149", p.campos.producto === "2 Kits Tarot de aprendizaje" && p.campos.cobrar === "149" && !p.alertas.some((a) => /^EMPAQUE/.test(a)), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Kit normal", whatsapp: "51959037748", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", empaque: "Kit normal (regalos del kit, sin extras)", estado: "CONFIRMADO" }, ctx);
+check("«Kit normal (sin extras)» no es extra", p.campos.producto === "Kit Tarot de aprendizaje" && !/Paquete/.test(p.campos.obs), JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Efectivo exacto", whatsapp: "51935760271", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Efectivo exacto S/89", estado: "CONFIRMADO" }, ctx);
+check("«Efectivo exacto S/89» → EFECTIVO S/89", p.campos.cobrar === "89" && p.campos.tipo_pago === "EFECTIVO", JSON.stringify(p.campos));
+p = D.armarPedido({ nombre: "Descuento", whatsapp: "51935760272", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/79 con descuento", estado: "CONFIRMADO" }, ctx);
+check("monto negociado S/79 → se cobra S/79 y avisa que no es el de lista", p.campos.cobrar === "79" && p.alertas.some((a) => /distinto al de lista/.test(a)), JSON.stringify(p));
+p = D.armarPedido({ nombre: "Explícito", whatsapp: "51935760273", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Pagado S/89", cobrar: 20, estado: "CONFIRMADO" }, ctx);
+check("`cobrar` explícito manda sobre el texto", p.campos.cobrar === "20" && p.campos.tipo_pago === "YAPE", JSON.stringify(p.campos));
+
 p = D.armarPedido({ nombre: "Pin y texto", whatsapp: "51993455129", direccion_o_agencia: "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco (pin -12.1651891,-76.9978476)", estado: "CONFIRMADO" }, ctx);
 check("al quitar el pin del texto no queda «(pin )» en la dirección", p.campos.direccion === "Jr Los Cisnes Mz C Lt 16 Urb San Pedro, Surco" && p.campos.coordenadas === "-12.1651891,-76.9978476", JSON.stringify(p.campos));
 
@@ -123,3 +158,18 @@ check("resumenFicha es texto corto", /A · 957845104 · santiago de surco/.test(
 
 if (fallas) { console.error(`\n${fallas} prueba(s) de Dinsides fallaron`); process.exit(1); }
 console.log("\nDinsides: todo OK");
+
+// Hora específica (dueño 2026-11-09): Dinsides reparte 12–5 pm; otra hora se pregunta (Dinsides o motorizado de confianza)
+p = D.armarPedido({ nombre: "Hora", whatsapp: "51999999980", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", nota: "Pide que le lleguen a las 5 pm en punto, sale del trabajo", estado: "CONFIRMADO" }, ctx);
+check("«a las 5 pm» → alerta HORA ESPECÍFICA (no bloquea)", p.listo && p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
+p = D.armarPedido({ nombre: "Ventana", whatsapp: "51999999981", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/89, 12-5 pm", nota: "la recibe ella", estado: "CONFIRMADO" }, ctx);
+check("«12-5 pm» es la ventana normal: sin alerta de hora", !p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
+
+// La observación de Dinsides es solo operativa; lo de la asesora (reprogramar, confirmar) sale como alerta (dueño 2026-11-09)
+p = D.armarPedido({ nombre: "Mavel", whatsapp: "51999195063", direccion_o_agencia: "Calle Ramón Ribeyro 509, Miraflores", pago: "Pagado S/89", estado: "CONFIRMADO",
+  nota: "🚨 Ya pagó S/89 por Yape (20:22, op 30121691): NO cobrar. Ella no está hasta las 5:30 pm; pide que le dejen el paquete por la ventana lateral abierta. También pidió reprogramar al miércoles 11-11: confirmar la fecha con ella." }, ctx);
+check("«pidió reprogramar… confirmar la fecha» NO va en la observación de Dinsides; va como PARA LA ASESORA", !/reprogramar|confirmar la fecha/.test(p.campos.obs) && /ventana lateral/.test(p.campos.obs) && p.alertas.some((a) => /^NOTA PARA LA ASESORA.*reprogramar/.test(a)), JSON.stringify([p.campos.obs, p.alertas]));
+
+p = D.armarPedido({ nombre: "Agendado", whatsapp: "51935760271", direccion_o_agencia: "Jr Granada 464, Dpto 104, Pueblo Libre", pago: "Efectivo exacto S/89", estado: "CONFIRMADO",
+  nota: "Pidió que se la entreguen el LUNES 09-11, no mañana. Recibe Dante 935760271. Efectivo exacto S/89 · agendado desde el reporte del 2026-11-06" }, ctx);
+check("la observación no lleva «agendado desde el reporte…» ni «, no mañana»", !/agendado desde el reporte|no mañana/.test(p.campos.obs) && /LUNES 09-11\. Recibe Dante/.test(p.campos.obs), p.campos.obs);

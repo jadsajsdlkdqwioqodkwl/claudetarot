@@ -102,7 +102,15 @@ function tipoYCuerpo(msg) {
     }
     case "interactive": {
       const r = msg.interactive?.button_reply || msg.interactive?.list_reply;
-      return { type: "text", body: r?.title || "" };
+      if (r?.title) return { type: "text", body: r.title };
+      // Otras respuestas interactivas (formulario «flow» nfm_reply, permiso de llamada…): antes entraban como un texto VACÍO y
+      // nadie veía que el cliente respondió (auditoría 2026-11-11 contra la doc. oficial del webhook «messages»).
+      const it = msg.interactive || {};
+      const nfm = it.nfm_reply;
+      const cuerpo = nfm ? `[Respuesta de formulario] ${String(nfm.body || nfm.name || "")} ${String(nfm.response_json || "").slice(0, 600)}`.trim()
+        : it.call_permission_reply ? `[Permiso de llamada: ${it.call_permission_reply.response || "?"}]`
+        : `[Respuesta interactiva: ${it.type || "?"}] ${JSON.stringify(it).slice(0, 400)}`;
+      return { type: "text", body: cuerpo };
     }
     // Tarjeta de contacto reenviada (uno o varios): se guarda todo lo que el cliente compartió (nombre, teléfonos,
     // correos, empresa, direcciones) y el CRM la pinta como WhatsApp. Antes se perdía: solo quedaba "[contacts]".
@@ -115,7 +123,8 @@ function tipoYCuerpo(msg) {
     case "system":
       return { type: "system", body: systemDesdeWebhook(msg) };
     default:
-      return { type: msg.type || "unknown", body: "" };
+      // Tipo que este CRM no conoce (Meta agrega tipos nuevos): se guarda con lo que traiga, nunca vacío, para que alguien lo vea.
+      return { type: msg.type || "unknown", body: `[Mensaje de tipo «${msg.type || "desconocido"}»] ${JSON.stringify(msg[msg.type] ?? {}).slice(0, 400)}` };
   }
 }
 
@@ -340,7 +349,14 @@ async function procesarCambio(envBase, db, value, origen) {
     return (a.type === "image" ? 0 : 1) - (b.type === "image" ? 0 : 1);
   });
   for (const msg of _msgs) {
-    const waId = msg.from;
+    // Cliente con «nombre de usuario» de WhatsApp: llega sin `from` (no comparte su número) y con su id de negocio en
+    // `from_user_id`. Del 1 al 10/11/2026 esos mensajes se perdían (241 personas); ahora abren su chat con ese id.
+    const userId = msg.from_user_id || (_msgs.length === 1 ? contactoMeta?.user_id : null) || null;
+    const waId = msg.from || userId;
+    // El perfil (nombre, @usuario) es el de ESTE remitente: un aviso puede traer mensajes de varias personas y antes se usaba
+    // siempre el primero de la lista (doc. oficial: `contacts[]` es una lista; se cruza por wa_id o user_id).
+    const perfil = (value.contacts || []).find((c) => (msg.from && c.wa_id === msg.from) || (msg.from_user_id && c.user_id === msg.from_user_id))
+      || (_msgs.length === 1 ? contactoMeta : null);
     // Fotos de boleta y comandos que manda el dueño desde su número personal
     // al número empresa → staging; no se procesan como chat de cliente.
     if (esDueno(env, waId)) {
@@ -353,13 +369,11 @@ async function procesarCambio(envBase, db, value, origen) {
     // puede llegar dos veces. Sin esto quedaba duplicado en el chat, contaba
     // doble en el embudo y volvía a cancelar/avisar.
     if (msg.id && (await idPorWaMessageId(db, msg.id))) continue;
-    // 2026-11-03: llegan mensajes sin `from` (ids «wamid.HBgTUEUu…» = usuario con nombre de usuario de WhatsApp o id de
-    // negocio, sin número compartido). Sin número no hay chat que abrir: queda en webhook_errores con el motivo claro.
-    if (!waId) throw new Error("El mensaje llegó sin número de WhatsApp (usuario con nombre de usuario o id de negocio, no comparte su número): el CRM no puede abrir el chat.");
+    if (!waId) throw new Error("El mensaje llegó sin número ni id de WhatsApp: el CRM no puede abrir el chat (el mensaje completo queda guardado en webhook_errores.payload).");
     // Los datos del anuncio del contacto (CAPI, "vino de un anuncio") son
     // los de Tarot Store: el clic de un anuncio de otra línea no se guarda
     // ahí (el producto del chat sale del referral igual).
-    const contacto = await obtenerOCrearContacto(db, waId, contactoMeta?.profile?.name, linea ? null : msg.referral);
+    const contacto = await obtenerOCrearContacto(db, msg.from || null, perfil?.profile?.name, linea ? null : msg.referral, { userId, username: perfil?.profile?.username || null });
     if (!linea && !contacto._isNew && !contacto.ctwa_clid && msg.referral?.ctwa_clid) {
       // Ya nos conocía por otra línea y ahora llega por un anuncio de Tarot Store.
       await guardarAnuncioDelContacto(db, contacto, msg.referral).catch((err) => console.error("Anuncio del contacto:", err.message));
@@ -376,6 +390,11 @@ async function procesarCambio(envBase, db, value, origen) {
     const { type, body, fileName, mediaId, mediaMime, order } = tipoYCuerpo(msg);
     let bodyFinal = body;
     let ordenResuelta = order;
+    // «Enviar mensaje al negocio» desde un producto del catálogo: Meta manda el producto en `context.referred_product`. Sin esto
+    // el «hola, info» llegaba sin decir de QUÉ producto preguntaba.
+    if (msg.context?.referred_product?.product_retailer_id && type !== "order") {
+      bodyFinal = `${bodyFinal || ""}\n[Pregunta por el producto del catálogo: ${msg.context.referred_product.product_retailer_id}]`.trim();
+    }
     if (type === "order" && order) {
       ordenResuelta = await resolverNombresPedido(env, order);
       bodyFinal = ordenResuelta.items.map((i) => `${i.quantity}× ${i.name || i.product_retailer_id}`).join(", ");
@@ -416,9 +435,13 @@ async function procesarCambio(envBase, db, value, origen) {
     await notificarMensajeNuevo(env, conversacion, contacto, { type, body: bodyFinal, origen }).catch((err) => console.error("Push:", err.message));
     } catch (err) {
       console.error(`Webhook msg ${msg.id || "?"} de ${waId}: ${err.message}`);
-      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
-        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500))
+      // Se guarda el mensaje ENTERO tal como lo mandó Meta: lo que no se pudo procesar se puede recuperar después.
+      const payload = JSON.stringify({ msg, contacts: value.contacts || null, metadata: value.metadata || null }).slice(0, 20000);
+      await db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error, payload) VALUES (?, ?, ?, ?)")
+        .bind(waId || null, msg.id || null, String(err.message).slice(0, 500), payload)
         .run()
+        .catch(() => db.prepare("INSERT INTO webhook_errores (wa_id, wa_message_id, error) VALUES (?, ?, ?)")
+          .bind(waId || null, msg.id || null, String(err.message).slice(0, 500)).run())
         .catch((e) => console.error("webhook_errores:", e.message));
       notificarTelegram(env, `⚠️ *Mensaje entrante no procesado*\n\nChat: ${waId || "?"}\nError: ${String(err.message).slice(0, 300).replace(/[_*`[]/g, "")}`).catch(() => {});
     }
@@ -428,6 +451,22 @@ async function procesarCambio(envBase, db, value, origen) {
     const err = st.errors?.[0];
     const errorDetail = err ? `${err.title || err.code || "Error"}${err.error_data?.details ? `: ${err.error_data.details}` : ""}` : null;
     await actualizarEstadoMensaje(db, st.id, st.status, errorDetail);
+    // 131050 = el cliente eligió dejar de recibir mensajes de marketing: se etiqueta el chat para que el equipo lo vea.
+    if (Number(err?.code) === 131050 && (st.recipient_id || st.recipient_user_id)) {
+      await db.prepare(`UPDATE conversations SET meta_tags = TRIM(COALESCE(meta_tags, '') || ' no_marketing')
+                        WHERE contact_id IN (SELECT id FROM contacts WHERE wa_id = ? OR wa_id = ?) AND (' ' || COALESCE(meta_tags, '') || ' ') NOT LIKE '% no_marketing %'`)
+        .bind(String(st.recipient_id || ""), String(st.recipient_user_id || "")).run().catch((e) => console.error("no_marketing:", e.message));
+    }
+  }
+  // Los avisos de entregado / leído traen el @usuario y el id del cliente (doc. «Business-scoped user IDs»): se guardan para quien
+  // ya tenía chat antes de que existieran esas columnas.
+  if ((value.statuses || []).length) {
+    for (const c of value.contacts || []) {
+      if (!(c?.wa_id || c?.user_id) || !(c.user_id || c.profile?.username)) continue;
+      // Con número: su fila va por wa_id. Sin número: su wa_id en el CRM ES el id de negocio (user_id).
+      await db.prepare("UPDATE contacts SET user_id = COALESCE(?, user_id), username = COALESCE(?, username) WHERE wa_id = ? OR wa_id = ?")
+        .bind(c.user_id || null, c.profile?.username || null, String(c.wa_id || c.user_id), String(c.user_id || c.wa_id)).run().catch(() => {});
+    }
   }
 }
 
@@ -443,9 +482,10 @@ async function procesarCambio(envBase, db, value, origen) {
 async function procesarLlamadas(env, db, value, origen) {
   const linea = await lineaDePhoneId(db, env, value.metadata?.phone_number_id, value.metadata?.display_phone_number);
   for (const call of value.calls || []) {
-    const waId = call.from;
+    const userId = call.from_user_id || null;
+    const waId = call.from || userId;
     if (!waId) continue;
-    const contacto = await obtenerOCrearContacto(db, waId, null, null);
+    const contacto = await obtenerOCrearContacto(db, call.from || null, null, null, { userId });
     const conversacion = await obtenerOCrearConversacion(db, contacto.id, linea?.id || null);
 
     const estado = String(call.status || call.event || "").toLowerCase();
@@ -458,6 +498,34 @@ async function procesarLlamadas(env, db, value, origen) {
     await cancelarSeguimientosPendientes(db, conversacion.id);
     if (conversacion.blocked) continue;
     await notificarMensajeNuevo(env, conversacion, contacto, { type: "call", body, origen }).catch((err) => console.error("Push:", err.message));
+  }
+}
+
+/**
+ * Todo aviso de Meta que NO es «messages» ni «calls» (auditoría 2026-11-11: se descartaban en silencio). Son los que avisan de un
+ * problema de la cuenta: plantilla rechazada o pausada, calidad o límite del número, alerta o infracción de la cuenta, cambio de
+ * categoría de una plantilla, baja de marketing de un cliente (`user_preferences`) y mensajes enviados desde la app del teléfono
+ * (`smb_message_echoes`). Queda el último de cada tipo en crm_settings (`webhook_campo_<campo>`) y los importantes van al Telegram
+ * del dueño. Solo llegan los campos a los que la app de Meta está suscrita (Meta for Developers → WhatsApp → Configuración → Webhook).
+ */
+const CAMPOS_QUE_AVISAN = /^(account_alerts|account_update|account_review_update|business_capability_update|message_template_status_update|message_template_quality_update|template_category_update|phone_number_quality_update|phone_number_name_update|security)$/;
+async function procesarOtroCampo(env, db, campo, value) {
+  const texto = JSON.stringify(value || {}).slice(0, 1500);
+  await guardarAjuste(db, `webhook_campo_${String(campo).slice(0, 60)}`, `${new Date().toISOString()} ${texto}`).catch(() => {});
+  if (campo === "user_preferences") {
+    for (const p of value?.user_preferences || []) {
+      const baja = /stop/i.test(String(p.value || ""));
+      const ids = [String(p.wa_id || ""), String(p.user_id || "")].filter(Boolean);
+      if (!ids.length) continue;
+      await db.prepare(baja
+        ? `UPDATE conversations SET meta_tags = TRIM(COALESCE(meta_tags, '') || ' no_marketing') WHERE contact_id IN (SELECT id FROM contacts WHERE wa_id IN (?, ?)) AND (' ' || COALESCE(meta_tags, '') || ' ') NOT LIKE '% no_marketing %'`
+        : `UPDATE conversations SET meta_tags = TRIM(REPLACE(' ' || COALESCE(meta_tags, '') || ' ', ' no_marketing ', ' ')) WHERE contact_id IN (SELECT id FROM contacts WHERE wa_id IN (?, ?))`)
+        .bind(ids[0], ids[1] || ids[0]).run().catch((e) => console.error("user_preferences:", e.message));
+    }
+    return;
+  }
+  if (CAMPOS_QUE_AVISAN.test(String(campo))) {
+    await notificarTelegram(env, `⚠️ *Aviso de Meta sobre la cuenta de WhatsApp* (${String(campo).replace(/[_*`[]/g, " ")})\n\n${texto.slice(0, 700).replace(/[_*`[]/g, " ")}`).catch(() => {});
   }
 }
 
@@ -499,7 +567,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
         tareas.push(procesarLlamadas(env, env.CRM_DB, change.value, origen));
         continue;
       }
-      if (change.field !== "messages") continue;
+      if (change.field !== "messages") {
+        tareas.push(procesarOtroCampo(env, env.CRM_DB, change.field, change.value));
+        continue;
+      }
       tareas.push(procesarCambio(env, env.CRM_DB, change.value, origen));
     }
   }

@@ -35,3 +35,11 @@ export const ADELANTO_PROVINCIA = 20;
  * reglas de reescritura en la zona (ver docs/espada.md).
  */
 export const HOST_ESPADA = "puerto-secreto-espada-voladora-rc-planeador-a-control-remoto.tarotperu.store";
+
+/**
+ * Copia de la landing para la tienda **Puerto Secreto** (dueño, 2026-11-10): misma página, mismos precios y
+ * mismo endpoint, en `/espada-ps/`, con el píxel de Puerto Secreto (el del Cable y la Masilla) y su propio
+ * dominio largo. El pedido llega con `tienda: "ps"` y se marca en la hoja (Detalle) y en el aviso de Telegram.
+ */
+export const PIXEL_ESPADA_PS = "1788156381816025";
+export const HOST_ESPADA_PS = "puerto-secreto-espada-voladora-rc-control-remoto-envio-gratis.tarotperu.store";

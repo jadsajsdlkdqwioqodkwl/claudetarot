@@ -28,6 +28,8 @@ pegar nada a mano; el registro directo en Shalom Pro queda para después (su pan
            --clave NNNN: la clave de seguridad del día que el dueño le dijo a la sesión; se usa para TODAS las ventas del lote (así en
            Shalom Pro basta «CLAVE MASIVA»). Sin --clave no se crea ninguna venta y nadie asigna clave.
            --subir: deja el Excel y la referencia en CRM → Reportes (links) para descargarlos desde cualquier lado.
+    python3 scripts/asesor/shalom.py agregar <whatsapp> --nombre "…" --dni 12345678 --agencia "texto del cliente" [--pago …] [--nota …]
+                                                 -> provincia que el reporte no trajo: a la hoja como CONFIRMADO (entra al masivo)
     python3 scripts/asesor/shalom.py telegram "texto"   -> aviso al dueño por el Worker (sin claves).
 
 Paso a paso en Shalom Pro (probado el 2026-11-08): Registra → Registro de envíos masivos → «Sube el archivo» (el Excel de `masivo`)
@@ -40,7 +42,8 @@ De dónde sale cada columna del Excel (el masivo NO autocompleta nada por DNI, a
   TELF. DESTINATARIO = el WhatsApp del cliente (9 dígitos) salvo que haya dado otro número para recoger.
   ORIGEN = CHORRILLOS CO (de donde salen los paquetes). DESTINO = la agencia de Shalom tal como la llama Shalom Pro (último tramo del
   código «DEP / PROV / DIST / AGENCIA»), elegida con `buscar` a partir de lo que escribió el cliente («Shalom Av. Parra, Arequipa»).
-  MERCADERIA = PAQUETE XXS (la medida más barata, S/8; las medidas y el peso los calcula la plantilla). CANTIDAD = kits del pedido.
+  MERCADERIA = PAQUETE XXS (la medida más barata, S/8; las medidas y el peso los calcula la plantilla), CANTIDAD 1. Con 2 o más kits:
+  UN solo PAQUETE XS, cantidad 1 (dueño 2026-11-11), nunca N paquetes XXS.
   CONTACTO, TELF. CONTACTO, NRO GRR y COBRO SEGURO quedan vacíos (sin cobro seguro, regla del dueño).
 """
 import datetime as dt, json, os, re, shutil, sys, unicodedata, urllib.request
@@ -103,20 +106,32 @@ def buscar(texto, n=5):
     if not q:
         return []
     res = []
-    for a in cargar()["agencias"]:
+    agencias = cargar()["agencias"]
+    # Palabras del cliente que son un LUGAR conocido por Shalom (departamento / provincia / distrito de alguna agencia). Si el cliente
+    # nombró un lugar, una agencia de OTRO lugar no puede ganar por el nombre de la calle (2026-11-09: «Av. Mariscal Castilla, Mollendo»
+    # ganaba la agencia de Huancayo «AV MARISCAL CASTILLA»; la correcta es MOLLENDO CO).
+    geo_conocidas = {c for a in agencias for seg in str(a["codigo"]).split(" / ")[:-1] for c in palabras(seg)} - set(GENERICO)
+    lugares = [w for w in q if len(w) > 3 and w in geo_conocidas]
+    for a in agencias:
         segmentos = [palabras(x) for x in str(a["codigo"]).split(" / ")]  # departamento, provincia, distrito, agencia
         dire = palabras(a["direccion"]); nom = segmentos[-1] if segmentos else []
         geo = {c for seg in segmentos[:-1] for c in seg}
         p = 0; especifico = False
         for w in q:
             parecido = lambda c: w == c or (len(w) > 4 and (c.startswith(w) or w.startswith(c)))
-            niveles = sum(1 for seg in segmentos[:-1] if any(parecido(c) for c in seg))
-            p += 3 * niveles                                                            # cada nivel (dep/prov/dist) que calza
+            # Cada nivel que calza suma; el distrito pesa más que la provincia y esta más que el departamento (2026-11-09: «Sachaca»
+            # empataba con todas las agencias de Arequipa y ganaba la primera por orden alfabético).
+            # Cada palabra cuenta UNA vez, por el nivel más profundo que calza («Arequipa» en dep, prov y distrito vale 5, no 10).
+            pesos = (2, 3, 5)
+            niveles_ok = [pesos[min(i_, 2)] for i_, seg in enumerate(segmentos[:-1]) if any(parecido(c) for c in seg)]
+            p += max(niveles_ok) if niveles_ok else 0
             propia = w not in GENERICO and not any(parecido(c) for c in geo)
             if propia and any(parecido(c) for c in nom): p += 6; especifico = True      # una palabra PROPIA del nombre de la agencia
             if propia and w in dire: p += 2; especifico = True
             elif propia and any(len(w) > 4 and d.startswith(w) for d in dire): p += 1; especifico = True
-        if p:
+        if lugares and not any(any(w == c or (len(w) > 4 and (c.startswith(w) or w.startswith(c))) for c in geo) for w in lugares):
+            p -= 8 * len(lugares)  # el cliente nombró un lugar y esta agencia no está ahí
+        if p > 0:
             res.append((p, especifico, a))
     res.sort(key=lambda x: (-x[0], x[2]["codigo"]))
     if not res:
@@ -154,18 +169,44 @@ def pedir_worker(ruta, body=None):
             return {"error": f"http {e.code}"}
 
 
+def dni_de(p):
+    """DNI del pedido; si viene de la hoja (sin columna DNI) se saca de la nota («DNI 12345678»)."""
+    d = re.sub(r"\D", "", str(p.get("dni") or ""))
+    if d:
+        return d
+    m = re.search(r"DNI\D{0,12}(\d{8})\b", f"{p.get('nota') or ''} {p.get('direccion_o_agencia') or ''}", re.I)
+    return m.group(1) if m else ""
+
+
 def montos(p):
-    """Adelanto y saldo de un pedido de provincia según el reporte («Adelanto S/20; saldo S/69»); por defecto 20 y precio − 20."""
+    """Adelanto y saldo de un pedido de provincia según el TEXTO del reporte (`pago`, `nota`, `empaque`): «Adelanto S/20; saldo S/69»,
+    «Pagado S/89 (sin saldo)», «Adelanto S/10», «solo mazo S/69». Por defecto adelanto 20 y saldo = precio − adelanto.
+    Devuelve (adelanto, saldo, aviso): aviso no vacío cuando el monto hubo que suponerlo (kits 0 sin precio, extra sin monto)."""
     texto = f"{p.get('pago') or ''} {p.get('nota') or ''}"
-    kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
-    precio = {1: 89, 2: 149, 3: 199}.get(kits, 89 * kits)
-    m = re.search(r"adelanto\D{0,12}(\d{2,3})", texto, re.I) or re.search(r"(?:yape|plin)\s*s?/?\s*(\d{2,3})", texto, re.I)
+    empaque = str(p.get("empaque") or "")
+    kits = int(p.get("kits")) if str(p.get("kits")).isdigit() else 1   # 0 = no es kit (solo mazo, oráculo…)
+    aviso = ""
+    precio = {1: 89, 2: 149, 3: 199}.get(kits, 89 * kits) if kits else None
+    if kits == 0:  # no es kit (solo mazo, oráculo…): el precio sale del texto o se pregunta
+        m0 = re.search(r"s/\s*(\d{2,3})", empaque, re.I) or re.search(r"(?:total|precio|contraentrega|saldo|pag\w+)\D{0,14}(\d{2,3})", texto, re.I)
+        precio = int(m0.group(1)) if m0 else 0
+        aviso = "" if m0 else "MONTO: no es un kit y el reporte no dice el precio; confirmarlo"
+    elif re.search(r"descuento|rebaja|precio especial|promo|negociad", f"{texto} {empaque}", re.I):
+        aviso = "MONTO: habla de descuento/precio especial; confirmar el saldo"
+    elif re.search(r"\+|extra|cuenco|oráculo|oraculo|collar.*(s/|soles)|otro modelo|gold|rider", empaque, re.I) and re.search(r"s/\s*\d", empaque, re.I):
+        aviso = "MONTO: el empaque trae un extra con precio; confirmar el saldo"
+    m = re.search(r"adelanto\D{0,14}(\d{2,3})", texto, re.I) or re.search(r"s/\s*(\d{2,3})\s*(?:de\s+)?adelanto", texto, re.I) \
+        or re.search(r"(?:yape|plin)\s*s?/?\s*(\d{2,3})", texto, re.I)
     adelanto = int(m.group(1)) if m else 20
-    if re.search(r"pag[oó] (todo|completo|el total)|pago completo|s/\s*%d completo" % precio, texto, re.I):
-        adelanto = precio
-    m2 = re.search(r"saldo\D{0,12}(\d{2,3})", texto, re.I)
-    saldo = int(m2.group(1)) if m2 else max(0, precio - adelanto)
-    return adelanto, saldo
+    m2 = re.search(r"saldo\D{0,14}(\d{2,3})", texto, re.I)
+    if m2:
+        saldo = int(m2.group(1))
+    elif re.search(r"pag[oó] (todo|completo|el total)|pago completo|\bpagad[oa]\b|sin saldo|s/\s*%s completo" % (precio or 0), texto, re.I) \
+            and not re.search(r"adelanto", texto, re.I):
+        adelanto, saldo = precio, 0
+    else:
+        saldo = max(0, (precio or 0) - adelanto)
+    return adelanto, saldo, aviso
 
 
 def _xml_escape(t):
@@ -256,8 +297,29 @@ def cmd_masivo(args):
             k = re.sub(r"\D", "", str(p.get("whatsapp") or ""))[-9:]
             if str(p.get("destino", "")).upper() == "PROVINCIA" and str(p.get("estado", "")).upper() == "CONFIRMADO" and k not in vistos:
                 vistos.add(k); pedidos.append({**p, "_fecha": f})
+    # Provincia PENDIENTE en la hoja «Pedidos auto» (sin «Enviado», fecha de hoy o pasada, CONFIRMADO o corrección): pedidos que no
+    # salieron en su día (DNI incompleto, agencia dudosa…) y que no están en el estado de esta fecha. Entran al masivo marcados como
+    # ATRASADO para que no se queden en la hoja para siempre (dueño 2026-11-09, caso Elia Rita).
+    ag = pedir_worker(f"/pedidos-sheet?hoy={fecha}&boletas=1") or {}
+    # Lo que el equipo ya cerró en la hoja («sí … Shalom NNN (registrado a mano)», boleta emitida) NO entra al Excel aunque el estado
+    # del reporte lo siga trayendo como CONFIRMADO (2026-11-09: el masivo del 10 repitió a 5 que ya estaban registrados a mano).
+    cerrados = {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:] for x in (ag.get("enviados_recientes") or [])} | {re.sub(r"\D", "", str(x.get("whatsapp") or ""))[-9:] for x in (ag.get("boletas") or [])}
+    pedidos = [p for p in pedidos if re.sub(r"\D", "", str(p.get("whatsapp") or ""))[-9:] not in cerrados]
+    for grupo in ("atrasados", "hoy", "futuros", "sin_fecha"):
+        for r in ag.get(grupo) or []:
+            k = re.sub(r"\D", "", str(r.get("whatsapp") or ""))[-9:]
+            est = str(r.get("estado") or "").upper()
+            if str(r.get("destino", "")).upper() != "PROVINCIA" or k in vistos or not (est.startswith("CONFIRMADO") or "CORRECCION" in est):
+                continue
+            if "olva" in f"{r.get('direccion_o_agencia')} {r.get('nota')}".lower():
+                continue
+            vistos.add(k)
+            prev = str(r.get("fecha_entrega") or "")
+            atras = bool(prev) and prev < fecha
+            pedidos.append({**r, "_fecha": prev or fecha, "_atrasado": atras,
+                            "nota": (f"ATRASADO (despacho previsto {prev}, sin boleta): " if atras else "") + str(r.get("nota") or "")})
     if not pedidos:
-        sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)}.")
+        sys.exit(f"No hay pedidos de provincia confirmados registrados para el despacho de {', '.join(fechas)} ni pendientes en la hoja.")
     os.makedirs(os.path.dirname(os.path.abspath(salida)), exist_ok=True)
     filas_excel = []
     # La referencia para la persona va en OTRO archivo: Shalom solo debe recibir su plantilla tal cual (sin hojas extra).
@@ -293,9 +355,13 @@ def cmd_masivo(args):
             aviso.append("agencia dudosa: elegir entre las candidatas o preguntar al cliente")
             revisar.append(f"{p.get('nombre')} ({p.get('whatsapp')}): agencia dudosa para «{texto.strip()}» → " + (" | ".join(c["codigo"] for c in cand) if cand else "sin candidatas"))
         tel = re.sub(r"\D", "", str(p.get("telefono") or p.get("whatsapp") or ""))[-9:]
-        dni = re.sub(r"\D", "", str(p.get("dni") or ""))
+        dni = dni_de(p)
         clave = "PENDIENTE (la da el dueño)"
-        adelanto, saldo = montos(p)
+        if p.get("_atrasado"):
+            aviso.append(f"ATRASADO: previsto para {p.get('_fecha')} y sin boleta; confirmar que no salió por otro lado antes de mandarlo")
+        adelanto, saldo, aviso_monto = montos(p)
+        if aviso_monto:
+            aviso.append(aviso_monto); revisar.append(f"{p.get('nombre')}: {aviso_monto}")
         if dni and destino:
             lote.append({"whatsapp": p.get("whatsapp"), "nombre": p.get("nombre"), "dni": dni, "tel": tel, "destino": destino, "adelanto": adelanto, "saldo": saldo})
         if con_ventas and dni and destino:
@@ -310,14 +376,16 @@ def cmd_masivo(args):
             aviso.append("sin DNI en el registro: pedirlo o buscarlo en el chat"); revisar.append(f"{p.get('nombre')}: sin DNI en el registro")
         elif len(dni) != 8:
             aviso.append(f"DNI de {len(dni)} dígitos: verificar"); revisar.append(f"{p.get('nombre')}: DNI de {len(dni)} dígitos ({dni})")
-        kits = int(str(p.get("kits") or 1)) if str(p.get("kits") or "1").isdigit() else 1
+        kits = int(p.get("kits")) if str(p.get("kits")).isdigit() else 1
+        # Dueño 2026-11-11: 2 o más kits viajan en UN paquete XS (no N paquetes XXS). 1 kit (o «no es kit») = 1 paquete XXS.
+        mercaderia, kits_bultos = ("PAQUETE XS", 1) if kits >= 2 else ("PAQUETE XXS", 1)
         # Al Excel solo entran las filas completas (DNI y agencia); las dudosas quedan en la referencia y en las preguntas.
         if dni and destino:
-            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": "PAQUETE XXS", "cantidad": kits})
+            filas_excel.append({"dni": dni, "tel": tel, "origen": ORIGEN, "destino": destino, "mercaderia": mercaderia, "cantidad": kits_bultos})
         else:
             aviso.append("NO entra al Excel hasta resolverlo")
         ref.append([len(filas_excel) + 1 if dni and destino else "—", p.get("_fecha"), p.get("nombre"), p.get("whatsapp"), dni, texto.strip(), next((c["codigo"] for c in cand if c["agencia"] == destino), cand[0]["codigo"] if cand else ""), "sí" if destino else "NO",
-                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, str(p.get("nota") or "")[:160], "; ".join(aviso), clave, adelanto, saldo])
+                    " | ".join(c["codigo"] for c in cand if c["agencia"] != destino) if cand else "", kits, ((f"QUÉ LLEVA: {p.get('empaque')} · " if p.get("empaque") else "") + str(p.get("nota") or ""))[:220], "; ".join(aviso), clave, adelanto, saldo])
         fila += 1
     for col, w in zip("ABCDEFGHIJKLMNO", (9, 11, 30, 14, 10, 45, 50, 7, 60, 5, 50, 45, 14, 9, 9)):
         ref.column_dimensions[col].width = w
@@ -325,7 +393,7 @@ def cmd_masivo(args):
     salida_ref = re.sub(r"\.xlsx$", "", salida) + "-referencia.xlsx"
     wb_ref.save(salida_ref)
     json.dump({"fecha": fecha, "clave": clave_dia, "lote": lote}, open(os.path.join(os.path.dirname(os.path.abspath(salida)), "lote.json"), "w"), ensure_ascii=False, indent=1)
-    print(f"{salida} · {len(filas_excel)} fila(s) en el Excel de {fila - 2} pedido(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}, PAQUETE XXS)")
+    print(f"{salida} · {len(filas_excel)} fila(s) en el Excel de {fila - 2} pedido(s) de provincia para {', '.join(fechas)} (origen {ORIGEN}; 1 kit = PAQUETE XXS, 2 o más kits = 1 PAQUETE XS)")
     print(f"{salida_ref} · referencia para revisar (nombre, texto del cliente, agencia elegida, candidatas, CLAVE); NO se sube a Shalom")
     if con_ventas:
         print(f"Ventas en la hoja Ventas con la clave del día: {sum(1 for c in claves.values() if c == clave_dia)} de {len(lote)} (CLAVE MASIVA en Shalom Pro).")
@@ -355,22 +423,116 @@ def poner_clave(dni, tel, clave, adelanto, saldo, notas=""):
     return {"ok": True, "existia": existia, "codigo": v.get("codigo")}
 
 
+def clave_crm(tel, clave="", pisar=False):
+    """La clave en la FICHA del cliente del CRM (lo que el equipo ve como «Clave Shalom»). Sin clave solo consulta.
+    El Worker nunca devuelve la clave: solo si quedó puesta."""
+    cuerpo = {"accion": "clave_crm", "whatsapp": re.sub(r"\D", "", str(tel or ""))[-9:]}
+    if clave:
+        cuerpo["clave"] = clave
+    if pisar:
+        cuerpo["pisar"] = True
+    return pedir_worker("/ventas", cuerpo)
+
+
+def _lote_de_hoja(fecha):
+    """Los envíos de provincia de este despacho cuando NO hubo Excel masivo (el equipo los registró a mano en Shalom Pro): filas de
+    «Pedidos auto» cerradas en este ciclo con «Shalom NNN», más las de provincia CONFIRMADAS aún abiertas de esa fecha."""
+    r = pedir_worker(f"/pedidos-sheet?hoy={fecha}&enviadas=1") or {}
+    ayer = (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat()
+    lote, vistos = [], set()
+    def agregar(f):
+        tel = re.sub(r"\D", "", str(f.get("whatsapp") or ""))[-9:]
+        if not tel or tel in vistos or str(f.get("destino") or "").upper() != "PROVINCIA":
+            return
+        vistos.add(tel)
+        adelanto, saldo, _ = montos(f)
+        olva = "olva" in f"{f.get('direccion_o_agencia') or ''} {f.get('enviado') or ''}".lower()
+        lote.append({"nombre": f.get("nombre"), "dni": dni_de(f), "tel": tel, "adelanto": adelanto, "saldo": saldo, "destino": str(f.get("direccion_o_agencia") or "")[:60], "olva": olva})
+    for f in r.get("enviadas") or []:
+        env_ = str(f.get("enviado") or "")
+        act = str(f.get("actualizado") or "")[:16]
+        if re.search(r"Shalom\s+\d{6,}|Olva", env_, re.I) and (f"{ayer} 06:00" < act or fecha in env_ or str(f.get("fecha_entrega") or "") == fecha):
+            agregar(f)
+    for k in ("hoy", "atrasados"):
+        for f in r.get(k) or []:
+            if str(f.get("estado") or "").upper().startswith("CONFIRMADO") and (k == "hoy" or str(f.get("fecha_entrega") or "") >= ayer):
+                agregar(f)
+    return lote
+
+
 def cmd_clave(args):
-    clave = args[0]
-    if not re.fullmatch(r"\d{4}", clave):
-        sys.exit("La clave debe ser de 4 dígitos.")
+    """clave NNNN [lote.json] [AAAA-MM-DD] [--pisar] [--solo 51…,51…]: pone la clave de recojo del día en la FICHA del CRM de cada
+    cliente del despacho (y en su venta de la hoja Ventas). Sin lote.json (no hubo Excel masivo) toma los envíos del despacho de la
+    hoja «Pedidos auto». Imprime por cliente si quedó en el CRM; NUNCA imprime la clave. `clave ver [FECHA]` solo consulta."""
+    solo_ver = args[0] == "ver"
+    clave = "" if solo_ver else args[0]
+    if not solo_ver and not re.fullmatch(r"\d{4}", clave):
+        sys.exit("La clave debe ser de 4 dígitos (o usa `clave ver`).")
     ruta = next((a for a in args[1:] if a.endswith(".json")), "/tmp/shalom/lote.json")
-    if not os.path.exists(ruta):
-        sys.exit(f"No existe {ruta}: primero corre `masivo`.")
-    lote = json.load(open(ruta))
-    ok = 0
-    for f in lote.get("lote", []):
-        r = poner_clave(f["dni"], f["tel"], clave, f.get("adelanto", 20), f.get("saldo", 69), f"{f.get('nombre') or ''} · {f.get('destino') or ''}"[:80])
-        print(f"{'✅' if r.get('ok') else '❌'} {f.get('nombre')} · DNI {f['dni']} · {'ya existía, clave corregida' if r.get('existia') else 'venta creada'}{' · ' + r['error'] if r.get('error') else ''}")
-        ok += bool(r.get("ok"))
-    lote["clave"] = clave
-    json.dump(lote, open(ruta, "w"), ensure_ascii=False, indent=1)
-    print(f"Clave del día puesta en {ok} de {len(lote.get('lote', []))} ventas. En Shalom Pro: CLAVE MASIVA.")
+    fecha = next((a for a in args[1:] if len(a) == 10 and a[4] == "-"), None)
+    if not fecha:
+        t = dt.datetime.now(LIMA); fecha = (t.date() if t.hour < 6 else t.date() + dt.timedelta(days=1)).isoformat()
+    lote_json = json.load(open(ruta)) if os.path.exists(ruta) else None
+    lote = list((lote_json or {}).get("lote") or [])
+    en_lote = {re.sub(r"\D", "", str(f.get("tel") or ""))[-9:] for f in lote}
+    de_hoja = [f for f in _lote_de_hoja(fecha) if f["tel"] not in en_lote]
+    lote += de_hoja
+    if "--solo" in args:
+        quienes = {re.sub(r"\D", "", x)[-9:] for x in args[args.index("--solo") + 1].split(",")}
+        lote = [f for f in lote if re.sub(r"\D", "", str(f.get("tel") or ""))[-9:] in quienes]
+    if not lote:
+        sys.exit(f"No encontré envíos de provincia para el despacho del {fecha} (ni lote.json ni filas de «Pedidos auto»). Pasa la fecha: `clave NNNN AAAA-MM-DD`, o los WhatsApp: `--solo 51…,51…`.")
+    print(f"Despacho {fecha} · {len(lote)} envío(s) de provincia ({len(lote) - len(de_hoja)} del Excel masivo, {len(de_hoja)} de la hoja «Pedidos auto»)")
+    ok_crm = 0
+    for f in lote:
+        nombre = f.get("nombre") or f.get("tel")
+        if f.get("olva") and not solo_ver and "--olva" not in args:
+            print(f"🟠 {nombre} · {f.get('tel')} · va por OLVA: su clave es la de Olva (`shalom.py clave \"$OLVA_CLAVE\" --solo {f.get('tel')} --olva`); no se le pone la de Shalom")
+            continue
+        c = clave_crm(f.get("tel"), clave, "--pisar" in args)
+        if c.get("sin_chat"):
+            estado_crm = "❌ CRM: no hay chat con ese número"
+        elif c.get("tenia_otra"):
+            estado_crm = "⚠️ CRM: ya tenía OTRA clave (pedido anterior); no se cambió. Si corresponde: repite con --pisar --solo " + str(f.get("tel"))
+        elif c.get("tiene_clave"):
+            estado_crm = "✅ CRM: clave puesta" + (" (ya estaba)" if c.get("ya_estaba") else "") if not solo_ver else "✅ CRM: tiene clave"
+            ok_crm += 1
+        elif c.get("error"):
+            estado_crm = f"❌ CRM: {c['error']}"
+        else:
+            estado_crm = "❌ CRM: SIN clave"
+        estado_ventas = ""
+        if not solo_ver and f.get("dni") and not f.get("olva"):
+            r = poner_clave(f["dni"], f["tel"], clave, f.get("adelanto", 20), f.get("saldo", 69), f"{f.get('nombre') or ''} · {f.get('destino') or ''}"[:80])
+            estado_ventas = " · " + ("✅ hoja Ventas" if r.get("ok") else f"❌ hoja Ventas: {r.get('error')}")
+        elif not solo_ver and not f.get("dni"):
+            estado_ventas = " · ⚠️ hoja Ventas: sin DNI en el registro, no se creó la venta"
+        print(f"{nombre} · {f.get('tel')} · {estado_crm}{estado_ventas}")
+    if lote_json is not None and not solo_ver:
+        lote_json["clave"] = clave
+        json.dump(lote_json, open(ruta, "w"), ensure_ascii=False, indent=1)
+    print(f"\nCLAVE EN EL CRM: {ok_crm} de {len(lote)}." + ("" if ok_crm == len(lote) else " ⛔ NO digas que está listo: resuelve los que faltan o dilo tal cual."))
+
+
+def cmd_agregar(args):
+    """shalom.py agregar <whatsapp> --nombre "…" --dni 12345678 --agencia "texto del cliente" [--pago "Adelanto S/20 Yape 08-11; saldo S/69"]
+    [--nota "…"] [--vendedora X] [--fecha AAAA-MM-DD] [--kits 1] [--empaque "…"]
+    Un pedido de provincia que el reporte no trajo (viene del CRM / del chat) se agrega a la hoja «Pedidos auto» como CONFIRMADO para
+    que entre al masivo. Lo usa la Routine solo con los datos leídos en el chat (nombre, DNI, agencia, adelanto); nunca inventa."""
+    wa = re.sub(r"\D", "", args[0]) if args else ""
+    if len(wa) < 9:
+        sys.exit("Falta el WhatsApp (51…).")
+    def opt(n, d=""):
+        return args[args.index(n) + 1] if n in args and args.index(n) + 1 < len(args) else d
+    nombre, dni, agencia = opt("--nombre"), re.sub(r"\D", "", opt("--dni")), opt("--agencia")
+    if not (nombre and agencia):
+        sys.exit("Faltan --nombre y --agencia (lo que escribió el cliente).")
+    t = dt.datetime.now(LIMA); fecha = opt("--fecha") or (t.date() if t.hour < 3 else t.date() + dt.timedelta(days=1)).isoformat()
+    ped = {"estado": "CONFIRMADO", "destino": "PROVINCIA", "nombre": nombre, "whatsapp": wa if wa.startswith("51") else "51" + wa[-9:], "telefono": wa[-9:], "dni": dni,
+           "direccion_o_agencia": agencia, "courier": "Shalom", "kits": int(opt("--kits", "1") or 1), "empaque": opt("--empaque"), "pago": opt("--pago"),
+           "fecha_entrega": fecha, "vendedora": opt("--vendedora"), "nota": ("🚨 AGREGADO DESDE EL CHAT (no estaba en el reporte): " + opt("--nota")).strip(), "fecha_venta": (t - dt.timedelta(hours=3)).date().isoformat()}
+    r = pedir_worker("/pedidos-sheet", {"fecha_objetivo": fecha, "origen": f"shalom.py agregar {t.strftime('%H:%M')}", "pedidos": [ped]})
+    print(f"Hoja «Pedidos auto»: {json.dumps(r, ensure_ascii=False)[:160]} · {nombre} queda como provincia CONFIRMADO para el despacho {fecha}; vuelve a correr `presentar` y entra al masivo.")
 
 
 def cmd_telegram(texto):
@@ -383,7 +545,9 @@ def cmd_telegram(texto):
 def main():
     a = sys.argv[1:]
     cmd, resto = (a[0], a[1:]) if a else ("", [])
-    if cmd == "telegram" and resto:
+    if cmd == "agregar" and resto:
+        cmd_agregar(resto)
+    elif cmd == "telegram" and resto:
         cmd_telegram(" ".join(resto))
     elif cmd == "clave" and resto:
         cmd_clave(resto)

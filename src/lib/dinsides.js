@@ -92,6 +92,31 @@ const AMBIGUOS = {
 export const TIPOS_PAGO = ["NO COBRAR", "EFECTIVO", "PLIN", "YAPE", "POS"];
 export const PRECIO_KITS = { 1: 89, 2: 149, 3: 199 };
 export const PRODUCTO = "Kit Tarot de aprendizaje";
+
+/**
+ * Producto como lo escribe el equipo en Dinsides + qué extra lleva. `empaque` es el texto del reporte (solo lo que NO es
+ * 1 kit normal). Un empaque que solo repite «2 kits» o «kit normal» no es extra. Con kits 0 (no es kit): el mazo solo es
+ * «Tarot de aprendizaje», el Gold es «Tarot Gold Rider Waite»; otra cosa va con el texto del reporte.
+ */
+export function nombreProducto(kits, empaque, tipo) {
+  const e = String(empaque || "").trim();
+  const eL = normalizar(e);
+  const soloKits = !e || /^(\d+\s*kits?( de aprendizaje| tarot)?(\s*\([^)]*\))?|kit normal.*)$/.test(eL) && !/\+|collar|mazo|oraculo|cuenco|vela|gold|modelo|(?<!sin )extra|regalo (extra|prometido)/.test(eL);
+  if (kits === 0) {
+    // El NOMBRE de lo que va en la caja (dueño 2026-11-11: salió «Reposición / cambio» en un pedido de cuenco + mazo): sin «NO es
+    // kit:», sin precios entre paréntesis. Varios artículos («cuenco + mazo») van tal cual.
+    const limpio = e.replace(/^\s*no es (un )?kit\s*[:;,.-]?\s*/i, "").replace(/\s*\(\s*S\/\s*\d+[^)]*\)/gi, "").replace(/\s+/g, " ").trim();
+    const nombre = limpio ? limpio.charAt(0).toUpperCase() + limpio.slice(1) : "";
+    if (tipo === "CAMBIO" || tipo === "REPOSICION") return { producto: nombre ? `${tipo === "CAMBIO" ? "Cambio" : "Reposición"}: ${nombre}` : "Reposición / cambio", extra: e, limpio };
+    if (/\+| y /.test(limpio)) return { producto: nombre, extra: e, limpio };
+    if (/gold/.test(eL)) return { producto: "Tarot Gold Rider Waite", extra: e, limpio };
+    if (/mazo|rider|tarot de aprendizaje|solo (el )?tarot/.test(eL)) return { producto: "Tarot de aprendizaje", extra: e, limpio };
+    return { producto: nombre || "Pedido especial (ver empaque)", extra: e, limpio };
+  }
+  const base = kits > 1 ? `${kits} Kits Tarot de aprendizaje` : PRODUCTO;
+  if (soloKits) return { producto: base, extra: "" };
+  return { producto: `${base} + Extra: ${e}`, extra: e };
+}
 export const MEDIDAS_ESTANDAR = "30cmx15cmx20cm 1.5kg"; // tpaquete = 1 en el formulario
 const LIMA_MS = 5 * 3600 * 1000;
 
@@ -215,6 +240,55 @@ export function fechaEntrega({ ahora = Date.now(), fecha_pedida = "", fecha_obje
   return { fecha: base, aviso: null };
 }
 
+const RE_NOTA_PAGO = /ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S\/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia/i;
+const RE_NOTA_PIN = /\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl/i;
+const RE_NOTA_INTERNA = /confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b/i;
+
+/**
+ * La nota que lee el MOTORIZADO en la etiqueta (campo «Detalle» de Dinsides). Parte la nota del reporte en frases y deja solo lo que
+ * sirve para entregar. Devuelve también lo que sacó: `pago` (ya va en Cobrar / tipo de pago), `pin` (va en coordenadas) e `interno`
+ * (apuntes para la asesora). Una frase que solo repite el teléfono de la etiqueta («cel 987…», «dio su teléfono 935…») tampoco va.
+ */
+export function notaParaMotorizado(texto, telefono = "") {
+  const fuera = { pago: [], pin: [], interno: [] };
+  const quedan = [];
+  // Se parte por «.» y «;» (no por la coma: «Dpto 102, dejar en recepción» es una sola indicación) y por paréntesis de aclaración.
+  const frases = String(texto || "").replace(/\(([^)]*)\)/g, (m, d) => (RE_NOTA_PAGO.test(d) || RE_NOTA_PIN.test(d) || RE_NOTA_INTERNA.test(d) ? " " : m))
+    .split(/(?<=[.;:])\s+|\s+·\s+/).map((x) => x.replace(/^[\s,;:.·-]+|[\s,;·-]+$/g, "").trim()).filter(Boolean);
+  // «DISCRECIÓN: que no toque el timbre»: el «:» parte la frase (para poder soltar «…: NO cobrar»), pero si las dos mitades quedan se
+  // vuelven a unir con «: ».
+  for (const f0 of frases) {
+    const f = f0.replace(/:$/, "");
+    const sinTel = f.replace(/(?:\+?51[\s-]?)?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}/g, (m) => (telefono && m.replace(/\D/g, "").slice(-9) === String(telefono) ? "" : m));
+    if (RE_NOTA_PAGO.test(f)) fuera.pago.push(f);
+    else if (RE_NOTA_PIN.test(f)) fuera.pin.push(f);
+    else if (RE_NOTA_INTERNA.test(f)) fuera.interno.push(f);
+    else if (sinTel !== f && /^(dio su |su )?(tel[eé]fono|tel|cel|celular|n[uú]mero)?( de contacto)?\W*$/i.test(sinTel.trim())) continue;
+    else quedan.push(f.replace(/\.$/, "") + (f0.endsWith(":") ? ":" : ""));
+  }
+  return { nota: quedan.join(". ").replace(/:\. /g, ": ").replace(/:$/, "").replace(/\s+/g, " ").trim(), fuera };
+}
+
+const RE_INDICACION = /dpto|departamento|dejar|recepci[oó]n|porter[ií]a|portero|vigilan|conserje|timbre|tocar|llamar|avisar|entregar a|preguntar por|no subir|bajar[aá]?|\bpiso\b|interior|oficina|tienda|stand|puesto/i;
+/** Indicaciones de entrega escritas dentro de la dirección, entre paréntesis o tras «;»: «(Dpto 102; o dejar en recepción y avisar)». */
+export function indicacionesDeDireccion(direccion) {
+  const out = [];
+  for (const m of String(direccion || "").matchAll(/\(([^)]{4,160})\)/g)) {
+    for (const t of m[1].split(/;\s*/)) { const x = t.replace(/^\s*o\s+/i, "").trim(); if (RE_INDICACION.test(x) && !RE_NOTA_PIN.test(x)) out.push(x.charAt(0).toUpperCase() + x.slice(1)); }
+  }
+  return out;
+}
+
+/** «Escribir al cliente por WhatsApp: 9XXXXXXXX (o 9YYYYYYYY)»: el WhatsApp del chat y, si es otro, el teléfono de quien recibe. */
+export function lineaWhatsapp(whatsapp, telefono = "", username = "") {
+  const wa = String(whatsapp || "").replace(/\D/g, "").slice(-9);
+  const nums = [...new Set([/^9\d{8}$/.test(wa) && !/^[A-Z]{2}\./i.test(String(whatsapp || "")) ? wa : "", /^9\d{8}$/.test(String(telefono)) ? String(telefono) : ""].filter(Boolean))];
+  // Cliente con nombre de usuario de WhatsApp (dueño 2026-11-11): también su @usuario, que es como se le encuentra en WhatsApp.
+  const arroba = String(username || "").replace(/^@/, "").trim();
+  if (arroba) nums.push(`@${arroba}`);
+  return nums.length ? `Escribir al cliente por WhatsApp: ${nums.join(" o ")}` : "";
+}
+
 const LINK_RE = /https?:\/\/\S+|maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+/gi;
 const SIN_EMOJI = (s) => String(s || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 
@@ -222,6 +296,7 @@ export function limpiarDireccion(texto) {
   let d = SIN_EMOJI(String(texto || "").replace(LINK_RE, " "));
   d = d.replace(/-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/g, " "); // coordenadas sueltas
   d = d.replace(/\(\s*(pin|ubicaci[oó]n)?\s*[:;,-]?\s*\)/gi, " "); // «(pin )» que queda al quitar el link o las coordenadas
+  d = d.replace(/\(\s*(pin|ubicaci[oó]n)\s*[:;,-]\s*/gi, "("); // «(pin ; edificio blanco…)» → «(edificio blanco…)»
   d = d.replace(/\b(mz|mza|manzana)\.?\s*/gi, "Mz ").replace(/\b(lt|lte|lote)\.?\s*/gi, "Lt ").replace(/\bav\.?\s+/gi, "Av ")
     .replace(/\bjr\.?\s+/gi, "Jr ").replace(/\bjir[oó]n\s+/gi, "Jr ").replace(/\bpsje\.?\s+/gi, "Pasaje ").replace(/\burb\.?\s+/gi, "Urb ")
     .replace(/\bdpto\.?\s*/gi, "Dpto ").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
@@ -319,36 +394,68 @@ export function armarPedido(pedido, ctx = {}) {
   let empaque = SIN_EMOJI(p.empaque);
   // «VERIFICAR, en el chat se le prometió: «…»» lo agrega enviar.py cuando ve una promesa sin confirmar: no es un extra decidido.
   // Se avisa (corto) y no se mete en el producto; si de verdad hay extra, la Routine lo pone en `empaque` con sus palabras.
-  if (/^VERIFICAR|en el chat se le prometi/i.test(empaque)) { alertas.push(`EMPAQUE por verificar (enviar.py): ${empaque.slice(0, 160)}…`); empaque = ""; }
-  let producto = kits > 1 ? `${PRODUCTO} x${kits}` : PRODUCTO;
-  if (kits === 0) producto = empaque || "Reposición / cambio";
-  if (empaque) { if (kits !== 0) producto += ` + Extra: ${empaque}`; alertas.push(`EMPAQUE: ${empaque}`); }
+  // Solo se quita ESE tramo: lo demás del empaque («NO es kit: cuenco + mazo · VERIFICAR, …») sigue siendo el producto (2026-11-11).
+  if (/VERIFICAR|en el chat se le prometi/i.test(empaque)) {
+    const tramos = empaque.split(/\s+·\s+/);
+    const dudas = tramos.filter((t) => /^\W*VERIFICAR|en el chat se le prometi/i.test(t));
+    if (dudas.length) alertas.push(`EMPAQUE por verificar (enviar.py): ${dudas.join(" · ").slice(0, 160)}…`);
+    empaque = tramos.filter((t) => !dudas.includes(t)).join(" · ").trim();
+  }
+  // Nombres que el equipo usa en el campo «producto» de Dinsides (historial 2026-08 → 2026-11): «Kit Tarot de aprendizaje»,
+  // «2 Kits Tarot de aprendizaje», «Tarot de aprendizaje» (solo el mazo), «Tarot Gold Rider Waite»; lo extra va con «+ Extra: …».
+  const { producto, extra, limpio: extraLimpio } = nombreProducto(kits, empaque, p.tipo);
+  if (extra) alertas.push(`EMPAQUE: ${extra}`);
   if (kits > 1) alertas.push(`${kits} kits`);
 
-  // Cobro y método de pago.
+  // Cobro y método de pago. El reporte trae los montos en TEXTO (`pago`: «Adelanto S/20; saldo S/69», «Pagado S/129 por Yape»,
+  // «Yape contraentrega S/69», «Efectivo exacto S/89»): se leen de ahí; `cobrar` explícito (la Routine o una persona) manda sobre todo.
   const nota = SIN_EMOJI(p.nota);
-  const notaL = normalizar(`${p.pago || ""} ${nota}`);
+  const pagoTxt = SIN_EMOJI(p.pago);
+  const notaL = normalizar(`${pagoTxt} ${nota}`);
+  const num = (re, t = notaL) => { const m = t.match(re); return m ? Number(m[1]) : null; };
+  const saldoTxt = num(/saldo\D{0,14}(\d{2,3})/);
+  const adelantoTxt = num(/adelanto\D{0,14}(\d{2,3})/) ?? num(/s\/\s*(\d{2,3})\s*(?:de\s+)?adelanto/);
   let tipoPago = TIPOS_PAGO.includes(String(p.tipo_pago || "").toUpperCase()) ? String(p.tipo_pago).toUpperCase() : null;
   if (!tipoPago) {
-    // «Ya pagó … NO cobrar» → NO COBRAR. Pero «pagará por Yape; si no, cobrar al recibir» NO es pagado: se cobra.
-    const dicePagado = /ya pago\b|ya pagado|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)/.test(notaL);
-    const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL);
-    if (dicePagado && !diceQuePagara) tipoPago = "NO COBRAR";
+    // «Ya pagó … NO cobrar», «Pagado S/89», «pago completo» → NO COBRAR. Pero «pagará por Yape; si no, cobrar al recibir» NO es pagado,
+    // y «adelanto S/20 … saldo S/69» tampoco: se cobra el saldo.
+    const dicePagado = /ya pago\b|\bpagad[oa]\b|pago completo|pago todo|pago el total|pago los \d+|no se cobra|no cobrar(?! al)|sin saldo/.test(notaL);
+    const diceQuePagara = /pagara\b|pagaria|va a pagar|al recibir|contraentrega|cuando reciba|si no,? cobrar/.test(notaL) && !/sin saldo/.test(notaL);
+    const quedaSaldo = (saldoTxt !== null && saldoTxt > 0) || (adelantoTxt !== null && !/sin saldo/.test(notaL) && !/pago (completo|todo|el total)/.test(notaL));
+    // Si el texto da VARIAS opciones («Yape, efectivo exacto o tarjeta al recibir»), el cliente no eligió: va YAPE, el defecto del
+    // dueño (2026-11-10, caso Tania: salía POS). POS / EFECTIVO / PLIN solo cuando es lo único que dice.
+    const variasOpciones = /\byape\b/.test(notaL) && /tarjeta|\bpos\b|efectivo|cash|\bplin\b/.test(notaL);
+    if (dicePagado && !diceQuePagara && !quedaSaldo) tipoPago = "NO COBRAR";
+    else if (variasOpciones) { tipoPago = "YAPE"; alertas.push("PAGO: el texto da varias formas de pago; va YAPE (defecto) salvo que el cliente diga otra"); }
     else if (/tarjeta|\bpos\b/.test(notaL)) tipoPago = "POS";
     else if (/efectivo|cash|billete/.test(notaL)) tipoPago = "EFECTIVO";
     else if (/\bplin\b/.test(notaL) && !/\byape\b/.test(notaL)) tipoPago = "PLIN";
     else tipoPago = "YAPE";
   }
+  const lista = kits === 0 ? 0 : PRECIO_KITS[kits] || kits * PRECIO_KITS[1];
   let cobrar = p.cobrar !== undefined && p.cobrar !== null && p.cobrar !== "" ? Number(String(p.cobrar).replace(/[^\d.]/g, "")) : null;
   if (cobrar === null) {
-    if (p.tipo === "CAMBIO" || p.tipo === "REPOSICION" || kits === 0) cobrar = 0;
-    else cobrar = PRECIO_KITS[kits] || kits * PRECIO_KITS[1];
+    if (tipoPago === "NO COBRAR" || p.tipo === "CAMBIO" || p.tipo === "REPOSICION") cobrar = 0;
+    else if (saldoTxt !== null) { cobrar = saldoTxt; if (adelantoTxt !== null) alertas.push(`MONTO: adelanto S/${adelantoTxt}, al entregar se cobra el saldo S/${saldoTxt}`); }
+    else {
+      // Monto que dice el texto al lado de la forma de pago, sin contar el del adelanto.
+      const sinAdelanto = notaL.replace(/adelanto\D{0,14}\d{2,3}|s\/\s*\d{2,3}\s*(?:de\s+)?adelanto/g, " ");
+      const montoTxt = num(/(?:contraentrega|al recibir|cobrar|efectivo|yape|plin|tarjeta|pos|exacto|paga)\D{0,25}?s\/\s*(\d{2,3})/, sinAdelanto)
+        ?? num(/s\/\s*(\d{2,3})\D{0,25}?(?:contraentrega|al recibir|efectivo|exacto|al entregar)/, sinAdelanto);
+      if (adelantoTxt !== null && kits > 0) { cobrar = Math.max(0, lista - adelantoTxt); alertas.push(`MONTO: adelanto S/${adelantoTxt} sin saldo escrito; se cobra lista − adelanto = S/${cobrar}`); }
+      else if (montoTxt !== null) cobrar = montoTxt;
+      else if (kits === 0) { cobrar = num(/s\/\s*(\d{2,3})/, normalizar(empaque)) ?? num(/s\/\s*(\d{2,3})/); if (cobrar === null) { cobrar = 0; bloqueos.push("MONTO: no es un kit normal y el reporte no dice cuánto cobrar; ponlo en `cobrar` (0 si ya pagó)"); } }
+      else cobrar = lista;
+    }
   }
+  const cobrarExplicito = p.cobrar !== undefined && p.cobrar !== null && p.cobrar !== "";
+  if (tipoPago === "NO COBRAR" && cobrarExplicito && cobrar > 0 && !p.tipo_pago) { tipoPago = /efectivo/.test(notaL) ? "EFECTIVO" : "YAPE"; alertas.push(`MONTO: una persona puso cobrar S/${cobrar}; manda sobre el «pagado» del texto`); }
   if (tipoPago === "NO COBRAR") { if (cobrar) alertas.push(`NO COBRAR: la nota dice que ya pagó; S/${cobrar} pasa a 0`); cobrar = 0; }
-  if (cobrar === 0 && tipoPago !== "NO COBRAR") tipoPago = "NO COBRAR";
-  if (/descuento|rebaja|precio especial|promo/.test(notaL) && cobrar === (PRECIO_KITS[kits] || 0)) alertas.push("MONTO: la nota habla de descuento/promo y va el precio normal; confirmar cuánto se cobra");
+  if (cobrar === 0 && tipoPago !== "NO COBRAR" && !bloqueos.some((b) => /^MONTO/.test(b))) tipoPago = "NO COBRAR";
+  if (/descuento|rebaja|precio especial|promo|negociad/.test(notaL) && cobrar === lista) alertas.push("MONTO: la nota habla de descuento/promo y va el precio normal; confirmar cuánto se cobra");
   if (tipoPago !== "YAPE" && tipoPago !== "NO COBRAR") alertas.push(`PAGO: ${tipoPago}`);
-  if (cobrar && cobrar !== (PRECIO_KITS[kits] || 0)) alertas.push(`MONTO distinto al de lista: S/${cobrar}`);
+  if (cobrar && kits > 0 && cobrar !== lista && saldoTxt === null && adelantoTxt === null) alertas.push(`MONTO distinto al de lista (S/${lista}): S/${cobrar}`);
+  if (kits === 0 && cobrar) alertas.push(`MONTO: no es kit; se cobra S/${cobrar}`);
   const tipoPedido = tipoPago === "NO COBRAR" ? "SOLO-ENTREGA-NO-COBRAR" : "CONTRAENTREGA";
 
   const fe = fechaEntrega({ ahora: ctx.ahora, fecha_pedida: p.fecha_entrega, fecha_objetivo: ctx.fecha_objetivo });
@@ -356,8 +463,32 @@ export function armarPedido(pedido, ctx = {}) {
   if (/^(POR_VERIFICAR|POR_CONFIRMAR|INTENCION|DESCARTADO)$/.test(String(p.estado || ""))) bloqueos.push(`ESTADO ${p.estado}: el reporte no lo da por confirmado${p.nota ? ` («${nota.slice(0, 90)}»)` : ""}`);
   if (String(p.destino || "").toUpperCase() === "PROVINCIA") bloqueos.push("DESTINO PROVINCIA: no va por Dinsides");
   if (/^\s*🚨/.test(String(p.nota || "")) || /urgente|reclamo/.test(notaL)) alertas.push("NOTA con 🚨: leerla antes de registrar");
+  // Hora específica (dueño 2026-11-09): Dinsides reparte de 12 a 5 pm; si el cliente pidió otra hora, se pregunta si va por Dinsides o
+  // por el motorizado de confianza. «12-5 pm» / «12 a 5» es la ventana normal y no cuenta.
+  const notaHora = notaL.replace(/12\s*(a|-|–)\s*5\s*(pm)?/g, " ");
+  const hora = notaHora.match(/(a las|antes de las?|despues de las?|desde las?|hasta las?|a partir de las?|pasad[oa]s? las?)\s*\d{1,2}(:\d{2})?\s*(am|pm|de la (manana|tarde|noche)|h\b)?|\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\b(en la manana|temprano|en la noche|de noche|al mediodia|hora exacta|hora especifica|solo (en la )?(manana|tarde|noche))\b/);
+  if (hora) alertas.push(`HORA ESPECÍFICA pedida («${hora[0].trim()}»): Dinsides reparte de 12 a 5 pm; confirmar si va por Dinsides o por el motorizado de confianza`);
 
-  const obs = [nota, kits > 1 || empaque ? `Paquete: ${producto}` : ""].filter(Boolean).join(". ").slice(0, 480);
+  const paquete = extra || kits > 1 ? `Paquete: ${producto}${extra && !normalizar(producto).includes(normalizar(extraLimpio ?? extra)) ? ` (${extraLimpio ?? extra})` : ""}` : "";
+  // La observación que ve el motorizado lleva SOLO lo operativo. Lo que es para la asesora o el dueño (reprogramar, confirmar la fecha,
+  // preguntar, verificar…) sale de la nota y va como alerta «PARA LA ASESORA» (dueño 2026-11-09: «si el repartidor lee “también pidió
+  // reprogramar” se queda en qué»).
+  const RE_ASESORA = /reprogram|confirmar (la |su )?(fecha|hora|direcci|con)|pregunt|verificar|revisar|por confirmar|¿|pidi[oó] (otro|cambiar|reprogramar)|no respondi|sin respuesta|falta[n]? (confirmar|el |la |que)|duda/i;
+  // Lo interno del reporte no va al motorizado: «agendado desde el reporte del …», «(agenda)», «, no mañana» (dueño 2026-11-09).
+  const notaLimpia = nota.replace(/\s*[·,;.]?\s*agendado desde el reporte del \d{4}-\d{2}-\d{2}/gi, "").replace(/,?\s*no mañana/gi, "").replace(/\s*\(agenda\)/gi, "").trim();
+  const frases = notaLimpia.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+  const paraAsesora = frases.filter((x) => RE_ASESORA.test(x));
+  // Dueño 2026-11-11: el Detalle es la nota PARA EL MOTORIZADO (cómo contactar, a quién entregar, dónde dejarlo, horario). No lleva
+  // pagos («ya pagó 89», «cobrar 0»: eso ya va en Cobrar y en el tipo de pago), ni pines o coordenadas (la etiqueta va pegada a la
+  // caja), ni apuntes internos («confirmar, escribió dos versiones», «cliente sin número en el CRM»).
+  const { nota: operativo, fuera } = notaParaMotorizado(frases.filter((x) => !RE_ASESORA.test(x)).join(" "), telefono);
+  if (paraAsesora.length || fuera.interno.length) alertas.push(`NOTA PARA LA ASESORA (no se escribe en el formulario de Dinsides): ${[...paraAsesora, ...fuera.interno].join(" ").slice(0, 240)}`);
+  // OBLIGATORIO en toda etiqueta (dueño 2026-11-11): «Escribir al cliente por WhatsApp» con su número (y el de quien recibe si es
+  // otro): los motorizados no siempre escriben al WhatsApp y el cliente no contesta llamadas de números desconocidos.
+  // Lo importante para el motorizado que quedó escrito en la DIRECCIÓN (la etiqueta no imprime la dirección): «dejar en recepción»,
+  // «portería», «avisar al dpto 102», «tocar el timbre B»… también va al Detalle (dueño 2026-11-11).
+  const deDireccion = indicacionesDeDireccion(direccion).filter((x) => !normalizar(operativo).includes(normalizar(x)));
+  const obs = [lineaWhatsapp(p.whatsapp, telefono, p.username), [operativo, ...deDireccion].filter(Boolean).join(". "), paquete].filter(Boolean).join(". ").replace(/\.\./g, ".").slice(0, 480);
   const campos = {
     tipo_pedido: tipoPedido, nombre, telefono: telefono || "", fecha_entrega: fe.fecha,
     id_distrito: distrito?.codigo || "", distrito: distrito?.clave || "", direccion, coordenadas: coords?.lat_lng || "",

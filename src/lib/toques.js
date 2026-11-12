@@ -218,7 +218,7 @@ async function candidatos(db, id, def, limite, lineaId = null) {
      JOIN contacts c ON c.id = conv.contact_id
      LEFT JOIN (
        SELECT x.id AS conversation_id,
-              COALESCE((SELECT MIN(e.created_at) FROM capi_events e WHERE e.conversation_id = x.id AND e.event_name = 'Purchase' AND e.status = 'enviado'),
+              COALESCE((SELECT MIN(e.created_at) FROM capi_events e WHERE e.conversation_id = x.id AND e.event_name = 'Purchase' AND e.status IN ('enviado', 'omitido')),
                        CASE WHEN x.etapa >= 5 THEN x.etapa_at END) AS t
        FROM conversations x
        WHERE x.etapa >= 5 OR instr(' ' || COALESCE(x.meta_tags, '') || ' ', ' purchase ') > 0
@@ -284,6 +284,7 @@ export async function procesarToques(env) {
     const lista = await candidatos(db, id, def, cupo + 2, ctx.lineaId);
     if (!lista.length) continue;
     const destinos = def.por_destino ? await destinosDeChats(db, lista.map((c) => c.id)).catch(() => ({})) : {};
+    const noMarketing = new Set(((await db.prepare("SELECT id FROM conversations WHERE (' ' || COALESCE(meta_tags, '') || ' ') LIKE '% no_marketing %'").all().catch(() => ({ results: [] }))).results || []).map((r) => r.id));
     const aprobadas = {};
     const plantillaDe = async (variante) => {
       if (!(variante in aprobadas)) {
@@ -302,6 +303,8 @@ export async function procesarToques(env) {
         await db.prepare("INSERT OR IGNORE INTO toques (conversation_id, toque, estado) VALUES (?, ?, 'control')").bind(c.id, id).run();
         continue;
       }
+      // Se dio de baja del marketing: los toques (todos son marketing) ya no le salen (dueño 2026-11-11).
+      if (noMarketing.has(c.id)) continue;
       const variante = def.por_destino && def[destinos[c.id]] ? destinos[c.id] : "general";
       const aprobada = await plantillaDe(variante);
       if (!aprobada) continue; // en revisión: se reintenta en la próxima pasada
@@ -333,7 +336,7 @@ export async function estadisticasToques(db, dias = 30) {
             SUM(EXISTS (SELECT 1 FROM messages i WHERE i.conversation_id = t.conversation_id AND i.direction = 'in'
                         AND i.created_at > t.created_at AND i.created_at < datetime(t.created_at, '+1 day'))) AS respondieron,
             SUM(EXISTS (SELECT 1 FROM capi_events e WHERE e.conversation_id = t.conversation_id AND e.event_name = 'Purchase'
-                        AND e.status = 'enviado' AND e.created_at > t.created_at AND e.created_at < datetime(t.created_at, '+7 days'))
+                        AND e.status IN ('enviado', 'omitido') AND e.created_at > t.created_at AND e.created_at < datetime(t.created_at, '+7 days'))
                 OR EXISTS (SELECT 1 FROM conversations x WHERE x.id = t.conversation_id AND x.etapa >= 5
                         AND x.etapa_at > t.created_at AND x.etapa_at < datetime(t.created_at, '+7 days'))) AS compraron
      FROM toques t
