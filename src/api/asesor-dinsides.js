@@ -101,14 +101,14 @@ async function datosDelChat(env, whatsapp) {
  * registra en Dinsides con el teléfono de quien recibe, y la fila de la hoja va por el WhatsApp del cliente (dueño 2026-11-11, caso
  * Claudia de Blue Day Spa: estaba ENTREGADO a nombre de Flor, con el número del contacto que compartió).
  */
-async function telefonosDelChat(env, whatsapp) {
+async function telefonosDelChat(env, whatsapp, dias = 30) {
   const wa = n9(whatsapp);
   if (!wa) return [];
   try {
     const { results } = await env.CRM_DB.prepare(
       `SELECT m.body FROM messages m JOIN conversations conv ON conv.id = m.conversation_id JOIN contacts c ON c.id = conv.contact_id
        WHERE substr(c.wa_id, -9) = ? AND m.direction = 'in' AND m.type IN ('contacts', 'text') AND m.created_at >= ? ORDER BY m.id DESC LIMIT 200`
-    ).bind(wa, sqlFecha(new Date(Date.now() - 30 * 86400000))).all();
+    ).bind(wa, sqlFecha(new Date(Date.now() - dias * 86400000))).all();
     const tels = new Set();
     for (const m of results || []) {
       for (const x of String(m.body || "").matchAll(/(?:\+?51[\s-]?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})(?!\d)/g)) { const t = n9(x[1]); if (t && t !== wa) tels.add(t); }
@@ -237,15 +237,20 @@ async function armarTodo(env, fecha, correcciones = new Map()) {
     const fila = hoja.get(k);
     const col = leerColumnaDinsides(fila?.dinsides);
     const corr = correcciones.get(k) || {};
+    // Teléfono de quien recibe (dueño 2026-11-12): si el cliente mandó en el chat el número de otra persona (contacto compartido o
+    // escrito), ese es el principal en Dinsides y el WhatsApp del cliente va solo en la nota. Sin corrección ni teléfono del reporte,
+    // se toma el más reciente de los últimos 4 días.
+    const telChat = corr.telefono || p.telefono ? "" : ((await telefonosDelChat(env, k, 4))[0] || "");
     const base = {
       ...p, nombre: corr.nombre || p.nombre || chat?.nombre_crm || "", ubicacion: chat?.ubicacion || "", username: chat?.username || "",
       direccion_o_agencia: corr.direccion || col.direccion || (fila?.direccion_o_agencia && fila.direccion_o_agencia !== p.direccion_o_agencia && fila.actualizado > (p.actualizado || "") ? fila.direccion_o_agencia : p.direccion_o_agencia),
       distrito: corr.distrito || col.distrito || p.distrito || "", coordenadas: corr.coordenadas || col.coordenadas || p.coordenadas || "",
-      telefono: corr.telefono || p.telefono || "", cobrar: corr.cobrar ?? p.cobrar, tipo_pago: corr.tipo_pago || p.tipo_pago,
+      telefono: corr.telefono || p.telefono || telChat, cobrar: corr.cobrar ?? p.cobrar, tipo_pago: corr.tipo_pago || p.tipo_pago,
       nota: corr.nota ?? p.nota, fecha_entrega: corr.fecha_entrega || p.fecha_entrega || "", kits: corr.kits ?? p.kits, empaque: corr.empaque ?? p.empaque,
       estado: corr.estado || (col.ok ? "CONFIRMADO" : p.estado)
     };
     const f = armarPedido(base, { fecha_objetivo: fechaObjetivo });
+    if (telChat) f.alertas.push(`TELÉFONO: el cliente mandó en el chat el número de quien recibe (${telChat}); va como principal en Dinsides y su WhatsApp queda en la nota`);
     f.whatsapp = "51" + k;
     f.conversation_id = chat?.conversation_id || null;
     f.asesora = p.vendedora || chat?.asesora || "";

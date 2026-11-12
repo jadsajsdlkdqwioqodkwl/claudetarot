@@ -2741,3 +2741,10 @@ del asesor estaba con Fable».
   cambio. Nunca le escribe a un cliente (todo pasa por `enviar.py --solo-mensajes`). Prompt v1 en `docs/routines.md`.
 - Pruebas: `scripts/test-reflote-respuesta.mjs` y `scripts/test-sugerencias.mjs` (en `npm run check`): una por pasada, el que
   calló también sube, cada una una sola vez.
+
+## 2026-11-12 — Dinsides: el teléfono de quien recibe es el principal
+
+Regla del dueño: si el cliente manda en el chat el número de otra persona (la que recibe o recoge), ese número va como teléfono principal del pedido en Dinsides y el WhatsApp del cliente va solo en la nota («Escribir al cliente por WhatsApp: …»). Caso: Dinsides no llamó a la persona que el cliente puso como contacto.
+- Código: `src/api/asesor-dinsides.js` (`fichasDelDia`). Si ni la corrección de la Routine ni el reporte traen `telefono`, se toma el número más reciente (últimos 4 días) que el cliente escribió en el chat y no es su propio WhatsApp (`telefonosDelChat(env, wa, dias)`). La ficha trae la alerta «TELÉFONO: el cliente mandó en el chat el número de quien recibe…».
+- La Routine sigue pudiendo fijarlo a mano con `telefono` en `salida.json` o «Nombre: teléfono 9…»; eso manda sobre el del chat.
+- Sin cambios: `lineaWhatsapp()` ya ponía ambos números en la nota. Pruebas: `scripts/test-dinsides.mjs`, `scripts/test-dinsides-api.mjs`, `npm run check` en verde.
