@@ -2713,3 +2713,31 @@ Causa: `shalom.py clave` (y `poner_clave`) solo escribían la clave en la hoja *
   CRM y en la hoja Ventas; imprime por cliente el resultado (sin la clave) y «CLAVE EN EL CRM: N de M».
 - `docs/envios-jennifer.md` regla 13: correr siempre el comando al recibir la clave, pegar la lista, prohibido decir «listo» sin ella.
 - La clave sigue siendo secreta: no va a clientes, a Telegram ni a las respuestas de Claude.
+
+## 2026-11-12 — Recomendaciones del asesor: una cada 10 min, una sola vez; prompt del asesor en el repo
+
+Dueño: «nadie abre la estrellita (✨ Sugerencias); las recomendaciones deben reflotarse en el chat, una cada 10 minutos, una
+sola vez; la asesora manda el mensaje o marca que ya se envió y ya está. Es para los clientes que tuvieron interés». Y: «la rutina
+del asesor estaba con Fable».
+- **Por qué no se veían:** desde el 2026-11-06 («Reflote solo por falta de respuesta», más arriba) `reflotarSugerencia` solo subía
+  un chat si al cliente le faltaba respuesta. Casi todas las recomendaciones son de clientes que callaron tras nuestro mensaje
+  (47 de 48 el 6/11), así que casi ninguna subía y solo se veían en ✨ Sugerencias, que nadie abre.
+- **Ahora (`reflotarSugerencia`, `src/lib/crm-sugerencias.js`, cron de 10 min de `index.js`):** sube **UN** chat por pasada
+  (`POR_PASADA = 1`) y cada recomendación **una sola vez** (`reflotada_at IS NULL`; se quitó el «vuelve a subir tras 3 h»,
+  `VUELVE_A_SUBIR_H`). Ya no exige «Falta respuesta»: solo ordena. Orden: primero falta de respuesta (`FALTA_RESPUESTA`), luego
+  ventana de 24 h abierta, luego la más antigua. Siguen igual: solo `seguimiento` (y `sin_pregunta` con el ajuste
+  `sin_pregunta_auto`, ventana abierta), solo las de los últimos 3 días, no de madrugada (`HORARIO_ENVIO`), no chats bloqueados,
+  y con plantilla ya mandada espera a que el cliente conteste. La regla del 2026-11-06 queda reemplazada en ese punto (el resto
+  de esa entrada —«Falta respuesta / Ya respondí», banner con ventana cerrada— sigue vigente).
+- **La cajita en el chat ya existía** (`actualizarRecomendacionChat`, `public/crm/app.js`, banner «Recomendación del asesor»):
+  texto editable, «Enviar» (o «Mandar la plantilla» con la ventana cerrada), «Ya respondí» (cierra la recomendación) y
+  «Descartar». No se tocó.
+- **Routine del asesor** (`trig_01PN2ZZaL1MzG9AMB8Nj6PoS`, «Asesor — mensajes (10:00 · 15:00 · 19:00)»): la corrida del
+  2026-11-11 19:09 (Lima) corrió con Fable porque la Routine no tenía modelo fijo y tomó el predeterminado de la cuenta; quedó con
+  modelo fijo `claude-sonnet-5-5`. Su prompt ahora es solo un **arranque** que clona/actualiza el repo y lee
+  **`docs/prompts/asesor-mensajes.md`** (fuente de verdad, igual que el reporte con `docs/prompts/reporte.md`): cambiar el asesor =
+  editar ese archivo. v2 del prompt: explica que lo que propone se reflota en el chat (un mensaje por chat, listo para mandar,
+  `motivo` corto) y que todo chat con interés lleva su seguimiento, no solo los «⭐ POSIBLE VENTA». Horario y conectores sin
+  cambio. Nunca le escribe a un cliente (todo pasa por `enviar.py --solo-mensajes`). Prompt v1 en `docs/routines.md`.
+- Pruebas: `scripts/test-reflote-respuesta.mjs` y `scripts/test-sugerencias.mjs` (en `npm run check`): una por pasada, el que
+  calló también sube, cada una una sola vez.

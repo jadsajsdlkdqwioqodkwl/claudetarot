@@ -1457,3 +1457,19 @@ Doc se regeneró con el mismo texto. Las Routines del dueño (v3) no cambian.
   `session_017wTF8ckoBNtwk4nSxvvFzk`. Prompt = «Arranque» de `docs/envios-jennifer.md`. Borradas las dos manuales v3 (Dinsides,
   Shalom). La Routine `trig_01LrQ7TMN5dnhf9PMgszyU69` del dueño (link del Doc) la borra él desde la app.
 - Para cambiar cualquiera de estas Routines: editar el archivo del repo, nunca el prompt de la Routine.
+
+
+## 2026-11-12 — Asesor — mensajes: prompt en el repo (`docs/prompts/asesor-mensajes.md`) y modelo fijo Sonnet
+`trig_01PN2ZZaL1MzG9AMB8Nj6PoS` («Asesor — mensajes (10:00 · 15:00 · 19:00)», `CRON_TZ=America/Lima 0 10,15,19 * * *`, mismos
+conectores). Pedido del dueño: «que el prompt de esa rutina esté en el repositorio y que el prompt de la rutina sea una dirección
+a ese repositorio». La corrida del 11/11 19:09 (Lima) salió con Fable (la Routine no tenía modelo fijo): ahora `model:
+claude-sonnet-5-5`. El prompt completo (v2) vive en `docs/prompts/asesor-mensajes.md`; el v1 es el de la entrada del 2026-11-07
+de arriba. Cambios de la v2: explica que cada recomendación se reflota en el chat (una cada 10 min, una sola vez, cajita con
+Enviar / Ya respondí / Descartar), un mensaje por chat listo para mandar, todos los chats con interés (no solo los ⭐) y una
+respuesta final de 6 líneas. Prompt vigente de la Routine (el arranque):
+
+```
+Trabajas en el repo jadsajsdlkdqwioqodkwl/claudetarot. Primero corre:
+(cd /home/user/claudetarot 2>/dev/null && git fetch -q origin main && git checkout -q main 2>/dev/null; git merge -q --ff-only origin/main || (git stash -q 2>/dev/null; git merge -q --ff-only origin/main)) || GIT_TERMINAL_PROMPT=0 git clone -q --depth 20 https://github.com/jadsajsdlkdqwioqodkwl/claudetarot /home/user/claudetarot
+Luego lee /home/user/claudetarot/docs/prompts/asesor-mensajes.md y haz lo que dice, al pie de la letra. No uses gh ni add_repo. No leas docs/MAPA.md. La clave del asesor está en la variable de entorno ASESOR_CLAVE (no la imprimas); si falta responde «Falta ASESOR_CLAVE en el entorno de la Routine» y termina; si el Worker responde 401 responde «La ASESOR_CLAVE del entorno no es la correcta» y termina. No hagas commits ni cambies código. No uses la API de Claude. Nunca le escribes a un cliente.
+```
