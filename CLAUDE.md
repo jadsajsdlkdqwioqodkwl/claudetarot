@@ -10,6 +10,10 @@
 > Nunca se borra ni se acorta lo ya escrito; si algo se quitó del sistema, se anota
 > que se quitó (y cuándo), conservando su historia.
 
+> **Prohibido tocar Meta (regla del dueño, 2026-11-12).** Ninguna sesión ni Routine cambia nada en Meta Ads
+> (campañas, conjuntos, anuncios, presupuestos, públicos, píxel, borradores): solo se LEEN métricas. Las plantillas de
+> WhatsApp siguen su camino de siempre (las manda a revisión el dueño con «Mandar a Meta»). Detalle en `docs/MAPA.md`.
+
 > **Prohibido Apps Script (regla del dueño, 2026-11-03).** Las hojas de Google se cambian SOLO con el conector de Google Sheets (MCP) o desde el Worker por la API; el dueño no toca nada a mano. Detalle en `docs/MAPA.md`.
 
 ## Reglas de interfaz del CRM (del dueño, no se negocian)

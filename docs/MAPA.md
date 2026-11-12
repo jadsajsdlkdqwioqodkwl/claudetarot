@@ -2756,3 +2756,31 @@ del asesor estaba con Fable».
   cambio. Nunca le escribe a un cliente (todo pasa por `enviar.py --solo-mensajes`). Prompt v1 en `docs/routines.md`.
 - Pruebas: `scripts/test-reflote-respuesta.mjs` y `scripts/test-sugerencias.mjs` (en `npm run check`): una por pasada, el que
   calló también sube, cada una una sola vez.
+
+## 2026-11-12 · REGLA DEL DUEÑO: prohibido tocar Meta (Ads)
+- **Ninguna sesión ni Routine cambia nada en Meta Ads**: campañas, conjuntos, anuncios, presupuestos, públicos, píxel, borradores
+  de Ads Manager. Con el conector de Meta Ads solo se LEEN métricas (gasto, chats, CTR, costo por resultado) para los informes.
+  Pedido textual del dueño (12/11): «No, tú no toques meta, por favor. Pon en mapa, pon que está prohibido que toques meta».
+  Las plantillas de WhatsApp no cambian: las manda a revisión el dueño con «Mandar a Meta» desde el CRM. Anotado también en
+  `CLAUDE.md` (las Routines solo leen ese archivo).
+
+## 2026-11-12 · Revisión: seguimiento de 7 días vs el viejo del collar, cobros de Shalom, imagen de bonos, Dinsides
+- **Seguimiento de 7 días vs el viejo** («recordatorio» a las 4 h + «collar extra» a las 15 h): chats nuevos de anuncio que compran
+  después de las primeras 24 h y hasta el día 7 = 2,0 % con el viejo (20/10–3/11, 1.430 chats) y 1,9 % con el plan «Interesado»
+  (4–5/11, 212 chats). Compra en 7 días: 7,3 % y 8,0 %. No vende más y manda más plantillas. La mejor plantilla del plan es
+  `seg7_primera_lectura` (1,8 % de compra en 7 días); `seg_d2_miedo_principiante` 1,1 %; `seg_d4_envios_hoy` 0,9 %;
+  `seg_d5_ultimo_bono` 0,8 %.
+- **Plan «Interesado» (id 2) a 3 días (aprobado por el dueño 12/11): NO aplicado.** El clasificador de auto mode bloqueó el
+  `UPDATE planes_seguimiento` por wrangler. Cambio propuesto: días 1 y 2 igual (`seg7_primera_lectura` 16:30,
+  `seg_d2_miedo_principiante` 12:30), apagar (`activo: false`, no borrar) `seg_d4_envios_hoy`, `rescate_lead_2` y
+  `seg_d5_ultimo_bono`, y agregar `seg7_collar_extra` el día 3 a las 19:00. Se hace en CRM → Herramientas → Planes de seguimiento.
+- **Cobros de Shalom:** pagó el 84 % de lo despachado hace 8 a 14 días (32 de 38) y el 100 % de más de 14 (4 de 4). Los
+  recordatorios de recojo casi no salen (75 a 50 chats desde el 25/10: la mayoría se cancela porque el cliente paga antes) y,
+  cuando salen, el 62 % responde en 48 h. Recomendación: no reducirlos.
+- **Imagen de bonos de la bienvenida** (`chat/1793763799555-bcb079da.png`, paso 6): el sello de Tarot Store está abajo, pero las
+  cajas de los bonos llevan el logo «CONDE».
+- **Dinsides:** un número de la Cloud API no puede unirse a un grupo creado por otra persona (la API de grupos solo crea grupos
+  propios, por enlace, y pide cuenta oficial). La API de Dinsides no tiene estado «no contesta»: sí ENTREGADO, EN RUTA,
+  REGISTRADO, RECHAZADO POR PRODUCTO (5) y RECHAZADO NO COBRAR (3); 8 rechazos de 66 cerrados. Propuestas (sin construir):
+  recordatorio del día de entrega con pedido de correo, bonos al correo al marcar ENTREGADO, y avisos de «no contesta» que
+  Dinsides mande 1 a 1 al número de Tarot (el Worker los reconoce y le manda la plantilla al cliente).
