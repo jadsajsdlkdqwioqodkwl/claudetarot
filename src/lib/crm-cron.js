@@ -10,6 +10,7 @@
  * docs/whatsapp-ventanas-y-costos.md para cuándo cobra cada tipo.
  */
 
+import { PLANTILLAS_OFERTA_COLLAR, yaRecibioOfertaCollar } from "./oferta-collar.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque, subidaDe } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
 import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
@@ -169,6 +170,13 @@ export async function procesarSeguimientosVencidos(env) {
       // A quien ya compró no le sale ningún paso automático de venta, tampoco una plantilla (dueño, 2026-11-04: al marcar
       // compra muere el seguimiento de 7 días; el cobro/recojo de Shalom no es automático de venta y sigue).
       if (!s.batch_id && !s.mandar_siempre && esOrigenAutomatico(s.created_by) && (s.etapa >= 5 || /\bpurchase\b/.test(s.meta_tags || ""))) { await cancelar(s.id); continue; }
+      // Oferta de collar extra del plan de 7 días (seg_d5_ultimo_bono, dueño 2026-11-13): una sola vez por chat y nunca
+      // pasados los 7 días gratis. Si el chat ya recibió el collar (seguimiento de +20 h de una respuesta rápida u otra
+      // oferta), no sale: repetirla casi no vende (0,3 % contra 1 % a quien no la tenía).
+      if (PLANTILLAS_OFERTA_COLLAR.includes(s.template_name)) {
+        const fuera7d = s.conv_creado && Date.now() > new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000;
+        if (fuera7d || (await yaRecibioOfertaCollar(env.CRM_DB, s.conv_id))) { await cancelar(s.id); continue; }
+      }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {
         // · el link de seguimiento ya no sale solo (se manda a mano);
