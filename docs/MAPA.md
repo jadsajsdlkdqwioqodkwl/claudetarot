@@ -2855,3 +2855,25 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
 - **Meta, atribución incremental (lectura):** con `action_attribution_windows: incrementality` los resultados por anuncio (6–12/11)
   son conversaciones (la campaña optimiza conversaciones): 97–100 % salen incrementales. Para ventas incrementales la campaña tendría
   que optimizar por compras.
+
+## 2026-11-13 (noche) · Shalom: la agencia correcta en todos lados (una sola función, agencias al día, confirmadas, recomendaciones)
+
+Construido lo que pedía `docs/prompts/shalom-agencias.md`. Decisiones del dueño en la sesión: la lista del día la guarda el Worker
+(sin commits de Routines); documentos de 9 dígitos van al masivo marcados; las recomendaciones por agencia dudosa salen en las
+corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el horario ofrecido.
+- **Qué se conecta con qué:** `scripts/asesor/shalom.py` (`cargar` desde el Worker, `recibe`, `plantilla_destinos`, `nombre_plantilla`,
+  `cruce_plantilla`, `agencias_al_dia`, `elegir_agencia`, `buscar_osm`, `metros`, `agencia_de_nota`, `confirmar`, `aplicar_notas`,
+  `recomendacion_de`, `pedidos_de_provincia`, `cmd_recomendar`, `cmd_triangular`, `verificar_excel`; `masivo` usa `elegir_agencia`,
+  valida contra `Hoja2!C` y verifica el Excel) ↔ `src/api/asesor-shalom.js` (`GET/POST /api/asesor/shalom-agencias`: agencias del
+  día en R2 `shalom/agencias.json`, confirmadas en `shalom/confirmadas.json`, OSM con caché en `shalom/osm-cache.json`) ↔
+  `scripts/asesor/dinsides.py` (`_bloque_shalom` y `cmd_notas` → `sh.aplicar_notas`; `presentar` llama a `agencias_al_dia`) ↔
+  `scripts/asesor/etiquetas.py` (`shalom_de_hoja` con `elegir_agencia`; `horario_lima`) ↔ `/api/asesor/sugerencias` (`dato_envio`).
+  `llenar_plantilla()` NO se tocó.
+- **Routine del asesor:** `docs/prompts/asesor-mensajes.md` gana el paso 0 (`shalom.py recomendar`). No cambia el arranque de
+  ninguna Routine.
+- **Hallazgos:** (1) los dos de Wanchaq del 12/11 (Daniela Cabrera y Nadia Durand) fueron a la MISMA agencia, AV PACHACUTEC
+  (Av. Pachacútec 429), que es la que pidieron; (2) el 13/11 hubo 8 Shalom en el reporte y 6 etiquetas: Nadia ya había salido el
+  12/11 (se repitió en el reporte) y **Nerys Campos Luna (Pucallpa)** no se registró porque Shalom no recibe envíos en Pucallpa
+  (todas sus agencias tienen `destino = 0`); (3) Shalom cambió su lista (versión 5184 → 5376): la plantilla del Excel del repo puede
+  haber quedado vieja y `agencias_al_dia` lo avisa por Telegram.
+- Pruebas: `python3 scripts/asesor/pruebas/test_shalom_agencias.py` (sin red). `npm run check` sigue en verde.

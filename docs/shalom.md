@@ -70,3 +70,45 @@ Regla del dueño: con 2 o 3 kits (o más) el envío es **un solo PAQUETE XS, can
 **Pendiente de comprobar en la primera subida real con un XS** que Shalom Pro acepta el texto «PAQUETE XS» en la columna
 MERCADERIA (la plantilla solo trae de ejemplo «PAQUETE L»; «PAQUETE XXS» sí está probado). Si lo rechaza, el nombre exacto está en el
 desplegable de la plantilla y se cambia en una línea de `cmd_masivo`.
+
+## 2026-11-13 · La agencia correcta en todos lados: una sola función, agencias al día y memoria de lo confirmado
+
+**Una sola función decide:** `shalom.elegir_agencia(pedido)` → agencia (texto EXACTO de la plantilla), código, dirección, confianza
+(`confirmada` / `segura` / `dudosa`), porqué y candidatas. La usan el Excel masivo, la página de revisión (`dinsides.py presentar` →
+`_bloque_shalom`), las etiquetas (`etiquetas.py --shalom-hoja`), la referencia y `recomendar`. Orden: (0) lo que una persona
+confirmó → (1) ¿la ciudad nombrada tiene agencias que reciben? → (2) única agencia del distrito → (3) el cliente nombró la agencia
+por su nombre, o algo propio (calle, número) que solo calza con una → (4) OpenStreetMap: la referencia del cliente («frente a…»,
+mercado, paradero) contra la lat/lng de cada agencia (segura si queda a ≤ 400 m y la siguiente a más del doble) → si no, DUDOSA
+con las candidatas. «sin definir / confirmar la sede» en el texto del reporte la deja dudosa salvo que sea la única del distrito.
+
+**Fallas del Excel que se arreglaron:**
+1. La columna G solo acepta los 489 nombres de `Hoja2!C` (validación de lista). 8 nombres de la API traen espacios al final y se
+   escribían así: ahora va el texto exacto de la plantilla (`nombre_plantilla`) y lo que no esté en la lista no entra al Excel.
+2. El buscador elegía agencias que NO reciben envíos (`destino = 0`, 77 de 566): ahora solo `destino = 1`. Y si la ciudad nombrada
+   no tiene ninguna agencia que reciba (hoy **Pucallpa**: 8 agencias, todas con `destino = 0`), el pedido sale como «Shalom no
+   recibe envíos ahí» en vez de irse a otra ciudad. Caso real: el Excel del 13/11 llevó «CALLERIA AV SAENZ PEÑA» (Nerys Campos Luna)
+   y esa fila no se registró.
+3. `masivo` vuelve a abrir el Excel generado y lo compara con la referencia (`verificar_excel`): mismas filas, cada G en `Hoja2!C`,
+   sin espacios de más, agencia que recibe, documento, celular, origen, mercadería y cantidad iguales.
+
+**Agencias al día (sin commits):** el Worker las baja de la API pública una vez al día (`GET /api/asesor/shalom-agencias`,
+`src/api/asesor-shalom.js`, R2 `shalom/agencias.json`); `shalom.cargar()` las lee de ahí y usa `data/shalom-agencias.json` solo
+de respaldo. `agencias_al_dia()` (primer paso de `masivo`, `presentar` y `recomendar`) cruza la lista con la plantilla y avisa UNA
+vez por Telegram si aparecen agencias nuevas que la plantilla no tiene o nombres que ya no existen (hay que bajar la plantilla nueva
+de Shalom Pro; no se edita a mano), o si la API falla (se sigue con la copia que hay; respaldo manual
+https://www.shalom.com.pe/agencias, que solo busca por provincia). Forzar: `shalom.py agencias --actualizar`.
+Última actualización conocida: versión 5376 de Shalom (569 agencias, 491 reciben) leída el 2026-11-13; la plantilla del repo es
+del 08/11 (489 destinos).
+
+**Memoria de lo confirmado:** R2 `shalom/confirmadas.json` (por WhatsApp, 60 días). La escriben las notas de la revisión de envíos
+(`dinsides.py notas` → `shalom.aplicar_notas`: «OK» confirma la agencia mostrada; «agencia X» busca el nombre exacto con
+`agencia_de_nota`) y `--agencias` del masivo. `elegir_agencia` la usa antes que nada.
+
+**Recomendación a la asesora:** `shalom.py recomendar [FECHA …] [--ver]` crea `dato_envio` por cada pedido de provincia sin salir con
+agencia dudosa o sin servicio (motivo con lo que dijo el cliente, candidatas y el paso de la captura; texto de usted, una pregunta).
+Lo corre la Routine del asesor (10:00 · 15:00 · 19:00, paso 0 de `docs/prompts/asesor-mensajes.md`).
+
+**Otros:** documento de 9 dígitos (carnet de extranjería) entra al Excel marcado, a ver si el masivo lo acepta (dueño 13/11).
+`PAQUETE XS` sí está en la validación de la columna H de la plantilla. OpenStreetMap se consulta por el Worker (Nominatim, 1 por
+segundo, User-Agent `tarot-store-envios/1.0`, caché en R2 `shalom/osm-cache.json`). Comando de prueba: `shalom.py triangular "<texto>"`.
+Prueba sin red: `python3 scripts/asesor/pruebas/test_shalom_agencias.py`.

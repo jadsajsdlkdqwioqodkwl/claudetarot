@@ -146,3 +146,11 @@ entrega. Routine única de envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7`.
 Al registrar, el chat recibe `dinsides_registrado`, `lima` y `lima_entrega_AAAA-MM-DD`. Si `PLANTILLA_ENTREGA_LIMA` (wrangler.jsonc)
 tiene el nombre de una plantilla aprobada, se agenda a las `HORA_ENTREGA_LIMA` (10:00) del día de entrega (`etiquetarEntregaLima`,
 `src/api/asesor-dinsides.js`). Hoy está vacía: solo etiquetas.
+
+## 2026-11-13 · Revisión de envíos: la agencia de Shalom sale de `shalom.elegir_agencia`; horario en la etiqueta de Lima
+
+La sección SHALOM de la página muestra, por pedido, el nombre exacto que irá al Excel, la dirección de la agencia, SEGURA / DUDOSA /
+CONFIRMADA, el porqué y las candidatas. La revisión guarda qué agencia mostró cada tarjeta (`pedidos[].agencia`), y `dinsides.py
+notas` convierte «OK» y «agencia X» en agencias confirmadas (memoria del Worker) que el Excel masivo usa solo. Detalle en
+`docs/shalom.md`. Etiquetas de Lima: línea «Horario:» = «12 a 5 pm (regular)» o «ESPECIAL: …» si la nota del pedido trae la hora
+que pidió el cliente (`horario_lima` en `etiquetas.py`).

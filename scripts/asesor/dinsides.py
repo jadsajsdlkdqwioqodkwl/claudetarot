@@ -599,26 +599,39 @@ def _bloque_shalom(i, p, lista, boletas, corto=False):
     dni = sh.dni_de(p)
     texto = str(p.get("direccion_o_agencia") or "")
     primer = str(p.get("nombre") or "X").split()[0]
-    cand = sh.buscar(texto) if texto.strip() else []
+    # LA agencia la decide `shalom.elegir_agencia` (la misma función que usa el Excel masivo): aquí solo se muestra.
+    e = sh.elegir_agencia(p)
+    p["_agencia"] = e  # la revisión guarda qué agencia se mostró: el «OK» de la asesora confirma ESA
     adelanto, saldo, aviso = sh.montos(p)
     pend = []
     if p.get("_crm"): pend.append("no está en el reporte: confirmar nombre, DNI y adelanto")
     if not dni: pend.append("sin DNI")
-    elif len(dni) != 8: pend.append(f"DNI de {len(dni)} dígitos")
-    if not cand or not cand[0].get("seguro"): pend.append("agencia por confirmar")
+    elif len(dni) not in (8, 9): pend.append(f"documento de {len(dni)} dígitos")
+    if e.get("sin_servicio"): pend.append("Shalom no recibe envíos en esa ciudad")
+    elif not e["segura"]: pend.append("agencia por confirmar")
     if aviso: pend.append(aviso)
-    codigo = cand[0]["codigo"] if cand else ""
-    estado = "✅ LISTO para el Excel" if not pend else ("✅❓ LISTO, pero confirmar: " if cand and cand[0].get("seguro") and dni and len(dni) == 8 else "❓ PENDIENTE: ") + "; ".join(pend)
+    listo_con_duda = e["segura"] and dni and len(dni) in (8, 9)
+    estado = "✅ LISTO para el Excel" if not pend else ("✅❓ LISTO, pero confirmar: " if listo_con_duda else "❓ PENDIENTE: ") + "; ".join(pend)
+    marca = {"confirmada": "CONFIRMADA por una persona", "segura": "SEGURA", "dudosa": "DUDOSA"}[e["confianza"]]
     out = [f"{_num(i)} {str(p.get('nombre') or '').upper()} · {estado} · {p.get('_origen')}",
            f"👤 WhatsApp {wa} · asesora {p.get('vendedora') or '-'}",
            "🏷️ ETIQUETA SHALOM (lo que va al Excel / la boleta):",
            f"   Destinatario: {str(p.get('nombre') or '').upper()}",
            f"   N°DOC: {dni or '— (falta)'}",
-           f"   Destino (código Shalom): {codigo or '— (falta)'}" + (f" · {'SEGURA' if cand and cand[0].get('seguro') else 'DUDOSA, candidatas: ' + ' | '.join(c['codigo'] for c in cand[:3])}" if cand else ""),
+           f"   Destino: {e['agencia'] or '— (falta)'} · {marca}",
+           f"   Dirección agencia: {e['direccion'] or '—'}",
+           f"   Código Shalom: {e['codigo'] or '—'}",
            f"   Mercadería: {_mercaderia(p)}",
            f"   Adelanto: S/{adelanto} · Saldo: S/{saldo} · Clave: la del día (la da el dueño)",
            f"🏢 Lo que escribió el cliente de la agencia: {texto or '—'}",
-           f"🔎 VERIFICAR AGENCIA (asesora o dueño, antes del OK): busca «{texto[:60]}» en https://shalom.com.pe/agencias y confirma que es «{codigo.split(' / ')[-1] if codigo else '…'}»; si no: «{primer}: agencia <nombre exacto>». Cambiarla después cuesta tiempo y plata."]
+           f"🧭 Por qué esta agencia: {e['porque']}"]
+    if e["confianza"] == "dudosa":
+        for c in ([{"agencia": e["agencia"], "direccion": e["direccion"], "metros": None}] if e["agencia"] else []) + e["candidatas"][:5]:
+            out.append(f"⚠️ Candidata: {c['agencia']} · {c['direccion'][:120]}" + (f" · a {c['metros']} m de la referencia del cliente" if c.get("metros") is not None else ""))
+        out.append(f"🔎 VERIFICAR AGENCIA (asesora o dueño, antes del OK): compara lo que escribió el cliente con las candidatas; si es una de ellas escribe en la nota «agencia <nombre>». "
+                   f"Si hay que preguntarle: https://www.shalom.com.pe/agencias (el buscador solo busca por PROVINCIA). Cambiarla después cuesta tiempo y plata.")
+    else:
+        out.append(f"🔎 VERIFICAR AGENCIA (asesora o dueño, antes del OK): ¿«{e['agencia']}» ({e['direccion'][:80]}) es la que pidió el cliente? Si no: escribe en la nota «agencia <nombre>».")
     if p.get("nota"):
         out.append(f"📝 Nota: {p.get('nota')}")
     if not corto:
@@ -656,7 +669,7 @@ pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:12px;overflow-wr
 
 NUEVOS = set()  # WhatsApp (9 dígitos) de los pedidos que no estaban en la versión anterior de la página de hoy
 
-RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|DNI|Destino|Olva de destino|Envía|Mercadería|Adelanto):")
+RE_ETIQ = re.compile(r"^(Negocio|ENTREGAR A|Teléfono|Producto|Cobrar|Distrito|Fecha Entrega|Detalle|Coordenadas|Destinatario|N°DOC|DNI|Destino|Dirección agencia|Código Shalom|Olva de destino|Envía|Mercadería|Adelanto):")
 
 
 def _tarjeta_html(cab, cuerpo, E, interactivo=False, pdf_pagina=False):
@@ -836,6 +849,16 @@ def cmd_notas(args):
     sin = [p for k9, p in nombres.items() if k9 not in {w[-9:] for w in notas}]
     if sin:
         print(f"\nSin nota todavía ({len(sin)}): " + ", ".join(f"{p.get('nombre')} {p.get('whatsapp')}" for p in sin[:30]))
+    # Shalom: lo que la asesora confirmó o corrigió de la AGENCIA queda guardado (memoria) y es lo que va al Excel; no hay que armar
+    # `--agencias` a mano (2026-11-13).
+    try:
+        import shalom as sh
+        lineas_ag = sh.aplicar_notas(notas, r.get("pedidos"), r.get("fecha") or "")
+        if lineas_ag:
+            print("\n🚚 AGENCIAS DE SHALOM según las notas (ya guardadas; `shalom.py masivo` las usa solo):")
+            print("\n".join(lineas_ag))
+    except Exception as err:  # noqa: BLE001
+        print(f"\n⚠️ No se pudieron aplicar las notas de agencias de Shalom: {err}")
     os.makedirs("/tmp/dinsides", exist_ok=True)
     json.dump({"id": rid, "fecha": r.get("fecha"), "notas": notas, "pedidos": r.get("pedidos")}, open("/tmp/dinsides/notas.json", "w"), ensure_ascii=False, indent=1)
     print("\nGuardado en /tmp/dinsides/notas.json. Lima: los OK + correcciones aplicadas → salida.json → `registrar`; Shalom: «OK» → `shalom.py masivo --subir` (con --agencias si corrigieron agencias).")
@@ -873,9 +896,15 @@ def cmd_presentar(args):
         if pagina is not None:
             P.append((titulo, pagina if isinstance(pagina, list) else lineas_largas))
 
+    try:  # primer paso de todo lo que usa agencias: la copia del día y el cruce con la plantilla del Excel
+        import shalom as sh
+        estado_agencias = sh.agencias_al_dia()
+    except Exception as err:  # noqa: BLE001
+        estado_agencias = f"⚠️ No se pudieron cargar las agencias de Shalom: {err}"
     cab = [f"📦 Entrega {fecha} · Lima: {len(listos)} para registrar · {len(pend)} pendientes · {len(ya)} ya registrados · generado {ahora} (Lima)"]
     if r.get("fecha_motivo"):
         cab.append(f"📆 Fecha {fecha} porque {r['fecha_motivo']}.")
+    cab.append(estado_agencias)
     sec("RESUMEN", cab)
     i = 0
     if listos:
@@ -1037,7 +1066,8 @@ def cmd_presentar(args):
         pend_pag = locals().get("pend_pagina") or []
         resumen = [("Lima para registrar", len(listos)), ("Shalom", sum(1 for p_ in prov if not p_.get("_crm"))), ("Olva", len(olva)), ("Falta un dato", len(pend_pag)), ("Agendados / reagendar", len(reagendar_rev))]
         pedidos_rev = [{"whatsapp": f.get("whatsapp"), "nombre": (f.get("campos") or {}).get("nombre"), "tipo": "lima"} for f in listos + pend_pag] \
-            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom"} for p_ in prov if not p_.get("_crm")] \
+            + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "shalom", "agencia": (p_.get("_agencia") or {}).get("agencia") or "", "codigo": (p_.get("_agencia") or {}).get("codigo") or "",
+                "confianza": (p_.get("_agencia") or {}).get("confianza") or "", "texto": str(p_.get("direccion_o_agencia") or "")[:200]} for p_ in prov if not p_.get("_crm")] \
             + [{"whatsapp": p_.get("whatsapp"), "nombre": p_.get("nombre"), "tipo": "olva"} for p_ in olva] + reagendar_rev
         if not P:
             P.append(("Nada por registrar", ["No hay pedidos de Lima, Shalom ni Olva por registrar en este momento."]))

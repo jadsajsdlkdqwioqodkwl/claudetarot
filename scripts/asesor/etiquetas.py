@@ -121,8 +121,11 @@ def shalom_de_hoja(recojo):
         if not m or "mano" not in env_.lower() or not (f"{ayer} 06:00" < act <= f"{recojo} 06:00" or recojo in env_):
             continue
         texto = str(f.get("direccion_o_agencia") or "")
-        cand = sh.buscar(texto) if texto.strip() else []
-        a = cand[0] if cand else {}
+        # La misma agencia que el Excel y la revisión (`shalom.elegir_agencia`), no una búsqueda aparte.
+        e = sh.elegir_agencia(f) if texto.strip() else {}
+        a = next((x for x in sh.cargar()["agencias"] if x["codigo"] == e.get("codigo")), {}) if e.get("agencia") else {}
+        if a:
+            a = dict(a, agencia=e["agencia"], seguro=e["segura"])
         dni = re.search(r"\b(\d{8})\b", str(f.get("nota") or ""))
         cod = re.search(r"c[oó]d\.?\s*:?\s*([A-Z0-9]{4})\b", env_, re.I)
         kits = str(f.get("kits") or "1").strip()
@@ -156,6 +159,20 @@ def nota_motorizado(texto, telefono=""):
             continue
         quedan.append(f + (":" if dos else ""))
     return re.sub(r"\s+", " ", ". ".join(quedan).replace(":. ", ": ")).strip().rstrip(":")
+
+
+RE_HORARIO = re.compile(r"((?:a las|antes de las?|despu[eé]s de las?|desde las?|hasta las?|a partir de las?|pasad[oa]s? las?|entre las?)\s*\d{1,2}(?::\d{2})?\s*(?:(?:y|a)\s*(?:las\s*)?\d{1,2}(?::\d{2})?\s*)?(?:am|pm|a\.?\s?m\.?|p\.?\s?m\.?|de la (?:mañana|tarde|noche)|h\b)?"
+                        r"|\bde\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*a\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)"
+                        r"|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b"
+                        r"|\b(?:en la mañana|por la mañana|temprano|lo m[aá]s temprano posible|en la tarde|por la tarde|en la noche|de noche|al mediod[ií]a|hora exacta|solo (?:en la )?(?:mañana|tarde|noche)))", re.I)
+
+
+def horario_lima(d):
+    """El horario ofrecido al cliente, para la etiqueta (dueño 2026-11-13): «12 a 5 pm» (el regular de Dinsides) o el ESPECIAL que
+    pidió el cliente, si la nota del pedido lo dice («en la tarde», «de 3 a 5 pm», «antes de las 3»)."""
+    obs = re.sub(r"12\s*(?:p\.?\s?m\.?)?\s*(?:a|-|–|y)\s*(?:las\s*)?5\s*(?:pm|p\.?\s?m\.?)?", " ", str(d.get("observaciones", "") or ""), flags=re.I)
+    m = RE_HORARIO.search(obs)
+    return f"ESPECIAL: {m.group(0).strip()}" if m else "12 a 5 pm (regular)"
 
 
 def detalle_lima(d):
@@ -269,6 +286,7 @@ def etiqueta_lima(c, x0, yb, d):
     if len(fe) == 10 and fe[4] == "-":
         fe = f"{fe[8:10]}/{fe[5:7]}/{fe[0:4]}"
     y -= campo(c, x, y, "Fecha Entrega:", fe, ancho, negrita_valor=True)
+    y -= campo(c, x, y, "Horario:", horario_lima(d), ancho, tam=7, negrita_valor=True)
     obs = str(d.get("observaciones", "") or "").strip()
     # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie (del producto de Dinsides: «Kit Tarot de
     # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).

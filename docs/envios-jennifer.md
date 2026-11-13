@@ -84,6 +84,22 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
     - La clave NUNCA se le manda al cliente, ni va en Telegram, ni la repites en tus respuestas: es distinta del «Código» de 4 letras
       de la boleta. Solo vive en el CRM y en la hoja Ventas; el CRM se la da al cliente cuando paga su saldo.
 
+14. **LA AGENCIA DE SHALOM LA DECIDE UNA SOLA FUNCIÓN (2026-11-13) y lo que confirma la asesora es lo que va al Excel.**
+    - La sección SHALOM de la página muestra por pedido: «Destino» (el nombre EXACTO que irá en el Excel), la dirección completa
+      de esa agencia, si es SEGURA, DUDOSA o CONFIRMADA, «Por qué esta agencia» y, si es dudosa, las candidatas con su dirección.
+      Ya no uses `shalom.py buscar` ni armes `/tmp/shalom/agencias.json`: no hace falta.
+    - Notas de la asesora (las aplica solo `dinsides.py notas`, que imprime «🚚 AGENCIAS DE SHALOM según las notas»): «OK» = la
+      agencia mostrada queda confirmada; «agencia X» (o una dirección o referencia en la nota) = se busca el nombre exacto; si no
+      calza con UNA sola agencia que reciba envíos, sale «FALTA UN DATO» con el motivo y NO se adivina: díselo tal cual.
+    - `shalom.py masivo` lee esas confirmaciones solo. Al Excel entran únicamente filas con documento, celular de 9 dígitos y
+      agencia SEGURA o CONFIRMADA cuyo nombre esté en la lista de la plantilla. Un documento de 9 dígitos (carnet de extranjería)
+      entra marcado: pide a quien sube que mire si Shalom Pro aceptó esa fila.
+    - `masivo` termina con «🔎 VERIFICACIÓN DEL EXCEL: ✅ …». Si dice ❌ NO SUBIR, no des el link: dilo y corrige.
+    - «Shalom NO recibe envíos en …» (hoy pasa con Pucallpa): ese pedido no puede ir por Shalom a esa ciudad. Va como pregunta
+      («¿Olva u otra agencia?»); la asesora ya tiene la recomendación en el chat del cliente.
+    - Para probar un texto: `python3 scripts/asesor/shalom.py triangular "<lo que escribió el cliente>"`.
+    - Las etiquetas de Lima llevan «Horario:» (12 a 5 pm regular, o ESPECIAL con lo que pidió el cliente si la nota lo dice).
+
 REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
 «registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:
 lee la última página de revisión que dejó `presentar`). Lo que el dueño marcó en la página vale igual que si lo hubiera escrito en la

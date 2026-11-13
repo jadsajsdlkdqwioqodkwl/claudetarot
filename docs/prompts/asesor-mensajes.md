@@ -28,6 +28,11 @@ asesora lee arriba de la cajita: qué lo frena y por qué este mensaje).
 
 Gasta pocos tokens: lee cada archivo una sola vez, no repitas búsquedas, y si no hay novedad termina con una línea.
 
+0. ANTES de todo (2026-11-13, aunque después no haya chats que leer): `cd /home/user/claudetarot && python3 scripts/asesor/shalom.py recomendar`.
+   Revisa los pedidos de provincia que todavía no salen y, si la agencia de Shalom de alguno es DUDOSA (o es una ciudad donde Shalom
+   no recibe envíos), deja sola la recomendación «falta un dato» en el chat de ese cliente para la asesora (qué dijo el cliente, las
+   agencias candidatas y el paso de la captura de shalom.com.pe/agencias). Tú no redactas nada ahí ni le escribes al cliente; solo
+   copia en tu respuesta final la última línea que imprime («Recomendaciones para la asesora: …»). Si falla, dilo en una línea y sigue.
 1. Corre `cd /home/user/claudetarot && python3 scripts/asesor/preparar.py api --dias 3 --activos-horas H --sin-rechazos --completo 120 --salida /tmp/asesor`
    con H = 15 a las 10:00, 5 a las 15:00 y 4 a las 19:00. Si `chats_a_leer` es 0, responde «Sin novedad» y TERMINA.
    Si hay chats: lee `CLAUDE.md` (solo la sección «Si vas a proponer textos para clientes»), la skill voz-tarot-store
