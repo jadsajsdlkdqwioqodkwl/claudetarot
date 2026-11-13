@@ -15,6 +15,7 @@ const ICONS = {
   paperclip: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13.5 6.5l-6 6a2.5 2.5 0 003.5 3.5l6-6a4 4 0 00-5.5-5.5l-6 6a5.5 5.5 0 007.5 7.5"/></svg>`,
   bolt: `<svg viewBox="0 0 20 20" fill="currentColor"><path d="M11 1L3 11h5l-1 8 8-10h-5z"/></svg>`,
   send: `<svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 10l16-8-4 16-5-6-5 4z"/></svg>`,
+  mic: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0011 0M10 15v3M7 18h6"/></svg>`,
   close: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l12 12M16 4L4 16"/></svg>`,
   megaphone: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2 8v4h2l7 4V4L4 8H2z"/><path d="M14 7a3 3 0 010 6"/></svg>`,
   image: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="16" height="14" rx="2"/><circle cx="7" cy="8" r="1.5"/><path d="M2 14l5-5 4 4 3-3 4 4" stroke-linejoin="round"/></svg>`,

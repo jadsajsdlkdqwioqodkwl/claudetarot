@@ -1336,3 +1336,13 @@ body.solo-lectura #form-envio { display: none; }
 #banner-recomendacion .reco-adjunto { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: var(--radio-full); background: #eef4ff; color: #0b5cad; }
 #banner-recomendacion .reco-adjunto button { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; font-size: 11px; border: 1px solid currentColor; border-radius: var(--radio-full); background: #fff; color: inherit; cursor: pointer; }
 #banner-recomendacion .reco-adjunto .icono-svg, #banner-recomendacion .reco-adjuntar > .icono-svg { width: 12px; height: 12px; }
+
+/* Nota de voz (2026-11-13): barra discreta sobre el cuadro de texto mientras se graba. */
+#barra-audio { align-items: center; gap: 8px; padding: 6px 10px; margin: 0 8px 6px; border: 1px solid var(--borde); border-radius: var(--radio-s); background: var(--fondo); font-size: 13px; }
+#barra-audio .audio-punto { width: 10px; height: 10px; border-radius: 50%; background: #dc2626; animation: audio-latido 1s infinite; flex: none; }
+#barra-audio .audio-tiempo { font-variant-numeric: tabular-nums; font-weight: 600; }
+#barra-audio .audio-estado { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#barra-audio button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--borde); background: var(--panel); cursor: pointer; }
+#barra-audio .audio-enviar { background: var(--verde, #16a34a); color: #fff; border-color: transparent; }
+#barra-audio .icono-svg, #barra-audio svg { width: 16px; height: 16px; }
+@keyframes audio-latido { 50% { opacity: .3; } }

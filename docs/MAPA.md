@@ -2784,3 +2784,33 @@ del asesor estaba con Fable».
   REGISTRADO, RECHAZADO POR PRODUCTO (5) y RECHAZADO NO COBRAR (3); 8 rechazos de 66 cerrados. Propuestas (sin construir):
   recordatorio del día de entrega con pedido de correo, bonos al correo al marcar ENTREGADO, y avisos de «no contesta» que
   Dinsides mande 1 a 1 al número de Tarot (el Worker los reconoce y le manda la plantilla al cliente).
+
+## 2026-11-13 · Plan «Interesado» a 4 pasos, notas de voz en el CRM y revisión de recomendaciones/interesados
+Pedido del dueño (12–13/11): «te doy el permiso de apagar y encender los seguimientos… quédate con los mejores (3 o 4 pasos)»,
+«el collar extra ya no al día siguiente, solo al séptimo día», «que los asesores tengan la opción de mandar audios… escondida
+en los tres puntitos… que se mande como audio, no como archivo descargable». La imagen de bonos de la bienvenida NO se tocó.
+- **Plan 2 «Interesado · semana gratis» (D1, `planes_seguimiento.id = 2`, 13/11 03:19 UTC):** quedan 4 pasos prendidos:
+  imagen de bonos (+45 min, 2,3 % de compra en 7 días), guía PDF (+3 h, 1,8 %), `seg7_primera_lectura` (día 1 16:30, 2,7 %) y
+  `seg_d2_miedo_principiante` (día 2 12:30, 0,9 %). Apagados (`activo: false`, no borrados): catálogo PDF (+10 h, 0,8 %),
+  `seg_d4_envios_hoy` (0,8 %), `rescate_lead_2` y `seg_d5_ultimo_bono` (0,6 %). Se cancelaron 973 envíos pendientes de esos
+  pasos apagados (`scheduled_messages` plan_id 2, plan_paso 2/5/6/7). El collar extra queda solo en el rescate del día 7.
+- **Rescate del día 7 sigue con `rescate_lead_1`** («Quedó pendiente su envío»). El dueño pidió que el del día 6–7 vaya con
+  catálogo: cambiarlo a `rescate_lead_catalogo_1` en CRM → Herramientas → «Rescate de lead del día 7» (ese selector también
+  cambia los 878 ya agendados). Desde esta sesión el clasificador bloqueó el cambio en `crm_settings` («Modify Shared
+  Resources»). El catálogo a clientes (toque `post7`) sí sale, ~20 por día.
+- **Notas de voz** (opción escondida en «⋯ Más» → «Grabar audio», no un botón grande): `abrirGrabadorAudio` /
+  `terminarGrabacion` en `public/crm/app.js`, barra `#barra-audio`, ícono `mic` en `icons.js`. Graba con **opus-recorder 8.0.5
+  (MIT)** en `public/crm/vendor/opus-recorder/` (se carga solo al usarlo), Ogg/Opus **mono**, máximo 5 min. `upload-media.js`
+  acepta `audio/ogg` (normaliza `; codecs=opus`, ≤ 16 MB, tipo `audio`); `messages.js` acepta `media_type: "audio"`;
+  `enviarMedia` (`whatsapp.js`) manda `audio.voice = true` cuando `mandarMediaGuardada` (`crm-send.js`) ve `audio/ogg`: así llega
+  como NOTA DE VOZ (doc de Meta «Audio messages»: `voice: true`, solo audio/ogg + OPUS), no como archivo. **`public/_headers`:**
+  `/*` tenía `Permissions-Policy: microphone=()` (bloqueaba el micrófono en el CRM); `/crm/*` lo quita con `! Permissions-Policy`
+  y lo pone con `microphone=(self)`. Prueba nueva `scripts/test-nota-de-voz.mjs` (en `npm run check`). Probado en Chromium con
+  micrófono simulado: el archivo subido es Ogg con OpusHead de 1 canal.
+- **Recomendaciones del asesor (desde el 5/11):** de 336 seguimientos, 198 pendientes (nadie los tocó), 56 vencidos, 50
+  aprobados, 30 descartados. Con la recomendación mandada compró el 20,7 % en 7 días (29); sin tocar, 0 % (64).
+- **Interesados del reporte (INTENCION, 3–10/11):** 121, compraron 8 en 7 días (6,6 %): 3 de 14 con la recomendación mandada
+  (21 %) y 5 de 107 sin ella (4,7 %). POR_CONFIRMAR: 21, compraron 12.
+- Propuestas pendientes de aprobación (no construidas): plantilla del día de entrega de Lima a las 10:00 con pedido de correo
+  (etiqueta y agenda al registrar en Dinsides), bonos al correo al marcar ENTREGADO, avisos «no contesta» de Dinsides 1 a 1 al
+  número de Tarot, cambio de voz con ElevenLabs (speech-to-speech, después de grabar).

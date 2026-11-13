@@ -31,6 +31,11 @@
    si la ventana sigue abierta; si no, a las 23:29; las plantillas siempre a las 06:30.
 7. A quien ya compró (etapa 5 / etiqueta purchase) no se le programa ni se le manda.
 
+
+> **2026-11-13 · Plan 2 «Interesado · semana gratis» con 4 pasos prendidos** (imagen de bonos +45 min, guía PDF +3 h,
+> `seg7_primera_lectura` día 1 16:30, `seg_d2_miedo_principiante` día 2 12:30). Apagados: catálogo PDF +10 h,
+> `seg_d4_envios_hoy`, `rescate_lead_2`, `seg_d5_ultimo_bono`. El collar extra va solo en el rescate del día 7. Datos en `docs/MAPA.md`.
+
 ## Las reglas que se aplican solas (del dueño, 2026-11-04) — `calendarioDePasos` en `src/lib/crm-db.js`
 9. **Mínimo entre seguimientos: 5 h** (ajuste `seguimiento_espacio_min_h`, se cambia en Herramientas → Planes de
    seguimiento, «Mínimo entre seguimientos»; vacío = 5, 0 lo apaga). Un paso que caería antes se corre hasta cumplirlo

@@ -246,8 +246,12 @@ export async function enviarProducto(env, waId, catalogId, retailerId, texto) {
   return datos.messages?.[0]?.id || null;
 }
 
-/** Manda una imagen, video, documento o sticker ya subido a la Cloud API (ver subirMedia). */
-export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId, fileName) {
+/**
+ * Manda una imagen, video, documento, sticker o audio ya subido a la Cloud API (ver subirMedia).
+ * `opciones.voice`: un audio Ogg/Opus mono sale como NOTA DE VOZ (micrófono, se descarga solo), no como
+ * archivo de audio (doc de Meta «Audio messages»: `voice: true`, solo vale con audio/ogg + OPUS).
+ */
+export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMessageId, fileName, opciones = {}) {
   const cuerpo = { messaging_product: "whatsapp", ...destino(waId), type };
   // Los stickers no aceptan caption — WhatsApp rechaza el mensaje si se lo
   // manda. Los documentos sí aceptan filename — sin esto, al cliente le
@@ -256,6 +260,7 @@ export async function enviarMedia(env, waId, type, mediaId, caption, replyToWaMe
   cuerpo[type] = { id: mediaId };
   if (caption && type !== "sticker") cuerpo[type].caption = caption;
   if (fileName && type === "document") cuerpo[type].filename = fileName;
+  if (type === "audio" && opciones?.voice) cuerpo.audio.voice = true;
   if (replyToWaMessageId) cuerpo.context = { message_id: replyToWaMessageId };
   const datos = await llamar(env, `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, cuerpo);
   return datos.messages?.[0]?.id || null;

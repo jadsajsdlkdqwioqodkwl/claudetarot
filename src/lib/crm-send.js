@@ -308,7 +308,9 @@ export async function mandarMediaGuardada(env, conversationId, waId, mediaKey, t
   // así el cliente recibe el documento con su nombre original.
   // Foto, video, audio, documento: al toque, sin "escribiendo…".
   let waMessageId;
-  const mandar = (t) => enviarMedia(envL, waId, t, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName);
+  // Audio Ogg (nota de voz grabada en el CRM) sale como nota de voz, no como archivo descargable.
+  const mandar = (t) => enviarMedia(envL, waId, t, subida.mediaId, caption, replyTo?.wa_message_id, fileName || subida.fileName,
+    { voice: t === "audio" && /^audio\/ogg/.test(subida.mime || "") });
   try {
     waMessageId = await mandar(type);
   } catch (err) {

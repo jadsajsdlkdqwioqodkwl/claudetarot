@@ -12,6 +12,10 @@
 /crm/*
   Cache-Control: no-store
   X-Robots-Tag: noindex, nofollow
+  # Notas de voz (2026-11-13): el CRM sí usa el micrófono. «!» quita el Permissions-Policy de /* (Cloudflare junta los
+  # encabezados de todas las reglas que calzan) y se vuelve a poner solo con el micrófono permitido para este mismo sitio.
+  ! Permissions-Policy
+  Permissions-Policy: geolocation=(), microphone=(self), camera=()
 
 # Las imagenes y el video no cambian de contenido sin cambiar de nombre, asi que
 # el navegador puede guardarlos un ano y no volver a pedirlos nunca.

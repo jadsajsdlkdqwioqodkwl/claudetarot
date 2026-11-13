@@ -4098,6 +4098,7 @@ function pintarChatBase(c) {
     <div id="banner-recomendacion" style="display:none"></div>
     <div id="preview-respuesta" style="display:none"></div>
     <div id="preview-archivo" style="display:none"></div>
+    <div id="barra-audio" style="display:none"></div>
     <div id="preview-botones"></div>
     <div id="versiones-rapida" style="display:none"></div>
     <div id="chip-secuencia" style="display:none"></div>
@@ -4410,10 +4411,12 @@ function toggleMasPanel() {
     <div class="item" id="mas-stickers"><div class="titulo">${icon("sticker")} Stickers</div></div>
     <div class="item" id="mas-botones"><div class="titulo">${icon("reply")} Botones de respuesta</div></div>
     <div class="item" id="mas-pegar-imagen"><div class="titulo">${icon("image")} Pegar imagen copiada</div></div>
+    <div class="item" id="mas-audio"><div class="titulo">${icon("mic")} Grabar audio</div></div>
     <div class="item mas-solo-angosto" id="mas-galeria"><div class="titulo">${icon("image")} Fotos y videos (galería)</div></div>
     <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Documento o archivo</div></div>
     <div class="item mas-solo-angosto" id="mas-emojis"><div class="titulo">${icon("smile")} Emojis</div></div>`;
   $("#mas-pegar-imagen").addEventListener("click", () => { panel.classList.remove("abierto"); pegarImagenDelPortapapeles(); });
+  $("#mas-audio").addEventListener("click", () => { panel.classList.remove("abierto"); abrirGrabadorAudio(); });
   $("#mas-galeria").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-galeria").click(); });
   $("#mas-adjuntar").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
   $("#mas-emojis").addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("abierto"); toggleEmojiPanel(); });
@@ -4422,6 +4425,90 @@ function toggleMasPanel() {
   $("#mas-seguimiento").addEventListener("click", () => { panel.classList.remove("abierto"); toggleSeguimientosPanel(); });
   $("#mas-stickers").addEventListener("click", () => { panel.classList.remove("abierto"); toggleStickersPanel(); });
   $("#mas-botones").addEventListener("click", () => { panel.classList.remove("abierto"); abrirBotonesMensaje(); });
+}
+
+/* ---------- Nota de voz (dueño, 2026-11-13): opción escondida en «⋯ Más», no un botón grande como en WhatsApp ----------
+ * WhatsApp solo muestra como NOTA DE VOZ un audio Ogg con códec Opus y mono, enviado con `voice: true` (doc de Meta
+ * «Audio messages»); cualquier otro formato llega como archivo de audio. Chrome graba WebM y Safari MP4, así que se
+ * graba con opus-recorder (MIT, public/crm/vendor/opus-recorder), que codifica en el navegador a Ogg/Opus mono. Se carga
+ * recién al elegir «Grabar audio». El envío: subirArchivo → POST /api/crm/messages { media_type: "audio" } →
+ * mandarMediaGuardada → enviarMedia con voice: true (crm-send.js / whatsapp.js). */
+const OPUS_RECORDER = "/crm/vendor/opus-recorder/";
+const AUDIO_MAX_SEG = 300; // 5 minutos
+let grabador = null;
+
+async function abrirGrabadorAudio() {
+  if (grabador) return;
+  const convId = estado.conversacionActivaId;
+  if (!convId) return;
+  const barra = $("#barra-audio");
+  if (!barra) return;
+  try {
+    if (!window.Recorder) await cargarScript(`${OPUS_RECORDER}recorder.min.js`); // la misma de los videos (más abajo)
+    if (!window.Recorder || !window.Recorder.isRecordingSupported()) throw new Error("Este navegador no permite grabar audio.");
+  } catch (err) { return alert(err.message); }
+
+  const rec = new window.Recorder({
+    encoderPath: `${OPUS_RECORDER}encoderWorker.min.js`,
+    numberOfChannels: 1,          // WhatsApp exige mono para la nota de voz
+    encoderApplication: 2048,     // perfil de voz de Opus
+    encoderSampleRate: 48000,
+    streamPages: false,
+    mediaTrackConstraints: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
+  grabador = { rec, convId, inicio: 0, timer: null, mandar: false };
+  barra.style.display = "flex";
+  barra.innerHTML = `<span class="audio-punto"></span><span class="audio-tiempo">0:00</span><span class="sub audio-estado">Grabando… habla cerca del micrófono</span>
+    <button type="button" class="audio-cancelar" title="Cancelar">${icon("close")}</button>
+    <button type="button" class="audio-enviar" title="Enviar nota de voz">${icon("send")}</button>`;
+  barra.querySelector(".audio-cancelar").addEventListener("click", () => terminarGrabacion(false));
+  barra.querySelector(".audio-enviar").addEventListener("click", () => terminarGrabacion(true));
+
+  rec.ondataavailable = async (bytes) => {
+    const g = grabador;
+    grabador = null;
+    clearInterval(g?.timer);
+    if (!g?.mandar) { barra.style.display = "none"; barra.innerHTML = ""; return; }
+    barra.querySelector(".audio-estado").textContent = "Enviando…";
+    try {
+      const archivo = new File([bytes], `nota-de-voz-${Date.now()}.ogg`, { type: "audio/ogg" });
+      const subida = await subirArchivo(archivo);
+      if (subida.type !== "audio") throw new Error("El servidor no reconoció el audio.");
+      await pedir("/api/crm/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: g.convId, media_key: subida.media_key, media_type: "audio" })
+      });
+      barra.style.display = "none"; barra.innerHTML = "";
+      if (estado.conversacionActivaId === g.convId) cargarMensajes();
+    } catch (err) {
+      barra.querySelector(".audio-estado").textContent = `No se envió: ${err.message}`;
+      setTimeout(() => { barra.style.display = "none"; barra.innerHTML = ""; }, 6000);
+    }
+  };
+
+  try {
+    await rec.start();
+  } catch (err) {
+    grabador = null;
+    barra.style.display = "none"; barra.innerHTML = "";
+    return alert("No se pudo usar el micrófono. Revisa que el navegador tenga permiso para el micrófono en este sitio.");
+  }
+  grabador.inicio = Date.now();
+  grabador.timer = setInterval(() => {
+    const seg = Math.floor((Date.now() - grabador.inicio) / 1000);
+    const t = barra.querySelector(".audio-tiempo");
+    if (t) t.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, "0")}`;
+    if (seg >= AUDIO_MAX_SEG) terminarGrabacion(true);
+  }, 250);
+}
+
+function terminarGrabacion(mandar) {
+  if (!grabador) return;
+  grabador.mandar = mandar && Date.now() - grabador.inicio >= 1000; // menos de 1 s no se manda
+  clearInterval(grabador.timer);
+  const estadoTxt = $("#barra-audio .audio-estado");
+  if (estadoTxt) estadoTxt.textContent = mandar ? "Preparando…" : "Cancelado";
+  grabador.rec.stop();
 }
 
 async function cargarMensajes() {

@@ -30,17 +30,22 @@ const VIDEO_MAX_BYTES = 16 * 1024 * 1024;
 const EXTENSION_POR_MIME = {
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
   "video/mp4": "mp4", "video/3gpp": "3gp",
-  "application/pdf": "pdf"
+  "application/pdf": "pdf",
+  // Nota de voz grabada en el CRM (opus-recorder): Ogg con códec Opus, mono. Es el único formato que
+  // WhatsApp muestra como nota de voz (con `voice: true`, ver enviarMedia en whatsapp.js).
+  "audio/ogg": "ogg"
 };
 
 const IMAGENES_VALIDAS = new Set(["image/jpeg", "image/png"]);
 const VIDEOS_VALIDOS = new Set(["video/mp4", "video/3gpp"]);
+const AUDIO_MAX_BYTES = 16 * 1024 * 1024; // límite de Meta para audio
 const STICKER_MAX_BYTES = 500 * 1024; // límite de Meta para animados; los estáticos piden 100KB (no detectable sin decodificar el webp)
 
 function tipoDeMime(mime) {
   if (mime === "image/webp") return "sticker";
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/")) return "video";
+  if (mime === "audio/ogg") return "audio";
   return "document";
 }
 
@@ -64,6 +69,9 @@ async function handler({ request, env }) {
   const extNombre = String(file.name || "").split(".").pop().toLowerCase();
   let mime = file.type || "application/octet-stream";
   if (mime === "image/jpg" || mime === "image/pjpeg") mime = "image/jpeg";
+  // "audio/ogg; codecs=opus" → "audio/ogg" (así lo pide la Cloud API al subir el archivo).
+  if (mime.startsWith("audio/ogg")) mime = "audio/ogg";
+  if (mime === "audio/ogg" && file.size > AUDIO_MAX_BYTES) return json({ error: "El audio pesa más de 16 MB (el límite de WhatsApp)." }, 413);
   if (mime === "application/octet-stream") {
     mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", mp4: "video/mp4", pdf: "application/pdf" }[extNombre] || mime;
   }
