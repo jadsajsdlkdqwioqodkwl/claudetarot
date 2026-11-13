@@ -2926,3 +2926,14 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   - collar a +20 h de la respuesta rápida: 2,6 %;
   - urgencia «sale mañana» a +1–2 h de la respuesta rápida: 5,4 %.
 - Conversión total de chats (chats del 30/10 al 5/11 que compraron): 8,0 %.
+
+### 2026-11-13 — checklist de Lima en la hoja de etiquetas (caso Carmela Fonseca)
+
+- `GET /api/asesor/dinsides?chequeo=<nros>` (`src/api/asesor-dinsides.js`): lee el detalle actual de cada pedido en Dinsides y lo
+  cruza con el polígono de cobertura (pin del pedido) y con la etiqueta `lima_entrega_FECHA` del chat. Solo lee.
+- `etiquetas.py`: `verificar_lima()` + `pagina_checklist()` → última hoja del PDF de etiquetas; lo no corroborado sale también en
+  pantalla con «❌ CHECKLIST …». Regla 20 de `docs/envios-jennifer.md`.
+- Qué pasó con Carmela (#2953631): el sistema la registró en Callao el 13/11 00:03 (sin pin); a la 01:43 solo se le cambió el
+  Detalle. Después alguien editó el pedido en el portal de Dinsides (dirección = link de Maps, pin -11.98175,-77.08480) y quedó en
+  Los Olivos, que es el polígono de Dinsides donde cae ese pin. El 12/11 Dinsides había anulado el mismo pedido en Callao por
+  «datos errados». Cuando se revisó ya estaba EN RUTA y Dinsides no aceptó la edición.

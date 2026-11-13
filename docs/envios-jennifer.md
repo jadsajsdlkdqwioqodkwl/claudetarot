@@ -375,3 +375,11 @@ Shalom: cuántos envíos, los dos links y pendientes; qué marcó `estados`. Nad
 19. **ETIQUETAS: el Detalle y el EMPAQUE se parten midiendo el ancho real** (`partir` en `etiquetas.py`); si el Detalle es largo,
     el Producto baja a una línea con «…» (lo completo va en EMPAQUE) y la letra del Detalle se achica hasta que entre todo.
     «REAGENDAR», «ya dio su dirección» y otros apuntes internos no van al Detalle.
+
+20. **CHECKLIST AL FINAL DE LAS ETIQUETAS (dueño 2026-11-13, caso Carmela Fonseca).** `etiquetas.py` agrega una última hoja
+    «CHECKLIST DE LIMA»: pedido, nombre, distrito, «[X] el pin cae en ese distrito del mapa de Dinsides» / «[ ] NO COINCIDE» /
+    «[ ] SIN PIN: distrito por texto, NO corroborado», fecha de entrega y «[X] es la fecha del chat». Lee lo que Dinsides tiene
+    EN ESE MOMENTO (`GET /api/asesor/dinsides?chequeo=<nros>`), no lo que el sistema registró: si alguien cambió el pedido a mano en
+    el portal, sale ahí. Toda fila sin [X] Claude la dice en la sesión y se resuelve ANTES del recojo (pedir el pin, corregir con
+    `editar`); con el pedido EN RUTA ya no se puede editar: Jennifer le escribe a Dinsides por WhatsApp.
+    **Antes de editar cualquier cosa de un pedido de Lima se mira también su distrito contra el polígono** (`dinsides.py zona`).
