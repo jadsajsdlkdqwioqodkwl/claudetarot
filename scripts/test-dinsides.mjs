@@ -165,6 +165,14 @@ check("«a las 5 pm» → alerta HORA ESPECÍFICA (no bloquea)", p.listo && p.al
 p = D.armarPedido({ nombre: "Ventana", whatsapp: "51999999981", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", pago: "Contraentrega S/89, 12-5 pm", nota: "la recibe ella", estado: "CONFIRMADO" }, ctx);
 check("«12-5 pm» es la ventana normal: sin alerta de hora", !p.alertas.some((a) => /^HORA ESPECÍFICA/.test(a)), JSON.stringify(p.alertas));
 
+// Teléfono PRINCIPAL = el que dio el cliente; el número con el que escribió va en el Detalle (dueño 2026-11-13)
+p = D.armarPedido({ nombre: "Otro número", whatsapp: "51976373863", direccion_o_agencia: "Calle Bolognesi 373, Miraflores", nota: "Tel de contacto 978319291; paga con Yape", estado: "CONFIRMADO" }, ctx);
+check("«Tel de contacto 978…» en la nota → ese es el teléfono del pedido y su WhatsApp va en el Detalle", p.campos.telefono === "978319291" && /WhatsApp: 976373863/.test(p.campos.obs) && p.alertas.some((a) => /^TELÉFONO/.test(a)), JSON.stringify([p.campos.telefono, p.campos.obs]));
+p = D.armarPedido({ nombre: "Con campo", whatsapp: "51999111222", telefono: "988777666", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", estado: "CONFIRMADO" }, ctx);
+check("`telefono` del reporte manda sobre el WhatsApp del chat", p.campos.telefono === "988777666" && /WhatsApp: 999111222/.test(p.campos.obs), JSON.stringify([p.campos.telefono, p.campos.obs]));
+p = D.armarPedido({ nombre: "Mismo", whatsapp: "51999111222", direccion_o_agencia: "Av Brasil 100, Pueblo Libre", nota: "Recibe Ana 999111222", estado: "CONFIRMADO" }, ctx);
+check("si el número de la nota es el mismo del chat, no hay cambio ni alerta", p.campos.telefono === "999111222" && !p.alertas.some((a) => /^TELÉFONO/.test(a)), JSON.stringify(p.alertas));
+
 // La observación de Dinsides es solo operativa; lo de la asesora (reprogramar, confirmar) sale como alerta (dueño 2026-11-09)
 p = D.armarPedido({ nombre: "Mavel", whatsapp: "51999195063", direccion_o_agencia: "Calle Ramón Ribeyro 509, Miraflores", pago: "Pagado S/89", estado: "CONFIRMADO",
   nota: "🚨 Ya pagó S/89 por Yape (20:22, op 30121691): NO cobrar. Ella no está hasta las 5:30 pm; pide que le dejen el paquete por la ventana lateral abierta. También pidió reprogramar al miércoles 11-11: confirmar la fecha con ella." }, ctx);

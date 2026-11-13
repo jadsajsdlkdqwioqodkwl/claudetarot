@@ -148,3 +148,7 @@ NUNCA va como INTENCION ni DESCARTADO («ya había comprado»): su compra sigue 
    cobrados y reposiciones (solo el número: el detalle va a Moi); capturas miradas; cuadre con el CRM; compras marcadas; link del PDF.
 
 Nunca mandes mensajes a clientes ni propongas textos. No hables de costos en dinero.
+
+12. **Teléfono del pedido (dueño 2026-11-13):** si el cliente pasó otro número para la entrega o para que le escriban («escriban a
+    este», «lo recibe … 9…», un contacto compartido), ESE va en `telefono` del pedido; el número con el que escribió es `whatsapp`
+    y sale solo en el Detalle. Nunca dejes ese segundo número solo en la `nota`.

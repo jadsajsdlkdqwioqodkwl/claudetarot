@@ -77,6 +77,7 @@ import { onRequestGet as crmEjemplaresGet, onRequestPost as crmEjemplaresPost, o
 import { onRequestGet as crmRecursosGet, onRequestPost as crmRecursosPost, onRequestPatch as crmRecursosPatch, onRequestDelete as crmRecursosDelete } from "./api/crm/recursos.js";
 import { avisarSinRespuesta } from "./lib/crm-avisos.js";
 import { onRequestGet as asesorEntregaGet, guardarArchivosEntrantesPendientes } from "./api/asesor-entrega.js";
+import { onRequestGet as asesorShalomAgenciasGet, onRequestPost as asesorShalomAgenciasPost } from "./api/asesor-shalom.js";
 import { onRequestPost as crmTestWelcomePost } from "./api/crm/test-welcome.js";
 import { onRequestPost as crmWelcomeSendPost } from "./api/crm/welcome-send.js";
 import {
@@ -184,6 +185,7 @@ const ROUTES = {
   "/api/asesor/marcar-compra": { POST: asesorMarcarCompraPost },
   "/api/asesor/revision": { GET: asesorRevisionGet, POST: asesorRevisionPost },
   "/api/asesor/entrega": { GET: asesorEntregaGet },
+  "/api/asesor/shalom-agencias": { GET: asesorShalomAgenciasGet, POST: asesorShalomAgenciasPost },
   "/api/revision/nota": { POST: revisionNotaPost, OPTIONS: revisionNotaPost },
   "/api/asesor/dinsides": { GET: asesorDinsidesGet, POST: asesorDinsidesPost },
   "/api/asesor/plantillas-meta": { GET: asesorPlantillasGet, POST: asesorPlantillasPost },

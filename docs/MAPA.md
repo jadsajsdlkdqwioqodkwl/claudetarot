@@ -2869,3 +2869,48 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
 - Collar extra (compras del 6 al 13/11, 101 en total): 16 recibieron justo antes el seguimiento de +20 h de una respuesta rápida y 7 el paso `seg_d5_ultimo_bono` del plan de 7 días (apagado el 13/11). Ninguna salió del toque del día 7.
   - Respuestas rápidas cuyo seguimiento ofrece el collar: Lima msj. 3, Provincia Msj. 3, Precio?, Si no dice dónde, Tienda física?, Cuándo llega?, Promo descuento y SEPARAR SEPARADO LIMA.
   - No se tocaron; decide el dueño.
+## 2026-11-13 (noche) · Shalom: la agencia correcta en todos lados (una sola función, agencias al día, confirmadas, recomendaciones)
+
+Construido lo que pedía `docs/prompts/shalom-agencias.md`. Decisiones del dueño en la sesión: la lista del día la guarda el Worker
+(sin commits de Routines); documentos de 9 dígitos van al masivo marcados; las recomendaciones por agencia dudosa salen en las
+corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el horario ofrecido.
+- **Qué se conecta con qué:** `scripts/asesor/shalom.py` (`cargar` desde el Worker, `recibe`, `plantilla_destinos`, `nombre_plantilla`,
+  `cruce_plantilla`, `agencias_al_dia`, `elegir_agencia`, `buscar_osm`, `metros`, `agencia_de_nota`, `confirmar`, `aplicar_notas`,
+  `recomendacion_de`, `pedidos_de_provincia`, `cmd_recomendar`, `cmd_triangular`, `verificar_excel`; `masivo` usa `elegir_agencia`,
+  valida contra `Hoja2!C` y verifica el Excel) ↔ `src/api/asesor-shalom.js` (`GET/POST /api/asesor/shalom-agencias`: agencias del
+  día en R2 `shalom/agencias.json`, confirmadas en `shalom/confirmadas.json`, OSM con caché en `shalom/osm-cache.json`) ↔
+  `scripts/asesor/dinsides.py` (`_bloque_shalom` y `cmd_notas` → `sh.aplicar_notas`; `presentar` llama a `agencias_al_dia`) ↔
+  `scripts/asesor/etiquetas.py` (`shalom_de_hoja` con `elegir_agencia`; `horario_lima`) ↔ `/api/asesor/sugerencias` (`dato_envio`).
+  `llenar_plantilla()` NO se tocó.
+- **Routine del asesor:** `docs/prompts/asesor-mensajes.md` gana el paso 0 (`shalom.py recomendar`). No cambia el arranque de
+  ninguna Routine.
+- **Hallazgos:** (1) los dos de Wanchaq del 12/11 (Daniela Cabrera y Nadia Durand) fueron a la MISMA agencia, AV PACHACUTEC
+  (Av. Pachacútec 429), que es la que pidieron; (2) el 13/11 hubo 8 Shalom en el reporte y 6 etiquetas: Nadia ya había salido el
+  12/11 (se repitió en el reporte) y **Nerys Campos Luna (Pucallpa)** no se registró porque Shalom no recibe envíos en Pucallpa
+  (todas sus agencias tienen `destino = 0`); (3) Shalom cambió su lista (versión 5184 → 5376): la plantilla del Excel del repo puede
+  haber quedado vieja y `agencias_al_dia` lo avisa por Telegram.
+- Pruebas: `python3 scripts/asesor/pruebas/test_shalom_agencias.py` (sin red). `npm run check` sigue en verde.
+
+### 2026-11-13 (tarde) — teléfono del pedido, aviso de plantilla para Jennifer y búsqueda de agencias
+
+- **Teléfono principal (regla del dueño):** si el cliente dio otro número para la entrega, ese es el `telefono` del pedido de
+  Dinsides; el número con el que escribió va en el Detalle. `armarPedido` (`src/lib/dinsides.js`) lo toma de `telefono` o, si
+  falta, de la `nota`; `docs/envios-jennifer.md` regla 15 y `docs/prompts/reporte.md` punto 12. Prueba en `scripts/test-dinsides.mjs`.
+- **Clientes sin número:** `GET /api/asesor/chat?wa_id=PE.…` (`src/api/asesor-datos.js`) y `dinsides.py chat PE.…`.
+- **Plantilla del Excel de Shalom:** nueva pieza R2 `shalom/plantilla.xlsx` (la sube `shalom.py plantilla <archivo>` por
+  `POST /api/asesor/shalom-agencias {accion: "plantilla"}`; la lee `plantilla_actual()` con `GET …?plantilla=1`). Si no existe se
+  usa `data/shalom-masivo-plantilla.xlsx` del repo (no se borró). El aviso de plantilla vieja va todos los días a Jennifer (RESUMEN
+  + página de revisión + respuesta de Claude, regla 16 de `docs/envios-jennifer.md`) y a Moi por Telegram una vez por versión.
+- **Búsqueda de agencias para Claude:** `shalom.py osm`, `shalom.py provincia` (además de `triangular` y `buscar`); regla 17.
+- Ninguna Routine cambió (leen estos documentos desde `main`).
+
+### 2026-11-13 (noche) — duplicados en Dinsides, avisos para Jennifer y saltos de línea de las etiquetas
+
+- `dinsides.py presentar`: sección nueva «❌ AVISOS PARA JENNIFER» (va a su página de revisión y a la pantalla): plantilla del
+  Excel vieja y pedidos que ya están en Dinsides con otra fecha (no se registran de nuevo; si Dinsides ya los tiene, ella les
+  escribe por WhatsApp para reagendar). Usa el cruce que ya existía (`cruzarConDinsides`, alerta «YA AGENDADO»).
+- `etiquetas.py`: `partir()` (salto de línea por ancho real) en Lima, Shalom y Olva; el Detalle se ajusta al sitio disponible.
+- `RE_NOTA_INTERNA` (JS y Python): «reagendar» y «ya dio su dirección» no van al Detalle del motorizado.
+- Caso Jessica Ugaz Lecaros (998702980): un solo pedido en Dinsides (#2953630, registrado el 13/11 00:03 para el 20/11); no hay
+  duplicado. Se le limpió el Detalle («REAGENDAR: ya dio su dirección» → «Entrega el 20 de noviembre»).
+- Reglas 18 y 19 de `docs/envios-jennifer.md`. Ninguna Routine cambió.

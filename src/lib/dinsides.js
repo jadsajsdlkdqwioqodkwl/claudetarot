@@ -242,7 +242,7 @@ export function fechaEntrega({ ahora = Date.now(), fecha_pedida = "", fecha_obje
 
 const RE_NOTA_PAGO = /ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S\/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia/i;
 const RE_NOTA_PIN = /\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl/i;
-const RE_NOTA_INTERNA = /confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b/i;
+const RE_NOTA_INTERNA = /confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|reagendar|ya dio su direcci|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b/i;
 
 /**
  * La nota que lee el MOTORIZADO en la etiqueta (campo «Detalle» de Dinsides). Parte la nota del reporte en frases y deja solo lo que
@@ -323,7 +323,14 @@ function telefonoValido(...fuentes) {
 export function armarPedido(pedido, ctx = {}) {
   const p = pedido || {};
   const alertas = [], bloqueos = [];
-  const telefono = telefonoValido(p.telefono, p.whatsapp);
+  // Teléfono PRINCIPAL (dueño 2026-11-13): si el cliente pasó otro número («escriban a este», «recibe mi hermana 9…», un contacto),
+  // ESE es el teléfono del pedido; el número con el que escribió va en el Detalle («Escribir al cliente por WhatsApp: …»). El reporte
+  // lo trae en `telefono`; si se le pasó y lo dejó solo en la nota («Tel de contacto 978…», «recibe … 9…»), se toma de ahí.
+  const waDigitos = String(p.whatsapp || "").replace(/\D/g, "").slice(-9);
+  const enNota = String(p.telefono || "").trim() ? null : (String(p.nota || "").match(/(?:contacto|recibe|recibir[aá]|entregar a|llamar a|escribir a|avisar a|tel[eé]fono|tel\.?|cel\.?|celular|n[uú]mero)[^.;\d]{0,40}?(?:\+?51[\s-]?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})(?!\d)/i) || [])[1];
+  const otroNumero = enNota ? enNota.replace(/\D/g, "") : "";
+  const telefono = telefonoValido(p.telefono, otroNumero && otroNumero !== waDigitos ? otroNumero : "", p.whatsapp);
+  if (otroNumero && otroNumero !== waDigitos && telefono === otroNumero) alertas.push(`TELÉFONO: va el número que dio el cliente en el chat (${otroNumero}); su WhatsApp (${waDigitos || "sin número"}) va en el Detalle`);
   if (!telefono) bloqueos.push(`TELÉFONO: «${p.telefono || p.whatsapp || ""}» no es un celular de 9 dígitos que empiece en 9`);
 
   const nombre = SIN_EMOJI(p.nombre).replace(/\((perfil|chat)[^)]*\)/gi, "").replace(/\s+/g, " ").trim() || "CLIENTE";

@@ -450,7 +450,9 @@ export async function onRequestGetChat({ request, env }) {
   if (cortar) return cortar;
   const url = new URL(request.url);
   const convId = Number(url.searchParams.get("conversation_id")) || 0;
-  let wa = (url.searchParams.get("wa_id") || url.searchParams.get("telefono") || "").replace(/\D/g, "");
+  const crudo = (url.searchParams.get("wa_id") || url.searchParams.get("telefono") || "").trim();
+  // Clientes SIN número (usuario de WhatsApp): su wa_id es «PE.1160…»; se busca tal cual, sin quitarle las letras.
+  let wa = /^[A-Za-z]{2}\.\d+$/.test(crudo) ? crudo.toUpperCase().slice(0, 2) + crudo.slice(2) : crudo.replace(/\D/g, "");
   if (wa.length === 9) wa = "51" + wa;
   if (!convId && !wa) return json({ error: "Falta conversation_id, wa_id o telefono." }, 400);
   const conv = convId

@@ -84,6 +84,22 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
     - La clave NUNCA se le manda al cliente, ni va en Telegram, ni la repites en tus respuestas: es distinta del «Código» de 4 letras
       de la boleta. Solo vive en el CRM y en la hoja Ventas; el CRM se la da al cliente cuando paga su saldo.
 
+14. **LA AGENCIA DE SHALOM LA DECIDE UNA SOLA FUNCIÓN (2026-11-13) y lo que confirma la asesora es lo que va al Excel.**
+    - La sección SHALOM de la página muestra por pedido: «Destino» (el nombre EXACTO que irá en el Excel), la dirección completa
+      de esa agencia, si es SEGURA, DUDOSA o CONFIRMADA, «Por qué esta agencia» y, si es dudosa, las candidatas con su dirección.
+      Ya no uses `shalom.py buscar` ni armes `/tmp/shalom/agencias.json`: no hace falta.
+    - Notas de la asesora (las aplica solo `dinsides.py notas`, que imprime «🚚 AGENCIAS DE SHALOM según las notas»): «OK» = la
+      agencia mostrada queda confirmada; «agencia X» (o una dirección o referencia en la nota) = se busca el nombre exacto; si no
+      calza con UNA sola agencia que reciba envíos, sale «FALTA UN DATO» con el motivo y NO se adivina: díselo tal cual.
+    - `shalom.py masivo` lee esas confirmaciones solo. Al Excel entran únicamente filas con documento, celular de 9 dígitos y
+      agencia SEGURA o CONFIRMADA cuyo nombre esté en la lista de la plantilla. Un documento de 9 dígitos (carnet de extranjería)
+      entra marcado: pide a quien sube que mire si Shalom Pro aceptó esa fila.
+    - `masivo` termina con «🔎 VERIFICACIÓN DEL EXCEL: ✅ …». Si dice ❌ NO SUBIR, no des el link: dilo y corrige.
+    - «Shalom NO recibe envíos en …» (hoy pasa con Pucallpa): ese pedido no puede ir por Shalom a esa ciudad. Va como pregunta
+      («¿Olva u otra agencia?»); la asesora ya tiene la recomendación en el chat del cliente.
+    - Para probar un texto: `python3 scripts/asesor/shalom.py triangular "<lo que escribió el cliente>"`.
+    - Las etiquetas de Lima llevan «Horario:» (12 a 5 pm regular, o ESPECIAL con lo que pidió el cliente si la nota lo dice).
+
 REGLA CERO (dueño, 2026-11-09): cada vez que te llegue un mensaje en esta sesión DESPUÉS de haber presentado (sea «OK», «listo»,
 «registralos», una pregunta o cualquier cosa), lo PRIMERO que haces es `python3 scripts/asesor/dinsides.py notas` (sin argumentos:
 lee la última página de revisión que dejó `presentar`). Lo que el dueño marcó en la página vale igual que si lo hubiera escrito en la
@@ -325,3 +341,37 @@ Shalom: cuántos envíos, los dos links y pendientes; qué marcó `estados`. Nad
 - Etiquetas para imprimir: `python3 scripts/asesor/etiquetas.py` (fecha de entrega; Shalom y Olva por datos).
 - La hoja de todos los pedidos: libro «Pedidos Tarot Kit», pestaña «Pedidos auto» (columnas «Enviado» y «Dinsides»); provincia en «Ventas».
   Link: https://docs.google.com/spreadsheets/d/1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc/edit#gid=1131206013
+
+15. **EL TELÉFONO DEL PEDIDO ES EL QUE DIO EL CLIENTE (dueño 2026-11-13).** Si el cliente pasó otro número («escriban a este»,
+    «lo recibe mi hermana 9…», un contacto, «teléfono de quien recibe»), ESE número va como teléfono principal del pedido de Dinsides
+    (campo `telefono` del pedido) y el número con el que escribió va en el Detalle («Escribir al cliente por WhatsApp: …»). Nunca al
+    revés. Antes de registrar un pedido de Lima se lee el chat buscando ese segundo número; si quedó solo en la `nota` («Tel de
+    contacto 978…», «recibe … 9…») el Worker lo toma de ahí y avisa «TELÉFONO: va el número que dio el cliente…». Si la etiqueta ya
+    salió con el número equivocado: `dinsides.py editar <nro> telefono=9… "obs=…"` (hasta las 6:00) y se vuelve a sacar la etiqueta.
+    `dinsides.py chat` ya acepta clientes sin número (`PE.1160…`).
+16. **EL AVISO DE «PLANTILLA VIEJA» ES PARA JENNIFER, TODOS LOS DÍAS (dueño 2026-11-13).** Mientras `presentar` / `masivo` /
+    `shalom.py agencias` impriman «⚠️ PARA JENNIFER — LA PLANTILLA DEL EXCEL DE SHALOM QUEDÓ VIEJA», Claude lo dice AL INICIO de su
+    respuesta en la sesión, con sus palabras simples: qué agencias faltan y qué hacer (Shalom Pro → Registro de envíos masivos →
+    «Descargar formato» → adjuntar el archivo en la sesión). Cuando ella adjunta el archivo: `python3 scripts/asesor/shalom.py
+    plantilla <archivo.xlsx>` (lo revisa, dice qué cambió y lo guarda en el Worker; desde ahí lo usan el Excel, la revisión y las
+    etiquetas). La primera subida a Shalom Pro con la plantilla nueva se mira con cuidado y se avisa a Moi si algo sale raro.
+17. **HERRAMIENTAS PARA BUSCAR UNA AGENCIA (úsalas todas antes de decir «dudosa»):**
+    `shalom.py triangular "<lo que escribió el cliente>"` (la decisión del sistema, con candidatas y distancias) ·
+    `shalom.py provincia "<provincia o distrito>"` (todas las agencias del lugar, reciban o no) ·
+    `shalom.py buscar "<nombre o calle>"` · `shalom.py osm "<lugar, ciudad>"` o `shalom.py osm "-13.52,-71.97"` (dónde queda un
+    lugar o un pin en el mapa y las 5 agencias que reciben más cercanas) · el buscador web de la sesión (Google Maps, la página
+    shalom.com.pe/agencias) para una referencia que el mapa no conoce. OpenStreetMap es solo «el mapa»: sirve para saber dónde queda
+    «el mercado X» o «el óvalo Y» y medir qué agencia está más cerca. La agencia igual la confirma una persona en la página de
+    revisión cuando queda dudosa.
+
+18. **DUPLICADOS EN DINSIDES Y REAGENDADOS (dueño 2026-11-13, caso Jessica Ugaz).** Antes de registrar, la revisión y el reporte
+    cruzan cada pedido con Dinsides (teléfono, nombre y teléfonos del chat): lo que ya está NO se registra otra vez ni lleva
+    etiqueta nueva. Si el pedido ya está en Dinsides con OTRA fecha, sale en «❌ AVISOS PARA JENNIFER» (arriba de su página y en
+    la respuesta de Claude en la sesión): (a) si se registró en esta misma tanda y todavía no lo recogen, Claude le cambia la
+    fecha con `dinsides.py editar <nro> fecha_entrega=AAAA-MM-DD`; (b) si Dinsides ya lo tiene (almacén o en ruta) **no se puede
+    cambiar desde el sistema: Jennifer le escribe por WhatsApp a Dinsides para que lo reagenden**, con el número de pedido y la
+    fecha nueva. Un pedido agendado para más adelante se registra una sola vez, sale en el recojo de ese día y Dinsides lo guarda
+    en su almacén: su etiqueta dice la fecha de entrega (por eso aparece en la mesa antes).
+19. **ETIQUETAS: el Detalle y el EMPAQUE se parten midiendo el ancho real** (`partir` en `etiquetas.py`); si el Detalle es largo,
+    el Producto baja a una línea con «…» (lo completo va en EMPAQUE) y la letra del Detalle se achica hasta que entre todo.
+    «REAGENDAR», «ya dio su dirección» y otros apuntes internos no van al Detalle.
