@@ -2945,3 +2945,12 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   (11/11 23:47) y la sesión registró el pedido en Callao las dos veces; Dinsides lo anuló por «datos errados». El checklist de
   `etiquetas.py` ahora cruza el distrito de Dinsides con el que la asesora escribió en la revisión de ese despacho o de los 2
   anteriores (`distrito_en_notas`) y marca «NO ES EL DISTRITO QUE ESCRIBIÓ LA ASESORA». Regla 21 de `docs/envios-jennifer.md`.
+
+### 2026-11-13 (tarde) · Entrega de Lima sin horario y plantillas de «reagendado»
+- `ENTREGA_LIMA` (en `src/lib/plantillas-propuestas.js`), grupo «Entrega del día (Lima)», todas UTILITY. Dueño: «no pongas el horario, algunos clientes piden horario diferente».
+  - `entrega_hoy_lima_10` a `_19`: sin horario.
+  - `reagendado_lima_1` a `_3`: `{{1}}` es la fecha nueva que dice Dinsides.
+  - El cuerpo de la plantilla ahora lleva el ejemplo de la variable (`t.variables`).
+  - La automatización del reagendado NO está construida: el plan está en la respuesta al dueño y espera su visto bueno.
+- Verificado: las etiquetas `lima` y `lima_entrega_FECHA` de la noche del 12/11 salieron en los 9 Lima de la revisión: 8 para el 13 y Jessica Ugaz para el 20. También tiene la del 13 Carmela Fonseca, de la revisión del 12.
+  - Provincia no lleva una etiqueta propia. Se reconoce por `bot_boleta` / `shalom_codigo_pendiente`.

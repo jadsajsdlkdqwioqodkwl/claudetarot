@@ -88,6 +88,72 @@ export const ENTREGA_LIMA = [
     nombre: "entrega_hoy_lima_9", titulo: "Corta: hoy llega + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
     texto: "Hola estimad@ 🔮 ¡Hoy llega su kit! 📦✨ Entre las 12 y las 5 pm el motorizado le llamará 🛵 ¿A qué correo le enviamos sus clases y libros digitales? 📚",
     botones: ["Le paso mi correo", "Cambiar fecha"]
+  },
+  // Dueño, 2026-11-13 (tarde): 10 versiones SIN horario (hay clientes con otro horario) y 3 de «reagendado» con la fecha de Dinsides.
+  {
+    nombre: "entrega_hoy_lima_10", titulo: "Hoy le llega + correo (sin horario)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷 hoy le llega su Kit de Tarot 📦✨ El motorizado le llamará antes de llegar 🛵 Para enviarle sus clases y libros digitales, ¿nos comparte su correo? ✉️",
+    botones: ["Le paso mi correo", "Lo recibe otra persona"]
+  },
+  {
+    nombre: "entrega_hoy_lima_11", titulo: "Ya salió a ruta + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Buenos días estimad@ ☀️ su Kit de Tarot ya salió a ruta y hoy lo recibe 🔮📦 Mientras tanto, ¿a qué correo le enviamos sus clases grabadas y libros de tarot? 📚",
+    botones: ["Le paso mi correo", "Tengo una duda"]
+  },
+  {
+    nombre: "entrega_hoy_lima_12", titulo: "Hoy es el día + regalos listos", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ ✨ ¡hoy es el día! Su kit va en camino 🛵📦 Le dejamos listos sus regalos digitales para que empiece a aprender apenas lo abra 🎁 ¿Nos indica su correo? ✉️",
+    botones: ["Le paso mi correo", "Cambiar fecha"]
+  },
+  {
+    nombre: "entrega_hoy_lima_13", titulo: "Pide Gmail (Drive) sin horario", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷 hoy le entregamos su Kit de Tarot 📦 Sus clases y libros los compartimos por Google Drive ☁️ ¿Nos pasa un correo Gmail para darle acceso? ✉️",
+    botones: ["Le paso mi Gmail", "No tengo Gmail"]
+  },
+  {
+    nombre: "entrega_hoy_lima_14", titulo: "Llega hoy + llamada + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🔮 su pedido de Tarot Store llega hoy 📦 El motorizado le avisará por llamada antes de llegar ☎️ ¿Nos confirma un correo para mandarle su material digital? 📚✨",
+    botones: ["Le paso mi correo", "Lo recibe otra persona"]
+  },
+  {
+    nombre: "entrega_hoy_lima_15", titulo: "Primera lectura esta semana + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ ✨ hoy recibe su Kit de Tarot 📦 Para que pueda hacer su primera lectura esta misma semana, le enviamos las clases paso a paso 📚 ¿A qué correo se las mandamos? ✉️",
+    botones: ["Le paso mi correo", "Tengo una duda"]
+  },
+  {
+    nombre: "entrega_hoy_lima_16", titulo: "Puede recibirlo alguien + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Buenos días estimad@ 🌞 hoy le entregamos su kit 📦🛵 Si no va a estar, puede recibirlo alguien de su confianza 🫶 ¿Nos comparte su correo para enviarle sus clases y libros? ✉️",
+    botones: ["Le paso mi correo", "Cambiar fecha"]
+  },
+  {
+    nombre: "entrega_hoy_lima_17", titulo: "Muy corta + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 📦 ¡Hoy llega su Kit de Tarot! 🔮 ¿Nos deja su correo para enviarle sus clases y libros de regalo? 🎁✉️",
+    botones: ["Le paso mi correo", "Cambiar fecha"]
+  },
+  {
+    nombre: "entrega_hoy_lima_18", titulo: "Celular a la mano + correo (sin horario)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷 su Kit de Tarot está en ruta y hoy lo recibe 🛵 Tenga su celular a la mano para coordinar la entrega ☎️ ¿Nos comparte su correo para enviarle sus regalos digitales? 🎁",
+    botones: ["Le paso mi correo", "Lo recibe otra persona"]
+  },
+  {
+    nombre: "entrega_hoy_lima_19", titulo: "30 clases listas + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🔮✨ hoy le llega su kit 📦 Ya tenemos preparado su acceso a más de 30 clases de tarot y libros digitales 📚 ¿A qué correo se lo enviamos? ✉️",
+    botones: ["Le paso mi correo", "Tengo una duda"]
+  },
+  {
+    nombre: "reagendado_lima_1", titulo: "Reagendado: misma fecha que Dinsides, sin costo, mismo precio", cuando: "noche del día de entrega, si Dinsides lo pasó a otra fecha ({{1}} = la fecha nueva que dice Dinsides)",
+    texto: "Hola estimad@ 🩷 hoy no se pudo completar la entrega de su Kit de Tarot 📦 Su pedido quedó reagendado para {{1}}, sin ningún costo adicional y con el mismo precio ✨ ¿Esa fecha le queda bien?", variables: ["mañana sábado 14"],
+    botones: ["Sí, está bien", "Prefiero otro día"]
+  },
+  {
+    nombre: "reagendado_lima_2", titulo: "Reagendado: todo se mantiene igual", cuando: "noche del día de entrega, si Dinsides lo pasó a otra fecha ({{1}} = la fecha nueva que dice Dinsides)",
+    texto: "Hola estimad@ ☺️ le avisamos que su Kit de Tarot quedó programado para {{1}} 📦 Se mantiene todo igual: mismo precio y sin costo extra 🫶 ¿Le parece bien esa fecha?", variables: ["mañana sábado 14"],
+    botones: ["Sí, está bien", "Prefiero otro día"]
+  },
+  {
+    nombre: "reagendado_lima_3", titulo: "Reagendado: ¿estará disponible?", cuando: "noche del día de entrega, si Dinsides lo pasó a otra fecha ({{1}} = la fecha nueva que dice Dinsides)",
+    texto: "Hola estimad@ ✨ hoy no llegamos a entregarle su pedido 🛵 Lo dejamos agendado para {{1}} con el mismo precio, sin costo adicional 📦 ¿Estará disponible ese día?", variables: ["mañana sábado 14"],
+    botones: ["Sí, estaré", "Prefiero otro día"]
   }
 ];
 
@@ -250,7 +316,7 @@ export function propuestasDe(marca, cambios = {}) {
     for (const t of ENTREGA_LIMA) {
       lista.push({
         nombre: t.nombre, grupo: "Entrega del día (Lima)", titulo: t.titulo, cuando: t.cuando,
-        categoria: "UTILITY", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, []), ...botones(t.botones)]
+        categoria: "UTILITY", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, t.variables || []), ...botones(t.botones)]
       });
     }
   }
