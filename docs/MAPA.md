@@ -2937,3 +2937,7 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   Detalle. Después alguien editó el pedido en el portal de Dinsides (dirección = link de Maps, pin -11.98175,-77.08480) y quedó en
   Los Olivos, que es el polígono de Dinsides donde cae ese pin. El 12/11 Dinsides había anulado el mismo pedido en Callao por
   «datos errados». Cuando se revisó ya estaba EN RUTA y Dinsides no aceptó la edición.
+- (2026-11-13, corrección) El pin de Carmela (-11.98198,-77.08486, Rosario del Norte) NO salió del chat ni del sistema: el link
+  no está en ningún mensaje. El polígono está bien calculado para ese pin, pero el pin es dudoso: su dirección («Urb. Los Alisos,
+  Calle Libertad, detrás del mercado») calza con Oquendo, Callao. El checklist ahora marca «CAMBIADO EN EL PORTAL DE DINSIDES»
+  cuando el distrito actual no es el que el sistema registró (`cambiado_fuera` en `?chequeo=`).

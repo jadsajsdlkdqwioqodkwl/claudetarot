@@ -620,6 +620,8 @@ def verificar_lima(items):
         pol = x.get("poligono") or {}
         if x.get("error"):
             pol_txt, pol_ok = "NO SE PUDO LEER EN DINSIDES", False
+        elif x.get("cambiado_fuera"):
+            pol_txt, pol_ok = f"CAMBIADO EN EL PORTAL DE DINSIDES: el sistema lo registró en «{str(x['cambiado_fuera'].get('distrito_registrado') or '?').upper()}». Confirmar con el cliente cuál es", False
         elif x.get("poligono_ok"):
             pol_txt, pol_ok = "OK: el pin cae en ese distrito del mapa de Dinsides", True
         elif pol:
