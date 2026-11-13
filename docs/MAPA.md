@@ -2914,3 +2914,15 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
 - Caso Jessica Ugaz Lecaros (998702980): un solo pedido en Dinsides (#2953630, registrado el 13/11 00:03 para el 20/11); no hay
   duplicado. Se le limpió el Detalle («REAGENDAR: ya dio su dirección» → «Entrega el 20 de noviembre»).
 - Reglas 18 y 19 de `docs/envios-jennifer.md`. Ninguna Routine cambió.
+
+### 2026-11-13 · El paso del día 5 (collar extra) vuelve, pero solo a quien no recibió la oferta
+- Pedido del dueño. `planes_seguimiento` id 2: el paso 7 (`seg_d5_ultimo_bono`, día 5 a las 19:00) se prendió de nuevo.
+- Filtro nuevo en `src/lib/oferta-collar.js`, aplicado por el cron (`crm-cron.js`) justo antes de enviar. Se cancela el paso si el chat ya recibió una oferta de collar extra o si ya pasaron los 7 días gratis desde que empezó el chat.
+  - Cuentan como oferta el seguimiento de +20 h de las respuestas rápidas y la misma plantilla ya enviada. La bienvenida no cuenta.
+  - Prueba: `scripts/test-oferta-collar.mjs` (en `npm run check`).
+- Se reprogramaron 382 chats (uno por chat, del 14 al 18/11) que siguen en su semana gratis, sin compra y sin respuesta desde que se programó. Se quitaron 369 filas duplicadas.
+- Datos (1–10/11, compras en 3 días):
+  - día 5 a quien no tenía el collar: 1,0 %; a quien ya lo tenía: 0,3 %;
+  - collar a +20 h de la respuesta rápida: 2,6 %;
+  - urgencia «sale mañana» a +1–2 h de la respuesta rápida: 5,4 %.
+- Conversión total de chats (chats del 30/10 al 5/11 que compraron): 8,0 %.
