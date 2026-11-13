@@ -26,7 +26,7 @@
  */
 import { autorizadoAsesor, dentroDelLimiteAsesor } from "./asesor.js";
 import { armarPedido, fechaEntrega, hoyLima, zonaDe, scriptConsola, payloadRegistro, resumenFicha, limpiarCoordenadas, buscarDistrito, normalizar } from "../lib/dinsides.js";
-import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento } from "../lib/dinsides-cliente.js";
+import { login, formulario, registrar as registrarEnDinsides, hayCredenciales, listado, anular as anularEnDinsides, editar as editarEnDinsides, claseSeguimiento, detalle as detalleEnDinsides } from "../lib/dinsides-cliente.js";
 import { filasPedidosAuto, marcarDinsidesEnHoja, upsertPedidosAuto } from "./asesor-pedidos-sheet.js";
 import { agregarEtiquetaMeta } from "../lib/crm-db.js";
 
@@ -562,6 +562,36 @@ export async function onRequestGet({ request, env }) {
     const c = limpiarCoordenadas(zona);
     if (!c) return json({ error: "zona debe ser lat,lng o un link de Maps con coordenadas." }, 400);
     return json({ coordenadas: c, zona: zonaDe(c.lat, c.lng) });
+  }
+  // ?chequeo=2953631,2953630 (dueño 2026-11-13, caso Carmela): lo que Dinsides tiene HOY de cada pedido (distrito, dirección, pin)
+  // contra el mapa de cobertura y contra la fecha que quedó en el chat (etiqueta `lima_entrega_FECHA`). Solo lee.
+  const chequeo = url.searchParams.get("chequeo");
+  if (chequeo) {
+    if (!hayCredenciales(env)) return json({ error: "sin_credenciales" }, 503);
+    try {
+      const { cookie } = await login(env);
+      const idx = await indice(env);
+      const waDeNro = new Map(Object.entries(idx).map(([w, v]) => [String(v?.nro || ""), w]));
+      const out = [];
+      for (const id of chequeo.split(",").map((x) => x.replace(/\D/g, "")).filter(Boolean).slice(0, 40)) {
+        try {
+          const ped = await detalleEnDinsides(env, cookie, id);
+          const c = limpiarCoordenadas(String(ped.coordenadas || "")) || limpiarCoordenadas(String(ped.direccion_destinatario || ""));
+          const z = c ? zonaDe(c.lat, c.lng) : null;
+          const tel = n9(ped.telefono_destinatario);
+          const conv = await env.CRM_DB.prepare(
+            `SELECT conv.meta_tags FROM conversations conv JOIN contacts c ON c.id = conv.contact_id WHERE substr(c.wa_id, -9) IN (?, ?) ORDER BY conv.id DESC LIMIT 1`
+          ).bind(waDeNro.get(id) || tel, tel).first().catch(() => null);
+          const fechasChat = [...String(conv?.meta_tags || "").matchAll(/lima_entrega_(\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]).sort();
+          const fecha = String(ped.fecha_entrega || "").slice(0, 10);
+          out.push({ id_pedido: id, nombre: ped.nombre_destinataio || "", id_distrito: String(ped.id_distrito || ""), direccion: String(ped.direccion_destinatario || "").slice(0, 160),
+            coordenadas: c ? c.lat_lng : "", poligono: z ? { clase: z.clase, nombre: z.nombre, distrito: z.distrito || null, codigo: z.codigo || null } : null,
+            poligono_ok: z ? (z.clase === "entrega" && String(z.codigo || "") === String(ped.id_distrito || "")) : null,
+            fecha_entrega: fecha, fecha_chat: fechasChat.length ? fechasChat[fechasChat.length - 1] : null, fecha_ok: fechasChat.length ? fechasChat.includes(fecha) : null });
+        } catch (err) { out.push({ id_pedido: id, error: err.message }); }
+      }
+      return json({ ok: true, chequeo: out });
+    } catch (err) { return json({ error: err.message }, 502); }
   }
   const porDefecto = esIso(url.searchParams.get("fecha")) || url.searchParams.get("listado") === "1" ? null : await fechaPorDefecto(env);
   const fecha = porDefecto ? porDefecto.fecha : esIso(url.searchParams.get("fecha")) ? url.searchParams.get("fecha") : fechaEntrega().fecha;

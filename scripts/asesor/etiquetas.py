@@ -451,7 +451,7 @@ def blank_lima(c, x0, yb):
     cut(c, x0, y_top - h, cell_w, h)
 
 
-def armar_pdf(items, salida, rellenar=True):
+def armar_pdf(items, salida, rellenar=True, checklist=None):
     items = list(items)
     if rellenar and len(items) % per_page:
         ciclo = ["blank_shalom", "blank_lima", "blank_olva"]
@@ -479,6 +479,8 @@ def armar_pdf(items, salida, rellenar=True):
             blank_shalom(c, x0, yb)
         elif t == "blank_lima":
             blank_lima(c, x0, yb)
+    if checklist:  # última hoja: el checklist de Lima (no se recorta)
+        c.showPage(); pagina_checklist(c, checklist)
     c.save()
     return len(items), -(-len(items) // per_page)
 
@@ -581,12 +583,16 @@ def main():
         print(f"⚠️ Las etiquetas de Lima no dicen todas la misma fecha: {', '.join(_fecha_pe(x) for x in fechas_lima)} (las de otro día Dinsides las guarda en su almacén)")
     if not items:
         sys.exit(f"No hay etiquetas: nada registrado en Dinsides para el recojo del {fecha} (6:00 del día anterior a 6:00 de ese día) y no se pasaron --shalom, --shalom-hoja, --olva ni --olva-hoja.")
-    total, hojas = armar_pdf(items, salida, rellenar="--sin-blancos" not in args)
+    verif = verificar_lima(items) if os.environ.get("ASESOR_CLAVE") else []
+    total, hojas = armar_pdf(items, salida, rellenar="--sin-blancos" not in args, checklist=verif)
     reales = len(items)
     por_tipo = {t: sum(1 for e in items if e["tipo"] == t) for t in ("shalom", "lima", "olva")}
     print(f"{salida} | reales: {reales} (Shalom {por_tipo['shalom']}, Lima {por_tipo['lima']}, Olva {por_tipo['olva']}) | blancos: {total - reales} | hojas: {hojas}")
     for a in chequeo(items):
         print(f"⚠️ {a}")
+    for v in verif:
+        if not (v["pol_ok"] and v["fecha_ok"]):
+            print(f"❌ CHECKLIST {v['nombre']} #{v['id']}: distrito {v['distrito']} → {v['pol']} · fecha {v['fecha']} → {v['fch']}")
     if "--subir" in args and os.environ.get("ASESOR_CLAVE"):
         cuerpo = {"pdf_base64": base64.b64encode(open(salida, "rb").read()).decode(), "nombre": os.path.basename(salida),
                   "titulo": f"Etiquetas {fecha}"}
@@ -594,6 +600,65 @@ def main():
                                      headers={"Content-Type": "application/json", "x-asesor-clave": os.environ["ASESOR_CLAVE"], "User-Agent": "tarot-asesor/1.0"})
         with urllib.request.urlopen(req, timeout=120) as resp:
             print("CRM → Reportes:", json.load(resp).get("url"))
+
+
+def verificar_lima(items):
+    """Checklist del final de la hoja (dueño 2026-11-13, caso Carmela): por cada etiqueta de Lima, el distrito que Dinsides tiene
+    AHORA contra el polígono de su mapa de cobertura (con el pin del pedido) y la fecha de entrega contra la que quedó en el chat."""
+    lima = [e["datos"] for e in items if e["tipo"] == "lima" and e["datos"].get("id_pedido")]
+    if not lima:
+        return []
+    try:
+        r = pedir("/dinsides?chequeo=" + ",".join(str(d["id_pedido"]) for d in lima)) or {}
+    except Exception as err:  # noqa: BLE001
+        print(f"⚠️ No se pudo armar el checklist de Lima: {err}")
+        return []
+    por_id = {str(x.get("id_pedido")): x for x in r.get("chequeo") or []}
+    out = []
+    for d in lima:
+        x = por_id.get(str(d["id_pedido"])) or {}
+        pol = x.get("poligono") or {}
+        if x.get("error"):
+            pol_txt, pol_ok = "NO SE PUDO LEER EN DINSIDES", False
+        elif x.get("poligono_ok"):
+            pol_txt, pol_ok = "OK: el pin cae en ese distrito del mapa de Dinsides", True
+        elif pol:
+            pol_txt, pol_ok = f"NO COINCIDE: el pin cae en «{(pol.get('distrito') or pol.get('nombre') or '?').upper()}» ({pol.get('clase')})", False
+        else:
+            pol_txt, pol_ok = "SIN PIN: distrito puesto por texto, NO corroborado", False
+        fch = x.get("fecha_chat")
+        fch_ok = bool(x.get("fecha_ok"))
+        fch_txt = "OK: es la fecha del chat" if fch_ok else (f"NO COINCIDE: en el chat quedó {_fecha_pe(fch)}" if fch else "SIN FECHA anotada del chat: confirmar")
+        out.append({"id": d["id_pedido"], "nombre": str(d.get("nombre") or ""), "distrito": str(d.get("distrito") or ""), "pol": pol_txt, "pol_ok": pol_ok,
+                    "fecha": _fecha_pe(str(d.get("fecha_entrega") or "")[:10]), "fch": fch_txt, "fecha_ok": fch_ok})
+    return out
+
+
+def pagina_checklist(c, filas):
+    """Última hoja: «nombre · distrito · ¿corroborado en el polígono? · fecha de entrega · ¿corroborada con el chat?»."""
+    x, y = margin, page_h - margin - 6 * mm
+    c.setFillColorRGB(0, 0, 0); c.setFont("Helvetica-Bold", 12); c.drawString(x, y, "CHECKLIST DE LIMA — distrito en el mapa de cobertura y fecha de entrega"); y -= 5 * mm
+    c.setFont("Helvetica", 7.5); c.drawString(x, y, "[X] = corroborado por el sistema   [  ] = NO corroborado: revisar antes de entregar el paquete a Dinsides"); y -= 6 * mm
+    cols = (x, x + 16 * mm, x + 62 * mm, x + 92 * mm, x + 150 * mm, x + 170 * mm)
+    c.setFont("Helvetica-Bold", 7.5)
+    for cx, t in zip(cols, ("Pedido", "Nombre", "Distrito", "Polígono de Dinsides", "Entrega", "Fecha con el chat")):
+        c.drawString(cx, y, t)
+    y -= 1.5 * mm; c.setLineWidth(.5); c.line(x, y, page_w - margin, y); y -= 4 * mm
+    for f in filas:
+        alto = 0
+        for cx, t, w, negr in ((cols[0], str(f["id"]), 15 * mm, False), (cols[1], f["nombre"], 44 * mm, True), (cols[2], f["distrito"], 28 * mm, True),
+                               (cols[3], ("[X] " if f["pol_ok"] else "[  ] ") + f["pol"], 56 * mm, not f["pol_ok"]), (cols[4], f["fecha"], 19 * mm, True),
+                               (cols[5], ("[X] " if f["fecha_ok"] else "[  ] ") + f["fch"], page_w - margin - cols[5], not f["fecha_ok"])):
+            fuente = "Helvetica-Bold" if negr else "Helvetica"
+            c.setFont(fuente, 7); yy = y
+            lns = partir(c, t, fuente, 7, w)[:3]
+            for ln in lns:
+                c.drawString(cx, yy, ln); yy -= 3 * mm
+            alto = max(alto, len(lns))
+        y -= alto * 3 * mm + 1.2 * mm
+        c.setLineWidth(.2); c.setStrokeColorRGB(.7, .7, .7); c.line(x, y + 2.2 * mm, page_w - margin, y + 2.2 * mm); c.setStrokeColorRGB(0, 0, 0)
+        if y < margin + 10 * mm:
+            c.showPage(); y = page_h - margin - 6 * mm
 
 
 if __name__ == "__main__":
