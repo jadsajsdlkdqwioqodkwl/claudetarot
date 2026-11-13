@@ -149,6 +149,10 @@
     // dueño en WhatsApp Manager, Spanish PER) que le sale al cliente de la web a
     // los 3 min si no nos escribió antes (src/lib/pedidos-web.js). Vacío = apagado.
     "PLANTILLA_PEDIDO_WEB": "pedido_web_recibido",
+    // Mensaje del día de entrega de Lima (dueño 2026-11-13): nombre de la plantilla APROBADA en Meta; vacío = solo etiquetas
+    // `lima` y `lima_entrega_AAAA-MM-DD` al registrar en Dinsides (etiquetarEntregaLima en src/api/asesor-dinsides.js).
+    "PLANTILLA_ENTREGA_LIMA": "",
+    "HORA_ENTREGA_LIMA": "10:00",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",
     // Usuarios (username) que además del dueño reciben por Telegram el PDF de

@@ -38,6 +38,33 @@ export const IMAGENES_PLANTILLA = {
 };
 export const imagenDePlantilla = (nombre) => IMAGENES_PLANTILLA[nombre] || null;
 
+// Mensaje del día de entrega de Lima (dueño, 2026-11-13): sale a las 10:00 del día de entrega a todo pedido registrado en Dinsides
+// (etiquetarEntregaLima en src/api/asesor-dinsides.js) cuando su nombre se pone en PLANTILLA_ENTREGA_LIMA. Varias versiones
+// para mandar a revisión y quedarse con la que Meta apruebe. Sin nombre del cliente ni precio. Utilidad: avisa de un pedido
+// ya hecho; las que piden el correo (para los bonos) podrían quedar como marketing.
+export const ENTREGA_LIMA = [
+  {
+    nombre: "entrega_hoy_lima_1", titulo: "Hoy le llega + correo para los bonos", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷✨ ¡Hoy le llega su Kit de Tarot! 🔮📦 El motorizado le llamará antes de llegar, entre las 11 am y las 5 pm 🛵 Si no va a estar, puede recibirlo un familiar 🫶 Y para enviarle el acceso a sus clases y libros digitales 📚 ¿nos comparte su correo? ✉️",
+    botones: ["Le paso mi correo", "Cambiar horario"]
+  },
+  {
+    nombre: "entrega_hoy_lima_2", titulo: "Hoy sale a ruta: ¿estará en casa? (solo entrega)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Buenos días estimad@ ☀️📦 Su Kit de Tarot sale hoy a ruta 🛵 y le llega entre las 11 am y las 5 pm. El motorizado le llama antes de llegar ☎️ ¿Estará en casa o lo recibe alguien más? 🏡✨",
+    botones: ["Sí, estaré", "Recibe un familiar", "Cambiar fecha"]
+  },
+  {
+    nombre: "entrega_hoy_lima_3", titulo: "Hoy es el día + regalos al correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🔮✨ ¡Hoy es el día! Su kit le llega entre las 11 am y las 5 pm 📦🛵 Apenas lo reciba le activamos sus regalos: clases grabadas y libros digitales de tarot 🎁📚 ¿A qué correo se los enviamos? ✉️",
+    botones: ["Le paso mi correo", "Tengo una duda"]
+  },
+  {
+    nombre: "entrega_hoy_lima_4", titulo: "Confirmación de entrega (para bajar rechazos)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷 hoy le entregamos su Kit de Tarot 📦✨ El motorizado le llamará antes de llegar, entre las 11 am y las 5 pm 🛵 Si su pedido es contraentrega puede pagar con Yape, efectivo o tarjeta 💳 ¿Nos confirma que hoy puede recibirlo? 🙌",
+    botones: ["Sí, confirmo", "Cambiar fecha"]
+  }
+];
+
 export const SEGUIMIENTO_7D = [
   // Dueño, 2026-11-06: «bono_saldo_shalom» dice «su kit sigue esperándolo en su agencia» y se mandó a clientes cuyo pedido había
   // salido el día anterior (hubo quejas). Antes del día 4 del despacho NO se asume que llegó: esta versión no habla de la
@@ -193,6 +220,14 @@ export function propuestasDe(marca, cambios = {}) {
       });
     }
   }
+  if (marca === "tarot") {
+    for (const t of ENTREGA_LIMA) {
+      lista.push({
+        nombre: t.nombre, grupo: "Entrega del día (Lima)", titulo: t.titulo, cuando: t.cuando,
+        categoria: "UTILITY", texto: t.texto, botones: t.botones, componentes: [cuerpo(t.texto, []), ...botones(t.botones)]
+      });
+    }
+  }
   // Plantillas que el admin agregó desde el CRM (no salen solas: se mandan a mano desde el botón de plantillas del chat).
   for (const c of cambios.propias || []) {
     if (c.marca !== marca) continue;
@@ -220,7 +255,7 @@ export function propuestasDe(marca, cambios = {}) {
     p.componentes = [cuerpo(c.texto, ejemploDe(c.texto, EJEMPLOS)), ...(btnCatalogo ? [btnCatalogo] : p.copyCode ? [{ type: "BUTTONS", buttons: [{ type: "COPY_CODE", text: "Copiar código de oferta", example: "927633099" }] }] : botones(c.botones))];
     if (c.categoria) p.categoria = c.categoria;
   }
-  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Seguimiento 7 días (planes con nombre)", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
+  const orden = ["Aviso de envío (abre la ventana para mandar la boleta)", "Recojo en Shalom (prioridad)", "Recojo en agencia (Olva, plantilla universal)", "Rescate de interesado", "Seguimiento 7 días (planes con nombre)", "Entrega del día (Lima)", "Toques a quien no compró", "Toques a clientes", "Pago Yape", "Plantillas propias"];
   return lista.sort((a, b) => orden.indexOf(a.grupo) - orden.indexOf(b.grupo));
 }
 

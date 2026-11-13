@@ -601,9 +601,46 @@ async function despuesDeRegistrar(env, fecha, fichas, modo, extra = {}) {
     const texto = motorizado ? `motorizado externo ${f.campos.fecha_entrega} ${cuando}${extra.motivo ? `: ${String(extra.motivo).slice(0, 60)}` : ""}`
       : modo === "manual" ? `manual ${nro} ${cuando}`.replace(/\s+/g, " ").trim() : `registrado ${cuando}${nro ? ` #${nro}` : ""}`;
     hoja.push(await marcarDinsidesEnHoja(env, f.whatsapp, texto, motorizado ? `Motorizado externo ${f.campos.fecha_entrega}` : `Dinsides ${f.campos.fecha_entrega}`).catch((err) => ({ error: err.message })));
-    if (f.conversation_id) etiquetas.push(await agregarEtiquetaMeta(env.CRM_DB, f.conversation_id, "dinsides_registrado").then(() => "ok").catch((err) => err.message));
+    if (f.conversation_id) {
+      etiquetas.push(await agregarEtiquetaMeta(env.CRM_DB, f.conversation_id, "dinsides_registrado").then(() => "ok").catch((err) => err.message));
+      // Dueño 2026-11-13: todo pedido de Lima registrado lleva su etiqueta y la de su fecha de entrega, y se le agenda el mensaje
+      // del día de entrega (si la plantilla ya está puesta en PLANTILLA_ENTREGA_LIMA; vacío = solo etiquetas).
+      await etiquetarEntregaLima(env, f.conversation_id, f.campos?.fecha_entrega).catch((err) => console.error("Etiqueta Lima:", err.message));
+    }
   }
   return { hoja, etiquetas };
+}
+
+export const ORIGEN_ENTREGA_LIMA = "Entrega del día · Lima (Dinsides)";
+
+/** Hora de Lima → instante UTC (Lima es UTC−5 todo el año). */
+const enLimaUtc = (fecha, hora) => new Date(`${fecha}T${hora}:00.000Z`).getTime() + 5 * 3600 * 1000;
+
+/**
+ * Etiquetas `lima` y `lima_entrega_AAAA-MM-DD` en el chat y, con PLANTILLA_ENTREGA_LIMA puesta, la plantilla del día de entrega
+ * a las HORA_ENTREGA_LIMA (10:00 por defecto) de esa fecha. `mandar_siempre`: es para quien ya compró (el cron cancela los
+ * automáticos de venta a quien compró, este no). Una sola por chat y fecha. Devuelve { etiquetas, agendado }.
+ */
+export async function etiquetarEntregaLima(env, conversationId, fecha) {
+  const db = env.CRM_DB;
+  if (!conversationId || !db) return { etiquetas: [], agendado: false };
+  const etiquetas = ["lima"];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""))) etiquetas.push(`lima_entrega_${fecha}`);
+  for (const e of etiquetas) await agregarEtiquetaMeta(db, conversationId, e);
+  const plantilla = String(env.PLANTILLA_ENTREGA_LIMA || "").trim();
+  if (!plantilla || etiquetas.length < 2) return { etiquetas, agendado: false };
+  const hora = /^\d{2}:\d{2}$/.test(String(env.HORA_ENTREGA_LIMA || "")) ? env.HORA_ENTREGA_LIMA : "10:00";
+  const cuando = enLimaUtc(fecha, hora);
+  if (cuando <= Date.now()) return { etiquetas, agendado: false };
+  const ya = await db.prepare(
+    "SELECT 1 FROM scheduled_messages WHERE conversation_id = ? AND created_by = ? AND substr(send_at, 1, 10) = ? AND status IN ('pendiente', 'enviando', 'enviado') LIMIT 1"
+  ).bind(conversationId, ORIGEN_ENTREGA_LIMA, new Date(cuando).toISOString().slice(0, 10)).first();
+  if (ya) return { etiquetas, agendado: false };
+  await db.prepare(
+    `INSERT INTO scheduled_messages (conversation_id, body, send_at, created_by, template_name, template_language, mandar_siempre)
+     VALUES (?, ?, ?, ?, ?, 'es_PE', 1)`
+  ).bind(conversationId, `Plantilla: ${plantilla}`, new Date(cuando).toISOString(), ORIGEN_ENTREGA_LIMA, plantilla).run();
+  return { etiquetas, agendado: true };
 }
 
 export async function onRequestPost({ request, env }) {

@@ -2814,3 +2814,23 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
 - Propuestas pendientes de aprobación (no construidas): plantilla del día de entrega de Lima a las 10:00 con pedido de correo
   (etiqueta y agenda al registrar en Dinsides), bonos al correo al marcar ENTREGADO, avisos «no contesta» de Dinsides 1 a 1 al
   número de Tarot, cambio de voz con ElevenLabs (speech-to-speech, después de grabar).
+
+## 2026-11-13 (mañana) · Rescate del día 7 con catálogo, etiqueta Lima al registrar en Dinsides, 4 versiones del mensaje de entrega
+- **Rescate del día 7 → `rescate_lead_catalogo_1`** (pedido explícito del dueño): `crm_settings.rescate7_plantillas` =
+  `{"tarot":"rescate_lead_catalogo_1","uro":"uro_rescate_lead_1"}` y los 866 rescates ya agendados de Tarot cambiados
+  (`scheduled_messages.template_name`, mismo UPDATE que `elegirPlantillaDia7`). Antes salía `rescate_lead_1` («Quedó pendiente su
+  envío», que una clienta leyó como amenaza). La versión con catálogo respondía 10,7 % contra 4,8 %.
+- **Etiqueta Lima:** al registrar un pedido en Dinsides (`despuesDeRegistrar` → `etiquetarEntregaLima`, `src/api/asesor-dinsides.js`)
+  el chat recibe `lima` y `lima_entrega_AAAA-MM-DD` además de `dinsides_registrado`. Con `PLANTILLA_ENTREGA_LIMA` (wrangler.jsonc;
+  vacío por ahora = solo etiquetas) se agenda esa plantilla a las `HORA_ENTREGA_LIMA` (10:00 Lima = 15:00 UTC) del día de entrega,
+  origen «Entrega del día · Lima (Dinsides)», `mandar_siempre` 1 (es para quien ya compró), una por chat y fecha, nunca en el
+  pasado. Prueba `scripts/test-entrega-lima.mjs` (en `npm run check`).
+- **4 versiones del mensaje del día de entrega** en CRM → Herramientas → Plantillas para Meta, grupo «Entrega del día (Lima)»
+  (`ENTREGA_LIMA` en `src/lib/plantillas-propuestas.js`, categoría Utilidad, sin nombre ni precio): `entrega_hoy_lima_1` (hoy le
+  llega + correo), `_2` (sale a ruta, ¿estará en casa?), `_3` (regalos al correo), `_4` (confirmación para bajar rechazos). El dueño
+  elige cuáles manda a revisión; la que Meta apruebe va en `PLANTILLA_ENTREGA_LIMA`.
+- **Dueño (13/11): «Claude no debe mandar nada por sí mismo; para eso están los seguimientos automáticos».** Se descarta la idea de
+  que las recomendaciones del asesor salgan solas. (No cambia la regla 10 ni el despacho de boletas ya autorizados.)
+- Lecturas del día (sin cambios en Meta, solo lectura): catálogo a clientes del día 7 (`toque_post7`, desde el 4/11): 397 chats, 11 %
+  respondió, 2 pedidos por catálogo y 1 recompra. Atribución de las recomendaciones mandadas: los 6 que compraron estaban callados
+  de 4 h a 2 días y respondieron al mensaje antes de comprar. Anuncios 6–12/11 (gasto Meta vs compras CRM): ver la respuesta de la sesión.

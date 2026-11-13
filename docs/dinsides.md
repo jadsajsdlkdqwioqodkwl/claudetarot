@@ -141,3 +141,8 @@ entrega. Routine única de envíos: `trig_01J7vAUuHMuVL7MCccFkGaP7`.
   la página pide sus notas al abrir (`POST /api/revision/nota {leer: true}`). `presentar --pagina` sube a la página SOLO Lima para
   registrar, Shalom, Olva y «falta un dato»; el resto queda en la pantalla de la Routine.
 - **Etiquetas de Shalom**: siempre «EMPAQUE: …» (`empaque_shalom`); con `--shalom datos.json` se completa por DNI desde el reporte.
+
+## 2026-11-13 · Etiqueta Lima y mensaje del día de entrega
+Al registrar, el chat recibe `dinsides_registrado`, `lima` y `lima_entrega_AAAA-MM-DD`. Si `PLANTILLA_ENTREGA_LIMA` (wrangler.jsonc)
+tiene el nombre de una plantilla aprobada, se agenda a las `HORA_ENTREGA_LIMA` (10:00) del día de entrega (`etiquetarEntregaLima`,
+`src/api/asesor-dinsides.js`). Hoy está vacía: solo etiquetas.
