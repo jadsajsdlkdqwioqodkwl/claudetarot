@@ -2954,3 +2954,12 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   - La automatización del reagendado NO está construida: el plan está en la respuesta al dueño y espera su visto bueno.
 - Verificado: las etiquetas `lima` y `lima_entrega_FECHA` de la noche del 12/11 salieron en los 9 Lima de la revisión: 8 para el 13 y Jessica Ugaz para el 20. También tiene la del 13 Carmela Fonseca, de la revisión del 12.
   - Provincia no lleva una etiqueta propia. Se reconoce por `bot_boleta` / `shalom_codigo_pendiente`.
+
+### 2026-11-13 (noche) · Recojo de Shalom contado desde la boleta y entrega de Lima con `entrega_hoy_lima_19`
+- **Problema:** «su pedido ya llegó» (`recojo_shalom_1`) salía 2 días después del aviso de envío. El plan de recojo se armaba al guardar la clave de Shalom en el perfil (`activarCobroPorCodigo`, contacts.js), días antes del despacho, y contaba sus 4 días desde ahí. Casos: chats 4529 (aviso 10/11, recordatorio 13/11) y 4247 (aviso 9/11, recordatorio 13/11, antes de las fotos de la boleta).
+- **Arreglo:** `minimoTrasBoleta()` en `src/lib/planes-plantilla.js`, aplicado por el cron (`crm-cron.js`) justo antes de enviar.
+  - Cada paso de recojo (Shalom, Olva y URO) no sale antes de «primera boleta o aviso de envío del chat + días del paso» (4·7·21 Shalom; 3·7·13 Olva; los días que ponga el admin). Si es temprano, se corre a esa hora; no se cancela.
+  - Lo marcado «sí o sí» (`mandar_siempre`) y los chats sin boleta registrada (boleta mandada a mano) salen como antes.
+  - Prueba: `scripts/test-recojo-tras-boleta.mjs`.
+- **Entrega de Lima:** el dueño eligió `entrega_hoy_lima_19` (`PLANTILLA_ENTREGA_LIMA` en wrangler.jsonc, a las 10:00).
+  - Protección nueva en el cron: ese mensaje solo sale si el chat tiene la etiqueta `lima_entrega_<hoy en Lima>` y antes de las 17:00. Si la plantilla espera la aprobación de Meta y se pasa del día, o la entrega cambió de fecha, se cancela: «hoy le llega» nunca sale otro día.

@@ -151,7 +151,7 @@
     "PLANTILLA_PEDIDO_WEB": "pedido_web_recibido",
     // Mensaje del día de entrega de Lima (dueño 2026-11-13): nombre de la plantilla APROBADA en Meta; vacío = solo etiquetas
     // `lima` y `lima_entrega_AAAA-MM-DD` al registrar en Dinsides (etiquetarEntregaLima en src/api/asesor-dinsides.js).
-    "PLANTILLA_ENTREGA_LIMA": "",
+    "PLANTILLA_ENTREGA_LIMA": "entrega_hoy_lima_19",
     "HORA_ENTREGA_LIMA": "10:00",
     // Voz de la tienda (ElevenLabs, src/lib/elevenlabs.js): id de la voz elegida o clonada; la clave va como SECRETO
     // ELEVENLABS_API_KEY en el Worker (nunca aquí). Vacío = el CRM no muestra «Texto a voz» ni «Cambiar voz».

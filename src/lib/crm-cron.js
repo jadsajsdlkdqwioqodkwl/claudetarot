@@ -13,7 +13,9 @@
 import { PLANTILLAS_OFERTA_COLLAR, yaRecibioOfertaCollar } from "./oferta-collar.js";
 import { mandarTexto, mandarMediaGuardada, pausaEnvio, mandarConEscribiendo, mandarAlToque, subidaDe } from "./crm-send.js";
 import { textoPorDefectoSql } from "./crm-variantes.js";
-import { encadenarRescate, RESCATE_CATALOGO } from "./planes-plantilla.js";
+import { encadenarRescate, RESCATE_CATALOGO, minimoTrasBoleta } from "./planes-plantilla.js";
+// Igual que ORIGEN_ENTREGA_LIMA en src/api/asesor-dinsides.js (no se importa de api/ para no cruzar capas).
+const ORIGEN_ENTREGA_LIMA = "Entrega del día · Lima (Dinsides)";
 import { parametrosBotonCatalogo } from "./catalogo-boton.js";
 import { enviarTemplate, enviarCatalogoConPortada, enviarProducto } from "./whatsapp.js";
 import { obtenerAjuste, registrarMensajeSaliente, MAX_AUTOMATICOS_SIN_RESPUESTA, ORIGEN_LINK_ENVIO, esOrigenAutomatico } from "./crm-db.js";
@@ -176,6 +178,24 @@ export async function procesarSeguimientosVencidos(env) {
       if (PLANTILLAS_OFERTA_COLLAR.includes(s.template_name)) {
         const fuera7d = s.conv_creado && Date.now() > new Date(s.conv_creado.replace(" ", "T") + "Z").getTime() + 7 * 24 * 3600 * 1000;
         if (fuera7d || (await yaRecibioOfertaCollar(env.CRM_DB, s.conv_id))) { await cancelar(s.id); continue; }
+      }
+      // Mensaje del día de entrega en Lima (etiquetarEntregaLima): solo sale el MISMO día de la entrega que dice la etiqueta del
+      // chat y antes de las 5 pm de Lima. Si la plantilla espera la aprobación de Meta y se pasa del día, o la entrega se movió
+      // (otra etiqueta), se cancela: «hoy le llega» nunca puede salir otro día (dueño 2026-11-13).
+      if (s.created_by === ORIGEN_ENTREGA_LIMA) {
+        const lima = new Date(Date.now() - 5 * 3600 * 1000);
+        const hoyLima = lima.toISOString().slice(0, 10);
+        if (lima.getUTCHours() >= 17 || !new RegExp(`\\blima_entrega_${hoyLima}\\b`).test(s.meta_tags || "")) { await cancelar(s.id); continue; }
+      }
+      // Recojo en agencia programado antes de la boleta: sus días cuentan desde la boleta (dueño 2026-11-13). Si todavía es
+      // temprano, se corre a esa hora; no se cancela. Lo marcado «sí o sí» (mandar_siempre) sale como se programó.
+      if (!s.mandar_siempre && s.template_name) {
+        const minimo = await minimoTrasBoleta(env.CRM_DB, s.conv_id, s.template_name).catch(() => null);
+        if (minimo && Date.now() < minimo - 60 * 1000) {
+          await env.CRM_DB.prepare("UPDATE scheduled_messages SET status = 'pendiente', sent_at = NULL, send_at = ? WHERE id = ?")
+            .bind(new Date(minimo).toISOString(), s.id).run();
+          continue;
+        }
       }
       // Reglas anti-choque para lo que programó el sistema (no una persona):
       if (!s.batch_id && !s.mandar_siempre && !s.template_name && esOrigenAutomatico(s.created_by)) {

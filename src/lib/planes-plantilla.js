@@ -385,3 +385,27 @@ export async function aplicarOlva(env, conversationId, olva, quien) {
   const r = await programarPlan(env, conversationId, "olva", { estado: "pendiente", quien: quien || "Marcó Olva" });
   return r.error ? { error: r.error } : { programados: r.pasos.length };
 }
+
+/**
+ * Recojo (Shalom u Olva) que se programó ANTES de mandar la boleta (dueño 2026-11-13): p. ej. al guardar la clave de Shalom en el
+ * perfil, días antes del despacho. Sus días deben contar desde la boleta: «su pedido ya llegó» no puede salir a los 2 días.
+ * Devuelve el momento más temprano en que puede salir este paso (boleta + días del paso), o null si no aplica o no hay boleta
+ * registrada en el chat (entonces se deja como estaba).
+ */
+export async function minimoTrasBoleta(db, conversationId, templateName) {
+  const m = String(templateName || "").match(/^(uro_)?recojo_(shalom|agencia)_\d$/);
+  if (!m) return null;
+  const boleta = await db.prepare(
+    `SELECT MIN(created_at) AS t FROM messages WHERE conversation_id = ? AND direction = 'out' AND created_at >= datetime('now', '-40 days')
+       AND (sent_by IN ('asesor-boletas', 'asesor-boletas-auto') OR (type = 'template' AND body LIKE '%aviso_envio_shalom%'))`
+  ).bind(conversationId).first().catch(() => null);
+  // Sin boleta ni aviso de envío registrados (boleta mandada a mano, como en octubre): sale como estaba programado.
+  if (!boleta?.t) return null;
+  const marca = m[1] ? "uro" : "tarot";
+  const plan = m[2] === "agencia" ? "olva" : "shalom";
+  const orden = pasosOrdenados(planesDe(marca)[plan].pasos, await ordenDelPlan(db, marca, plan)).map((p) => p.nombre);
+  const i = orden.indexOf(templateName);
+  if (i < 0) return null;
+  const dias = await diasDelPlan(db, plan);
+  return new Date(String(boleta.t).replace(" ", "T") + "Z").getTime() + (dias[i] ?? 4) * 86400000;
+}
