@@ -363,3 +363,15 @@ Shalom: cuántos envíos, los dos links y pendientes; qué marcó `estados`. Nad
     shalom.com.pe/agencias) para una referencia que el mapa no conoce. OpenStreetMap es solo «el mapa»: sirve para saber dónde queda
     «el mercado X» o «el óvalo Y» y medir qué agencia está más cerca. La agencia igual la confirma una persona en la página de
     revisión cuando queda dudosa.
+
+18. **DUPLICADOS EN DINSIDES Y REAGENDADOS (dueño 2026-11-13, caso Jessica Ugaz).** Antes de registrar, la revisión y el reporte
+    cruzan cada pedido con Dinsides (teléfono, nombre y teléfonos del chat): lo que ya está NO se registra otra vez ni lleva
+    etiqueta nueva. Si el pedido ya está en Dinsides con OTRA fecha, sale en «❌ AVISOS PARA JENNIFER» (arriba de su página y en
+    la respuesta de Claude en la sesión): (a) si se registró en esta misma tanda y todavía no lo recogen, Claude le cambia la
+    fecha con `dinsides.py editar <nro> fecha_entrega=AAAA-MM-DD`; (b) si Dinsides ya lo tiene (almacén o en ruta) **no se puede
+    cambiar desde el sistema: Jennifer le escribe por WhatsApp a Dinsides para que lo reagenden**, con el número de pedido y la
+    fecha nueva. Un pedido agendado para más adelante se registra una sola vez, sale en el recojo de ese día y Dinsides lo guarda
+    en su almacén: su etiqueta dice la fecha de entrega (por eso aparece en la mesa antes).
+19. **ETIQUETAS: el Detalle y el EMPAQUE se parten midiendo el ancho real** (`partir` en `etiquetas.py`); si el Detalle es largo,
+    el Producto baja a una línea con «…» (lo completo va en EMPAQUE) y la letra del Detalle se achica hasta que entre todo.
+    «REAGENDAR», «ya dio su dirección» y otros apuntes internos no van al Detalle.

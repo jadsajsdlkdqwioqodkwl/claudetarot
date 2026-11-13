@@ -2890,3 +2890,14 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   + página de revisión + respuesta de Claude, regla 16 de `docs/envios-jennifer.md`) y a Moi por Telegram una vez por versión.
 - **Búsqueda de agencias para Claude:** `shalom.py osm`, `shalom.py provincia` (además de `triangular` y `buscar`); regla 17.
 - Ninguna Routine cambió (leen estos documentos desde `main`).
+
+### 2026-11-13 (noche) — duplicados en Dinsides, avisos para Jennifer y saltos de línea de las etiquetas
+
+- `dinsides.py presentar`: sección nueva «❌ AVISOS PARA JENNIFER» (va a su página de revisión y a la pantalla): plantilla del
+  Excel vieja y pedidos que ya están en Dinsides con otra fecha (no se registran de nuevo; si Dinsides ya los tiene, ella les
+  escribe por WhatsApp para reagendar). Usa el cruce que ya existía (`cruzarConDinsides`, alerta «YA AGENDADO»).
+- `etiquetas.py`: `partir()` (salto de línea por ancho real) en Lima, Shalom y Olva; el Detalle se ajusta al sitio disponible.
+- `RE_NOTA_INTERNA` (JS y Python): «reagendar» y «ya dio su dirección» no van al Detalle del motorizado.
+- Caso Jessica Ugaz Lecaros (998702980): un solo pedido en Dinsides (#2953630, registrado el 13/11 00:03 para el 20/11); no hay
+  duplicado. Se le limpió el Detalle («REAGENDAR: ya dio su dirección» → «Entrega el 20 de noviembre»).
+- Reglas 18 y 19 de `docs/envios-jennifer.md`. Ninguna Routine cambió.

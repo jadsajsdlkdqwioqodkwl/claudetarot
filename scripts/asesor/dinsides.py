@@ -909,6 +909,26 @@ def cmd_presentar(args):
         cab.append(f"📆 Fecha {fecha} porque {r['fecha_motivo']}.")
     cab.append(estado_agencias)
     sec("RESUMEN", cab)
+    # AVISOS PARA JENNIFER (dueño 2026-11-13): van arriba de su página y Claude los repite en la sesión. (1) La plantilla del Excel
+    # quedó vieja. (2) Pedido que YA está en Dinsides con otra fecha: NO se registra otra vez. Si se registró en esta misma tanda
+    # (todavía no lo recogen) Claude le cambia la fecha con `editar`; si ya lo recogieron (almacén / en ruta) solo Dinsides puede
+    # reagendarlo: hay que escribirles por WhatsApp.
+    avisos = [x for x in estado_agencias.split("\n") if x.startswith("⚠️ PARA JENNIFER")]
+    corte = (dt.date.fromisoformat(fecha) - dt.timedelta(days=1)).isoformat() + " 12:00"  # lo registrado antes ya salió en un recojo
+    for f in ya:
+        y_, c_ = f.get("ya_registrado") or {}, f.get("campos") or {}
+        if not any(str(a_).startswith("YA AGENDADO") for a_ in f.get("alertas") or []):
+            continue
+        quiere, tiene = str(c_.get("fecha_entrega") or "")[:10], str(y_.get("fecha") or "")[:10]
+        recogido = str(y_.get("cuando") or "")[:16] < corte or re.search(r"RUTA|ALMAC|REPROGRAM|MOTORIZADO", str(y_.get("detalle") or ""), re.I)
+        if recogido:
+            avisos.append(f"📲 {c_.get('nombre')} ({f.get('whatsapp')}) YA ESTÁ EN DINSIDES: pedido #{y_.get('nro')}, agendado para el {tiene}. NO se registra de nuevo ni lleva etiqueta nueva. "
+                          f"Si el cliente pidió el {quiere}: escribir por WhatsApp a Dinsides para que lo reagenden (ya lo tienen ellos; desde el sistema no se puede cambiar).")
+        else:
+            avisos.append(f"📅 {c_.get('nombre')} ({f.get('whatsapp')}) ya está en Dinsides (#{y_.get('nro')}) para el {tiene} y el pedido dice {quiere}: NO se registra de nuevo. "
+                          f"Todavía no lo recogen: Claude le cambia la fecha con `editar {y_.get('nro')} fecha_entrega={quiere}` si el cliente la cambió (confirmar con el chat).")
+    if avisos:
+        sec(f"❌ AVISOS PARA JENNIFER ({len(avisos)}) — leer primero", avisos, pagina=avisos)
     i = 0
     if listos:
         L, Cc = [], []

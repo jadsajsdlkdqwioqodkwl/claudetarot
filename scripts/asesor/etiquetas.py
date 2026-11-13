@@ -138,7 +138,7 @@ def shalom_de_hoja(recojo):
 
 RE_NOTA_PAGO = re.compile(r"ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia", re.I)
 RE_NOTA_PIN = re.compile(r"\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl", re.I)
-RE_NOTA_INTERNA = re.compile(r"confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b", re.I)
+RE_NOTA_INTERNA = re.compile(r"confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|reagendar|ya dio su direcci|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b", re.I)
 
 
 def nota_motorizado(texto, telefono=""):
@@ -179,9 +179,9 @@ def detalle_lima(d):
     """El «Detalle» de la etiqueta de Lima: SIEMPRE empieza con «Escribir al cliente por WhatsApp: …» (dueño 2026-11-11) y sigue
     con la nota del motorizado. Si la observación de Dinsides ya trae esa línea (pedidos registrados desde hoy) no se repite."""
     obs = re.sub(r"\s*Paquete:[^.]+\.?", "", str(d.get("observaciones", "") or ""))
-    m = re.search(r"Escribir al cliente por WhatsApp:\s*([\d o]+)", obs)
-    nums = re.findall(r"9\d{8}", m.group(1)) if m else []
-    obs = re.sub(r"Escribir al cliente por WhatsApp:\s*[\d o]+\.?", "", obs)
+    m = re.search(r"Escribir al cliente por WhatsApp:\s*((?:9\d{8}|@[\w.]+)(?:\s+o\s+(?:9\d{8}|@[\w.]+))*)", obs)
+    nums = [n.rstrip(".") for n in re.findall(r"9\d{8}|@[\w.]+", m.group(1))] if m else []
+    obs = re.sub(r"Escribir al cliente por WhatsApp:\s*(?:9\d{8}|@[\w.]+)(?:\s+o\s+(?:9\d{8}|@[\w.]+))*\.?", "", obs)
     for n in (re.sub(r"\D", "", str(d.get("_whatsapp") or ""))[-9:], str(d.get("telefono") or "")):
         if re.fullmatch(r"9\d{8}", n) and n not in nums:
             nums.append(n)
@@ -252,12 +252,41 @@ def ajustar(c, texto, fuente, tam, ancho, minimo=6):
     return tam
 
 
+def partir(c, texto, fuente, tam, ancho, primera=None):
+    """Parte un texto en líneas que ENTRAN en `ancho` midiendo el ancho real de cada palabra con esa letra (dueño 2026-11-13:
+    el Detalle y el EMPAQUE se cortaban por cantidad de letras y a veces se salían de la etiqueta o partían mal). `primera` =
+    ancho de la primera línea si es más corta. Una palabra más larga que la línea (un link) se corta en pedazos."""
+    lineas, actual, lim = [], "", (primera if primera is not None else ancho)
+    for pal in str(texto or "").split():
+        while c.stringWidth(pal, fuente, tam) > lim and not actual:
+            n = len(pal)
+            while n > 1 and c.stringWidth(pal[:n], fuente, tam) > lim:
+                n -= 1
+            lineas.append(pal[:n]); pal = pal[n:]; lim = ancho
+        cand = f"{actual} {pal}".strip()
+        if c.stringWidth(cand, fuente, tam) <= lim:
+            actual = cand
+        else:
+            lineas.append(actual); lim = ancho
+            while c.stringWidth(pal, fuente, tam) > lim:
+                n = len(pal)
+                while n > 1 and c.stringWidth(pal[:n], fuente, tam) > lim:
+                    n -= 1
+                lineas.append(pal[:n]); pal = pal[n:]
+            actual = pal
+    if actual:
+        lineas.append(actual)
+    return lineas
+
+
 def campo(c, x, y, etiqueta, valor, ancho, tam=7.5, negrita_valor=False, max_lineas=1):
     """«Etiqueta: valor» en una o varias líneas; devuelve cuánto bajó."""
     c.setFont("Helvetica-Bold", tam); c.drawString(x, y, etiqueta)
     lx = x + c.stringWidth(etiqueta, "Helvetica-Bold", tam) + 1.2 * mm
     fuente = "Helvetica-Bold" if negrita_valor else "Helvetica"
-    lineas = textwrap.wrap(str(valor), max(10, int((ancho - (lx - x)) / (tam * 0.5)))) or [""]
+    lineas = partir(c, valor, fuente, tam, ancho, primera=ancho - (lx - x)) or [""]
+    if len(lineas) > max_lineas:  # lo que no entra se marca con «…» (lo completo va en EMPAQUE)
+        lineas = lineas[:max_lineas]; lineas[-1] = lineas[-1].rstrip(" +:,") + "…"
     c.setFont(fuente, tam); c.drawString(lx, y, lineas[0])
     bajo = tam * 1.45
     for ln in lineas[1:max_lineas]:
@@ -277,7 +306,28 @@ def etiqueta_lima(c, x0, yb, d):
     nombre = str(d.get("nombre", "")).upper(); tam = ajustar(c, nombre, "Helvetica-Bold", 10, ancho)
     c.setFont("Helvetica-Bold", tam); c.drawString(x, y, nombre); y -= 4.2 * mm
     y -= campo(c, x, y, "Teléfono:", d.get("telefono", ""), ancho)
-    y -= campo(c, x, y, "Producto:", d.get("detalle", ""), ancho, max_lineas=2)
+    # Cuánto sitio queda para el Detalle (dueño 2026-11-13: se cortaba o no salía). Se calcula ANTES de dibujar: si el Detalle no
+    # entra, el Producto baja a una línea (lo completo ya va en EMPAQUE) y la letra del Detalle se achica hasta que entre todo.
+    obs = str(d.get("observaciones", "") or "").strip()
+    paq = re.search(r"Paquete:\s*([^.]+)", obs)
+    empaque = con_collar_extra((paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip(), d.get("_whatsapp"), d.get("telefono"))
+    lineas_emp = partir(c, "EMPAQUE: " + empaque, "Helvetica-Bold", 5.2, ancho)[:3] if empaque else []
+    pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
+    det = detalle_lima(d)
+    ancho_det0 = ancho - c.stringWidth("Detalle:", "Helvetica-Bold", 7) - 1.2 * mm
+    prod_n = min(2, len(partir(c, d.get("detalle", ""), "Helvetica", 7.5, ancho, primera=ancho - c.stringWidth("Producto:", "Helvetica-Bold", 7.5) - 1.2 * mm)) or 1)
+    lineas_det, tam_det = [], 6.3
+    while det:
+        sitio = y - (7.5 * 1.45 * (3 + prod_n) + 8 * 1.45 + 7 * 1.45) - (yb + p + pie) + 1.2 * mm
+        for tam_det in (6.3, 6.0, 5.7, 5.4, 5.1, 4.8):
+            lineas_det = partir(c, det, "Helvetica", tam_det, ancho, primera=ancho_det0)
+            if len(lineas_det) * tam_det * 1.22 <= sitio:
+                break
+        if len(lineas_det) * tam_det * 1.22 <= sitio or prod_n == 1:
+            lineas_det = lineas_det[:max(1, int(sitio / (tam_det * 1.22)))]
+            break
+        prod_n = 1
+    y -= campo(c, x, y, "Producto:", d.get("detalle", ""), ancho, max_lineas=prod_n)
     cobrar = str(d.get("monto_cobrar", "")); pago = str(d.get("tipo_pago", "") or "")
     texto_cobrar = f"S/. {cobrar}" + (f" - {pago}" if pago and pago != "YAPE" else "")
     y -= campo(c, x, y, "Cobrar:", texto_cobrar, ancho, negrita_valor=True)
@@ -287,20 +337,13 @@ def etiqueta_lima(c, x0, yb, d):
         fe = f"{fe[8:10]}/{fe[5:7]}/{fe[0:4]}"
     y -= campo(c, x, y, "Fecha Entrega:", fe, ancho, negrita_valor=True)
     y -= campo(c, x, y, "Horario:", horario_lima(d), ancho, tam=7, negrita_valor=True)
-    obs = str(d.get("observaciones", "") or "").strip()
-    # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie (del producto de Dinsides: «Kit Tarot de
-    # aprendizaje + Extra: collar», «Tarot de aprendizaje», «2 Kits …»; y lo que diga «Paquete: …» en la observación).
-    paq = re.search(r"Paquete:\s*([^.]+)", obs)
-    empaque = con_collar_extra((paq.group(1).strip() if paq else str(d.get("detalle", "") or "")).strip(), d.get("_whatsapp"), d.get("telefono"))
-    # Varias líneas (dueño 2026-11-09: en una sola se superponía y no se leía).
-    lineas_emp = textwrap.wrap("EMPAQUE: " + empaque, 68)[:3] if empaque else []
-    pie = (len(lineas_emp) * 2.5 * mm + 0.8 * mm) if lineas_emp else 0
-    if detalle_lima(d):
-        c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:"); y -= 3.2 * mm
-        c.setFont("Helvetica", 6.3)
-        restante = int((y - yb - p - pie) / (6.3 * 1.3))
-        for ln in textwrap.wrap(detalle_lima(d), 62)[:max(0, restante)]:
-            c.drawString(x, y, ln); y -= 6.3 * 1.3
+    # Nota para el que empaca (dueño 2026-11-09): qué lleva la caja, en letra chica al pie, en varias líneas.
+    if lineas_det:
+        c.setFont("Helvetica-Bold", 7); c.drawString(x, y, "Detalle:")
+        c.setFont("Helvetica", tam_det)
+        c.drawString(x + ancho - ancho_det0, y, lineas_det[0]); y -= tam_det * 1.22
+        for ln in lineas_det[1:]:
+            c.drawString(x, y, ln); y -= tam_det * 1.22
     if lineas_emp:
         c.setFont("Helvetica-Bold", 5.2)
         ye = yb + p + 0.4 * mm
@@ -313,7 +356,7 @@ def etiqueta_shalom(c, x0, yb, d):
     """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía» y, debajo,
     la nota para el que empaca («EMPAQUE: …», dueño 2026-11-10)."""
     p = 2 * mm; x = x0 + p; R = x0 + cell_w - p; ancho = R - x
-    lineas_emp = textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]
+    lineas_emp = partir(c, "EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, ancho)[:3]
     pie_emp = len(lineas_emp) * 2.5 * mm + (0.8 * mm if lineas_emp else 0)
     pie = 4.5 * mm + pie_emp; top = yb + cell_h
     c.setFillColorRGB(.93, .96, .99); c.rect(x0 + .8 * mm, top - 12.5 * mm, cell_w - 1.6 * mm, 11.5 * mm, stroke=0, fill=1)
@@ -335,7 +378,7 @@ def etiqueta_shalom(c, x0, yb, d):
     agencia = str(d.get("agencia", "")); tam = ajustar(c, agencia, "Helvetica-Bold", 9.5, ancho)
     c.setFont("Helvetica-Bold", tam); c.drawString(x, y, agencia); y -= 3.6 * mm
     c.setFont("Helvetica", 6)
-    for ln in textwrap.wrap(str(d.get("direccion", "")), 50)[:3]:  # 50 por línea: con 64 se salía de la etiqueta (2026-11-09)
+    for ln in partir(c, d.get("direccion", ""), "Helvetica", 6, ancho)[:3]:
         c.drawString(x, y, ln); y -= 2.8 * mm
     c.setFillColorRGB(.05, .05, .05); c.setFont("Helvetica-Bold", 8.5)
     c.drawCentredString(x0 + cell_w / 2, yb + pie_emp + 1.2 * mm, f"Envía: {REMITENTE['dni']}")
@@ -372,7 +415,7 @@ def etiqueta_olva(c, x0, yb, d=None):
             c.setFont("Helvetica", 7.5); c.drawString(x + c.stringWidth(k, "Helvetica-Bold", 7.5), y, str(v)); y -= 3.8 * mm
         c.setFont("Helvetica-Bold", 7.5); c.drawString(x, y, "Olva de destino:"); y -= 3.5 * mm
         c.setFont("Helvetica-Bold", 6.8)  # 6.8 pt y 38 caracteres: cabe en los 66 mm de la etiqueta (antes se salía del margen)
-        for ln in textwrap.wrap(str(d.get("destino", "")).upper(), 38)[:3]:
+        for ln in partir(c, str(d.get("destino", "")).upper(), "Helvetica-Bold", 6.8, R - x)[:3]:
             c.drawString(x, y, ln); y -= 3.1 * mm
     else:
         c.setLineWidth(.3); c.line(x, y, R, y); y -= 4.5 * mm
@@ -386,7 +429,7 @@ def etiqueta_olva(c, x0, yb, d=None):
         c.drawString(x, y, t); y -= 3.1 * mm
     if d:  # nota para el que empaca, como en Shalom y Lima (dueño 2026-11-11: las de Olva no la traían)
         c.setFont("Helvetica-Bold", 5.2); ye = yb2 + 1 * mm
-        for ln in reversed(textwrap.wrap("EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), 68)[:2]):
+        for ln in reversed(partir(c, "EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, R - x)[:3]):
             c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb2, w, h)
 

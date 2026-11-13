@@ -242,7 +242,7 @@ export function fechaEntrega({ ahora = Date.now(), fecha_pedida = "", fecha_obje
 
 const RE_NOTA_PAGO = /ya pag[oó]|\bpagad[oa]\b|\bpaga(r[aá]|ria|ría)?\b|\bpago\b|no cobrar|\bcobrar\b|yape|\bplin\b|efectivo|tarjeta|\bpos\b|adelanto|\bsaldo\b|contra ?entrega|S\/\s*\d|\bop\.?\s*\d|dep[oó]sito|transferencia/i;
 const RE_NOTA_PIN = /\bpin\b|ubicaci[oó]n (enviada|del cliente)|coordenad|\d{1,2}°\s*\d{1,2}['′]|-?\d{1,2}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|maps\.|goo\.gl/i;
-const RE_NOTA_INTERNA = /confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b/i;
+const RE_NOTA_INTERNA = /confirm(ar|ado|ó)|escribi[oó]|dos versiones|sin n[uú]mero en el crm|nombre de usuario|captura|reporte|asesora|vendedora|\ble (pidi[oó]|pregunt[oó])|corrigi[oó]|aclar[oó]|agendad[oa]|reagendar|ya dio su direcci|seguimiento autom|prometi|\bkits?\b|\bmand[oó]\b|\bcrm\b/i;
 
 /**
  * La nota que lee el MOTORIZADO en la etiqueta (campo «Detalle» de Dinsides). Parte la nota del reporte en frases y deja solo lo que
