@@ -305,6 +305,7 @@ async function mostrarApp() {
   if (shalom) actualizarConteoShalom();
   abrirChatDelLink(cargarConversaciones());
   iniciarSugerencias();
+  cargarVozDisponible();
   cargarAsesorasFiltro();
   cargarProductos();
   cargarQuickReplies();
@@ -4412,11 +4413,13 @@ function toggleMasPanel() {
     <div class="item" id="mas-botones"><div class="titulo">${icon("reply")} Botones de respuesta</div></div>
     <div class="item" id="mas-pegar-imagen"><div class="titulo">${icon("image")} Pegar imagen copiada</div></div>
     <div class="item" id="mas-audio"><div class="titulo">${icon("mic")} Grabar audio</div></div>
+    ${estado.vozDisponible ? `<div class="item" id="mas-voz-texto"><div class="titulo">${icon("sparkle")} Texto a voz (voz de la tienda)</div></div>` : ""}
     <div class="item mas-solo-angosto" id="mas-galeria"><div class="titulo">${icon("image")} Fotos y videos (galería)</div></div>
     <div class="item mas-solo-angosto" id="mas-adjuntar"><div class="titulo">${icon("paperclip")} Documento o archivo</div></div>
     <div class="item mas-solo-angosto" id="mas-emojis"><div class="titulo">${icon("smile")} Emojis</div></div>`;
   $("#mas-pegar-imagen").addEventListener("click", () => { panel.classList.remove("abierto"); pegarImagenDelPortapapeles(); });
   $("#mas-audio").addEventListener("click", () => { panel.classList.remove("abierto"); abrirGrabadorAudio(); });
+  $("#mas-voz-texto")?.addEventListener("click", () => { panel.classList.remove("abierto"); textoAVozTienda(); });
   $("#mas-galeria").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-galeria").click(); });
   $("#mas-adjuntar").addEventListener("click", () => { panel.classList.remove("abierto"); $("#input-archivo").click(); });
   $("#mas-emojis").addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("abierto"); toggleEmojiPanel(); });
@@ -4456,12 +4459,18 @@ async function abrirGrabadorAudio() {
     streamPages: false,
     mediaTrackConstraints: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
-  grabador = { rec, convId, inicio: 0, timer: null, mandar: false };
+  grabador = { rec, convId, inicio: 0, timer: null, mandar: false, cambiarVoz: false };
   barra.style.display = "flex";
   barra.innerHTML = `<span class="audio-punto"></span><span class="audio-tiempo">0:00</span><span class="sub audio-estado">Grabando… habla cerca del micrófono</span>
+    ${estado.vozDisponible ? `<button type="button" class="audio-voz" title="Cambiar mi voz por la voz de la tienda antes de mandar">${icon("sparkle")}</button>` : ""}
     <button type="button" class="audio-cancelar" title="Cancelar">${icon("close")}</button>
     <button type="button" class="audio-enviar" title="Enviar nota de voz">${icon("send")}</button>`;
   barra.querySelector(".audio-cancelar").addEventListener("click", () => terminarGrabacion(false));
+  barra.querySelector(".audio-voz")?.addEventListener("click", (e) => {
+    grabador.cambiarVoz = !grabador.cambiarVoz;
+    e.currentTarget.classList.toggle("activo", grabador.cambiarVoz);
+    barra.querySelector(".audio-estado").textContent = grabador.cambiarVoz ? "Grabando… sale con la voz de la tienda" : "Grabando… habla cerca del micrófono";
+  });
   barra.querySelector(".audio-enviar").addEventListener("click", () => terminarGrabacion(true));
 
   rec.ondataavailable = async (bytes) => {
@@ -4469,9 +4478,16 @@ async function abrirGrabadorAudio() {
     grabador = null;
     clearInterval(g?.timer);
     if (!g?.mandar) { barra.style.display = "none"; barra.innerHTML = ""; return; }
-    barra.querySelector(".audio-estado").textContent = "Enviando…";
+    barra.querySelector(".audio-estado").textContent = g.cambiarVoz ? "Cambiando la voz…" : "Enviando…";
     try {
       const archivo = new File([bytes], `nota-de-voz-${Date.now()}.ogg`, { type: "audio/ogg" });
+      if (g.cambiarVoz) {
+        // Voz de la tienda: ElevenLabs devuelve otra nota Ogg/Opus; se escucha antes de mandarla.
+        const form = new FormData();
+        form.append("file", archivo);
+        const r = await pedir("/api/crm/voz", { method: "POST", body: form });
+        return mostrarPreviaVoz(g.convId, r.media_key);
+      }
       const subida = await subirArchivo(archivo);
       if (subida.type !== "audio") throw new Error("El servidor no reconoció el audio.");
       await pedir("/api/crm/messages", {
@@ -4500,6 +4516,48 @@ async function abrirGrabadorAudio() {
     if (t) t.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, "0")}`;
     if (seg >= AUDIO_MAX_SEG) terminarGrabacion(true);
   }, 250);
+}
+
+/* ---------- Voz de la tienda (ElevenLabs; dueño 2026-11-13): solo si está configurada (GET /api/crm/voz). ---------- */
+async function cargarVozDisponible() {
+  try { estado.vozDisponible = Boolean((await pedir("/api/crm/voz")).disponible); } catch { estado.vozDisponible = false; }
+}
+
+/** Escuchar la nota con la voz de la tienda y mandarla o descartarla. */
+function mostrarPreviaVoz(convId, mediaKey) {
+  const barra = $("#barra-audio");
+  if (!barra) return;
+  barra.style.display = "flex";
+  barra.innerHTML = `<audio controls src="/api/crm/media?key=${encodeURIComponent(mediaKey)}" style="flex:1;min-width:0;height:32px"></audio>
+    <button type="button" class="audio-cancelar" title="Descartar">${icon("close")}</button>
+    <button type="button" class="audio-enviar" title="Enviar nota de voz">${icon("send")}</button>`;
+  barra.querySelector(".audio-cancelar").addEventListener("click", () => { barra.style.display = "none"; barra.innerHTML = ""; });
+  barra.querySelector(".audio-enviar").addEventListener("click", async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await pedir("/api/crm/messages", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: convId, media_key: mediaKey, media_type: "audio" }) });
+      barra.style.display = "none"; barra.innerHTML = "";
+      if (estado.conversacionActivaId === convId) cargarMensajes();
+    } catch (err) { alert(err.message); e.currentTarget.disabled = false; }
+  });
+}
+
+async function textoAVozTienda() {
+  const convId = estado.conversacionActivaId;
+  const barra = $("#barra-audio");
+  if (!convId || !barra) return;
+  const texto = (prompt("Texto del audio (sale con la voz de la tienda, se escucha antes de mandarlo):") || "").trim();
+  if (!texto) return;
+  barra.style.display = "flex";
+  barra.innerHTML = `<span class="sub audio-estado">Generando el audio…</span>`;
+  try {
+    const r = await pedir("/api/crm/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
+    mostrarPreviaVoz(convId, r.media_key);
+  } catch (err) {
+    barra.innerHTML = `<span class="sub audio-estado">No se pudo: ${escapar(err.message)}</span>`;
+    setTimeout(() => { barra.style.display = "none"; barra.innerHTML = ""; }, 6000);
+  }
 }
 
 function terminarGrabacion(mandar) {

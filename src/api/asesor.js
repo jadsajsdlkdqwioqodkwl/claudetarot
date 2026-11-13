@@ -207,7 +207,9 @@ async function guardarInformeComoPagina(env, origen, texto) {
  *     { tipo: "respuesta_rapida", titulo, texto, motivo,
  *       destinatarios: [{ whatsapp, nombre }] },
  *     { tipo: "variante", ref_tipo: "rapida" | "bienvenida", ref_id, texto, motivo },
- *     { tipo: "saldo", whatsapp, nombre, codigo?: "TS-…", texto, motivo } ] }
+ *     { tipo: "saldo", whatsapp, nombre, codigo?: "TS-…", texto, motivo },
+ *     { tipo: "dato_envio", whatsapp, nombre, motivo, texto } ]   // falta un dato para despachar una venta (agencia dudosa…)
+ * }
  *
  * "saldo": el cliente mandó la captura del pago del saldo (el asesor ve las
  * imágenes del chat). Una persona de Shalom la revisa y con un toque deja el
@@ -373,7 +375,8 @@ export async function onRequestPostSugerencias({ request, env }) {
       continue;
     }
 
-    const tipo = s.tipo === "envio" ? "envio" : "seguimiento";
+    // dato_envio (dueño 2026-11-13): falta un dato para despachar una VENTA (teléfono, agencia de Shalom dudosa); no se cierra al comprar.
+    const tipo = s.tipo === "envio" ? "envio" : s.tipo === "dato_envio" ? "dato_envio" : "seguimiento";
     const pasos = normalizarPasos(s.pasos);
     // Qué frena a este cliente y otra opción para la próxima (la vendedora decide).
     const objecion = String(s.objecion || "").trim().slice(0, 200) || null;

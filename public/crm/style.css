@@ -1346,3 +1346,4 @@ body.solo-lectura #form-envio { display: none; }
 #barra-audio .audio-enviar { background: var(--verde, #16a34a); color: #fff; border-color: transparent; }
 #barra-audio .icono-svg, #barra-audio svg { width: 16px; height: 16px; }
 @keyframes audio-latido { 50% { opacity: .3; } }
+#barra-audio .audio-voz.activo { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }

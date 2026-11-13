@@ -2834,3 +2834,24 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
 - Lecturas del día (sin cambios en Meta, solo lectura): catálogo a clientes del día 7 (`toque_post7`, desde el 4/11): 397 chats, 11 %
   respondió, 2 pedidos por catálogo y 1 recompra. Atribución de las recomendaciones mandadas: los 6 que compraron estaban callados
   de 4 h a 2 días y respondieron al mensaje antes de comprar. Anuncios 6–12/11 (gasto Meta vs compras CRM): ver la respuesta de la sesión.
+
+## 2026-11-13 (tarde) · Venta sin teléfono («dato_envio»), voz de la tienda (ElevenLabs) y prompt de agencias de Shalom
+- **Recomendación nueva tipo `dato_envio`** («falta un dato para despachar una venta»): no se cierra al comprar (las de
+  `seguimiento` sí). Al marcar la compra (`agregarEtiquetaMeta(…, "purchase")` → `sugerirTelefonoDeVenta` en `crm-sugerencias.js`) de
+  un cliente que escribe con nombre de usuario de WhatsApp (su id no es un teléfono) y que no escribió ningún celular, queda una
+  recomendación «¿Me indica por favor un número de celular para su envío?». Sube a la bandeja primero (`reflotarSugerencia`), sale
+  en el aviso del chat (`recomendacionDeChat`, `/api/crm/sugerencias?de_chat`), entra a la cola de atención y se descarta con «Ya
+  respondí»; se cierra sola cuando el cliente escribe un celular (`TIENE_CELULAR`). `/api/asesor/sugerencias` acepta
+  `tipo: "dato_envio"` (para las agencias de Shalom dudosas, ver abajo). Nada se le manda al cliente sin una persona. Prueba
+  `scripts/test-venta-sin-telefono.mjs`.
+- **Voz de la tienda (ElevenLabs)**, estructura lista sin clave: `src/lib/elevenlabs.js` (texto a voz y voz a voz, salida
+  `opus_48000_64`, rechaza lo que no sea Ogg), `GET/POST /api/crm/voz` (`src/api/crm/voz.js`; guarda el audio en R2 como `audio/ogg` y
+  devuelve `media_key`). CRM: «⋯ Más» → «Texto a voz (voz de la tienda)» y, en la barra del grabador, el botón de chispa «cambiar mi
+  voz»; siempre se escucha antes de mandar y sale como nota de voz. Solo aparece con el secreto `ELEVENLABS_API_KEY` en el Worker y
+  `ELEVENLABS_VOICE_ID` en `wrangler.jsonc` (vacío hoy). Prueba `scripts/test-voz-tienda.mjs`. No es la API de Claude.
+- **Prompt para el Claude de Shalom:** `docs/prompts/shalom-agencias.md` (agencias al día cada día desde la API pública,
+  `shalom.py triangular` con OpenStreetMap y distancias a la lat/lng de cada agencia, y recomendación `dato_envio` a la asesora con
+  la captura de shalom.com.pe/agencias cuando la agencia es dudosa). No construido aún: lo hace esa sesión.
+- **Meta, atribución incremental (lectura):** con `action_attribution_windows: incrementality` los resultados por anuncio (6–12/11)
+  son conversaciones (la campaña optimiza conversaciones): 97–100 % salen incrementales. Para ventas incrementales la campaña tendría
+  que optimizar por compras.

@@ -153,6 +153,9 @@
     // `lima` y `lima_entrega_AAAA-MM-DD` al registrar en Dinsides (etiquetarEntregaLima en src/api/asesor-dinsides.js).
     "PLANTILLA_ENTREGA_LIMA": "",
     "HORA_ENTREGA_LIMA": "10:00",
+    // Voz de la tienda (ElevenLabs, src/lib/elevenlabs.js): id de la voz elegida o clonada; la clave va como SECRETO
+    // ELEVENLABS_API_KEY en el Worker (nunca aquí). Vacío = el CRM no muestra «Texto a voz» ni «Cambiar voz».
+    "ELEVENLABS_VOICE_ID": "",
     // Usuarios (username) que además del admin ven "Links de Shalom" en el CRM.
     "SHALOM_AGENTES": "danitza",
     // Usuarios (username) que además del dueño reciben por Telegram el PDF de

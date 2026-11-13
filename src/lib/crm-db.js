@@ -831,4 +831,9 @@ export async function agregarEtiquetaMeta(db, conversationId, etiqueta) {
     )
     .bind(etiqueta, conversationId)
     .run();
+  // Venta sin teléfono (dueño 2026-11-13): si el cliente escribe sin número y no dio celular, recomendación «pídele su celular».
+  if (etiqueta === "purchase") {
+    await import("./crm-sugerencias.js").then((m) => m.sugerirTelefonoDeVenta(db, conversationId))
+      .catch((err) => console.error("Venta sin teléfono:", err.message));
+  }
 }

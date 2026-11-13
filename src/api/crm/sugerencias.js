@@ -102,7 +102,8 @@ async function get({ request, env, agent }) {
     const s = await env.CRM_DB.prepare(
       `SELECT s.id, s.texto, s.motivo, s.objecion, s.origen, s.pasos, s.idea, s.adjuntar, s.plantilla, s.plantilla_enviada_at, conv.last_inbound_at FROM asesor_sugerencias s
        JOIN conversations conv ON conv.id = s.conversation_id
-       WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.conversation_id = ? ORDER BY s.created_at DESC LIMIT 1`
+       WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'dato_envio') AND s.conversation_id = ?
+       ORDER BY CASE WHEN s.tipo = 'dato_envio' THEN 0 ELSE 1 END, s.created_at DESC LIMIT 1`
     ).bind(deChat).first();
     if (!s) return json({ sugerencia: null });
     // Ventana cerrada (dueño, 2026-11-06): el banner igual se ve y ofrece mandar la recomendación como plantilla aprobada.

@@ -46,6 +46,34 @@ export const FALTA_RESPUESTA = (conv) => `(${conv}.last_inbound_at IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM messages mr WHERE mr.conversation_id = ${conv}.id AND mr.direction = 'out' AND mr.created_at >= ${conv}.last_inbound_at
                   AND (${conv}.last_inbound_at < datetime('now', '-3 days') OR NOT ${NO_ES_RESPUESTA("mr")})))`;
 
+/** Un texto con un celular peruano (9 dígitos que empiezan con 9; acepta espacios). Para SQL. */
+export const TIENE_CELULAR = (col) => `replace(replace(COALESCE(${col}, ''), ' ', ''), '-', '') GLOB '*9[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*'`;
+
+/**
+ * Venta sin teléfono (dueño, 2026-11-13): cuando se marca la compra de un cliente que escribe con nombre de usuario de WhatsApp
+ * (sin número: su id no es un teléfono) y que no escribió ningún celular en el chat, queda una recomendación «dato_envio» para la
+ * vendedora: pedirle el celular (el courier de Lima y Shalom lo necesitan). Sube a la bandeja como las demás y se cierra sola
+ * cuando el cliente escribe un celular. Nunca le escribe al cliente: la manda una persona.
+ */
+export async function sugerirTelefonoDeVenta(db, conversationId) {
+  const c = await db.prepare(
+    `SELECT ct.wa_id, COALESCE(ct.name, ct.profile_name, '') AS nombre,
+       EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conv.id AND m.direction = 'in' AND ${TIENE_CELULAR("m.body")}) AS dio_celular,
+       EXISTS (SELECT 1 FROM asesor_sugerencias s WHERE s.conversation_id = conv.id AND s.tipo = 'dato_envio' AND s.estado = 'pendiente') AS ya
+     FROM conversations conv JOIN contacts ct ON ct.id = conv.contact_id WHERE conv.id = ?`
+  ).bind(conversationId).first();
+  if (!c || c.ya || c.dio_celular) return false;
+  if (/^\d{8,15}$/.test(String(c.wa_id || ""))) return false; // escribe con su número: ese es el teléfono
+  await db.prepare(
+    `INSERT INTO asesor_sugerencias (tipo, conversation_id, wa_id, nombre, texto, texto_original, motivo, origen)
+     VALUES ('dato_envio', ?, ?, ?, ?, ?, ?, 'cron (venta sin teléfono)')`
+  ).bind(conversationId, c.wa_id, String(c.nombre).slice(0, 80),
+    "Muchas gracias estimad@ ☺️ ¿Me indica por favor un número de celular para su envío? Así el courier le avisa al llegar 📦",
+    "Muchas gracias estimad@ ☺️ ¿Me indica por favor un número de celular para su envío? Así el courier le avisa al llegar 📦",
+    "Venta sin teléfono: el cliente escribe con nombre de usuario de WhatsApp (sin número) y no dio un celular. Pídeselo: el courier lo necesita.").run();
+  return true;
+}
+
 export async function limpiarSugerenciasViejas(db, env = null) {
   // Con `env`, lo que vence por ventana cerrada se reemplaza por un plan con plantilla por aprobar.
   if (env) await proponerPlanPorVentanaCerrada(env).catch((err) => console.error("Plan por ventana cerrada:", err.message));
@@ -65,6 +93,13 @@ export async function limpiarSugerenciasViejas(db, env = null) {
        WHERE estado = 'pendiente' AND tipo = 'sin_pregunta'
          AND EXISTS (SELECT 1 FROM scheduled_messages sm WHERE sm.conversation_id = asesor_sugerencias.conversation_id
                      AND sm.status IN ('pendiente', 'por_aprobar') AND ${SEGUIMIENTO_PROPIO})`
+    ),
+    // «Falta un dato» (dato_envio): se cierra cuando el cliente ya escribió un celular (9 dígitos que empiezan con 9) después.
+    db.prepare(
+      `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'el cliente ya dio su celular', resuelto_at = datetime('now')
+       WHERE estado = 'pendiente' AND tipo = 'dato_envio' AND motivo LIKE 'Venta sin teléfono%'
+         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = asesor_sugerencias.conversation_id AND m.direction = 'in'
+                     AND m.created_at > asesor_sugerencias.created_at AND ${TIENE_CELULAR("m.body")})`
     ),
     db.prepare(
       `UPDATE asesor_sugerencias SET estado = 'obsoleta', resuelto_por = 'ya compró', resuelto_at = datetime('now')
@@ -95,14 +130,15 @@ export async function reflotarSugerencia(env) {
   const sinPregunta = await db.prepare("SELECT value FROM crm_settings WHERE key = 'sin_pregunta_auto'").first().catch(() => null);
   if (sinPregunta?.value === "1") await sugerirSinPregunta(db).catch((err) => console.error("Sugerir sin pregunta:", err.message));
   const TIPO = sinPregunta?.value === "1"
-    ? "(s.tipo = 'seguimiento' OR (s.tipo = 'sin_pregunta' AND conv.last_inbound_at >= datetime('now', '-24 hours')))"
-    : "s.tipo = 'seguimiento'";
+    ? "(s.tipo IN ('seguimiento', 'dato_envio') OR (s.tipo = 'sin_pregunta' AND conv.last_inbound_at >= datetime('now', '-24 hours')))"
+    : "s.tipo IN ('seguimiento', 'dato_envio')";
   const { results } = await db.prepare(
     `SELECT s.id, s.conversation_id FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
      WHERE s.estado = 'pendiente' AND ${TIPO} AND s.reflotada_at IS NULL AND conv.blocked = 0
        AND COALESCE(s.plantilla_enviada_at, s.created_at) >= datetime('now', '-3 days')
        AND (s.plantilla_enviada_at IS NULL OR conv.last_inbound_at > s.plantilla_enviada_at)
-     ORDER BY CASE WHEN ${FALTA_RESPUESTA("conv")} THEN 0 ELSE 1 END,
+     ORDER BY CASE WHEN s.tipo = 'dato_envio' THEN 0 ELSE 1 END,
+              CASE WHEN ${FALTA_RESPUESTA("conv")} THEN 0 ELSE 1 END,
               CASE WHEN conv.last_inbound_at >= datetime('now', '-24 hours') THEN 0 ELSE 1 END,
               s.created_at ASC, s.id ASC
      LIMIT ?`
@@ -151,7 +187,8 @@ export async function recomendacionDeChat(db, conversationId, listar = null) {
   const s = await db.prepare(
     `SELECT s.id, s.texto, s.motivo, s.objecion, s.origen, s.pasos, s.idea, s.created_at, s.reflotada_at, conv.last_inbound_at
      FROM asesor_sugerencias s JOIN conversations conv ON conv.id = s.conversation_id
-     WHERE s.estado = 'pendiente' AND s.tipo = 'seguimiento' AND s.conversation_id = ? ORDER BY s.created_at DESC LIMIT 1`
+     WHERE s.estado = 'pendiente' AND s.tipo IN ('seguimiento', 'dato_envio') AND s.conversation_id = ?
+     ORDER BY CASE WHEN s.tipo = 'dato_envio' THEN 0 ELSE 1 END, s.created_at DESC LIMIT 1`
   ).bind(conversationId).first();
   if (!s) return null;
   const parse = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };

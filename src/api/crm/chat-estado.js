@@ -56,7 +56,7 @@ async function post({ request, env, agent }) {
     // (ya no reflota); un mensaje nuevo del cliente lo vuelve a poner en la cola.
     if (marcar) {
       await env.CRM_DB.prepare(
-        "UPDATE asesor_sugerencias SET estado = 'descartada', resuelto_por = ?, resuelto_at = datetime('now') WHERE conversation_id = ? AND tipo = 'seguimiento' AND estado = 'pendiente'"
+        "UPDATE asesor_sugerencias SET estado = 'descartada', resuelto_por = ?, resuelto_at = datetime('now') WHERE conversation_id = ? AND tipo IN ('seguimiento', 'dato_envio') AND estado = 'pendiente'"
       ).bind(`${agent?.displayName || agent?.username || "CRM"} (atendido)`, conversationId).run();
     }
     return json({ ok: true, atendido: marcar });

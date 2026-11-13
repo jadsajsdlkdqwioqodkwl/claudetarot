@@ -58,7 +58,7 @@ export function tokensBusqueda(q) {
 // «Falta respuesta»: criterio único en crm-sugerencias.js (un seguimiento automático no cuenta como respuesta, 2026-11-06).
 const ATENCION_FALTA = FALTA_RESPUESTA("conv");
 const ATENCION_REC = `EXISTS (SELECT 1 FROM asesor_sugerencias sg WHERE sg.conversation_id = conv.id AND sg.estado = 'pendiente'
-                AND sg.tipo = 'seguimiento' AND (sg.reflotada_at IS NOT NULL OR conv.last_inbound_at IS NULL OR conv.last_inbound_at < datetime('now', '-24 hours')))`;
+                AND sg.tipo IN ('seguimiento', 'dato_envio') AND (sg.reflotada_at IS NOT NULL OR conv.last_inbound_at IS NULL OR conv.last_inbound_at < datetime('now', '-24 hours')))`;
 
 // En la cola, «Falta respuesta» solo cuenta si el mensaje del cliente es de los últimos 3 días: los chats viejos
 // sin contestar (leads perdidos) la llenarían de ruido; siguen con su etiqueta en la lista normal.

@@ -32,6 +32,7 @@ import { onRequestGet as crmMessagesGet, onRequestPost as crmMessagesPost } from
 import { onRequestPost as crmContactsPost, onRequestPatch as crmContactsPatch } from "./api/crm/contacts.js";
 import { onRequestGet as crmLoginInfo } from "./api/crm/login-info.js";
 import { onRequestPost as crmUploadMedia } from "./api/crm/upload-media.js";
+import { onRequestGet as crmVozGet, onRequestPost as crmVozPost } from "./api/crm/voz.js";
 import { onRequestGet as crmMedia } from "./api/crm/media.js";
 import { onRequestPatch as crmAssignPatch } from "./api/crm/assign.js";
 import { onRequestPost as crmChatEstadoPost } from "./api/crm/chat-estado.js";
@@ -217,6 +218,7 @@ const ROUTES = {
   "/api/crm/messages": { GET: crmMessagesGet, POST: crmMessagesPost },
   "/api/crm/contacts": { POST: crmContactsPost, PATCH: crmContactsPatch },
   "/api/crm/upload-media": { POST: crmUploadMedia },
+  "/api/crm/voz": { GET: crmVozGet, POST: crmVozPost },
   "/api/crm/media": { GET: crmMedia },
   "/api/crm/assign": { PATCH: crmAssignPatch },
   "/api/crm/chat-estado": { POST: crmChatEstadoPost },
