@@ -13,6 +13,9 @@
  *      { accion: "osm", consultas: [{ q }] }                                        → OpenStreetMap (Nominatim) con caché en R2
  *                                                                                     (`shalom/osm-cache.json`), 1 consulta por segundo
  *      { accion: "aviso_plantilla", version }                                       → anota que ya se avisó por esa versión
+ *      { accion: "plantilla", archivo_base64, quien? }                              → guarda la plantilla NUEVA del Excel masivo que
+ *                                                                                     una persona bajó de Shalom Pro (R2 `shalom/plantilla.xlsx`)
+ * GET  /api/asesor/shalom-agencias?plantilla=1  → esa plantilla (xlsx) si existe; 404 si se sigue usando la del repo
  *
  * Nada de esto escribe a clientes. Las claves de recojo no pasan por aquí.
  */
@@ -104,9 +107,14 @@ async function puerta(request, env) {
 export async function onRequestGet({ request, env }) {
   const corte = await puerta(request, env);
   if (corte) return corte;
+  if (new URL(request.url).searchParams.get("plantilla") === "1") {
+    const obj = await env.CRM_MEDIA.get("shalom/plantilla.xlsx");
+    if (!obj) return json({ error: "No hay plantilla subida: se usa la del repo." }, 404);
+    return new Response(obj.body, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Cache-Control": "no-store", "X-Plantilla-Subida": obj.customMetadata?.cuando || "" } });
+  }
   const d = await agenciasDelDia(env, new URL(request.url).searchParams.get("forzar") === "1");
   const estado = await leer(env, "shalom/confirmadas.json", {});
-  return json({ ok: true, ...d, confirmadas: estado.confirmadas || {}, aviso_plantilla: estado.aviso_plantilla || null, aviso_api: estado.aviso_api || null });
+  return json({ ok: true, ...d, confirmadas: estado.confirmadas || {}, aviso_plantilla: estado.aviso_plantilla || null, aviso_api: estado.aviso_api || null, plantilla_subida: estado.plantilla_subida || null });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -131,6 +139,16 @@ export async function onRequestPost({ request, env }) {
     delete estado.confirmadas[n9(p.whatsapp)];
     await escribir(env, "shalom/confirmadas.json", estado);
     return json({ ok: true });
+  }
+  if (p?.accion === "plantilla") {
+    let bytes;
+    try { bytes = Uint8Array.from(atob(String(p.archivo_base64 || "")), (c) => c.charCodeAt(0)); } catch { return json({ error: "Archivo inválido." }, 400); }
+    // Un xlsx es un zip («PK»); la plantilla oficial pesa unas decenas de KB.
+    if (bytes.length < 5000 || bytes.length > 3 * 1024 * 1024 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) return json({ error: "Eso no parece la plantilla .xlsx de Shalom." }, 400);
+    await env.CRM_MEDIA.put("shalom/plantilla.xlsx", bytes, { customMetadata: { cuando: ahoraLima(), quien: String(p.quien || "").slice(0, 60) } });
+    estado.plantilla_subida = { cuando: ahoraLima(), quien: String(p.quien || "").slice(0, 60), bytes: bytes.length };
+    await escribir(env, "shalom/confirmadas.json", estado);
+    return json({ ok: true, plantilla_subida: estado.plantilla_subida });
   }
   if (p?.accion === "aviso_plantilla" || p?.accion === "aviso_api") {
     estado[p.accion] = String(p.version || hoyLima()).slice(0, 40);

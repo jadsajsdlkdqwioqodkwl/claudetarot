@@ -107,6 +107,34 @@ def recibe(a):
 
 
 _DESTINOS = None
+_PLANTILLA_LISTA = False
+
+
+def plantilla_actual():
+    """La plantilla del Excel masivo que se usa: la que una persona subió con `shalom.py plantilla <archivo>` (guardada en el
+    Worker) o, si no hay, la del repo. Se baja una vez por corrida y solo se acepta si trae la lista `Hoja2!C` de destinos."""
+    global PLANTILLA, _PLANTILLA_LISTA, _DESTINOS
+    if _PLANTILLA_LISTA:
+        return PLANTILLA
+    _PLANTILLA_LISTA = True
+    if not os.environ.get("ASESOR_CLAVE") or os.environ.get("SHALOM_SIN_RED"):
+        return PLANTILLA
+    try:
+        if not (cargar().get("plantilla_subida") or {}).get("cuando"):
+            return PLANTILLA
+        import tempfile
+        base = os.environ.get("ASESOR_API_BASE") or "https://kit-tarot-para-principiantes.tarotperu.store/api/asesor"
+        req = urllib.request.Request(base + "/shalom-agencias?plantilla=1", headers={"x-asesor-clave": os.environ["ASESOR_CLAVE"], "User-Agent": "tarot-asesor/1.0"})
+        datos = urllib.request.urlopen(req, timeout=40).read()
+        destino = os.path.join(tempfile.gettempdir(), "shalom-plantilla-subida.xlsx")
+        with open(destino, "wb") as f:
+            f.write(datos)
+        vieja, PLANTILLA, _DESTINOS = PLANTILLA, destino, None
+        if len(plantilla_destinos()) < 300:  # no es la plantilla de Shalom: se sigue con la del repo
+            PLANTILLA, _DESTINOS = vieja, None
+    except Exception as e:  # noqa: BLE001
+        print(f"(no pude leer la plantilla subida al Worker: {e}; sigo con la del repo)", file=sys.stderr)
+    return PLANTILLA
 
 
 def plantilla_destinos():
@@ -115,7 +143,7 @@ def plantilla_destinos():
     global _DESTINOS
     if _DESTINOS is None:
         import zipfile
-        z = zipfile.ZipFile(PLANTILLA)
+        z = zipfile.ZipFile(plantilla_actual())
         sst = [re.sub(r"<[^>]+>", "", x).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">") for x in re.findall(r"<si>(.*?)</si>", z.read("xl/sharedStrings.xml").decode("utf-8"), re.S)]
         rels = dict(re.findall(r'Id="(rId\d+)"[^>]*?Target="([^"]+)"', z.read("xl/_rels/workbook.xml.rels").decode()) or [(b, a) for a, b in re.findall(r'Target="([^"]+)"[^>]*?Id="(rId\d+)"', z.read("xl/_rels/workbook.xml.rels").decode())])
         rid = re.search(r'<sheet [^>]*name="Hoja2"[^>]*r:id="(rId\d+)"', z.read("xl/workbook.xml").decode()).group(1)
@@ -153,6 +181,76 @@ def cruce_plantilla(agencias=None):
     return nuevas, quitadas
 
 
+def aviso_plantilla_vieja(nuevas=None, quitadas=None):
+    """El aviso para la persona (vacío si la plantilla está al día)."""
+    if nuevas is None:
+        nuevas, quitadas = cruce_plantilla()
+    if not (nuevas or quitadas):
+        return ""
+    return (f"⚠️ PARA JENNIFER — LA PLANTILLA DEL EXCEL DE SHALOM QUEDÓ VIEJA: Shalom tiene {len(nuevas)} agencia(s) nueva(s) que la plantilla no trae "
+            f"({', '.join(nuevas[:8]) or '—'}) y {len(quitadas)} nombre(s) que ya no usa ({', '.join(quitadas[:8]) or '—'}). "
+            "Qué hacer (2 minutos): en Shalom Pro → Registro de envíos masivos → «Descargar formato», y adjuntar ese archivo aquí en la sesión de Claude "
+            "diciendo «plantilla nueva de Shalom». Mientras tanto los pedidos a esas agencias NO entran al Excel (se registran a mano en Shalom Pro).")
+
+
+def cmd_plantilla(args):
+    """plantilla <archivo.xlsx>: guarda en el Worker la plantilla nueva que una persona bajó de Shalom Pro. Antes revisa que sea
+    la plantilla (Hoja2 con la lista de destinos, las mismas columnas) y dice qué cambió. No toca `llenar_plantilla()`."""
+    global PLANTILLA, _DESTINOS, _PLANTILLA_LISTA
+    import base64, zipfile
+    if not args or not os.path.isfile(args[0]):
+        sys.exit("Uso: shalom.py plantilla <archivo.xlsx bajado de Shalom Pro>")
+    antes_ruta = plantilla_actual()
+    antes = list(plantilla_destinos())
+    z_vieja, z_nueva = zipfile.ZipFile(antes_ruta), zipfile.ZipFile(args[0])
+    faltan = sorted(set(n for n in z_vieja.namelist() if n.startswith("xl/worksheets/") or n == "xl/workbook.xml") - set(z_nueva.namelist()))
+    PLANTILLA, _DESTINOS, _PLANTILLA_LISTA = args[0], None, True
+    try:
+        ahora = list(plantilla_destinos())
+    except Exception as e:  # noqa: BLE001
+        sys.exit(f"Ese archivo no es la plantilla del masivo de Shalom (no pude leer la lista de destinos de Hoja2: {e}). No se guardó nada.")
+    if len(ahora) < 300 or faltan:
+        sys.exit(f"Ese archivo no parece la plantilla del masivo ({len(ahora)} destinos; hojas que faltan: {faltan or '—'}). No se guardó nada.")
+    mas, menos = sorted(set(ahora) - set(antes)), sorted(set(antes) - set(ahora))
+    print(f"Plantilla nueva: {len(ahora)} destinos (la anterior tenía {len(antes)}). Nuevos: {', '.join(mas[:15]) or '—'}. Ya no están: {', '.join(menos[:15]) or '—'}.")
+    nuevas, quitadas = cruce_plantilla()
+    print("Contra las agencias de hoy: " + ("AL DÍA, no falta ninguna." if not (nuevas or quitadas) else f"todavía faltan {nuevas[:8]} y sobran {quitadas[:8]} (¿se bajó el formato más reciente?)."))
+    if "--probar" in args:
+        print("(--probar: no se guardó)"); return
+    r = pedir_worker("/shalom-agencias", {"accion": "plantilla", "archivo_base64": base64.b64encode(open(args[0], "rb").read()).decode(), "quien": "sesión de Claude"})
+    print("Guardada en el Worker: desde ahora el Excel masivo, la revisión y las etiquetas usan esta plantilla." if r.get("ok") else f"No se guardó: {r}")
+    print("⚠️ La PRIMERA subida a Shalom Pro con esta plantilla hay que mirarla con cuidado (que Shalom acepte el archivo y las filas): avisar a Moi si algo sale raro.")
+
+
+def cmd_osm(args):
+    """osm "<lugar, ciudad>": dónde queda un lugar según el mapa (OpenStreetMap) y qué agencias de Shalom QUE RECIBEN le quedan
+    más cerca. También acepta coordenadas «-13.52,-71.97» (p. ej. del pin que mandó el cliente)."""
+    q = " ".join(a for a in args if not a.startswith("--")).strip()
+    m = re.fullmatch(r"\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*", q)
+    hits = [{"lat": float(m.group(1)), "lng": float(m.group(2)), "nombre": "coordenadas dadas"}] if m else buscar_osm(q)
+    if not hits:
+        print(f"El mapa no encontró «{q}». Prueba con menos palabras y la ciudad al final («mercado modelo, Tumbes»), o busca en la web / Google Maps."); return
+    reciben = [a for a in cargar()["agencias"] if recibe(a)]
+    for h in hits[:3]:
+        print(f"📍 {h.get('nombre')} ({h['lat']:.5f},{h['lng']:.5f})")
+        cerca = sorted(((metros(h["lat"], h["lng"], a.get("lat"), a.get("lng")), a) for a in reciben if metros(h["lat"], h["lng"], a.get("lat"), a.get("lng")) is not None), key=lambda x: x[0])[:5]
+        for d, a in cerca:
+            enp = nombre_plantilla(a["agencia"])
+            print(f"   {d/1000:.1f} km · {a['agencia'].strip()} · {a['codigo']} · {a['direccion'][:90]}" + ("" if enp else " · ⚠️ no está en la plantilla del Excel"))
+
+
+def cmd_provincia(args):
+    """provincia "<provincia o distrito>": TODAS las agencias de Shalom de ese lugar, reciban o no, con dirección y horario."""
+    q = norm(" ".join(args))
+    hay = [a for a in cargar()["agencias"] if q and (q in norm(a.get("provincia")) or q in norm(a.get("distrito")) or q in norm(a.get("departamento")))]
+    if not hay:
+        print(f"Shalom no tiene agencias con «{' '.join(args)}» en departamento, provincia o distrito."); return
+    for a in sorted(hay, key=lambda a: (not recibe(a), a.get("provincia") or "", a["agencia"])):
+        print(f"{'RECIBE   ' if recibe(a) else 'NO RECIBE'} · {a['agencia'].strip()} · {a['codigo']} · {a['direccion'][:90]} · {a.get('horario') or ''}"[:260]
+              + ("" if not recibe(a) or nombre_plantilla(a["agencia"]) else " · ⚠️ no está en la plantilla del Excel"))
+    print(f"{sum(1 for a in hay if recibe(a))} reciben envíos de {len(hay)}.")
+
+
 def agencias_al_dia(avisar=True):
     """Primer paso de todo lo que usa agencias (masivo, revisión, recomendar): carga la copia del día, la cruza con la plantilla y
     avisa UNA vez por Telegram si la plantilla quedó vieja o si la API de Shalom falló. Devuelve la línea de estado."""
@@ -168,8 +266,9 @@ def agencias_al_dia(avisar=True):
             cmd_telegram(f"⚠️ La API de agencias de Shalom no respondió o cambió de forma ({d['error']}). Se sigue con la lista del {d.get('bajado')}. Respaldo manual: https://www.shalom.com.pe/agencias (buscar por provincia).", callar=True)
             pedir_worker("/shalom-agencias", {"accion": "aviso_api", "version": hoy})
     if nuevas or quitadas:
-        linea += (f"\n⚠️ LA PLANTILLA DEL EXCEL QUEDÓ VIEJA: {len(nuevas)} agencia(s) nueva(s) que no tiene ({', '.join(nuevas[:8])}) y {len(quitadas)} nombre(s) que Shalom ya no usa "
-                  f"({', '.join(quitadas[:8])}). Hay que bajar la plantilla nueva de Shalom Pro; mientras tanto esas agencias no van al Excel.")
+        # Este aviso va TODOS los días a quien trabaja la sesión (Jennifer), no solo al dueño (dueño 2026-11-13): sale en el
+        # RESUMEN, arriba de la página de revisión y Claude lo repite en su respuesta hasta que alguien pase la plantilla nueva.
+        linea += "\n" + aviso_plantilla_vieja(nuevas, quitadas)
         if con_red and str(d.get("aviso_plantilla")) != str(d.get("version")):
             cmd_telegram(f"⚠️ Shalom cambió sus agencias (versión {d.get('version')}) y la plantilla del Excel masivo quedó vieja. Nuevas: {', '.join(nuevas[:10]) or '—'}. Ya no existen: {', '.join(quitadas[:10]) or '—'}. "
                          "Hay que bajar la plantilla nueva de Shalom Pro (Registro de envíos masivos → descargar formato) y pasarla para actualizar el sistema. Mientras tanto esas agencias no entran al Excel.", callar=True)
@@ -1063,6 +1162,12 @@ def main():
         cmd_triangular(resto)
     elif cmd == "recomendar":
         cmd_recomendar(resto)
+    elif cmd == "plantilla":
+        cmd_plantilla(resto)
+    elif cmd == "osm" and resto:
+        cmd_osm(resto)
+    elif cmd == "provincia" and resto:
+        cmd_provincia(resto)
     elif cmd == "agencias":
         if "--actualizar" in resto:
             # El Worker es quien las baja (una vez al día); esto lo fuerza. `--archivo` además refresca el respaldo del repo.

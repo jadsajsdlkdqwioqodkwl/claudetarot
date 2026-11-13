@@ -2877,3 +2877,16 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   (todas sus agencias tienen `destino = 0`); (3) Shalom cambió su lista (versión 5184 → 5376): la plantilla del Excel del repo puede
   haber quedado vieja y `agencias_al_dia` lo avisa por Telegram.
 - Pruebas: `python3 scripts/asesor/pruebas/test_shalom_agencias.py` (sin red). `npm run check` sigue en verde.
+
+### 2026-11-13 (tarde) — teléfono del pedido, aviso de plantilla para Jennifer y búsqueda de agencias
+
+- **Teléfono principal (regla del dueño):** si el cliente dio otro número para la entrega, ese es el `telefono` del pedido de
+  Dinsides; el número con el que escribió va en el Detalle. `armarPedido` (`src/lib/dinsides.js`) lo toma de `telefono` o, si
+  falta, de la `nota`; `docs/envios-jennifer.md` regla 15 y `docs/prompts/reporte.md` punto 12. Prueba en `scripts/test-dinsides.mjs`.
+- **Clientes sin número:** `GET /api/asesor/chat?wa_id=PE.…` (`src/api/asesor-datos.js`) y `dinsides.py chat PE.…`.
+- **Plantilla del Excel de Shalom:** nueva pieza R2 `shalom/plantilla.xlsx` (la sube `shalom.py plantilla <archivo>` por
+  `POST /api/asesor/shalom-agencias {accion: "plantilla"}`; la lee `plantilla_actual()` con `GET …?plantilla=1`). Si no existe se
+  usa `data/shalom-masivo-plantilla.xlsx` del repo (no se borró). El aviso de plantilla vieja va todos los días a Jennifer (RESUMEN
+  + página de revisión + respuesta de Claude, regla 16 de `docs/envios-jennifer.md`) y a Moi por Telegram una vez por versión.
+- **Búsqueda de agencias para Claude:** `shalom.py osm`, `shalom.py provincia` (además de `triangular` y `buscar`); regla 17.
+- Ninguna Routine cambió (leen estos documentos desde `main`).

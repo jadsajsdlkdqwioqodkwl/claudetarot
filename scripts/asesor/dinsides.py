@@ -136,7 +136,10 @@ def cmd_preparar(args):
 
 def cmd_chat(ref, n="40"):
     ref = str(ref)
-    q = f"conversation_id={ref}" if ref.isdigit() and len(ref) < 9 else f"telefono={''.join(ch for ch in ref if ch.isdigit())[-9:]}"
+    if re.fullmatch(r"[A-Za-z]{2}\.\d+", ref):  # cliente sin número (usuario de WhatsApp): su id va tal cual
+        q = f"wa_id={ref}"
+    else:
+        q = f"conversation_id={ref}" if ref.isdigit() and len(ref) < 9 else f"telefono={''.join(ch for ch in ref if ch.isdigit())[-9:]}"
     st, r = pedir(f"/chat?{q}&mensajes={n}&largo=1")
     salir_si_error(st, r)
     if not r.get("encontrado"):

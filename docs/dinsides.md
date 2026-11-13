@@ -154,3 +154,9 @@ CONFIRMADA, el porqué y las candidatas. La revisión guarda qué agencia mostr�
 notas` convierte «OK» y «agencia X» en agencias confirmadas (memoria del Worker) que el Excel masivo usa solo. Detalle en
 `docs/shalom.md`. Etiquetas de Lima: línea «Horario:» = «12 a 5 pm (regular)» o «ESPECIAL: …» si la nota del pedido trae la hora
 que pidió el cliente (`horario_lima` en `etiquetas.py`).
+
+**2026-11-13 — teléfono principal = el que dio el cliente.** `armarPedido` (`src/lib/dinsides.js`): `telefono` del reporte manda; si
+no vino y la `nota` trae otro celular («Tel de contacto…», «recibe … 9…», «llamar a…») distinto al del chat, ese es el teléfono del
+pedido, el WhatsApp del chat queda en el Detalle y sale la alerta «TELÉFONO: …». `GET /api/asesor/chat?wa_id=PE.…` y `dinsides.py
+chat PE.…` ya encuentran a los clientes sin número. Caso Carmela Fonseca (#2953631): solo dio 924543668 (escribe con usuario, sin
+número), ya era el principal; se le completó el Detalle con las referencias y «la ubicación del mapa no es exacta: llamar antes».

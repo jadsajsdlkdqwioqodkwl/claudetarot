@@ -323,7 +323,14 @@ function telefonoValido(...fuentes) {
 export function armarPedido(pedido, ctx = {}) {
   const p = pedido || {};
   const alertas = [], bloqueos = [];
-  const telefono = telefonoValido(p.telefono, p.whatsapp);
+  // Teléfono PRINCIPAL (dueño 2026-11-13): si el cliente pasó otro número («escriban a este», «recibe mi hermana 9…», un contacto),
+  // ESE es el teléfono del pedido; el número con el que escribió va en el Detalle («Escribir al cliente por WhatsApp: …»). El reporte
+  // lo trae en `telefono`; si se le pasó y lo dejó solo en la nota («Tel de contacto 978…», «recibe … 9…»), se toma de ahí.
+  const waDigitos = String(p.whatsapp || "").replace(/\D/g, "").slice(-9);
+  const enNota = String(p.telefono || "").trim() ? null : (String(p.nota || "").match(/(?:contacto|recibe|recibir[aá]|entregar a|llamar a|escribir a|avisar a|tel[eé]fono|tel\.?|cel\.?|celular|n[uú]mero)[^.;\d]{0,40}?(?:\+?51[\s-]?)?(9\d{2}[\s.-]?\d{3}[\s.-]?\d{3})(?!\d)/i) || [])[1];
+  const otroNumero = enNota ? enNota.replace(/\D/g, "") : "";
+  const telefono = telefonoValido(p.telefono, otroNumero && otroNumero !== waDigitos ? otroNumero : "", p.whatsapp);
+  if (otroNumero && otroNumero !== waDigitos && telefono === otroNumero) alertas.push(`TELÉFONO: va el número que dio el cliente en el chat (${otroNumero}); su WhatsApp (${waDigitos || "sin número"}) va en el Detalle`);
   if (!telefono) bloqueos.push(`TELÉFONO: «${p.telefono || p.whatsapp || ""}» no es un celular de 9 dígitos que empiece en 9`);
 
   const nombre = SIN_EMOJI(p.nombre).replace(/\((perfil|chat)[^)]*\)/gi, "").replace(/\s+/g, " ").trim() || "CLIENTE";

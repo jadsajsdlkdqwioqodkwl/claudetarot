@@ -112,3 +112,12 @@ Lo corre la Routine del asesor (10:00 · 15:00 · 19:00, paso 0 de `docs/prompts
 `PAQUETE XS` sí está en la validación de la columna H de la plantilla. OpenStreetMap se consulta por el Worker (Nominatim, 1 por
 segundo, User-Agent `tarot-store-envios/1.0`, caché en R2 `shalom/osm-cache.json`). Comando de prueba: `shalom.py triangular "<texto>"`.
 Prueba sin red: `python3 scripts/asesor/pruebas/test_shalom_agencias.py`.
+
+**2026-11-13 (tarde) — plantilla nueva sin commits, aviso diario y búsqueda.** `shalom.py plantilla <archivo.xlsx>` valida y guarda
+en el Worker (R2 `shalom/plantilla.xlsx`, `POST /api/asesor/shalom-agencias {accion: "plantilla"}`; `GET …?plantilla=1` la devuelve)
+la plantilla que una persona bajó de Shalom Pro; `plantilla_actual()` la baja en cada corrida y, si no hay, usa la del repo.
+`llenar_plantilla()` no se tocó: sigue copiando byte a byte la plantilla que esté vigente (**la primera subida real con una
+plantilla nueva hay que mirarla**). El aviso «PARA JENNIFER — LA PLANTILLA … QUEDÓ VIEJA» (`aviso_plantilla_vieja`) sale todos los
+días en el RESUMEN y en la página de revisión hasta que se actualice; a Moi le llega por Telegram una vez por versión. Búsqueda:
+`shalom.py osm "<lugar>"` / `osm "lat,lng"` (mapa + 5 agencias que reciben más cercanas) y `shalom.py provincia "<lugar>"` (todas,
+reciban o no).

@@ -341,3 +341,25 @@ Shalom: cuántos envíos, los dos links y pendientes; qué marcó `estados`. Nad
 - Etiquetas para imprimir: `python3 scripts/asesor/etiquetas.py` (fecha de entrega; Shalom y Olva por datos).
 - La hoja de todos los pedidos: libro «Pedidos Tarot Kit», pestaña «Pedidos auto» (columnas «Enviado» y «Dinsides»); provincia en «Ventas».
   Link: https://docs.google.com/spreadsheets/d/1kcoEEG6E2uHFLQ_wjjq6oVMQg4bzvIqmPYygiBT6qQc/edit#gid=1131206013
+
+15. **EL TELÉFONO DEL PEDIDO ES EL QUE DIO EL CLIENTE (dueño 2026-11-13).** Si el cliente pasó otro número («escriban a este»,
+    «lo recibe mi hermana 9…», un contacto, «teléfono de quien recibe»), ESE número va como teléfono principal del pedido de Dinsides
+    (campo `telefono` del pedido) y el número con el que escribió va en el Detalle («Escribir al cliente por WhatsApp: …»). Nunca al
+    revés. Antes de registrar un pedido de Lima se lee el chat buscando ese segundo número; si quedó solo en la `nota` («Tel de
+    contacto 978…», «recibe … 9…») el Worker lo toma de ahí y avisa «TELÉFONO: va el número que dio el cliente…». Si la etiqueta ya
+    salió con el número equivocado: `dinsides.py editar <nro> telefono=9… "obs=…"` (hasta las 6:00) y se vuelve a sacar la etiqueta.
+    `dinsides.py chat` ya acepta clientes sin número (`PE.1160…`).
+16. **EL AVISO DE «PLANTILLA VIEJA» ES PARA JENNIFER, TODOS LOS DÍAS (dueño 2026-11-13).** Mientras `presentar` / `masivo` /
+    `shalom.py agencias` impriman «⚠️ PARA JENNIFER — LA PLANTILLA DEL EXCEL DE SHALOM QUEDÓ VIEJA», Claude lo dice AL INICIO de su
+    respuesta en la sesión, con sus palabras simples: qué agencias faltan y qué hacer (Shalom Pro → Registro de envíos masivos →
+    «Descargar formato» → adjuntar el archivo en la sesión). Cuando ella adjunta el archivo: `python3 scripts/asesor/shalom.py
+    plantilla <archivo.xlsx>` (lo revisa, dice qué cambió y lo guarda en el Worker; desde ahí lo usan el Excel, la revisión y las
+    etiquetas). La primera subida a Shalom Pro con la plantilla nueva se mira con cuidado y se avisa a Moi si algo sale raro.
+17. **HERRAMIENTAS PARA BUSCAR UNA AGENCIA (úsalas todas antes de decir «dudosa»):**
+    `shalom.py triangular "<lo que escribió el cliente>"` (la decisión del sistema, con candidatas y distancias) ·
+    `shalom.py provincia "<provincia o distrito>"` (todas las agencias del lugar, reciban o no) ·
+    `shalom.py buscar "<nombre o calle>"` · `shalom.py osm "<lugar, ciudad>"` o `shalom.py osm "-13.52,-71.97"` (dónde queda un
+    lugar o un pin en el mapa y las 5 agencias que reciben más cercanas) · el buscador web de la sesión (Google Maps, la página
+    shalom.com.pe/agencias) para una referencia que el mapa no conoce. OpenStreetMap es solo «el mapa»: sirve para saber dónde queda
+    «el mercado X» o «el óvalo Y» y medir qué agencia está más cerca. La agencia igual la confirma una persona en la página de
+    revisión cuando queda dudosa.
