@@ -2856,6 +2856,19 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
   son conversaciones (la campaña optimiza conversaciones): 97–100 % salen incrementales. Para ventas incrementales la campaña tendría
   que optimizar por compras.
 
+### 2026-11-13 (noche) · Prompt de agencias de Shalom, versión 2
+- `docs/prompts/shalom-agencias.md` se amplió (no se quitó nada del sistema): una sola función decide la agencia y la usan el Excel, la página de revisión de envíos (`dinsides.py presentar` → `_bloque_shalom`), la referencia y la recomendación `dato_envio`. La actualización diaria de la API y la triangulación con OpenStreetMap aplican también a la revisión.
+- Fallas encontradas en el Excel, anotadas en el prompt para que las arregle la sesión de Shalom:
+  1. La columna G (DESTINO) se valida contra `Hoja2!C2:C490`. Hay 8 agencias cuyo nombre en la API trae espacios de más al final y hoy se escriben así.
+  2. `buscar()` no descarta las 77 agencias con `destino = 0`, que no reciben envíos (ej. AV. HUAYRUROPATA en Wanchaq).
+- Pendiente de esa sesión: revisar los dos pedidos a Wanchaq del 12/11.
+
+### 2026-11-13 (madrugada) · 5 versiones más del mensaje de entrega de Lima y de dónde salen los collares extra
+- `src/lib/plantillas-propuestas.js` → `ENTREGA_LIMA`: se agregaron `entrega_hoy_lima_5` a `entrega_hoy_lima_9` (UTILITY, piden el correo para clases y libros). Usan el horario de 12 a 5 pm de negocio.md; las 1 a 4 dicen «11 am a 5 pm» y quedan como estaban. Siguen apagadas hasta poner la que Meta apruebe en `PLANTILLA_ENTREGA_LIMA`.
+- Etiquetas: 9 chats con `lima_entrega_2026-11-13` y 1 con `lima_entrega_2026-11-20`. Hoy no sale mensaje a las 10:00 porque `PLANTILLA_ENTREGA_LIMA` sigue vacía.
+- Collar extra (compras del 6 al 13/11, 101 en total): 16 recibieron justo antes el seguimiento de +20 h de una respuesta rápida y 7 el paso `seg_d5_ultimo_bono` del plan de 7 días (apagado el 13/11). Ninguna salió del toque del día 7.
+  - Respuestas rápidas cuyo seguimiento ofrece el collar: Lima msj. 3, Provincia Msj. 3, Precio?, Si no dice dónde, Tienda física?, Cuándo llega?, Promo descuento y SEPARAR SEPARADO LIMA.
+  - No se tocaron; decide el dueño.
 ## 2026-11-13 (noche) · Shalom: la agencia correcta en todos lados (una sola función, agencias al día, confirmadas, recomendaciones)
 
 Construido lo que pedía `docs/prompts/shalom-agencias.md`. Decisiones del dueño en la sesión: la lista del día la guarda el Worker
@@ -2901,3 +2914,15 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
 - Caso Jessica Ugaz Lecaros (998702980): un solo pedido en Dinsides (#2953630, registrado el 13/11 00:03 para el 20/11); no hay
   duplicado. Se le limpió el Detalle («REAGENDAR: ya dio su dirección» → «Entrega el 20 de noviembre»).
 - Reglas 18 y 19 de `docs/envios-jennifer.md`. Ninguna Routine cambió.
+
+### 2026-11-13 · El paso del día 5 (collar extra) vuelve, pero solo a quien no recibió la oferta
+- Pedido del dueño. `planes_seguimiento` id 2: el paso 7 (`seg_d5_ultimo_bono`, día 5 a las 19:00) se prendió de nuevo.
+- Filtro nuevo en `src/lib/oferta-collar.js`, aplicado por el cron (`crm-cron.js`) justo antes de enviar. Se cancela el paso si el chat ya recibió una oferta de collar extra o si ya pasaron los 7 días gratis desde que empezó el chat.
+  - Cuentan como oferta el seguimiento de +20 h de las respuestas rápidas y la misma plantilla ya enviada. La bienvenida no cuenta.
+  - Prueba: `scripts/test-oferta-collar.mjs` (en `npm run check`).
+- Se reprogramaron 382 chats (uno por chat, del 14 al 18/11) que siguen en su semana gratis, sin compra y sin respuesta desde que se programó. Se quitaron 369 filas duplicadas.
+- Datos (1–10/11, compras en 3 días):
+  - día 5 a quien no tenía el collar: 1,0 %; a quien ya lo tenía: 0,3 %;
+  - collar a +20 h de la respuesta rápida: 2,6 %;
+  - urgencia «sale mañana» a +1–2 h de la respuesta rápida: 5,4 %.
+- Conversión total de chats (chats del 30/10 al 5/11 que compraron): 8,0 %.

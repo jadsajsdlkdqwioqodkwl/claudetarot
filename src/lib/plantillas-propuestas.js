@@ -62,6 +62,32 @@ export const ENTREGA_LIMA = [
     nombre: "entrega_hoy_lima_4", titulo: "Confirmación de entrega (para bajar rechazos)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
     texto: "Hola estimad@ 🩷 hoy le entregamos su Kit de Tarot 📦✨ El motorizado le llamará antes de llegar, entre las 11 am y las 5 pm 🛵 Si su pedido es contraentrega puede pagar con Yape, efectivo o tarjeta 💳 ¿Nos confirma que hoy puede recibirlo? 🙌",
     botones: ["Sí, confirmo", "Cambiar fecha"]
+  },
+  // Dueño, 2026-11-13: 5 versiones más del mensaje de la mañana que pide el correo (12 a 5 pm, como negocio.md).
+  {
+    nombre: "entrega_hoy_lima_5", titulo: "Sale a ruta + correo para clases y libros", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ ☀️ hoy su Kit de Tarot sale a ruta 📦 El motorizado le llamará antes de llegar, entre las 12 y las 5 pm 🛵 Para enviarle también sus clases y libros digitales ✉️ ¿a qué correo se los mandamos?",
+    botones: ["Le paso mi correo", "Lo recibe otra persona"]
+  },
+  {
+    nombre: "entrega_hoy_lima_6", titulo: "Buenos días: llega hoy + acceso a clases", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Buenos días estimad@ 🌞🔮 Su pedido de Tarot Store llega hoy entre las 12 y las 5 pm 📦✨ Junto con su kit le damos acceso a sus clases grabadas y libros de tarot 📚 ¿Nos deja su correo para enviárselos? 🙌",
+    botones: ["Le paso mi correo", "Tengo una duda"]
+  },
+  {
+    nombre: "entrega_hoy_lima_7", titulo: "Pide un Gmail (los regalos van por Google Drive)", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🩷 hoy le entregamos su Kit de Tarot 📦🛵 Sus clases y libros digitales se comparten por Google Drive, por eso necesitamos un correo Gmail 📚✨ ¿Cuál sería? ✉️",
+    botones: ["Le paso mi Gmail", "No tengo Gmail"]
+  },
+  {
+    nombre: "entrega_hoy_lima_8", titulo: "Celular a la mano + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ ✨ su Kit de Tarot ya está en ruta y llega hoy 📦 Tenga su celular a la mano, el motorizado le llamará antes de llegar ☎️ ¿Nos comparte su correo para enviarle hoy mismo sus clases y libros? 📚🎁",
+    botones: ["Le paso mi correo", "Cambiar fecha"]
+  },
+  {
+    nombre: "entrega_hoy_lima_9", titulo: "Corta: hoy llega + correo", cuando: "10:00 del día de entrega (Lima, Dinsides)",
+    texto: "Hola estimad@ 🔮 ¡Hoy llega su kit! 📦✨ Entre las 12 y las 5 pm el motorizado le llamará 🛵 ¿A qué correo le enviamos sus clases y libros digitales? 📚",
+    botones: ["Le paso mi correo", "Cambiar fecha"]
   }
 ];
 
