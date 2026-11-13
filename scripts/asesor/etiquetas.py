@@ -602,6 +602,39 @@ def main():
             print("CRM → Reportes:", json.load(resp).get("url"))
 
 
+def distritos_dinsides():
+    """Nombres de distrito del formulario de Dinsides (tabla DISTRITOS de src/lib/dinsides.js), sin tildes y en minúsculas."""
+    try:
+        js = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src", "lib", "dinsides.js"), encoding="utf-8").read()
+        bloque = js[js.index("export const DISTRITOS"):]
+        return sorted(set(re.findall(r'"([a-z ]+)":\s*\["\d+"', bloque[:bloque.index("};")])), key=len, reverse=True)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _plano(t):
+    import unicodedata
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFD", str(t or "")).encode("ascii", "ignore").decode().lower())
+
+
+def distrito_en_notas(fecha):
+    """{últimos 9 del WhatsApp: (distrito, día de la nota)}: el distrito que la asesora ESCRIBIÓ en la página de revisión de ese
+    despacho o de los 2 anteriores (caso Carmela: escribió «San Martin de Porres» el 11/11 y se registró en Callao)."""
+    out, nombres = {}, distritos_dinsides()
+    for i in (2, 1, 0):
+        dia = (dt.date.fromisoformat(fecha) - dt.timedelta(days=i)).isoformat()
+        try:
+            r = pedir(f"/revision?id=envios-{dia}") or {}
+        except Exception:  # noqa: BLE001
+            continue
+        for wa, n in (r.get("notas") or {}).items():
+            texto = " " + _plano(n.get("texto")) + " "
+            for d in nombres:
+                if re.search(rf"(?<![a-z]){re.escape(d)}(?![a-z])", texto) and (len(d) > 4 or re.search(rf"distrito\W+{re.escape(d)}(?![a-z])", texto)):
+                    out[str(wa)[-9:]] = (d, dia); break
+    return out
+
+
 def verificar_lima(items):
     """Checklist del final de la hoja (dueño 2026-11-13, caso Carmela): por cada etiqueta de Lima, el distrito que Dinsides tiene
     AHORA contra el polígono de su mapa de cobertura (con el pin del pedido) y la fecha de entrega contra la que quedó en el chat."""
@@ -614,12 +647,18 @@ def verificar_lima(items):
         print(f"⚠️ No se pudo armar el checklist de Lima: {err}")
         return []
     por_id = {str(x.get("id_pedido")): x for x in r.get("chequeo") or []}
+    fechas = sorted({str(d.get("fecha_entrega") or "")[:10] for d in lima if d.get("fecha_entrega")})
+    de_notas = distrito_en_notas(min(fechas[0], dt.datetime.now(LIMA).date().isoformat())) if fechas else {}
+    de_notas.update(distrito_en_notas(dt.datetime.now(LIMA).date().isoformat()))
     out = []
     for d in lima:
         x = por_id.get(str(d["id_pedido"])) or {}
         pol = x.get("poligono") or {}
         if x.get("error"):
             pol_txt, pol_ok = "NO SE PUDO LEER EN DINSIDES", False
+        elif de_notas.get(str(x.get("whatsapp") or "")[-9:]) and _plano(de_notas[str(x.get("whatsapp"))[-9:]][0]) != _plano(d.get("distrito")):
+            nd = de_notas[str(x.get("whatsapp"))[-9:]]
+            pol_txt, pol_ok = f"NO ES EL DISTRITO QUE ESCRIBIÓ LA ASESORA: en la revisión del {_fecha_pe(nd[1])} puso «{nd[0].upper()}»", False
         elif x.get("cambiado_fuera"):
             pol_txt, pol_ok = f"CAMBIADO EN EL PORTAL DE DINSIDES: el sistema lo registró en «{str(x['cambiado_fuera'].get('distrito_registrado') or '?').upper()}». Confirmar con el cliente cuál es", False
         elif x.get("poligono_ok"):

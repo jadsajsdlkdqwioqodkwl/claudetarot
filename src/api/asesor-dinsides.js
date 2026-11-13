@@ -588,7 +588,7 @@ export async function onRequestGet({ request, env }) {
           const fechaReg = idx[waDeNro.get(id)]?.fecha;
           const mio = fechaReg ? (await registroDe(env, fechaReg)).registros.find((r) => String(r.nro) === id) : null;
           const cambiado = mio?.campos?.id_distrito && String(mio.campos.id_distrito) !== String(ped.id_distrito || "") ? { distrito_registrado: mio.campos.distrito, direccion_registrada: String(mio.campos.direccion || "").slice(0, 160) } : null;
-          out.push({ id_pedido: id, cambiado_fuera: cambiado, nombre: ped.nombre_destinataio || "", id_distrito: String(ped.id_distrito || ""), direccion: String(ped.direccion_destinatario || "").slice(0, 160),
+          out.push({ id_pedido: id, whatsapp: waDeNro.get(id) || tel, cambiado_fuera: cambiado, nombre: ped.nombre_destinataio || "", id_distrito: String(ped.id_distrito || ""), direccion: String(ped.direccion_destinatario || "").slice(0, 160),
             coordenadas: c ? c.lat_lng : "", poligono: z ? { clase: z.clase, nombre: z.nombre, distrito: z.distrito || null, codigo: z.codigo || null } : null,
             poligono_ok: z ? (z.clase === "entrega" && String(z.codigo || "") === String(ped.id_distrito || "")) : null,
             fecha_entrega: fecha, fecha_chat: fechasChat.length ? fechasChat[fechasChat.length - 1] : null, fecha_ok: fechasChat.length ? fechasChat.includes(fecha) : null });

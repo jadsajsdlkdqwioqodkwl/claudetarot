@@ -2941,3 +2941,7 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   no está en ningún mensaje. El polígono está bien calculado para ese pin, pero el pin es dudoso: su dirección («Urb. Los Alisos,
   Calle Libertad, detrás del mercado») calza con Oquendo, Callao. El checklist ahora marca «CAMBIADO EN EL PORTAL DE DINSIDES»
   cuando el distrito actual no es el que el sistema registró (`cambiado_fuera` en `?chequeo=`).
+- (2026-11-13, causa real del caso Carmela) En la página de revisión del 12/11 Jennifer escribió «dirección: San Martin de Porres»
+  (11/11 23:47) y la sesión registró el pedido en Callao las dos veces; Dinsides lo anuló por «datos errados». El checklist de
+  `etiquetas.py` ahora cruza el distrito de Dinsides con el que la asesora escribió en la revisión de ese despacho o de los 2
+  anteriores (`distrito_en_notas`) y marca «NO ES EL DISTRITO QUE ESCRIBIÓ LA ASESORA». Regla 21 de `docs/envios-jennifer.md`.

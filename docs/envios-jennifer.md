@@ -383,3 +383,11 @@ Shalom: cuántos envíos, los dos links y pendientes; qué marcó `estados`. Nad
     el portal, sale ahí. Toda fila sin [X] Claude la dice en la sesión y se resuelve ANTES del recojo (pedir el pin, corregir con
     `editar`); con el pedido EN RUTA ya no se puede editar: Jennifer le escribe a Dinsides por WhatsApp.
     **Antes de editar cualquier cosa de un pedido de Lima se mira también su distrito contra el polígono** (`dinsides.py zona`).
+
+21. **LO QUE LA ASESORA ESCRIBE EN LA PÁGINA MANDA, Y SE COMPRUEBA (2026-11-13, caso Carmela: escribió «San Martin de Porres» y
+    se registró en Callao).** Toda corrección de `dinsides.py notas` se aplica tal cual al pedido (distrito, dirección, fecha,
+    teléfono, horario) y, después de registrar, se vuelve a leer el pedido en Dinsides para ver que quedó así. Si la nota nombra
+    un distrito, ESE es el distrito, aunque la nota diga «dirección: …». Un pedido reagendado conserva las correcciones de los días
+    anteriores. El checklist de las etiquetas lo cruza solo y marca «NO ES EL DISTRITO QUE ESCRIBIÓ LA ASESORA».
+    Lo que más corrige la asesora (11–13/11, 20 correcciones): agencia de Shalom/Olva (7), dirección, referencia o pin de Lima (4),
+    distrito de Lima (3), teléfono o a quién entregar (3), fecha de entrega (2), horario (2).
