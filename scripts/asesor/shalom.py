@@ -395,7 +395,9 @@ def elegir_agencia(pedido, confirmadas=None, osm_cache=None):
     # Triangulación con OpenStreetMap: la referencia del cliente (mercado, plaza, paradero, «frente a…») contra la lat/lng de cada agencia.
     distancias = []
     if out["referencia"] and len(universo) > 1:
-        consulta = f"{out['referencia']}, {top['distrito'] if not ciudad else top['provincia']}, {top['provincia']}, Perú"
+        # A OpenStreetMap va el LUGAR, sin «cerca del», «al costado de», «frente a»…
+        lugar_ref = re.sub(r"^(?:al\s+)?(?:frente|costado|lado|cerca|detr[aá]s|espaldas|altura|por)\s*(?:a|de)?(?:l|\s+la|\s+el)?\s+", "", out["referencia"], flags=re.I).strip()
+        consulta = f"{lugar_ref or out['referencia']}, {top['distrito'] if not ciudad else top['provincia']}, {top['provincia']}, Perú"
         hits = buscar_osm(consulta, osm_cache)
         if hits:
             pt = hits[0]

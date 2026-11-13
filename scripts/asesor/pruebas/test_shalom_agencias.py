@@ -51,7 +51,7 @@ assert x.get("sin_servicio") and not x["segura"] and not x["agencia"] and x.get(
 tumbes = [a for a in ag if a["provincia"] == "TUMBES" and sh.recibe(a) and a.get("lat")]
 assert len(tumbes) >= 3
 cerca = tumbes[0]
-osm = {"al lado del mercado, tumbes, tumbes, perú": {"hits": [{"lat": float(cerca["lat"]) + 0.0005, "lng": float(cerca["lng"]), "nombre": "Mercado Modelo, Tumbes"}]}}
+osm = {"mercado, tumbes, tumbes, perú": {"hits": [{"lat": float(cerca["lat"]) + 0.0005, "lng": float(cerca["lng"]), "nombre": "Mercado Modelo, Tumbes"}]}}
 x = sh.elegir_agencia("Shalom de Tumbes, al lado del mercado", confirmadas={}, osm_cache=osm)
 otros = sorted(sh.metros(float(cerca["lat"]) + 0.0005, cerca["lng"], a["lat"], a["lng"]) for a in tumbes if a is not cerca)
 if otros[0] >= 300:  # la siguiente queda a más del doble: segura por distancia
