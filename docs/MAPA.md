@@ -2855,3 +2855,10 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
 - **Meta, atribución incremental (lectura):** con `action_attribution_windows: incrementality` los resultados por anuncio (6–12/11)
   son conversaciones (la campaña optimiza conversaciones): 97–100 % salen incrementales. Para ventas incrementales la campaña tendría
   que optimizar por compras.
+
+### 2026-11-13 (noche) · Prompt de agencias de Shalom, versión 2
+- `docs/prompts/shalom-agencias.md` se amplió (no se quitó nada del sistema): una sola función decide la agencia y la usan el Excel, la página de revisión de envíos (`dinsides.py presentar` → `_bloque_shalom`), la referencia y la recomendación `dato_envio`. La actualización diaria de la API y la triangulación con OpenStreetMap aplican también a la revisión.
+- Fallas encontradas en el Excel, anotadas en el prompt para que las arregle la sesión de Shalom:
+  1. La columna G (DESTINO) se valida contra `Hoja2!C2:C490`. Hay 8 agencias cuyo nombre en la API trae espacios de más al final y hoy se escriben así.
+  2. `buscar()` no descarta las 77 agencias con `destino = 0`, que no reciben envíos (ej. AV. HUAYRUROPATA en Wanchaq).
+- Pendiente de esa sesión: revisar los dos pedidos a Wanchaq del 12/11.
