@@ -2862,3 +2862,10 @@ en los tres puntitos… que se mande como audio, no como archivo descargable». 
   1. La columna G (DESTINO) se valida contra `Hoja2!C2:C490`. Hay 8 agencias cuyo nombre en la API trae espacios de más al final y hoy se escriben así.
   2. `buscar()` no descarta las 77 agencias con `destino = 0`, que no reciben envíos (ej. AV. HUAYRUROPATA en Wanchaq).
 - Pendiente de esa sesión: revisar los dos pedidos a Wanchaq del 12/11.
+
+### 2026-11-13 (madrugada) · 5 versiones más del mensaje de entrega de Lima y de dónde salen los collares extra
+- `src/lib/plantillas-propuestas.js` → `ENTREGA_LIMA`: se agregaron `entrega_hoy_lima_5` a `entrega_hoy_lima_9` (UTILITY, piden el correo para clases y libros). Usan el horario de 12 a 5 pm de negocio.md; las 1 a 4 dicen «11 am a 5 pm» y quedan como estaban. Siguen apagadas hasta poner la que Meta apruebe en `PLANTILLA_ENTREGA_LIMA`.
+- Etiquetas: 9 chats con `lima_entrega_2026-11-13` y 1 con `lima_entrega_2026-11-20`. Hoy no sale mensaje a las 10:00 porque `PLANTILLA_ENTREGA_LIMA` sigue vacía.
+- Collar extra (compras del 6 al 13/11, 101 en total): 16 recibieron justo antes el seguimiento de +20 h de una respuesta rápida y 7 el paso `seg_d5_ultimo_bono` del plan de 7 días (apagado el 13/11). Ninguna salió del toque del día 7.
+  - Respuestas rápidas cuyo seguimiento ofrece el collar: Lima msj. 3, Provincia Msj. 3, Precio?, Si no dice dónde, Tienda física?, Cuándo llega?, Promo descuento y SEPARAR SEPARADO LIMA.
+  - No se tocaron; decide el dueño.
