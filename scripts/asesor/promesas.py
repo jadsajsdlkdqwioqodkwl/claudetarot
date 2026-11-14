@@ -64,6 +64,33 @@ def collar_extra(lineas):
 
 
 TEXTO_COLLAR = "+ 1 COLLAR AMULETO EXTRA (se le ofreció en el chat)"
+API_CHAT = API_CHATS.rsplit("/", 1)[0] + "/chat"
+
+
+def collar_extra_del_chat(clave, ref, dias=21):
+    """Lee el chat del cliente (sus últimos 200 mensajes, `GET /api/asesor/chat`) y devuelve la línea en la que el equipo le ofreció
+    un collar amuleto EXTRA en los últimos `dias` días, o None. Dueño 2026-11-14: `traer()` corta en los 5000 mensajes más nuevos
+    de TODOS los chats, y las promesas de hace 2-3 semanas (Hugo 11-02, Juan Gamarra y Edgar 10-26) se perdían: las etiquetas de
+    Shalom salían sin su collar. Esta consulta es por cliente, así que no se corta."""
+    if not clave or not ref:
+        return None
+    ref = str(ref)
+    q = f"wa_id={ref}" if re.fullmatch(r"[A-Za-z]{2}\.\d+", ref) else f"telefono={nueve(ref)}"
+    if q.startswith("telefono=") and len(q) < 18:
+        return None
+    try:
+        r = _get(f"{API_CHAT}?{q}&mensajes=200&largo=1", clave)
+    except (urllib.error.URLError, ValueError) as err:
+        print(f"⚠️ No se pudo leer el chat {ref} para buscar collares prometidos: {err}", file=sys.stderr, flush=True)
+        return None
+    desde = (dt.datetime.utcnow() - dt.timedelta(days=dias)).strftime("%Y-%m-%d %H:%M:%S")
+    for m in r.get("mensajes") or []:
+        if m.get("direction") == "in" or str(m.get("created_at") or "") < desde or RE_BIENVENIDA.search(m.get("sent_by") or ""):
+            continue
+        msg = re.sub(r"\s+", " ", str(m.get("body") or ""))
+        if RE_COLLAR_EXTRA.search(RE_KIT_NORMAL.sub(" ", msg)):
+            return f"{str(m.get('created_at'))[5:16]} V({m.get('sent_by') or '?'}): {msg[:300]}"
+    return None
 
 
 # Para saber si el `empaque` ya cubre la promesa.

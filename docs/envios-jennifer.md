@@ -3,7 +3,7 @@
 > FUENTE DE VERDAD de las instrucciones. La Routine o el Project de Jennifer lleva solo el «arranque» de abajo; Claude clona el
 > repo y lee este archivo, así las mejoras entran solas sin tocar su prompt. Copia legible en Google Docs
 > («Registro de envíos — instrucciones (Dinsides y Shalom)», id `1nFZ1oTb2ItChRiC4-4ebhktAGK2vmIF6yuaJjNk1w1c`, compartido con el
-> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-11 (link fijo por día, página solo con lo que se registra, nota del motorizado limpia, reposiciones fuera,
+> correo del dueño y el de la empresa); si el Doc y este archivo difieren, manda este archivo. Última revisión: 2026-11-14 (kit «regular», empaque y collar extra los pone el sistema, scripts siempre en la última versión de main); antes: 2026-11-11 (link fijo por día, página solo con lo que se registra, nota del motorizado limpia, reposiciones fuera,
 > 2+ kits = 1 paquete XS). Antes: 2026-11-09 (madrugada: página de revisión sin PDF, notas se leen solas, Shalom antes que los pendientes de Lima).
 
 ## Arranque (lo único que va en la Routine o el Project de Jennifer)
@@ -20,6 +20,20 @@ API de Claude. Trabaja solo con python3 scripts/asesor/dinsides.py y python3 scr
 
 Nota (2026-11-09): el arranque sincroniza con `git merge --ff-only` (un `reset --hard` lo bloqueó el permiso de la sesión y la Routine
 leyó instrucciones viejas). Si la sincronización falla, dilo en la primera línea y sigue con lo que tengas.
+
+## LO QUE CAMBIÓ EL 2026-11-14 (dueño). MANDA sobre todo lo de abajo si se contradicen
+
+1. **Nunca «normal»: se dice «regular».** En etiquetas, empaques, presentación y respuestas: «1 kit regular», nunca «1 kit normal».
+   `etiquetas.py` lo cambia solo (`regular()`), pero tú tampoco lo escribas.
+2. **El EMPAQUE de Shalom y Olva lo pone el sistema, no tú.** En `--shalom datos.json` / `--olva datos.json` NO escribas `empaque`
+   a mano (ni «1 kit regular»): `etiquetas.py` lo arma SIEMPRE desde el reporte del despacho (por DNI) y además **lee el chat de cada
+   cliente** (sus últimos 200 mensajes, 21 días) por si se le ofreció un **collar amuleto EXTRA**; si se le ofreció, la etiqueta dice
+   «+ 1 COLLAR AMULETO EXTRA (se le ofreció en el chat)». Si pones un extra que el reporte no trae (otro mazo, 2 collares), se suma.
+   Caso 2026-11-14: las 5 etiquetas de Shalom salieron con «1 kit normal» y 3 sin el collar extra que se les prometió (Hugo/Xiomara,
+   Juan Gamarra, Edgar Ccollque). Antes de dar el link de las etiquetas, mira el EMPAQUE de cada una contra el chat.
+3. **Siempre la última versión de main.** `dinsides.py`, `shalom.py` y `etiquetas.py` se actualizan solos al empezar (`al_dia.py`:
+   `git fetch` + `merge --ff-only` y vuelven a correr el mismo comando). Si la primera línea dice «⚠️ HAY UNA VERSIÓN NUEVA DE MAIN Y
+   NO SE PUDO ACTUALIZAR» o «NO PUDE COMPROBAR», díselo a la persona en tu primera línea y corre lo que indica antes de seguir.
 
 ## LO QUE CAMBIÓ EL 2026-11-11 (dueño: «más fácil para Jennifer; que la IA haga el trabajo pesado»). MANDA sobre lo de abajo si se contradicen
 
@@ -48,8 +62,8 @@ leyó instrucciones viejas). Si la sincronización falla, dilo en la primera lí
    aprendizaje»), nunca «Reposición / cambio» en una venta.
 7. **Shalom: 2 o más kits = UN paquete XS, cantidad 1** (no N paquetes XXS). 1 kit = 1 paquete XXS. Lo pone el sistema en el Excel
    masivo y en la presentación; en el registro a mano, igual.
-8. **Etiquetas:** todas las de Shalom llevan «EMPAQUE: …» (1 kit normal, «3 KITS (Paquete XS)», extras). Si pasas las de Shalom por
-   archivo (`--shalom datos.json`) y no pones `empaque`, el script lo busca por DNI en el reporte; puedes ponerlo tú en cada ítem.
+8. **Etiquetas:** todas las de Shalom llevan «EMPAQUE: …» («1 kit regular», «3 KITS (Paquete XS)», extras). Si pasas las de Shalom por
+   archivo (`--shalom datos.json`), el script pone el empaque por DNI desde el reporte y revisa el chat (collar extra); no lo escribas tú (2026-11-14).
 9. **Última revisada del despacho (antes de dar por cerrado el ciclo):** todo lo REGISTRADO en Dinsides en este ciclo tiene etiqueta
    (cuenta de `registrar` = cuenta de Lima en `etiquetas.py`), cada provincia con adelanto de hoy está en Shalom u Olva o es una
    pregunta, y lo agendado para otro día que ya está en Dinsides no se vuelve a registrar.
@@ -126,7 +140,7 @@ sesión («OK», correcciones, la clave del día). Las respuestas a los pendient
    resuelve; solo cuando la dirección no se puede ubicar se pregunta.
 5. Las claves de seguridad de Shalom son sagradas: solo existe la clave del día que da el dueño en la sesión. Nadie asigna otra.
    Nunca van en Telegram ni en respuestas: solo en el archivo de referencia.
-6. **Notas completas.** Todo lo que no sea «1 kit normal a S/89» se ve en la presentación y en la nota que llega al courier:
+6. **Notas completas.** Todo lo que no sea «1 kit regular a S/89» se ve en la presentación y en la nota que llega al courier:
    2 o más kits, mazo u oráculo extra, otro modelo (Gold, Rider en español…), pedido del catálogo, collar o regalo prometido, lo que
    NO lleva (`kits: 0`), descuento o precio negociado, adelanto y saldo, «ya pagó», horario, piso, portero, discreción. **Forma de
    pago: si el cliente no la dijo, es YAPE** (dueño 2026-11-10); «Yape, efectivo o tarjeta al recibir» = varias opciones = YAPE.

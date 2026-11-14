@@ -194,35 +194,44 @@ _PROMESAS = None
 
 def con_collar_extra(empaque, *telefonos):
     """Si al cliente se le ofreció en el chat un collar amuleto EXTRA (seguimientos del equipo), la etiqueta lo dice (dueño
-    2026-11-11, caso Alicia): «+ 1 COLLAR AMULETO EXTRA». Se mira al imprimir, así también vale para lo ya registrado."""
+    2026-11-11, caso Alicia): «+ 1 COLLAR AMULETO EXTRA». Se mira al imprimir, así también vale para lo ya registrado.
+    Dueño 2026-11-14: si la búsqueda general no lo trae (se corta en los 5000 mensajes más nuevos), se lee el chat de ese cliente."""
     global _PROMESAS
     import promesas as prom
+    clave = os.environ.get("ASESOR_CLAVE", "")
     if _PROMESAS is None:
-        _PROMESAS = prom.traer(os.environ.get("ASESOR_CLAVE", ""), 30) if os.environ.get("ASESOR_CLAVE") else {}
+        _PROMESAS = prom.traer(clave, 30) if clave else {}
     emp = str(empaque or "")
     if re.search(r"collar[^·]*(extra|adicional)|(extra|adicional)[^·]*collar", emp, re.I):
         return emp
     for t in telefonos:
-        k = prom.nueve(t)
-        if k and prom.collar_extra(_PROMESAS.get(k)):
+        k = prom.nueve(t) if not re.fullmatch(r"[A-Za-z]{2}\.\d+", str(t or "")) else str(t)
+        if k and (prom.collar_extra(_PROMESAS.get(k)) or prom.collar_extra_del_chat(clave, t)):
             return (emp + " " if emp else "") + prom.TEXTO_COLLAR
     return emp
 
 
+def regular(texto):
+    """Dueño 2026-11-14: en etiquetas y empaques NUNCA «normal»; se dice «regular» («1 kit regular»)."""
+    return re.sub(r"\bnormal(es)?\b", lambda m: "regular" + (m.group(1) or ""), str(texto or ""), flags=re.I)
+
+
 def empaque_shalom(kits, empaque=""):
-    """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): 1 kit normal,
-    «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
+    """«EMPAQUE: …» de una etiqueta de provincia. SIEMPRE dice algo (dueño 2026-11-11: las de 1 kit salían sin nada): «1 kit regular»
+    (dueño 2026-11-14: nunca «normal»), «N KITS (Paquete XS)» con 2 o más, y lo extra que traiga el reporte."""
     kits = int(kits) if str(kits).strip().isdigit() else 1
-    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("Kit Tarot de aprendizaje (1 kit completo)" if kits == 1 else "NO es kit")
+    base = f"{kits} KITS (Paquete XS)" if kits >= 2 else ("1 kit regular" if kits == 1 else "NO es kit")
     extra = " · ".join(t for t in re.split(r"\s+·\s+", str(empaque or "").strip()) if t and not re.search(r"VERIFICAR|en el chat se le prometi", t))
-    if extra and re.fullmatch(r"\d+\s*kits?\b.*|kit normal.*", extra, re.I) and "+" not in extra:
+    if extra and re.fullmatch(r"\d+\s*kits?\b.*|(1\s+)?kit (normal|regular|completo).*", extra, re.I) and "+" not in extra:
         extra = ""
-    return f"{base} · {extra}" if extra else base
+    return regular(f"{base} · {extra}" if extra else base)
 
 
 def completar_empaque_shalom(items, recojo):
-    """Las etiquetas de Shalom que vienen de un archivo (--shalom) no traen empaque: se busca por DNI en el reporte del despacho y en
-    la hoja «Pedidos auto». Si no aparece, va 1 kit normal."""
+    """El empaque de las etiquetas de Shalom/Olva que vienen de un archivo (--shalom / --olva) lo pone SIEMPRE el sistema (dueño
+    2026-11-14: el Claude de la operadora escribía «1 kit normal» a mano y se perdían los collares extra): se busca por DNI en el
+    reporte del despacho y en la hoja «Pedidos auto», se suman los extras que el archivo traiga, y se revisa el chat del cliente
+    por si se le ofreció un collar extra. Si no aparece en el reporte, va «1 kit regular» (y el chat igual se revisa)."""
     por_dni = {}
     try:
         est = pedir(f"/ventas-estado?fecha={recojo}&tipo=pedidos") or {}
@@ -230,14 +239,19 @@ def completar_empaque_shalom(items, recojo):
     except Exception:  # noqa: BLE001
         est, r = {}, {}
     for f in ((est.get("estado") or {}).get("pedidos") or []) + [x for k in ("atrasados", "hoy", "futuros", "enviadas") for x in (r.get(k) or [])]:
-        m = re.search(r"\b(\d{8})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
+        m = re.search(r"\b(\d{8,9})\b", f"{f.get('dni') or ''} {f.get('nota') or ''}")
         if m and m.group(1) not in por_dni:
             por_dni[m.group(1)] = f
     for d in items:
-        if d.get("empaque"):
-            continue
         f = por_dni.get(str(d.get("doc") or d.get("dni") or ""), {})
-        d["empaque"] = con_collar_extra(empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else ""), (f or {}).get("whatsapp"), d.get("telefono"))
+        base = empaque_shalom(f.get("kits") if f else 1, f.get("empaque") if f else "")
+        propio = regular(d.get("empaque") or "")
+        propio = re.sub(r"^\s*(EMPAQUE:\s*)?(1\s+)?kit (tarot de aprendizaje )?(regular|completo)\b[^·]*", "", propio, flags=re.I).strip(" ·")
+        if propio and propio.lower() not in base.lower():
+            base = f"{base} · {propio}"
+        d["empaque"] = con_collar_extra(base, (f or {}).get("whatsapp"), d.get("telefono"), d.get("whatsapp"))
+        if not f:
+            print(f"⚠️ {d.get('destinatario') or d.get('nombre')}: DNI {d.get('doc') or d.get('dni') or '?'} no está en el reporte del {recojo}; EMPAQUE = {d['empaque']}")
 
 
 # ---------- dibujo ----------
@@ -356,7 +370,7 @@ def etiqueta_shalom(c, x0, yb, d):
     """Formato del ticket de Shalom (N° de Orden, Código, Destinatario, N°DOC, Destino, agencia y dirección) + pie «Envía» y, debajo,
     la nota para el que empaca («EMPAQUE: …», dueño 2026-11-10)."""
     p = 2 * mm; x = x0 + p; R = x0 + cell_w - p; ancho = R - x
-    lineas_emp = partir(c, "EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, ancho)[:3]
+    lineas_emp = partir(c, "EMPAQUE: " + regular(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, ancho)[:3]
     pie_emp = len(lineas_emp) * 2.5 * mm + (0.8 * mm if lineas_emp else 0)
     pie = 4.5 * mm + pie_emp; top = yb + cell_h
     c.setFillColorRGB(.93, .96, .99); c.rect(x0 + .8 * mm, top - 12.5 * mm, cell_w - 1.6 * mm, 11.5 * mm, stroke=0, fill=1)
@@ -429,7 +443,7 @@ def etiqueta_olva(c, x0, yb, d=None):
         c.drawString(x, y, t); y -= 3.1 * mm
     if d:  # nota para el que empaca, como en Shalom y Lima (dueño 2026-11-11: las de Olva no la traían)
         c.setFont("Helvetica-Bold", 5.2); ye = yb2 + 1 * mm
-        for ln in reversed(partir(c, "EMPAQUE: " + str(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, R - x)[:3]):
+        for ln in reversed(partir(c, "EMPAQUE: " + regular(d.get("empaque") or empaque_shalom(1)), "Helvetica-Bold", 5.2, R - x)[:3]):
             c.drawString(x, ye, ln); ye += 2.5 * mm
     cut(c, x0, yb2, w, h)
 
@@ -703,4 +717,6 @@ def pagina_checklist(c, filas):
 
 
 if __name__ == "__main__":
+    import al_dia
+    al_dia.asegurar()  # siempre la última versión de main (dueño 2026-11-14)
     main()

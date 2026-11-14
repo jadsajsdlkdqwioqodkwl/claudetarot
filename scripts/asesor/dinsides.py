@@ -1149,4 +1149,6 @@ def main():
 
 
 if __name__ == "__main__":
+    import al_dia
+    al_dia.asegurar()  # siempre la última versión de main (dueño 2026-11-14)
     main()

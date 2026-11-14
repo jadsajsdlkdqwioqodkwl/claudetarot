@@ -2963,3 +2963,27 @@ corridas del asesor (10:00 · 15:00 · 19:00); la etiqueta de Dinsides dice el h
   - Prueba: `scripts/test-recojo-tras-boleta.mjs`.
 - **Entrega de Lima:** el dueño eligió `entrega_hoy_lima_19` (`PLANTILLA_ENTREGA_LIMA` en wrangler.jsonc, a las 10:00).
   - Protección nueva en el cron: ese mensaje solo sale si el chat tiene la etiqueta `lima_entrega_<hoy en Lima>` y antes de las 17:00. Si la plantilla espera la aprobación de Meta y se pasa del día, o la entrega cambió de fecha, se cancela: «hoy le llega» nunca sale otro día.
+
+### 2026-11-14 (madrugada) · Etiquetas de Shalom: «1 kit regular», collar extra leído del chat, y la operadora siempre en la última versión de main
+- **Qué pasó:** el PDF de etiquetas del despacho 14/11 que armó la sesión de Jennifer (CRM → Reportes, 00:02) salió con «EMPAQUE: 1 kit
+  normal» y solo 2 de 5 con el collar extra. Ninguna etiqueta de Lima: esa noche no se registró nada en Dinsides (Eliana canceló,
+  J. Polk viaja; Leidy, Alonso y Luzmila salieron el 13 por motorizado externo). El dueño ya había pedido «regular» y no «normal», y
+  que se revisen los collares extra del chat.
+- **Causas:** (1) `docs/envios-jennifer.md` decía «1 kit normal» y su Claude escribió el `empaque` a mano en `--shalom datos.json`;
+  `completar_empaque_shalom` solo completaba cuando faltaba el empaque, así que tampoco revisaba collares. (2) `promesas.traer()` lee
+  `GET /api/asesor/chats?promesas_dias=…`, que corta en los 5000 mensajes más nuevos de todos los chats (`LIMIT 5000` en
+  `src/api/asesor-datos.js`): las promesas de hace 2-3 semanas (Hugo 11-02, Juan Gamarra y Edgar 10-26) no llegaban.
+- **Arreglo (`scripts/asesor/etiquetas.py`, `scripts/asesor/promesas.py`):** `regular()` cambia «normal» por «regular» en todo
+  EMPAQUE; 1 kit = «1 kit regular» (antes «Kit Tarot de aprendizaje (1 kit completo)», que había reemplazado a «1 kit normal» el 11/11).
+  `completar_empaque_shalom` corre SIEMPRE (Shalom y Olva por archivo): empaque del reporte por DNI + extras del archivo + collar.
+  `con_collar_extra` además lee el chat de cada cliente (`promesas.collar_extra_del_chat`: `GET /api/asesor/chat`, 200 mensajes, 21
+  días) cuando la búsqueda general no lo trae. El `LIMIT 5000` del Worker NO se tocó (otros scripts lo usan; queda anotado).
+- **Siempre la última versión de main (`scripts/asesor/al_dia.py`, nuevo):** `dinsides.py`, `shalom.py` y `etiquetas.py` llaman a
+  `al_dia.asegurar()` al empezar: en la rama `main` hace `git fetch origin main`; si hay commits nuevos, `merge --ff-only` (con
+  `stash` si hay cambios locales) y vuelve a ejecutar el mismo comando (una vez, `AL_DIA_HECHO`). Si no puede, lo avisa en grande y
+  sigue. En otras ramas no hace nada; `AL_DIA_NO=1` lo apaga. Probado con un clon viejo: se actualizó y corrió con el código nuevo.
+- **Instrucciones de Jennifer:** sección «LO QUE CAMBIÓ EL 2026-11-14» en `docs/envios-jennifer.md` (regular, empaque lo pone el
+  sistema, aviso si no se pudo actualizar). La Routine y su prompt no cambian (el arranque ya lee ese archivo).
+- **Hecho a pedido del dueño:** etiquetas de Shalom del 14/11 rehechas con el código nuevo (5: las 5 con «1 kit regular · + 1 COLLAR
+  AMULETO EXTRA»), subidas a CRM → Reportes. Nicole Gastelo (PE.2036157980418788, SJL) agendada para el reporte del domingo (despacho
+  16/11) en `pedidos-estado/2026-11-16.json`, con «confirmar mazo S/69 o kit S/89»; en el estado del 14 quedó OTRO_DIA.
